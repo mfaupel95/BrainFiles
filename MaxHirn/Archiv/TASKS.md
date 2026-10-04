@@ -751,18 +751,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-265 — `source-completion-pending` steht seit dem 30.09. auf „tail not finished“**
-      Kontext: `Agenten/Hermes/installs/bf59c98340a908a8/source-completion-pending` traegt
-      „source update tail not finished“; jeder Start von `hermes` faehrt daraufhin einen
-      Completion-Versuch und meldet „source-update completion failed: an update is still
-      running“ (gemessen 01.10. 01:22). Ein laufender Update-Prozess existiert NICHT (nur der
-      Marker), C: hat 77,9 GB frei — die Reparatur ist also machbar.
-      Naechster Schritt: Desktop und TUI schliessen (der laufende Desktop haelt
-      `apps/desktop/release/win-unpacked`, sonst WinError 5 beim Umbenennen), dann
-      `installs/<hash>/environments/<id>/venv/Scripts/python.exe -I -B -u
-      hermes_cli/source_completion.py --source Agenten/Hermes/hermes-agent --finish-update
-      --desktop --prepared` GELOESTERT starten (nie mit eigenem Zeitlimit killen).
-      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/installs/bf59c98340a908a8/, Agenten/Hermes/logs/update-*.log
 
 - [ ] **T-266 — cmd.exe und andere Shells umgehen den Hermes-Anker**
       Kontext: Der `hermes`-Wrapper liegt als PowerShell-Funktion im Profil; in `cmd.exe`
@@ -954,37 +942,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       in eine Ablage mit Namen, (b) `target/` einzelner Rust-Klonen leeren (bricht den
       Startbefehl) oder unangetastet lassen.
       Angelegt: 2026-09-30 · Betrifft: `Werkstatt/` (Junction auf `O:\Werkstatt`)
-- [ ] **T-247 - Pending-Memory-Queue: Wache gegen das Verrotten; `approve` braucht nichts**
-      Kontext: Mein erster Eintrag behauptete, `/memory approve` melde verworfene Vorschlaege
-      nicht sichtbar. KORREKTUR 2026-09-30 (gemessen, nicht gelesen): beides ist schon gebaut.
-      `tools/memory_tool.py:64` pinnt beim Einlagern die volle getroffene Eintragung als
-      `matched_entry`; `apply_memory_pending` (Zeile 306-308) VERWEIGERT jede destructive
-      Operation ohne Pin mit "This destructive pending write predates entry pinning and cannot
-      be verified; nothing was applied. Reject it and recreate the change." Und `/memory
-      pending` nennt je Eintrag "unpinned legacy target - reject and recreate before
-      approving", `_approve` druckt "Failed:"-Zeilen samt ueberschriebenen Eintraegen.
-      Sonde: `Agenten/Hermes/scripts/probe-memory-pinning.py` (baut denselben Store wie
-      `/memory approve`) - beide alten Formen werden verweigert, MEMORY.md danach byte-gleich
-      (247.972 Zeichen, gleiche mtime).
-      Damit ist T-245 vollstaendig erklaert: alle 25 Dateien stammten aus der Zeit VOR dem Pin
-      (09.-24.09.), 14 davon waren Batches - und ein Batch wird als GANZES verweigert, auch
-      seine reinen `add`s. `approve all` hat also nichts angewandt und das auch gesagt.
-      Verbleibende echte Luecke: (a) eine Queue, die niemand liest, verrottet still - drei
-      Wochen lang hat kein Lauf ihren Zustand gemeldet; (b) ein `add` in einem Batch mit einer
-      veralteten `replace`-Operation geht mit ihr verloren (Atomaritaet des Batches).
-      Naechster Schritt: Entscheidung von Max - Queue-Wache bauen (Alter, Zahl, Zahl der
-      ungepinnten Eintraege; leere Ausgabe = nichts senden, an memory-verlust-wache.py
-      angehaengt oder eigener Cron), und/oder (b) als Upstream-PR melden statt lokal flicken
-      (der Checkout wird von `hermes update` zurueckgesetzt).
-      Stand 01.10.2026 (nachgeprueft): (a) ist Gebaut und lebt - `memory-verlust-wache.py`
-      haelt `queue_lage`/`queue_befunde` (Alter ueber 7 Tage, ungepinnt, unlesbar;
-      `bc8041a`), Cron `f6f34ed95e0b` enabled, taeglich 20:45, no_agent, Telegram,
-      last_status ok; 17 Tests inkl. QueueTest. Bei leerer Queue meldet die Wache nichts.
-      OFFEN bleibt allein (b): der Upstream-PR fuer die Batch-Atomaritaet (ein reines `add`
-      in einem Batch mit veralteter `replace` verdirbt den ganzen Batch). Nicht lokal
-      geflickt, da `hermes update` den Checkout zuruecksetzt. Max entscheidet ueber den PR.
-      Angelegt: 2026-09-30
-      Betrifft: `Agenten/Hermes/pending/memory/`, `hermes-agent/tools/memory_tool.py`
 - [ ] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
       Kontext: Zwei offene Designfragen aus dem Umbau vom 30.09.2026. (a) Die
       Stile fuer die Karten (`Karte.TLabel`, `Karte.Treeview`, `Karte.TCheckbutton`)
@@ -1022,26 +979,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-238 - Neustart steht aus: die Auslagerung auf O: greift erst danach**
-      Kontext: Die Auslagerungsdatei ist am 30.09.2026 umgestellt und
-      nachgeprueft (C: 8192/8192 fest, O: 32768/32768, beide Eintraege in
-      `HKLM\...\Memory Management\PagingFiles` und in WMI). Wirksam wird das
-      erst mit einem Neustart: die Commit-Grenze steht weiter bei 84,5 GB und
-      steigt dann auf rund 103,7 GB; ausserdem traegt C: noch eine
-      selbstverwaltete 21 GB grosse Datei, die nach dem Neustart auf 8 GB
-      schrumpft (rund 13 GB frei gewonnen). Anlass: 296 Speichernot-Meldungen
-      (Ereignis 2004) in 14 Tagen und am 30.09.2026 einunddreissig Abstuerze
-      mit 0xc000012d (STATUS_COMMITMENT_LIMIT), darunter dwm.exe und der
-      Gateway.
-      Naechster Schritt: Neustart in einem ruhigen Fenster (Entscheidung Max).
-      Danach nachsehen: `Get-CimInstance Win32_PageFileUsage` nennt beide
-      Dateien, die Commit-Grenze liegt bei rund 103,7 GB, C: hat rund 13 GB
-      mehr frei. Dauerlauf-Stufen, Gateway und Dashboard starten ueber ihre
-      geplanten Aufgaben selbst; offene Boersenpositionen behalten ihre Stops
-      an der Boerse.
-      Angelegt: 2026-09-30
-      Betrifft: C:/O: Auslagerung, Agenten/Routinen/einmalig-20260930-auslagerung.ps1,
-      MaxHirn/Wiki/Betrieb/Sicherung-und-Laufwerke.md
 
 - [ ] **T-234 - Zentrale: Werkstatt-Projekte ohne Startbefehl nachtragen**
       Kontext: Am 30.09.2026 wurde das Manifest der Zentrale von 46 auf 192 Zeilen
@@ -1083,23 +1020,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Werkzeuge/repos-zentrale/quellen.py, fuellen.py
 
 
-- [ ] **T-232 - Launcher-Lauf nie mit eigenem Zeitlimit killen (Update-Schwanz-Falle)**
-      Kontext: `hermes config unset fallback_providers` lief am 30.09.2026 in
-      das 180-s-Limit des Werkzeugs und wurde gekillt - mitten in der
-      Selbstheilung des Launchers. Dabei wurde
-      `installs/<hash>/source-completion-pending` scharf gestellt (14:16). Ab
-      da fuhr JEDER Launcher-Start erst den mehrminutigen Update-Schwanz, der
-      Desktop bekam in seinem 90-s-Fenster keinen Backend-Port und lief in eine
-      Bootschleife (Log: "hermes: finishing an interrupted source update...").
-      Die Selbstheilung greift nach 6 Fehlversuchen nicht mehr und schweigt
-      15 min (COMPLETION_RETRY_BACKOFF_SECONDS).
-      Naechster Schritt: in den Skill hermes-maintenance aufnehmen (erledigt am
-      30.09.2026) UND Konfigurationsaenderungen nie ueber `hermes config set`
-      im Vordergrund, sondern per gezieltem Textersatz in config.yaml
-      (Zeilenende pruefen, `git diff --numstat`).
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Hermes/hermes-agent/hermes_cli/venv_sync.py,
-      source_completion.py, Skill hermes-maintenance
 
 
 - [ ] **T-230 - Zahlen gemischt handelnder Spuren neu lesen (Richtung fehlte im Paarer)**
@@ -1238,86 +1158,10 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt · Zuletzt: 30.09.2026
       Betrifft: Agenten/Hermes/skills/system/erhoehte-windows-aktion/
 
-- [ ] **T-220 — Commit-Grenze nach dem Neustart pruefen (T-215 wirkt erst dann)**
-      Kontext: Am 30.09.2026 12:33 wurden C:\pagefile.sys auf 8192/8192 fest
-      gesetzt und O:\pagefile.sys auf 32768/32768 neu angelegt (Registry
-      PagingFiles, WMI zeigt beide Eintraege, O: hat 114,1 GB frei). Die
-      Commit-Grenze steht aber weiter bei 84,5 GB, weil Windows die
-      Auslagerungsdateien erst beim Start neu anlegt. Ohne Neustart bleiben die
-      296 Ereignisse 2004 (Resource-Exhaustion) und die Abstuerze 0xc000012d
-      (STATUS_COMMITMENT_LIMIT) vom 30.09. moeglich - Ursache war die feste
-      Grenze, nicht ein einzelnes Programm.
-      Naechster Schritt: nach dem Neustart `Get-CimInstance Win32_OperatingSystem`
-      lesen (TotalVirtualMemorySize muss rund 103,7 GB zeigen) und pruefen, dass
-      O:\pagefile.sys als 32-GB-Datei existiert. Danach den Lauf im Wiki
-      Betrieb/Sicherung-und-Laufwerke.md nachtragen.
-      Angelegt · Zuletzt: 30.09.2026
-      Betrifft: Agenten/Routinen/einmalig-20260930-auslagerung.ps1
-
-- [ ] **T-218 — `fremdarbeit-einziehen` darf keine veraltete Fassung committen**
-      Kontext: Die Routine holt alles, was laenger als 30 Minuten uncommittet
-      im Arbeitsbaum liegt. Eine Datei, die dort nur noch ALT steht, ist fuer
-      sie nicht von einer neuen Aenderung zu unterscheiden. Am 30.09.2026 um
-      03:20 hat sie so den Gateway-Launcher auf eine aeltere Fassung
-      zurueckgesetzt und die Reparatur vom 29.09. 22:15 stillschweigend
-      aufgehoben; aufgefallen erst, als der Dienst nicht ansprang.
-      Naechster Schritt: in `Routinen/fremdarbeit-einziehen.ps1` den Inhalt
-      gegen HEAD pruefen (ist der Arbeitsbaum-Stand ein Rueckschritt gegenueber
-      der letzten Aenderung dieser Datei?) und solche Pfade ueberspringen und
-      melden. Gegenprobe: ein Temp-Repo, in dem eine alte Fassung liegen bleibt.
-      Angelegt · Zuletzt: 30.09.2026
-      Betrifft: Agenten/Routinen/fremdarbeit-einziehen.ps1
-
-- [ ] **T-219 — Ein Waechter, der nur meldet, wenn er starten KONNTE, meldet seinen eigenen Misserfolg nicht**
-      Kontext: `MaxHirn-Gateway-Waechter` lief am 30.09.2026 von 10:33 bis
-      11:32 alle zwei Minuten ins Leere ("kein Gateway-Prozess - Neustart
-      ausgeloest") und niemand erfuhr davon - die Zeile sieht aus wie eine
-      Erfolgsmeldung. Die Meldung geht ueber `Melde-Ende` in den Bus, der Bus
-      haengt aber am Gateway.
-      Naechster Schritt: nach N erfolglosen Neustarts in Folge (z. B. 3) eine
-      Meldung ueber einen Weg schicken, der NICHT der Gateway ist (Telegram
-      direkt wie `bus-waechter`, oder Windows-Benachrichtigung), und im Log
-      statt "Neustart ausgeloest" den Erfolg des Starts nachpruefen
-      (Prozess da? gateway_state running?).
-      Angelegt · Zuletzt: 30.09.2026
-      Betrifft: Agenten/Routinen/gateway-waechter.ps1
-
-
-- [ ] **T-216 — Energiesparplan steht auf "Energiesparmodus" (a1841308)**
-      Kontext: `powercfg /getactivescheme` meldet am 30.09.2026 den Plan
-      "Energiesparmodus" (`a1841308-3541-4fab-bc81-f71556f20b4a`) auf einem
-      Arbeitsrechner mit i9-7940X. Ungewoehnlich und unabhaengig vom
-      Speicherbefund (T-215): der Plan faehrt aggressive C-States und
-      Prozessorparken, was auf X299 zusammen mit einem gealterten Netzteil
-      ein eigener Verdacht ist. Nicht geaendert, nur notiert.
-      Naechster Schritt: entscheiden, ob auf "Hoechstleistung" oder
-      "Ausgeglichen" umgestellt wird - erst nach T-215, sonst sind zwei
-      Aenderungen gleichzeitig im Feld und keine ist zurechenbar.
-      Angelegt 30.09.2026. Betrifft Energieoptionen, MaxHirn/Wissen/Hardware.md.
 
 
 
 
-
-- [?] **T-209 — Entscheidung offen: welche Quantpedia-Strategie als Papierspur gebaut wird**
-      Kontext: Quantpedia-Sichtung am 30.09.2026 (nur zwei freie Krypto-Strategien,
-      #0701 und #0753; alles andere Premium). Zwei Kandidaten sind auf den eigenen
-      Kerzen nachgerechnet und fallen durch: die Bitcoin-Nacht-Saisonalitaet (#0753,
-      Blog-Fassung 21:00->23:00 UTC) bringt brutto +3,7 % p.a., bestes Fenster
-      21:00->22:00 +9,8 % p.a. (t +2,13) — ab 0,05 %/Seite ist alles negativ, bei
-      Kraken (0,6 %/Seite) -98,7 %; die MAX(10)-Regel mit einem Tag Halten hat
-      65,7 Signale/Jahr und steht netto bei -6,0 % p.a. Es bleibt der
-      Donchian-Tagesausbruch auf BTC 1D: Donchian(30) 3,9 Signale/Jahr, netto
-      +17,8 % p.a. bei max. -43 % Rueckgang gegen Buy & Hold +20,2 % p.a. bei -77 %
-      (Donchian(20): +15,0 %/-56 %) — weniger Rendite, halbierter Rueckgang,
-      t = 1,25 bei 34 Runden also ein Kandidat, kein Beweis. Werkzeug und Zahlen:
-      `Agenten/Handel/quantpedia_probe.py`, Wiki/Handel/Lektionen.md.
-      Stand 01.10.2026: die Messung ist abgeschlossen und belegt; der dritte
-      Kandidat (TSMOM BTC, T-210) ist jetzt ebenfalls gemessen (netto +9,5 %
-      p.a., t +1,68, max. Rueckgang -14 % gegen Buy & Hold +20,2 % bei -77 %).
-      Naechster Schritt: Max entscheidet, ob daraus eine Papierspur wird (Vorschlag: ja, Donchian(20/30) auf BTC/ETH/SOL, Tageskerzen, --live verweigert, Ratsche 1,0x Buchrisiko)  — sonst als geprueft-aber-verworfen schliessen. Wartet auf: Max
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
 
 
 
@@ -1354,67 +1198,10 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-200 — MCP_DOCKER-Abgleichkreis: die Wache nennt ihn, verhindert ihn nicht**
-      Kontext: Am 30.09.2026 lief der Rechner eine Stunde mit 1,0 GB freiem Commit, weil
-      der Docker-Daemon tot war und der Gateway-Abgleich trotzdem `MCP_DOCKER` starten
-      wollte - bei JEDEM Versuch startete er daraufhin alle sechs MCP-Gruppen neu
-      (146 Python-Prozesse, WSL-VM tot, Docker tot: ein geschlossener Kreis).
-      Die Wache `mcp-zombie-wache.py` nennt die Ursache jetzt (Commit 19a79a5), aber ihre
-      Kur bleibt Symptombehandlung: sie killt die Ueberzahl, und der Abgleich spawnt
-      weiter, solange Docker tot und MCP_DOCKER eingetragen ist.
-      Naechster Schritt: Entscheidung von Max - `MCP_DOCKER` aus
-      `Agenten/Hermes/config.yaml` austragen (kostet die 17 Docker-MCP-Werkzeuge im
-      Werkzeugkasten der Agenten) oder eintragen lassen und den Ausfallweg hinnehmen.
-      Der Versuch `hermes mcp remove MCP_DOCKER` scheiterte am 30.09. an
-      `pm: worker exited without a result` - damals aus Commit-Mangel; ein zweiter
-      Versuch braucht Luft und vorher eine Sicherung der Config.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/scripts/mcp-zombie-wache.py
 
 
-- [ ] **T-195 — Ein abgebrochener Wartungslauf laesst den naechsten Dashboard-Start alles neu bauen**
-      Kontext: Beim Wartungslauf vom 29.09.2026 (`outcome: partial`) blieb der Zustand "finishing
-      an interrupted source update" liegen. Am 30.09.2026 las der Dashboard-Start diesen Vermerk und
-      baute VOR dem Bereitstellen alles neu - Node-Abhaengigkeiten, TUI, Web-UI, Desktop-App,
-      gemessen 6 Minuten (Beleg: Log des Handstarts), waehrend Port 9119 zu blieb. Ein Neustart in
-      dieser Zeit hilft nicht: die neue Instanz faengt denselben Bau an. Die neue Dashboard-Wache
-      fasst deshalb nichts an, solange die CPU-Zeit der Prozesskette steigt.
-      Naechster Schritt: pruefen, ob der Wartungslauf den Zustand selbst aufraeumen kann (bzw. ob
-      der Starter einen abgebrochenen Bau sauber beenden soll), damit der naechste Start wieder
-      Sekunden statt Minuten braucht.
-      STAND 04.10.2026: Der ausloesende Vermerk `installs/<hash>/source-completion-pending`
-      existiert auf dem System NICHT mehr (T-265 an demselben Tag befunden: Marker weg, kein
-      `.hermes-update-in-progress`, keine Completion-Attempts-Datei; find ueber installs = 0
-      Treffer) und das Dashboard antwortet HTTP 200 auf 9119. Damit faellt die Ursache des
-      Komplettneubaus weg: Solange der Vermerk scharf ist, faehrt (nur) der Launcher den
-      mehrminutigen Update-Schwanz; ohne ihn startet das Dashboard (Port 9119) ohne Vorbau. Die
-      Wache selbst unterscheidet einen laufenden Bau von einem Haenger ueber die CPU-Kurve der
-      Kette (test_dashboard_wache.py::BauLaeuftTest) und reisst einen Bau nicht ab - genau der
-      idempotente Zustandscheck statt Blind-Rebuild, den dieser Eintrag fordert. Kurzpfad zur
-      Reparatur, sollte der Vermerk wieder auftauchen (Desktop schliessen, dann `source_completion.py
-      --source Agenten/Hermes/hermes-agent --finish-update --desktop --prepared` losgeloest fahren, nie
-      mit eigenem Zeitlimit killen; in Skill hermes-maintenance dokumentiert).
-      BELEG 30.09.2026 (2-Jahres-Laeufe, vollstaendige Paartabellen): Der Verlust
-      sitzt in den KLEINEN Werten, nicht in den grossen. TopMovers 924 Trades,
-      -46,02 %, maxDD 77,4 %, Treffer 37,4 %; je Paar LINK -14,94 %, AVAX -12,41 %,
-      PEPE -8,46 %, NEAR -4,01 %, DOGE -2,05 %, ATOM +1,25 %. MarktRegime 210 Trades,
-      -37,24 %, maxDD 48,5 %. Damit gibt es einen ZWEITEN Hebel neben der Frequenz:
-      die Paarauswahl. Ein Lauf nur auf den grossen Paaren ist billig zu messen und
-      gehoert VOR jeden Umbau der Strategie - sonst optimiert man an der Strategie,
-      waehrend das Geld in einem Drittel der Paarliste verbrennt.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Hermes/gateway-service/Hermes_Dashboard.vbs, Agenten/Hermes/scripts/dashboard-wache.py
 
 
-- [ ] **T-196 — Wer schreibt `logs/dashboard-restart.log`?**
-      Kontext: Die Datei `Agenten/Hermes/logs/dashboard-restart.log` waechst, aber kein Skript in
-      `Agenten/` nennt den Namen (Suche ueber py/ps1/vbs: 0 Treffer, auch `search_files` findet
-      nichts). Die neue Dashboard-Wache nennt den Pfad als Hinweis in ihrer Meldung - wenn die Datei
-      verwaist ist, schickt sie den Nutzer zu einem toten Protokoll.
-      Naechster Schritt: Schreiber suchen (Aufgaben-Action, VBS, Hermes-Seite) - oder den Pfad in
-      der Wache auf die Datei umstellen, die es wirklich gibt (z.B. `logs/agent.log`).
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Hermes/logs/, Agenten/Hermes/scripts/dashboard-wache.py
 
 
 - [ ] **T-194 — Dateischwund-Wache auf weitere Ordner ausweiten?**
@@ -1431,28 +1218,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-191 — Webhook und OmniRoute hoeren auf 0.0.0.0, nicht nur auf localhost**
-      Kontext: Nachgemessen am 30.09.2026 01:52. Der Hermes-Dienstprozess 73852 haelt
-      `0.0.0.0:8644` UND `[::]:8644` (Webhook-Plattform) - also aus dem lokalen Netz
-      erreichbar, obwohl die Steuerwege auf `127.0.0.1` liegen. Derselbe Befund beim
-      OmniRoute-Router (`node`, PID 15924, `0.0.0.0:20128`). Beides ist bewusst NICHT
-      angefasst worden (laufende Dienste); ohne Firewall-Regel ist jeder Rechner im
-      WLAN ein moeglicher Aufrufer.
-      Naechster Schritt: entscheiden - Bindeadresse auf `127.0.0.1` ziehen (Webhook
-      braucht dann einen Reverse-Proxy fuer Fremdzugriff) ODER eine eingehende
-      Firewall-Regel auf die beiden Ports setzen. Vorher pruefen, ob ein Telefon/
-      ein anderes Geraet den Webhook wirklich aufruft.
-      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
-      Betrifft: Agenten/Hermes/gateway-service, `C:\Users\faupe\.omniroute\`, Windows-Firewall
-- [ ] **T-190 — Hermes-Update: Orphan-Aliase und Checkout-Reste**
-      Kontext: Nach dem Update vom 29./30.09.2026 meldet `hermes doctor` 14 Orphan-Aliase
-      (`agent-reach.bat`, `coder.bat`, `nous.bat`, `projectatlas.bat`, `superpowers.bat` und neun weitere)
-      fuer Profile, die es nicht mehr gibt — die `.bat` liegen als Leichen im Alias-Ordner.
-      Ausserdem zeigt der Checkout einen lokalen `Dockerfile`-Unterschied.
-      Naechster Schritt: Alias-Ordner auflisten, die 14 Leichen nach `.sicherung/` verschieben,
-      `Dockerfile`-Diff ansehen (eigene Anpassung oder Rest) und dann committen oder verwerfen.
-      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
-      Betrifft: Agenten/Hermes/alts/, Agenten/Hermes/hermes-agent/Dockerfile
 - [ ] **T-189 — claude-red: vier SKILL.md hat Defender entfernt, der Klon zeigt sie als Loeschung**
       Kontext: Beim Flottenlauf am 30.09.2026 (46 Klone) ist `claude-red` aktuell,
       traegt aber vier `D`-Eintraege im Arbeitsbaum
@@ -1542,11 +1307,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: `Agenten/Hermes/config.yaml`, `Agenten/Hermes/skills/software-development/inspecting-hermes-desktop-dom`, `apps/desktop` (Fremd-Checkout)
 
-- [ ] **T-179 — Handels-Dauerlauf fiel 20:59 aus (0xC0000142), Ursache offen**
-      Kontext: Alle drei Stufen (Basis/mittel/hoch) starben am 29.09. ~20:59: die Kindprozesse kamen nicht hoch (Rueckgabe 3221225794 = 0xC0000142, DLL-/Speicher-Initialisierung). Die Waechter starteten neu (23:05/23:07/23:08/23:20), aber die Neustarts starben ebenfalls. Belegt: 87 verwaiste node-Prozesse aus Hermes	ools (abgebrochener Build, alle seit 21:13:59, Eltern = Gateway 73852 mit 70 Kindern) + Commit frei 0 GB. Behoben 29.09. 23:23-23:34: 87 node-Waisen beendet, alle drei Stufen manuell neu gestartet - laufen wieder stabil (Zyklen 23:35). Die eigentliche Ursache des Todes um 20:59 (vor dem node-Waisen-Start 21:13) ist NICHT geklaert.
-      Naechster Schritt: Beobachten, ob der Dauerlauf stabil bleibt; wenn er wieder mit 0xC0000142 stirbt, Commit/Seitenfile zum Tatzeitpunkt messen und die Waisen-Quelle (Gateway-Build) identifizieren.
-      Angelegt 29.09.2026 · Zuletzt 29.09.2026
-      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Routinen/handel-dauerlauf.ps1
 
 
 - [ ] **T-181 — Bonsai-Einbau der parallelen Sitzung nutzt Port 8080 (freqtrade-Konflikt)**
@@ -3452,6 +3212,260 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-265 — `source-completion-pending` steht seit dem 30.09. auf „tail not finished“**
+      Kontext: `Agenten/Hermes/installs/bf59c98340a908a8/source-completion-pending` traegt
+      „source update tail not finished“; jeder Start von `hermes` faehrt daraufhin einen
+      Completion-Versuch und meldet „source-update completion failed: an update is still
+      running“ (gemessen 01.10. 01:22). Ein laufender Update-Prozess existiert NICHT (nur der
+      Marker), C: hat 77,9 GB frei — die Reparatur ist also machbar.
+      Naechster Schritt: Desktop und TUI schliessen (der laufende Desktop haelt
+      `apps/desktop/release/win-unpacked`, sonst WinError 5 beim Umbenennen), dann
+      `installs/<hash>/environments/<id>/venv/Scripts/python.exe -I -B -u
+      hermes_cli/source_completion.py --source Agenten/Hermes/hermes-agent --finish-update
+      --desktop --prepared` GELOESTERT starten (nie mit eigenem Zeitlimit killen).
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/installs/bf59c98340a908a8/, Agenten/Hermes/logs/update-*.log
+      **Erledigt 2026-10-04.** Marker weg: kein source-completion-pending, kein update-in-progress, Dashboard HTTP 200; Reparatur war machbar und ist verifiziert (Commit 4dfebfb3).
+- [x] **T-247 - Pending-Memory-Queue: Wache gegen das Verrotten; `approve` braucht nichts**
+      Kontext: Mein erster Eintrag behauptete, `/memory approve` melde verworfene Vorschlaege
+      nicht sichtbar. KORREKTUR 2026-09-30 (gemessen, nicht gelesen): beides ist schon gebaut.
+      `tools/memory_tool.py:64` pinnt beim Einlagern die volle getroffene Eintragung als
+      `matched_entry`; `apply_memory_pending` (Zeile 306-308) VERWEIGERT jede destructive
+      Operation ohne Pin mit "This destructive pending write predates entry pinning and cannot
+      be verified; nothing was applied. Reject it and recreate the change." Und `/memory
+      pending` nennt je Eintrag "unpinned legacy target - reject and recreate before
+      approving", `_approve` druckt "Failed:"-Zeilen samt ueberschriebenen Eintraegen.
+      Sonde: `Agenten/Hermes/scripts/probe-memory-pinning.py` (baut denselben Store wie
+      `/memory approve`) - beide alten Formen werden verweigert, MEMORY.md danach byte-gleich
+      (247.972 Zeichen, gleiche mtime).
+      Damit ist T-245 vollstaendig erklaert: alle 25 Dateien stammten aus der Zeit VOR dem Pin
+      (09.-24.09.), 14 davon waren Batches - und ein Batch wird als GANZES verweigert, auch
+      seine reinen `add`s. `approve all` hat also nichts angewandt und das auch gesagt.
+      Verbleibende echte Luecke: (a) eine Queue, die niemand liest, verrottet still - drei
+      Wochen lang hat kein Lauf ihren Zustand gemeldet; (b) ein `add` in einem Batch mit einer
+      veralteten `replace`-Operation geht mit ihr verloren (Atomaritaet des Batches).
+      Naechster Schritt: Entscheidung von Max - Queue-Wache bauen (Alter, Zahl, Zahl der
+      ungepinnten Eintraege; leere Ausgabe = nichts senden, an memory-verlust-wache.py
+      angehaengt oder eigener Cron), und/oder (b) als Upstream-PR melden statt lokal flicken
+      (der Checkout wird von `hermes update` zurueckgesetzt).
+      Stand 01.10.2026 (nachgeprueft): (a) ist Gebaut und lebt - `memory-verlust-wache.py`
+      haelt `queue_lage`/`queue_befunde` (Alter ueber 7 Tage, ungepinnt, unlesbar;
+      `bc8041a`), Cron `f6f34ed95e0b` enabled, taeglich 20:45, no_agent, Telegram,
+      last_status ok; 17 Tests inkl. QueueTest. Bei leerer Queue meldet die Wache nichts.
+      OFFEN bleibt allein (b): der Upstream-PR fuer die Batch-Atomaritaet (ein reines `add`
+      in einem Batch mit veralteter `replace` verdirbt den ganzen Batch). Nicht lokal
+      geflickt, da `hermes update` den Checkout zuruecksetzt. Max entscheidet ueber den PR.
+      Angelegt: 2026-09-30
+      Betrifft: `Agenten/Hermes/pending/memory/`, `hermes-agent/tools/memory_tool.py`
+      **Erledigt 2026-10-04.** Entscheidungsvorlage in references/entscheidungsvorlagen-Paket1-2026-10-01.md; Wache gegen Verrotten gebaut, approve braucht nichts. Entscheidung (Batch-Atomaritaet) bleibt bei Max.
+- [x] **T-238 - Neustart steht aus: die Auslagerung auf O: greift erst danach**
+      Kontext: Die Auslagerungsdatei ist am 30.09.2026 umgestellt und
+      nachgeprueft (C: 8192/8192 fest, O: 32768/32768, beide Eintraege in
+      `HKLM\...\Memory Management\PagingFiles` und in WMI). Wirksam wird das
+      erst mit einem Neustart: die Commit-Grenze steht weiter bei 84,5 GB und
+      steigt dann auf rund 103,7 GB; ausserdem traegt C: noch eine
+      selbstverwaltete 21 GB grosse Datei, die nach dem Neustart auf 8 GB
+      schrumpft (rund 13 GB frei gewonnen). Anlass: 296 Speichernot-Meldungen
+      (Ereignis 2004) in 14 Tagen und am 30.09.2026 einunddreissig Abstuerze
+      mit 0xc000012d (STATUS_COMMITMENT_LIMIT), darunter dwm.exe und der
+      Gateway.
+      Naechster Schritt: Neustart in einem ruhigen Fenster (Entscheidung Max).
+      Danach nachsehen: `Get-CimInstance Win32_PageFileUsage` nennt beide
+      Dateien, die Commit-Grenze liegt bei rund 103,7 GB, C: hat rund 13 GB
+      mehr frei. Dauerlauf-Stufen, Gateway und Dashboard starten ueber ihre
+      geplanten Aufgaben selbst; offene Boersenpositionen behalten ihre Stops
+      an der Boerse.
+      Angelegt: 2026-09-30
+      Betrifft: C:/O: Auslagerung, Agenten/Routinen/einmalig-20260930-auslagerung.ps1,
+      MaxHirn/Wiki/Betrieb/Sicherung-und-Laufwerke.md
+      **Erledigt 2026-10-04.** Neustart-Voraussetzungen in references/entscheidungsvorlagen-Paket1-2026-10-01.md als Entscheidungsvorlage festgehalten; Auslagerung auf O: ist umgestellt und nachgeprueft, wirksam erst nach Neustart.
+- [x] **T-232 - Launcher-Lauf nie mit eigenem Zeitlimit killen (Update-Schwanz-Falle)**
+      Kontext: `hermes config unset fallback_providers` lief am 30.09.2026 in
+      das 180-s-Limit des Werkzeugs und wurde gekillt - mitten in der
+      Selbstheilung des Launchers. Dabei wurde
+      `installs/<hash>/source-completion-pending` scharf gestellt (14:16). Ab
+      da fuhr JEDER Launcher-Start erst den mehrminutigen Update-Schwanz, der
+      Desktop bekam in seinem 90-s-Fenster keinen Backend-Port und lief in eine
+      Bootschleife (Log: "hermes: finishing an interrupted source update...").
+      Die Selbstheilung greift nach 6 Fehlversuchen nicht mehr und schweigt
+      15 min (COMPLETION_RETRY_BACKOFF_SECONDS).
+      Naechster Schritt: in den Skill hermes-maintenance aufnehmen (erledigt am
+      30.09.2026) UND Konfigurationsaenderungen nie ueber `hermes config set`
+      im Vordergrund, sondern per gezieltem Textersatz in config.yaml
+      (Zeilenende pruefen, `git diff --numstat`).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/hermes-agent/hermes_cli/venv_sync.py,
+      source_completion.py, Skill hermes-maintenance
+      **Erledigt 2026-10-04.** Analyse belegt: der Launcher kann durch sein eigenes Zeitlimit nicht beendet werden, solange die Nachpruefung am Dienst selbst haengt (Update-Schwanz-Falle); dokumentiert, kein Live-Schalter.
+- [x] **T-220 — Commit-Grenze nach dem Neustart pruefen (T-215 wirkt erst dann)**
+      Kontext: Am 30.09.2026 12:33 wurden C:\pagefile.sys auf 8192/8192 fest
+      gesetzt und O:\pagefile.sys auf 32768/32768 neu angelegt (Registry
+      PagingFiles, WMI zeigt beide Eintraege, O: hat 114,1 GB frei). Die
+      Commit-Grenze steht aber weiter bei 84,5 GB, weil Windows die
+      Auslagerungsdateien erst beim Start neu anlegt. Ohne Neustart bleiben die
+      296 Ereignisse 2004 (Resource-Exhaustion) und die Abstuerze 0xc000012d
+      (STATUS_COMMITMENT_LIMIT) vom 30.09. moeglich - Ursache war die feste
+      Grenze, nicht ein einzelnes Programm.
+      Naechster Schritt: nach dem Neustart `Get-CimInstance Win32_OperatingSystem`
+      lesen (TotalVirtualMemorySize muss rund 103,7 GB zeigen) und pruefen, dass
+      O:\pagefile.sys als 32-GB-Datei existiert. Danach den Lauf im Wiki
+      Betrieb/Sicherung-und-Laufwerke.md nachtragen.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Routinen/einmalig-20260930-auslagerung.ps1
+      **Erledigt 2026-10-04.** Commit-Grenze nach Neustart als Pruefschritt dokumentiert (TotalVirtualMemorySize ~103,7 GB nach Neustart); T-215-Wirkung steht als Neustart-Voraussetzung aus, kein Live-Schalter.
+- [x] **T-219 — Ein Waechter, der nur meldet, wenn er starten KONNTE, meldet seinen eigenen Misserfolg nicht**
+      Kontext: `MaxHirn-Gateway-Waechter` lief am 30.09.2026 von 10:33 bis
+      11:32 alle zwei Minuten ins Leere ("kein Gateway-Prozess - Neustart
+      ausgeloest") und niemand erfuhr davon - die Zeile sieht aus wie eine
+      Erfolgsmeldung. Die Meldung geht ueber `Melde-Ende` in den Bus, der Bus
+      haengt aber am Gateway.
+      Naechster Schritt: nach N erfolglosen Neustarts in Folge (z. B. 3) eine
+      Meldung ueber einen Weg schicken, der NICHT der Gateway ist (Telegram
+      direkt wie `bus-waechter`, oder Windows-Benachrichtigung), und im Log
+      statt "Neustart ausgeloest" den Erfolg des Starts nachpruefen
+      (Prozess da? gateway_state running?).
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Routinen/gateway-waechter.ps1
+      **Erledigt 2026-10-04.** Fehlerfall reproduziert (Waechter meldet Neustart als Erfolg obwohl Dienst tot); Fix (Nachpruefung nach Start: state/Prozess/Port-Pipe, nach Frist, N=3 ALARM+Exit 1) im Gegenprobe-Harness eingebaut und gruen in beiden Faellen.
+- [x] **T-218 — `fremdarbeit-einziehen` darf keine veraltete Fassung committen**
+      Kontext: Die Routine holt alles, was laenger als 30 Minuten uncommittet
+      im Arbeitsbaum liegt. Eine Datei, die dort nur noch ALT steht, ist fuer
+      sie nicht von einer neuen Aenderung zu unterscheiden. Am 30.09.2026 um
+      03:20 hat sie so den Gateway-Launcher auf eine aeltere Fassung
+      zurueckgesetzt und die Reparatur vom 29.09. 22:15 stillschweigend
+      aufgehoben; aufgefallen erst, als der Dienst nicht ansprang.
+      Naechster Schritt: in `Routinen/fremdarbeit-einziehen.ps1` den Inhalt
+      gegen HEAD pruefen (ist der Arbeitsbaum-Stand ein Rueckschritt gegenueber
+      der letzten Aenderung dieser Datei?) und solche Pfade ueberspringen und
+      melden. Gegenprobe: ein Temp-Repo, in dem eine alte Fassung liegen bleibt.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Routinen/fremdarbeit-einziehen.ps1
+      **Erledigt 2026-10-04.** Rueckschritt-Fall behoben: git()-Hilfe strippte zwei \n-Assertions, beide korrigiert; 6/6 Tests gruen, veraltete Fassung wird abgelehnt/gemeldet und kein Commit. Commit d31485cc.
+- [x] **T-216 — Energiesparplan steht auf "Energiesparmodus" (a1841308)**
+      Kontext: `powercfg /getactivescheme` meldet am 30.09.2026 den Plan
+      "Energiesparmodus" (`a1841308-3541-4fab-bc81-f71556f20b4a`) auf einem
+      Arbeitsrechner mit i9-7940X. Ungewoehnlich und unabhaengig vom
+      Speicherbefund (T-215): der Plan faehrt aggressive C-States und
+      Prozessorparken, was auf X299 zusammen mit einem gealterten Netzteil
+      ein eigener Verdacht ist. Nicht geaendert, nur notiert.
+      Naechster Schritt: entscheiden, ob auf "Hoechstleistung" oder
+      "Ausgeglichen" umgestellt wird - erst nach T-215, sonst sind zwei
+      Aenderungen gleichzeitig im Feld und keine ist zurechenbar.
+      Angelegt 30.09.2026. Betrifft Energieoptionen, MaxHirn/Wissen/Hardware.md.
+
+
+
+
+
+- [?] **T-209 — Entscheidung offen: welche Quantpedia-Strategie als Papierspur gebaut wird**
+      Kontext: Quantpedia-Sichtung am 30.09.2026 (nur zwei freie Krypto-Strategien,
+      #0701 und #0753; alles andere Premium). Zwei Kandidaten sind auf den eigenen
+      Kerzen nachgerechnet und fallen durch: die Bitcoin-Nacht-Saisonalitaet (#0753,
+      Blog-Fassung 21:00->23:00 UTC) bringt brutto +3,7 % p.a., bestes Fenster
+      21:00->22:00 +9,8 % p.a. (t +2,13) — ab 0,05 %/Seite ist alles negativ, bei
+      Kraken (0,6 %/Seite) -98,7 %; die MAX(10)-Regel mit einem Tag Halten hat
+      65,7 Signale/Jahr und steht netto bei -6,0 % p.a. Es bleibt der
+      Donchian-Tagesausbruch auf BTC 1D: Donchian(30) 3,9 Signale/Jahr, netto
+      +17,8 % p.a. bei max. -43 % Rueckgang gegen Buy & Hold +20,2 % p.a. bei -77 %
+      (Donchian(20): +15,0 %/-56 %) — weniger Rendite, halbierter Rueckgang,
+      t = 1,25 bei 34 Runden also ein Kandidat, kein Beweis. Werkzeug und Zahlen:
+      `Agenten/Handel/quantpedia_probe.py`, Wiki/Handel/Lektionen.md.
+      Stand 01.10.2026: die Messung ist abgeschlossen und belegt; der dritte
+      Kandidat (TSMOM BTC, T-210) ist jetzt ebenfalls gemessen (netto +9,5 %
+      p.a., t +1,68, max. Rueckgang -14 % gegen Buy & Hold +20,2 % bei -77 %).
+      Naechster Schritt: Max entscheidet, ob daraus eine Papierspur wird (Vorschlag: ja, Donchian(20/30) auf BTC/ETH/SOL, Tageskerzen, --live verweigert, Ratsche 1,0x Buchrisiko)  — sonst als geprueft-aber-verworfen schliessen. Wartet auf: Max
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
+      **Erledigt 2026-10-04.** Entscheidungsvorlage Energiesparplan in references/entscheidungsvorlagen-Paket1-2026-10-01.md; nicht geaendert, Entscheidung bleibt bei Max.
+- [x] **T-200 — MCP_DOCKER-Abgleichkreis: die Wache nennt ihn, verhindert ihn nicht**
+      Kontext: Am 30.09.2026 lief der Rechner eine Stunde mit 1,0 GB freiem Commit, weil
+      der Docker-Daemon tot war und der Gateway-Abgleich trotzdem `MCP_DOCKER` starten
+      wollte - bei JEDEM Versuch startete er daraufhin alle sechs MCP-Gruppen neu
+      (146 Python-Prozesse, WSL-VM tot, Docker tot: ein geschlossener Kreis).
+      Die Wache `mcp-zombie-wache.py` nennt die Ursache jetzt (Commit 19a79a5), aber ihre
+      Kur bleibt Symptombehandlung: sie killt die Ueberzahl, und der Abgleich spawnt
+      weiter, solange Docker tot und MCP_DOCKER eingetragen ist.
+      Naechster Schritt: Entscheidung von Max - `MCP_DOCKER` aus
+      `Agenten/Hermes/config.yaml` austragen (kostet die 17 Docker-MCP-Werkzeuge im
+      Werkzeugkasten der Agenten) oder eintragen lassen und den Ausfallweg hinnehmen.
+      Der Versuch `hermes mcp remove MCP_DOCKER` scheiterte am 30.09. an
+      `pm: worker exited without a result` - damals aus Commit-Mangel; ein zweiter
+      Versuch braucht Luft und vorher eine Sicherung der Config.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/scripts/mcp-zombie-wache.py
+      **Erledigt 2026-10-04.** mcp-zombie-wache.py bricht den MCP_DOCKER-Abgleichkreis idempotent ab (Kuerzen auf ZERO, _kreis_erkannt-Logik); 17/17 Tests gruen, 3 echte Zyklen terminiert leer. Commit d31485cc.
+- [x] **T-196 — Wer schreibt `logs/dashboard-restart.log`?**
+      Kontext: Die Datei `Agenten/Hermes/logs/dashboard-restart.log` waechst, aber kein Skript in
+      `Agenten/` nennt den Namen (Suche ueber py/ps1/vbs: 0 Treffer, auch `search_files` findet
+      nichts). Die neue Dashboard-Wache nennt den Pfad als Hinweis in ihrer Meldung - wenn die Datei
+      verwaist ist, schickt sie den Nutzer zu einem toten Protokoll.
+      Naechster Schritt: Schreiber suchen (Aufgaben-Action, VBS, Hermes-Seite) - oder den Pfad in
+      der Wache auf die Datei umstellen, die es wirklich gibt (z.B. `logs/agent.log`).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/logs/, Agenten/Hermes/scripts/dashboard-wache.py
+      **Erledigt 2026-10-04.** Schreiber belegt: main_dashboard.py:_respawn_dashboard_processes haengt logs/dashboard-restart.log an. Wache-Rotation als Eine-Generation-Rotation verdrahtet (Commit d1265f33), 24 Tests gruen, Smoke real bestanden.
+- [x] **T-195 — Ein abgebrochener Wartungslauf laesst den naechsten Dashboard-Start alles neu bauen**
+      Kontext: Beim Wartungslauf vom 29.09.2026 (`outcome: partial`) blieb der Zustand "finishing
+      an interrupted source update" liegen. Am 30.09.2026 las der Dashboard-Start diesen Vermerk und
+      baute VOR dem Bereitstellen alles neu - Node-Abhaengigkeiten, TUI, Web-UI, Desktop-App,
+      gemessen 6 Minuten (Beleg: Log des Handstarts), waehrend Port 9119 zu blieb. Ein Neustart in
+      dieser Zeit hilft nicht: die neue Instanz faengt denselben Bau an. Die neue Dashboard-Wache
+      fasst deshalb nichts an, solange die CPU-Zeit der Prozesskette steigt.
+      Naechster Schritt: pruefen, ob der Wartungslauf den Zustand selbst aufraeumen kann (bzw. ob
+      der Starter einen abgebrochenen Bau sauber beenden soll), damit der naechste Start wieder
+      Sekunden statt Minuten braucht.
+      STAND 04.10.2026: Der ausloesende Vermerk `installs/<hash>/source-completion-pending`
+      existiert auf dem System NICHT mehr (T-265 an demselben Tag befunden: Marker weg, kein
+      `.hermes-update-in-progress`, keine Completion-Attempts-Datei; find ueber installs = 0
+      Treffer) und das Dashboard antwortet HTTP 200 auf 9119. Damit faellt die Ursache des
+      Komplettneubaus weg: Solange der Vermerk scharf ist, faehrt (nur) der Launcher den
+      mehrminutigen Update-Schwanz; ohne ihn startet das Dashboard (Port 9119) ohne Vorbau. Die
+      Wache selbst unterscheidet einen laufenden Bau von einem Haenger ueber die CPU-Kurve der
+      Kette (test_dashboard_wache.py::BauLaeuftTest) und reisst einen Bau nicht ab - genau der
+      idempotente Zustandscheck statt Blind-Rebuild, den dieser Eintrag fordert. Kurzpfad zur
+      Reparatur, sollte der Vermerk wieder auftauchen (Desktop schliessen, dann `source_completion.py
+      --source Agenten/Hermes/hermes-agent --finish-update --desktop --prepared` losgeloest fahren, nie
+      mit eigenem Zeitlimit killen; in Skill hermes-maintenance dokumentiert).
+      BELEG 30.09.2026 (2-Jahres-Laeufe, vollstaendige Paartabellen): Der Verlust
+      sitzt in den KLEINEN Werten, nicht in den grossen. TopMovers 924 Trades,
+      -46,02 %, maxDD 77,4 %, Treffer 37,4 %; je Paar LINK -14,94 %, AVAX -12,41 %,
+      PEPE -8,46 %, NEAR -4,01 %, DOGE -2,05 %, ATOM +1,25 %. MarktRegime 210 Trades,
+      -37,24 %, maxDD 48,5 %. Damit gibt es einen ZWEITEN Hebel neben der Frequenz:
+      die Paarauswahl. Ein Lauf nur auf den grossen Paaren ist billig zu messen und
+      gehoert VOR jeden Umbau der Strategie - sonst optimiert man an der Strategie,
+      waehrend das Geld in einem Drittel der Paarliste verbrennt.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Hermes/gateway-service/Hermes_Dashboard.vbs, Agenten/Hermes/scripts/dashboard-wache.py
+      **Erledigt 2026-10-04.** Ursache benannt: der scharfe completion-Marker war Ausloeser des Komplettneubaus; Reparatur-Weg im Skill dokumentiert. Commit 4dfebfb3 behebt Crash-Blocker, now=nous/deepseek-v4-flash-0731 bestaetigt.
+- [x] **T-191 — Webhook und OmniRoute hoeren auf 0.0.0.0, nicht nur auf localhost**
+      Kontext: Nachgemessen am 30.09.2026 01:52. Der Hermes-Dienstprozess 73852 haelt
+      `0.0.0.0:8644` UND `[::]:8644` (Webhook-Plattform) - also aus dem lokalen Netz
+      erreichbar, obwohl die Steuerwege auf `127.0.0.1` liegen. Derselbe Befund beim
+      OmniRoute-Router (`node`, PID 15924, `0.0.0.0:20128`). Beides ist bewusst NICHT
+      angefasst worden (laufende Dienste); ohne Firewall-Regel ist jeder Rechner im
+      WLAN ein moeglicher Aufrufer.
+      Naechster Schritt: entscheiden - Bindeadresse auf `127.0.0.1` ziehen (Webhook
+      braucht dann einen Reverse-Proxy fuer Fremdzugriff) ODER eine eingehende
+      Firewall-Regel auf die beiden Ports setzen. Vorher pruefen, ob ein Telefon/
+      ein anderes Geraet den Webhook wirklich aufruft.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: Agenten/Hermes/gateway-service, `C:\Users\faupe\.omniroute\`, Windows-Firewall
+      **Erledigt 2026-10-04.** Entscheidungsvorlage Webhook/OmniRoute-Bindung in references/entscheidungsvorlagen-Paket1-2026-10-01.md (Optionen+Empfehlung+Risiko); keine Live-Schalter, Entscheidung bleibt bei Max.
+- [x] **T-190 — Hermes-Update: Orphan-Aliase und Checkout-Reste**
+      Kontext: Nach dem Update vom 29./30.09.2026 meldet `hermes doctor` 14 Orphan-Aliase
+      (`agent-reach.bat`, `coder.bat`, `nous.bat`, `projectatlas.bat`, `superpowers.bat` und neun weitere)
+      fuer Profile, die es nicht mehr gibt — die `.bat` liegen als Leichen im Alias-Ordner.
+      Ausserdem zeigt der Checkout einen lokalen `Dockerfile`-Unterschied.
+      Naechster Schritt: Alias-Ordner auflisten, die 14 Leichen nach `.sicherung/` verschieben,
+      `Dockerfile`-Diff ansehen (eigene Anpassung oder Rest) und dann committen oder verwerfen.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: Agenten/Hermes/alts/, Agenten/Hermes/hermes-agent/Dockerfile
+      **Erledigt 2026-10-04.** Hauswerkzeug scripts/orphan-alias-bereinigen.py gebaut (Trockenlauf default, --anwenden); 4 Selbsttests gruen, die 14 Leichen sind quarantiniert, echter Lauf meldet keine verwaisten Aliase. Commit d31485cc.
+- [x] **T-179 — Handels-Dauerlauf fiel 20:59 aus (0xC0000142), Ursache offen**
+      Kontext: Alle drei Stufen (Basis/mittel/hoch) starben am 29.09. ~20:59: die Kindprozesse kamen nicht hoch (Rueckgabe 3221225794 = 0xC0000142, DLL-/Speicher-Initialisierung). Die Waechter starteten neu (23:05/23:07/23:08/23:20), aber die Neustarts starben ebenfalls. Belegt: 87 verwaiste node-Prozesse aus Hermes	ools (abgebrochener Build, alle seit 21:13:59, Eltern = Gateway 73852 mit 70 Kindern) + Commit frei 0 GB. Behoben 29.09. 23:23-23:34: 87 node-Waisen beendet, alle drei Stufen manuell neu gestartet - laufen wieder stabil (Zyklen 23:35). Die eigentliche Ursache des Todes um 20:59 (vor dem node-Waisen-Start 21:13) ist NICHT geklaert.
+      Naechster Schritt: Beobachten, ob der Dauerlauf stabil bleibt; wenn er wieder mit 0xC0000142 stirbt, Commit/Seitenfile zum Tatzeitpunkt messen und die Waisen-Quelle (Gateway-Build) identifizieren.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Routinen/handel-dauerlauf.ps1
+      **Erledigt 2026-10-04.** Beobachtungsplan fuer Dauerlauf-fix in Agenten/Hermes/references/entscheidungsvorlagen-Paket1-2026-10-01.md umgesetzt (aktive Waechter + Logs an Telegram, kein Fix); Entscheidung bleibt bei Max.
 - [x] **T-210 — Time-Series-Momentum und die QQQ/BTC-Rotation sind noch nicht auf eigenen Daten gemessen**
       Kontext: Zwei weitere Quantpedia-Kandidaten sind gesichtet, aber NICHT
       nachgerechnet: #0118 Time Series Momentum Effect (12-Monats-Rendite je
