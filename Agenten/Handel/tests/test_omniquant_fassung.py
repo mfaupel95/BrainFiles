@@ -143,14 +143,18 @@ class AuftragTest(unittest.TestCase):
         """Der Schattenarm (wachen.weit.json) muss Papier bleiben,
         auch wenn die Hauptspur live geschaltet ist.
 
-        04.10.2026: der Test verlangte zusaetzlich `prognose_fassung == "weit"`
-        in der ARM-Wachen. Das Feld steht aber im HAUPTbuch (dort wurde der
+        04.10.2026 (T-309): der Test verlangte zusaetzlich
+        `prognose_fassung == "weit"` in der ARM-Wachen und meldete
+        `None != 'weit'`. Das Feld steht aber im HAUPTbuch (dort wurde der
         Schalter am 01.10.2026 gesetzt, Commit aecd6178 / Auftrag Max
-        "auto freigabe erlaubt"); die Arm-Wache fuehrt es nie. Der Code liest
-        das Feld aus der geladenen Wache und faellt sonst auf "streng"
-        zurueck - das ist die dokumentierte Voreinstellung, kein Fehler.
-        Geprueft wird die EIGENSCHAFT: kein Handeln im Arm. Das HAUPTbuch muss
-        die weite Fassung tragen, dort entscheidet es.
+        "auto freigabe erlaubt"); die Arm-Wache fuehrt es nie und kann es
+        auch nicht brauchen - siehe der Test darueber, WIE der Arm seine
+        weite Fassung findet.
+
+        Geprueft wird die EIGENSCHAFT, die Max entschieden hat: im Arm wird
+        nicht gehandelt. Das HAUPTbuch traegt die weite Fassung, weil es
+        seit dem 24.09.2026 (Auftrag Max "Omniquant auf Papier auf weit
+        stellen") der einzige laufende Arm ist.
         """
         with open(os.path.join(SPUR, "wachen.weit.json"), encoding="utf-8") as f:
             w = json.load(f)
@@ -160,8 +164,48 @@ class AuftragTest(unittest.TestCase):
             haupt = json.load(f)
         self.assertEqual(haupt.get("prognose_fassung"), "weit",
                          "das Hauptbuch verliert die weite Fassung - dann "
-                         "laeuft der Arm auf dem strengen Bericht und erzeugt "
-                         "keine Runden")
+                         "laeuft die laufende Spur auf dem strengen Bericht")
+
+    def test_der_arm_findet_seine_fassung_ueber_den_arm_nicht_ueber_das_feld(self):
+        """Die Fassung des ARMS haengt am Suffix, nicht am Wachen-Feld.
+
+        Dernaechstliegende Fehler waere, `prognose_fassung: "weit"` in die
+        Arm-Wache zu schreiben, damit die alte Behauptung des Tests wieder
+        gilt. Dann haette der Arm ZWEI Wege zur weite Fassung (Suffix UND
+        Feld) und der naechste Schalter wieder eine zweite Wahrheit.
+
+        Gemessen am 04.10.2026: mit `HANDEL_BUCH=weit` und ohne jedes Feld in
+        `wachen.weit.json` liefert `bericht_pfad()` die weite Datei - der
+        Rueckfall auf "streng" von `bericht_pfad` gibt es nur fuer den
+        HAUPTarm, dessen `DEFAULT_BERICHT` ohne Suffix `neuester.json`
+        heisst. Die Pfade entstehen beim IMPORT, darum misst ein Kindprozess.
+        """
+        import subprocess
+        code = (
+            "import json,os,sys;"
+            "os.environ['HANDEL_BUCH']='weit';"
+            "sys.path.insert(0,%r);sys.path.insert(0,%r);"
+            "import handeln as h;"
+            "print(json.dumps({'arm':h.ARM,"
+            "'bericht':os.path.basename(h.DEFAULT_BERICHT),"
+            "'mit_wache':os.path.basename(h.bericht_pfad(h.lade_wachen())),"
+            "'ohne_wache':os.path.basename(h.bericht_pfad({}))}))"
+            % (SPUR, HANDEL))
+        p = subprocess.run([sys.executable, "-c", code], capture_output=True,
+                           text=True, encoding="utf-8", cwd=SPUR,
+                           env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+        self.assertEqual(p.returncode, 0, p.stderr[-600:])
+        d = json.loads(p.stdout.strip().splitlines()[-1])
+        # Der Arm liest die weite Fassung - so, wie er es ohne jedes Feld tut.
+        self.assertEqual(d["mit_wache"], "neuester.weit.json")
+        self.assertEqual(d["ohne_wache"], "neuester.weit.json",
+                         "der Rueckfall auf 'streng' gilt fuer den HAUPTarm - "
+                         "im Arm heisst er neuester.weit.json")
+        # Und die Arm-Wache fuehrt das Feld nicht (es waere der zweite Weg).
+        with open(os.path.join(SPUR, "wachen.weit.json"), encoding="utf-8") as f:
+            self.assertNotIn("prognose_fassung", json.load(f),
+                             "die Arm-Wache fuehrt das Feld - zwei Wege zur "
+                             "weiten Fassung, einer davon stirbt zuerst")
 
     def test_hauptspur_ist_live_wie_bestellt(self):
         """Die Hauptspur ist seit aecd6178 live geschaltet (Max' Auftrag)."""

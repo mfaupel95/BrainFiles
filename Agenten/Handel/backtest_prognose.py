@@ -186,8 +186,11 @@ def lauf(spur, kerzen_je_inst, w, gebuehr_pct, modul=None):
                     # Der Ausstiegskurs der Spur steht im Journal: sitzt
                     # er auf einer Marke, gilt DIESER Kurs (nicht der
                     # Schluss der Kerze). Je geschlossener Position EINE
-                    # Markenzeile, in der Reihenfolge des Journals.
-                    marke = journal_huelle.nimm_marke(inst)
+                    # Markenzeile - geholt ueber die `pos_id`, nicht blind
+                    # in Zeilenreihenfolge: die Spuren schreiben erst die
+                    # schlussgetriggerten und dann die Docht-Ausstiege, die
+                    # Runde entsteht aber in der BUCHreihenfolge (04.10.2026).
+                    marke = journal_huelle.nimm_marke(inst, p.get("pos_id"))
                     kurs = k[-1][4] if marke is None else marke
                     vz = 1 if e["seite"] == "long" else -1
                     roh_pct = (kurs - e["einstieg"]) / e["einstieg"] * 100.0 * vz

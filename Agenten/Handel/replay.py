@@ -575,16 +575,37 @@ class Beruehrungsjournal:
         # weiter - Journal richtig, Ergebnis falsch). Eine LISTE, nicht ein
         # Einzelwert: schliesst ein Instrument in einem Schritt zwei
         # Positionen, braucht jede ihren eigenen Kurs.
+        #
+        # Jede Zeile traegt ihre `pos_id` mit. Die REIHENFOLGE allein genuegte
+        # nicht: die Spuren schreiben erst die schlussgetriggerten Ausstiege
+        # (`pruefe_ausstiege`) und danach die Docht-Ausstiege, waehrend die
+        # Runde in der BUCHREIHENFOLGE gebucht wird. Steht im Buch eine
+        # Docht-Position vorn, bekam sie den Stop-Kurs der Schluss-Position.
+        # Gemessen 04.10.2026 an squeeze (1200 Kerzen): die Runden 17 und 18
+        # tauschten ihre Kurse (BTC short bekam das Ziel, BTC long den Stop).
         self.marke_je_inst = {}
 
     def schritt_anfang(self):
         """Die Warteschlangen leeren - EINMAL je Kerzenschritt."""
         self.marke_je_inst.clear()
 
-    def nimm_marke(self, inst):
-        """Kurs der naechsten Markenzeile dieses Instruments, sonst None."""
+    def nimm_marke(self, inst, pos_id=None):
+        """Der Kurs der Markenzeile dieser Position, sonst der naechste.
+
+        Mit `pos_id` wird die Zeile der Position geholt, nicht einfach die
+        naechste - die Reihenfolge im Journal ist die des SCHLUSS-Wegs, die
+        gebuchte Reihenfolge die des BUCHS. Ohne `pos_id` (Aufrufer, die keine
+        Kennung fuehren) bleibt die Warteschlange in Zeilenreihenfolge.
+        """
         w = self.marke_je_inst.get(inst)
-        return w.pop(0) if w else None
+        if not w:
+            return None
+        if pos_id:
+            for i, (kennung, _kurs) in enumerate(w):
+                if kennung == pos_id:
+                    return w.pop(i)[1]
+            return None
+        return w.pop(0)[1]
 
     def __call__(self, *a, **f):
         f = self._berichtigen(dict(f))
@@ -631,7 +652,8 @@ class Beruehrungsjournal:
             if "einsatz_usd" in neu:
                 neu["einsatz_usd"] = "%.2f" % (nominal + gv)
         self.berichtigt += 1
-        self.marke_je_inst.setdefault(f.get("inst"), []).append(kurs)
+        self.marke_je_inst.setdefault(f.get("inst"), []).append(
+            (str(f.get("pos_id") or ""), kurs))
         return neu
 
 
@@ -772,7 +794,14 @@ def docht_ausstiege_anwenden(z, kerze, inst, huelle, zeit):
         vz = 1 if p.get("seite") == "long" else -1
         gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
         erloes = p["nominal"] + gv
+        # Die pos_id MUSS mit auf die Zeile: der Prognose-Backtest paart die
+        # berichtigten Kurse ueber `nimm_marke(inst)` in der REIHENFOLGE der
+        # Zeilen. Eine Zeile ohne Kennung war die Ursache der vertauschten
+        # Ausstiege (gemessen 04.10.2026, squeeze, 1200 Kerzen: die Runden 17
+        # und 18 tauschten ihre Kurse, weil die Docht-Zeile als Position ohne
+        # `pos_id` aufkam und die FIFO-Reihenfolge nicht mehr zum Buch passte).
         huelle(zeit=zeit, modus="papier", aktion="verkauf", inst=inst,
+               pos_id=p.get("pos_id", ""),
                seite=p.get("seite"), preis=_preis_text(kurs, "%.6f" % kurs),
                einsatz_usd="%.2f" % erloes, stop="%.6f" % p.get("stop"),
                ziel="%.6f" % p.get("ziel"),
@@ -1393,19 +1422,50 @@ GITTER_RASTER = {"BTC-USDT": {"instId": "BTC-USDT", "tickSz": 0.1,
                               "lotSz": 0.00000001, "minSz": 0.00001}}
 
 
+def _marken_der_position(p, e):
+    """Die MARKEN, die in diesem Schritt gelten - der LEBENDE Stand vor `e`.
+
+    `skalieren.skaliere()` rechnet Stop und Ziel auf der Position selbst um
+    (es mutiert das Dict im Buch) und schreibt die neuen Werte in die
+    Kauftzeile des Journals. Der Eintrag in `offen` ist dagegen eine KOPIE vom
+    Einstiegsschritt; bei einer spaeteren Skalierung blieb sie stehen.
+
+    Gemessen am 04.10.2026 an squeeze (Fenster 700, 1200 Kerzen): 7 von 25
+    Runden trugen die veraltete Marke, zwei davon ueberhaupt keine - die Kerze
+    beruehrte die aktuelle Marke, nicht die Snapshot-Marke, also fiel
+    `_ausstiege_buchen` auf den Kerzenschluss zurueck. `backtest_prognose`
+    bucht dieselben Runden ueber das JOURNAL, das die aktuellen Marken traegt -
+    daher die Gegenprobe "Rundenzahl/Bruttowerte weichen ab".
+
+    Nur die MARKEN kommen von hier. Einstieg und Nominal bleiben der Snapshot:
+    die Rechnung dieser Runde gehoert zum Ausstiegsschritt, und ein Umstellen
+    des Einstiegs waere eine eigene (betrachtete) Entscheidung ueber die
+    Bruttowerte - nicht die Korrektur, die hier auf dem Tisch liegt.
+    """
+    if not isinstance(p, dict):
+        return e
+    aus = dict(e)
+    for feld in ("stop", "ziel"):
+        wert = p.get(feld)
+        if wert is not None:
+            aus[feld] = wert
+    return aus
+
+
 def _ausstiege_buchen(offen, runden, vorher, z, kerze, gebuehr_pct, inst):
     """Ausgestiegene Positionen als Runde buchen - EINE Stelle fuer beide Wege.
 
     `vorher` ist das Buch VOR dem Ausstiegsaufruf ({id(position): position}),
     `kerze` die Kerze dieses Schritts. Der Ausstieg geschieht am KURS DER
     MARKE (Stop bzw. Ziel), nicht am Kerzenschluss - ohne Marke in der Kerze
-    bleibt es beim Schluss.
+    bleibt es beim Schluss. Die Marke ist der Stand der Position im
+    Ausstiegsschritt (`_marken_der_position`), nicht der vom Einstieg.
     """
     nachher = {id(p) for p in z["positionen"]}
     for pid, p in vorher.items():
         if pid in nachher or pid not in offen:
             continue
-        e = offen.pop(pid)
+        e = _marken_der_position(p, offen.pop(pid))
         kurs = kurs_der_marke(kerze, e["seite"], e["stop"], e["ziel"])
         if kurs is None:
             kurs = kerze[4]
