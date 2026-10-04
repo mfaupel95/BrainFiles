@@ -60,6 +60,7 @@
 # --- 5) Eigene Programme ----------------------------------------------------
 !Agenten/*.ps1
 !Agenten/Routinen/*.ps1
+!Agenten/Routinen/tests/*.ps1
 !Agenten/Routinen/umzug/*.ps1
 !Agenten/Routinen/umzug/*.psd1
 !Agenten/Routinen/umzug/*.txt
