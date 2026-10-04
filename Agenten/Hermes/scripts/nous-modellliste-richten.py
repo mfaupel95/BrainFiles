@@ -132,19 +132,41 @@ def main() -> int:
     p.add_argument("--zuruecknehmen", action="store_true", help="Block wieder entfernen")
     p.add_argument("--profile", action="store_true", help="auch alle Profile")
     p.add_argument("--json", action="store_true", help="Liste als JSON ausgeben")
+    p.add_argument("--pfad", action="append", default=None,
+                   help="nur diese Datei(en); wiederholbar. Ohne: die "
+                        "Hauptconfig (plus --profile: alle Profil-Configs)")
     a = p.parse_args()
 
-    models = _modelle_holen()
-    if a.json:
-        print(json.dumps({"anzahl": len(models), "models": models}, ensure_ascii=False))
+    # `--zuruecknehmen` braucht die Liste NICHT: es loescht einen Block, dessen
+    # Inhalt es nicht kennen muss. Vorher wurde auch da zuerst das Portal
+    # befragt - und genau dort brach der Lauf ab, weil hermes_cli.models in
+    # dieser Umgebung `ruamel` nicht findet (gemessen 04.10.2026: der Weg
+    # `--zuruecknehmen` war damit unbenutzbar, obwohl genau er ohne Portal
+    # auskommt). Jetzt: nur fuer das Eintragen wird das Portal befragt.
+    models: list[str] = []
+    if not a.zuruecknehmen:
+        models = _modelle_holen()
+        if a.json:
+            print(json.dumps({"anzahl": len(models), "models": models}, ensure_ascii=False))
+            return 0
+        if not models:
+            print("Portal liefert eine leere Liste - abgebrochen")
+            return 1
+        print("Portal liefert %d Modelle (erste: %s)" % (len(models), models[0]))
+    elif a.json:
+        print(json.dumps({"anzahl": 0, "models": [],
+                          "hinweis": "--zuruecknehmen braucht keine Portalliste"},
+                         ensure_ascii=False))
         return 0
-    if not models:
-        print("Portal liefert eine leere Liste - abgebrochen")
-        return 1
-    print("Portal liefert %d Modelle (erste: %s)" % (len(models), models[0]))
+    else:
+        print("Block entfernen - das Portal wird dafuer nicht befragt")
 
-    for pfad in _dateien(a.profile):
-        kurz = pfad.relative_to(HERMES.parent.parent)
+    for pfad in (_dateien(a.profile) if not a.pfad
+                 else [Path(q) for q in a.pfad]):
+        try:
+            kurz = str(pfad.relative_to(HERMES.parent.parent))
+        except ValueError:
+            kurz = str(pfad)
         try:
             if a.zuruecknehmen:
                 ergebnis = _zuruecknehmen(pfad, a.anwenden)

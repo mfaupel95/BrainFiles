@@ -531,15 +531,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-296 — Nous-Modellliste in den Profil-Configs nachziehen oder verwerfen**
-      Kontext: Am 01.10.2026 sind alle 428 Modelle des Nous-Portals in der Hauptconfig
-      eingetragen (`providers: nous: models:`, Commit fc395e3) - der Modellwaehler zeigte
-      dort vorher nur die kuratierte Liste (50 + Empfehlungen = 58). Werkzeug:
-      `Agenten/Hermes/scripts/nous-modellliste-richten.py --anwenden --profile`.
-      Die 30 Profil-Configs haben eigene Waehler-Zeilen und tragen den Block NICHT.
-      Naechster Schritt: entscheiden, ob die Bot-Profile die volle Liste brauchen (sie
-      lesen ihr Modell aus ihrer config.yaml, nicht aus dem Waehler) - sonst nichts tun.
-      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/profiles/*/config.yaml
 - [ ] **T-297 — Config-Block gegen das Zurueckschreiben der App sichern**
       Kontext: Am 01.10.2026 um 18:45 hat die Hermes-App die Hauptconfig aus ihrem eigenen
       Speicher zurueckgeschrieben und dabei committete Einstellungen ueberschrieben
@@ -764,85 +755,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [?] **T-260 — MoonDev-Agenten haengen in einem blockierenden Netzaufruf (Lösung bereit)**
-      Kontext: Der `kraken_agent` lief als Prozess weiter und schrieb vom 29.09. 18:20 bis
-      zum Neustart 01.10. 00:45 keine einzige Zeile - das Log endete mitten in einer normalen
-      Runde, ohne Traceback. Ursache: Ollama (oder das OS-Netz) friert ein, timeout=120 in
-      llm_lokal() wirkt nicht (OS-Ebene).
-      LÖSUNG (Fremd-Repo, Max anwenden:
-      Werkstatt/Repos/moon-dev-ai-agents/src/agents/kraken_agent.py):
-        1. `import threading` hinzufuegen (nach Zeile 22)
-        2. Funktion einfuegen:
 
-           ```python
-           def _zyklus_watchdog(timeout_s: float = 900.0) -> threading.Timer:
-               """Watchdog fuer den Gesamtzyklus (T-260).
-               Wenn ein Zyklus laenger als timeout_s (Vorgabe 15 Min) dauert,
-               wird eine TimeoutError ausgeloest - der Treiber startet den Agenten neu.
-               """
-               def _raise():
-                   raise TimeoutError(
-                       f"Zyklus-Timeout nach {timeout_s:.0f}s - möglicher Hängenbleiben (T-260)")
-               timer = threading.Timer(timeout_s, _raise)
-               timer.daemon = True
-               timer.start()
-               return timer
-           ```
 
-        3. In `main()` (Zeile 202) Watchdog um jeden Zyklus:
-
-           ```python
-           def main():
-               print("🌙 Moon Dev KRAKEN Agent - Kraken angebunden (16.09.2026)")
-               print("   Modell: %s  |  Boerse: Kraken EUR-Paare (oeffentlich, kein Key)" % OLLAMA_MODEL)
-               try:
-                   while True:
-                       timer = _zyklus_watchdog(900.0)       # max 15 min pro Zyklus
-                       try:
-                           ein_zyklus()
-                       finally:
-                           timer.cancel()
-                       for _ in range(12):
-                           time.sleep(VERZOEGERUNG // 12)
-               except KeyboardInterrupt:
-                   print("
-👋 gestoppt.")
-           ```
-
-     Watchdog wird nach `ein_zyklus()` durch `timer.cancel()` geloescht. Wenn der
-     Zyklus hängt, feuert der Timer nach 15 min und beendet den Prozess - der
-     Treiber startet ihn neu.
-     Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft Werkstatt/Repos/moon-dev-ai-agents/src/agents/kraken_agent.py
-
-- [ ] **T-261 — new_or_top arbeitet ohne Marktdaten und laeuft in Analyse-Timeouts**
-      Kontext: Im Log stehen 6x "No market data available" und 2x "Error in AI analysis:
-      timed out"; gespeicherte Analysen (Namecoin, Primecoin) entstanden ohne echte Daten.
-      Ursache ist das Rate-Limit des Datenanbieters (CoinGecko HTTP 429) plus die zu langsame
-      lokale Analyse. Naechster Schritt: entscheiden - Datenquelle mit Schluessel anbinden
-      (COINGECKO_API_KEY liegt bei Max) oder den Agenten auf eine andere Quelle umstellen.
-      Angelegt 01.10.2026 · Betrifft Werkstatt/Repos/moon-dev-ai-agents (src/agents/new_or_top_agent.py)
-
-- [✓] **T-262 — MoonDev-GUI und Treiber widersprechen sich (Haus-Seite erledigt, GUI offen)**
-      Kontext: Die GUI ist ein reiner Datei-Katalog (31 Agentenmodule von der Platte), ihre
-      Startknoepfe rufen `-m src.agents.<mod>`. Der Haus-Treiber beendet aber jeden Agenten,
-      der nicht sein eigenes Kind ist (Schonfrist 300 s) - ein aus der GUI gestarteter Agent
-      stirbt nach 5 Minuten. Max hat entschieden: zuerst die kranken Agenten (T-260/T-261),
-      DANN darf die GUI starten und der Waisenputzer muss ihre Kinder in Ruhe lassen.
-      HAUS-SEITE (erledigt 02.10.2026):
-        - Agenten/Handel/moondev_reg.py: gemeinsamer Registrierungsordner (%TEMP%/moondev_agenten/)
-        - Agenten/Handel/moondev_dauerlauf.py: `fremde_agenten()` ignoriert jetzt registrierte PIDs
-          (durch `import moondev_reg; behalten |= moondev_reg.alle_registrierte_pids()`)
-        - Behoben: der Waisenputzer laesst jetzt alle sich registrierten Agenten in Ruhe,
-          egal wer sie gestartet hat (Treiber oder GUI).
-      GUI-SEITE (offen, Max im Fremd-Repo anwenden: moongui.py):
-        - In der `kind_umgebung()`-Funktion oder direkt nach `subprocess.Popen`:
-          `from moondev_reg import registriere; registriere()` aufrufen
-        - Dafuer muss moondev_reg.py im Repo verfuegbar sein:
-          Option A: Kopiere Agenten/Handel/moondev_reg.py nach
-          Werkstatt/Repos/moon-dev-ai-agents/src/agents/moondev_reg.py
-          Option B: Erstelle eine externe moondev_reg.py im selben Ordner
-      Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/moondev_dauerlauf.py
-      (Haus ✓), Werkstatt/Repos/moon-dev-ai-agents/moongui.py (GUI offen)
 
 - [ ] **T-257 — nautilus-rust kann kein eigenes ProjectAtlas-Projekt bekommen (kein eigenes .git)**
       Kontext: Der Rust-Workspace `Agenten/Handel/nautilus-rust` (5 Crates, 826 Zeilen) liegt IM
@@ -3212,6 +3126,96 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-296 — Nous-Modellliste in den Profil-Configs nachziehen oder verwerfen**
+      Kontext: Am 01.10.2026 sind alle 428 Modelle des Nous-Portals in der Hauptconfig
+      eingetragen (`providers: nous: models:`, Commit fc395e3) - der Modellwaehler zeigte
+      dort vorher nur die kuratierte Liste (50 + Empfehlungen = 58). Werkzeug:
+      `Agenten/Hermes/scripts/nous-modellliste-richten.py --anwenden --profile`.
+      Die 30 Profil-Configs haben eigene Waehler-Zeilen und tragen den Block NICHT.
+      Naechster Schritt: entscheiden, ob die Bot-Profile die volle Liste brauchen (sie
+      lesen ihr Modell aus ihrer config.yaml, nicht aus dem Waehler) - sonst nichts tun.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/profiles/*/config.yaml
+      **Erledigt 2026-10-04.** Entscheidung: VERWERFEN fuer die Profile, Hauptconfig behaelt den Block. Gemessen: alle 23 model.default der Profile stehen in den 428 eingetragenen Modellen - der Block ist fuer diese Flotte also vollstaendig ueberfluessig, weil ein Profil beim Start sein Modell aus der eigenen config.yaml liest, nicht aus dem Waehler. Er kostet dafuer 15.321 Bytes je Datei und 41 ms je Config-Ladung (gemessen: osiris 45,0 ms mit Block, 3,6 ms ohne), bei 22 Profilen also rund 0,9 s Flottenladezeit fuer eine reine Anzeigeliste. Nur osiris trug den Block; der ist jetzt bereinigt (16.436 -> 1.115 Bytes, 3,6 ms, yaml lesbar, model.default unveraendert, 430 Zeilen geloescht und keine hinzugefuegt, Sicherung config.yaml.bak-202610041609). Gegenprobe 'hermes profile show osiris': Modell stepfun/step-3.7-flash:free (nous), Gateway running. Die Liste selbst ist aktuell: Block 428 = Portal-Cache 428 (04.10.2026 10:40), 0 veraltet, 0 fehlend - der Block in der Hauptconfig bleibt damit als Waehlerliste korrekt und wird nur nicht mehr in die Flotte kopiert. Nebenbefund am Werkzeug behoben: nous-modellliste-richten.py befragte auch bei --zuruecknehmen zuerst das Portal und brach dort ab (hermes_cli.models findet in dieser Umgebung kein ruamel), obwohl der Weg genau ohne Portal auskommt; neu fragt nur das Eintragen das Portal, und --pfad (wiederholbar) erlaubt eine einzelne Datei statt aller.
+- [x] **T-262 — MoonDev-GUI und Treiber widersprechen sich (Haus-Seite erledigt, GUI offen)**
+      Kontext: Die GUI ist ein reiner Datei-Katalog (31 Agentenmodule von der Platte), ihre
+      Startknoepfe rufen `-m src.agents.<mod>`. Der Haus-Treiber beendet aber jeden Agenten,
+      der nicht sein eigenes Kind ist (Schonfrist 300 s) - ein aus der GUI gestarteter Agent
+      stirbt nach 5 Minuten. Max hat entschieden: zuerst die kranken Agenten (T-260/T-261),
+      DANN darf die GUI starten und der Waisenputzer muss ihre Kinder in Ruhe lassen.
+      HAUS-SEITE (erledigt 02.10.2026):
+        - Agenten/Handel/moondev_reg.py: gemeinsamer Registrierungsordner (%TEMP%/moondev_agenten/)
+        - Agenten/Handel/moondev_dauerlauf.py: `fremde_agenten()` ignoriert jetzt registrierte PIDs
+          (durch `import moondev_reg; behalten |= moondev_reg.alle_registrierte_pids()`)
+        - Behoben: der Waisenputzer laesst jetzt alle sich registrierten Agenten in Ruhe,
+          egal wer sie gestartet hat (Treiber oder GUI).
+      GUI-SEITE (offen, Max im Fremd-Repo anwenden: moongui.py):
+        - In der `kind_umgebung()`-Funktion oder direkt nach `subprocess.Popen`:
+          `from moondev_reg import registriere; registriere()` aufrufen
+        - Dafuer muss moondev_reg.py im Repo verfuegbar sein:
+          Option A: Kopiere Agenten/Handel/moondev_reg.py nach
+          Werkstatt/Repos/moon-dev-ai-agents/src/agents/moondev_reg.py
+          Option B: Erstelle eine externe moondev_reg.py im selben Ordner
+      Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/moondev_dauerlauf.py
+      (Haus ✓), Werkstatt/Repos/moon-dev-ai-agents/moongui.py (GUI offen)
+      **Erledigt 2026-10-04.** Der GUI-Vorschlag aus TASKS.md kann nicht wirken: in kind_umgebung() laeuft kein Code (die Funktion baut nur ein DICT), und registriere() ohne Argument registriert die PID des AUFRUFENDEN - also die GUI, nicht das Kind, das der Waisenputzer nach 300 s beendet. Neu: moongui_reg.py im Repo-Root (Kopie des Haus-Wegzeugs, damit das Fremd-Repo nicht vom Hausverzeichnis abhaengig ist) mit registriere(pid) und abmelde(pid); die GUI traegt die PID des KINDES nach dem Popen ein und meldet sie im finally des Stopps ab - erst nach dem echten Prozessende, sonst waere die PID schon wieder frei. Gegenprobe mit dem ECHTEN Haus-Waisenputzer an einer simulierten Prozessliste: ohne Registrierung ist das GUI-Kid eine Waise (der gemeldete Fehler, bestaetigt), mit Registrierung bleibt es, waehrend die echte Waise weiterhin beendet wird - der Schutz ist also nicht zu breit. Nichts gekillt, Test-Ordner danach entfernt. Commit 0cb95b7.
+- [x] **T-261 — new_or_top arbeitet ohne Marktdaten und laeuft in Analyse-Timeouts**
+      Kontext: Im Log stehen 6x "No market data available" und 2x "Error in AI analysis:
+      timed out"; gespeicherte Analysen (Namecoin, Primecoin) entstanden ohne echte Daten.
+      Ursache ist das Rate-Limit des Datenanbieters (CoinGecko HTTP 429) plus die zu langsame
+      lokale Analyse. Naechster Schritt: entscheiden - Datenquelle mit Schluessel anbinden
+      (COINGECKO_API_KEY liegt bei Max) oder den Agenten auf eine andere Quelle umstellen.
+      Angelegt 01.10.2026 · Betrifft Werkstatt/Repos/moon-dev-ai-agents (src/agents/new_or_top_agent.py)
+      **Erledigt 2026-10-04.** Ursache gemessen, nicht geraten: die oeffentliche CoinGecko-API gibt ohne Pro-Key rund 5 Aufrufe je Minute frei und antwortet dann mit 429 und 'Retry-After: 60' (Beleg: 5x 200, dann 429 nach 14 s). Der Zyklus braucht 2 Listenabrufe plus 2 je Coin - er lief planmaessig ins Limit. Der alte Code pruefte 429 einmal, tat nach 15 s einen zweiten Versuch und VERARBEITETE DIE LEERE ANTWORT WEITER; daraus entstanden die gespeicherten Analysen ohne Marktdaten. Neu: src/agents/coingecko_zugriff.py mit Backoff (Retry-After befolgt, aber auf 120 s gedeckelt, damit der Zyklus langsam bleibt statt zu haengen) und - bleibt das Limit - einem VERWORFENEN Zyklus statt leerer Empfehlungen. Jeder HTTP-Aufruf hat jetzt einen Timeout (vorher keiner). Zusaetzlich haengt new_or_top jetzt am Watchdog (T-260), der LLM-Zweig testet den Weg statt des Modellnamens, und extract_recommendation liefert None, wenn kein Urteil zustande kam - gespeichert wird nur ein echtes Urteil, nicht 'DO NOTHING' aus einem Timeout. Abnahme gegen die Live-API: 3 Gewinner + 3 neue Coins, Kurs > 0 bei echtem Coin, {} bei erfundener ID, 7/7 Faelle in extract_recommendation richtig, 0 Fehler. Commit 0cb95b7.
+- [x] **T-260 — MoonDev-Agenten haengen in einem blockierenden Netzaufruf (Lösung bereit)**
+      Kontext: Der `kraken_agent` lief als Prozess weiter und schrieb vom 29.09. 18:20 bis
+      zum Neustart 01.10. 00:45 keine einzige Zeile - das Log endete mitten in einer normalen
+      Runde, ohne Traceback. Ursache: Ollama (oder das OS-Netz) friert ein, timeout=120 in
+      llm_lokal() wirkt nicht (OS-Ebene).
+      LÖSUNG (Fremd-Repo, Max anwenden:
+      Werkstatt/Repos/moon-dev-ai-agents/src/agents/kraken_agent.py):
+        1. `import threading` hinzufuegen (nach Zeile 22)
+        2. Funktion einfuegen:
+
+           ```python
+           def _zyklus_watchdog(timeout_s: float = 900.0) -> threading.Timer:
+               """Watchdog fuer den Gesamtzyklus (T-260).
+               Wenn ein Zyklus laenger als timeout_s (Vorgabe 15 Min) dauert,
+               wird eine TimeoutError ausgeloest - der Treiber startet den Agenten neu.
+               """
+               def _raise():
+                   raise TimeoutError(
+                       f"Zyklus-Timeout nach {timeout_s:.0f}s - möglicher Hängenbleiben (T-260)")
+               timer = threading.Timer(timeout_s, _raise)
+               timer.daemon = True
+               timer.start()
+               return timer
+           ```
+
+        3. In `main()` (Zeile 202) Watchdog um jeden Zyklus:
+
+           ```python
+           def main():
+               print("🌙 Moon Dev KRAKEN Agent - Kraken angebunden (16.09.2026)")
+               print("   Modell: %s  |  Boerse: Kraken EUR-Paare (oeffentlich, kein Key)" % OLLAMA_MODEL)
+               try:
+                   while True:
+                       timer = _zyklus_watchdog(900.0)       # max 15 min pro Zyklus
+                       try:
+                           ein_zyklus()
+                       finally:
+                           timer.cancel()
+                       for _ in range(12):
+                           time.sleep(VERZOEGERUNG // 12)
+               except KeyboardInterrupt:
+                   print("
+👋 gestoppt.")
+           ```
+
+     Watchdog wird nach `ein_zyklus()` durch `timer.cancel()` geloescht. Wenn der
+     Zyklus hängt, feuert der Timer nach 15 min und beendet den Prozess - der
+     Treiber startet ihn neu.
+     Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft Werkstatt/Repos/moon-dev-ai-agents/src/agents/kraken_agent.py
+      **Erledigt 2026-10-04.** Die in TASKS.md vorgeschlagene Loesung (threading.Timer + raise) wurde als WIRKUNGSLOS gemessen: die Exception entsteht im Timer-Thread, der Hauptthread laeuft weiter und macht den naechsten Zyklus (Beleg: /tmp wd_test.py, Exit 0 trotz Timeout-Raise). Ersetzt durch src/agents/zyklus_watchdog.py - der Timer ruft os._exit(1) und beendet damit den ganzen Prozess; Exit 1, weil der Haus-Treiber nur bei Code nicht None/0 einen Absturz protokolliert. Selbsttest belegt beide Richtungen: Zyklus laenger als die Grenze -> Exit 1, gesunder Zyklus -> Exit 0. Grenze nicht geraten, sondern aus dem Zyklus-Budget hergeleitet (ANZAHL_URTEILE x 120 s + 60 = 660 s, x4 = 2640 s). Watchdog auch in new_or_top_agent (T-261). Commit 0cb95b7.
 - [x] **T-265 — `source-completion-pending` steht seit dem 30.09. auf „tail not finished“**
       Kontext: `Agenten/Hermes/installs/bf59c98340a908a8/source-completion-pending` traegt
       „source update tail not finished“; jeder Start von `hermes` faehrt daraufhin einen
@@ -3779,6 +3783,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Regeln plus einen Index mit "laden, wenn ..." lassen.
       Angelegt 01.10.2026 · Betrifft Agenten/Hermes/skills/brainfiles/hermes-config-ops
       **Erledigt 2026-10-01.** Auslagerung verifiziert: 21 Themenabschnitte vollstaendig in references/ (19 Dateien, Index deckt exakt), SKILL.md-Rumpf 87 Zeilen, nur Skill-Pfade geaendert, CRLF erhalten; 4 haengende Querverweise nachgebessert (Commit 18a69ee1, t_f55ec67f).
+      **Nachpruefung 2026-10-04 (T-260/261/296).** Der Skill-Rumpf ist 89 Zeilen / 5.855 Bytes (vorher 1.321 Zeilen / 100.080 Bytes), der Rest liegt in references/ (20 Dateien, 156.212 Bytes). Der Index deckt exakt: 20 im Rumpf genannt, 20 auf Platte, Differenz in beide Richtungen leer, keine Indexzeile ohne Dateinamen, kein Verweis auf eine tote Datei. Frontmatter stimmt ebenfalls: '## When to Use' vorhanden (nicht '## Wann'), author: 'Hermes Agent'. Gegenprobe 'hermes skills list': hermes-config-ops | brainfiles | local | enabled. Die im Block genannte Zahl '19 Dateien' ist heute 20 - eine Datei kam spaeter hinzu (auxiliary-kompression.md, 03.10.2026); der Index fuehrt sie bereits.
 - [x] **T-276 - xperp-Kapitalkurve: rund 180 USD der 280 USD Rueckgabe sind Buchhaltung, nicht Handel**
       Kontext: Nach dem Hoch vom 24.09.2026 08:22 (+497.42 USD) liegen 25 Buchungen
       bis heute (+217.57). Davon sind 20 Buchbereinigungen mit zusammen -266.26 und
