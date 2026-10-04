@@ -28,7 +28,13 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
 - eine Datei soll aus dem Verlauf verschwinden (Nebenprodukt eines Fremdprogramms)
 - eine `.gitignore`-Freigabe soll zurueckgenommen werden
 - „geh die letzten Sitzungen und Hintergrund-Aufgaben nach Aenderungen durch, die noch
-  nicht uebernommen wurden" — dann Abschnitt „Fremde Arbeit aus beendeten Sitzungen
+  nicht uebernommen wurden" — dann Abschnitt „Fremde Arbeit aus beendeten Sitzungen einsammeln"
+- **Max klagt ueber Ueberschreiben, falsche Zuschreibung oder verlorene Arbeit — und
+  schlaegt Isolierung vor** (mehr Arbeitszweige, eigene Kopie, zweiter Arbeitsordner).
+  Dann NICHT bauen, sondern messen: die drei Schaeden messen, die Isolierung NICHT
+  loest (siehe Fall „Arbeitszweige loesen das Falsche"), den Ersatz benennen (Besitz
+  pro Bereich) und die Entscheidung als Frage stellen. Ein Werkzeug bauen, das die
+  Stoerung nicht adressiert, macht sie nur schwerer zu sehen.
   einsammeln"
 
 ## Regeln (immer)
@@ -311,6 +317,73 @@ lassen - eine ungenaue Betreffzeile ist billiger als eine fremde Loeschung im
 eigenen Commit. Ist es passiert: normaler Folge-Commit, der den Inhalt aus
 `git show <letzter-guter-commit>:<pfad>` wieder aufnimmt, keine Historie
 umschreiben.
+
+# Mehrsitzungsbetrieb: EIN Arbeitsbaum, drei Besitzer, EIN Register
+
+Drei Sitzungen teilen sich denselben BrainFiles-Baum, und JEDE darf ueberall
+schreiben. Daraus folgt der wichtigste Satz: **der Schnellere gewinnt, und der
+geteilte Git-Index ist nur das spaeteste Symptom.** Vor dem Index bricht es an
+zwei Stellen ab: `git commit` OHNE Pfadangabe nimmt die Vormerkung einer
+anderen Sitzung mit (das ist die faellehafte Zuschreibung unter eigener
+Meldung), und `write_file` auf eine Datei, die eine Fremdsitzung seit dem
+Lesen angefasst hat, verweigert oder klingt zurueck, was nach Schreibfehler
+aussieht.
+
+**Was NICHT die Loesung ist: ein Git-Zweig je Sitzung.** Am 04.10.2026
+gemessen verworfen, aus drei Gruenden, die alle in diesem Skill belegt sind:
+(1) der Zweig hat einen EIGENEN Index, damit hoert die Uebernahme nach master
+auf - die Handarbeit wird nicht zur Nebenwirkung, sie wird Zusatzarbeit;
+(2) `fremdarbeit-einziehen.ps1` erkennt eine ruhende DATEI (Alter + Index-Zustand),
+eine Branch-Differenz nicht - die Arbeit kommt unerkannt zurueck; (3) Max
+verliert den Ueberblick (`master` plus drei `claude/*`-Zweige sind 547 Commits
+Rueckstand, die keiner mehr liest). Dazu 48 MB Arbeitskopie je Sitzung.
+
+**Was die Loesung ist: Besitz pro Bereich, nicht Isolation pro Sitzung.** Das
+Register liegt in `Agenten/BEREICHE.json`, sein Leser ist
+`Agenten/Werkzeuge/bereiche.py` (`--register`, `--aufrufer <bereich> --pfad
+<pfad>`, `--baum`, `--json`; Exitcode 1 bei Konflikt). Drei Bereiche, von Max
+am 04.10.2026 bestaetigt:
+
+| Bereich | Besitzer | Ordner |
+|---|---|---|
+| handel | handel | `Agenten/Handel/` |
+| bot | bot | `Agenten/Bus/`, `Agenten/Hermes/skills/`, `Agenten/Hermes/profiles/`, `Agenten/MCP-Manifest.json` |
+| wissen | wissen | `MaxHirn/Wissen/`, `MaxHirn/Archiv/TASKS.md` |
+
+**Alles andere ist FREI** - und das ist der Punkt, ohne den die Regel unbrauchbar
+wuerde: ein Bereich sperrt seinen Elternordner nicht. `Agenten/Routinen/`,
+`Werkstatt/`, `Agenten/Werkzeuge/` und die Wurzel gehoeren niemandem. Ein
+Test haelt genau das fest, weil eine Sperre, die alles sperrt, umgangen wird
+statt beachtet.
+
+Der Wächter MELDET, er sperrt nicht: ein Schreibversuch in einen fremden Bereich
+ist ein BEFUND (`pruefe()` zurueckgeben, im Bericht nennen), keine Exception.
+Wer einen Aufrufer fest verdrahten will, braucht eine Entscheidung, welche
+Sitzung welchen Namen fuehrt - bis dahin ruft jeder Werkzeugschreiber
+`pruefe()` mit seinem eigenen Namen auf.
+
+Vier Fehler, die der erste echte Lauf und die 19 Tests gefunden haben, bevor die
+Regel irgendwo stand - alle vier sind Fehler in der MESSUNG, nicht in der
+Absicht, und alle waeren still geblieben:
+- `os.path.isdir` im Registerpruefer meldete `MaxHirn/Archiv/TASKS.md` und
+  `Agenten/MCP-Manifest.json` als "toter Bereich" - beide sind Einzeldateien.
+  Ein Bereichseintrag darf Ordner ODER Datei sein; `os.path.exists` pruefen.
+- Der Konfliktpfad erschien kleingeschrieben (`agenten/handel/befehle.py`),
+  weil zum Vergleichen auf Kleinschreibung normalisiert wird. **Intern
+  normalisieren, im Bericht den Pfad so zeigen, wie ihn der Aufrufer
+  geschrieben hat** - eine kleingeschriebene Angabe sieht nach einem Defekt aus
+  statt nach einem Befund.
+- "Keine Konflikte: alle 1 Pfade sind frei oder gehoeren 'bot'" las sich bei
+  einem FREIEN Pfad wie eine Zusage. Der Bericht fuehrt eigen / frei /
+  KONFLIKT mit eigenen Zahlen.
+- Exitcode 0 trotz Konflikt: ein Cron haette "alles ok" gemeldet. **Ein Befund
+  braucht einen Exitcode, nicht nur eine Zeile im Text.**
+
+Beim Einfuegen in die Regeldateien: `AGENTS.md` und `CLAUDE.md` muessen
+BYTE-identisch bleiben, und der Paarpruefer findet Drift, die schon vorher da
+war (gemessen 04.10.2026: Zeile 43 unterschied sich seit dem 01.10. durch eine
+fremde Aenderung). Fremde Zeilen bleiben unangetastet und gehoeren in einen
+eigenen Commit - nicht in den, der die neue Regel bringt.
 
 ## Fremde Arbeit aus beendeten Sitzungen einsammeln
 
@@ -788,6 +861,10 @@ ungetrackten Dateien. Reihenfolge:
   Dateiende das fehlende neue Zeichen mitliefern, sonst schliesst man die letzte Zeile
   an die neue an.
 - **Die Frage "traegt dieser Zweig eigene Arbeit" braucht DREI Zeugen, nicht einen - und sie ist jetzt ein Werkzeug: `Agenten/Werkzeuge/zweige.py`.** Gebaut am 04.10.2026, weil die Liste still waechst (3 lokale `claude/*`, 4 auf `origin`, 1 verwaister Worktree unter `C:/tmp`) und die Antwort "alle leer" eine Behauptung war. Drei Zeugen, weil sie selten gleich ausgehen: `git cherry master <zweig>` (Patch-ID, Inhalt), `git merge-base --is-ancestor` (Kopf), `git rev-list --left-right --count` (Zahlen). **Der gemessene Grenzfall: `aeeac180` lag auf einem claude-Zweig inhaltlich schon in master (als `6ccb94e4`) - der sha-Vergleich allein sagte "behalten", `cherry` sagte "-".** Solche Faelle bekommen eine eigene Klasse und werden NUR gemeldet: `branch -d` verweigert dort, und `-D` waere blind. Ein Werkzeug zum Aufraeumen, das die Bremse nicht belegt, ist schlimmer als keines - die Gegenprobe (nach dem Entfernen muss die Klassifikation der Reste unveraendert sein, ein Zweig mit echtem Vorlauf darf nie verschwinden) ist als Test festgenagelt, `Agenten/Werkzeuge/tests/test_zweige.py`, 13 Tests mit ECHTEN temporaeren Repos (kein Attrappen-Git: `merge-base`/`cherry`/`worktree` sind genau die drei Befehle, die ein Mock nicht zeigen kann). Drei Fehler hat die Suite gefunden, die ohne sie still geblieben waeren: (a) `git worktree list --porcelain` liefert Bloecke, getrennt durch LEERZEILEN - zeilenweise gelesen hat der Pfad des naechsten Blocks den vorigen ueberschrieben, es kam EIN Worktree heraus statt zwei; (b) ein Worktree-Pfad nie mit `==` vergleichen, git meldet `C:/Users/...` und `tempfile` liefert `C:\Users\...` (`normcase`+`realpath`); (c) ein Test, der einem Zweig MIT Inhalt den Status "wegwerfbar" gab, nagelte die falsche Haelfte fest - korrigiert wurde der Test, nicht die Bremse. Aufruf: `python Agenten/Werkzeuge/zweige.py` (nur messen, Vorgabe), `--entfernen`, `--entfernen --push`, `--json`. `master` und `zwischenstand` werden nie auch nur aufgelistet.
+
+**Bevor jemand als Antwort auf Fraechesselzweige einen ARBEITSZWEIG oder WORKTREE vorschlaegt: messen, ob er die Stoerung ueberhaupt behebt.** Der Reflex ist richtig motiviert und meist falsch begruendet: „wenn jede Sitzung ihren eigenen Zweig hat, ueberschreiben sie sich nicht". Ein Worktree hat einen **eigenen Index** - und genau die drei Schaeden, an denen der Mehrsitzungsbetrieb leidet, bleiben oder wachsen: (a) der geteilte Index nimmt beim Commit ohne Pfadangabe die Vorgemerkten einer Parallelsitzung mit, und mit getrennten Indizes wird das Aufraeumen der fremden Eintraege **Zusatzarbeit** statt Nebenwirkung; (b) die Fremdarbeit-Routine erkennt ruhende Arbeit an einem **Baumzustand** (Dateien, die lange uncommittet liegen) - ein Branch-Differenz fällt dort nicht auf, die Arbeit landet als Zweig und nicht als erkennbare Ruhe; (c) ein Löschvorgang im selben Baum (Datei verschwindet Minuten nach dem Schreiben) wird durch einen zweiten Arbeitsordner nicht berührt. Was ein Zweig kauft, ist ein Merge-Schritt und ein zweiter Zeiger, den niemand mehr überblickt - deshalb bei Max ausdrücklich: „ich verliere den Ueberblick". **Der richtige Ersatz ist Besitz pro Bereich** (Ordner-Roster, wer darf welchen Bereich anfassen, Ueberschneidung als benannter Fehler), nicht Isolation pro Sitzung. Wenn Isolation trotzdem gebaut wird: `master` bleibt der einzige Arbeitszweig, der Zweig existiert nur zwischen Anlegen und Merge und wird sofort geloescht.
+
+- **Ein Werkzeug zum Aufraeumen braucht eine Bremse, die man TESTEN kann — sonst ist es schlimmer als keines.** Zwei Regeln, die beim Bau von `zweige.py` je einen Test gekostet haben. (a) **Die Bremse ist ein Feld im Befund, nicht eine Absicht im Code**: `entfernen()` liest `belegt_weg` aus dem uebergebenen Messergebnis; wer ihm einen fremdgebauten Befund ohne dieses Feld gibt, passiert nichts. So bleibt das Entfernen unwirksam, sobald die Messung fehlt — auch bei einem Fehler in der Messung. (b) **Die Gegenprobe ist Teil des Wegs, nicht der Abschlussmeldung**: nach dem Entfernen muss die Klassifikation der Reste unveraendert sein, und ein Zweig mit echtem Vorlauf darf nie verschwinden. Beides als Test festnageln, mit echten temporaeren Repos statt Attrappen — `merge-base`, `cherry` und `worktree` sind genau die Befehle, die ein Mock nicht zeigen kann. **Wird ein Test gegen die eigene Bremse rot, zuerst fragen, WER die falsche Haelfte festgenagelt hat.** Ein Test, der einem Objekt mit echtem Vorlauf den Status „wegwerfbar" gab, schlug fehl, als das Werkzeug zu Recht stehen blieb — hier wurde der Test korrigiert, nicht die Bremse. Ebenso zu streng gefasst: „die Klassifikation bleibt komplett gleich" enthielt auch das zu Entfernende, obwohl dessen Verschwinden der Beweis ist (die Erwartung lautet: Rest unveraendert UND entfernter Zweig fehlt). **Merksatz: wenn ein Test die eigene Schutzvorkehrung als Fehler meldet, ist die Schutzvorkehrung das Beweisziel, nicht der Kandidat** — die Frage lautet: welche Seite der Absicht wuerde der Test nach dem Fix noch entdecken, wenn der Fehler zurueckkommt? Wird die Antwort leer, wird nicht die Erwartung gelockert, sondern die Regel falsch gebaut.
 
 - **Verwaisten Worktree/Branch nicht raten, sondern nachmessen und sauber entfernen.** Ein
   geloester Arbeitsbaum (z. B. `.worktrees/2` auf Branch `2`) ist kein Verlustrisiko, wenn
