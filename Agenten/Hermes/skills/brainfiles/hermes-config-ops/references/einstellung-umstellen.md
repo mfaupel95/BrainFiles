@@ -154,6 +154,43 @@ Die Zaehlung ist kein Formalismus: derselbe Block steht mehrfach mit UNTERSCHIED
 Einrueckung im selben Block (`      aggregator:` in zwei Presets, `  aggregator:` top-level).
 Ohne Zaehlung trifft der Ersatz die falsche Stelle oder alle.
 
+### Blindes `lines.index()` trifft die FALSCHE Stelle - ab dem Anker suchen
+
+`config.yaml` ist eine Blattdatei, kein AST; Zeilenindizes sind billig, aber die
+Anker-Zeile kommt oft MEHRFACH vor. `lines.index("  aggregator:")` findet das
+ERSTE Vorkommen im ganzen Dokument - auch dann, wenn der Preset, den man
+ersetzen will, weit hinten steht. Das Ergebnis ist kein Syntaxfehler: der Block
+wird an der falschen Stelle eingesetzt, die Datei parst weiterhin, und die
+Gegenprobe schlaegt erst an einer Stelle fehl, an der man nicht gesucht hat.
+
+```python
+# FALSCH: global suchen
+i = lines.index("    Max 2:")
+j = lines.index("  aggregator:")
+
+# RICHTIG: ab dem gesuchten Anker suchen + Nachbarzeile als Zeuge
+i = lines.index("    Max 2:")
+j = next(k for k in range(i, len(lines)) if lines[k] == "  aggregator:")
+assert lines[j + 1].strip() == "provider: nous", lines[j + 1]
+```
+
+Drei Regeln dazu, die zusammen gehoeren:
+
+1. **Ab dem Anker suchen**, nicht vom Dateianfang - `next(k for k in range(i, ...))`.
+2. **Jede Blockgrenze mit der Nachbarzeile belegen**, nicht nur mit der
+   Fundstelle: `assert lines[ende] == "<erwartete Zeile>"` fuer Anfang UND Ende.
+   Eine Assertion, die erst beim DRITTEN Mal traf, war jeweils ein um eine Zeile
+   verschobener 1-basierter Index - 0-basierte Indizes in den Skript-Notizen,
+   1-basierte in `assert`-Zeilen sind die Fehlerquelle.
+3. **Vor dem Schreiben gegenlesen**, was der neue Block an der Zielstelle tut:
+   `yaml.safe_load(neu)` muss die neuen Werte zeigen. Ein Block, der an der
+   falschen Stelle landet, laesst die Werte dort KORREKT aussehen, wenn man nur
+   den Block selbst prueft.
+
+Ein Duplikat-Schluessel als Zusatzprobe: `assert "- provider: bonsai" not in text`
+faengt einen Rest, den eine Uebersicht ueber Objektnamen (statt ueber Zeilen)
+verpasst, weil der Kommentar das Wort noch nennt.
+
 ## Fallen
 
 - **Ein zu kleines `max_tokens` macht ein Denkmodell stumm - und den Pruefer blind.**
@@ -169,11 +206,16 @@ Ohne Zaehlung trifft der Ersatz die falsche Stelle oder alle.
   Fehler lautet `JSONDecodeError: Expecting value: line 1 column 1 (char 0)` - also
   genau wie eine stumme Gegenstelle. Erst die Rohantwort ohne Pipe ansehen, dann urteilen.
   Fuer die Dauer `start=$(date +%s)` und `$(( $(date +%s) - start ))` nehmen.
-- **Kein headless-Lauf fuer MoA.** `hermes moa` kennt nur `list`, `configure`, `delete`;
-  `/moa <prompt>` gibt es nur in einer interaktiven Sitzung. Den Aggregator deshalb
-  direkt mit einem ECHTEN Aggregationsauftrag rufen (Systemzeile + drei
-  Referenzantworten + Verdichtungsauftrag) und `content` gegen `reasoning` messen -
-  das belegt die Kette bis zum Modell, aber nicht die Werkzeugschleife.
+- **MoA laesst sich headless ueber `--provider moa` fahren.** `hermes moa` kennt nur
+  `list`/`configure`/`delete` und `/moa <prompt>` nur in einer interaktiven Sitzung -
+  der Einzeiler aber:
+  `hermes chat --oneshot -q "Antworte in genau einem Wort: MARKE" --provider moa`
+  fährt Berater, Aggregator und Synthese vollstaendig und nennt Dauer und
+  Referenzzaehler. Das ist der Beleg, den eine reine Aggregations-Sonde nicht liefert
+  (die belegt die Kette bis zum Modell, nicht die Werkzeugschleife).
+  **Antwort danach aus `state.db` lesen**, nicht aus dem Terminal-Bild:
+  `select role, content from messages where session_id=?` - dort steht, was
+  wirklich gespeichert wurde.
 - **Ein doppelt eingefuegtes Feld ist wirkungslos.** Im JSON/YAML gewinnt der LETZTE
   Schluessel; nach dem Einfuegen `json.loads`/`yaml.safe_load` gegenpruefen, sonst steht
   die gewollte Aenderung im Diff und gilt trotzdem nicht.

@@ -7,7 +7,7 @@ und gibt auf: die Karte landet in `blocked` mit `gave_up`. Im Kartenstatus steht
 nichts Brauchbares — der Grund steckt im Log:
 
 ```
-Auxiliary compression model gemma-e4b-8k:cpu has a context window of 8,192
+Auxiliary compression model <name> has a context window of <N>
 tokens, which is below the minimum 64,000 required by Hermes Agent.
 ```
 
@@ -24,9 +24,9 @@ kanban --board X log <id>        # ebenfalls board-spezifisch
 
 `auxiliary.compression` ist **nirgends gesetzt**. Hermes faellt dann auf die
 erste Zeile von `fallback_providers` zurueck. Steht dort ein lokales Ollama-
-Modell (typisch `gemma-e4b-8k:cpu`, Fenster **8.192**), ist das unter dem
-Boden von 64.000 — und zwar **nur beim Start einer langen Sitzung**, wenn die
-Kompression das erste Mal wirklich läuft. Kurze Sitzungen fallen nicht auf.
+Modell mit einem Fenster **unter 64.000**, ist das unter dem Boden - und zwar
+**nur beim Start einer langen Sitzung**, wenn die Kompression das erste Mal
+wirklich laeuft. Kurze Sitzungen fallen nicht auf.
 
 Deshalb ist die Fehlermeldung wochenlang unsichtbar und dann auf einmal an
 jedem Worker gleichzeitig.
@@ -43,6 +43,68 @@ jedem Worker gleichzeitig.
 Der Boden ist `MINIMUM_CONTEXT_LENGTH` in
 `agent/model_metadata.py`, nicht `model.context_length` des Hauptmodells.
 
+## `provider: auto` erbt still das HAUPTMODELL
+
+Ein `auxiliary`-Block mit `provider: auto` (der Vorgabewert, in vielen
+Konfigurationen nie angetastet) faellt auf das **Hauptmodell** zurueck. In
+`auxiliary.compression` ist das der richtige Default - dort muss es das grosse
+Fenster haben. In den Einzeiler-Aufgaben ist es der teuerste Posten der ganzen
+Datei, ohne dass irgendwo eine Zeile darauf hinweist:
+
+- `approval` (Klassifizierer bei jedem bestaetigungspflichtigen Schritt)
+- `title_generation` (Sitzungstitel, mehrmals pro Stunde)
+- `memory_query_rewrite` (vor jeder Gedaechtnis-Suche)
+- `skills_hub`, `mcp` (Skill-/MCP-Beschreibung erzeugen)
+- `curator` (Skill-Wartung im Hintergrund)
+
+Faellt das Hauptmodell aus oder wird es umgestellt, wechseln diese Aufgaben
+**mit**, ohne dass eine Config-Zeile geaendert wurde. Das ist die Umkehrung der
+Faustregel "ein gepinntes Kind erbt die Kette nicht": in einem Aux-Block will man
+gerade erben - aber eben nicht das teuerste Modell.
+
+**Regel:** jeden `auxiliary`-Block mit `provider: auto` aufzaehlen und je Zeile
+die Frage stellen "wie oft pro Stunde?". Ein Block, der selten laeuft, erbt zu
+Recht; ein Block, der pro Aktion laeuft, bekommt ein eigenes kleines, gemessen
+belegtes Modell.
+
+## Der Aggregator ist nicht die Beraterliste
+
+Ein MoA-Preset hat zwei Modelllisten: `reference_models` (Berater, eine
+Empfehlung pro User-Turn) und `aggregator` (**das handelnde Modell** - es laeuft
+in jedem Werkzeugschritt und traegt fast die ganze Rechnung). Beide tragen
+`provider`/`model`, beide sehen in `hermes moa list` gleich aus, und die
+Verwechslung ist teuer: ein kleines lokales Modell im Aggregator-Feld ist kein
+"guenstiger Berater", es ist das Modell, das jeden Werkzeugschritt faehrt. Wenn
+dort ein lokales Ollama-Modell steht, traegt der ganze RAM eines llama-Prozesses
+den Betrieb und die Antwortqualitaet haengt an einer 131k-Version.
+
+Vor jeder Optimierung je Preset die Aggregator-Zeile lesen
+(`hermes moa list`) und die Frage stellen: laeuft dieses Modell in diesem Feld
+in einer Werkzeugschleife?
+
+## Die Rollen sind nicht austauschbar
+
+Welche Rolle ein Block hat, entscheidet ueber das Fenster:
+
+| Rolle | Wie oft | Fenster-Anspruch |
+|---|---|---|
+| Aggregator / Hauptmodell | jeder Werkzeugschritt | maximal |
+| `compression` | ab und zu, aber der Pfad darf nie scheitern | sehr gross |
+| `kanban_decomposer`, `triage_specifier` | selten, JSON-strukturiert | mittel |
+| `approval`, `title_generation`, `memory_query_rewrite`, `skills_hub`, `mcp`, `curator` | **pro Aktion** | klein, das guenstigste belastbare |
+
+## Jeder Setzung folgt ein Beleg-Lauf
+
+Eine neue `auxiliary`-Zuordnung ist erst eine Behauptung. Der Nachweis ist ein
+Aufruf durch genau diesen Pfad, nicht ein `config get`:
+
+- Kompression laesst sich nicht headless ausloesen - dafuer gilt die Karte
+  (`kanban --board X list` zeigt `running`) als Beleg.
+- Jeder andere Aux-Aufruf ist ueber einen Einzeiler erreichbar: `hermes chat
+  --oneshot -q "..."` genuegt, um den Pfad zu ueben (Titel-Generator laeuft mit).
+- `hermes config get <schluessel>` bestaetigt nur, dass der WERT gespeichert ist -
+  nicht, dass er trägt.
+
 ## Was taugt als Kompressionsmodell
 
 Gemessen mit `get_model_context_length` (nicht aus dem Namen geraten):
@@ -53,10 +115,23 @@ Gemessen mit `get_model_context_length` (nicht aus dem Namen geraten):
 | `stealth/space-bunny-alpha` (nous) | 1.000.000 |
 | `anthropic/claude-opus-5` (nous) | 1.000.000 |
 | `poolside/laguna-xs-2.1:free` (nous) | 262.144 |
-| `gemma-e4b-8k:latest` / `:cpu` (ollama-launch) | **8.192** |
+| `gemma-e4b-8k:latest` / `:cpu` (ollama-launch) | ueber `/api/show` messen, der Name traegt KEINE Fensterzahl |
 
-Der Modellname `gemma-e4b-8k` traegt die 8k **im Namen**, weil das Modell so
-gebaut ist — nicht weil die Konfiguration zu kurz wäre.
+Der Modellname `gemma-e4b-8k` traegt die 8k **im Namen**, weil das Modell so gebaut
+ist - nicht weil die Konfiguration zu kurz waere. Die Zahl daneben ist eine
+Eigenschaft des Modells, keine Eigenschaft des Eintrags: **`/api/show` sagt die
+Wahrheit, `agent/model_metadata.py` sagt es fuer Cloud-Modelle.**
+
+Und beide koennen sich unterscheiden. Gemessen an derselben Installation:
+
+- `get_model_context_length("gemma-e4b-8k:cpu")` -> 8.192
+- `POST /api/show {"model":"gemma-e4b-8k:latest"}` -> 131.072
+
+Also: **vor dem Urteil ueber ein lokales Modell beide Zahlen holen**, und den
+Schluessel im `model_info` nach dem Muster `context` filtern statt einen festen
+Namen zu raten - er heisst je nach Familie `gemma4.context_length`,
+`llama.context_length`, ... . Wer nur eine der beiden Zahlen kennt, kann ein
+Modell als zu klein einstufen, das perfectly laeuft, oder umgekehrt.
 
 ## Die Regel
 

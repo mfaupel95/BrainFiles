@@ -62,8 +62,13 @@ AUSSCHLUSS = [
     ("newsletter", r"(newsletter|abmelden|unsubscribe|klickgratis|%\s*off|rabatt)"),
     ("werbung", r"(newsletter|promotion|angebot|werbung|marketing|rabatt|gutschein|"
                 r"black ?friday|deal[s]?\b|%\s*off|jetzt kaufen)"),
+    # WICHTIG: der Absender gehoert in den Ausschluss-Blick. Ein no-reply
+    # im From ist kein Adressat, der antworten kann - ohne das rutscht jede
+    # Bestaetigungsmail ueber die Schwelle (gemessen: Anthropic-Zahlungsmail
+    # 04.10. mit 'erwartet Antwort', weil das HTML im Body das Wort 'Antwort'
+    # irgendwo im Fussnote-Block mitbringt).
     ("automatisierte_benachrichtigung", r"(notification|benachrichtigung|do-not-reply|"
-                                       r"noreply|no-reply)"),
+                                       r"noreply|no-reply|nicht\s+antworten)"),
 ]
 
 DRINGEND_TEXT = [
@@ -81,11 +86,26 @@ def _anmeldung() -> tuple[str, str]:
     return mailversand.zugang_lesen()
 
 
+TAG = re.compile(r"<[^>]+>")
+FUSS_NOTE = re.compile(r"(font-size\s*:\s*(1[01]px|10px)|color\s*:\s*#\w{6})",
+                       re.IGNORECASE)
+
+
 def _text(nachricht) -> str:
+    """Nur der fuer einen Menschen lesbare Teil.
+
+    Gmail liefert bei HTML-Mails oft NUR <BODY.PEEK[TEXT]> als HTML-Rumpf mit
+    tausend Zeichen Layout und Fussnoten ('Antworten Sie an ...', 'warum diese
+    Mail'). Solcher Text erzeugt Punkte fuer Woerter, die inhaltlich nichts
+    tragen - der erste echte Lauf dieses Werkzeugs meldete genau daran eine
+    Zahlungsbestaetigung. Deshalb: HTML auf Text, dann alles ab der Fussnote
+    abschneiden und laengere Unsinnsbloecke (Base64/quasi-groessere
+    Signaturen) kuerzen.
+    """
     teile = []
     if nachricht.is_multipart():
         for stueck in nachricht.walk():
-            if stueck.get_content_type() == "text/plain":
+            if stueck.get_content_type() in ("text/plain", "text/html"):
                 payload = stueck.get_payload(decode=True)
                 if payload:
                     teile.append(payload.decode(stueck.get_content_charset() or "utf-8",
@@ -95,7 +115,21 @@ def _text(nachricht) -> str:
         if payload:
             teile.append(payload.decode(nachricht.get_content_charset() or "utf-8",
                                         "replace"))
-    return "\n".join(teile)[:6000]
+    text = "\n".join(teile)
+    if "<" in text and ">" in text:
+        text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", text)
+        text = TAG.sub(" ", text)
+        text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
+                    .replace("&quot;", '"').replace("&#39;", "'")
+                    .replace("&lt;", "<").replace("&gt;", ">"))
+    # Fussnote/Disclaimer abschneiden
+    treffer = FUSS_NOTE.search(text)
+    if treffer and treffer.start() > 200:
+        text = text[:treffer.start()]
+    # Alles, was keine Buchstaben hat (Signatur-Base64), raus
+    text = "\n".join(zeile for zeile in text.splitlines()
+                     if sum(c.isalpha() for c in zeile) > len(zeile) * 0.4)
+    return text[:6000]
 
 
 def _trifft(text: str, muster: list[str]) -> list[str]:
@@ -107,8 +141,14 @@ def _trifft(text: str, muster: list[str]) -> list[str]:
 
 
 def einordnen(absender: str, betreff: str, koerper: str) -> dict:
-    """Vorsatz + Frist + Text = Punktzahl, dazu die Belege dafuer."""
-    voller = f"{absender}\n{betreff}\n{koerper}".lower()
+    """Punkte = drei Filter ODER-verknuepft, dazu Belastung durch Muell.
+
+    Wichtig: der VORSATZ gehoert in den ABSENDER, nicht in den Koerper. Mit
+    dem Koerper traf jedes Wort 'Bank' in einer Zahlungsmail den Behoerden-Filter
+    (gemessen 04.10.: 'failed-payments@' wurde dadurch als Behoerde gewertet).
+    """
+    absender_klein = absender.lower()
+    inhalt = f"{betreff}\n{koerper}".lower()
     punkte = 0.0
     gruende = []
 
@@ -117,26 +157,31 @@ def einordnen(absender: str, betreff: str, koerper: str) -> dict:
                       r"bestätigen|best[aä]tigen|unterschreiben|zahlen|bezahlen)",
                       r"\bfehlt\s+(noch|ihre?)\b", r"\bnoch\s+nicht\s+(beantwortet|"
                       r"gesendet|erledigt)\b"]
-    if _trifft(voller, muster_antwort):
+    if _trifft(inhalt, muster_antwort):
         punkte += 1.5
         gruende.append("erwartet Antwort")
 
-    if _trifft(voller, VORSATZ):
+    if _trifft(absender_klein, VORSATZ):
         punkte += 1.0
         gruende.append("Vorsatz/Familie/Behoerde")
 
-    frist = _trifft(voller, FRIST_BEGRiffe)
-    if frist:
+    if _trifft(inhalt, FRIST_BEGRiffe):
         punkte += SCHWELLE_FRIST
         gruende.append("Frist-Bezug")
 
-    if _trifft(voller, DRINGEND_TEXT):
+    if _trifft(inhalt, DRINGEND_TEXT):
         punkte += 1.0
         gruende.append("Dringlichkeit im Text")
 
-    # Gruende GEGEN eine Meldung - spaeter aufschluesselbar, aber nicht gemeldet
+    # Muell belastet. Ein Absender ohne Antwortweg ist kein Pruefstein fuer
+    # 'erwartet Antwort' - deshalb traegt die Automatik-Minderung VOR der
+    # positiven Bewertung und kann sie neutralisieren.
     for name, muster in AUSSCHLUSS:
-        if re.search(muster, f"{betreff}\n{koerper[:1200]}", re.IGNORECASE):
+        if re.search(muster, absender_klein, re.IGNORECASE):
+            punkte -= 2.5
+            gruende.append(f"aussortiert (Absender): {name}")
+            continue
+        if re.search(muster, inhalt[:1200], re.IGNORECASE):
             punkte -= 2.5
             gruende.append(f"aussortiert: {name}")
 
@@ -214,14 +259,14 @@ def main() -> int:
                 pass
             if datum and datum <= bis:
                 continue
-            typ2, roh = imap.fetch(nummer, "(BODY.PEEK[TEXT])")
+            typ2, roh = imap.fetch(nummer, "(BODY.PEEK[])")
             koerper = ""
             if typ2 == "OK" and roh and isinstance(roh[0], tuple):
-                koerper = email.message_from_bytes(roh[0][1]).get_payload()
-                if isinstance(koerper, bytes):
-                    koerper = koerper.decode("utf-8", "replace")
-                elif not isinstance(koerper, str):
-                    koerper = ""
+                # Die VOLLE Nachricht holen, nicht BODY.PEEK[TEXT]: bei einer
+                # multipart-Mail liefert TEXT nur den rohen MIME-Block mit den
+                # Part-Headern ("Content-Transfer-Encoding: quoted-printable")
+                # als Text - der echte Inhalt blieb dann unlesbar (=E2=82=AC).
+                koerper = _text(email.message_from_bytes(roh[0][1]))
             absender = str(make_header(decode_header(kopf.get("From", ""))))
             betreff = str(make_header(decode_header(kopf.get("Subject", ""))))
             urteil = einordnen(absender, betreff, koerper)
