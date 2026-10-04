@@ -43,11 +43,14 @@ Get-ChildItem $wissen -Filter *.md | Where-Object { $_.Name -notlike '*.bak*' -a
     }
 
     # 3. ID eindeutig
-    $id = (($fm | Where-Object { $_ -match '^id:' }) -replace '^id:\s*','').Trim()
+    $idZeile = @($fm | Where-Object { $_ -match '^id:' })
+    if ($idZeile.Count -ne 1) { Write-Output ("ID FEHLT/MEHRFACH (" + $idZeile.Count + "): " + $n); $fehler++; return }
+    $id = ($idZeile[0] -replace '^id:\s*','').Trim()
     if ($ids.ContainsKey($id)) { Write-Output ("ID DOPPELT: " + $id + " in " + $n); $fehler++ } else { $ids[$id] = $n }
 
     # 4. Tags kontrolliert
-    $tagzeile = (($fm | Where-Object { $_ -match '^tags:' }) -replace '^tags:\s*','').Trim(' ', '[', ']')
+    $tagzeile = (@($fm | Where-Object { $_ -match '^tags:' }) | Select-Object -First 1) -replace '^tags:\s*',''
+    $tagzeile = ([string]$tagzeile).Trim(' ', '[', ']')
     foreach ($tag in ($tagzeile -split ',')) {
         $tag = $tag.Trim()
         if ($tag -and ($erlaubt -notcontains $tag)) { Write-Output ("TAG NICHT IN LISTE (" + $tag + "): " + $n); $fehler++ }
