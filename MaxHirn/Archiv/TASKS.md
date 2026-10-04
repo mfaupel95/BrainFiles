@@ -55,6 +55,7 @@ verschieben**, mit Datum. Nicht löschen —
       `Agenten/Routinen/gateway-waechter.ps1`, Aufgaben `Hermes_Gateway`,
       `MaxHirn-Gateway-Waechter`, `BrainFiles-Bus`
       Angelegt: 2026-09-16
+      **Caveat 2026-10-04:** unabhaengige Verifikation — Code-Beleg bestaetigt (bus.ps1 Z.14-18 pythonw-Ersatz); der Live-Zustand der Windows-Aufgabenplanung (Hermes_Gateway=Disabled, MaxHirn-Gateway-Waechter=Ready, Bus-PID) ist aus dem Worktree nicht neu pruefbar und wurde bei Erledigung (16.09.) direkt gemessen.
   die Historie zeigt, was schon einmal versucht wurde.
 - **Nichts erfinden.** Nur eintragen, was Max gesagt hat oder was aus einer
   abgebrochenen Arbeit tatsächlich offen blieb. Vermutete Folgeaufgaben
@@ -125,7 +126,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       laeuft; zwei Timer auf dieselbe Datei sind eine stille Last.
       Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/leitstand.py,
       Agenten/Handel/omniquant/gui.py
-- [x] **T-340 — Bus-Anbindungen gefixt: squeeze_eth.py und plattenplatz-pruefen**
+- [ ] **T-340 — Bus-Anbindungen gefixt: squeeze_eth.py und plattenplatz-pruefen**
       **Erledigt 04.10.2026, Commit adac9bc9.** Zwei verschiedene Ursachen,
       zwei verschiedene Loesungen - beide mit Gegenprobe.
       1) squeeze_eth.py: der Schattenarm rief handeln._main() ohne eigene
@@ -156,6 +157,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Spuren: bus_name als Literal in die ereignis.lauf-Rechnung).
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/squeeze/squeeze_eth.py, Agenten/Routinen/plattenplatz-pruefen.ps1
+      **2026-10-04: PARTIAL — zurueck auf offen.** Grund: (a)+(b) Datei-Fixes gueltig und verifiziert (squeeze_eth.py Z.34-38 eigene Meldung + handeln._main(); plattenplatz-pruefen.ps1 Z.3-4 'BUS: Bibliothek'), ABER (c) Ende-zu-Ende-Suite unter HEAD nicht reproduzierbar: `python Agenten/Bus/tests/test_ende_zu_ende.py` ⇒ Exit 1, test_anbindung_routinen meldet `exit ohne vorheriges Melde-Ende: ['datensortierung:78']` (statischer Scan; `exit 3` im Einzelinstanz-Guard Z.78 vor Melde-Start, Guard aus 917ac39e / T-240). Erst nach Beseitigung von `datensortierung:78` wieder als erledigt fuehren. Folgepunkt: T-240.
 
 - [ ] **T-341 — omnitrade_futures: kein Rust-Lauf laeuft, also null Signale**
       Kontext: Nach dem Pin-Fix (bde64285) zeigt die Spur jetzt auf die richtige
@@ -599,6 +601,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       **Erledigt 2026-10-01.** Der Auftragstest liest jetzt `wachen.weit.json` fuer die Papier-Pruefung des Schattenarms und hat einen eigenen Test fuer die live geschaltete Hauptspur.
       Angelegt: 2026-10-01 · Zuletzt: 2026-10-01 (erledigt)
       Betrifft: Agenten/Handel/tests/test_omniquant_fassung.py, Agenten/Handel/omniquant/wachen.json, Agenten/Handel/omniquant/wachen.weit.json
+      **2026-10-04: unabhaengig verifiziert — test_omniquant_fassung.py Z.143-215 liest wachen.weit.json (Z.159), Live-Test Z.210; omniquant/wachen.json Z.3 handel_erlaubt:true, Z.41 freigabe.erfuellt; Commit aecd6178 existiert.**
 
 
 - [ ] **T-302 — Hauptconfig-Modellliste entscheiden (1739 omniroute + 428 nous)**
@@ -838,6 +841,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 - [x] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
       **Erledigt 2026-10-01.** Kommentar in dauerlauf.py auf "KOPIER AKTIV" gezogen, test_handelstand.py nimmt kopier/kopier1zu1 nicht mehr aus der Auskommentiert-Liste.
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 (erledigt) · Betrifft Agenten/Handel/dauerlauf.py, Agenten/Werkzeuge/repos-zentrale/tests/test_handelstand.py
+      **2026-10-04: unabhaengig verifiziert — dauerlauf.py Z.223 '# KOPIER AKTIV (seit 30.09.2026, ...)' vorhanden; Test-Liste (test_handelstand.py) als abhaengiges Artefakt bestaetigt.**
 
 
 
@@ -3689,6 +3693,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30
       Betrifft: Agenten/Handel/klassik_*, Agenten/Handel/dauerlauf.py
       **Erledigt 2026-10-04 (Messung, Commit 1c24e4d3).** Die acht klassik_*-Spuren stehen in `dauerlauf.SPUREN` und werden seit dem Start des Dauerlaufs am 01.10. 13:35 in jedem Zyklus gefahren - Basis, mittel und hoch, zuletzt 23:02 alle acht 'ok' (305 klassik-Zeilen je Stufenlog). Kein Neustart noetig. `spiegelstand.py` meldet 41 von 41 Spuren byte-gleich nach Q:. T-255 (Bus-Anbindung) ist im selben Zug geschlossen.
+      **2026-10-04: unabhaengig verifiziert — klassik_sma/-ema/-macd/-bollinger/-donchian/-donchian_trend/-rsi/-rsi2/-sr_breaks/-pmax in dauerlauf.SPUREN (Z.410-428).**
 - [x] **T-199 — bots.json: zwei Absagen sind durch den Feed-Backtest ueberholt**
       Kontext: Die Liste `nicht_portierbar` (11 Eintraege) begruendet je Agent, warum
       keine Uebertragung erfolgt. Zwei Absagen stuetzen sich auf "keine Historie
@@ -3806,6 +3811,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/klassik_regeln.py, Agenten/Handel/klassik_*/handeln.py,
       Agenten/Bus/tests/test_anbindung_handel.py
       **Erledigt 2026-10-02.** Die Bus-Suite kennt seit 01.10.2026 den Regelkern-Zweig (klassik_regeln.spur_main reicht bus_name als Literal an spur_buch.zyklus weiter); test_anbindung_handel.py ist gruen, das Bus-Journal zeigt handel/klassik_* - jetzt 11 Spuren (662 Treffer am 02.10.).
+      **2026-10-04: unabhaengig verifiziert (Dateianspruch) — bus_name-Literal-Zweig in klassik_regeln.py (test_anbindung_handel.py Z.204-212). Hinweis: Suite-Gesamtaussage unter HEAD nicht gehalten, da test_anbindung_routinen an datensortierung:78 rot (siehe T-340).**
 
 - [x]   **T-315 — `gebuehren_setzen --anwenden`: zwei Maengel am Schreibweg — BEHoben 02.10.2026**
       Kontext: gefunden 02.10.2026 beim T-308-Fix. Zwei Fehler am Schreibweg,
