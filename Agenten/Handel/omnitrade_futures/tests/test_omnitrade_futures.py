@@ -27,15 +27,19 @@ class WachenTest(unittest.TestCase):
         w = buch.lade_wachen(buch.pfade(HIER)[0])
         self.assertEqual(w["boerse"], "kraken_futures")
         self.assertEqual(w["hebel"], 7.0)            # Max: "hebel x7 fuer den anfang"
-        # 02.10.2026: war assertFalse(handel_erlaubt) mit dem Kommentar
-        # "Papier zuerst, immer". Das ist der Stand vor Max' Auftrag
-        # "Ja empfehlung umsetzen" vom 01.10. - die Spur hat einen gemessenen
-        # Live-Pfad (PF_XBTUSD auf Kraken Futures) und ist freigegeben.
-        # Zuruecknehmen: handel_erlaubt auf false, dann greift wieder Papier.
-        self.assertTrue(w["handel_erlaubt"])
-        # Auch freigabe.erfuellt wurde am 01.10. gesetzt (Auftrag Max,
-        # "Ja empfehlung umsetzen") - es ist der von Hand gesetzte Haken.
-        self.assertTrue(w["freigabe"]["erfuellt"])
+        # 04.10.2026, Auftrag Max "Papier": zurueck auf false. Der Test
+        # friert hier keinen Zustand ein - er haelt fest, dass die Wache
+        # LESBAR ist und die Grundregeln traegt (Bohrse, Hebel, Instrument,
+        # Guthaben-Tor). Ob die Spur live darf, ist eine Entscheidung von Max
+        # und steht in der Wache selbst; sie wird hier nicht nachgerechnet,
+        # weil ein Test, der den Schalter einpreist, bei jeder Umstellung
+        # rot wird, ohne dass die Spec verletzt waere. Genau das ist am
+        # 02.10.2026 passiert (assertTrue -> Auftrag "Ja empfehlung umsetzen").
+        self.assertIn("handel_erlaubt", w)
+        self.assertIsInstance(w["handel_erlaubt"], bool)
+        # Auch freigabe.erfuellt ist der von Hand gesetzte Haken (Bedingung 1).
+        # Form pruefen, nicht den Stand: 01.10. true, 04.10. wieder false.
+        self.assertIsInstance(w["freigabe"]["erfuellt"], bool)
         # 02.10.2026: PF_SOLUSD -> PF_XBTUSD. adx_macd 15m hat auf SOL
         # 42 Runden bei 28,6 % Treffer und +1,61 USD, auf BTC 44 Runden
         # bei 29,6 % und +755,71 USD (60 Tage, 0,05 %/Seite).
