@@ -204,3 +204,88 @@ class GegenprobeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ZweiWerkzeugeEinMusterTest(unittest.TestCase):
+    """DER BEFUND VOM 04.10.2026, der T-332 zur Haelfte ueberlebt hat.
+
+    `doppelte_nummern.py` trug nach der Reparatur `[ x?!✓]` und las damit
+    alle fuenf Statuszeichen. `erledigen.py` NICHT - dort stand weiter
+    `^- \[[ x]\] \*\*(T-\d{3,})\b`: genau ein Leerzeichen, keine
+    Wartezeichen.
+
+    Gemessen an TASKS.md: `doppelte_nummern` sah 342 Bloecke, `erledigen`
+    313. 29 Eintraege waren fuer das Schreib-Werkzeug unsichtbar - und die
+    Folge war still, weil es `T-332 kommt 0x vor` meldete fuer einen
+    Eintrag, der in Zeile 378 stand.
+
+    DIE REGEL: zwei Werkzeuge, die dieselbe Datei lesen, teilen EIN Muster.
+    Auseinanderlaufen hiesse, dass eins von beiden blind wird, ohne dass
+    jemand etwas bemerkt.
+    """
+
+    def test_die_werkzeuge_sehen_dieselben_zeichen(self):
+        """Geprueft wird das MERKMAL, nicht der Zeichenketten-Gleichheit.
+
+        Die beiden Muster duerfen sich im Titelteil unterscheiden
+        (`doppelte_nummern` nimmt den Titel mit, `erledigen` braucht ihn
+        nicht) - zaehlen muss nur, dass BEIDE alle fuenf Statuszeichen
+        akzeptieren und beide die Leerstelle optional lassen.
+        """
+        spec = importlib.util.spec_from_file_location("erledigen", SCRIPT.parent
+                                                      / "erledigen.py")
+        erl = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(erl)
+        for zeichen in (" ", "x", "?", "!", "✓"):
+            zeile = "- [%s] **T-400 — Titel**" % zeichen
+            for name, muster in (("doppelte_nummern", dn.KOPF),
+                                 ("erledigen", erl.KOPF)):
+                self.assertIsNotNone(
+                    muster.match(zeile),
+                    "%s sieht das Zeichen [%s] nicht - ein Werkzeug wird "
+                    "blind fuer diese Bloecke" % (name, zeichen))
+        # Und beide muessen die Leerstelle optional lassen (in der Datei
+        # stehen eine UND drei).
+        for leer in ("", " ", "   "):
+            zeile = "- [ ]%s**T-401 — Titel**" % leer
+            self.assertIsNotNone(dn.KOPF.match(zeile))
+            self.assertIsNotNone(erl.KOPF.match(zeile))
+
+    def test_doppelte_ohne_muster_gleichheit_meldet_nichts(self):
+        """Die Gegenprobe: zwei verschiedene Muster, dann meldet er der
+        Test - und `erledigen` verliert Eintraege."""
+        spec = importlib.util.spec_from_file_location("erledigen2", SCRIPT.parent
+                                                      / "erledigen.py")
+        erl = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(erl)
+        alt = re.compile(r"^- \[[ x]\] \*\*(T-\d{3,})\b")
+        self.assertNotEqual(dn.KOPF.pattern, alt.pattern)
+        text = datei(
+            "- [ ] **T-330 — mit drei Leerzeichen**",
+            "      Angelegt: 04.10.2026",
+            "- [?] **T-331 — wartet**",
+            "      Angelegt: 04.10.2026",
+        )
+        zeilen = text.split("\n")
+        mit_alt = [z for z in zeilen if alt.match(z)]
+        mit_neu = [z for z in zeilen if dn.KOPF.match(z)]
+        # GEMESSEN, nicht angenommen: das alte Muster sieht `[ ]` mit EINER
+        # Leerstelle. Es verliert die DREI Leerstellen und das Wartezeichen -
+        # und genau das sind die 29 Bloecke in der echten Datei. Die
+        # Attrappe bildet beide Verlustarten ab, sonst prueft der Test nur die
+        # halbe Regel.
+        text2 = datei(
+            "- [ ]   **T-332 — drei Leerzeichen**",
+            "      Angelegt: 04.10.2026",
+            "- [?] **T-333 — wartet**",
+            "      Angelegt: 04.10.2026",
+        )
+        z2 = text2.split("\n")
+        sichtbar_neu = [z for z in z2 if dn.KOPF.match(z)
+                        and ("T-332" in z or "T-333" in z)]
+        sichtbar_alt = [z for z in z2 if alt.match(z)
+                        and ("T-332" in z or "T-333" in z)]
+        self.assertEqual(len(sichtbar_neu), 2,
+                         "das Hausform-Muster sieht beide Bloecke")
+        self.assertEqual(len(sichtbar_alt), 0,
+                         "das alte Muster verliert DREI Leerstellen UND das "
+                         "Wartezeichen - im echten Bestand 29 Bloecke")

@@ -63,6 +63,9 @@ nicht gegen die Nachbardatei.
 | Adresse in `fallback_providers`/`providers` zeigt auf einen toten Port | **Befund** (der Weg wird gebraucht) |
 | Port antwortet mit HTTP 200, aber es ist eine FREMDE Anwendung | **Befund** (falsche Zahl, der Dienst laeuft woanders) |
 | Zwei Stellen behaupten dasselbe (Vorgabe `model:` und `models:`-Liste) | beide pruefen - eine richtig, eine falsch ist der Normalfall |
+| Ein Aufruf scheitert mehrfach, der Turn endet aber trotzdem mit einer Antwort | **Befund mit Tarnung** - die Fallback-Kette hat ihn gerettet, der Nutzer sieht nichts (siehe *Abnahme*) |
+| Ein Config-Wert benennt eine lokale Ressource (Schriftart, Modellname, Pfad, Port), die auf dieser Maschine nicht existiert | **Befund** - eine still falsche Zeile; der Leser faellt zurueck, ohne zu melden |
+| Ein Auflisting zeigt die Konfiguration korrekt, der geaenderte Pfad lief aber nie durch | **kein Beleg** - das Listing liest die Datei, nicht den Weg (siehe *Nachweisstufen*) |
 
 ## Fallen (alle selbst erlebt)
 
@@ -104,6 +107,19 @@ nicht gegen die Nachbardatei.
   den Aufruf MIT dem Schluessel aus der `.env` wiederholen - und den Schluessel nie
   ausgeben (`grep -E "^NAME=" .env | cut -d= -f2-` in eine Shell-Variable, nicht in
   die Kommandozeile).
+- **Ein Modellname traegt keine Fensterzahl - sie ist eine Eigenschaft des Modells,
+  und dieselbe Familie kann zwei verschiedene haben.** `gemma-e4b-8k` sah im
+  `model_metadata` nach 8.192 aus, `/api/show` meldete fuer dieselbe Familie
+  131.072. Ein Urteil ueber "zu kleines Fenster" faellt deshalb NIE aus dem
+  Namen und NIE aus einer einzigen Quelle: Cloud-Modelle ueber
+  `agent/model_metadata.py::get_model_context_length`, lokale ueber
+  `/api/show` (Schluessel im `model_info` nach dem Muster `context` filtern,
+  der heisst je nach Familie `gemma4.context_length`, `llama.context_length`, ...).
+- **Ein unbekannter Modellname liefert eine VERMUTUNG, keine Messung.** Der Loader
+  gibt eine Fallback-Zahl zurueck und schreibt eine Warnung auf stdout
+  ("Could not determine context length ... falling back to 256,000") - die Zahl im
+  Ergebnistext ist dann geraten. Ein unbekannter Name gegen einen bekannten
+  Nachbarn aus derselben Familie pruefen, bevor er in eine Tabelle wandert.
 - **Zeilenenden sind ein Beleg, kein Nebenschauplatz.** Nach jeder Massenaenderung
   `git diff --numstat` JE DATEI: 6/6 ist die gewollte Ersetzung, hunderte Zeilen heissen
   gekippte Enden. Fuer die Gegenprobe `read_bytes()`/`write_bytes()` nehmen und zaehlen:
@@ -114,6 +130,42 @@ nicht gegen die Nachbardatei.
   verstecken.** Nach jedem Set den Wert zuruecklesen UND die betroffene Zeile im
   Diff pruefen; `config set` schreibt die Datei neu (Kommentar-Schluss-Falle in
   references/fallen.md).
+
+## Abnahme: eine fremde Config-Session pruefen ("funktioniert jetzt alles wie gewollt?")
+
+Anlass: eine fruehere Sitzung hat die Config umgebaut, jetzt soll der Zustand
+verifiziert werden. Das Ergebnis ist eine **Tabelle Behauptung -> Messung**, nicht
+die Commit-Meldung.
+
+1. **Die Sitzung ist ein Commit.** `git log --oneline -5`, dann
+   `git show --stat <hash>` fuer die Dateiliste und `git show <hash> -- <pfad>` fuer
+   jede Aenderung. Die Commit-Meldeliste ist eine **Absichtserklaerung, kein Beleg** -
+   sie sagt, was gewollt war, nicht was traegt.
+2. **Je Zeile einzeln messen.** `config get <schluessel>` pro geaendertem Schluessel,
+   das Auflisting des betroffenen Blocks (`moa list`, `fallback list`, `profile list`,
+   `cron list`), und EIN echter Aufruf durch den Hauptpfad. Eine Sammelpruefung
+   ("config check exit 0") deckt nur die YAML-Syntax ab - sie sagt nichts darueber,
+   ob ein Wert gelesen wird.
+3. **Maskierung pruefen - der wichtigste Punkt.** Ein geaenderter Pfad kann
+   vollstaendig tot sein, ohne dass es auffaellt, wenn eine Rueckfallkette die Antwort
+   liefert. Der Beweis ist die **Fehlschlagspur im Log, nicht die Antwort**:
+   `grep -E "provider=<geaendert>|error=" logs/agent.log` und die Zeilen danach lesen.
+   Ein Aufruf, der dreimal mit Retry scheitert, den geaenderten Aggregator also nie
+   erreicht, endet trotzdem mit einer guten Antwort auf dem Fallback - im Protokoll
+   steht kein Fehler, den der Nutzer sieht. Ein geaenderter Pfad gilt erst als
+   belegt, wenn er **einen Turn selbst vollendet** hat; ein Auflisting, das die
+   Presets korrekt zeigt, beweist nur, dass die Datei lesbar ist.
+4. **Fehlertext ohne Fundstelle im eigenen Baum ist fremd.** Bevor eine Aenderung
+   verantwortlich gemacht wird: den Fehlertext im eigenen Quellbaum suchen. Kommt er
+   dort nicht vor (weder Agent-Code noch SDK noch Relay), stammt er vom Endpunkt oder
+   vom Transport - **nicht** von der just geaenderten Datei. Dann lautet das
+   Ergebnis "die Konfiguration ist korrekt verdrahtet, der Weg scheitert extern",
+   und die Massnahme ist eine Gegenprobe an einem anderen Pfad - nicht das Umstellen
+   von Presets, die ein Listing gerade korrekt anzeigt.
+5. **Beleg und Luecke getrennt melden.** Was gemessen wurde, gehoert in die Tabelle;
+   was offen blieb, gehoert als **benannter offener Beleg** darunter, mit dem Lauf,
+   der ihn liefert. Nie die offene Zeile in eine Tabelle schieben, deren Saetze alle
+   mit "ja" enden.
 
 ## Beleg (Muster)
 

@@ -209,20 +209,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/tests/test_einheit_kraken.py,
       Agenten/Handel/tests/test_spur_wache.py, Agenten/Handel/replay.py,
       Agenten/Handel/tests/test_replay.py
-- [ ] **T-343 — Nautilus-Orderweg: der DEMO-Haken ist je Lauf wieder weg**
-      Kontext: Seit dem 04.10.2026 (Leitstand Schritt 2) laesst sich der
-      OKX-DEMO-Node im Leitstand starten, und der Reiter hat einen echten
-      Order-Client-Haken. Der ist aber nur eine Checkbox im eigenen Fenster
-      und nicht der Weg, den die Spuren gehen. Die Hausspuren ordnen ueber
-      `scanner/okx`, `xperp/okxf`, `mosaic/okx_spot` und
-      `nautilus_kraken/kraken_futures` - vier eigene, gemessene Wege. Wer
-      den Nautilus-Haken anhaekt, bekommt einen fuenften Weg ohne Sperren,
-      ohne Freigabefenster und ohne Spiegelung.
-      Naechster Schritt: entweder den Haken im Reiter beschriften ('nur
-      Beobachtung, kein Weg der Spuren') oder ihn entfernen. Vorher
-      messen, welche der vier Wege der DEMO-Node überhaupt ersetzen kann.
-      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/leitstand_nautilus.py,
-      Agenten/Handel/nautilus/nautilus_gui.py
 - [ ] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
       Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
       Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
@@ -389,22 +375,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/gebuehren_setzen.py
 
-- [ ]   **T-332 — `doppelte_nummern.py` uebersah 26 Eintraege und meldete gruen**
-      Kontext: Der Pruefer der Aufgabenliste erkannte nur `- [ ]` und `- [x]`. Die Datei
-      traegt aber auch `- [?]` (9), `- [!]` (1) und `- [✓]` (1). Folge: `hoechste Nummer:
-      T-318`, waehrend T-330 oben im Offen-Abschnitt stand - der Pruefer meldete OK, ohne
-      den halben Bestand zu lesen. Wer eine doppelte Nummer in einem wartenden oder
-      wichtigen Eintrag anlegte, wurde nicht gesehen. Der Leerraum nach dem Zeichen ist
-      jetzt optional (in der Datei stehen eine und drei Leerstellen).
-      Gefunden an einer FAELSCHEN Meldung: mein erster Testlauf nach dem Eintragen der
-      neuen Aufgaben meldete weiterhin 296 Bloecke und T-318 - ich hatte die Ursache
-      zunaechst in meinen Eintrag format gelegt. Richtig war die Diagnose: ein gruener
-      Pruefer, dessen Zahl sich nicht bewegt hat.
-      Gegenprobe als Regel: nach jedem Eintraegen den Pruefer laufen lassen und die
-      Bloeckzahl muss um die Zahl der neuen Eintraege steigen - bleibt sie gleich, ist
-      nicht der Eintrag falsch, sondern der Pruefer.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py
 
 - [ ]   **T-327 — `anbindung_pruefen.py` las die Wachen aus Agenten/ statt Agenten/Handel/**
       Kontext: `HANDEL = os.path.dirname(HIER)` in einem Werkzeug, das IN `Agenten/Handel`
@@ -2637,7 +2607,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/nautilus_kraken
 
 
-- [ ] **T-064 — Nautilus-Kraken-Orderweg: WebSocket-Token verweigert, REST traegt
+- [ ] **T-064 — Nautilus-Kraken-Orderweg: WebSocket-Token verweigert, REST traegt**
       Kontext: `nautilus_kraken` und `nautilus_kraken_futures` laufen Papier
       (`handel_erlaubt=false`, `freigabe.erfuellt=false`). Der gemeldete Fehler "OKX
       51001" war ERZEUGT und steht in keiner Datei (Suche ueber den Handelsbaum: nur
@@ -3318,6 +3288,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x]   **T-332 — `doppelte_nummern.py` uebersah 26 Eintraege und meldete gruen**
+      Kontext: Der Pruefer der Aufgabenliste erkannte nur `- [ ]` und `- [x]`. Die Datei
+      traegt aber auch `- [?]` (9), `- [!]` (1) und `- [✓]` (1). Folge: `hoechste Nummer:
+      T-318`, waehrend T-330 oben im Offen-Abschnitt stand - der Pruefer meldete OK, ohne
+      den halben Bestand zu lesen. Wer eine doppelte Nummer in einem wartenden oder
+      wichtigen Eintrag anlegte, wurde nicht gesehen. Der Leerraum nach dem Zeichen ist
+      jetzt optional (in der Datei stehen eine und drei Leerstellen).
+      Gefunden an einer FAELSCHEN Meldung: mein erster Testlauf nach dem Eintragen der
+      neuen Aufgaben meldete weiterhin 296 Bloecke und T-318 - ich hatte die Ursache
+      zunaechst in meinen Eintrag format gelegt. Richtig war die Diagnose: ein gruener
+      Pruefer, dessen Zahl sich nicht bewegt hat.
+      Gegenprobe als Regel: nach jedem Eintraegen den Pruefer laufen lassen und die
+      Bloeckzahl muss um die Zahl der neuen Eintraege steigen - bleibt sie gleich, ist
+      nicht der Eintrag falsch, sondern der Pruefer.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py
+      Beide Werkzeuge auf der Hausform (erledigen.py sah 313 von 342 Bloecken); 15 Tests nageln die Regel fest
 - [x] **T-342 — Backtest-Fensterlaenge: adx_macd 28 Tage positiv, Nachbarfenster 382 USD anders**
       Kontext: gemessen am 04.10.2026, BTC 15m, 10.000 USD, 0,05 %/Seite,
       OMNI_LONG_ONLY=1, echter Rust-Backtest. Nur adx_macd im 28-Tage-Fenster
@@ -3335,6 +3322,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/omnitrade/intervalle_messen.py, Werkstatt/omnitrade/
       neu gemessen 04.10.2026 (14/28/42 Tage), Befund als T-349 ausgelagert
+- [x] **T-343 — Nautilus-Orderweg: der DEMO-Haken ist je Lauf wieder weg**
+      Kontext: Seit dem 04.10.2026 (Leitstand Schritt 2) laesst sich der
+      OKX-DEMO-Node im Leitstand starten, und der Reiter hat einen echten
+      Order-Client-Haken. Der ist aber nur eine Checkbox im eigenen Fenster
+      und nicht der Weg, den die Spuren gehen. Die Hausspuren ordnen ueber
+      `scanner/okx`, `xperp/okxf`, `mosaic/okx_spot` und
+      `nautilus_kraken/kraken_futures` - vier eigene, gemessene Wege. Wer
+      den Nautilus-Haken anhaekt, bekommt einen fuenften Weg ohne Sperren,
+      ohne Freigabefenster und ohne Spiegelung.
+      Naechster Schritt: entweder den Haken im Reiter beschriften ('nur
+      Beobachtung, kein Weg der Spuren') oder ihn entfernen. Vorher
+      messen, welche der vier Wege der DEMO-Node überhaupt ersetzen kann.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/leitstand_nautilus.py,
+      Agenten/Handel/nautilus/nautilus_gui.py
+      Beschluss Max 'beschriften': drei sichtbare Stellen (Hinweis beim Anhaeken, Warnzeile ueber dem Log, Logzeile bei jedem Start mit Haken). 18/18 in test_leitstand_nautilus, davon 4 neu in OrderClientBeschriftet. Commits d630108 (nautilus) und 4a4517a2 (Leitstand).
 - [x] **T-309 — `test_omniquant_fassung` schlaegt, weil der Schattenarm scharf ist**
       Kontext: gefunden 02.10.2026, `test_omniquant_fassung.AuftragTest.test_schattenarm_weit_bleibt_papier`
       (`AssertionError: None != 'weit'`). Auftrag Max 01.10.2026 war, die HAUPTspur scharf zu

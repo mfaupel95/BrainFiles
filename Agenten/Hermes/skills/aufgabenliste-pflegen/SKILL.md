@@ -263,13 +263,23 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
 - **Python wertet `open(p, "wb")` aus, BEVOR der Schreibausdruck gebaut ist.**
   `open(p,'wb').write(b.replace(anker, anker + block))` kuerzt die Datei auf null
   Bytes, wenn der Ausdruck danach scheitert (typisch: bytes + str, Groessen-
-  assert). Payload ZUERST in eine Variable bauen, `assert neu != b` plus
-  Groessen-Delta pruefen, `open(...,'wb')` erst in der allerletzten Zeile.
-  War die Datei vor dem Fehlversuch sauber gegen HEAD (`git status --porcelain
-  <pfad>` leer), heelt `git checkout HEAD -- <pfad>`; der Pruefer
-  (`doppelte_nummern.py`) muss danach gruen sein. War sie es NICHT, ist der
-  Verlust endgueltig - dann ist die parallele Arbeit gemeldet, nicht heimlich
-  ersetzt.
+  assert, Tippfehler im Variablennamen). Payload ZUERST in eine Variable bauen,
+  `assert neu != b` plus Groessen-Delta pruefen, `open(...,'wb')` erst in der
+  allerletzten Zeile. War die Datei vor dem Fehlversuch sauber gegen HEAD
+  (`git status --porcelain <pfad>` leer), heilt `git checkout HEAD -- <pfad>`;
+  der Pruefer (`doppelte_nummern.py`) muss danach gruen sein. War sie es NICHT,
+  ist der Verlust endgueltig - dann ist die parallele Arbeit gemeldet, nicht
+  heimlich ersetzt.
+  **Der Schreibvorgang gehoert in eine Datei, nicht in einen Heredoc.** Der Weg,
+  der die Falle zuverlaessig schliesst: den Mutationsvorgang als Skript unter
+  `Agenten/Hermes/cache/scratch/<zweck>.py` ablegen und mit
+  `python -m py_compile <datei>` pruefen, BEVOR es laeuft. Ein Tippfehler im
+  Variablennamen ist dann ein Syntaxfehler im Skript und wird vor dem ersten
+  `open()` gemeldet - im Heredoc ist er ein Laufzeitfehler hinter dem
+  `open()`, und der Loescher steht schon. (Der Scratch-Pfad ist auch der Weg
+  um `$TMPDIR` herum: `python /tmp/x.py` scheitert unter Windows mit
+  `can't open file 'C:\tmp\x.py'`, weil das native Python `$TMPDIR` nicht auf
+  `/tmp` abbildet - ein C:-Pfad funktioniert.)
 - **Eine gemischte Datei ist der NORMALZUSTAND, kein Abbruchgrund.** Beim Byte-Schreiben zuerst `roh.count(b"\r\n")` gegen `roh.count(b"\n")` stellen und daraus das **dominante** Ende ableiten (`crlf > lf_gesamt - crlf`); ein Skript, das bei Mischung abbricht, verhindert genau den Fall, den man kennt — und der haeufigste ist. Voraussetzung ist nur, dass der Schnitt **nichts normalisiert**: der neue Block bekommt das dominante Ende, alle bestehenden Zeilen bleiben unangetastet. Die Vorpruefung „Datei ist gemischt, also riskant" ist damit eine Pruefung ohne Aussage — der Beweis ist `git diff --numstat` (reine Einfuegungen, 0 Loeschungen), nicht die Vorpruefung. Ein Skript, das misst und dann **trotzdem abbricht**, traegt eine Regel in sich, die es nie pruefen wollte: lieber messen und den Diff sprechen lassen.
 
 - **Ein Sichtfenster (`sed -n '1,40p'`) zeigt nur den Kopf.** Die eigene Aufgabe
@@ -417,6 +427,18 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
 - **Ein Block, der beim Schreiben zerschnitten wurde, wird aus `HEAD`
   wiederhergestellt** und dann neu ergaenzt - nicht aus dem Gedaechtnis neu
   formulieren, und nicht einfach der eigene Text vor den Rest gesetzt.
+- **Ein eigener Block wird in EINEM Zug ersetzt, nie in zwei Index-Schritten.**
+  Wer erst `block.split(nl)`, dann `zeilen.insert(1, beleg)`, dann spaeter
+  `zeilen.pop()` fahrt, verliert dazwischen Zeilen: das `pop()` entfernt die
+  Zeile, die gerade eingefuegt wurde, nicht die alte - das Ergebnis ist ein
+  Block, in dem eine Zeile fehlt, und die Datei ist byte-kleiner, obwohl der
+  Schnitt auf die richtigen Zeilen zeigte. Der Block wird fertig gebaut (Kopf +
+  Beleg + Kontext + Naechster Schritt + Betrifft) und in einem Rutsch
+  eingesetzt; jede Umordnung ist ein Neuschreiben des Blocks, kein Verschieben
+  von Teilstuecken. Gegenprobe: **Zeilenzahl des neuen Blocks muss
+  Zeilenzahl des alten plus eigene Zeilen sein**, und `git diff --numstat` muss
+  reine Insertions zeigen (eine Zeile Loeschung ist die Kopfzeile, die mit
+  `[ ]` auf `[x]` wechselt - mehr Loeschungen bedeuten Fremdtext).
 
 ## Block verschieben (Offen -> Erledigt)
 

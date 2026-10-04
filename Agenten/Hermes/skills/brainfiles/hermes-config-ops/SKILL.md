@@ -29,6 +29,15 @@ weiterlaufen und die Änderung mit einem echten Lauf belegt ist.
 - "wo trage ich diesen Schlüssel ein / mit welchem Befehl setze ich die
   Umgebungsvariable" — erst die Ablage nach dem Verbraucher entscheiden, dann
   setzen und am laufenden Dienst belegen (nicht nur "steht drin")
+- "funktioniert jetzt alles wie gewollt?" / "prüf die Config aus der letzten
+  Sitzung" — die Commit-Meldung ist eine Absichtserklärung, nicht der Beleg: je
+  Zeile messen und die Maskierung durch die Rückfallkette suchen
+  (references/config-gegenprobe.md, Abschnitt *Abnahme*)
+- "richtige das optimal ein mit den besten Modellen" / Desktop, CLI oder TUI
+  sollen schneller, guenstiger oder traeger sein — dann ist JEDER Kandidat vorher
+  wirklich zu rufen (references/modellkette-messen.md); eine Tabelle aus
+  Modellnamen ist kein Beleg, und ein `provider: auto` in einem
+  `auxiliary`-Block erbt still das Hauptmodell
 
 **Don't use for:** MCP-Server-Einträge zwischen Claude und Hermes (`mcp-sync`),
 Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
@@ -55,7 +64,21 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
    `.bak-JJJJMMTT`), dann `git -C <BrainFiles> commit --author="Hermes
    <hermes@local>" -- <pfad>` — nur benannte Pfade, nie `-A`. Vor dem Schreiben
    `git status --porcelain <pfad>` und `git diff --cached <pfad>` lesen; fremd
-   Gestagetes nie mitcommitten.
+   Gestagetes nie mitcommitten. Liegt fremde Arbeit im Baum, den Rebase erst
+   freiräumen: `git stash push -- <nur diese fremden Pfade>` (NIE `-a`, das
+   nimmt die eigene uncommittete Arbeit mit), `git pull --rebase`, `git stash
+   pop`.
+8. **Zwei Nachweisstufen getrennt melden.** „Der Wert ist richtig verdrahtet"
+   (der Leser im Code nimmt ihn, geprüft durch Aufruf der Auflösungsfunktion)
+   und „der Wert wirkt" (ein Lauf zeigt die Wirkung) sind verschiedene Aussagen.
+   Nie die zweite behaupten, wenn nur die erste gemessen ist — und im Bericht
+   sagen, welcher Lauf die zweite noch braucht (references/modellkette-messen.md,
+   Abschnitt Nachweisstufen).
+9. **Ein geänderter Pfad gilt erst als belegt, wenn er einen Turn selbst
+   vollendet hat.** Eine Rückfallkette kann eine tote Konfiguration vollständig
+   verdecken: der Aufruf scheitert, der Nutzer bekommt trotzdem eine gute Antwort
+   und sieht keinen Fehler. Immer die Fehlschlagspur im Log mitlesen, nicht die
+   Antwort (references/config-gegenprobe.md, Abschnitt *Abnahme*).
 
 ## Index — references laden, wenn ...
 
@@ -79,6 +102,8 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - references/fallen.md — laden, wenn eine Aenderung an config.yaml/.env unerwartete Nebenwirkungen zeigt
 - references/auswahllisten-erweitern.md — laden, wenn eine Modell-/Auswahlliste unvollstaendig ist oder gekuerzt werden soll
 - references/auxiliary-kompression.md — laden, wenn eine Karte/Sitzung mit "context window ... below the minimum 64,000" abbricht oder `auxiliary.compression` gesetzt werden soll
+- references/modellkette-messen.md — laden, wenn ein Modell eingesetzt werden soll ("bestmoegliche Hilfsmodelle", "welches Modell laeuft wo"): Fenster aus dem Loader holen, jeden Kandidaten einmal wirklich rufen, Aggregator/Hilfsmodelle/Mainmodell nach Rolle trennen, tote Schluessel finden; enthaelt auch die Nachweisstufen (verdrahtet ≠ belegt) und das zeilenweise Block-Ersetzen in YAML
+- references/moa-und-hilfsmodelle.md — laden, wenn `moa:`, `auxiliary:` oder `prompt_caching.cache_ttl` gestellt wird: der Aggregator IST das handelnde Modell (lokales Modell dort = Fehlbau), `provider: auto` erbt das Hauptmodell, und der 1h-Nachweis braucht eine Pause laenger als 5 min plus Gegenprobe auf 5m
 
 ## Nachweis (Abschluss)
 
@@ -86,3 +111,7 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - `Compare-Object` Sicherung ↔ Datei: genau eine geänderte Zeile.
 - `hermes gateway status`: Aufgabe registriert, Prozess läuft — ohne Neustart.
 - `Wissen/Hermes.md` nennt Änderung, Prüfweg, Sicherungspfad und Falle; committet.
+- Der Bericht trennt **verdrahtet** (Leser nimmt den Wert, per Funktionsaufruf
+  geprüft) und **belegt** (ein Lauf zeigt die Wirkung). Fehlt die zweite Stufe,
+  steht sie als offener Beleg mit dem fehlenden Lauf drin — nicht als Erfolg.
+  Ein Config-Wert im Bericht ohne seinen Lauf ist eine Behauptung.

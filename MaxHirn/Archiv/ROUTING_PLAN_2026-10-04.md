@@ -1,3 +1,5 @@
+> **Überholt.** Dieser Stand deckt 170 offene Punkte ab und ist vom 04.10.2026, 22:50. Nach dem Bau mit der breiten Kopfregel (`routing-plan/kopfformen.py`) trägt gültig [`ROUTING_PLAN_2026-10-04-2.md`](ROUTING_PLAN_2026-10-04-2.md) **171 offene Punkte**, geprüft von Hausprüfer, unabhängigem Prüfer und Gegenprobe (Exit 0).
+
 # Routing-Plan: offene Punkte in TASKS.md
 
 Erzeugt am 2026-10-04 · Quelle: `MaxHirn/Archiv/TASKS.md` · Werkzeug: `routing_plan_bauen.py`

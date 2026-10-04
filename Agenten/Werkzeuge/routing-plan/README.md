@@ -26,28 +26,46 @@ Alle Eintraege im Abschnitt `## Offen`, die NICHT `[x]` tragen — also auch
 `[ ]`, `[~]`, `[?]` und `[!]`. Ein `[x]` unter `Offen` wird gezählt, aber
 nicht als offen geführt: im Haus wandert er erst später nach `## Erledigt`.
 
-## Der Titel-Trenner ist uneinheitlich — beide Werkzeuge sind tolerant
+## Der Titel-Trenner ist uneinheitlich — die Kopfregel steht in EINER Datei
 
-Gemessen am 04.10.2026 an 192 Einträgen in `TASKS.md`:
+Gemessen am 04.10.2026 an den 192 Einträgen im Abschnitt `## Offen` von
+`TASKS.md` (192 Statuszeichen-Zeilen, 171 davon offen):
 
 | Form | Anzahl |
 |---|---|
 | `- [ ] **T-NNN — Titel**` (Gevrierstrich, schließendes `**`) | 146 |
-| `- [ ] **T-NNN - Titel**` (Bindestrich, schließendes `**`) | 46 |
-| `- [ ] **T-NNN — Titel` (Gevrierstrich, Titel bricht ohne `**` um) | 1 (T-064) |
+| `- [ ] **T-NNN - Titel**` (ASCII-Bindestrich, schließendes `**`) | 46 |
+| Titel bricht ohne schließendes `**` um | 10 (darunter T-064) |
 
-`routing_plan_bauen.py` und `routing_plan_pruefen.py` erkannten anfangs nur
-die erste Form. Folge: **47 offene Punkte fehlten im Plan, und beide meldeten
-GRÜN** — der Prüfer teilte die Enge des Builders, also prüfte er die
-Lücke nicht, sondern übernahm sie. Korrigiert in beiden Werkzeugen
-(`titel_aus()` schneidet das Sternchenpaar bzw. einen ` - erledigt`-Vermerk
-ab). Gegenbeweis: mit der alten Regex meldet der Prüfer den neuen Plan rot
-und führt 44 echte offene Punkte als „erfunden".
+`kopfformen.py` ist die **eine** Kopfregel des Hauses: ein Trenner-Satz
+(`—` / `–` / `-`) als Zeichenmenge, ein Titel, der ohne `**` umbrechen darf.
+`routing_plan_bauen.py` und `routing_plan_pruefen.py` importieren sie —
+ein zweites Muster in einer der Dateien wäre eine zweite Wahrheit.
+
+**Warum das der entscheidende Punkt ist:** `VERDAECHTIG` in derselben Datei
+benennt jede Zeile, die wie ein Eintrag *aussieht*, aber von keinem Muster
+erfasst wird. Ein stillschweigend nicht gelesener Eintrag fällt auf **beiden**
+Seiten weg — im Plan *und* in der Liste der offenen Punkte — und die
+Zahlengleichheit `123 == 123` meldet einen unvollstaendigen Plan grün. Genau
+so sind am 04.10.2026 47 offene Punkte verschwunden, weil der Prüfer die
+Enge des Builders **teilte**: er prüfte die Lücke nicht, er übernahm sie.
+Seitdem gilt: der Bauer bricht mit `Abbruch` ab, der Prüfer meldet rot.
+
+Gegenbeweis, gemessen (siehe Test `GegenprobeOhneFixTest`): die alte enge
+Regel liest 125 offene Punkte, die breite 171 — **46 gehen verloren**, und
+genau diese 46 führt der alte Prüfer als „nicht offen / erfunden".
+
+Tests: `python Agenten/Werkzeuge/tests/test_routing_kopfformen.py` (17).
+Sie bauen echte Temp-Dateien, fassen `TASKS.md` nie an und enthalten einen
+Test, der verlangt, dass das **alte** Muster an ASCII-Bindestrich und
+Umbruch-Titel scheitert — sonst prüft die Suite nur, dass die neue Regel
+funktioniert, nicht dass die alte zu eng war.
 
 **Regel: Builder und Prüfer dürfen nie dieselbe Enge teilen, wenn der Prüfer
 die Vollständigkeit behaupten soll.** `routing_plan_unabhaengig.py` ist der
 Gegenweg: eigener Zählweg, eigene Markdown-Prüfung, kein Import des
-Hausprüfers.
+Hausprüfers — aber derselbe `VERDAECHTIG`-Blick, damit auch dort kein
+Eintrag lautlos verschwindet.
 
 ## Dateiwahl
 
@@ -114,9 +132,20 @@ Kennzeichnung. Exit 0 = grün, Exit 1 = rot mit Begründung.
 
 `gegenprobe.py` verletzt den Plan sechs Mal (Zeile weg, Zeile doppelt, DoD
 leer, fremder Assignee, Welle falsch gekennzeichnet, Abschnitt auf falscher
-Ebene) und verlangt jedes Mal einen roten Lauf. Ein Prüfer, der immer grün
-sagt, ist schlechter als keiner — die Gegenprobe ist deshalb Pflicht, nicht
-Kür.
+Ebene) **und prüft vier Mal die Quelle**: eine gültige ASCII-Kopfzeile und
+ein gültiger Umbruch-Titel müssen gelesen werden, eine Kopfform, die kein
+Muster kennt, muss den Bauer zum Abbruch und beide Prüfer zum roten Lauf
+bringen. Ein Prüfer, der immer grün sagt, ist schlechter als keiner — die
+Gegenprobe ist deshalb Pflicht, nicht Kür.
+
+Zwei Fehlerklassen sind dabei am 04.10.2026 real passiert und deshalb
+ausdrücklich abgesichert: die Mutation `fremder_assignee` suchte einen
+festen Namen (`markt-recherche`), der in einer Attrappe gar nicht vorkommt —
+die Mutation blieb leer, der Prüfer blieb grün. Und `mutieren()` zerlegte
+den Plan an `\r\n`, obwohl der Builder CRLF nur schreibt, *weil* die Quelle
+CRLF trägt; eine LF-Attrappe ergab eine leere Zeilenliste und einen
+IndexError. Beide nehmen jetzt den Zeilenendungs-Charakter aus der Datei
+bzw. einen echten Roster-Namen aus dem Plan.
 
 ## Bekannte Grenzen
 
