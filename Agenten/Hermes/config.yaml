@@ -905,6 +905,7 @@ plugins:
     - drain
     - email-platform
     - everything-claude-code
+    - homeassistant
     - memory-wiki
     - meta-ai-image-gen
     - nous
@@ -1062,10 +1063,16 @@ known_builtin_toolsets:
 known_plugin_toolsets:
   cli:
     - a2a
+    - homeassistant
     - spotify
   telegram:
     - a2a
+    - homeassistant
     - spotify
+  acp:
+    - homeassistant
+  webhook:
+    - homeassistant
 mcp_servers:
   affinity:
     args:
@@ -1270,3 +1277,7 @@ platforms:
     enabled: true
 cron:
   catch_up_missed: false
+_left_core_scoped:
+  - homeassistant
+_left_core_installed:
+  - homeassistant

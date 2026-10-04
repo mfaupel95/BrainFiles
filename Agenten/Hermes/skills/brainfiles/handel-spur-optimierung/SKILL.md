@@ -105,11 +105,38 @@ an Spuren.
    zuruecknehmen und neu patchen. Den Grund der Aenderung in den Erklaertext der
    Wache schreiben (jeder Wachen-Wert traegt seinen Grund) -> committen und
    pushen -> den naechsten Dauerlauf-Zyklus als Live-Beleg lesen.
-10. **Grenzen der Aenderung nennen.** Ein Eingangsfilter wirkt nur auf NEUE
-    Positionen; offene laufen unter ihren gebuchten Stops und Fristen aus. Die
-    naechste Auswertung ist deshalb GEMISCHT und taugt nicht als Beweis der
-    Wirkung — dafuer braucht es Tage neuer Positionen. Das sagen, statt eine
-    Zahl zu deuten.
+
+   **Jeden ABGELEITENEN Wert mitziehen — er faellt still.** Ein Wachen-Feld
+   traegt die Herleitung seines Nachbarn im `_`-Erklaertext; aendert man eines,
+   wird der andere ungueltig, ohne dass irgendetwas einen Fehler meldet.
+   Gefordert ist `max_pro_trade_usd >= risiko_je_position_usd /
+   pflicht_stop_prozent_min`. Senkt man den Mindeststop von 5,0 auf 3,0 %, sind
+   das 5,0 / 0,03 = 166,67 statt 100 — ein Deckel von 150 haette das Risiko je
+   Position still auf 4,50 statt 5,00 USD geschrumpft. Der Gross-Nominal im
+   Journal ist die einzige Spur: er steht auf `min(risiko/stop, deckel)` und
+   laesst sich rueckwaerts auf den wirksamen Deckel zurueckrechnen.
+
+   **Jeden Werten-Feld testweise zuruecksetzen (Gegenprobe), bevor „fertig"
+   gemeldet wird.** Ein Test, der eine Handlung prueft, muss auch dann rot
+   werden koennen. Den Deckel auf den alten Wert setzen, den Test laufen lassen,
+   die Fehlermeldung lesen, zuruecksetzen: ein Test, der nie rot wurde, belegt
+   nichts.
+10. **Grenzen der Aenderung nennen — vorher pruefen, wohin sie reicht.** Ein
+    reiner Eingangsfilter wirkt nur auf NEUE Positionen; offene laufen unter
+    ihren gebuchten Stops aus. **Eine Ausstiegsgeometrie erreicht aber auch
+    OFFENE Positionen**, wenn die Spur skaliert: `skalieren.skaliere()` rechnet
+    Stop und Ziel bei jeder Vergroesserung neu aus dem aktuellen `stop_pct` und
+    `r`, ein neues Signal auf demselben Instrument zieht die offene Position also
+    auf die neue Geometrie nach. Gemessen: eine Position, eroeffnet unter 5 % /
+    2R, trug nach der Umstellung auf 3 % / 1,5R `stop_pct` 3,00 und ein um
+   gerechnetes Ziel — beide Werte wortgleich auf der Journalzeile. Nur Positionen
+    OHNE weitere Skalierung behalten den alten Stand.
+
+    Also vor dem Commit fragen: Skaliert diese Spur? Dann die Wirkung auf die
+    offenen Positionen benennen (wer zieht wann nach), statt pauschal
+    „wirkt erst auf neue Positionen" zu schreiben. In beiden Faellen gilt: die
+    naechste Auswertung ist GEMISCHT und taugt nicht als Beweis der Wirkung.
+    Das sagen, statt eine Zahl zu deuten.
 
 ## Ausstiegsgeometrie: erst nachrechnen, dann ein zweites Buch
 
@@ -189,12 +216,31 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
   es muss gesagt werden, sonst gilt eine BTC-USDC-Messung als gemessen.
   Vor dem Interpretieren pruefen, welche Reihen wirklich geladen wurden
   (`Historienleser` je Instrument aufrufen und die Laenge vergleichen).
-- **Nur Schluessel tunen, die die Spur WIRKLICH liest.** Vor dem Bau einer
-  Suchtabelle messen, welche Namen in `<spur>/handeln.py` als `w.get("...")`
-  vorkommen und welche davon in der `wachen.json` stehen. Ein geratener Name
-  wirkt nicht: alle Kandidaten sind identisch und die Suche meldet "kein Hebel",
-  obwohl nie etwas veraendert wurde. Der Optimierer prueft deshalb jeden
-  Suchschluessel gegen die `wachen.json` und bricht mit Namensliste ab.
+- **Ein Suchschluessel muss ZWEI Pruefungen bestehen: dass die Spur ihn liest -
+  UND dass der Schalter beim Aufruf ankommt.** Die erste Pruefung ist billig:
+  welche Namen kommen in `<spur>/handeln.py` als `w.get("...")` vor und welche
+  davon stehen in der `wachen.json`. Ein geratener Name wirkt nicht, alle
+  Kandidaten sind identisch und die Suche meldet "kein Hebel", ohne dass je
+  etwas veraendert wurde; der Optimierer prueft deshalb jeden Suchschluessel
+  gegen die `wachen.json` und bricht mit Namensliste ab.
+
+  **Diese erste Pruefung genuegt nicht, sie kann gruen sein und es trotzdem
+  nichts messen.** Der Schluessel kann in `handeln.py` UND in der `wachen.json`
+  korrekt heissen und beim Aufruf trotzdem verloren gehen, weil die aufrufende
+  Funktion den Parameter anders nennt (`wachen_patch=` statt `setzen=`) und die
+  Aufrufstelle den Schalter nicht mitgibt. Gemessen: zwei Geometrien mit
+  BITGLEICHEN Kennzahlen (gleiche Rundenzahl, gleiche Quote, gleiches
+  Ergebnis auf drei Nachkommastellen), und beide Wachen-Kopien behielten nach
+  dem Lauf die unveränderten Ausgangswerte.
+
+  **Deshalb die zweite Pruefung, die man nicht überspringen darf: vor der
+  Suche ZWEI Kandidaten fahren und die Kennzahlen vergleichen.** Sind sie gleich,
+  ist nicht der Markt schuld, sondern die Verdrahtung - und die Suche ist bis
+  zur Reparatur wertlos, egal was sie spaeter meldet. Danach in der
+  Wachen-Kopie des Backtest-Ordners nachsehen, ob der gesetzte Wert dort
+  ueberhaupt angekommen ist (`_backtest_gesetzt`): das trennt "Schalter
+  verworfen" von "Schalter angekommen, Spur ignoriert ihn".
+  **Ein Schalter, dessen Wirkung niemand geprueft hat, ist kein Schalter.**
 - **Walk-Forward: EIN Lauf je Kandidat, danach aufteilen** - nicht ein Lauf je
   Fenster. Vergleichsmass ist das Ergebnis je Runde aus der Hausfunktion
   (`kosten_wendepunkt.wendepunkt()` liefert `R, C, p, f_max, ev_ohne,
@@ -220,6 +266,34 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
   Ersatz auf der falschen Ebene findet nichts, meldet keinen Fehler und die
   Datei gilt als geaendert. Vor dem Schreiben `count(alt) == 1` asserten,
   danach `json.loads` fahren und die Zahl zuruecklesen.
+- **Ein Test gegen eine KONSTANTE der Wachen ist bei jeder Umstellung rot.**
+  `assertEqual(w["ziel_r_vielfaches"], 2.0)` meldet nicht, dass etwas kaputt
+  ist — er meldet, dass sich ein Wert geaendert hat. Das ist die teuerste
+  Testform, weil sie den Rot-Pflicht-Creflex trainiert: man gewöhnt sich daran,
+  drei rote Tests als "Umstellung" wegklicken und übersieht dabei echte Fehler.
+  **Gefrorene Werte fliegen raus, nicht auf die neue Zahl gesetzt.** Statt
+  `assertAlmostEqual(ziel/stop, 2.0)` drei Optionen, in dieser Reihenfolge:
+
+  1. **Gegen die Regel pruefen, die gilt.** `ziel_abstand / stop_abstand` ==
+     `w["ziel_r_vielfaches"]` — liest denselben Wert wie der Code, überlebt
+     jede Umstellung und schlägt immer noch an, wenn Stop und Ziel auseinanderlaufen.
+  2. **Die Zustaendigkeit pruefen, nicht den Zahlenwert.** „Das Ziel liegt
+     ausserhalb des Stops" gilt für 1,5 wie für 2,0 — das ist die Eigenschaft,
+     die die Geometrie ueberhaupt trägt.
+  3. **Nur wo der Wert selbst das Gesetz ist** (ein Freigabe-Schalter, ein
+     Risikoprozentsatz als Sicherheitsgrenze) darf der Test den Wert festnageln —
+     dann mit einem datierten Vermerk, WARUM er eingefroren ist.
+
+  Merksatz: ein Test, der einen Wert festnagelt, den man selbst setzt, ist eine
+  zweite Wahrheit über dieselbe Zahl. Beim Umstellen wird die zweite Wahrheit
+  nicht mitgezogen, sondern nur ihre Warnwirkung abgeschaltet.
+- **Nach dem Commit `git log` lesen, nicht nur `git status`.** Zwischen
+  `read-tree` und dem Commit kann ein fremder Commit landen, der dieselbe Datei
+  anfasst; der eigene Commit sitzt dann darauf und sieht vollstaendig aus. Nach
+  dem Commit `git diff <fremder-commit> <eigener-commit> -- <datei>` lesen und
+  bestaetigen, dass die fremde Arbeit nicht ueberschrieben wurde. Ein fremder
+  Commit, der nur zwei Zeilen derselben Datei aendert, ist dabei harmlos und
+  wird korrekt ueberbaut — man muss es nur wissen statt zu raten.
 - **In-Sample-Falle.** Alle Regeln stammen aus derselben Stichprobe; die
   Zeithalbierung mildert das, hebt es nicht auf. Ergebnis als Vorschlag
   ausweisen, nie als Beweis.

@@ -179,8 +179,9 @@ command_allowlist:
   - script execution via heredoc
 plugins:
   enabled:
-    - okx-a2a
     - everything-claude-code
+    - homeassistant
+    - okx-a2a
     - one-skill-to-rule-them-all
   disabled: []
 security:
@@ -316,10 +317,16 @@ known_builtin_toolsets:
 known_plugin_toolsets:
   cli:
     - a2a
+    - homeassistant
     - spotify
   telegram:
     - a2a
+    - homeassistant
     - spotify
+  acp:
+    - homeassistant
+  webhook:
+    - homeassistant
 mcp_servers:
   affinity:
     args:
@@ -512,3 +519,7 @@ video_gen:
 platforms:
   photon:
     enabled: false
+_left_core_scoped:
+  - homeassistant
+_left_core_installed:
+  - homeassistant

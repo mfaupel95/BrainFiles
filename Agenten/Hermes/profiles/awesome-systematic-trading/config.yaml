@@ -330,10 +330,16 @@ known_builtin_toolsets:
 known_plugin_toolsets:
   cli:
     - a2a
+    - homeassistant
     - spotify
   telegram:
     - a2a
+    - homeassistant
     - spotify
+  acp:
+    - homeassistant
+  webhook:
+    - homeassistant
 mcp_servers:
   affinity:
     args:
@@ -511,3 +517,5 @@ video_gen:
 # fallback_model:
 #   provider: openrouter
 #   model: anthropic/claude-sonnet-4
+_left_core_scoped:
+  - homeassistant
