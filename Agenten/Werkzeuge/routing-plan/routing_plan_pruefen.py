@@ -20,11 +20,15 @@ import re
 import sys
 from collections import Counter
 
-# Tolerant wie der Builder: Gevrierstrich ODER Bindestrich, ein Titel darf
-# ohne schliessendes '**' umbrechen (T-064). Die alte enge Form uebersah
-# 47 offene Eintraege und meldete den unvollstaendigen Plan GRUEN
-# (gemessen 04.10.2026 an TASKS.md, 170 offene Punkte).
-KOPF = re.compile(r'^-\s*\[(.)\]\s+\*\*(T-(\d+))\s+(\S)\s*(.*)$')
+# Die Kopfregel kommt aus kopfformen.py - bewusst NICHT aus dem Bauer, aber
+# auch nicht als eigene Kopie: drei Kopien der Enge sind drei Fehlerklassen.
+# Die unabhaengige Gegenpruefung hat absichtlich einen eigenen Zaehlweg
+# (routing_plan_unabhaengig.py); sie ist der Beleg, dass diese Regel nicht
+# nur eine geteilte Enge ist.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import kopfformen
+
+KOPF = kopfformen.KOPF
 ROSTER = ('hermes-wartung', 'basic-memory', 'agent-trade-kit',
           'markt-recherche', 'nerd', 'lotse', 'default')
 ABSCHNITTE = ('## (a) ', '## (b) ', '## (c) ', '## (d) ', '## (e) ')
@@ -34,20 +38,21 @@ def pruefe(quelle, plan):
     fehler, notizen = [], []
 
     # --- Quelle lesen ------------------------------------------------------
-    roh = open(quelle, 'rb').read()
-    nl = '\r\n' if b'\r\n' in roh else '\n'
-    zeilen = roh.decode('utf-8').replace('\r\n', '\n').split('\n')
-    offen_s = next(i for i, z in enumerate(zeilen) if z.strip() == '## Offen')
-    erledigt_s = next(i for i, z in enumerate(zeilen) if z.strip() == '## Erledigt')
-    kopf = []
-    for i in range(offen_s, erledigt_s):
-        m = KOPF.match(zeilen[i])
-        if m:
-            kopf.append((i, m.group(1).strip(), m.group(2), m.group(3),
-                         m.group(4).strip()))
-    offen = [(i + 1, tid, status, titel) for i, status, tid, titel, _ in kopf
-             if status != 'x']
-    erledigt_ids = {tid for i, status, tid, titel, _ in kopf if status == 'x'}
+    bloecke, ungelesen, nl, _offen_ab, _erl_ab = kopfformen.datei_lesen(quelle)
+    offen = [(b['zeile'], b['id'], b['status'], b['titel'])
+             for b in bloecke if b['status'] != 'x']
+    erledigt_ids = {b['id'] for b in bloecke if b['status'] == 'x'}
+    # DER Kern: eine Zeile, die wie ein Eintrag aussieht und nicht gelesen
+    # wurde, wuerde sonst auf BEIDEN Seiten wegfallen und die Zahlengleichheit
+    # 123 == 13 ergeben (gemessen 04.10.2026: 47 echte offene Punkte).
+    if ungelesen:
+        fehler.append('%d Zeile(n) im Abschnitt "Offen" sehen wie ein '
+                      'Eintrag aus, werden aber nicht erfasst: %s'
+                      % (len(ungelesen),
+                         ', '.join('%d: %s' % (z, t[:60]) for z, t in ungelesen[:5])))
+    else:
+        notizen.append('Jede Statuszeichen-Zeile im Abschnitt Offen ist '
+                       'erfasst: %d Eintraege, 0 unlesbar' % len(bloecke))
 
     # --- 1/2 Plan lesen ---------------------------------------------------
     if not os.path.isfile(plan):

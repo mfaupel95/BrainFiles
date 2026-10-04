@@ -14,14 +14,15 @@ import sys
 from collections import Counter, defaultdict
 from datetime import date
 
-# TOLERANT, nicht streng: das Haus schreibt den Titel nicht einheitlich.
-# Gemessen 04.10.2026 an TASKS.md: 146 Eintraege trennen mit Gevrierstrich
-# ('—'), 46 mit Bindestrich ('-'), und T-064 bricht den Titel ohne
-# schliessendes '**' um. Die alte enge Regex uebersah diese 47 offenen
-# Punkte - und der Pruefer teilte sie, meldete also GRUEN auf einem
-# unvollstaendigen Plan. Titel = Rest nach dem Trennzeichen, fuehrendes
-# Sternchenpaar abgeschnitten.
-KOPF = re.compile(r'^-\s*\[(.)\]\s+\*\*(T-(\d+))\s+(\S)\s*(.*)$')
+# Die Kopfregel steht an EINER Stelle (kopfformen.py) und wird importiert.
+# Sie umfasst alle drei Kopfformen, die das Haus schreibt (Gevrierstrich /
+# Bindestrich / Titel ohne schliessendes '**'); Begründung und Messzahlen
+# stehen dort. Ein zweites Muster hier waere eine zweite Wahrheit: genau so
+# ist es am 04.10.2026 zu 47 verlorenen offenen Punkten gekommen, weil der
+# Pruefer die Enge des Bauers TEILTE - er pruefte die Luecke nicht.
+import kopfformen
+
+KOPF = kopfformen.KOPF          # nur als Kurzname fuer Aufrufer im Haus
 FELD = re.compile(r'^\s{2,}([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß /().\-]{1,45}?):\s*(.*)$')
 ALLE_IDS = re.compile(r'\bT-(\d{3,})\b')
 
@@ -75,35 +76,23 @@ MAX_HINWEIS = re.compile(r'wartet auf|entscheidung max|nur max|freigabe|pflicht.
 
 
 def titel_aus(rest):
-    """Rest nach dem Trennzeichen -> Titel.
-
-    Schneidet ein fuehrendes und ein schliessendes Sternchenpaar ab und
-    laesst einen erledigt-Vermerk am Zeilenende (' - erledigt 2026-09-19')
-    weg, damit 'Titel' und 'erledigt am' nicht verschmelzen.
-    """
-    t = rest.strip().lstrip('*').strip()
-    if t.endswith('**'):
-        t = t[:-2].strip()
-    else:
-        t = re.sub(r'\s*[-–—]\s*erledigt\b.*$', '', t, flags=re.I).strip()
-    return t
+    """Rest nach dem Trennzeichen -> Titel (Regel liegt in kopfformen.py)."""
+    return kopfformen.titel_aus(rest)
 
 
 def bloecke_lesen(pfad):
-    raw = open(pfad, 'rb').read()
-    nl = '\r\n' if b'\r\n' in raw else '\n'
-    zeilen = raw.decode('utf-8').replace('\r\n', '\n').split('\n')
-    offen = next(i for i, z in enumerate(zeilen) if z.strip() == '## Offen')
-    erledigt = next((i for i, z in enumerate(zeilen) if z.strip() == '## Erledigt'), len(zeilen))
-    idx = [(i,) + KOPF.match(zeilen[i]).groups()
-           for i in range(offen, erledigt) if KOPF.match(zeilen[i])]
-    out = []
-    for k, (i, status, tid, nummer, trenner, rest) in enumerate(idx):
-        end = idx[k + 1][0] if k + 1 < len(idx) else erledigt
-        out.append({'zeile': i + 1, 'status': status.strip(), 'id': tid.strip(),
-                    'nummer': nummer.strip(), 'titel': titel_aus(rest),
-                    'text': zeilen[i:end]})
-    return out, nl, offen + 1, erledigt + 1
+    bloecke, ungelesen, nl, offen_ab, erledigt_ab = kopfformen.datei_lesen(pfad)
+    # Eine Zeile, die wie ein Eintrag aussieht, aber nicht gelesen wurde, ist
+    # ein BEFUND und kein Detail: stillschweigend fehlende Punkte sind genau
+    # der Fehler, den diese Karte abstellt (47 von 170 am 04.10.2026).
+    if ungelesen:
+        raise SystemExit(
+            'Abbruch: %d Zeile(n) im Abschnitt "Offen" sehen wie ein Eintrag '
+            'aus, werden von kopfformen.KOPF aber nicht erfasst:\n  %s\n'
+            'Die Kopfregel in kopfformen.py kennt diese Schreibweise nicht.'
+            % (len(ungelesen),
+               '\n  '.join('%d: %s' % (z, t[:90]) for z, t in ungelesen[:10])))
+    return bloecke, nl, offen_ab, erledigt_ab
 
 
 def felder(text):

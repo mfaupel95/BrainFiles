@@ -7,13 +7,18 @@ eigene Markdown-Pruefung, kein Import des Hauspruefers.
 Aufruf: python routing_plan_unabhaengig.py <tasks.md> <plan.md>
 Exit 0 = gruen, Exit 1 = rot.
 """
+import os
 import re
 import sys
 
-# Tolerant wie der Builder (Gevrierstrich ODER Bindestrich, Titel darf ohne
-# schliessendes '**' umbrechen), aber die Zaehlung bleibt eigenstaendig:
-# ein Pruefer, der dieselbe Enge des Builders erbt, meldet GRUEN auf einem
-# Plan, der 47 offene Eintraege ausgelassen hat (gemessen 04.10.2026).
+# EIGENER Zaehlweg, aber gemeinsames Warnauge: `VERDAECHTIG` benennt eine
+# Zeile, die wie ein Eintrag aussieht und von KEINEM Muster erfasst wurde.
+# Geteilt wird nur die Tuer, durch die ein unbemerkter Verlust laufen muss -
+# die Breite des Musters bleibt hier bewusst eigenstaendig. Sonst waere
+# dieser Weg keine Gegenprobe mehr, sondern dieselbe Enge ein zweites Mal.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import kopfformen
+
 KOPF = re.compile(r"^-\s*\[(.)\]\s+\*\*(T-(\d+))\s+(\S)\s*(.*)$")
 
 
@@ -21,13 +26,14 @@ def offene_ids(tasks):
     zeilen = tasks.replace('\r\n', '\n').split('\n')
     a = next(i for i, z in enumerate(zeilen) if z.strip() == '## Offen')
     b = next(i for i, z in enumerate(zeilen) if z.strip() == '## Erledigt')
-    offen, erledigt = [], []
-    for z in zeilen[a:b]:
+    offen, erledigt, ungelesen = [], [], []
+    for i, z in enumerate(zeilen[a:b], start=a):
         m = KOPF.match(z)
-        if not m:
-            continue
-        (erledigt if m.group(1) == 'x' else offen).append(m.group(2))
-    return offen, erledigt
+        if m:
+            (erledigt if m.group(1) == 'x' else offen).append(m.group(2))
+        elif kopfformen.VERDAECHTIG.match(z):
+            ungelesen.append((i + 1, z.strip()))
+    return offen, erledigt, ungelesen
 
 
 def main(tasks_pfad, plan_pfad):
@@ -43,7 +49,16 @@ def main(tasks_pfad, plan_pfad):
         return 1
     zeilen = text.replace('\r\n', '\n').split('\n')
 
-    offen, erledigt = offene_ids(open(tasks_pfad, encoding='utf-8').read())
+    offen, erledigt, ungelesen = offene_ids(
+        open(tasks_pfad, encoding='utf-8').read())
+    if ungelesen:
+        fehler.append('%d Zeile(n) im Abschnitt Offen sehen wie ein Eintrag '
+                      'aus, werden aber von keinem Muster erfasst: %s'
+                      % (len(ungelesen),
+                         ', '.join('%d: %s' % (z, t[:60]) for z, t in ungelesen[:5])))
+    else:
+        print('OK   jede Statuszeichen-Zeile gelesen, 0 unlesbar (%d offen, '
+              '%d erledigt)' % (len(offen), len(erledigt)))
 
     # Markdown: genau eine H1, Ueberschriften-Hierarchie nicht springend,
     # Tabelle mit Kopf/Trennzeile und geschlossener letzter Zeile.
