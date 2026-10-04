@@ -24,6 +24,8 @@
   "kill_switch_gesamt_usd": 400.0,
   "handel_erlaubt": false,
   "_handel_erlaubt_vermerk": "false. Diese Spur hat keinen Orderweg im Code. Der Schalter waere wirkungslos und als solcher vermerkt - genau wie bei den uebrigen Papierspuren ohne Weg.",
+  "herzschlag_max_minuten": 180,
+  "_herzschlag_vermerk": "180, wie seit 19.09.2026 fuer alle Spuren (Papier UND Live) Pflicht - nachgetragen 04.10.2026, fehlte bisher als einzige Spur neben okx_bot_waechter.",
   "freigabe": {
     "erfuellt": false,
     "_vermerk": "Nicht erteilt. Grund ist nicht eine fehlende Freigabe, sondern fehlende Evidenz: 0 Runden. Ein Live-Pfad waere eine Behauptung ueber eine Strategie, die noch nie gelaufen ist."
