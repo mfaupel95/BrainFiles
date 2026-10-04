@@ -63,7 +63,25 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
-- [ ] **T-340 — Zwei neue Bus-Anbindungen fehlen: squeeze_eth.py und plattenplatz-pruefen**
+- [x] **T-340 — Bus-Anbindungen gefixt: squeeze_eth.py und plattenplatz-pruefen**
+      **Erledigt 04.10.2026, Commit adac9bc9.** Zwei verschiedene Ursachen,
+      zwei verschiedene Loesungen - beide mit Gegenprobe.
+      1) squeeze_eth.py: der Schattenarm rief handeln._main() ohne eigene
+         Bus-Meldung und meldete damit als 'handel/squeeze' - als eigener
+         Arm unsichtbar. Muster spiegel_knapp: der Walker meldet selbst und
+         ruft den Kern _main() statt main(). Gegenprobe: eigene Meldung
+         entfernt -> Test rot Z.236; zurueckgesetzt -> gruen.
+      2) plattenplatz-pruefen.ps1: KEINE eigene Anbindung gebaut. Die Datei
+         ist ein Teilschritt aus systempruefung.ps1 Abschnitt 7b und laeuft
+         dort zweimal (erst -OhneOrdner, bei Warnung erneut) - eine eigene
+         Meldung wuerde jeden Befund doppelt ins Journal schreiben. Es gibt
+         keine MaxHirn-Plattenplatz-Aufgabe, nur MaxHirn-Systempruefung
+         (Aufgabenplanung abgefragt). Kennzeichnung 'BUS: Bibliothek' mit
+         Begruendung im Kopf. Gegenprobe: Kennzeichnung entfernt -> Test
+         rot Z.59; zurueckgesetzt -> gruen.
+      Suite: python Agenten/Bus/tests/test_ende_zu_ende.py endet mit
+      'Ende-zu-Ende bestanden', Exit 0 - erster voller gruener Durchlauf
+      seit dem 30.09.2026.
       Kontext: `python Agenten/Bus/tests/test_ende_zu_ende.py` bricht ab mit
       'automatisch gestartet, aber ohne Bus-Anbindung: [PFAD]squeeze_eth.py'
       (test_anbindung_handel) und `plattenplatz-pruefen` (test_anbindung_routinen).
@@ -76,6 +94,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Spuren: bus_name als Literal in die ereignis.lauf-Rechnung).
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/squeeze/squeeze_eth.py, Agenten/Routinen/plattenplatz-pruefen.ps1
+
 - [ ] **T-341 — omnitrade_futures: kein Rust-Lauf laeuft, also null Signale**
       Kontext: Nach dem Pin-Fix (bde64285) zeigt die Spur jetzt auf die richtige
       Statusdatei, aber alle sechs Dateien in Werkstatt/omnitrade/status/ stehen
