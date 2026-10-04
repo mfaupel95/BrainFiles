@@ -104,7 +104,8 @@ impl RiskGuard {
 
     /// Validates daily loss against limit.
     fn check_daily_loss(&self, account: &dyn AccountInfo) -> Result<(), RiskViolation> {
-        let current_loss = (account.initial_balance() - account.total_equity()).abs();
+        // Nur Verluste zählen; Gewinne (negativer Wert) dürfen nicht blockieren.
+        let current_loss = account.initial_balance() - account.total_equity();
         if current_loss > self.limits.max_daily_loss {
             return Err(RiskViolation::DailyLossExceeded {
                 loss: current_loss,
@@ -210,6 +211,31 @@ mod tests {
         let order = create_test_order(3, 1.0);
         let result = guard.check_order(&order, &account, 3000.0);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_profit_does_not_count_as_daily_loss() {
+        let mut guard = RiskGuard::testnet();
+        // Equity 20000 über Startkapital 10000: Gewinn von 10000 darf nicht blockieren.
+        let account = create_mock_account(20000.0, 10000.0, 10000.0);
+        guard.peak_equity = 20000.0;
+        let order = create_test_order(5, 1.0);
+        let result = guard.check_order(&order, &account, 3000.0);
+        assert!(result.is_ok(), "Gewinn blockierte: {result:?}");
+    }
+
+    #[test]
+    fn test_loss_above_daily_limit_is_rejected() {
+        let mut guard = RiskGuard::testnet();
+        // Verlust 2500 > max_daily_loss 2000 (Drawdown 25 % bei Peak 10000 grenzwertig, daher Peak = Equity).
+        let account = create_mock_account(7500.0, 10000.0, -2500.0);
+        guard.peak_equity = 7500.0;
+        let order = create_test_order(6, 1.0);
+        let result = guard.check_order(&order, &account, 3000.0);
+        assert!(matches!(
+            result,
+            Err(RiskViolation::DailyLossExceeded { .. })
+        ));
     }
 
     #[test]
