@@ -38,7 +38,9 @@ import glob
 import json
 import os
 import re
+import sqlite3
 import sys
+from datetime import datetime, timezone
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -212,9 +214,182 @@ def umwege_lesen(basis, seit):
     return dateien, sitzungen, tage
 
 
+def hermes_lesen(db_pfad, seit):
+    """DIE ZWEITE QUELLE: `Agenten/Hermes/state.db` (T-229).
+
+    Warum ueberhaupt: seit dem 21.09.2026 ist Hermes der Hauptagent, die
+    Rueckschau las aber nur `~/.claude/projects/**/*.jsonl`. Sie war damit
+    blind fuer die Gegenwart - ein Muster, das heute entsteht, kam dort
+    gar nicht vor. Zwei Quellen, zwei Agenten, dieselben Auswertungen.
+
+    Das Schema (Stand 04.10.2026, 514 Sitzungen / 136.213 Nachrichten):
+      sessions(id, source, cwd, git_branch, profile_name, started_at,
+               message_count, tool_call_count, ...)
+      messages(id, session_id, role, content, tool_name, tool_calls,
+               timestamp, ...)
+
+    RUECKGABE dieselben vier Bestaende wie `sitzungen_lesen` plus
+    `umwege_tage`: (sitzungen, anweisungen, befehle, werkzeuge, server,
+    skills, umwege) - damit kann der Aufruher beide Quellen mischen,
+    ohne die Form zu aendern.
+
+    NUR LESEND: die Datei wird mit `file:...?mode=ro` geoeffnet und kann
+    waehrend des Lesens geschrieben werden (die laufende Sitzung schreibt
+    hinein). Beim ersten Fehler wird gemeldet und weitergegangen - eine
+    Sperre darf die Auswertung nicht umwerfen.
+    """
+    anweisungen, befehle, werkzeuge = [], [], collections.Counter()
+    server, skills = collections.Counter(), collections.Counter()
+    umwege = collections.Counter()
+    umwege_tage = collections.defaultdict(set)
+    if not os.path.isfile(db_pfad):
+        raise FileNotFoundError(db_pfad)
+    # read-only: mode=ro verhindert, dass diese Auswertung den Zustand des
+    # laufenden Agenten anfasst.
+    db = sqlite3.connect("file:%s?mode=ro" % db_pfad.replace(os.sep, "/"),
+                         uri=True, timeout=10)
+    db.row_factory = sqlite3.Row
+    try:
+        sitzungen = {}
+        for s in db.execute(
+                "SELECT id, source, cwd, git_branch, profile_name, started_at"
+                " FROM sessions"):
+            sitzungen[s["id"]] = s
+        for m in db.execute(
+                "SELECT session_id, role, content, tool_name, tool_calls,"
+                " timestamp FROM messages ORDER BY id"):
+            s = sitzungen.get(m["session_id"])
+            if s is None:
+                continue
+            ts = m["timestamp"] or 0
+            tag = _tag_von_ts(ts)
+            if seit and tag and tag < seit:
+                continue
+            kennung = (s["id"] or "")[:8]
+            rolle = m["role"]
+            inhalt = m["content"] or ""
+            if rolle == "user":
+                text = (inhalt or "").strip()
+                if 12 <= len(text) <= MAX_ANWEISUNG and not text.startswith("<"):
+                    anweisungen.append((tag, kennung, text))
+            elif rolle == "assistant":
+                befehle_aus, namen = _werkzeuge_aus_tool_calls(m["tool_calls"])
+                for name in namen:
+                    werkzeuge[name] += 1
+                    if name.startswith("mcp__"):
+                        teile = name.split("__")
+                        if len(teile) > 1:
+                            server[teile[1]] += 1
+                befehle.extend(befehle_aus)
+            if rolle in ("tool", "user"):
+                for name, muster in UMWEGE.items():
+                    if re.search(muster, inhalt or ""):
+                        umwege[name] += 1
+                        umwege_tage[name].add(kennung)
+    finally:
+        db.close()
+    return (len(sitzungen), anweisungen, befehle, werkzeuge, server, skills,
+            umwege, umwege_tage)
+
+
+def _tag_von_ts(ts):
+    """Unix-Zeit -> JJJJ-MM-TT (UTC), '' bei 0/None."""
+    if not ts:
+        return ""
+    try:
+        return datetime.fromtimestamp(float(ts), timezone.utc).strftime("%Y-%m-%d")
+    except (TypeError, ValueError, OSError):
+        return ""
+
+
+def _werkzeuge_aus_tool_calls(roh):
+    """(befehle, werkzeugnamen) aus dem JSON-Feld `tool_calls`.
+
+    Die Form ist eine LISTE mit `function.name` und `function.arguments`,
+    wobei `arguments` selbst ein JSON-STRING ist (04.10.2026 gemessen:
+    60.197 Zeilen, jede mit bis zu zwei Aufrufen). Der Aufrufer liest hier
+    bewusst NICHT `messages.tool_name`: das ist nur bei den ERGEBNISZEILEN
+    (role='tool') gesetzt, bei den Aufrufzeilen immer leer - eine Abfrage
+    darauf zaehlt 0 Werkzeuge und sieht damit aus wie eine stille Sitzung.
+
+    Kaputt ist das Feld dann kein Grund, die Zeile zu verlieren: der
+    Klammerzähl-Block liefert auch aus teilweise zerstoertem JSON, was an
+    uneinheitlichen Stellen noch lesbar ist.
+    """
+    namen, befehle = [], []
+    roh = (roh or "").strip()
+    if not roh:
+        return befehle, namen
+    try:
+        liste = json.loads(roh)
+    except ValueError:
+        liste = None
+    if isinstance(liste, list):
+        for eintrag in liste:
+            if not isinstance(eintrag, dict):
+                continue
+            funktion = eintrag.get("function") or {}
+            name = funktion.get("name") or eintrag.get("name")
+            if not name:
+                continue
+            namen.append(name)
+            roh_arg = funktion.get("arguments", eintrag.get("arguments"))
+            if isinstance(roh_arg, str):
+                try:
+                    roh_arg = json.loads(roh_arg)
+                except ValueError:
+                    pass
+            if isinstance(roh_arg, dict) and isinstance(roh_arg.get("command"), str):
+                befehle.append(roh_arg["command"])
+        return befehle, namen
+    # Fallback: Block fuer Block (kaputtes oder unerwartetes JSON).
+    for name in re.findall(r'"name"\s*:\s*"([^"]{1,80})"', roh):
+        namen.append(name)
+    befehle.extend(_befehle_aus_tool_calls(roh))
+    return befehle, namen
+
+
+def _befehle_aus_tool_calls(roh):
+    """`command`-Felder aus einem JSON-Feld `tool_calls` herausloesen.
+
+    Das Feld traegt je Hermes-Version eine andere Form (Liste mit
+    name/arguments, JSON-Text, Doppel-JSON). Statt drei Formen zu raten wird
+    mit einer laufenden Klammerzählung jeder JSON-Objekt-Block geprueft -
+    ein Muster, das bei keiner Form falsch trifft.
+    """
+    aus = []
+    roh = (roh or "").strip()
+    if not roh:
+        return aus
+    tiefe = 0
+    start = None
+    for i, z in enumerate(roh):
+        if z == "{":
+            if tiefe == 0:
+                start = i
+            tiefe += 1
+        elif z == "}" and tiefe:
+            tiefe -= 1
+            if tiefe == 0 and start is not None:
+                block = roh[start:i + 1]
+                start = None
+                m = re.search(r'"command"\s*:\s*("(?:[^"\\]|\\.)*")', block)
+                if m:
+                    try:
+                        wert = json.loads(m.group(1))
+                    except ValueError:
+                        wert = m.group(1).strip('"')
+                    if isinstance(wert, str):
+                        aus.append(wert)
+    return aus
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--basis", default=os.path.join(os.path.expanduser("~"), ".claude", "projects"))
+    p.add_argument("--hermes-db", default=None,
+                   help="zweite Quelle: state.db (Standard: Agenten/Hermes/state.db, "
+                        "'nein' schaltet sie ab)")
     p.add_argument("--seit", default=None, help="nur ab diesem Tag, JJJJ-MM-TT")
     p.add_argument("--anweisungen", action="store_true", help="jede Anweisung gekuerzt zeigen")
     p.add_argument("--werkzeuge", action="store_true", help="Aufrufe je MCP-Server und Skill")
@@ -222,14 +397,29 @@ def main():
     p.add_argument("--ausgabe", default=None, help="Ordner fuer die Volltexte")
     args = p.parse_args()
 
-    if not os.path.isdir(args.basis):
-        print(f"Kein Sitzungsordner unter {args.basis}")
-        return 1
+    # Die zweite Quelle ist Standard, weil Hermes der Hauptagent ist
+    # (T-229). Ohne sie ist die Rueckschau fuer die Gegenwart blind.
+    db = args.hermes_db
+    if db is None:
+        db = os.path.join(os.path.expanduser("~"), "Documents", "BrainFiles",
+                          "Agenten", "Hermes", "state.db")
+    elif db.lower() in ("nein", "keine", "off", ""):
+        db = None
 
     if args.umwege:
         dateien, sitzungen, tage = umwege_lesen(args.basis, args.seit)
         print(f"gelesen: {len(dateien)} Dateien"
               + (f", seit {args.seit}" if args.seit else ""))
+        if db:
+            try:
+                (n_h, _a, _b, _w, _s, _sk, u2, t2) = hermes_lesen(db, args.seit)
+                for name in tage:
+                    tage[name] |= t2.get(name, set())
+                for name, zaehler in sitzungen.items():
+                    sitzungen[name] += u2.get(name, 0)
+                print(f"Hermes: {n_h} Sitzungen aus {os.path.basename(db)}")
+            except (OSError, sqlite3.Error) as e:
+                print(f"Hermes-Quelle nicht lesbar ({type(e).__name__}: {e})")
         print("\nUmwege (Sitzungen = Muster, Tage = Dauer):")
         print(f"  {'Signatur':32s} Sitzungen  Tage  Treffer")
         for name in sorted(sitzungen, key=lambda n: -len(sitzungen[n])):
@@ -242,10 +432,24 @@ def main():
         return 0
 
     anzahl, anweisungen, befehle, werkzeuge, server, skills = sitzungen_lesen(args.basis, args.seit)
+    quelle = f"Claude-Transkripte: {anzahl}"
+    if db:
+        try:
+            (n_h, a2, b2, w2, s2, sk2, _u, _t) = hermes_lesen(db, args.seit)
+            anweisungen += a2
+            befehle += b2
+            werkzeuge.update(w2)
+            server.update(s2)
+            skills.update(sk2)
+            quelle += f"  +  Hermes state.db: {n_h}"
+        except (OSError, sqlite3.Error) as e:
+            print(f"Hermes-Quelle nicht lesbar ({type(e).__name__}: {e})",
+                  file=sys.stderr)
     echte = [a for a in anweisungen if not RAUSCHEN.match(a[2])]
 
-    print(f"Sitzungen: {anzahl}   Anweisungen: {len(anweisungen)} "
-          f"(davon eigenstaendig: {len(echte)})   Befehle: {len(befehle)}")
+    print(f"Sitzungen: {quelle}")
+    print(f"Anweisungen: {len(anweisungen)} (davon eigenstaendig: {len(echte)})"
+          f"   Befehle: {len(befehle)}")
     print("\nWiederkehrende Arbeit (Anzahl Befehle je Thema):")
     zaehler = collections.Counter()
     for befehl in befehle:

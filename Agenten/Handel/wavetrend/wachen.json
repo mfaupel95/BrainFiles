@@ -31,5 +31,7 @@
   "drawdown_halbierung_usd": 20.0,
   "_instrumente_waehrung": "USDC statt USDT seit 21.09.2026 (Auftrag Max: 'alle okx spuren mit usdc/eurc bedienen'). Grund: auf dem OKX-Konto liegen die Mittel in USDC (frei) - USDT ist gar nicht vorhanden. Die Spur ist Papier, der Unterschied im Kurs ist minimal; entscheidend ist, dass Buch und Kontowaehrung dieselbe sind.",
   "_gebuehr_quelle": "GEMESSEN 01.10.2026 am eigenen OKX-Konto (EEA): Tarif Lv1 taker 0,10 %/Seite und echte Fuellung (HYPE-USDC 0,032 @ 86,642 = 2,77254 USDC Nettowert, Gebuehr 0,002772544 = 0,1000 %). NICHT 0,05 % - das ist der Futures-Satz.",
-  "gebuehr_taker": 0.001
+  "gebuehr_taker": 0.001,
+  "wt_einstiegsschwelle": 40.0,
+  "_wt_einstiegsschwelle": "T-097: die Einstiegsschwelle des WaveTrend-Signals (wt1 kreuzt wt2 jenseits von -/+40). Sie stand als Literal im Quelltext, damit die Optimierung nur den Code aendern konnte. Der Wert ist der UNVERAENDERTE Code-Wert - die Spur verhaelt sich also identisch, bis jemand die Zahl aendert. Belegt ueber cache/scratch/wl/t097_gegenprobe.py: ohne Feld 0 Signale, mit 20 genau 1, nach Ruecknahme wieder 0."
 }

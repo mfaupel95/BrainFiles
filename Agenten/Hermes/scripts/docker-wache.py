@@ -80,25 +80,88 @@ def _start_desktop():
                      stderr=subprocess.DEVNULL, creationflags=det)
 
 
+def _desktop_prozesse(runner=_run):
+    """Die Prozessnamen der laufenden Docker-Desktop-App.
+
+    Leer heisst NICHT gesund: `tasklist` ohne Treffer liefert eine Zeile mit
+    "Keine Aufgaben laufen", der Code 0. Genau daran scheitert eine Heilung,
+    die nur darauf wartet, dass die App "nicht laeuft" - der leere Abruf ist
+    deshalb ein eigener Befund und keine Entwarnung (T-306).
+    """
+    code, aus = runner(["tasklist", "/FI", "IMAGENAME eq Docker Desktop.exe",
+                       "/NH"], 30)
+    zeilen = [z.strip() for z in (aus or "").splitlines() if z.strip()]
+    treffer = [z for z in zeilen if "Docker Desktop.exe" in z]
+    # "Keine Aufgaben laufen" bzw. englische Fassung: kein Prozess.
+    if any("Keine Aufgaben" in z or "No tasks" in z for z in zeilen):
+        return []
+    return treffer
+
+
+def _desktop_beenden(runner=_run):
+    """Die Docker-Desktop-Prozesse beenden. Rueckgabe (n, text).
+
+    `taskkill /IM` statt `Stop-Process`: die Wache laeuft als Cron ohne
+    Fenster und ist nicht immer in derselben Sitzung wie die App.
+    """
+    n = 0
+    letzte = ""
+    for exe in ("Docker Desktop.exe", "com.docker.backend.exe",
+                "com.docker.build.exe"):
+        code, aus = runner(["taskkill", "/F", "/T", "/IM", exe], 60)
+        letzte = "code %s: %s" % (code, (aus or "").strip()[:120])
+        if code == 0:
+            n += 1
+    return n, letzte
+
+
 def heilen(runner=_run, schlafen=time.sleep, starten=_start_desktop):
     """Der Handgriff vom 30.09.: wsl --shutdown, Desktop starten, warten.
     Rueckgabe (ok, text). `starten` ist die Naht fuer Tests - ein Test darf
-    nie die echte Desktop-App hochfahren."""
+    nie die echte Desktop-App hochfahren.
+
+    ZWEITER GRIFF (T-306, gemessen 01.10.2026): steht die WSL-Distribution
+    `docker-desktop` auf Stopped, WAEHREND die App seit Stunden laeuft, dann
+    startet ein zweiter App-Aufruf die VM nicht neu - `docker info` laeuft in
+    jeden Zeitablauf und alle Container sind tot. Der Weg zurueck war, die
+    Desktop-Prozesse zu beenden und die App neu zu starten (nach 23 s wieder
+    da). Deshalb wird der Zustand jetzt GEMESSEN statt geraten: laeuft die
+    App bereits und bleibt die Engine trotzdem weg, wird beendet und neu
+    gestartet; laeuft keine App, genuegt der alte Griff.
+    """
     code, aus = runner(["wsl", "--shutdown"], 60)
     if code != 0:
         return False, "wsl --shutdown fehlgeschlagen: %s" % (aus.strip()[:180] or "code %s" % code)
     schlafen(8)
+
+    vorher = _desktop_prozesse(runner)
+    if vorher:
+        # Die App laeuft und hat die Engine trotzdem nicht: der zweite Griff.
+        n, letzte = _desktop_beenden(runner)
+        try:
+            starten()
+        except OSError as e:
+            return False, "Docker Desktop nicht startbar: %s" % e
+        return _warten(runner, schlafen,
+                       "Desktop stand noch (%d Prozess(e), %s) - beendet und neu "
+                       "gestartet" % (len(vorher), letzte))
     try:
         starten()
     except OSError as e:
         return False, "Docker Desktop nicht startbar: %s" % e
+    return _warten(runner, schlafen, "")
+
+
+def _warten(runner, schlafen, zusatz):
     waited = 0
     while waited < HEILUNG_FRIST_S:
         schlafen(10)
         waited += 10
         if engine_lebt(runner):
-            return True, "Engine nach %d s wieder da" % waited
-    return False, "Engine nach %d s weiter weg" % HEILUNG_FRIST_S
+            return True, "Engine nach %d s wieder da%s" % (
+                waited, ("  (" + zusatz + ")") if zusatz else "")
+    return False, "Engine nach %d s weiter weg%s" % (
+        waited, ("  (" + zusatz + ")") if zusatz else "")
 
 
 def merker_lesen():

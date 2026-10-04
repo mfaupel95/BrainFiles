@@ -150,7 +150,26 @@ def ausfuehren(spur, eintrag):
     if not (w.get("freigabe") or {}).get("erfuellt"):
         return False, "%s: freigabe nicht erteilt, Auftrag bleibt" % spur
     # Orderweg laden
-    from spur_buch import orderweg, venue_inst
+    #
+    # T-346 (04.10.2026): dieser Import stand VOR dem sys.path-Eintrag. Der Cron
+    # startet aus Agenten/Hermes/scripts/, dort liegt spur_buch.py nicht ->
+    # ModuleNotFoundError, failure_streak 12 (Hermes-Cron 50921798e27a,
+    # jede Minute). Der Eintrag muss VOR dem Import stehen, und die Hausregel
+    # fuer Spuren-Imports verlangt die Pruefung gegen __file__: sonst laedt ein
+    # gleichnamiges Modul aus einem anderen Verzeichnis (hier: der echte
+    # scanner/handeln.py statt der Spur).
+    if HANDEL not in sys.path:
+        sys.path.insert(0, HANDEL)
+    try:
+        from spur_buch import orderweg, venue_inst
+    except ImportError as e:
+        return False, ("%s: spur_buch.py nicht ladbar (%s) - im Zweifel KEINE "
+                       "Order, Auftrag bleibt in der Queue" % (spur, e))
+    if not os.path.abspath(sys.modules["spur_buch"].__file__).startswith(
+            os.path.abspath(HANDEL) + os.sep):
+        return False, ("%s: spur_buch kam aus %s statt aus %s - im Zweifel "
+                       "KEINE Order" % (spur, sys.modules["spur_buch"].__file__,
+                                         HANDEL))
     weg = orderweg(w)
     if weg is None:
         return False, "%s: kein Orderweg fuer boerse=%s" % (spur, w.get("boerse"))
