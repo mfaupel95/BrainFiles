@@ -28,3 +28,9 @@ fallback_providers:
 platforms:
   photon:
     enabled: false
+
+auxiliary:
+  compression:
+    provider: nous
+    model: deepseek/deepseek-v4-flash-0731
+    timeout: 180

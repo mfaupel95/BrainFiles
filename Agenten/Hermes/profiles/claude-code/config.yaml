@@ -102,6 +102,10 @@ compression:
 prompt_caching:
   cache_ttl: 5m
 auxiliary:
+  compression:
+    provider: nous
+    model: deepseek/deepseek-v4-flash-0731
+    timeout: 180
   free_only: false
   vision:
     provider: auto
