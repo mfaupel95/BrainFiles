@@ -76,6 +76,16 @@ dass sie durchgelassen haette.**
 Frage "auf was liegt das meiste Geld" faellt auch dann an, wenn die
 Antwort knapp unter der Schwelle liegt.
 
+**Die Polaritaet eines Tor-Rueckgabewerts ist Teil des Vertrags.** Der Tor
+liefert `(GESPERRT, grund)` zurueck - nicht `(offen, grund)`. Ein Test, der
+die beiden Werte vertauscht, kehrt saemtliche Behauptungen um: drei Tests
+fielen aus, waehrend der Tor einwandfrei arbeitete. Daraus drei Regeln:
+(a) die Reihenfolge im Docstring des Tors festhalten, (b) die Testvariable
+nach dem WERT benennen (`gesperrt, grund = ...`), nie nach dem Gegenteil -
+`offen` als Name fuer einen Wert, der `gesperrt` bedeutet, faellt erst beim
+Lesen auf, (c) beide Werte in mindestens einem Fall belegen, sonst faellt
+eine Umkehr nicht auf.
+
 ## 4. EIN STOP IN EINER GITTERSTRATEGIE
 
 Ein Gitter hat keinen Stop - sein Ausstieg ist die naechste Leiterstufe,

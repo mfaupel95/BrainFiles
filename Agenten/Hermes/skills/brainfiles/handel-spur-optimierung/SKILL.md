@@ -17,6 +17,19 @@ an Spuren.
 
 ## Reihenfolge — nicht abkuerzen
 
+0. **Ohne benannte Spur: erst die LANDKARTE, dann das Ziel.** Ein Auftrag
+   ohne Spur ist keine Absichtserklaerung fuer irgendeine Spur, sondern die
+   Frage "wo liegt ueberhaupt ein Hebel". Die Reihenfolge ist dann:
+   `Handel/kosten_wendepunkt.py` ueber ALLE Spuren (Spalten: Runden,
+   Trefferquote, `f_max` = die Gebuehr je Runde, ab der die Spur kippt) ->
+   **Stichprobengroesse** als eigentliches Auswahlkriterium -> Optimierer auf
+   EINEN Kandidaten. Die Landkarte sortiert nach `f_max`, entschieden wird
+   nach Runden: alles unter 30 Ausstiegen je Haelfte ist "nicht entschieden",
+   und dort zu optimieren heisst, Zufall zu polieren. Nur Spuren mit
+   echtem Backtest-Vorrat (Jahre, Hunderte Runden) sind ein Ziel. Reisst
+   keine die Schwelle, ist die Landkarte selbst das Ergebnis, und das
+   Verdikt lautet "derzeit kein optimierbarer Track" - ein Befund, keine
+   Verweigerung.
 1. **Messen, nicht erinnern.** Vor jeder Aussage die vorhandene Auswertung
    fahren: `<spur>/auswertung.py`, sonst `auswertung_alle.py`. Immer getrennt
    ausweisen: nach Kosten UND vor Kosten, echte Handelsrunden getrennt von
@@ -155,6 +168,27 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
    mitziehen, je Stelle ein datierter Vermerk.
 
 ## Pitfalls
+- **Identische Geometrie in mehreren Spuren heisst: nie einzeln optimiert.**
+  Tragen N Schwestern-Spuren denselben `pflicht_stop_prozent_min` und
+  `ziel_r_vielfaches`, ist das keine Konfiguration, sondern eine kopierte
+  Vorgabe. Dann lautet die Frage nicht "was ist fuer Spur X am besten",
+  sondern "ist diese Geometrie ueberhaupt richtig" - einmal beantwortet und
+  als Hauswert gesetzt. N Spuren einzeln zu optimieren, die dieselbe Zahl
+  tragen, vervielfacht die Laufzeit und liefert am Ende N Messungen fuer
+  dieselbe Groesse.
+- **Der Optimierer schreibt erst am Ende - nicht auf ihn warten.** Ein Lauf
+  ueber Jahrzehnte mal neun Kandidaten rechnet weit laenger als ein
+  Werkzeug-Timeout (gemessen: ueber 15 Minuten, zwei Prozesse, Ausgabedatei
+  0 Bytes, kein Fehler im stderr). Als Hintergrundauftrag starten, den
+  unabhaengigen Teil des Auftrags beantworten, das Ergebnis melden lassen,
+  sobald es eintrifft. Ein Optimierer, der scheinbar haengt, arbeitet
+  meistens - ein leerer stdout ist bei ihm kein Abbruchsignal.
+- **Der Backtest kann eine ANDERE QUOTE messen, als die Spur handelt.**
+  Der Historienleser bildet `BTC-USDC` auf die USDT-Reihe ab. Bei BTC ist
+  der Unterschied unter 0,1 % und das eine dokumentierte Naeherung - aber
+  es muss gesagt werden, sonst gilt eine BTC-USDC-Messung als gemessen.
+  Vor dem Interpretieren pruefen, welche Reihen wirklich geladen wurden
+  (`Historienleser` je Instrument aufrufen und die Laenge vergleichen).
 - **Nur Schluessel tunen, die die Spur WIRKLICH liest.** Vor dem Bau einer
   Suchtabelle messen, welche Namen in `<spur>/handeln.py` als `w.get("...")`
   vorkommen und welche davon in der `wachen.json` stehen. Ein geratener Name
