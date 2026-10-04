@@ -60,6 +60,34 @@ MS = {"1m": 60_000, "5m": 300_000, "15m": 900_000, "1h": 3_600_000,
       "4h": 14_400_000, "1d": 86_400_000}
 
 
+def ende_bis(wert):
+    """`--bis` lesbar machen: Millisekunden, Sekunden oder ISO-Zeit.
+
+    WARUM (04.10.2026): zwei Luefe mit derselben Tageszahl sind nicht
+    dieselbe Messung. Ohne festen Endpunkt laeuft `--tage 28` immer "jetzt",
+    und der Unterschied zwischen 20:44 und 23:47 ergab 3,25 Stunden
+    verschobene Kerzen - dieselbe Strategie las +117,04 und +187,47. Eine
+    Tageszahl ist erst ein Fenster, wenn Anfang UND Ende feststehen.
+    Fuer den Vergleich zweier Fenster setzt man deshalb beide auf denselben
+    Endpunkt: `--bis <ms> --tage 28` und `--bis <ms> --tage 42` sind dann
+    ineinander enthalten, statt zwei verschiedene Marktstuecke zu sein.
+    """
+    if wert is None:
+        return None
+    wert = str(wert).strip()
+    if wert.isdigit():
+        n = int(wert)
+        return n if n > 10_000_000_000 else n * 1000
+    for muster in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M",
+                   "%Y-%m-%d"):
+        try:
+            return int(time.mktime(time.strptime(wert, muster)) * 1000)
+        except ValueError:
+            continue
+    raise SystemExit("--bis nicht lesbar: %r (erwartet Millisekunden, "
+                     "Sekunden oder ISO-Zeit)" % wert)
+
+
 def kerzen_holen(inst, takt, tage, jetzt_ms=None):
     """Kerzen von Binance als Backtest-CSV-Text (Kopf wie daten/*.csv)."""
     jetzt = jetzt_ms if jetzt_ms is not None else int(time.time() * 1000)
@@ -70,11 +98,11 @@ def kerzen_holen(inst, takt, tage, jetzt_ms=None):
     return kopf + "\n".join(zeilen) + "\n", len(reihen)
 
 
-def csv_schreiben(inst, takt, tage, ordner):
-    text, n = kerzen_holen(inst, takt, tage)
+def csv_schreiben(inst, takt, tage, ordner, jetzt_ms=None):
+    text, n = kerzen_holen(inst, takt, tage, jetzt_ms)
     os.makedirs(ordner, exist_ok=True)
-    pfad = os.path.join(ordner, "%s_%s.csv"
-                        % (inst.replace("/", "").replace("-", "").lower(), takt))
+    pfad = os.path.join(ordner, "%s_%s.csv" %
+                        (inst.replace("/", "").replace("-", "").lower(), takt))
     with open(pfad, "w", encoding="utf-8", newline="") as f:
         f.write(text)
     return pfad, n
@@ -115,16 +143,24 @@ def main():
     ap.add_argument("--einsatz", type=float, default=10000.0)
     ap.add_argument("--menge", type=float, default=0.1)
     ap.add_argument("--daten-ordner", default=os.path.join(OMNITRADE, "daten", "messung"))
+    ap.add_argument("--bis", default=None,
+                    help="fester FensterENDE (ms, s oder ISO) - ohne das laeuft "
+                         "jeder Lauf bis 'jetzt' und zwei Tageszahlen sind "
+                         "verschiedene Marktstuecke, nicht verschiedene Fenster")
     args = ap.parse_args()
 
+    bis_ms = ende_bis(args.bis)
     takte = [t.strip() for t in args.takte.split(",") if t.strip()]
     skripte = [s.strip() for s in args.skripte.split(",") if s.strip()]
     gebuehren = [float(g) for g in args.gebuehren.split(",") if g.strip()]
 
-    print("Kerzen holen (%s, %d Tage) ..." % (args.instrument, args.tage))
+    print("Kerzen holen (%s, %d Tage%s) ..." % (
+        args.instrument, args.tage,
+        ", bis %s" % args.bis if args.bis else ""))
     daten = {}
     for takt in takte:
-        pfad, n = csv_schreiben(args.instrument, takt, args.tage, args.daten_ordner)
+        pfad, n = csv_schreiben(args.instrument, takt, args.tage,
+                                args.daten_ordner, bis_ms)
         daten[takt] = (pfad, n)
         print("  %-4s %6d Kerzen  %s" % (takt, n, os.path.basename(pfad)))
 
@@ -167,7 +203,7 @@ def main():
     ziel = os.path.join(CACHE, "intervalle-%s.json" % time.strftime("%Y%m%d-%H%M%S"))
     with open(ziel, "w", encoding="utf-8") as f:
         json.dump({"instrument": args.instrument, "tage": args.tage,
-                   "einsatz": args.einsatz, "menge": args.menge,
+                   "bis": bis_ms, "einsatz": args.einsatz, "menge": args.menge,
                    "laeufe": ergebnisse}, f, indent=2)
     print()
     print("Rohzahlen: %s" % ziel)
