@@ -1900,12 +1900,12 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Leitstand - ein Fenster fuer Ueberwachen, Freigaben, Backtests und Markt.",
+      "notiz": "Leitstand - ein Fenster fuer Ueberwachen, Freigaben, Backtests, Markt, Omniquant und Nautilus.",
       "start": [
         ".venv\\Scripts\\pythonw.exe",
         "leitstand.py"
       ],
-      "anleitung": "Das grosse Fenster: Ueberwachen, Freigaben, Backtests, Markt und Urteile in einem. Es hat keine Argumente, deshalb KEIN Klick-Start - von Hand:\n\n.venv\\Scripts\\pythonw.exe leitstand.py",
+      "anleitung": "Das grosse Fenster: Ueberwachen, Freigaben, Backtests, Markt, Omniquant und Nautilus in einem (Strg+1..6). Es hat keine Argumente, deshalb KEIN Klick-Start - von Hand:\n\n.venv\\Scripts\\pythonw.exe leitstand.py\n\nDer Nautilus-Reiter (Strg+6) startet den OKX-DEMO-Node nur, wenn Max auf 'Start DEMO-Node' klickt. Fehlt nautilus_trader im .venv, zeigt der Reiter die Anweisung statt zu crashen.",
       "warnungen": [
         "oeffnet ein Fenster; der Aufruf steht in der Anleitung unten"
       ]

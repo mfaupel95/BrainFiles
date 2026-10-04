@@ -8,7 +8,7 @@ drei Stellen, und keine davon liegt in diesem Rahmen:
 Der Rahmen selbst schreibt nur leitstand_zustand.json, ueber
 leitstand_bedienung.Zustand.
 
-Tastatur: Strg+1..4 Reiter, F5 sichtbaren Reiter auffrischen, Strg+Plus/Minus
+Tastatur: Strg+1..6 Reiter, F5 sichtbaren Reiter auffrischen, Strg+Plus/Minus
 Schrift. Notaus, Freigeben und Urteile eintragen haben bewusst KEIN Kuerzel.
 
 Aufruf:  python leitstand.py
@@ -24,6 +24,7 @@ from leitstand_backtests import BacktestReiter
 from leitstand_bedienung import Zustand, lage_gueltig, virtueller_schirm
 from leitstand_freigaben import FreigabenReiter
 from leitstand_markt import MarktReiter
+from leitstand_nautilus import NautilusReiter
 from omniquant.gui import OmniquantReiter
 
 TAKT_MS = 5000
@@ -39,6 +40,7 @@ KUERZEL = {
     "<Control-Key-3>": ("reiter", 2),
     "<Control-Key-4>": ("reiter", 3),
     "<Control-Key-5>": ("reiter", 4),
+    "<Control-Key-6>": ("reiter", 5),
     "<F5>": ("auffrischen", None),
     "<Control-plus>": ("schrift", 1),
     "<Control-KP_Add>": ("schrift", 1),
@@ -74,7 +76,8 @@ REITER = [("Überwachen", UeberwachenReiter),
           ("Freigaben", FreigabenReiter),
           ("Backtests", BacktestReiter),
           ("Markt", MarktReiter),
-          ("Omniquant", OmniquantReiter)]
+          ("Omniquant", OmniquantReiter),
+          ("Nautilus", NautilusReiter)]
 
 
 def herzschlag(jetzt=None):
