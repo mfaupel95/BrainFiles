@@ -64,6 +64,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
+      Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
+      Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
+      `merge-base --is-ancestor` = Kopf, `rev-list --count` = Zahlen). Gemessen:
+      6 wegwerfbar (2 lokale claude/*, 3 auf origin, Worktree C:/tmp/head_wt),
+      1 mit ECHTEM Vorlauf: `claude/wizardly-brown-69qfnp` (5bff1231, 1 Commit,
+      "handel: UTC-Zeiten umrechnen statt abschneiden" - steht in KEINER anderen
+      Zweiglinie und in keinem Worktree), 1 Grenzfall: `claude/trading-stack-
+      setup-40ef0d` (aeeac180, inhaltlich schon in master als 6ccb94e4, aber
+      andere sha - `branch -d` verweigert dort, `-D` waere blind).
+      Naechster Schritt: Max entscheidet fuer 5bff1231 (Master einziehen mit
+      `git branch -f master claude/wizardly-brown-69qfnp`, oder als eigenen
+      Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
+      --push` fuer die belegten Faelle.
+      Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
 - [ ]   **T-331 — `satz_pct_fuer` las den Börsensatz aus den Notizfeldern**
       Kontext: Die Ableitung 'boerse=okx, ist das ein Perp?' suchte das Wort "perp" in
       `json.dumps(w).lower()` - also im GANZEN Wachen-JSON. Die Notizfelder tragen es
