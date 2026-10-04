@@ -43,26 +43,46 @@ Wachen-Kopie enthielt nach dem Lauf weiterhin `Stop 5.0 / Ziel 2.0` und
 
 Drei Aufrufstellen sind jetzt verdrahtet (`replay.py` Zeilen 1797, 1812, 1847).
 
-## Der Gegenbeweis
+## Der Gegenbeweis, und eine Korrektur an mir selbst
 
-Nach dem Fix, derselbe Vergleich:
+Nach dem Fix, mit der **Hausfunktion** `kosten_wendepunkt.kennzahlen()` — nicht
+mit einer Zeilenzählung:
 
-| Geometrie | Ausstiege | Treffer | G/V je Runde | nach 0,10 % Gebühr |
-|---|---|---|---|---|
-| 5,0 % / 2,0R (heute) | 529 | 26,5 % | −1,015 | −1,215 |
-| 3,0 % / 1,5R | 670 | 37,0 % | −0,524 | −0,724 |
+| Geometrie | Runden | Treffer | G/V gesamt | je Runde | auf der Marke |
+|---|---|---|---|---|---|
+| 5,0 % / 2,0R (heute) | 579 | 28,0 % | −464,18 | **−0,803** | 1181/1181 |
+| 3,0 % / 1,5R | 1007 | 39,0 % | −75,74 | **−0,074** | 1962/1962 |
 
-Zwei verschiedene Geometrien, zwei verschiedene Ergebnisse.
+**Die 3-%-Geometrie ist rund zehnmal besser als die heutige** — sie kostet 0,074
+USD je Runde statt 0,803. Sie ist damit **keine Optimierung**, sondern die
+Abstellung einer Fehlstellung.
+
+### Was ich zuruecknehme
+
+Ein Zwischenstand nannte **−1,015** und **−0,524** USD je Runde. Beide Zahlen
+sind falsch und zwar zweifach:
+
+1. **Ich habe Rohzeilen gezaehlt statt Runden.** `EINSTIEG`/`AUSSTIEG`-
+   Zeilen sind keine Runden; die Paarung macht daraus 579, nicht 1181.
+2. **Ich habe eine Datei ausgewertet, die noch geschrieben wurde.** Der Lauf
+   lief im Hintergrund; mein Zwischenstand las einen Teilstand.
+
+Die Hausfunktion rechnet die Paarung, die Zwangsschluesse und die Marke; eine
+gezaehlte Zeile tut das nicht. **Die Lehre ist nicht die Zahl, sondern die
+Reihenfolge: bei einem Hintergrundlauf erst rechnen, wenn der Prozess beendet
+ist — eine geschriebene Datei ist kein fertiges Ergebnis.**
 
 ## Und was die Messung danach sagt
 
-**Verdikt: verworfen.** Beide Geometrien sind über 529 bzw. 670 Ausstiege
-**deutlich negativ** — nicht knapp negativ, sondern rund −0,5 bis −1,0 USD je
-Runde. `squeeze` hat im getesteten Bereich (Stop 3/5/7 %, Ziel 1,5/2/3R) **keine
-tragfähige Ausstiegsgeometrie**.
+**Verdikt: die heutige Einstellung ist verworfen.** 5,0 % / 2,0R kostet 0,803
+USD je Runde ueber 579 Runden; 3,0 % / 1,5R kostet 0,074 ueber 1007 Runden.
+Das ist kein „nicht entschieden" — die Stichprobe traegt die 30-Ausstiege-
+Schwelle je Haelfte reissich.
 
-Das ist ein *gemessenes* „verworfen", kein „nicht entschieden": die Stichprobe ist
-mit 529 Ausstiegen gross genug, und der Skill verlangt 30 je Hälfte.
+**Die beste gefundene Geometrie bleibt leicht negativ** (−0,074 USD je Runde vor
+Gebuehr). Sie traegt also noch nicht — aber sie ist zehnmal nah an der Nulllinie,
+und ob die uebrigen sieben Kandidaten unter 0,0 % liegen, ist gemessen **nicht**
+entschieden: der Optimierer lief bis zum Ende dieser Sitzung nicht durch.
 
 ## Die Lehre
 
