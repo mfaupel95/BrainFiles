@@ -1312,10 +1312,13 @@ def _als_liste(spalten, wunsch):
     Fehlt ein Eintrag, gilt der Wunsch der vorigen Spalte.
     """
     if isinstance(wunsch, dict):
-        aus = []
-        for sp in spalten:
-            aus.append(int(wunsch.get(sp, aus[-1] if aus else 110)))
-        return aus
+        # Ein fehlender Eintrag erbt NICHT den Eintrag davor. In den
+        # Aufrufen stehen Dicts wie {"zeit": 260} - dort ist "zeit" die
+        # breite Spalte und alle anderen sind normale. Der alte Code
+        # erbte rueckwaerts und machte aus {"zeit": 260} sechs Spalten zu
+        # je 260 px (gemessen: 1560 px in einem Baum von 1241 px, +359 px).
+        # Der Vorgabewunsch ist hier SPALTEN_VORGABE, nicht der Nachbar.
+        return [int(wunsch.get(sp, SPALTEN_VORGABE)) for sp in spalten]
     if wunsch is None:
         return []
     return [int(w) for w in wunsch]
@@ -1398,6 +1401,7 @@ class Handelszentrale:
         self._breiten_gesetzt = False
         self._breiten_durchgang = 0     # wie oft nachgerechnet wurde
         self._breiten_stand_alt = ()    # Zeilenzahl des vorigen Durchgangs
+        self._breiten_platz_gewusst = False  # hatte der Baum schon eine Breite?
         self._wunsch_spuren = []        # von _baue gesetzt
         self._wunsch_pos = []
         if isinstance(root, tk.Tk):
@@ -2220,6 +2224,7 @@ class Handelszentrale:
                              self.t_omni_pos, self.t_omni_journal, self.t_omni)
                             if b is not None)
         zaehler = tuple(len(b.get_children()) for b in nachrechnen)
+        self._breiten_platz_gewusst = True
         if self._breiten_gesetzt:
             return
         self._breiten_durchgang += 1
@@ -2237,7 +2242,40 @@ class Handelszentrale:
             for iid in baum.get_children():
                 for sp, wert in zip(baum["columns"], baum.item(iid, "values")):
                     texte.setdefault(sp, []).append(wert)
-            platz = baum.winfo_width() or baum.master.winfo_width()
+            # DER PLATZ braucht die WIRKLICHE Breite. Beim ersten
+            # Durchgang hat der Baum oft noch 1 px (Tk vermisst ein
+            # verborgenes oder neu gebautes Widget erst nach einem Update),
+            # und `baum.winfo_width() or master` nahm dann still die Breite
+            # des Rahmens - der ist breiter als die Tabelle in ihm. Folge:
+            # die Kuerzung griff nicht, und die Positionstabelle stand bei
+            # Schrift 13 mit 1068 px in einem Baum von 994 px (+114 px).
+            # Deshalb: unter 100 px ist der Platz unbekannt, nicht null -
+            # dann wird gar nicht gekuerzt und der naechste Durchgang
+            # rechnet es nach.
+            # Der Platz kommt aus dem Baum, und der Baum wird von Tk erst
+            # nach einem `update_idletasks` vermessen. Deshalb wird hier
+            # nicht auf den gemeldeten Wert gewartet, sondern der Platz aus
+            # dem Container geholt: der ist gepackt und hat seine Breite
+            # sofort (der Treeview darin nicht, weil seine Leisten und die
+            # Nachzeichnung fehlen). Fuenf Zeilen Wiederholung, weil der
+            # erste Durchlauf sonst mit 1 px auskam und die Kuerzung
+            # grundsaetzlich unterblieb - die Tabelle blieb dann 114 px
+            # breiter als ihr Baum (gemessen bei Schrift 13).
+            platz = 0
+            for _ in range(5):
+                platz = baum.winfo_width()
+                if platz >= 100:
+                    break
+                try:
+                    baum.update_idletasks()
+                except Exception:                        # noqa: BLE001
+                    break
+                platz = baum.winfo_width()
+            if platz < 100:
+                self._breiten_platz_gewusst = False
+                platz = baum.master.winfo_width()
+                if platz < 100:
+                    platz = 0
             breiten = dict(spaltenbreiten(
                 list(baum["columns"]), kopf_von(baum), wunsch, texte,
                 zeichen_breite=zeichen_breite(baum.winfo_toplevel()),
@@ -2251,7 +2289,13 @@ class Handelszentrale:
         # Schrift 13 nach EINEM Durchgang stehen und sechs Tabellen blieben
         # auf ihrer Bau-Breite (gemessen: "G/V geschlossen" 113 px statt
         # 128 px Bedarf).
-        if self._breiten_durchgang >= 2 and self._breiten_stand_alt == zaehler:
+        # Fertig erst, wenn die Breiten auch GERECHNET wurden - nicht nur
+        # zweimal dieselbe Zeilenzahl gesehen. `platz == 0` heisst: der Baum
+        # hatte noch keine Breite, es wurde nicht gekuerzt, und der Durchgang
+        # zaehlt nicht als fertig.
+        if (self._breiten_durchgang >= 2
+                and self._breiten_stand_alt == zaehler
+                and self._breiten_platz_gewusst):
             self._breiten_gesetzt = True
         self._breiten_stand_alt = zaehler
 

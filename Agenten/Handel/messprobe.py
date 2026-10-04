@@ -66,30 +66,38 @@ def bericht(titel, baum, schrift):
     breite_baum = baum.winfo_width()
     summe = sum(baum.column(sp, "width") for sp in baum["columns"])
     platz = breite_baum - ROLLENDE
-    print("-" * 78)
-    print("%s  —  Baum %d px | Spalten %d px | Platz %d px  %s"
-          % (titel, breite_baum, summe, platz,
-             "PASST" if summe <= platz else "ZU BREIT (+%d px)" % (summe - platz)))
-
-    stretch = [sp for sp in baum["columns"] if baum.column(sp, "stretch")]
-    if stretch:
-        print("   stretch=True: %s  (verfaelscht jede gerechnete Breite)"
-              % ", ".join(stretch))
-
     kopf, zellen = kandidaten(baum)
     zu_schmal = []
     for sp, text in kopf:
-        if not text:
-            continue
-        noetig = schrift.measure(str(text)) + RAND
-        if noetig > baum.column(sp, "width"):
-            zu_schmal.append((sp, "UEBERSCHRIFT", noetig, str(text)))
+        if text and schrift.measure(str(text)) + RAND > baum.column(sp, "width"):
+            zu_schmal.append((sp, "UEBERSCHRIFT", schrift.measure(str(text)), str(text)))
     for iid, sp, text in zellen:
         if text is None or text == "":
             continue
         noetig = schrift.measure(str(text)) + RAND
         if noetig > baum.column(sp, "width"):
             zu_schmal.append((iid, sp, noetig, str(text)))
+
+    # "ZU BREIT" ist bei kleiner Schrift ein FEHLER und bei grosser keiner:
+    # brauchen die Texte mehr, als der Baum hergibt, ist die waagerechte
+    # Leiste die richtige Antwort - sie hat jede Tabelle. Gemessen: Schrift 11
+    # -> 970 px in 954 px Platz mit UEBERHANG (die Spalten waren breiter als
+    # ihr Text noetig), Schrift 16 -> 1276 px in 1186 px, weil die Texte
+    # 1276 px brauchen. Beides sieht gleich aus, ist aber nicht dasselbe.
+    zustand = "PASST"
+    if summe > platz:
+        zustand = ("ZU BREIT (+%d px) - kein UEBERHANG, der Text braucht es"
+                   % (summe - platz) if not zu_schmal else
+                   "BRAUCHT +%d px - waagerechte Leiste noetig"
+                   % (summe - platz))
+    print("-" * 78)
+    print("%s  —  Baum %d px | Spalten %d px | Platz %d px  %s"
+          % (titel, breite_baum, summe, platz, zustand))
+
+    stretch = [sp for sp in baum["columns"] if baum.column(sp, "stretch")]
+    if stretch:
+        print("   stretch=True: %s  (verfaelscht jede gerechnete Breite)"
+              % ", ".join(stretch))
 
     for sp in baum["columns"]:
         print("   %-12s %5d px" % (sp, baum.column(sp, "width")))
@@ -132,7 +140,12 @@ def main() -> int:
     import handelszentrale as hz
 
     root = tk.Tk()
-    root.withdraw()
+    # NICHT withdraw(): ein verborgenes Fenster hat keine Geometrie. Tk
+    # vermisst ein verborgenes Widget mit 1 px, und die Rechnung bekaeme
+    # keinen Platz - gemeldet wurde dann "ZU BREIT (+114 px)" fuer eine
+    # Tabelle, die im echten Fenster mit 1058 px in 1226 px passt.
+    # Stattdessen aus dem Bild auf einer Position links vom Bildschirm.
+    root.geometry("%dx%d-3200-0" % (args.breite, args.hoehe))
     if not args.dpi:
         try:
             root.tk.call("tk", "scaling", 1.1)   # wie handelszentrale.main()
