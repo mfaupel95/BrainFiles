@@ -340,6 +340,46 @@ def sperren_live(w, s, spur):
     return g
 
 
+def signal_gatter_gilt(w, live):
+    """True, wenn `trigger_modus: signal` in DIESEM Zyklus greift.
+
+    DIE REGEL (T-347, gemessen 04.10.2026): das Gatter schuetzt vor
+    Ueberhandelung mit GELD. Im Papier ist das Ueberhandeln harmlos - und
+    das Gatter hat dort sogar die Messung verhindert: es legte den Auftrag
+    in die signal_queue und kehrte zurueck, also konnte eine Spur mit
+    `handel_erlaubt=false` strukturell NIE eine Papierrunde buchen. Fuenf
+    Spuren standen so bei 0 Runden (nautilus_emacross, omnitrade,
+    omnitrade_futures, trendwende_btc, iv_waelle), obwohl ihr Signal da war;
+    ihr Auftrag wartete auf einen signal-executor, der sie nie abholt, weil
+    er selbst an handel_erlaubt/freigabe scheitert.
+
+    `live` ist der VORLAEUFIGE Live-Zustand aus `zyklus` - ein Auftrag, der
+    am Live-Weg scheitert, wird ohnehin Papier gebucht und gehoert damit
+    unter dieselbe Regel.
+
+    Die Funktion ist eine eigene Zeile, damit die Regel pruefbar ist, ohne
+    einen ganzen Zyklus zu fahren.
+    """
+    return bool(live) and str(w.get("trigger_modus") or "").lower() == "signal"
+
+
+def signal_gewechselt(z, inst, seite, w):
+    """True, wenn dieser Auftrag das Signal-Gatter passiert (Live-Weg).
+
+    Merkt sich die GESEHENE Richtung in `z["vor_signal"][inst]` - bei JEDER
+    Pruefung, auch bei der verweigerten. Sonst waere ein verweigerter
+    Auftrag beim naechsten Takt wieder "neu" (dieselbe Klasse wie der Fehler
+    vom 03.10.2026, der jede Spur ohne Flag sperrte).
+
+    Die Regel gilt je Instrument getrennt: ein zweites Instrument darf nicht
+    am ersten scheitern.
+    """
+    vorher = z.setdefault("vor_signal", {})
+    alt = vorher.get(inst)
+    vorher[inst] = seite
+    return alt is None or alt != seite
+
+
 def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
             ziel_preis=None, journal_pfad=None, live=False, weg=None):
     """Eine Position eroeffnen - Stop in Prozent, Ziel als Preis oder Vielfaches.
@@ -749,19 +789,17 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         # alle 15 Minuten den selben Einstieg ausloest. Ohne diesen Check
         # waere jede Spur latent ueberhandelnd, ohne dass die Signale selbst
         # falsch waeren.
-        if w.get("trigger_modus") == "signal":
-            if "vor_signal" not in z:
-                z["vor_signal"] = {}
+        #
+        # NUR IM LIVE-BETRIEB (T-347, Regel in `signal_gatter_gilt`).
+        signal_gatter = signal_gatter_gilt(w, live)
         for inst in sorted(daten):
             seite = signal(daten[inst], w)
             if not seite:
                 continue
             # TRIGGER_MODUS-Signal-Wechsel (siehe Doku oben)
-            if w.get("trigger_modus") == "signal":
-                letzte = z["vor_signal"].get(inst)
-                if letzte == seite:
+            if signal_gatter:
+                if not signal_gewechselt(z, inst, seite, w):
                     continue  # Signal unveraendert -> kein neuer Einstieg
-                z["vor_signal"][inst] = seite
                 # Signal-Wechsel in die Queue schreiben, damit der
                 # signal-executor (Hermes-Cron) unabhaengig vom Dauerlauf ausfuehrt.
                 _signal_queue(ordner, inst, seite, kurse.get(inst))

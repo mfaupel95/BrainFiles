@@ -181,5 +181,92 @@ class BeideSpurenSindAngemeldet(unittest.TestCase):
                          "Spuren mit Warteschlange, aber ohne Wache: %s" % stumm)
 
 
+    def test_jede_queuespur_hat_eine_wache(self):
+        """DIE EIGENSCHAFT, um die es geht (Befund 04.10.2026, T-348).
+
+        Die Fassung oben fragt nur Spuren mit einer GEFUELLTEN Queue ab. Eine
+        Spur mit einer LEEREN Queue faellt dadurch durch - und genau daran ist
+        `omnitrade_futures` am 04.10. gescheitert: die Warteschlange stand
+        leer, die Wache fehlte, und das leere Warten ist nicht von einer
+        kaputten Spur zu unterscheiden.
+
+        REGEL: wer ueber `trigger_modus: signal` echte Warteschlangen
+        erzeugt, wird beobachtet - unabhaengig davon, ob heute etwas drin
+        liegt.
+
+        WICHTIG, und der Grund fuer diese Fassung: `trigger_modus: signal`
+        allein ist NICHT das Merkmal einer Warteschlange. Sieben Spuren
+        tragen das Feld, aber nur vier erzeugen eine `signal_queue.json`:
+        die anderen fuehren ein eigenes `handeln.py` und benutzen
+        `signal_wechsel.zugelassen()` - ein Gatter AM Einstieg, das sperrt
+        statt zu melden. Diese Spuren erzeugen keine Warteschlange und
+        brauchen deshalb keine Wache. Eine Fassung, die nur auf das Feld
+        schaut, meldet sieben statt vier Spuren und wird beim naechsten
+        Umbau wieder still.
+
+        Die Warteschlangen-Dateien sind Laufzeitstand und nicht versioniert,
+        darum baut der Test seine eigene: er liest die Liste der Spuren mit
+        Signal-Modus aus den echten Wachen und legt die Queue in einem
+        Tempordner an. Sonst prueft der Test nichts - genau das war der
+        Befund, den er aufdecken sollte.
+        """
+        import json
+        import os
+        import shutil
+        import tempfile
+        handel = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              os.pardir)
+        m = _lade(WACHE)
+        tmp = tempfile.mkdtemp(prefix="queuespuren-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        alt_handel = m.HANDEL
+        m.HANDEL = Path(tmp)
+        self.addCleanup(setattr, m, "HANDEL", alt_handel)
+
+        signal_spuren = []
+        for name in sorted(os.listdir(handel)):
+            pfad = os.path.join(handel, name, "wachen.json")
+            if not os.path.isfile(pfad):
+                continue
+            try:
+                with open(pfad, encoding="utf-8") as fh:
+                    w = json.load(fh) or {}
+            except (OSError, ValueError):
+                continue
+            if str(w.get("trigger_modus") or "").lower() == "signal":
+                signal_spuren.append(name)
+        self.assertTrue(signal_spuren,
+                        "keine Spur traegt trigger_modus - dann prueft "
+                        "dieser Test nichts")
+        # NUR die Spuren bekommen eine Queue, die sie auch erzeugen. Das ist
+        # `spur_buch.zyklus`: dort liegt `_signal_queue`, und nur dieser Weg
+        # legt eine Warteschlange an. Die Spuren mit eigenem `handeln.py`
+        # und `signal_wechsel.zugelassen()` sperren am Einstieg und melden
+        # nirgends hin - fuer die waere eine Queue erfunden. Genau das war
+        # der Fehler der ersten Fassung dieses Tests: sie legte fuer ALLE
+        # sieben Spuren mit `trigger_modus` eine Queue an und beanstandete
+        # dann zu Recht sieben fehlende Wachen.
+        erzeuger = []
+        for name in signal_spuren:
+            handeln = os.path.join(handel, name, "handeln.py")
+            if not os.path.isfile(handeln):
+                continue
+            with open(handeln, encoding="utf-8") as fh:
+                text = fh.read()
+            if ".zyklus(" in text:
+                erzeuger.append(name)
+        self.assertTrue(erzeuger, "keine Spur erzeugt eine Queue - dann "
+                                  "prueft dieser Test nichts")
+        for name in erzeuger:
+            (Path(tmp) / name).mkdir(parents=True, exist_ok=True)
+            # LEER auf dem Platz: genau der Fall, den die alte Fassung
+            # uebersehen hat - die Warteschlange existiert, ist aber leer.
+            (Path(tmp) / name / "signal_queue.json").write_text(
+                "[]", encoding="utf-8")
+        stumm = sorted(n for n in erzeuger if n not in m.SPUREN)
+        self.assertEqual(stumm, [],
+                         "Spuren mit Signal-Queue, aber ohne Wache: %s" % stumm)
+
+
 if __name__ == "__main__":
     unittest.main()

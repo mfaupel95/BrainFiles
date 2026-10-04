@@ -21,7 +21,16 @@ import re
 import shutil
 import sys
 
-KOPF = re.compile(r"^- \[[ x]\] \*\*(T-\d{3,})\b")
+# GLEICHES Muster wie `doppelte_nummern.KOPF` - das war der Fehler (T-332,
+# 04.10.2026): `[ x]` verlangt EXAKT ein Leerzeichen und kennt die
+# Statuszeichen `[?]`, `[!]`, `[✓]` nicht. Gemessen an TASKS.md: 313 von 342
+# Bloecken sichtbar, 29 unsichtbar. Die Folge war still - `erledigen`
+# meldete "T-332 kommt 0x vor" fuer einen Eintrag, der in Zeile 378 steht.
+#
+# Zwei Werkzeuge, EIN Muster: sie auseinanderlaufen zu lassen hiesse, dass
+# eins von beiden blind wird. Das hier ist die Kopie, nicht die Quelle - ein
+# Test haelt beide gleich.
+KOPF = re.compile(r"^- \[[ x?!✓]\]\s*\*\*(T-\d{3,})\b")
 
 
 class Fehler(Exception):
@@ -69,7 +78,7 @@ class Datei:
             raise Fehler("%s steht nicht in '## Offen' (Zeile %d)" % (nummer, i + 1))
         if not self.zeilen[i].startswith("- [ ] "):
             raise Fehler("%s ist schon abgehakt: %r" % (nummer, self.zeilen[i][:40]))
-        ids_vorher = re.findall(r"- \[[ x]\] \*\*(T-\d{3,})", self.text)
+        ids_vorher = re.findall(r"- \[[ x?!✓]\]\s*\*\*(T-\d{3,})", self.text)
         abschnitte_vorher = [z for z in self.zeilen if z.startswith("## ")]
 
         block = self.zeilen[i:j]
@@ -81,7 +90,7 @@ class Datei:
         # vor dem einruecken keine Zeile verlieren
         assert [z for z in self.zeilen if z.startswith("## ")] == abschnitte_vorher
         # Reihenfolge aendert sich durch das Verschieben - die MENGE muss gleich bleiben
-        assert sorted(re.findall(r"- \[[ x]\] \*\*(T-\d{3,})", self.text)) == sorted(ids_vorher)
+        assert sorted(re.findall(r"- \[[ x?!✓]\]\s*\*\*(T-\d{3,})", self.text)) == sorted(ids_vorher)
         return i + 1
 
     def schreibe(self, mit_sicherung=True):

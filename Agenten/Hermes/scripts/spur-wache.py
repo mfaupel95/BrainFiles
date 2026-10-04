@@ -401,6 +401,10 @@ SPUREN = {
     "nautilus_emacross": _zurueck_nautilus_emacross,
     "moondev_signalwelle": lambda w: _zurueck_queue("moondev_signalwelle"),
     "moondev_topmovers": lambda w: _zurueck_queue("moondev_topmovers"),
+    "moondev_listingarb": lambda w: _zurueck_queue("moondev_listingarb"),
+    "moondev_marktlage": lambda w: _zurueck_queue("moondev_marktlage"),
+    "omnitrade": lambda w: _zurueck_queue("omnitrade"),
+    "omnitrade_futures": lambda w: _zurueck_queue("omnitrade_futures"),
 }
 
 

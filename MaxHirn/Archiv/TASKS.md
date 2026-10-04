@@ -1,4 +1,65 @@
-# Offene Punkte
+## Offen
+- [ ] **T-349 — adx_macd: das Vorzeichen folgt dem Fenster, nicht der Strategie**
+      Kontext: T-342 neu gemessen am 04.10.2026 (BTC 15m, 10.000 USD,
+      0,05 %/Seite, OMNI_LONG_ONLY=1, echter Rust-Backtest):
+        14 Tage  13 Runden  38,5 %   -324,86 USD   (-24,99 je Runde)
+        28 Tage  19 Runden  36,8 %   +182,67 USD   ( + 9,61 je Runde)
+        42 Tage  29 Runden  34,5 %     -6,74 USD   ( - 0,23 je Runde)
+      Der notierte Wert (+117,04) ist heute +182,67 - dieselbe Zelle, ein
+      anderer Kerzenstand. WICHTIGER: die Trefferquote ist in allen drei
+      Fenstern nahezu gleich (36,8 / 36,8 / 34,5 %), das Vorzeichen der PnL
+      dagegen nicht. Eine Kennzahl, die zwischen -25 und +10 USD je Runde
+      pendelt, ohne dass sich die Trefferquote bewegt, beschreibt den
+      Zeitraum, nicht die Regel.
+      Gegenprobe mit der zweiten Fassung: rsi_long_only haelt 60 / 73 / 78 %
+      Treffer und verliert in ALLEN drei Fenstern (-13,15 / -147,97 /
+      -40,25). Hohe Trefferquote und Verlust zugleich ist keine bessere
+      Strategie, sondern ein zu enges Ziel: der Gewinn je Treffer deckt den
+      Verlust je Fehlschlag nicht.
+      Naechster Schritt: KEIN Freischalten. adx_macd darf erst nach echten
+      Papierrunden aus T-347 (laufend, erster Einstieg 04.10. 21:24) und
+      T-291 (Guthaben) weitergehen. Die Geometrie von rsi_long_only (Ziel zu
+      eng) ist eine eigene Messung und gehoert nicht in diese Zelle.
+      Angelegt 04.10.2026 · Betrifft Agenten/Handel/omnitrade/intervalle_messen.py
+
+- [ ] **T-350 — fuenf moondev-Spuren tragen den Perp-Satz ohne Perp-Nachweis**
+      Kontext: `gebuehr_boerse_abgleich.py` (neu, T-330) meldet 5 Abweichungen
+      ueber die Wachen: moondev_funding, moondev_liquidation,
+      moondev_marktlage, moondev_sentiment und moondev_whale tragen
+      `gebuehr_taker 0.0005` (0,05 % = OKX PERP), tragen aber weder
+      `boerse`, noch `moeglich: perp`, noch ein Perp-Instrument. Die Wachen
+      nennen nur Kurzzeichen (['BTC','ETH','SOL','HYPE','FIL','ZEC']) oder
+      gar keine Instrumente (marktlage, whale). Ihre `_gebuehr_quelle` belegt
+      den Satz mit echten Fuellungen: "ZEC-USD_UM_XPERP, ADA-USD_UM_XPERP je
+      0,0500 %" - der Satz ist also RICHTIG.
+      Das Problem ist die Nachweisfuehrung, nicht der Satz: `spur_buch.
+      orderweg` liest `str(w.get("boerse") or "okx")` und liefert damit
+      `mosaic/okx_spot` - einen SPOT-Weg fuer eine Perp-Spur. Wer die Spur
+      je scharf schaltet, wuerde auf Spot handeln und den Perp-Satz rechnen.
+      Naechster Schritt: `moeglich: perp` (oder `instrument: BTC-USD_UM_XPERP`)
+      in den fuenf Wachen ergaenzen, damit die Rechnung den Perp-Satz sieht
+      UND `orderweg` den Perp-Weg. Kein Gebuehrenwert wird hier geaendert.
+      Angelegt 04.10.2026 · Betrifft Agenten/Handel/moondev_*/wachen.json
+
+- [ ] **T-351 — signal-executor und die Queue: die Trennung ist an einer Stelle tot**
+      Kontext: T-347 hat gezeigt, dass `trigger_modus: signal` im Papier
+      strukturell nicht buchen kann (Gatter legt in die Queue, der
+      signal-executor setzt sie nur bei handel_erlaubt + Freigabe + Fenster
+      um). Diese Trennung ist fuer die LIVE-Spuren richtig, hat aber eine
+      blinde Stelle: eine Spur, die zwischendurch von live auf papier zurueck
+      geschaltet wird, legt weiter Eintraege in die Queue, die niemand
+      abholt. Sie sammeln sich, bis der Executor sie bei 30 min Alter
+      verwirft (Stand 04.10.: topmover-Queue 59 Eintraege in 88 Minuten,
+      darin je Instrument dreimal dieselbe Richtung - ein Wechsel je
+      Risikostufe).
+      Naechster Schritt: entweder der Executor raeumt Warteschlangen von
+      Spuren, die nicht mehr live sind (mit Meldezeile "Queue abgeraeumt"),
+      oder die Warteschlange traegt ein Ablaufdatum je Spur. Die heutige
+      30-Minuten-Regel im Executor ist der Notaus, nicht die Regel - sie
+      loest das Wachstum, nicht den Grund.
+      Angelegt 04.10.2026 · Betrifft Agenten/Hermes/scripts/signal-executor.py
+
+Punkte
 
 Sitzungsübergreifende Aufgabenliste. Einzige Quelle für „was ist noch offen".
 Angelegt am 2026-08-28, weil offene Punkte aus früheren Chats bis dahin
@@ -311,22 +372,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Stichprobe moeglich.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Werkstatt/omnitrade/status/, Agenten/Handel/omnitrade_futures/
-- [ ] **T-342 — Backtest-Fensterlaenge: adx_macd 28 Tage positiv, Nachbarfenster 382 USD anders**
-      Kontext: gemessen am 04.10.2026, BTC 15m, 10.000 USD, 0,05 %/Seite,
-      OMNI_LONG_ONLY=1, echter Rust-Backtest. Nur adx_macd im 28-Tage-Fenster
-      bleibt nach Gebuehren positiv (+117,04 USD, 19 Runden, 36,8 % Treffer);
-      14 Tage -290,92, 42 Tage -129,95. rsi_long_only ist in ALLEN drei Fenstern
-      negativ (-13,15 / -198,78 / -40,25) trotz 60-78 % Trefferquote - Ziel zu
-      eng. Der gebuehrenfreie Lauf zeigt warum: die Gebuehren kosten 110-236 USD
-      je Fenster, also ueber der Bruttomarge.
-      Naechster Schritt: KEIN 6-Wochen-Fenster - das zerlegt die einzige positive
-      Zelle. 4 Wochen sind die beste der drei gemessenen, aber keine belegte
-      Kante (das Vorzeichen kippt mit dem Fenster, nicht mit der Parameter-
-      qualitaet). Vor dem Freischalten fehlen echte Papierrunden (T-341) und
-      Guthaben (T-291). Ziel-Geometrie der rsi-Fassung nachziehen, wenn sie
-      ueberhaupt weiterverfolgt wird.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Handel/omnitrade/intervalle_messen.py, Werkstatt/omnitrade/
 - [ ] **T-338 — QQQ-Tageskerzen nachladen, dann die QQQ/BTC-Rotation messen**
       Kontext: T-210 hat die Rotation QQQ/BTC/Cash als Datenluecke ausgewiesen,
       nicht als erfolglose Strategie: im Haus liegen nur 92 QQQ-1D-Kerzen ab
@@ -421,22 +466,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/gebuehren_setzen.py
 
-- [ ]   **T-332 — `doppelte_nummern.py` uebersah 26 Eintraege und meldete gruen**
-      Kontext: Der Pruefer der Aufgabenliste erkannte nur `- [ ]` und `- [x]`. Die Datei
-      traegt aber auch `- [?]` (9), `- [!]` (1) und `- [✓]` (1). Folge: `hoechste Nummer:
-      T-318`, waehrend T-330 oben im Offen-Abschnitt stand - der Pruefer meldete OK, ohne
-      den halben Bestand zu lesen. Wer eine doppelte Nummer in einem wartenden oder
-      wichtigen Eintrag anlegte, wurde nicht gesehen. Der Leerraum nach dem Zeichen ist
-      jetzt optional (in der Datei stehen eine und drei Leerstellen).
-      Gefunden an einer FAELSCHEN Meldung: mein erster Testlauf nach dem Eintragen der
-      neuen Aufgaben meldete weiterhin 296 Bloecke und T-318 - ich hatte die Ursache
-      zunaechst in meinen Eintrag format gelegt. Richtig war die Diagnose: ein gruener
-      Pruefer, dessen Zahl sich nicht bewegt hat.
-      Gegenprobe als Regel: nach jedem Eintraegen den Pruefer laufen lassen und die
-      Bloeckzahl muss um die Zahl der neuen Eintraege steigen - bleibt sie gleich, ist
-      nicht der Eintrag falsch, sondern der Pruefer.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py
 
 - [ ]   **T-327 — `anbindung_pruefen.py` las die Wachen aus Agenten/ statt Agenten/Handel/**
       Kontext: `HANDEL = os.path.dirname(HIER)` in einem Werkzeug, das IN `Agenten/Handel`
@@ -3350,6 +3379,40 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x]   **T-332 — `doppelte_nummern.py` uebersah 26 Eintraege und meldete gruen**
+      Kontext: Der Pruefer der Aufgabenliste erkannte nur `- [ ]` und `- [x]`. Die Datei
+      traegt aber auch `- [?]` (9), `- [!]` (1) und `- [✓]` (1). Folge: `hoechste Nummer:
+      T-318`, waehrend T-330 oben im Offen-Abschnitt stand - der Pruefer meldete OK, ohne
+      den halben Bestand zu lesen. Wer eine doppelte Nummer in einem wartenden oder
+      wichtigen Eintrag anlegte, wurde nicht gesehen. Der Leerraum nach dem Zeichen ist
+      jetzt optional (in der Datei stehen eine und drei Leerstellen).
+      Gefunden an einer FAELSCHEN Meldung: mein erster Testlauf nach dem Eintragen der
+      neuen Aufgaben meldete weiterhin 296 Bloecke und T-318 - ich hatte die Ursache
+      zunaechst in meinen Eintrag format gelegt. Richtig war die Diagnose: ein gruener
+      Pruefer, dessen Zahl sich nicht bewegt hat.
+      Gegenprobe als Regel: nach jedem Eintraegen den Pruefer laufen lassen und die
+      Bloeckzahl muss um die Zahl der neuen Eintraege steigen - bleibt sie gleich, ist
+      nicht der Eintrag falsch, sondern der Pruefer.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py
+      Beide Werkzeuge auf der Hausform (erledigen.py sah 313 von 342 Bloecken); 15 Tests nageln die Regel fest
+- [x] **T-342 — Backtest-Fensterlaenge: adx_macd 28 Tage positiv, Nachbarfenster 382 USD anders**
+      Kontext: gemessen am 04.10.2026, BTC 15m, 10.000 USD, 0,05 %/Seite,
+      OMNI_LONG_ONLY=1, echter Rust-Backtest. Nur adx_macd im 28-Tage-Fenster
+      bleibt nach Gebuehren positiv (+117,04 USD, 19 Runden, 36,8 % Treffer);
+      14 Tage -290,92, 42 Tage -129,95. rsi_long_only ist in ALLEN drei Fenstern
+      negativ (-13,15 / -198,78 / -40,25) trotz 60-78 % Trefferquote - Ziel zu
+      eng. Der gebuehrenfreie Lauf zeigt warum: die Gebuehren kosten 110-236 USD
+      je Fenster, also ueber der Bruttomarge.
+      Naechster Schritt: KEIN 6-Wochen-Fenster - das zerlegt die einzige positive
+      Zelle. 4 Wochen sind die beste der drei gemessenen, aber keine belegte
+      Kante (das Vorzeichen kippt mit dem Fenster, nicht mit der Parameter-
+      qualitaet). Vor dem Freischalten fehlen echte Papierrunden (T-341) und
+      Guthaben (T-291). Ziel-Geometrie der rsi-Fassung nachziehen, wenn sie
+      ueberhaupt weiterverfolgt wird.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/omnitrade/intervalle_messen.py, Werkstatt/omnitrade/
+      neu gemessen 04.10.2026 (14/28/42 Tage), Befund als T-349 ausgelagert
 - [x] **T-343 — Nautilus-Orderweg: der DEMO-Haken ist je Lauf wieder weg**
       Kontext: Seit dem 04.10.2026 (Leitstand Schritt 2) laesst sich der
       OKX-DEMO-Node im Leitstand starten, und der Reiter hat einen echten
