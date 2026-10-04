@@ -67,6 +67,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 
 | Seite | Zweck |
 |---|---|
+| [Handel/Leitstand-Einbetten.md](Handel/Leitstand-Einbetten.md) | Fremde UIs als Reiter einbetten: Fenster gegen Frame, ein fehlendes 326-MB-Rad darf den Rahmen nicht toeten, die `after()`-Leiche |
 | [Handel/Spuren-Uebersicht.md](Handel/Spuren-Uebersicht.md) | Welche Spur existiert, welchen Orderweg sie hat, live oder Papier |
 | [Handel/Gates-und-Freigabe.md](Handel/Gates-und-Freigabe.md) | Sperrenkette, Freigabefenster, AUTO_FREIGABE, Arming |
 | [Handel/Kosten-und-Bedingungen.md](Handel/Kosten-und-Bedingungen.md) | Gebuehren, Bedingungen 1-5, f_max-Merksatz |
