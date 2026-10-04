@@ -377,6 +377,18 @@ try {
   }
 } catch { Notiz "  ! Platz-Pruefung abgebrochen: $_" }
 
+# 7b) Plattenplatz vertieft: Commit-Reserve und Wachstumsordner (Vorfall 30.09., T-228).
+# Schnell zuerst; die Ordnermessung (~75 s) nur, wenn eine Warnung vorliegt.
+try {
+  $pp = Join-Path $PSScriptRoot 'plattenplatz-pruefen.ps1'
+  $ppAus = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $pp -OhneOrdner)
+  if ($LASTEXITCODE -ne 0) { $ppAus = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $pp) }
+  foreach ($z in $ppAus) {
+    if ($z -like 'WARN *') { Entscheiden $z.Substring(5) }
+    elseif ($z -like 'INFO Commit*' -or $z -like 'INFO Gross*') { Info $z.Substring(5) }
+  }
+} catch { Notiz "  ! Platzpruefung (vertieft) abgebrochen: $_" }
+
 # ---------------------------------------------------------------------------
 # 8) Altlasten: .bak-Dateien, leere Geruest-Ordner, grosse ungeklaerte Bestaende
 # ---------------------------------------------------------------------------
