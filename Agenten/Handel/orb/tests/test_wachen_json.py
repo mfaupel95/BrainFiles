@@ -13,12 +13,12 @@ class TestWachenJson(unittest.TestCase):
         # beide Instrumente negativ (EV -45.1 / -3.7 Pkt je Runde), es gibt
         # keinen Live-Pfad im Code. Was der Papierlauf BRAUCHT, ist dagegen
         # gesetzt: ein Instrument und ein Spiegelziel (Bedingung 4).
-                # handel_erlaubt steht seit dem 21.09.2026 auf True (Auftrag Max:
-        # "alle weiteren spuren live offen und handel erlaubt"). Die Spur
+        # handel_erlaubt steht auf False: Auftrag Max 21.09.2026 gilt nur fuer
+        # sechs andere Spuren; ORB bleibt reine Papierspur. Die Spur
         # hat aber KEINEN Orderaufruf im Code - der Schalter allein handelt
-        # nicht. Der Test prueft weiter, dass der Wert gesetzt ist und
-        # niemand ihn still auf None/Text umstellt.
-        self.assertIs(self.w["handel_erlaubt"], True)
+        # nicht. Der Test prueft, dass der Wert False bleibt und
+        # niemand ihn still aufmacht (nur wachen_orb.sperre_zu kippt ihn).
+        self.assertIs(self.w["handel_erlaubt"], False)
         self.assertIs(self.w["freigabe"]["erfuellt"], False)
         self.assertIs(self.w["freigabe"]["backtest_bestanden"], False)
         self.assertIn(self.w["instrument_aktiv"], ("BTC_USDT", "ETH_USDT"))
