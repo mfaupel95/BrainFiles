@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "stand": "2026-10-04",
+  "beschreibung": "Anbindung von Hermes an omnitrade (Rust, Werkstatt/omnitrade). Alle Pfade relativ zur BrainFiles-Wurzel. Hermes liest nur; gestartet wird ausschliesslich ueber omnitrade.cmd.",
+  "wissen": "MaxHirn/Wissen/Omnitrade.md",
+  "pfade": {
+    "projekt": "Werkstatt/omnitrade",
+    "wrapper": "omnitrade.cmd",
+    "auswertung": "omnitrade-auswertung.cmd",
+    "bruecke": "Agenten/Handel/omnitrade_bridge.py",
+    "lauf_pruefung": "Agenten/Handel/omnitrade_lauf.py",
+    "statusdatei": "Werkstatt/omnitrade/status/live.json",
+    "statusdatei_umgebungsvariable": "OMNITRADE_STATUS",
+    "logs": "Werkstatt/omnitrade/logs",
+    "strategien": "Werkstatt/omnitrade/strategien",
+    "daten": "Werkstatt/omnitrade/daten"
+  },
+  "modus": {
+    "boerse": "okx",
+    "netz": "testnet",
+    "echtgeld": false,
+    "region": "eea",
+    "paar": "BTCUSDC",
+    "skript": "strategien/ema_cross_20_50.omni",
+    "intervall": "1m",
+    "anfangskapital": 500,
+    "nur_long": true,
+    "max_laeufe_gleichzeitig": 1
+  },
+  "schluessel": {
+    "hinweis": "Nur die Namen der Benutzervariablen, nie Werte. Echtgeld-Schluessel (OKX_LIVE_API_*) sind nicht eingerichtet und nur mit --network mainnet erlaubt.",
+    "umgebungsvariablen": [
+      "OKX_DEMO_API_KEY",
+      "OKX_DEMO_API_SECRET",
+      "OKX_DEMO_API_PASSPHRASE",
+      "OKX_REGION"
+    ]
+  },
+  "befehle": {
+    "stand": "omnitrade.cmd",
+    "start": "omnitrade.cmd start",
+    "ui": "omnitrade.cmd ui",
+    "lauf_laeuft": "python Agenten/Handel/omnitrade_lauf.py",
+    "beenden": "Strg+C im Lauf-Terminal"
+  },
+  "hermes": {
+    "darf": ["Stand lesen", "Statusdatei lesen", "Logs lesen", "Auswertung ausfuehren"],
+    "darf_nicht": [
+      "start ohne Auftrag von Max",
+      "taskkill auf omnitrade-cli.exe",
+      "Statusdatei schreiben",
+      "--network mainnet"
+    ]
+  },
+  "status": {
+    "schema": 1,
+    "veraltet_untergrenze_s": 300,
+    "veraltet_vielfaches_kerzenabstand": 2.5,
+    "hinweis": "Die Datei wird nur beim Verarbeiten einer Kerze geschrieben. state=running mit toter PID gilt als Absturz; massgeblich ist omnitrade_lauf.py (Statusdatei plus PID)."
+  }
+}

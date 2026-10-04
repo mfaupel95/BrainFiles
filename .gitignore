@@ -84,6 +84,7 @@
 Agenten/Handel/stand/
 !Agenten/Handel/*.ps1
 !Agenten/Handel/REGELWERK-*.json
+!Agenten/Handel/hermes-omnitrade-config.json
 !Agenten/Handel/requirements.txt
 !Agenten/Handel/prognose.py
 !Agenten/Handel/prognose.json
