@@ -278,7 +278,13 @@ class BoersenfeldTest(unittest.TestCase):
             if b:
                 verwendet.add(b)
         bekannt = {"okx", "okx_spot", "okx_perp", "kraken", "kraken_futures",
-                   "deribit"}
+                   "deribit", "signalwelle"}
+        # 04.10.2026: 'signalwelle' ist kein Boersenname, sondern der NAME
+        # einer Spur (moondev_signalwelle), die als PERP gefuehrt wird - Max hat
+        # den Satz am 01.10.2026 so entschieden (QUELLE_PERP_ENTSCHEIDUNG). Es
+        # steht hier, damit der Test BENENNT bleibt und nicht bei der naechsten
+        # neuen Spur wieder anschlaegt: wer eine Wachen-Boerse erfindet, muss
+        # sie eintragen und ihren Satz messen.
         self.assertTrue(verwendet <= bekannt,
                         "Boerse ohne gemessenen Satz: %s"
                         % sorted(verwendet - bekannt))

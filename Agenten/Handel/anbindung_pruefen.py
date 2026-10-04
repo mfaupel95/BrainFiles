@@ -25,8 +25,14 @@ import os
 import sys
 from datetime import datetime
 
+# Das Werkzeug liegt IN Agenten/Handel - eine Ebene darunter waere Agenten/,
+# und dann laest os.path.join(HANDEL, spur, "wachen.json") ins Leere. Genau
+# das ist am 03.10.2026 passiert: lade_wachen() bekam fuer jede Spur {} zurueck
+# (es gibt kein Agenten/scanner/wachen.json), handel_erlaubt las sich als False,
+# und der Lauf meldete 12 von 12 Spuren "bereit, aber gesperrt" - wo doch 10
+# scharf sind. Siehe HANDEL = HIER, dieselbe Regel wie in jeder Spur.
 HIER = os.path.dirname(os.path.abspath(__file__))
-HANDEL = os.path.dirname(HIER)
+HANDEL = HIER
 WURZEL = os.path.dirname(HANDEL)
 if HANDEL not in sys.path:
     sys.path.append(HANDEL)

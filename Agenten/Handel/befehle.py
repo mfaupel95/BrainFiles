@@ -93,6 +93,8 @@ FAMILIE = {
     "omniquant_weit": "Prognose-Buch (weit)",
     "macd_mtf": "Indikator",
     "squeeze": "Indikator",
+    # Schattenarm squeeze_eth (03.10.2026, Auftrag Max "Schattenarm").
+    "squeeze_eth": "Indikator (Schattenarm)",
     "supertrend": "Indikator",
     "trendwende_btc": "Indikator",
     # Prophet-Signal (02.10.2026): EMA30-Trend + Saisonalitaet, ein Signal
@@ -145,6 +147,9 @@ FAMILIE = {
 
 INDIKATOREN = ("macd_mtf", "squeeze", "supertrend", "wavetrend",
                "trendwende_btc",
+               # Schattenarm squeeze_eth (03.10.2026) - eigener Befehl, sonst
+               # bediente /bericht squeeze_eth das Buch des Hauptbuchs.
+               "squeeze_eth",
                # Prophet-Signal (02.10.2026).
                "prophet_signal",
                "klassik_sma", "klassik_ema", "klassik_macd", "klassik_bollinger",

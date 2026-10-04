@@ -64,6 +64,103 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ]   **T-331 — `satz_pct_fuer` las den Börsensatz aus den Notizfeldern**
+      Kontext: Die Ableitung 'boerse=okx, ist das ein Perp?' suchte das Wort "perp" in
+      `json.dumps(w).lower()` - also im GANZEN Wachen-JSON. Die Notizfelder tragen es
+      haeufig im Nebensatz (`_trigger_vermerk: ... Signal-Wechsel-Gatter als Perp`,
+      `_handel_erlaubt_vermerk: ... Perp`). Damit wurde jede OKX-Spot-Wache als Perp
+      gelesen: der Abgleich verlangte 0,05 % von moondev_topmovers und moondev_listingarb,
+      die gemessen 0,10 % tragen (ihre eigenen Notizen sagen das sogar). Der Satz wird
+      jetzt aus dem MARKTTYP abgeleitet (`instrumente`, `instrumente_aktiv`, `instrument`,
+      `moeglich`, `markttyp`/`produkt`/`instrument_typ`) - nicht aus dem Kommentar darueber.
+      Nebenbefund dabei: `trendwende_btc` fuehrt sein Instrument im SINGULAR-Feld
+      `instrument` (BTC-USDT-SWAP), nicht in `instrumente` - das alte Muster las es nicht
+      und wertete die echte Perp-Spur als Spot.
+      Dieselbe Frage bei jedem anderen Werkzeug stellen, das eine Wachen nach einem
+      Schluesselwort durchsucht statt nach einem Feld: eine Notiz soll nie eine Zahl
+      entscheiden.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/gebuehren_setzen.py
+
+- [ ]   **T-332 — `doppelte_nummern.py` uebersah 26 Eintraege und meldete gruen**
+      Kontext: Der Pruefer der Aufgabenliste erkannte nur `- [ ]` und `- [x]`. Die Datei
+      traegt aber auch `- [?]` (9), `- [!]` (1) und `- [✓]` (1). Folge: `hoechste Nummer:
+      T-318`, waehrend T-330 oben im Offen-Abschnitt stand - der Pruefer meldete OK, ohne
+      den halben Bestand zu lesen. Wer eine doppelte Nummer in einem wartenden oder
+      wichtigen Eintrag anlegte, wurde nicht gesehen. Der Leerraum nach dem Zeichen ist
+      jetzt optional (in der Datei stehen eine und drei Leerstellen).
+      Gefunden an einer FAELSCHEN Meldung: mein erster Testlauf nach dem Eintragen der
+      neuen Aufgaben meldete weiterhin 296 Bloecke und T-318 - ich hatte die Ursache
+      zunaechst in meinen Eintrag format gelegt. Richtig war die Diagnose: ein gruener
+      Pruefer, dessen Zahl sich nicht bewegt hat.
+      Gegenprobe als Regel: nach jedem Eintraegen den Pruefer laufen lassen und die
+      Bloeckzahl muss um die Zahl der neuen Eintraege steigen - bleibt sie gleich, ist
+      nicht der Eintrag falsch, sondern der Pruefer.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Hermes/skills/aufgabenliste-pflegen/scripts/doppelte_nummern.py
+
+- [ ]   **T-327 — `anbindung_pruefen.py` las die Wachen aus Agenten/ statt Agenten/Handel/**
+      Kontext: `HANDEL = os.path.dirname(HIER)` in einem Werkzeug, das IN `Agenten/Handel`
+      liegt - eine Ebene zu hoch. `lade_wachen()` bekam fuer jede Spur `{}` (es gibt kein
+      `Agenten/scanner/wachen.json`), `handel_erlaubt` las sich als False, und der Lauf meldete
+      12 von 12 Spuren "bereit, aber gesperrt" - wo 10 scharf sind. Der Befund sah harmlos aus
+      ("alles gesperrt") und war die Umkehrung der Wahrheit: wer nach dem Lauf handelte, haette
+      die falsche Liste gehabt. Behoben (`HANDEL = HIER` mit Begruendung im Modulkopf), Nachweis:
+      der Lauf meldet jetzt 12 bereit / 2 gesperrt (xperp und swap tragen `handel_erlaubt=false`
+      wirklich). Test `tests/test_arm_wirksamkeit.py::WerkzeugLiegtImHandelOrdnerTest` mit
+      Gegenprobe.
+      Die Regel auf alle Werkzeuge direkt in Agenten/Handel ausweiten (eine Pruefung
+      ueber die ganze Wurzel dieses Ordners). `freigabe_tor.py` und `risiko_beitrag.py` fielen am
+      03.10.2026 schon auf dieselbe Weise auf.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/anbindung_pruefen.py
+
+- [ ]   **T-328 — Zwei Schattenarme liefen, ohne dass das Haus ihre Q:-Kopie je pruefte**
+      Kontext: `spiegelstand` fuehrte die Arm-Namen hart: nur `wachen.knapp.json` und
+      `wachen.weit.json`. `squeeze_eth` (Ordner squeeze, Wachen `wachen.eth.json`) und
+      `nautilus_kraken_futures` (Ordner nautilus_kraken, Wachen `wachen.futures.json`) stehen
+      in `dauerlauf.SPUREN`, spiegelten nach Q: - und wurden von der Pruefung nie gesehen.
+      Bedingung 4 dieser zwei Spuren war ungeprueft (2 von 48). Derselbe Ort riet das Suffix mit
+      `spur.split("_", 1)[1]`: aus `nautilus_kraken_futures` wird `kraken_futures`, die Datei
+      gibt es nicht, also wurde still die Haupt-Wachen des Ordners gelesen - der SPOT-Arm -,
+      und Zeilenzahl und Herzschlagalter liefen ueberhaupt ohne Suffix. Behoben: Arm-Dateinamen
+      gesammelt, Suffix von rechts kuerzen bis die Datei da ist, Suffix an JEDE Buchdatei (auch
+      Zaehler und Alter). Nachweis: 48 von 48 byte-gleich, futures 1378 Zeilen gegen 1286 im
+      Spot-Arm. Test `tests/test_arm_wirksamkeit.py`, zwei Gegenproben.
+      Die vier uebrigen Hand-listen auf dieselbe Art pruefen: `squeeze_eth` fehlt in
+      `auswertung_alle.SPUREN`, `lage.HOLER`, `befehle.FAMILIE` und `pruefe_ratschen.SPUREN` -
+      es ist nur im Dauerlauf gefuehrt, sein Journal (1 Zeile) wird nirgends ausgewertet.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/spiegelstand.py, Agenten/Handel/squeeze/
+
+- [ ]   **T-329 — mosaics Gebuehr stand auf dem Kraken-Satz, obwohl die Spur auf OKX handelt**
+      Kontext: Am 30.09.2026 (Commit `e6f2715c`, Auftrag Max "nur noch omnitrade auf kraken
+      handel erlaubt") kam Kraken aus `mosaic/wachen.json` `boersen` heraus - es blieb
+      `["okx"]` -, die Kraken-Spurole `gebuehr_taker 0.006` blieb aber stehen. Eine Runde wurde
+      mit 1,2 % statt der gemessenen 0,2 % gerechnet (6-fach zu teuer). Der Satz gehoert zur
+      ORDER-BOERSE, nicht zur Historie der Spur: ihre Instrumente sind BTC/ETH/SOL-USDC, das ist
+      OKX Spot (Messung 01.10.2026). Behoben ueber `gebuehren_setzen.py --anwenden` (Sicherung
+      `mosaic/wachen.json.bak-20261004`), `gebuehr_taker 0.006 -> 0.001`. Ein Kraken-Satz an einer
+      OKX-Spur ist das Merkmal fuer T-330.
+      Die AENDERUNGEN-Tabelle in `gebuehren_setzen.py` gegen die aktive Boerse JEDER
+      Wachen pruefen - ein Spurwechsel muss den Satz mitnehmen, sonst kommt der Befund zurueck.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/mosaic/wachen.json, Agenten/Handel/gebuehren_setzen.py
+
+- [ ]   **T-330 — Kein Werkzeug prueft, ob die Gebuehr zur aktiven Boerse passt**
+      Kontext: T-329 war die manuelle Fahrt. Es gibt 24 Wachen mit `boerse` oder `boersen` und
+      `gebuehr_taker`, und keine Regel, die die beiden vergleicht. Eine Spur kann ihre Boerse
+      wechseln - das geschah zweimal (Kraken raus aus mosaic am 30.09.2026, omniquant auf
+      kraken_futures am 01.10.2026) - und den Satz behalten. `test_gebuehren_setzen.py` prueft
+      die EINSTHEIT (Bruch statt Prozent), nicht den Satz der Boerse. Genau darin liegt die
+      Luecke: beide Pruefungen koennen gruen sein, waehrend eine Runde sechsfach zu teuer gerechnet
+      wird.
+      Werkzeug `gebuhr_boerse_abgleich.py`: je Wachen die aktive Boerse (Vorragliste
+      `boersen[0]`, sonst `boerse`), der gemessene Satz und der Wert - Abweichung melden,
+      Schreiben nur mit `--anwenden`. Tests mit Gegenprobe.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/gebuehren_setzen.py
+
 - [ ]   **T-326 — Offene squeeze-Positionen tragen die alte Geometrie noch**
       Kontext: Nach dem Wechsel auf 3,0 % / 1,5R (04.10.2026, Commits 18168ee8/111a0e6d) wurde angenommen, offene Positionen laeufen unter ihrem alten Stand aus. `skalieren.skaliere()` rechnet Stop und Ziel aber bei JEDER Vergroesserung neu aus dem aktuellen `stop_pct`/`r` — offene Positionen werden bei ihrer naechsten Skalierung mitgezogen. BTC-USDC ist belegt nachgezogen (04.10. 10:04 UTC: `stop_pct` 5,00 → 3,00, Stop 80720,09 → 82462,00, Ziel 93465,36 → 88837,93).
       Naechster Schritt: ETH-USDC und SOL-USDC dieser Spur bei ihrer naechsten Skalierung nachziehen lassen und die Journalzeile pruefen. Die Regel selbst ist bisher nur an einer echten Journalzeile belegt — `Agenten/Handel/tests/` braucht einen Test, dass `skaliere()` den Stop nachfuehrt. Zusaetzlich tragen wavetrend, macd_mtf und supertrend dieselbe Skalierungsregel und noch die alte Geometrie 5,0/2,0.

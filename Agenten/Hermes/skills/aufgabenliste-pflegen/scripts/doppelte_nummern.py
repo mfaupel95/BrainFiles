@@ -26,7 +26,12 @@ import os
 import re
 import sys
 
-KOPF = re.compile(r"^- \[[ x]\] \*\*(T-\d+)\s*[—-]?\s*(.*?)\*\*", re.M)
+# Das Statuszeichen ist KEIN [ x]: die Datei traegt auch [?] (wartet),
+# [!] (wichtig) und [✓]. Das alte Musst `\[[ x]\]` uebersah damit 26 Eintraege
+# und meldete T-318 als hoechste Nummer, wo doch T-330 dasteht - ein Pruefer,
+# der gruen meldet und dabei den halben Bestand nicht liest. Die Leerstelle
+# nach dem Zeichen ist optional (in der Datei stehen ein und drei).
+KOPF = re.compile(r"^- \[[ x?!✓]\]\s*\*\*(T-\d+)\s*[—-]?\s*(.*?)\*\*", re.M)
 ABSCHNITT = re.compile(r"^##\s+(.+)$", re.M)
 DATUM = re.compile(r"Angelegt:?\s*([0-9]{2}\.[0-9]{2}\.[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})")
 

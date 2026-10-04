@@ -631,7 +631,7 @@ def _boerse_von(p, w):
     return str(roh[0]).strip().lower() if roh else ""
 
 
-def _spur_indikator(ordner, name, live_faehig=False):
+def _spur_indikator(ordner, name, live_faehig=False, arm=""):
     """Eine der vier Indikator-Spuren: Bestand gegen den aktuellen Kurs.
 
     Derselbe Rechenweg wie bei der Gitter-Spur (kein eigener). Kein
@@ -642,10 +642,18 @@ def _spur_indikator(ordner, name, live_faehig=False):
     `live_faehig=True` fuer Spuren MIT Live-Zweig (mosaic): sonst meldet der
     Bericht "kein Live-Zweig (Papierpfad)" und Max liest eine Unwahrheit -
     mosaic handelt seit dem 22.09.2026 live bei Kraken (Befund 23.09.2026).
+
+    `arm` ist das Dateisuffix eines Schattenbuchs, das den Ordner mit dem
+    Hauptbuch teilt (squeeze_eth -> zustand.eth.json). Ohne diesen Griff las
+    der Bericht fuer den Arm das Buch des Hauptbuchs und nannte dessen
+    Positionen seine eigenen - 04.10.2026.
     """
     pfad = os.path.join(HIER, ordner)
-    w = _lies(os.path.join(pfad, "wachen.json"), {})
-    z = _lies(os.path.join(pfad, "zustand.json"), {}) or {}
+    def datei(stamm):
+        teile = os.path.splitext(stamm)
+        return "%s.%s%s" % (teile[0], arm, teile[1]) if arm else stamm
+    w = _lies(os.path.join(pfad, datei("wachen.json")), {})
+    z = _lies(os.path.join(pfad, datei("zustand.json")), {}) or {}
     pos = z.get("positionen", []) or []
 
     if live_faehig:
@@ -727,6 +735,13 @@ def spur_macd_mtf():
 
 def spur_squeeze():
     return _spur_indikator("squeeze", "Squeeze (Indikator)")
+
+
+def spur_squeeze_eth():
+    """Schattenarm 'eth' (03.10.2026, Auftrag Max "Schattenarm") - dieselbe
+    Regel fest auf ETH, eigenes Buch (zustand.eth.json). Der Bericht las fuer
+    den Arm das Buch des Hauptbuchs, als waere es sein eigenes."""
+    return _spur_indikator("squeeze", "Squeeze-ETH (Schattenarm)", arm="eth")
 
 
 def spur_supertrend():
@@ -1383,7 +1398,7 @@ def erhebe(mit_xperp=True, tage=FENSTER_TAGE, holer=None):
 HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_orb, spur_orbk, spur_omniquant, spur_omniquant_weit, spur_nautilus,
     spur_gitter, spur_kopier_familie,
-    spur_macd_mtf, spur_squeeze, spur_supertrend, spur_wavetrend,
+    spur_macd_mtf, spur_squeeze, spur_squeeze_eth, spur_supertrend, spur_wavetrend,
     spur_trendwende_btc, spur_liq_wand, spur_robinhood_radar,
     spur_omnitrade, spur_omnitrade_futures,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,

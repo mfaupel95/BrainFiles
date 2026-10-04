@@ -113,10 +113,22 @@ def satz_pct_fuer(w):
     if boerse == "deribit":
         return BOERSENSAETZE_PCT["deribit"], "deribit"
     if boerse == "okx":
-        perp = ("perp" in json.dumps(w).lower()
-                or w.get("moeglich") == "perp"
-                or any("XPERP" in str(i) or "SWAP" in str(i)
-                       for i in (w.get("instrumente") or w.get("instrumente_aktiv") or [])))
+        # NUR die Felder, die den MARKT bezeichnen. 04.10.2026: hier stand
+        # `json.dumps(w).lower()` - das liest auch die Notizfelder mit, und
+        # die tragen haeufig das Wort "perp" im Nebensatz ("als PERP gefuehrt",
+        # "_handel_erlaubt_vermerk: ... Perp"). Dadurch wurde jede OKX-Spot-
+        # Wache als Perp gelesen und der Abgleich verlangte 0,05 % von einer
+        # Spur, die gemessen 0,10 % traegt (moondev_topmovers). Der Satz wird
+        # aus dem MARKTTYP abgeleitet, nicht aus dem Kommentar darueber.
+        instrumente = (w.get("instrumente") or w.get("instrumente_aktiv")
+                   or w.get("instrument"))          # singular: trendwende_btc
+        perp = bool(
+            w.get("moeglich") == "perp"
+            or any("XPERP" in str(i).upper() or "SWAP" in str(i).upper()
+                   for i in (instrumente if isinstance(instrumente, (list, tuple))
+                             else [instrumente]))
+            or any(str(w.get(k)).upper() in ("PERP", "SWAP", "XPERP")
+                   for k in ("markttyp", "produkt", "instrument_typ")))
         if perp:
             return BOERSENSAETZE_PCT["okx_perp"], "okx_perp"
         return BOERSENSAETZE_PCT["okx_spot"], "okx_spot"
@@ -223,6 +235,13 @@ AENDERUNGEN = [
     ("spiegel/wachen.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
     ("spiegel/wachen.knapp.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
     ("spiegel/wachen.weit.json", "gebuehr_pct", 1.0, QUELLE_ANNAHME_ONCHAIN),
+    # --- Befund 04.10.2026: die Spur wechselte die Boerse, der Satz nicht.
+    # Am 30.09.2026 (Commit e6f2715c, Auftrag Max "nur noch omnitrade auf kraken")
+    # kam Kraken aus `boersen` heraus, es blieb ['okx'] - die Kraken-Spurole 0.006
+    # aber stehen. Wer sie heute liest, unterstellt fuer eine OKX-Spot-Runde
+    # 1,2 % je Runde statt der gemessenen 0,2 %. Ihre Instrumente sind
+    # BTC/ETH/SOL-USDC, das ist OKX SPOT (Messung 01.10.2026).
+    ("mosaic/wachen.json", "gebuehr_taker", 0.001, QUELLE_OKX_SPOT_SPUR),
 ]
 
 

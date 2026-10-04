@@ -101,6 +101,10 @@ SPUREN = [
     # Wache fuehrt KEIN Risiko-Feld - der Eintrag meldet "nicht
     # herleitbar" und macht die Luecke sichtbar, statt sie zu uebergehen.
     ("nautilus_emacross", "nautilus_emacross", "scanner", "wachen_pruefung"),
+    # Der Schattenarm squeeze_eth (03.10.2026, Auftrag Max "Schattenarm")
+    # setzt eine eigene Ratsche in wachen.eth.json. Wie squeeze zeigt er
+    # ueber `wp.lage(w, journal, z)` die Lage - mit den Werten des ARMS.
+    ("squeeze_eth", "squeeze", "scanner", "wachen_pruefung"),
 ]
 
 # Ruhende Spuren: bewusst nicht geprueft, sie laufen nicht im Dauerlauf.
@@ -111,7 +115,27 @@ RUHT = ("nautilus", "nautilus_kraken", "nautilus_kraken_futures")
 TOLERANZ = 0.005
 
 
-def befrage(w, ordner, modulordner, modulname, spur=None):
+def _dateien(spur, ordner):
+    """Wachen- und Journaldatei EINER Spur - auch eines Schattenarms.
+
+    Ein Arm teilt den Ordner mit seinem Hauptbuch, traegt aber Suffix und
+    Wachen-Datei (`squeeze_eth` -> wachen.eth.json / handelsjournal.eth.csv).
+    Ohne diesen Griff las der Ratschenpruefer die HAUPT-Wachen und meldete
+    fuer den Arm "keine wachen.json" - die Ratche des Arms war ungeprueft.
+    Gesucht wird von rechts: `spur.split("_")` von hinten gekuerzt, bis eine
+    Datei da ist. Dieselbe Regel wie in spiegelstand.spur_zeile.
+    """
+    teile = spur.split("_") if spur != ordner else []
+    for i in range(len(teile) - 1, 0, -1):
+        suf = "_".join(teile[i:])
+        w = os.path.join(HIER, ordner, "wachen.%s.json" % suf)
+        if os.path.isfile(w):
+            return w, os.path.join(HIER, ordner, "handelsjournal.%s.csv" % suf)
+    return (os.path.join(HIER, ordner, "wachen.json"),
+            os.path.join(HIER, ordner, "handelsjournal.csv"))
+
+
+def befrage(w, ordner, modulordner, modulname, spur=None, journal=None):
     """Hoechststand und Ruecklauf aus dem lage() der Spur selbst.
 
     w MUSS uebergeben werden: lage() liest die Wachen (kill_switch, Rahmen) und
@@ -125,7 +149,8 @@ def befrage(w, ordner, modulordner, modulname, spur=None):
         del sys.modules[k]
     mod = __import__(modulname)
 
-    journal = os.path.join(HIER, ordner, "handelsjournal.csv")
+    if journal is None:
+        journal = os.path.join(HIER, ordner, "handelsjournal.csv")
     if not os.path.exists(journal):
         return mod, None
     return mod, mod.lage(w, journal, {})
@@ -138,7 +163,7 @@ def main():
 
     probleme = []
     for spur, ordner, modulordner, modulname in SPUREN:
-        wpath = os.path.join(HIER, ordner, "wachen.json")
+        wpath, jpath = _dateien(spur, ordner)
         if not os.path.exists(wpath):
             print("%-9s keine wachen.json" % spur)
             continue
@@ -165,7 +190,8 @@ def main():
         hoch = None
         greift = "-"
         try:
-            mod, s = befrage(w, ordner, modulordner, modulname, spur)
+            mod, s = befrage(w, ordner, modulordner, modulname, spur,
+                             journal=jpath)
             hoch = s.get("hoechststand_usd") if s is not None else None
             if schwelle is not None:
                 greift = ("im Gewinn"

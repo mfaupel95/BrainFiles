@@ -199,21 +199,41 @@ def spur_zeile(handel, spur, risiko=None, ordner=None):
 
     ordner = ordner or spur
     spurordner = os.path.join(handel, ordner)
-    # Die Spiegel-Schattenbuecher (18.09.2026) tragen eigene Wachen-Dateien
-    # (wachen.knapp.json / wachen.weit.json), deren journal_zweitziel auf ihr
-    # eigenes Ziel zeigt. Die Haupt-Wachen (wachen.json) gilt nur, wenn die
-    # Spur der Ordnername ist (spiegel -> wachen.json).
+    # Die Schattenarme tragen eigene Wachen-Dateien (wachen.knapp.json /
+    # wachen.weit.json / wachen.futures.json / wachen.eth.json), deren
+    # journal_zweitziel auf ihr eigenes Ziel zeigt. Die Haupt-Wachen
+    # (wachen.json) gilt nur, wenn die Spur der Ordnername ist
+    # (spiegel -> wachen.json).
+    #
+    # Das Suffix NICHT mit split("_", 1) raten: aus nautilus_kraken_futures
+    # wird so "kraken_futures" und gesucht wird wachen.kraken_futures.json -
+    # das gibt es nicht, dann still waere die HAUPT-Wachen des Ordners
+    # (nautilus_kraken/wachen.json = der SPOT-Arm) gelesen worden und der
+    # Futures-Arm waere mit dem fremden Ziel geprueft worden. 04.10.2026.
+    # Korrekt ist: von rechts nach links kuerzen, bis die Datei da ist.
     wachen_name = "wachen.json"
-    if spur != ordner and "_" in spur:
-        kandidat = "wachen.%s.json" % spur.split("_", 1)[1]
-        if os.path.isfile(os.path.join(spurordner, kandidat)):
-            wachen_name = kandidat
+    if spur != ordner:
+        teile = spur.split("_")
+        for i in range(len(teile) - 1, 0, -1):
+            kandidat = "wachen.%s.json" % "_".join(teile[i:])
+            if os.path.isfile(os.path.join(spurordner, kandidat)):
+                wachen_name = kandidat
+                break
     w = lade(os.path.join(spurordner, wachen_name)) or {}
     z = lade(os.path.join(spurordner, benenne("zustand.json"))) or {}
     ziel = w.get("journal_zweitziel")
     ziel = ziel.replace("\\", os.sep) if isinstance(ziel, str) else None
-    alter = frisches_alter(spurordner, benenne)
-    anzahl = zeilen(os.path.join(spurordner, benenne("handelsjournal.csv")))
+    # Das Suffix gehoert an JEDE Buchdatei dieser Spur - auch an den Journal-
+    # Zaehler und den Herzschlag. 04.10.2026: nautilus_kraken_futures las die
+    # Zahl 1286 und das Ziel-Info des SPOT-Arms, weil anzahl/alter noch ohne
+    # Suffix liefen (geprueft wurde trotzdem die richtige Datei - die Anzeige
+    # war falsch, nicht der Vergleich). Es wird darum EINMAL oben bestimmt
+    # und unten nur noch benutzt.
+    suffix = wachen_name[len("wachen."):-len(".json")] \
+        if wachen_name != "wachen.json" else ""
+    dateinamen = (lambda n: benenne(_arm_datei(n, suffix) if suffix else n))
+    alter = frisches_alter(spurordner, dateinamen)
+    anzahl = zeilen(os.path.join(spurordner, dateinamen("handelsjournal.csv")))
 
     if not ziel:
         return {"spur": spur, "stand": "kein Ziel", "grund": "journal_zweitziel leer",
@@ -222,14 +242,11 @@ def spur_zeile(handel, spur, risiko=None, ordner=None):
         return {"spur": spur, "stand": "Ziel fehlt", "grund": "Ordner nicht erreichbar",
                 "ziel": ziel, "alter": alter, "zeilen": anzahl}
 
-    dateien = [benenne(n) for n in DATEIEN + ZUSATZ.get(spur, ())]
-    # Die Spiegel-Schattenbuecher (18.09.2026) tragen ihre Dateien mit
-    # Suffix (zustand.knapp.json, handelsjournal.knapp.csv). Der Vergleich
-    # muss dieselben Namen nehmen, sonst meldet er eine Abweichung, wo die
+    dateien = [dateinamen(n) for n in DATEIEN + ZUSATZ.get(spur, ())]
+    # Die Schattenarme (18.09.2026) tragen ihre Dateien mit Suffix
+    # (zustand.knapp.json, handelsjournal.knapp.csv). Der Vergleich muss
+    # dieselben Namen nehmen, sonst meldet er eine Abweichung, wo die
     # Kopie byte-gleich ist.
-    if wachen_name != "wachen.json":
-        suffix = wachen_name[len("wachen."):-len(".json")]
-        dateien = [benenne(_arm_datei(n, suffix)) for n in dateien]
     abweichungen = [n for n in dateien
                     if not gleich(os.path.join(spurordner, n), os.path.join(ziel, n))]
     return {"spur": spur,
@@ -259,17 +276,24 @@ def stand(handel=HANDEL, stunden=30.0, risiko=None):
     ergebnis = {"spuren": [], "geprueft": 0, "abweichend": [], "ausserhalb": [],
                 "alt": [], "handel": handel, "risiko": risiko,
                 "im_lauf_lesbar": im_lauf is not None}
-    # Die Spiegel-Schattenbuecher (18.09.2026) teilen den Ordner von spiegel,
-    # tragen aber eigene Wachen-Dateien (wachen.knapp.json / wachen.weit.json)
-    # und eigene Ziele. Sie stehen in dauerlauf.SPUREN, aber nicht in `alle`
-    # (das nur Verzeichnisse mit wachen.json listet). Fuer jede Spur im Lauf,
-    # deren Ordner schon in `alle` steckt, wird die Arm-Wachen-Datei ergaenzt.
+    # Die Schattenarme teilen den Ordner ihres Hauptbuchs, tragen aber eigene
+    # Wachen-Dateien (wachen.knapp.json / wachen.weit.json / wachen.futures.json
+    # / wachen.eth.json) mit eigenem `journal_zweitziel`. Sie stehen in
+    # dauerlauf.SPUREN, aber nicht in `alle` (das nur Verzeichnisse mit
+    # wachen.json listet). 04.10.2026: die Liste der ARM-NAMEN stand hier fest
+    # und traf nur spiegel. Deshalb werden die Namen aus dauerlauf.SPUREN
+    # GESAMMELT und die Dateiendung aus der Wachen-Datei gelesen - eine neue
+    # Arm-Buchstabe braucht dann keinen zweiten Ort mehr.
+    arm_dateien = ("wachen.knapp.json", "wachen.weit.json",
+                   "wachen.futures.json", "wachen.eth.json")
     if ordner_zuordnung:
         for spur, ordner in ordner_zuordnung.items():
-            if ordner in alle and spur not in alle:
-                for wname in ("wachen.knapp.json", "wachen.weit.json"):
-                    if os.path.isfile(os.path.join(handel, ordner, wname)):
-                        alle.append(spur)
+            if spur in alle:
+                continue
+            treffer = [w for w in arm_dateien
+                       if os.path.isfile(os.path.join(handel, ordner, w))]
+            if treffer:
+                alle.append(spur)
         alle = sorted(set(alle))
     for spur in alle:
         ordner = (ordner_zuordnung or {}).get(spur, spur)

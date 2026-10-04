@@ -49,18 +49,22 @@ MIN_RUNDEN = 8
 
 # Spuren, deren Journal NICHT im gleichnamigen Ordner liegt. Grund: eine Spur
 # kann eine zweite Strategie im selben Ordner fahren (nautilus_kraken faehrt
-# Spot in handelsjournal.csv und Futures in handelsjournal.futures.csv). Ohne
-# diese Zuordnung sucht die Auswertung einen Ordner, den es nicht gibt, und
-# meldet "kein Buch", obwohl das Journal gefuellt ist.
+# Spot in handelsjournal.csv und Futures in handelsjournal.futures.csv; squeeze
+# faehrt BTC/ETH/SOL und der Schattenarm squeeze_eth fest auf ETH). Ohne diese
+# Zuordnung sucht die Auswertung einen Ordner, den es nicht gibt, und meldet
+# "kein Buch", obwohl das Journal gefuellt ist. 04.10.2026: squeeze_eth stand
+# in keiner der fuenf Hand-listen und wurde hier als vermisst gemeldet.
 FREMDES_BUCH = {
     "nautilus_kraken_futures": ("nautilus_kraken", "handelsjournal.futures.csv"),
+    "squeeze_eth": ("squeeze", "handelsjournal.eth.csv"),
 }
 
 # Dasselbe fuer die WACHEN: der Futures-Arm faehrt aus demselben Ordner, seine
 # Grenzen und seine Gebuehr stehen aber in `wachen.futures.json`. Ohne diesen
 # Griff las `gebuehr_fuer()` die SPOT-Wachen und der Bericht meldete fuer ein
 # Buch mit bekannter Gebuehr "BRUTTO und UNBEKANNT" (gemessen 01.10.2026).
-WACHEN_SUFFIX = {"nautilus_kraken_futures": "wachen.futures.json"}
+WACHEN_SUFFIX = {"nautilus_kraken_futures": "wachen.futures.json",
+                 "squeeze_eth": "wachen.eth.json"}
 
 
 def _ort(spur, datei):
@@ -110,7 +114,14 @@ SPUREN = ("xperp", "swap", "scanner", "kraken", "orb", "orbk", "gitter", "nautil
 INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic",
                    # Prophet-Signal (02.10.2026): EMA30-Trend + Saisonalitaet als
                    # Kursregel (prophet_regeln.py), schreibt dieselbe Journalform.
-                   "prophet_signal")
+                   "prophet_signal",
+                   # Schattenarm squeeze_eth (03.10.2026, Auftrag Max
+                   # "Schattenarm"): dieselbe Regel fest auf ETH, damit sich
+                   # fragegt, ob sie Coin-spezifisch ist. Schreibt dieselbe
+                   # Journalform in handelsjournal.eth.csv (FREMDES_BUCH) -
+                   # 04.10.2026 fehlte der Arm in ALLEN fuenf Hand-listen und
+                   # wurde von test_verdrahtung als vermisst gemeldet.
+                   "squeeze_eth")
 
 # Bot-Spuren (16.09.2026): Papierbuecher auf den Signalen geklonter Fremd-Bots
 # (Werkstatt/Repos/moon-dev-ai-agents). Ihr Journal hat dieselbe Form wie das
