@@ -87,6 +87,25 @@ verschieben**, mit Datum. Nicht löschen —
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-352 — omnitrade.cmd Stand zeigt 'veraltet': der ema_cross-Lauf (live.json) ist tot, adx_macd laeuft**
+Kontext: omnitrade_bridge (Standard-Anker live.json) meldet am 05.10.2026 00:02
+"veraltet: seit 116 min kein Lebenszeichen (Grenze 300 s)" - PID 55888 existiert
+nicht mehr in der Prozessliste. Das ist die bekannte Falle: die Statusdatei
+bleibt nach hartem Ende auf state=running mit toter PID stehen (omnitrade_lauf.py
+dokumentiert das). Der LEBENDE Lauf ist live_adx_macd_BTCUSDC.json (PID 61280,
+205 s alt, 1 Order gefuellt, netto 0.00585 BTC) - er laeuft seit ~04.10. 22:51
+und wird von der omnitrade-Spur korrekt gespiegelt (lesen.py liest ALLE
+Statusdateien, prozess_pruefen verlangt PID+Datei). Die Anzeige "veraltet" ist
+also ehrlich, kein Fehler.
+
+Naechster Schritt: entscheiden, ob der ema_cross-Lauf (omnitrade.cmd start) wieder
+gestartet werden soll oder ob der Betrieb dauerhaft ueber omnitrade_start.py
+(adx_macd) laeuft. Solange nur die Anzeige betroffen ist: OMNITRADE_STATUS kann
+auf live_adx_macd_BTCUSDC.json zeigen, dann zeigt der Stand den lebenden Lauf.
+
+Angelegt 05.10.2026 · Zuletzt 05.10.2026 · Betrifft: Agenten/Handel/omnitrade_bridge.py,
+omnitrade.cmd, Werkstatt/omnitrade/status/.
+
 - [ ] **T-349 — Aufweck-Rechte der Geraete am Rechner sind nie geprueft worden**
       Kontext: `powercfg -devicequery wake_armed` nennt auf diesem Rechner drei
       Maeuse (u. a. Logitech Unifying), fuenf Tastaturen, den Xbox Wireless
