@@ -341,6 +341,28 @@ def _kauf(z, i, preis, w, fkauf, zeilen, zahlen):
     z["bestand"] = z.get("bestand", 0.0) + menge
     z["lose"][str(i)] = {"menge": menge, "einstieg": preis, "brutto": brutto,
                          "kosten": kosten, "eroeffnet": _heute()}
+    # NOTAUS UNTER DER GITTERUNTERKANTE (04.10.2026, Auftrag Max "Gitter stop").
+    #
+    # Dieser Notaus wird beim KAUF gesetzt und nicht von Hand in zustand.json
+    # geschrieben: gitter schreibt den Zustand bei jedem Zyklus neu, ein
+    # eingetragener Stop ist beim naechsten Schreiben weg. Genau das ist am
+    # 04.10. passiert - der Stop stand um 01:00 im Zustand, um 01:11 schrieb
+    # der Dauerlauf darueber, und die Position stand ab da wieder schutzlos.
+    #
+    # WARUM SO TIEF: das Gitter kauft bei der Stufe ueber dieser nach. Ein Stop
+    # ueber der naechsten Kaufstufe wuerde feuern, BEVOR das Gitter kaufen
+    # kann - das waere kein Schutz, sondern eine Behauptung. Der Notaus liegt
+    # deshalb EINE Stufe unter der untersten Leiterstufe: dort ist die Leiter
+    # zu Ende und die Voraussetzung des Gitters stirbt. Er ersetzt keinen
+    # Ziel-Ausstieg und wird nie durch ihn ausgeloest.
+    if w.get("notaus_unter_gitterunterkante") and not z.get("_notaus"):
+        unterste = min((s for s in z["leiter"].get("preise") or [None] if s),
+                       default=None)
+        schritt = (z["leiter"].get("schritt_prozent") or 0.0) / 100.0
+        if unterste and schritt:
+            z["_notaus"] = round(unterste * (1.0 - schritt), 6)
+            zeilen.append("  NOTAUS gesetzt: %.2f (eine Stufe unter der "
+                          "Gitterunterkante %.2f)" % (z["_notaus"], unterste))
     z["leiter"]["zustand"][i] = "gekauft"
     z["kaeufe"] += 1
     zahlen["kaeufe"] += 1

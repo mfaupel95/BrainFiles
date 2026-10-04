@@ -42,9 +42,12 @@ class BasisTest(unittest.TestCase):
         formen = ["BTC-USDT-SWAP", "BTC-USDC", "BTC-USDT", "XBT-USD",
                   "BTC-USD_UM_XPERP-310704"]
         basis = {rb.basisform(f) for f in formen}
-        self.assertEqual(basis, {"BTC", "XBT"},
-                         "BTC und XBT sind dieselbe Basis - Kraken nennt "
-                         "Bitcoin XBT")
+        # XBT ist BTC. Kraken fuehrt Bitcoin unter dem Kuerzel XBT; ohne diese
+        # Zuordnung gehoeren die xperp-Positionen zur Basis "XBT", und der
+        # Basis-Deckel sperrte BTC-USDT-SWAP, liess XBT-USD aber durch -
+        # ein Deckel, den man mit einem anderen Namen umgeht (04.10.2026).
+        self.assertEqual(basis, {"BTC"},
+                         "alle fuenf Schreibweisen sind EINE Basis")
 
     def test_verschiedene_bleiben_verschieden(self):
         self.assertNotEqual(rb.basisform("ETH-USDT-SWAP"),

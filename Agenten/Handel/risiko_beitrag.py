@@ -78,6 +78,37 @@ def beitrag_der_spur(name, ordner):
     z = _lade(os.path.join(ordner, "zustand.json"))
     w = _lade(os.path.join(ordner, "wachen.json"))
     pos = z.get("positionen") or ([z["position"]] if z.get("position") else [])
+    # gitter fuehrt seine offenen Stufen in `lose`, NICHT in `positionen`
+    # (gitter/handeln.py: z["lose"][str(i)] beim KAUF). Ein Werkzeug, das nur
+    # `positionen` liest, sieht diese Spur als leer - am 04.10.2026 mit 0
+    # Positionen, obwohl ein BTC-Bestand ohne Stop im Haus stand, den keine
+    # Wache finden konnte, weil niemand ihn zaehlte. Der Notaus steht in
+    # z["_notaus"] und wird beim KAUF gesetzt, nicht von Hand eingetragen.
+    #
+    # BEIDE Formen sind gemessen (04.10.2026): `lose` ist ein DICT mit dem
+    # Stufennummer als Schluessel, `leiter.zustand` ist eine LISTE, deren Index
+    # die Stufennummer ist. Der erste Versuch nahm fuer beides eine Liste
+    # und zaehlte 0 Positionen - dieselbe Zahl wie vorher, nur aus einem
+    # anderen Grund. Ein geaenderter Code, der dieselbe Zahl liefert, ist
+    # kein Fortschritt, sondern ein zweiter Irrtum.
+    leiter = z.get("leiter") or {}
+    zustaende = leiter.get("zustand") or {}
+    for stufe, los in (z.get("lose") or {}).items():
+        if not isinstance(los, dict):
+            continue
+        st = str(stufe)
+        if st in zustaende:
+            zustand_stufe = zustaende[st]
+        elif isinstance(zustaende, list) and st.isdigit():
+            i = int(st)
+            zustand_stufe = zustaende[i] if 0 <= i < len(zustaende) else None
+        else:
+            continue
+        if str(zustand_stufe) != "gekauft":
+            continue
+        pos.append({"inst": z.get("instrument"), "seite": "long",
+                    "einstieg": los.get("einstieg"), "nominal": los.get("brutto"),
+                    "stop": z.get("_notaus"), "modus": z.get("modus", "papier")})
     zeilen = []
     for p in pos:
         try:
