@@ -166,5 +166,89 @@ class Verdrahtung(unittest.TestCase):
         self.assertEqual(lesepruefung.schreibstellen(ln.__file__), [])
 
 
+class OrderClientBeschriftet(unittest.TestCase):
+    """T-343: der Haken ist KEIN Weg der Spuren - und das steht sichtbar da.
+
+    Ein dauerhaftes Wort in einer Fussnote wird ueberlesen. Deshalb sind es
+    drei Stellen: der Hinweis erscheint BEIM Anhaeken, die Warnung steht ueber
+    dem Log, und jeder Start mit Haaken schreibt es ins Protokoll.
+    """
+
+    def setUp(self):
+        import tkinter as tk
+        try:
+            self.root = tk.Tk()
+        except tk.TclError as e:
+            self.skipTest("kein Bildschirm: %s" % e)
+        self.root.withdraw()
+        self.addCleanup(self._zu)
+        modul, grund = ln.nautilus_gui_laden()
+        if modul is None:
+            self.skipTest("nautilus_trader fehlt: %s" % grund)
+        self.modul = modul
+
+    def _zu(self):
+        try:
+            self.root.destroy()
+        except tk.TclError:
+            pass
+
+    def frame(self):
+        return self.modul.NautilusFrame(self.root)
+
+    def _texte(self, widget, tief=0):
+        """Alle Texte unterhalb eines Widgets."""
+        r = []
+        try:
+            t = widget.cget("text")
+            if t:
+                r.append(str(t))
+        except Exception:            # kein Text-Option (Frames, Canvas)
+            pass
+        for k in widget.winfo_children():
+            r += self._texte(k, tief + 1)
+        return r
+
+    def test_der_hinweis_erscheint_beim_anhaeken(self):
+        f = self.frame()
+        self.assertFalse(f.order_var.get())
+        f._order_hinweis_sichtbar()
+        self.assertFalse(f.order_hinweis.winfo_manager(),
+                         "ohne Haaken darf der Hinweis nicht stehen")
+        f.order_var.set(True)
+        f._order_hinweis_sichtbar()
+        self.assertEqual(f.order_hinweis.winfo_manager(), "pack")
+        self.assertIn("nicht der Weg der Spuren", f.order_hinweis.cget("text"))
+
+    def test_die_warnung_sagt_es_dauerhaft(self):
+        f = self.frame()
+        texte = " ".join(self._texte(f))
+        self.assertIn("NICHT der Orderweg der Spuren", texte)
+        self.assertIn("Sperrenkette", texte)
+
+    def test_jeder_start_mit_haken_schreibt_es_ins_log(self):
+        f = self.frame()
+        f.order_var.set(True)
+        # start_node darf hier KEINEN Node bauen - der Test prueft die
+        # Hinweiszeile, nicht den Start. `load_client_configs` ist die Naht:
+        # sie wirft SystemExit, bevor ein Node entsteht (fehlende Keys).
+        with patch.object(f, "_log") as geloggt, \
+             patch.object(self.modul.node_mod, "load_client_configs",
+                          side_effect=SystemExit("Keys fehlen")):
+            f.start_node()
+        texte = " ".join(str(c.args[0]) for c in geloggt.call_args_list)
+        self.assertIn("KEIN Weg der Spuren", texte)
+
+    def test_ohne_haken_steht_keine_hinweiszeile_im_log(self):
+        f = self.frame()
+        f.order_var.set(False)
+        with patch.object(f, "_log") as geloggt, \
+             patch.object(self.modul.node_mod, "load_client_configs",
+                          side_effect=SystemExit("Keys fehlen")):
+            f.start_node()
+        texte = " ".join(str(c.args[0]) for c in geloggt.call_args_list)
+        self.assertNotIn("KEIN Weg der Spuren", texte)
+
+
 if __name__ == "__main__":
     unittest.main()
