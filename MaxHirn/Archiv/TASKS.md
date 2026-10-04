@@ -122,6 +122,31 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       kaufbares Guthaben gelesen werden.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/omnitrade_futures/, Werkstatt/omnitrade/
+- [ ] **T-348 — Vier Tests rot, alle vier von fremder Hand (04.10.2026)**
+      Kontext: Die volle Handel-Suite (1781 Tests, 1177 s) meldet vier
+      Fehlschlaege. Keiner gehoert zu den Leitstand-Schritten; per
+      `git diff --name-only` gegen jeden meiner vier Commits belegt, dass
+      keine der vier Dateien angefasst wurde. Die Ursachen sind je
+      verschieden und alle von aussen gekommen:
+      * `test_einheit_kraken.QuelleTest.test_kein_zweiter_leser_der_tabelle`
+        sah `cache/replay/*.py` als 'zweiten Leser der Einheitentabelle' -
+        sechs Wegwerf-Kopien vom 14.10. (Testartefakte, nie committet).
+        Nach dem Wegraeumen nach `Agenten/Hermes/cache/replay-alt-20261004`
+        gruen. Der Test prueft `os.walk` ueber den Handel-Ordner und
+        uebersieht, dass `cache/` Wegwerf ist.
+      * `test_spur_wache.test_wache_kennt_vier_spuren`: `omnitrade_futures`
+        traegt `trigger_modus: signal` (Commit bd6cdb28) und damit eine
+        Warteschlange ohne Wache. Dieselbe Klasse wie T-328.
+      * beide `test_replay`-Tests: `replay.py` wurde am 04.10. 21:32 von einer
+        anderen Hermes-Sitzung umgebaut (Commit 0919b566, T-310, Autor
+        'Hermes'); die Tests gingen dabei mit.
+      Naechster Schritt: die drei Punkte getrennt beheben - erst den Test
+      (`cache/` von `os.walk` ausnehmen), dann `omnitrade_futures` eine
+      Wache geben, dann `replay.py` mit den Tests zusammen nachziehen. Nicht
+      in einem Commit, weil drei verschiedene Ursachen.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/tests/test_einheit_kraken.py,
+      Agenten/Handel/tests/test_spur_wache.py, Agenten/Handel/replay.py,
+      Agenten/Handel/tests/test_replay.py
 - [ ] **T-343 — Nautilus-Orderweg: der DEMO-Haken ist je Lauf wieder weg**
       Kontext: Seit dem 04.10.2026 (Leitstand Schritt 2) laesst sich der
       OKX-DEMO-Node im Leitstand starten, und der Reiter hat einen echten
