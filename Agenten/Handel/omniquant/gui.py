@@ -571,6 +571,41 @@ class OmniquantGui:
         return "Bericht: %.1f h alt (%s), %s Treffer" % (alt, marke, n)
 
 
+class OmniquantReiter(ttk.Frame):
+    """Leitstand-Wrapper: bettet OmniquantGui als Notebook-Reiter ein."""
+
+    def __init__(self, eltern, leitstand):
+        super().__init__(eltern)
+        self.ls = leitstand
+        self._gui = OmniquantGui(self)
+
+    # Stubs fuer Fenster-Aufrufe aus OmniquantGui.__init__
+    def title(self, s=None):
+        return ""
+
+    def geometry(self, s=None):
+        pass
+
+    def minsize(self, w=None, h=None):
+        pass
+
+    def configure(self, **kwargs):
+        kwargs.pop("bg", None)
+        kwargs.pop("background", None)
+        if kwargs:
+            super().configure(**kwargs)
+
+    # Leitstand-Interface (OmniquantGui hat eigenen 15-s-Timer)
+    def refresh(self):
+        pass
+
+    def titel_zusatz(self):
+        return ""
+
+    def status(self):
+        return "Omniquant"
+
+
 def main():
     root = tk.Tk()
     try:

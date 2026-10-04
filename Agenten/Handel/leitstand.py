@@ -24,6 +24,7 @@ from leitstand_backtests import BacktestReiter
 from leitstand_bedienung import Zustand, lage_gueltig, virtueller_schirm
 from leitstand_freigaben import FreigabenReiter
 from leitstand_markt import MarktReiter
+from omniquant.gui import OmniquantReiter
 
 TAKT_MS = 5000
 SCHRIFT_MIN, SCHRIFT_MAX = 8, 16
@@ -37,6 +38,7 @@ KUERZEL = {
     "<Control-Key-2>": ("reiter", 1),
     "<Control-Key-3>": ("reiter", 2),
     "<Control-Key-4>": ("reiter", 3),
+    "<Control-Key-5>": ("reiter", 4),
     "<F5>": ("auffrischen", None),
     "<Control-plus>": ("schrift", 1),
     "<Control-KP_Add>": ("schrift", 1),
@@ -71,7 +73,8 @@ class UeberwachenReiter(ttk.Frame):
 REITER = [("Überwachen", UeberwachenReiter),
           ("Freigaben", FreigabenReiter),
           ("Backtests", BacktestReiter),
-          ("Markt", MarktReiter)]
+          ("Markt", MarktReiter),
+          ("Omniquant", OmniquantReiter)]
 
 
 def herzschlag(jetzt=None):
