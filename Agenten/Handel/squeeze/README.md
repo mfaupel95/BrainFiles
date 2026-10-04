@@ -43,6 +43,37 @@ Stop UND Ziel entstehen aus demselben Prozentsatz. Stuende im Journal ein
 Stop-Preis, der nicht zu `stop_pct` passt, waere die Groesse gegen eine
 andere Zahl gerechnet als der Ausstieg.
 
+### Die Geometrie ist gemessen, nicht gewaehlt
+
+`pflicht_stop_prozent_min` 3,0 % und `ziel_r_vielfaches` 1,5 (Auftrag Max
+04.10.2026, „squeeze 3/1,5"). Grundlage ist der Backtest-Vergleich von vier
+Geometrien ueber dieselbe Historie, gerechnet mit `kosten_wendepunkt.kennzahlen()`:
+
+| Stop / Ziel | Runden | Treffer | G/V je Runde |
+|---|---|---|---|
+| **3,0 % / 1,5R** | 1007 | 39,0 % | **−0,074 USD** |
+| 3,0 % / 3,0R | 779 | 21,8 % | −0,384 USD |
+| 5,0 % / 2,0R (vorher) | 579 | 28,0 % | −0,803 USD |
+| 7,0 % / 1,5R | 428 | 31,8 % | −1,439 USD |
+
+Die neue Geometrie kostet rund zehnmal weniger je Runde **bei 1,7x so vielen
+Runden** — sie ist damit auch der Datenspender, nicht nur die billigere Wahl.
+Beleg und Fehlgeschichte (der `--setzen`-Schalter lief ins Leere) stehen in
+`MaxHirn/Wiki/Handel/Spur-Optimierung-Setzer-Befund.md`.
+
+**Offen bleibt:** auch die beste Geometrie ist vor Gebuehr leicht negativ.
+Sie traegt noch nicht; belegt ist nur, dass die alte deutlich schlechter war.
+
+**Der Deckel folgt dem Stop.** `max_pro_trade_usd` muss mindestens
+`risiko_je_position_usd / pflicht_stop_prozent_min` sein, sonst schrumpft das
+Risiko je Position still: bei 5,0 USD Risiko und 3 % Stop sind das 166,67 USD,
+der Deckel steht auf 170. Mit dem alten Deckel 150 waeren es 4,50 statt 5,00
+USD geworden — der Test `deckel_traegt_das_risiko` faellt genau darauf.
+
+**Geaenderte Geometrie wirkt nur auf NEUE Positionen.** Offene Positionen
+laufen unter ihren gebuchten Stops und Zielen aus; die naechste Auswertung ist
+deshalb gemischt und kein Beweis der Wirkung.
+
 Die Drawdown-Ratsche kommt aus `../ratschen.py`, ueber den Pfad geladen -
 nicht ueber `sys.path`, damit nicht entscheidet, wer vorher was eingefuegt hat.
 
@@ -54,7 +85,7 @@ nicht ueber `sys.path`, damit nicht entscheidet, wer vorher was eingefuegt hat.
 | `wachen.json` | Alle Tore und Zahlen. Jede nicht offensichtliche traegt ein `_`-Kommentarfeld mit der Herleitung |
 | `handelsjournal.csv` | Jede Buchung, entsteht beim ersten Papierlauf |
 | `zustand.json` | Offene Positionen und `letzter_lauf` (der Herzschlag) |
-| `tests/test_squeeze.py` | 20 Tests, ohne Netz |
+| `tests/test_squeeze.py` | 21 Tests, ohne Netz |
 
 ## Aufruf
 
@@ -83,7 +114,9 @@ cd tests
 
 Kein Netz noetig - die Kerzen entstehen im Test. Geprueft wird, dass das
 Signal genau an der gebauten Stelle feuert und nirgends sonst, dass Stop und
-Ziel 1:2 stehen, dass `max_pro_trade_usd` haelt, dass `--vorschau` keine
-Datei anlegt und dass ein Zyklus ohne Kerzen oder ohne Verbindung nicht
-abstuerzt. Wo ein Test die Spiegelung beruehrt, zeigt `journal_zweitziel`
+Ziel im Verhaeltnis `ziel_r_vielfaches` **aus der Wache** stehen (nicht gegen
+eine im Test verdrahtete Zahl - sonst waere die Suite bei jeder Umstellung
+rot, ohne dass etwas kaputt waere), dass `max_pro_trade_usd` das Risiko
+traegt, dass `--vorschau` keine Datei anlegt und dass ein Zyklus ohne Kerzen
+oder ohne Verbindung nicht abstuerzt. Wo ein Test die Spiegelung beruehrt, zeigt `journal_zweitziel`
 auf einen Temp-Ordner - nie auf `Q:`.

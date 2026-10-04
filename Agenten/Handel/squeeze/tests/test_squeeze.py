@@ -2,7 +2,10 @@
 
 Geprueft wird:
   (a) Das Signal feuert genau bei der gebauten Gelegenheit und NICHT daneben.
-  (b) Stop-Abstand und Ziel stehen im Verhaeltnis 1:2.
+  (b) Stop und Ziel stehen im Verhaeltnis ziel_r_vielfaches AUS DER WACHE -
+      nicht gegen eine im Test verdrahtete Zahl. Die Geometrie ist am
+      04.10.2026 von 1:2 auf 1:1,5 gewandert; ein Test gegen die alte Zahl
+      waere bei JEDER Umstellung rot, ohne dass etwas kaputt waere.
   (c) Die Positionsgroesse respektiert max_pro_trade_usd.
   (d) --vorschau schreibt keine Datei.
   (e) Ohne Kerzen kein Absturz.
@@ -109,7 +112,7 @@ class TestSignal(unittest.TestCase):
 
 
 class TestStopUndZiel(unittest.TestCase):
-    """(b) Stop-Abstand und Ziel stehen 1:2."""
+    """(b) Stop und Ziel stehen im Verhaeltnis aus der Wachen."""
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -120,7 +123,7 @@ class TestStopUndZiel(unittest.TestCase):
         handeln.SCHREIBEN = True
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def test_ziel_ist_doppelter_stopabstand(self):
+    def test_ziel_ist_r_facher_stopabstand(self):
         k = kerzen_squeeze("long")
         z = {"positionen": []}
         handeln.pruefe_einstieg("BTC-USDT", k, z, self.w, 1.0)
@@ -129,9 +132,10 @@ class TestStopUndZiel(unittest.TestCase):
         stop_abstand = p["einstieg"] - p["stop"]
         ziel_abstand = p["ziel"] - p["einstieg"]
         self.assertGreater(stop_abstand, 0)
-        self.assertAlmostEqual(ziel_abstand / stop_abstand, 2.0, places=6)
+        self.assertAlmostEqual(ziel_abstand / stop_abstand,
+                               self.w["ziel_r_vielfaches"], places=6)
 
-    def test_ziel_ist_doppelter_stopabstand_short(self):
+    def test_ziel_ist_r_facher_stopabstand_short(self):
         k = kerzen_squeeze("short")
         z = {"positionen": []}
         handeln.pruefe_einstieg("BTC-USDT", k, z, self.w, 1.0)
@@ -140,7 +144,22 @@ class TestStopUndZiel(unittest.TestCase):
         stop_abstand = p["stop"] - p["einstieg"]
         ziel_abstand = p["einstieg"] - p["ziel"]
         self.assertGreater(stop_abstand, 0)
-        self.assertAlmostEqual(ziel_abstand / stop_abstand, 2.0, places=6)
+        self.assertAlmostEqual(ziel_abstand / stop_abstand,
+                               self.w["ziel_r_vielfaches"], places=6)
+
+    def test_ziel_liegt_ueber_dem_stopp(self):
+        """Die Regel hinter dem Vielfachen: das Ziel muss AUSSERHALB des
+        Stops liegen, sonst waere jeder Trade ein Verlust bei Vollstaendigkeit.
+        Das ist die Eigenschaft - ob 1,5 oder 2,0 ist Wachen-Sache."""
+        for richtung in ("long", "short"):
+            k = kerzen_squeeze(richtung)
+            z = {"positionen": []}
+            handeln.pruefe_einstieg("BTC-USDT", k, z, self.w, 1.0)
+            p = z["positionen"][0]
+            if richtung == "long":
+                self.assertGreater(p["ziel"], p["einstieg"])
+            else:
+                self.assertLess(p["ziel"], p["einstieg"])
 
 
 class TestGroesse(unittest.TestCase):
@@ -163,7 +182,7 @@ class TestGroesse(unittest.TestCase):
         self.assertLessEqual(p["nominal"], self.w["max_pro_trade_usd"])
 
     def test_deckel_greift_bei_kleinem_stop(self):
-        """Stop am unteren Rand (5 %) -> 5 / 0.05 = 100 USD, unter 150."""
+        """Am unteren Rahmen: der Nominal ist risikonormiert, gedeckelt."""
         k = kerzen_squeeze("long")
         z = {"positionen": []}
         handeln.pruefe_einstieg("BTC-USDT", k, z, self.w, 1.0)
@@ -295,7 +314,11 @@ class TestWachenDatei(unittest.TestCase):
             self.assertIn("_handel_erlaubt_vermerk", self.w)
         self.assertEqual(self.w["waehrung"], "USD")
         self.assertEqual(self.w["herzschlag_max_minuten"], 180)
-        self.assertEqual(self.w["ziel_r_vielfaches"], 2.0)
+        # Das Vielfache ist eine EINSTELLUNG (am 04.10.2026 von 2.0 auf 1.5
+        # gewandert). Geprueft wird die Regel dahinter: ein Ziel, das weiter
+        # vom Einstieg weg ist als der Stop - plus der Deckel, der das
+        # Risiko je Position traegt (unten eigener Test).
+        self.assertGreater(self.w["ziel_r_vielfaches"], 1.0)
         self.assertNotIn("drawdown_halbierung_prozent", self.w)
 
     def test_deckel_traegt_das_risiko(self):

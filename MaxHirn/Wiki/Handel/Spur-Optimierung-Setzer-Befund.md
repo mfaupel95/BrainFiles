@@ -130,3 +130,50 @@ Schalter.** Vor jeder Suche zwei Kandidaten fahren und die Kennzahlen vergleiche
 * Vier Tests der Replay-Suite sind rot (`test_replay`, 106 Tests). Der Vergleich
   gegen HEAD lief in dieser Sitzung nicht zu Ende — **die Vorbestandlichkeit ist
   nicht belegt**.
+
+## Umgesetzt (04.10.2026, Auftrag Max „squeeze 3/1,5")
+
+Die winning Geometrie ist in **beiden** Wachen der Spur gesetzt:
+
+| Datei | `pflicht_stop_prozent_min` | `ziel_r_vielfaches` |
+|---|---|---|
+| `squeeze/wachen.json` (BTC/ETH/SOL) | 5,0 -> **3,0** | 2,0 -> **1,5** |
+| `squeeze/wachen.eth.json` (Schattenarm) | 5,0 -> **3,0** | 2,0 -> **1,5** |
+
+Beide Arme muessen dieselbe Geometrie fahren — sonst vergleicht der Schattenarm
+nicht „dieselbe Regel auf einem anderen Coin", sondern zwei verschiedene Regeln.
+
+### Der Deckel musste mitwachsen
+
+`max_pro_trade_usd` 150 -> **170**, `max_gesamt_usd` 600 -> **680**.
+
+Das ist keine Nebenzaenderung, sondern eine **Folge**: der Deckel muss mindestens
+`risiko_je_position_usd / pflicht_stop_prozent_min` tragen. Bei 5,0 USD Risiko
+und 3 % Mindeststop sind das 166,67 USD. Mit dem alten Deckel 150 waere das
+Risiko je Position still auf 150 x 0,03 = **4,50 statt 5,00 USD** geschrumpft —
+ohne Fehlermeldung, weil `position_groesse()` den Deckel anwendet und weiterrechnet.
+
+**Gegenprobe gefahren:** Deckel auf 150 zurueckgesetzt -> `deckel_traegt_das_risiko`
+faellt mit `150.0 not greater than or equal to 166.666…`. Der Test kann also
+rot werden; danach wiederhergestellt (170,0).
+
+### Drei Tests waren auf die alte Zahl eingefroren
+
+`test_ziel_ist_doppelter_stopabstand` (long und short) sowie
+`test_papier_und_pflichtfelder` verglichen gegen die Konstante 2,0. Sie sind
+jetzt gegen die **Regel** gebaut: das Verhaeltnis kommt aus `self.w`, und ein
+neuer Test `test_ziel_liegt_ueber_dem_stopp` prueft die eigentliche Bedingung
+(das Ziel muss ausserhalb des Stops liegen). Sonst waere die Suite bei JEDER
+Umstellung rot, ohne dass etwas kaputt waere — genau die Testform, die den
+Setzer-Fix von heute fast unsichtbar gemacht hat.
+
+21/21 Tests gruen, `--wachen` und `--vorschau` beider Arme laufen.
+
+### Was die Aenderung nicht leistet
+
+Auch 3,0/1,5R ist **vor Gebuehr leicht negativ** (−0,074 USD je Runde).
+Belegt ist nicht „die Geometrie traegt", sondern „die alte war rund zehnmal
+schlechter". Und: die Aenderung wirkt nur auf **neue** Positionen — die drei
+offenen Positionen im Zustand (BTC/ETH/SOL, Stand 03./04.10.) laufen unter
+ihren gebuchten 5-%-Stops und 2R-Zielen aus. Die naechste Auswertung ist
+gemischt und kein Beweis der Wirkung.
