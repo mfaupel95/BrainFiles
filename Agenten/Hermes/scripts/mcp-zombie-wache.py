@@ -176,6 +176,27 @@ def _docker_laeuft() -> bool | None:
     return bool((p.stdout or "").strip()) and p.returncode == 0
 
 
+def _kreis_erkannt(gruppen: dict) -> bool:
+    """T-200 ABBRUCH-IDEMPOTENZ: ``True`` wenn der MCP_DOCKER-Abgleichkreis geschlossen ist.
+
+    Kreis = Docker-Daemon tot UND ``MCP_DOCKER`` in der Config UND eine MCP-Gruppe ueber
+    MAX_JE_GRUPPE. In diesem Zustand startet der Gateway-Abgleich bei JEDEM Versuch alle
+    Gruppen neu - die Wache darf NICHT nur die Ueberzahl killen und drei 'lebende' behalten,
+    denn diese drei gelten dem Abgleich als bedient und naehren das Wiederhochspawnen: jede
+    Runde killt die Wache neu, der Abgleich spawnt neu, eine Ping-Pong-Schleife ohne Ende.
+    Die Abbruch-Idempotenz ist das Kuerzen auf ZERO (statt BEHALTEN_JE_GRUPPE): bleibt in dem
+    Zustand kein MCP-Server uebrig, den der Abgleich als laufend ansehen kann, konvergiert der
+    naechste Zyklus - derselbe Zustand fuehrt zur selben (leeren) Ende-Sicht, nicht zu neuem
+    Killen. Das Killen aller Gruppen unter Kreis ist nachweislich harmlos (30.09.2026: der
+    Abgleich spawnt reale Kunden von selbst wieder), Docker selbst wird nicht angetastet.
+    """
+    if _docker_laeuft() is not False:
+        return False
+    if not _mcp_docker_konfiguriert():
+        return False
+    return any(len(pros) > MAX_JE_GRUPPE for pros in gruppen.values())
+
+
 def main() -> int:
     if sys.platform != "win32":
         return 0
@@ -204,31 +225,56 @@ def main() -> int:
         gesamt += 1
 
     commit = _commit_frei_mb()
+    kreis = _kreis_erkannt(gruppen)   # T-200: Docker tot + MCP_DOCKER + Ueberlauf
     ueber_je = {g: pros for g, pros in gruppen.items() if len(pros) > MAX_JE_GRUPPE}
     ueber_ges = gesamt > GESAMT
 
     gekillt: list[tuple[str, int]] = []
     unklar = False
-    # Aufraeumen: jede Gruppe mit Ueberlauf auf BEHALTEN_JE_GRUPPE juengste kuerzen
-    ziel_gruppen = set(ueber_je.keys()) if ueber_je else set()
-    if ueber_ges:
-        ziel_gruppen |= set(gruppen.keys())
-    if ziel_gruppen:
-        for g in ziel_gruppen:
-            pros = gruppen[g]
-            nach_alter = sorted(pros, key=lambda x: x["alter"])  # juengste zuerst
-            ueberschuss = nach_alter[BEHALTEN_JE_GRUPPE:]
-            kill_ids = [p["pid"] for p in ueberschuss if p["pid"]]
+    # Aufraeumen: jede Gruppe mit Ueberlauf auf BEHALTEN_JE_GRUPPE juengste kuerzen.
+    # Unter dem T-200-Abgleichkreis aber auf ZERO: drei 'lebende' wuerden der Endlos-
+    # Reconciliation als bedient gelten und das Wiederhochspawnen naehren (Ping-Pong).
+    if kreis:
+        for g, pros in gruppen.items():
+            kill_ids = [p["pid"] for p in pros if p["pid"]]
             beendet = _killen(kill_ids)
             if beendet is None:
                 unklar = True
                 continue
-            for p in nach_alter:
+            for p in pros:
                 if p["pid"] in beendet:
                     gekillt.append((g, p["pid"]))
+    else:
+        ziel_gruppen = set(ueber_je.keys()) if ueber_je else set()
+        if ueber_ges:
+            ziel_gruppen |= set(gruppen.keys())
+        if ziel_gruppen:
+            for g in ziel_gruppen:
+                pros = gruppen[g]
+                nach_alter = sorted(pros, key=lambda x: x["alter"])  # juengste zuerst
+                ueberschuss = nach_alter[BEHALTEN_JE_GRUPPE:]
+                kill_ids = [p["pid"] for p in ueberschuss if p["pid"]]
+                beendet = _killen(kill_ids)
+                if beendet is None:
+                    unklar = True
+                    continue
+                for p in nach_alter:
+                    if p["pid"] in beendet:
+                        gekillt.append((g, p["pid"]))
 
     grund = []
-    if gekillt:
+    if kreis:
+        gruppiert: dict[str, int] = {}
+        for g, _ in gekillt:
+            gruppiert[g] = gruppiert.get(g, 0) + 1
+        grund.append("MCP_DOCKER-ABGLEICHKREIS aufgebrochen: alle %d MCP-Server beendet "
+                     "(Docker tot + MCP_DOCKER in der Config), Gruppen: %s"
+                     % (len(gekillt), ", ".join("%s=%d" % (g, k) for g, k in
+                                                sorted(gruppiert.items(), key=lambda x: -x[1]))))
+        if unklar:
+            grund.append("der Kill liess sich NICHT nachpruefen (PowerShell antwortet nicht) - "
+                         "der Kreis ist dann nicht sicher aufgebrochen")
+    elif gekillt:
         gruppiert: dict[str, int] = {}
         for g, _ in gekillt:
             gruppiert[g] = gruppiert.get(g, 0) + 1

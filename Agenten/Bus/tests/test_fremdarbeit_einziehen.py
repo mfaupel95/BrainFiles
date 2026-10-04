@@ -217,7 +217,7 @@ def test_rueckschritt_gegen_head_wird_nicht_uebernommen():
     try:
         fremdarbeit_anlegen(w)   # HEAD lernt die neue Fassung von datei_a
         assert lauf(w).returncode == 0
-        assert git("show", "HEAD:datei_a.txt", cwd=w) == "a geaendert\n"
+        assert git("show", "HEAD:datei_a.txt", cwd=w) == "a geaendert"
 
         # Zweite, RUECKFAELLIGE Sitzung schreibt die ALTE Fassung zurueck
         # und laesst sie ruhen - der klassische Rueckschritt-Fall.
@@ -232,7 +232,7 @@ def test_rueckschritt_gegen_head_wird_nicht_uebernommen():
             "Routine nennt den Rueckschritt nicht: %r %r" % (a.stdout, a.stderr)
         assert git("rev-parse", "HEAD", cwd=w) == vorher, \
             "Rueckschritt wurde committet - Reparatur aufgehoben!"
-        assert git("show", "HEAD:datei_a.txt", cwd=w) == "a geaendert\n"
+        assert git("show", "HEAD:datei_a.txt", cwd=w) == "a geaendert"
         # Abgelehnte Datei liegt weiter als Aenderung im Arbeitsbaum
         assert " datei_a.txt" in git("status", "--porcelain", cwd=w)
     finally:

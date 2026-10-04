@@ -36,6 +36,7 @@ SPEC = importlib.util.spec_from_file_location(
     "mcp_zombie_wache", HIER / "mcp-zombie-wache.py")
 w = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(w)
+ECHT_DOCKER_LAEUFT = w._docker_laeuft   # unveraendert gesichert: BasisTest.lauf ersetzt global (Test-Isolation)
 
 
 class Fake:
@@ -185,6 +186,10 @@ class NachpruefungTest(unittest.TestCase):
         """Kein Docker installiert darf nicht als 'Docker laeuft' gelten."""
         import subprocess as sp
         echt = sp.run
+        # BasisTest.lauf tauscht _docker_laeuft global gegen eine Lambda aus; damit dieser
+        # Test die ECHTE Funktion prueft (nicht die uebriggebliebene Stellvertreterin aus
+        # einem frueheren Testlauf), ist die Ursprungsfunktion gesichert und wird zurueckgesetzt.
+        w._docker_laeuft = ECHT_DOCKER_LAEUFT
 
         def platzt(*a, **k):
             raise FileNotFoundError("docker")
@@ -194,6 +199,44 @@ class NachpruefungTest(unittest.TestCase):
             self.assertIsNone(w._docker_laeuft())
         finally:
             sp.run = echt
+
+
+class KreisTest(BasisTest):
+    """T-200 MCP_DOCKER-Abgleichkreis: unter Docker-tot + MCP_DOCKER + Ueberlauf wird auf
+    ZERO gekuerzt (nicht auf BEHALTEN_JE_GRUPPE) und die Kreislauf-Meldung kommt -
+    damit konvergiert der naechste Zyklus statt weiter zu killen (Ping-Pong)."""
+
+    def test_kreis_kuerzt_alle_gruppen_auf_zero(self):
+        fake = Fake({"mail": 20, "kraken": 10})
+        text = self.lauf(fake, docker=False, mcp_docker=True)
+        self.assertIn("ABGLEICHKREIS", text)
+        self.assertIn("aufgebrochen", text)
+        self.assertEqual(fake.prozesse, [],
+                         "unter Kreis bleiben KEINE Prozesse - drei 'lebende' naehren den Abgleich")
+        self.assertNotIn("MCP-Zombies gekillt", text)   # eigne Meldung, nicht Symptombehandlung
+
+    def test_kreis_ohne_ueberlauf_meldet_nichts(self):
+        # Ein toter Docker + MCP_DOCKER, aber alle Gruppen im Rahmen = kein Kreis.
+        text = self.lauf(Fake({"mail": 3}), docker=False, mcp_docker=True)
+        self.assertEqual(text, "")
+
+    def test_zweiter_zyklus_ist_idempotent(self):
+        # Nach dem Aufbrechen ist die Prozesstabelle leer; der naechste Lauf im selben
+        # Zustand darf NICHT erneut 'aufgebrochen' rufen (sonst wirkt er wie Neu-Spawning)
+        # und muss ohne weitere Meldung enden, falls der Abgleich nichts nachspawnt.
+        fake = Fake({"mail": 20, "kraken": 10})
+        text1 = self.lauf(fake, docker=False, mcp_docker=True)
+        assert "ABGLEICHKREIS" in text1 and not fake.prozesse
+        text2 = self.lauf(fake, docker=False, mcp_docker=True)
+        self.assertEqual(text2, "",
+                         "leere Prozesstabelle unter Kreis = bereits aufgebrochen, kein neuer Kill")
+
+    def test_kreis_bricht_auch_ohne_gruppenueberlauf_nicht_frisch_an(self):
+        # Idempotenz-Falle im ersten Lauf: Zwei Gruppen gerade ueber GESAMT, aber keine ueber
+        # MAX_JE_GRUPPE - das ist nur Ueberlauf, kein Docker-Kreis.
+        fake = Fake({"mail": 4, "kraken": 4})
+        text = self.lauf(fake, docker=False, mcp_docker=True)
+        self.assertNotIn("ABGLEICHKREIS", text)
 
 
 if __name__ == "__main__":
