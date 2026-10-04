@@ -29,6 +29,64 @@ zeigt je Profil: Modell, hinterlegte Anmeldung, Zahl der Kanalzeilen, Groesse de
 Kette und einen Befund; `--nur-probleme` kuerzt auf die auffaelligen Profile. Es
 schreibt nichts.
 
+## Vor der Massenaktion: die Einrueckung messen, nicht annehmen
+
+Diese Flotten-Configs sind **gemischt eingerueckt**: Top-Level-Schluessel wie
+`delegation:` stehen in Spalte 0, ihre Skalarfelder mit **zwei** Leerzeichen
+darunter, Unterfelder von Unterfeldern mit vier. Ein Ersatzzblock, den man nach
+dem Muster der Hauptconfig schreibt (Top-Level-Schluessel + vier Leerzeichen),
+bricht neben diesen Dateien die YAML-Auswertung:
+
+```
+expected <block end>, but found '<block mapping start>'
+```
+
+Das ist der teuerste Fehler der ganzen Sektion, weil er **stillschweigend
+schreibt**: die Datei ist danach groessenteils ok, nur der ersetzte Schluessel ist
+zu einem String geworden - die Gegenprobe `yaml.safe_load` schlaegt erst **nach**
+dem Schreiben fehl, zu spaet fuer das Assert auf den Zielwerten. Deshalb zwei
+Gates in dieser Reihenfolge:
+
+1. **Den Ersatzzblock ALLEIN gegen `yaml.safe_load` pruefen**, bevor eine Datei
+   angefasst wird: `yaml.safe_load("\n".join(neuer_block))`. Faellt er hier,
+   ist noch nichts kaputt.
+2. **Die Einrueckung aus der Zieldatei ableiten, nicht aus der Hauptconfig.** Die
+   Einrueckung des Ersatzzblocks ist der *Inhalt* des Problems: Skalarfelder auf
+   derselben Tiefe wie im Ziel, Listenelemente darunter eine Ebene tiefer, ein
+   Kommentar auf der Tiefe des Blocks.
+
+Nach dem Lauf **alle** Configs parsen und den Zieltyp asserten, nicht nur die
+geaenderten - `assert isinstance(cfg["delegation"], dict)`. Ein Skalar, der wie
+ein Block aussieht, ist das einzige Anzeichen.
+
+Sind Dateien trotzdem gekippt: jede byteweise aus `<datei>.bak-JJJJMMTT`
+zurueckspielen und `git status --porcelain -- <pfad>` als Gegenprobe lesen. Das
+geht in Sekunden und ist billiger als jede Reparatur am Text.
+
+## Der Befund, der beim Nachziehen auffaellt und nicht im Auftrag stand
+
+Beim Uebertragen einer Hauptprofil-Konfiguration auf die Flotte ist der
+wichtigste Befund selten die Modelleinstellung, sondern eine **Luecke in der
+Ausnahmeregel**: wer seinen Provider fest **pinnt**, erbt die Hauptkette nicht
+mehr (`scoped_fallback_chain` gibt einem gepinnten Kind die geerbte Kette nicht
+mit). Ein Profil mit `delegation.provider` und **ohne eigene**
+`delegation.fallback_providers` hat damit **gar keinen Rueckfall** - es sieht
+vollstaendig konfiguriert aus und ist es nicht.
+
+Pruefung, ein Muster fuer die ganze Flotte:
+
+```python
+gepinnt = bool(dl.get("provider")) or bool(dl.get("model"))
+eigen   = dl.get("fallback_providers")
+if gepinnt and not eigen:
+    ...   # echte Luecke, kein kosmetischer Befund
+```
+
+Die zweite Luecke derselben Art: ein Aufgaben-Block auf `auto` erbt das
+**Hauptmodell des Profils**. Wo dieses ein reines Textmodell ist, ist die
+Konfiguration fuer Bild- oder Strukturaufgaben wertlos - korrekt verdrahtet und
+doch unbrauchbar.
+
 ## Beheben: drei Befunde, drei Werkzeuge
 
 | Befund (aus dem Bericht) | Werkzeug | Wirkung |

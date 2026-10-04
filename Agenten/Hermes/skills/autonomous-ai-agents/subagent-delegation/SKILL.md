@@ -228,6 +228,36 @@ oder ihn still falsch liest.
 - **Kind-Berichte sind Selbstauskunft.** Bei externen Wirkungen (Commit, Upload,
 Versand, Schreiben in einen fremden Baum) den Beleg selbst nachziehen — Log,
 Datei, ID —, bevor „erledigt“ an den Nutzer geht.
+- **Ein Kind, das mit eigenem Git-Index committet, laesst den geteilten Index
+  zurueck — das ist Nacharbeit der Eltern, nicht des Kindes.** Der Weg
+  `GIT_INDEX_FILE=<eigen> git read-tree HEAD && git add <pfad> && git commit`
+  ist die einzige sichere Art, fremde Vormerkungen nicht mitzunehmen, und er
+  hat eine Kehrseite: `.git/index` kennt den neuen Commit nicht. `git status
+  --porcelain` zeigt die Kind-Pfade danach als `MM`, und wer als Naechstes aus
+  dem geteilten Index committet, zieht die **Rueckabenderung** mit. Nach jedem
+  Kinder-Commit daher selbst nachziehen:
+
+  ```bash
+  git reset -q HEAD -- <die pfade des kindes>
+  ```
+
+  danach `git diff --cached --numstat` — das muss leer sein (bzw. nur fremde
+  Pfade zeigen). Das ist ein reiner Index-Schritt, er aendert keine Datei.
+  **Ein Kind kann den geteilten Index auch zerstoeren, ohne es zu melden:**
+  ein `git read-tree HEAD` OHNE `GIT_INDEX_FILE` setzt ihn auf HEAD zurueck und
+  nimmt damit die Vormerkungen anderer Sitzungen weg. Deshalb im Brief nicht
+  nur „nutze einen eigenen Index“ sondern „jeder git-Befehl, der den Index
+  schreibt, laeuft mit gesetztem `GIT_INDEX_FILE`; im Bericht die Pfade nennen“,
+  und nach dem Lauf `git status --porcelain` lesen — ein Kind, das fremde
+  `M `-Eintraege verschwinden lassen hat, hat sie nicht aufgeraeumt.
+- **Ein Kind, das sein Iterationslimit erreicht, hat Pflichten offen, die
+  ausdruecklich im Bericht stehen muessen.** Der Status lautet dann nicht
+  „fertig“, sondern „Teilfertig, Rest nicht geschafft“ — und der Rest ist meist
+  eine Zustandsreparierung (Index, `git reset`, `TASKS.md`-Eintraege), die das
+  Kind als letzte Zeile „Nacharbeit zwingend“ nennt. Diese Liste abarbeiten,
+  BEVOR der Abschluss an den Nutzer geht: ein stehengebliebener `MM`-Zustand
+  faellt der naechsten Sitzung als fremde Aenderung auf und wird dann als
+  solche committet.
 - **Auch BEFUNDE sind Selbstauskunft, nicht nur Wirkungen.** Ein Kind, das Code
 liest und meldet "dieser Schluessel wird nirgends gelesen / dieser Wert bindet
 nichts", sagt das mit Datei:Zeile-Anmutung und kann trotzdem falsch liegen. Die

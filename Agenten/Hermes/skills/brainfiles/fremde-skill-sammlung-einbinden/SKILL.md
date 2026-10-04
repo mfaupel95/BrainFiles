@@ -72,6 +72,57 @@ Kind-Skills), ist das eine **API-Beschreibung, kein Hausverfahren**:
    lassen. Dazu die Wiki-Seite unter `Werkzeuge/` mit Endpunkten, Ablage der Kennung und
    dem, was NICHT angeschlossen ist (`wiki-pflege`).
 
+## Mehrere Skills aus einem Klon in die Hauptbibliothek
+
+Die Regel oben (ein ganzer Baum kommt **nie** in die geladene Bibliothek) gilt
+fuer den FALL-Import. Ausnahmen: der Nutzer beauftragt einzelne Skills
+ausdruecklich, oder ein Klon liegt bereits TEILWEISE in der Bibliothek und
+die restlichen fehlen. Dann gelten drei Zusatzregeln, die beim Kopieren
+leise verschaerft werden:
+
+1. **Die 60-Zeichen-Grenze ist der Grund fuer den Aufwand.** Die
+   Originalbeschreibungen fremder Skills sind 200 bis 500 Zeichen lang; der
+   Index im Systemprompt schneidet bei 60 ab, was darueber steht, route
+   nie. **Die Laenge MESSEN, bevor man uebernimmt** (`re`-Match auf
+   `^description:`, Laenge ausgeben) — ein Skill mit 400 Zeichen faellt
+   optisch vollstaendig und funktioniert nie. Ersatz: ein Satz, der die
+   Faehigkeit nennt, und die Triggerwoerter wandern in den Koerper, wo der
+   Agent sie beim Laden liest. Autor und Version der Fremdquelle bleiben.
+2. **Ein im Skill-Baum liegender Fremd-Klon ist oft gesperrt.** Der
+   `.gitignore` enthaelt Zeilen wie `Agenten/Hermes/skills/<klon>/`
+   ("Fremd-Klone im Skill-Baum"). Ein dort kopierter Skill wird GELADEN, aber
+   nicht gesichert und existiert auf keinem anderen Rechner — ein Zustand,
+   den `hermes skills list` als `enabled` meldet und damit verdeckt. **Vor
+   dem Kopieren `git check-ignore -v --no-index <zielpfad>` lesen**; zeigt es
+   eine Sperrzeile, in einen eigenen Ordner unter der generellen Freigabe
+   (`!Agenten/Hermes/skills/**`) kopieren, statt die Sperre aufzuheben. Die
+   Sperrzeilen begruenden jede fuer sich; sie aufzubrechen ist eine
+   Bibliotheksentscheidung, keine Importfrage.
+3. **Doppel entstehen, wenn beide Orte den Skill tragen.** Nach dem Kopieren
+   die Ursprungsfassung im Klon ENTFERNEN, sonst meldet der naechste
+   `repos-updaten.py`-Lauf eine zweite Fassung und die Zahl der geladenen
+   Skills stimmt nicht mehr. Gegenprobe: `hermes skills list` nach
+   `grep -icE '<name-teil>'` — die Zahl muss den beabsichtigten Ordner
+   nennen, nicht einen Pfad, der nicht mehr existiert.
+
+## Medienpassung pruefen, bevor ein fremder Design-Skill geladen wird
+
+Ein fremder Skill kann fachlich passen und trotzdem das FALSCHE Medium
+bedienen. Vor der Uebernahme die Begriffe im Skilltext zaehlen und mit dem
+eigenen Medium vergleichen:
+
+    grep -oiE '(html|css|react|tailwind|tkinter|ttk)' <skill>/SKILL.md | sort | uniq -c
+
+Bei einer UI-Sammlung ist das die entscheidende Frage: eine reine
+Web-Sammlung (19x HTML, 10x CSS, React/Tailwind, kein tkinter) taugt nicht
+als Quelle fuer ein tkinter-Fenster. **Dann nicht ablehnen, sondern
+ANNOTIEREN und laden**: direkt unter der ersten Ueberschrift einen
+Hinweis, der dasMedium benennt und auf die eigene Designquelle verweist
+(z. B. "KEIN tkinter — die Fenster des Hauses nehmen Farbe und Schrift aus
+`fenster_design.py`"). Der Hinweis steht im Koerper, weil die Beschreibung
+im Index keinen Platz hat (60-Zeichen-Grenze). Ohne ihn laedt der Agent den
+Skill fuer ein Fenster und setzt dann Webfarben neben die Hausquelle.
+
 ## Vorgehen
 
 1. **Klon voll** nach `Werkstatt/Repos/<name>` (kein `--depth 1`): ein shallow

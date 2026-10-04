@@ -964,8 +964,8 @@ security:
   allow_private_urls: true
 kanban:
   review_dispatch: true
-  orchestrator_profile: lokal-first
-  default_assignee: lotse
+  orchestrator_profile: default
+  default_assignee: 'default'
 code_execution:
   mode: project
   max_tool_calls: 50

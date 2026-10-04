@@ -20,7 +20,12 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
 
 - „X soll laufen / dauerhaft laufen / starten / im Hintergrund“
 - „starte Y neu, wenn es abstuerzt“, „warum ist X wieder aus“
-- Eine Komponente soll nicht mehr an eine Agentensitzung gebunden sein
+- Eine Komponente soll nicht an eine Agentensitzung gebunden sein
+- **„geh die Cronjobs durch und repariere sie“ / „welche Wache laeuft noch“** —
+  Triagerunde ueber `cron/jobs.json`, `cron/executions.db` und
+  `cron_incidents`. Vollstaendige Runde mit den Fehlerklassen (roter Job,
+  still gruener Job, Exitcode nur im Cron, wachsende Laufzeit, Zaehler stimmt
+  aber Erzaehlung falsch): `references/cron-durchgehen.md`
 
 ## Ablauf
 

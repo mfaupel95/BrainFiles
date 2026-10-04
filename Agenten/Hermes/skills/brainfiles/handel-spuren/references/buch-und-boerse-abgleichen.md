@@ -51,6 +51,19 @@ worden.
   ist der Boersenstand: `realizedPnl` + Einsatz (`/account/positions-history`),
   bei groesserem Boersenstand ANTEILIG (Buchkontrakte / `closeTotalPos`); ohne
   Boersensatz NEUTRAL (Einsatz zurueck).
+- **Ein wiederholter "Verkauf fehlgeschlagen / insufficient balance"-Fehler ist
+  oft die FOLGE einer nie existierenden Position, keine echte Kontolage.**
+  Symptom: die Spur versucht jeden Zyklus denselben Verkauf und scheitert mit
+  einem Guthaben-Fehler (OKX 51008), waehrend die Position im Buch bleibt.
+  Diagnose in dieser Reihenfolge, rein lesend: (a) `orders-history-archive`
+  (die Standard-`orders-history` kann fuer nie gefuellte/aeltere Orders LEER
+  sein - beide abfragen), (b) `/account/balance?ccy=<token>`: `spotBal` gegen
+  `frozenBal` - `frozenBal > 0` heisst offene Position, sonst ist es freier
+  Bestand und die Position war ein Geist. `modus: live` im Journal ist ein
+  BUCHVERMERK, kein Orderbeleg - der Beleg ist die Order in der
+  Boersen-Historie. Ist die Position ein Geist, ist der Fehler erledigt (die
+  Spur laeuft danach sauber weiter); keine Sperre bauen, die eine
+  Guthabenfrage still deaktiviert.
 - **Geister-Frist kurz halten.** Die "Order ist noch nicht gefuellt"-Entschuldigung
   darf nur kurz nach dem Eroeffnen gelten (Minuten, nicht Stunden), sonst bleiben
   handgeschlossene Positionen als Karteileichen unsichtbar, weil die Order ja

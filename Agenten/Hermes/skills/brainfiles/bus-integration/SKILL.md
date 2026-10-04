@@ -144,6 +144,27 @@ category: brainfiles
   überspringt genau diese Kennzeichnung. Den Marker in die Datei schreiben, nicht
   den Dateinamen in den Test — sonst reißt die nächste Bibliothek die Suite
   erneut ein.
+- **Ein roter Anbindungstest hat zwei mögliche Ursachen mit GEGENWÄRTLIGER
+  Lösung — erst die Aufgabenplanung fragen, dann bauen.** Der Test
+  `test_jede_routine_meldet` kennt nur das Symptom „Datei ohne Anbindung"; er
+  sagt nicht, welche der beiden Bauarten hier richtig ist. Die unterscheidet
+  genau eine Messung: `Get-ScheduledTask | Where-Object {$_.TaskName -like '*<name>*'}`
+  (die Aufzaehlung nehmen, `Get-ScheduledTask -TaskName` findet vorhandene
+  Aufgaben nicht zuverlässig) und `grep -n '<name>' Agenten/Routinen/*.ps1` —
+  wer ruft sie auf?
+  - **Hat sie einen eigenen Ausloeser** (eigene geplante Aufgabe, im Journal
+    `routine/<name>`): gehoert sie an den Bus. Fehlt die Anbindung, ist es ein
+    Loch, das man zulaest.
+  - **Wird sie von einem anderen Skript gerufen** (dot-source oder
+    `& powershell -File <datei>` aus einer Routine heraus), hat sie **keinen**
+    eigenen Ausloeser und die geplante Aufgabe gehoert dem EINBINDER: eine
+    eigene `Melde-Start` schriebe jeden Befund mehrfach ins Journal. Dann
+    `BUS: Bibliothek` in den Kopf, mit der Begruendung, aus welcher Datei sie
+    aufgerufen wird und wie oft.
+  Falsch gebaut ist beides mit Symptomen: die Anbindung trotzdem eingebaut
+  verdoppelt den Journal-Eintrag, die Kennzeichnung trotzdem noetig laesst die
+  Suite rot. Die Aufgabenplanung ist die eine Messung, die die Frage entscheidet,
+  und sie ist billig — also vor dem Bau, nicht danach.
 - **Ein abgebrochener Lauf sieht wie ein Ausbleiben aus, ist aber keins.** Wird
   die Aufgabe von außen beendet (Herunterfahren, `Stop-ScheduledTask`, Absturz),
   steht ein `start` ohne `ende` im Journal — kein PowerShell kann die Schlusszeile
@@ -294,6 +315,31 @@ sie eine zweite Instanz oder der Wrapper stirbt vor seiner Schlusszeile:
   `Get-ScheduledTaskInfo`), nicht nur von Hand.
 - **Abnahme:** `python tests/test_anbindung_routinen.py` aus `Agenten/Bus`. Jede
   neue `.ps1` in `Routinen/` ohne Anbindung reisst die ganze Suite ein.
+
+- **Ein Schattenarm, der den Kern aufruft, braucht seine EIGENE Meldung.** Ein
+  Walker, der nur eine Umgebungsvariable setzt und dann `kern._main()` ruft
+  (Muster `spiegel_knapp.py`), meldet ohne eigene `ereignis.lauf`-Zeile unter dem
+  Namen des Hauptarms — er laeuft, schreibt Journal, Buch und Spiegelung und ist
+  trotzdem unsichtbar. Der Test `test_dauerlauf_subprocess_skripte_haben_bus`
+  faellt genau dann, wenn `dauerlauf.SPUREN` einen `skript`-Eintrag auf einen
+  eigenen Dateinamen zeigt und diese Datei den Bus-Namen nicht woertlich traegt.
+  Muster:
+
+  ```python
+  os.environ["HANDEL_BUCH"] = "eth"          # VOR dem Import
+  import ereignis
+  import handeln
+  def main():
+      with ereignis.lauf("handel/<arm>"):     # eigener Name, nicht der des Kerns
+          return handeln._main()               # _main, nicht main()
+  ```
+
+  `main()` statt `_main()` kapselt den Lauf ein zweites Mal **und** meldet unter
+  dem Kern-Namen — beides zusammen sieht aus wie „Anbindung vorhanden" und ist
+  trotzdem unsichtbar. Nach dem Bau beide Wege belegen: Test gruen, und
+  **Gegenprobe** — eigene Meldung entfernt, Test muss wieder an derselben Zeile
+  rot werden, dann zuruecksetzen. Ein Fix ohne Gegenprobe ist hier nicht
+  belegt, weil die Datei vorher zufaellig schon gruen sein koennte.
 
 ## Abnahme am laufenden System
 
