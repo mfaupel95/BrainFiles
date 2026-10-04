@@ -87,6 +87,42 @@ verschieben**, mit Datum. Nicht löschen —
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-354 — Zwei Positionen ohne `modus`: Buch-Geist wie am 21.09.**
+      Kontext: Bei der Pruefung von `moondev_signalwelle` und
+      `moondev_marktlage` (Auftrag Max 05.10.2026) traegt GENIUS (signalwelle)
+      und BTC (marktlage) kein `modus`-Feld, die beiden anderen Positionen
+      tragen `papier`. Das ist die Klasse aus meinem Gedaechtnis: eine
+      Position ohne Modus ist nicht als Papier erkennbar, also
+      `bueche_papier_altlasten_aus()` kann sie nicht ausbuchen. Sie ist
+      Papier (das Journal zeigt nur papier-Zeilen), aber das Buch weiss es
+      nicht. Beide Positionen sind vom 19./20.09. - Altbestand aus der Zeit
+      vor dem Modus-Feld.
+      Naechster Schritt: beide Positionen einmal als Papier buchen (Journal
+      'buchbereinigung', Einstiegskurs als Preis) oder das Feld per Zustand
+      nachtragen. Vorher pruefen, ob an der Boerse etwas offen steht - beide
+      Spuren sind `trigger_modus: signal` und handeln ueber den Executor,
+      nie live direkt.
+      Angelegt · 05.10.2026 · Betrifft: Agenten/Handel/moondev_signalwelle/zustand.json,
+      Agenten/Handel/moondev_marktlage/zustand.json
+- [ ] **T-353 — Der signal-executor brach seit dem 03.10. bei jedem Lauf ab**
+      Kontext: Gefunden bei derselben Pruefung (05.10.2026). In
+      `Agenten/Hermes/scripts/signal-executor.py` stand
+      `from spur_buch import orderweg, venue_inst` VOR jedem `sys.path.insert`.
+      `spur_buch` ist eine flache Datei im Handel-Ordner und kein Paket -
+      der Import warf `ModuleNotFoundError`, der Cron meldete 'Script exited
+      with code 1', und KEINE Spur mit `trigger_modus: signal` kam je zu einem
+      Einstieg. Die drei Tore weiter unten (Freigabefenster, Gebuehren-Tor,
+      Basis-Deckel) machten den sys.path-Eintrag richtig; nur der erste Import
+      stand falsch. Behoben und nachgemessen: der Executor laeuft jetzt
+      durch. Die Queues von signalwelle und marktlage waren allerdings leer,
+      deshalb half die Reparatur heute noch niemandem - sie verhindert nur
+      den naechsten Fall.
+      Naechster Schritt: pruefen, ob die uebrigen signal-Spuren
+      (topmovers, sniper, funding) Queues haben, die liegen bleiben. Der
+      Executor verarbeitet nur EINEN Eintrag je Spur und Lauf - bei vollen
+      Queues braucht es entsprechend viele Takte.
+      Angelegt · 05.10.2026 · Betrifft:
+      Agenten/Hermes/scripts/signal-executor.py, Agenten/Hermes/cron/jobs.json
 - [ ] **T-352 — omnitrade.cmd Stand zeigt 'veraltet': der ema_cross-Lauf (live.json) ist tot, adx_macd laeuft**
 Kontext: omnitrade_bridge (Standard-Anker live.json) meldet am 05.10.2026 00:02
 "veraltet: seit 116 min kein Lebenszeichen (Grenze 300 s)" - PID 55888 existiert
