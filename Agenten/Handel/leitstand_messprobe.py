@@ -60,7 +60,22 @@ def sammle(widget, gefunden):
         sammle(kind, gefunden)
 
 
-def bericht(titel, baum, schrift):
+def stil_segui(gross):
+    """Die Ueberschriftenfamilie des Leitstands, sonst die Fenster-Schrift.
+
+    `leitstand_stil.py` setzt Segoe UI fuer KOPF/TITEL und Consolas fuer
+    TABELLE - zwei Familien in einem Fenster. Wer nur eine misst,
+    verschafft sich falsche Zahlen fuer die Haelfte der Spalten.
+    """
+    try:
+        import leitstand_stil
+        fam = dict(leitstand_stil._SCHRIFTEN)[leitstand_stil.TITEL][1]
+        return fam
+    except Exception:                                        # noqa: BLE001
+        return ""
+
+
+def bericht(titel, baum, schrift, schrift_kopf=None):
     breite_baum = baum.winfo_width()
     summe = sum(baum.column(sp, "width") for sp in baum["columns"])
     platz = breite_baum - ROLLENDE
@@ -76,8 +91,9 @@ def bericht(titel, baum, schrift):
     for sp in baum["columns"]:
         breite = baum.column(sp, "width")
         kopf = baum.heading(sp, "text") or ""
-        if kopf and schrift.measure(kopf) + RAND > breite:
-            zu_schmal.append((sp, "UEBERSCHRIFT", schrift.measure(kopf) + RAND,
+        f_kopf = schrift_kopf or schrift
+        if kopf and f_kopf.measure(kopf) + RAND > breite:
+            zu_schmal.append((sp, "UEBERSCHRIFT", f_kopf.measure(kopf) + RAND,
                               kopf))
     # NUR die Zeilen, die wirklich gezeichnet sind. Eine Tabelle haelt mehrere
     # hundert Zeilen und zeigt eine mit height=8; die uebrigen sind ueber die
@@ -120,18 +136,34 @@ def main() -> int:
     import handelszentrale as hz
 
     root = tk.Tk()
-    root.withdraw()
+    # Zwei Fehler, beide beim Bauen gemessen (Befund des UI-Audits vom
+    # 04.10.2026): `withdraw()` nimmt dem Fenster jede Geometrie, und eine
+    # `geometry()` VOR dem Konstruktor wird von `Leitstand.__init__` ueber
+    # `start_lage` ueberschrieben - die Sonde misste deshalb 2611x1469
+    # statt der angeforderten 1280x860, also eine Fenstergroesse, die
+    # niemand benutzt. Also: sichtbar bauen, AUSSERHALB des Bildschirms
+    # positionieren, und die Groesse NACH dem Konstruktor setzen.
     try:
         root.tk.call("tk", "scaling", 1.1)      # wie handelszentrale.main()
     except Exception:                                        # noqa: BLE001
         pass
     ls.Handelszentrale = hz.Handelszentrale    # der Reiter braucht sie
     lei = ls.Leitstand(root)
-    root.geometry("%dx%d" % (args.breite, args.hoehe))
+    root.geometry("%dx%d-3200-0" % (args.breite, args.hoehe))
     root.update()
     root.update_idletasks()
+    print("angefordert %dx%d, tatsaechlich %dx%d"
+          % (args.breite, args.hoehe, root.winfo_width(),
+             root.winfo_height()))
 
-    schrift = tkfont.Font(family=hz.SCHRIFT_ART, size=hz.SCHRIFT_GROESSE)
+    # Die Fenster-Schrift, gemessen am Font des Fensters - nicht die der
+    # Handelszentrale. Der Leitstand nutzt Segoe UI fuer Ueberschriften und
+    # Consolas fuer Zeilen; eine Sonde, die nur Consolas misst, ueberschaetzt
+    # den Bedarf um rund ein Viertel (gemessen 141 px gegen 110 px fuer
+    # "Anfrage verfaellt in").
+    gross = lei.schrift if getattr(lei, "schrift", None) else hz.SCHRIFT_GROESSE
+    schrift_zeile = tkfont.Font(family=hz.SCHRIFT_ART, size=gross)
+    schrift_kopf = tkfont.Font(family=stil_segui(gross), size=gross)
     print("Fenster %dx%d | Schrift %s %d"
           % (root.winfo_width(), root.winfo_height(), hz.SCHRIFT_ART,
              hz.SCHRIFT_GROESSE))
@@ -171,7 +203,7 @@ def main() -> int:
             if not pfad_von(baum).startswith(ziel):
                 continue
             gesamt += bericht("%s / %s" % (titel, _tabellenname(baum)),
-                              baum, schrift)
+                              baum, schrift_zeile, schrift_kopf)
             gemessen += 1
     print("=" * 78)
     print("Tabellen %d | ZU SCHMAL GESAMT: %d" % (gemessen, gesamt))

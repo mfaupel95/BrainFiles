@@ -1625,6 +1625,11 @@ class Handelszentrale:
         # keine Bindung und das Rad bliebe wirkungslos.
         self.seite = seite
         seite_mausrad(self.seite_canvas, seite)
+        # Jede scrollende Seite braucht ihre Rad-Bindung: ein Radereignis
+        # landet auf dem Widget unter dem Zeiger, nicht auf dem Canvas
+        # dahinter. Ohne sie scrollen die beiden neuen Seiten nicht
+        # (siehe die Erklaerung am Aufruf von scrollbare_seite).
+        seite_mausrad(self._canvas_freqtrade, seite)
         # Scrollregion einmal SOFORT: kommt kein Configure-Ereignis (minimiert
         # gestartet, als Reiter im Leitstand gebaut), waere die Seite trotz
         # Inhalt nicht scrollbar. after_idle laesst den Aufbau erst fertig werden.
@@ -1639,8 +1644,13 @@ class Handelszentrale:
         Bots liefen. Die Bot-Liste kommt aus `freqtrade/bots.json`, derselben
         Tabelle, die `bots.py` zum Starten benutzt.
         """
-        seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
-        self.reiter.add(seite, text="FreqTrade")
+        # Auch diese Seite scrollt: `scrollbare_seite` war nur am
+        # Spuren-Reiter gebaut, die beiden anderen Seiten waren blanke
+        # tk.Frame. Gemessen bei 1280x860: FreqTrade zeigte 121 px von
+        # 336 px Inhalt, omnitrade 141 von 468 - Journal und Quellen-
+        # angabe waren unerreichbar, ohne dass etwas darauf hinwies.
+        self._wrapper_freqtrade, seite, self._canvas_freqtrade = scrollbare_seite(self.reiter)
+        self.reiter.add(self._wrapper_freqtrade, text="FreqTrade")
         self.l_ft = tk.Label(seite, bg=FARBEN["bg"], anchor="w", justify="left",
                              text=freqtrade_kopf(None)[0], fg=FARBEN["matt"])
         self._registriere_schrift(self.l_ft, 0, fett=True)
@@ -1722,8 +1732,13 @@ class Handelszentrale:
 
     def _baue_omnitrade(self):
         """Reiter omnitrade: Kopfzeile und letzte Order-Ereignisse aus der Statusdatei."""
-        seite = tk.Frame(self.reiter, bg=FARBEN["bg"])
-        self.reiter.add(seite, text="omnitrade")
+        # Auch diese Seite scrollt: `scrollbare_seite` war nur am
+        # Spuren-Reiter gebaut, die beiden anderen Seiten waren blanke
+        # tk.Frame. Gemessen bei 1280x860: FreqTrade zeigte 121 px von
+        # 336 px Inhalt, omnitrade 141 von 468 - Journal und Quellen-
+        # angabe waren unerreichbar, ohne dass etwas darauf hinwies.
+        self._wrapper_omnitrade, seite, self._canvas_omnitrade = scrollbare_seite(self.reiter)
+        self.reiter.add(self._wrapper_omnitrade, text="omnitrade")
         self.l_omni = tk.Label(seite, bg=FARBEN["bg"], anchor="w", justify="left",
                                text=omnitrade_kopf(None)[0], fg=FARBEN["matt"])
         self._registriere_schrift(self.l_omni, 0, fett=True)
@@ -1783,6 +1798,7 @@ class Handelszentrale:
         spalten = ("zeit", "seite", "menge", "preis", "ergebnis", "meldung")
         kopf = {"zeit": "Zeit", "seite": "Seite", "menge": "Menge", "preis": "Preis",
                 "ergebnis": "Ergebnis", "meldung": "Meldung"}
+        seite_mausrad(self._canvas_omnitrade, seite)
         self.t_omni = tabelle_mit_leiste(
             rahmen, spalten, kopf,
             {"meldung": 320}, hoehe=20,
@@ -2227,6 +2243,13 @@ class Handelszentrale:
         self._breiten_platz_gewusst = True
         if self._breiten_gesetzt:
             return
+        # Der Zaehler wird VOR dem Rechnen geprueft, nicht danach: sonst
+        # greift die Grenze im selben Takt, in dem der Nutzer gerade
+        # gezogen hat, und seine Breite geht doch verloren (gemessen: der
+        # 5. Durchgang setzte 600 px auf 200 px zurueck).
+        if self._breiten_durchgang >= BREITEN_MAX_DURCHGAENGE:
+            self._breiten_gesetzt = True
+            return
         self._breiten_durchgang += 1
         wuensche = {id(self.t_spuren): self._wunsch_spuren,
                     id(self.t_pos): self._wunsch_pos}
@@ -2242,25 +2265,13 @@ class Handelszentrale:
             for iid in baum.get_children():
                 for sp, wert in zip(baum["columns"], baum.item(iid, "values")):
                     texte.setdefault(sp, []).append(wert)
-            # DER PLATZ braucht die WIRKLICHE Breite. Beim ersten
-            # Durchgang hat der Baum oft noch 1 px (Tk vermisst ein
-            # verborgenes oder neu gebautes Widget erst nach einem Update),
-            # und `baum.winfo_width() or master` nahm dann still die Breite
-            # des Rahmens - der ist breiter als die Tabelle in ihm. Folge:
-            # die Kuerzung griff nicht, und die Positionstabelle stand bei
-            # Schrift 13 mit 1068 px in einem Baum von 994 px (+114 px).
-            # Deshalb: unter 100 px ist der Platz unbekannt, nicht null -
-            # dann wird gar nicht gekuerzt und der naechste Durchgang
-            # rechnet es nach.
-            # Der Platz kommt aus dem Baum, und der Baum wird von Tk erst
-            # nach einem `update_idletasks` vermessen. Deshalb wird hier
-            # nicht auf den gemeldeten Wert gewartet, sondern der Platz aus
-            # dem Container geholt: der ist gepackt und hat seine Breite
-            # sofort (der Treeview darin nicht, weil seine Leisten und die
-            # Nachzeichnung fehlen). Fuenf Zeilen Wiederholung, weil der
-            # erste Durchlauf sonst mit 1 px auskam und die Kuerzung
-            # grundsaetzlich unterblieb - die Tabelle blieb dann 114 px
-            # breiter als ihr Baum (gemessen bei Schrift 13).
+            # Der Platz fuer die Kuerzung kommt aus dem Baum. Tk vermisst
+            # ein neu gebautes oder noch verborgenes Widget erst nach einem
+            # `update_idletasks` und meldet vorher 1 px - dann unterbleibt
+            # die Kuerzung grundsaetzlich (gemessen: die Positionstabelle
+            # blieb bei Schrift 13 um 114 px breiter als ihr Baum). Fuenf
+            # Versuche mit einem `update_idletasks` dazwischen, weil der
+            # ersten Durchlauf sonst genau diesen 1-px-Fall trifft.
             platz = 0
             for _ in range(5):
                 platz = baum.winfo_width()
@@ -2293,9 +2304,19 @@ class Handelszentrale:
         # zweimal dieselbe Zeilenzahl gesehen. `platz == 0` heisst: der Baum
         # hatte noch keine Breite, es wurde nicht gekuerzt, und der Durchgang
         # zaehlt nicht als fertig.
-        if (self._breiten_durchgang >= 2
-                and self._breiten_stand_alt == zaehler
-                and self._breiten_platz_gewusst):
+        # Fertig, wenn die Zeilenzahl zweimal gleich war UND der Platz
+        # bekannt war - ODER nach fuenf Durchgaengen. Die Grenze ist Pflicht,
+        # nicht Kosmetik: `BREITEN_MAX_DURCHGAENGE` stand vorher als
+        # Konstante im Baum und wurde nirgends gelesen, damit lief die
+        # Nachrechnung bei jeder Aenderung der Zeilenzahl weiter. Gemessen:
+        # nach 5+ Durchgaengen war `_breiten_gesetzt` noch False, und eine
+        # von Hand auf 600 px gezogene Spalte stand nach EINEM `refresh()`
+        # wieder auf 200 px. Ein Fenster, dessen Spaltenbreiten man nicht
+        # einrichten kann, ist ein Monitor statt einer Arbeitsflaeche.
+        if (self._breiten_durchgang >= BREITEN_MAX_DURCHGAENGE
+                or (self._breiten_durchgang >= 2
+                    and self._breiten_stand_alt == zaehler
+                    and self._breiten_platz_gewusst)):
             self._breiten_gesetzt = True
         self._breiten_stand_alt = zaehler
 
