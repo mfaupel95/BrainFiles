@@ -63,6 +63,25 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-339 — Bot-Profile: auxiliary + MoA auf die Desktop-Konfiguration nachziehen**
+      Kontext: Am 04.10.2026 wurde die Desktop-Konfiguration (Hauptprofil)
+      neu aufgebaut: alle vier MoA-Presets aggregieren auf
+      `stealth/space-bunny-alpha`, `auxiliary.{skills_hub,mcp,curator,
+      approval,title_generation,memory_query_rewrite}` auf
+      `google/gemini-3.1-flash-lite`, `compression.threshold` 0.7,
+      `prompt_caching.cache_ttl: auto`, `delegation.child_timeout_seconds` 600,
+      `desktop.renderer_max_old_space_mb` 4096. Die 26 Bot-Profile unter
+      `Agenten/Hermes/profiles/` haben EIGENE config.yaml - Profile sind Inseln
+      (keine Live-Konfig-Vererbung), die Aenderung erreicht sie also nicht.
+      Sie stehen weiter auf nous/deepseek-v4-flash, ihre `auxiliary`-Bloecke
+      erben das jeweilige Profil-Hauptmodell.
+      Naechster Schritt: mit `hermes -p <profil> config get auxiliary` je Profil
+      messen, dann mit `hermes-config-ops/scripts/kompression-provider-setzen.py`
+      bzw. dem Byte-Muster aus `Wissen/Hermes.md` (Abschnitt Desktop optimal
+      einrichten, 04.10.2026) nachziehen. Vorsicht: `hermes config set` schneidet
+      den Kommentar-Schluss der Datei ab (dreifach belegt).
+      Angelegt · 04.10.2026 (Desktop-Auftrag, Profile absichtlich nicht angefasst) · Betrifft:
+      Agenten/Hermes/profiles/*/config.yaml
 - [ ] **T-338 — QQQ-Tageskerzen nachladen, dann die QQQ/BTC-Rotation messen**
       Kontext: T-210 hat die Rotation QQQ/BTC/Cash als Datenluecke ausgewiesen,
       nicht als erfolglose Strategie: im Haus liegen nur 92 QQQ-1D-Kerzen ab

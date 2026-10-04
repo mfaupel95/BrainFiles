@@ -1053,3 +1053,96 @@ Profil und fahren damit ebenfalls auf `auto/smart` - wer nur den SkillsBot
 umstellen will, braucht ein eigenes Profil (Inselproblem, siehe oben).
 
 Sicherung: `Agenten/Hermes/config.yaml.bak-20260921-181826`.
+
+
+## Desktop optimal einrichten (Hermes Desktop, 04.10.2026)
+
+**Auftrag:** Desktop mit den bestmoeglichen Hilfsmodellen, MoA und den
+erweiterten Einstellungen; `stealth/space-bunny-alpha` bevorzugt.
+
+**Grundlage war Messung, nicht Empfehlung.** Jeder Kandidat wurde am
+04.10.2026 mit einem echten Chat-Aufruf am Nous-Endpoint befragt
+(`credential_pool.nous.agent_key` aus `auth.json`, Antwort-Inhalt geprueft,
+nicht nur HTTP 200), und die Fensterzahl kam aus `get_model_context_length()`:
+
+| Modell | Fenster | Antwortzeit |
+|---|---|---|
+| `stealth/space-bunny-alpha` | 1.000.000 | 1,4 s |
+| `deepseek/deepseek-v4-flash-0731` | 1.048.576 | 1,1 s |
+| `anthropic/claude-opus-5` | 1.000.000 | 1,5 s |
+| `openai/gpt-6-astra` | 1.050.000 | 2,8 s |
+| `google/gemini-3.1-pro-preview` | 1.048.576 | 3,3 s |
+| `google/gemini-3.1-flash-lite` | 262.144 | 1,4 s |
+| `qwen/qwen3-30b-a3b` | 262.144 | 3,4 s |
+| `deepseek/deepseek-v4-pro` | 1.048.576 | 2,5 s |
+
+**Hauptmodell:** unveraendert `nous/stealth/space-bunny-alpha` (Max' Wahl).
+
+**MoA:** alle vier Presets aggregieren jetzt auf `stealth/space-bunny-alpha`.
+Das ist der entscheidende Punkt: der Aggregator IST das handelnde Modell, er
+laeuft in jedem Werkzeugschritt und traegt fast die ganzen Kosten - dort ein
+lokales Ollama-Modell einzusetzen war der Fehler in `Max 2` und `Vision`.
+`default` hat fuenf Berater aus fuenf Familien (Opus 5, GPT-6-Astra, Gemini
+3.1 Pro, DeepSeek v4 Pro, Qwen3-30B); `Vision` bekam `qwen/qwen3-vl-32b-instruct`
+als sechsfuehrende Beraterin. `fanout: user_turn` bleibt - `per_iteration`
+vervielfacht die Beraterkosten mit der Werkzeugschleifen-Tiefe.
+
+**Hilfsmodelle (`auxiliary`):** `skills_hub`, `mcp`, `curator`, `approval`,
+`title_generation`, `memory_query_rewrite` standen auf `auto` und erbten damit
+das HAUPTmodell - ein Kurzeraufruf, der space-bunny-alpha kostete. Umgestellt auf
+`google/gemini-3.1-flash-lite` (1,4 s). `kanban_decomposer` und
+`triage_specifier` bleiben auf `inception/mercury-2.5` (1,7 s, JSON-faehig).
+`compression` bleibt `deepseek-v4-flash-0731` (1.048.576) - Kompression braucht
+das grosse Fenster, `vision` bleibt `qwen3-vl-235b`.
+
+**Weiter geaendert, mit Grund:**
+
+- `compression.threshold` 0.19/0.5 -> **0.7**. Der Wert 0.19 stammte aus der Zeit,
+  als das Kompressionsmodell nur 200k Fenster hatte; jetzt sind es 1.048.576 und
+  das Hauptmodell 1.000.000, die Kompression setzt erst bei rund 700.000 Token ein.
+- `prompt_caching.cache_ttl` 5m -> **auto**. `auto` heisst 1h-Tier fuer alles, was
+  ein Mensch tippt (cli/tui/desktop/Gateway), 5m fuer maschinell getaktete Quellen
+  (subagent/cron/kanban/webhook). Der Schreibvorgang kostet 2x statt 1,25x - das
+  zahlt sich aus, weil die Memory (302.068 Zeichen) in jedem Turn mitgeschickt wird.
+- `delegation.child_timeout_seconds` 180 -> **600**. Der Timeout startet bei jedem
+  Fortschritt neu; 180 s hat lebende Subagenten mit mehreren Werkzeugschritten
+  trotzdem abgeschnitten.
+- `delegation.fallback_providers`: `gemma-e4b-8k:cpu` und der tote Bonsai-Dienst
+  raus, ersetzt durch dieselbe Kette wie das Hauptmodell. Ein per Provider
+  gepinntes Kind erbt die Hauptkette NICHT - ohne eigene Liste hatte ein Subagent
+  gar keinen Rueckfall.
+- `fallback_providers`: der Eintrag `nous/stealth/space-bunny-alpha` war als erster
+  eingetragen und damit als Rueckfall fuer sich selbst wertlos; ersetzt durch
+  `deepseek-v4-flash-0731`, `claude-opus-5`, `gemini-3.1-flash-lite`. Der
+  `llamacpp`/Bonsai-Eintrag ist entfernt (der verwaltete llama-server auf 18434
+  kann die ternaeren Gewichte nicht laden, Befund 29.09.2026).
+- `desktop.renderer_max_old_space_mb` 0 -> **4096**. 0 = Chromium-Standard, und
+  genau der hat am 13.09.2026 einen Rechner-weiten Freeze erzeugt; mit Deckel wird
+  daraus ein begrenzter Renderer-Neustart.
+- `moa.max_tokens: 64096` entfernt: **toter Schalter**. `hermes moa list` und der
+  Runtime-Leser (`agent/moa_loop.py`) kennen kein `max_tokens` in der Preset-
+  Normalisierung - nur `reference_max_tokens` als Aufrufargument.
+
+**Beleg:** `hermes config check` exit 0; `hermes moa list` zeigt die vier
+Presets mit dem neuen Aggregator; `config get` je Schluessel bestaetigt den
+Wert; `git diff --numstat` 92/44 (kein Ganzdatei-Diff), 0 verlorene Kommentarzeilen,
+CRLF == LF.
+
+**Falle (neu, wichtig):** `  aggregator:` steht in `moa:` ZWEIMAL - einmal
+eingerueckt im Preset, einmal als flache Kompatibilitaets-Ausgabe auf
+Top-Level. `lines.index("  aggregator:")` findet das erste Vorkommen und
+haette beim Ersetzen den halben Dateianfang doppelt eingefuegt. Ab dem
+gesuchten Preset-Namen suchen, nicht vom Dateianfang.
+
+**Falle (bestaetigt):** ein zu kleines `max_tokens` laesst ein Denkmodell STUMM
+statt defekt aussehen (`deepseek/deepseek-v4-flash`, `inception/mercury-2.5`,
+`qwen/qwen3-30b-a3b` lieferten bei `max_tokens: 32` leeren `content`, bei 2000
+sauberen). Alle Tabellen hier sind mit `max_tokens: 2000` gemessen.
+
+Sicherung: `Agenten/Hermes/config.yaml.bak-desktop-20261004` und
+`Agenten/Hermes/config.yaml.bak-moa2-20261004`.
+
+**Bewusst NICHT angefasst:** `Max`-Preset mit omniroute-Aggregator (aus - der
+Router lebt, 401 ohne Key ist das normale Bild) und `local_runtime.enabled: true`
+(bestaetigte Max-Entscheidung). Die 26 Bot-Profile unter `profiles/` haben eigene
+Configs und wurden nicht angefasst - sie stehen weiter auf nous/deepseek-v4-flash.
