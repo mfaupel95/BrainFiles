@@ -56,6 +56,12 @@
 !MaxHirn/Archiv/ArchivSuche/requirements.txt
 !MaxHirn/Archiv/ArchivSuche/*.bat
 !MaxHirn/Archiv/ArchivSuche/static/**
+# Werkzeug der Aufgabenliste: prueft einen Routing-Plan gegen TASKS.md
+# (Kanban-Kette t_37ac8a78). Ohne Freigabe waere es unversioniert und die
+# Erkenntnis "ein Lesevorgang verliert die ASCII-Bindestrich-Punkte" waere
+# beim naechsten Update weg.
+!MaxHirn/Archiv/routing_plan_pruefen.py
+!MaxHirn/Archiv/tests/*.py
 
 # --- 5) Eigene Programme ----------------------------------------------------
 !Agenten/*.ps1
