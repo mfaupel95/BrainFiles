@@ -63,6 +63,53 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-338 — QQQ-Tageskerzen nachladen, dann die QQQ/BTC-Rotation messen**
+      Kontext: T-210 hat die Rotation QQQ/BTC/Cash als Datenluecke ausgewiesen,
+      nicht als erfolglose Strategie: im Haus liegen nur 92 QQQ-1D-Kerzen ab
+      2026-06-30 statt 2019..2026. Die Blog-Studie 'Tactical Asset Rotation
+      Between NASDAQ-100 and Bitcoin' (Donchian-Ausbruch 5-50 Tage, Rotation
+      QQQ/BTC/Cash, Sharpe bis 1,69 ueber 2019-2026) ist damit ungeprueft.
+      Naechster Schritt: QQQ-1D-Kerzen ueber `historie_binance.py` nach
+      `daten/historie/` ziehen (Yahoo als Quelle, weil der Aktienmarkt kein
+      Kryptomarkt ist) und denselben `tsmom_probe.py`-Weg fahren.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/tsmom_probe.py, Agenten/Handel/historie_binance.py,
+      MaxHirn/Wiki/Handel/Lektionen.md
+
+- [ ]   **T-336 — `trigger_modus: signal` liess JEDE Feed-Backtest-Zahl zu 0 werden**
+      Kontext: Am 03.10.2026 bekamen mehrere Spuren `trigger_modus: signal` (Auftrag Max
+      "weniger handeln"). In `spur_buch.zyklus` stellt dieser Modus jedes Signal in eine
+      Queue und macht dann `continue` - im Betrieb richtig, weil der signal-executor
+      (Hermes-Cron) den Einstieg setzt. `replay.lauf_feed` las die Wachen unveraendert:
+      eine Feed-Spur konnte im Backtest STRUKTURELL nie buchen. Die am 29.09.2026
+      notierten Zahlen (topmovers 55 Runden/60 %/+9,40 % je Runde, signalwelle 62/34 %,
+      funding 23/74 %/+5,99 %, marktlage 5/60 %) sind damit NICHT belastbar und muessen
+      neu gerechnet werden. Der Befund kam ueber `test_replay_feed`, das nach der
+      Reparatur "Journal ohne eine einzige Buchung" meldete - ohne Fehlermeldung im Code.
+      Behoben: `lauf_feed` entfernt das Feld aus der BACKTEST-Wachen-Datei (nicht aus einer
+      lokalen Kopie - `spur_buch.zyklus` laedt die Wachen selbst) und vermerkt das unter
+      `_backtest_trigger_entfernt`. Nebenbei derselbe Fehler in `buch_ordner`: es las fest
+      `<spur>/wachen.json`, ein Schattenarm hat diese Datei nicht.
+      Alle fuenf Feed-Backtests neu fahren und die Zahlen aus T-323 (topmovers,
+      signalwelle, marktlage) gegen die neuen Werte stellen. Wer eine alte Zahl zitiert,
+      muss dazusagen, dass sie vor dem Gatter entstand.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/replay.py, Agenten/Handel/spur_buch.py
+
+- [ ]   **T-337 — `moondev_historie.basis_von` las einen Cache, der Tests lahmlegte**
+      Kontext: `_basis` war ein reiner Modul-Cache, gefuellt nur wenn er LEER war. Ein
+      Test, der einmal das echte 300er-Universum geladen hatte, hinterliess diese Liste fuer
+      den ganzen Prozess. `test_replay_feed.LaufFeedEchtTest` legt seine Attrappen in einen
+      Temp-Ordner - `basis_von` fand seine Symbole im alten Cache nicht, `rng` lieferte
+      nichts, die Spur buchte 0 Positionen und der Test meldete "Journal ohne eine
+      Buchung". Der Test war nicht schuld, er war das Opfer eines Caches ohne
+      Zuruecksetzung. Jetzt fragt `basis_von` die Platte des aktuellen ORDNER ab, statt
+      einen stehengebliebenen Zustand zu uebernehmen.
+      Dieselbe Frage bei allen anderen Modul-Caches der Spuren (grep nach
+      `_xxx = []` und `if not _xxx:` auf Modulebene). Ein Cache darf eine Antwort
+      beschleunigen, aber nie die Frage beantworten.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/moondev_historie.py
 
 - [ ]   **T-335 - Bereichs-Besitz steht, die Werkzeuge rufen ihn noch nicht auf**
       Kontext: Drei Bereiche mit je einem Besitzer (`Agenten/BEREICHE.json`,
@@ -480,19 +527,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/freqtrade_bridge.py, Agenten/Handel/freqtrade/bots.py, Agenten/Handel/freqtrade/user_data/
       Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
 
-- [ ] **T-301 — Leitstand: dieselben Tabellen ohne Leiste nachziehen**
-      Kontext: Die Handelszentrale hat seit 01.10.2026 `tabelle_mit_leiste` (senkrecht +
-      waagerecht + Mausrad) und eine scrollbare Spuren-Seite. Grund war die Spurtabelle mit
-      `height=len(SPUREN)` - hoeher als jedes Fenster, der Rest unerreichbar. Im Leitstand ist
-      dieselbe Suche leer (grep `Scrollbar`/`scrollbar`/`_scroll` in
-      `Agenten/Handel/leitstand.py`: keine Treffer), und er bettet die Zentrale als Reiter
-      ein - seine eigenen Tabellen (Spuren-Holer, Backtests, Freigaben) haben dasselbe Problem
-      von vorgestern.
-      Naechster Schritt: die drei Helfer (`tabelle_mit_leiste`, `scrollbare_seite`,
-      `rad_selbst`) nach `Agenten/Werkzeuge/fenster_design.py` ziehen, damit beide Fenster
-      EINE Quelle haben, und sie im Leitstand anwenden.
-      Betrifft: Agenten/Handel/leitstand.py, Agenten/Werkzeuge/fenster_design.py, Agenten/Handel/handelszentrale.py
-      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
 
 
 
@@ -608,18 +642,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 2026-10-01 · Zuletzt 2026-10-01
       Betrifft: Agenten/Handel/freigabebeleg.py, Agenten/Hermes/cron/jobs.json
 
-- [ ] **T-288 — Freitext blockiert den SkillsBot bis zu 30 Minuten (ID-Korrektur 01.10.: T-283 war Doppelvergabe, der aeltere Eintrag mit Commit-Referenz 11992c4 behaelt die Nummer)**
-      Kontext: Seit 01.10.2026 wartet der SkillsBot bei Freitext bis A2A_FRIST_S
-      (1800 s, dieselbe Frist wie /bot) - vorher brach er nach 300 s ab und log
-      "(Aufgabe FAILED)", obwohl der Hauptagent weiterarbeitete. Der Bot ist in
-      dieser Zeit EINFADIG: /lage, /strategien und jede andere Nachricht warten,
-      bis der Auftrag fertig ist. Fuer einen einzelnen Auftrag ist das richtig
-      (sonst ist das Ergebnis verloren), fuer einen zweiten Auftrag nicht.
-      Naechster Schritt: den Freitext-Auftrag in einen Hintergrund-Thread geben,
-      sofort "angenommen" antworten und das Ergebnis als eigene Nachricht senden
-      (Muster: der Dauerlauf meldet asynchron; `sende()` ist thread-fest, die
-      Kontext-ID muss im Thread fortgeschrieben werden).
-      Angelegt: 2026-10-01 · Betrifft: Agenten/Bus/skillsbot.py
 
 - [ ] **T-282 - Omniquant-Live-Zweig steht, aber die Kraken-Futures-Margin fehlt**
       Kontext: Der Orderweg auf Kraken Futures ist gebaut und geprueft (Hebel 6
@@ -999,17 +1021,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-241 - Acht klassik_*-Spuren: der Dauerlauf kennt sie noch nicht**
-      Kontext: Am 30.09.2026 hat eine parallele Sitzung acht Papierspuren
-      angelegt (klassik_bollinger, -donchian, -donchian_trend, -ema, -macd,
-      -rsi, -rsi2, -sma). Bedingung 4 meldet fuer alle acht "Kopie ausser
-      Haus nicht in Ordnung", weil der laufende Dauerlauf sie nicht faehrt
-      und ihre Q:-Ordner fehlen. Kein Fehler in den Spuren selbst.
-      Naechster Schritt: pruefen, ob sie in `dauerlauf.SPUREN` eingetragen
-      sind; wenn ja, den Dauerlauf in einem ruhigen Fenster neu starten
-      (dann zieht die Spiegelung nach), wenn nein, die Eintraege ergaenzen.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/klassik_*, Agenten/Handel/dauerlauf.py
 
 - [ ] **T-238 - Neustart steht aus: die Auslagerung auf O: greift erst danach**
       Kontext: Die Auslagerungsdatei ist am 30.09.2026 umgestellt und
@@ -1308,59 +1319,10 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
 
-- [x] **T-210 — Time-Series-Momentum und die QQQ/BTC-Rotation sind noch nicht auf eigenen Daten gemessen**
-      Kontext: Zwei weitere Quantpedia-Kandidaten sind gesichtet, aber NICHT
-      nachgerechnet: #0118 Time Series Momentum Effect (12-Monats-Rendite je
-      Instrument, Positionsgroesse invers zur Volatilitaet, monatliche
-      Neuverteilung, QuantConnect-Gegenprobe Sharpe 0,3 / CAGR 7,29 %) und die
-      Blog-Studie 'Tactical Asset Rotation Between NASDAQ-100 and Bitcoin'
-      (Donchian-Ausbruch 5-50 Tage, Rotation QQQ/BTC/Cash, Sharpe bis 1,69 ueber
-      2019-2026). Beide sind gebuehrenfreundlich (monatliche bzw. seltene
-      Neuverteilung) und mit dem Backtest-Fundament (historie_binance.py,
-      replay.py) pruefbar — TSMOM sogar auf den 20 vorhandenen Instrumenten.
-      Der zweite Kandidat braucht QQQ-Tageskerzen, die im Haus noch fehlen.
-      **Erledigt 2026-10-01 (Messung, nicht Entscheidung).** TSMOM (#0118:
-      12-Monats-Signal, inverse Vol, monatliche Neuverteilung) ist jetzt auf
-      den EIGENEN 1D-Kerzen gemessen (`tsmom_probe.py` BTC/ETH/SOL 1D,
-      2021-01..2026-09, 56 Monate):
-
-      | Instrument | Monate | Mittel/Monat | Treffer | t | Sharpe p.a. | brutto p.a. | max. Rueckgang | netto 0,1 %/Seite |
-      |---|---|---|---|---|---|---|---|---|
-      | BTC | 56 | +1,05 % | 34 % | +1,68 | +0,78 | +12,3 % | -14 % | +9,5 % |
-      | ETH | 56 | +0,32 % | 25 % | +0,58 | +0,27 | +3,0 % | -15 % | +0,5 % |
-      | SOL | 56 | +0,42 % | 29 % | +0,74 | +0,34 | +4,2 % | -22 % | +1,6 % |
-      | Buy & Hold BTC | — | — | — | — | — | +20,2 % | -77 % | — |
-
-      **Lesart.** TSMOM haelt auf BTC netto (+9,5 % p.a. bei -14 % gegen +20,2 %
-      bei -77 %) - die halbe Rendite gegen einen Bruchteil des Rueckgangs. ETH/SOL
-      sind netto Null (t +0,58/+0,74); die QQQ/BTC-Rotation ist eine DATENLUECKE
-      (nur 92 QQQ-1D-Kerzen ab 2026-06-30 statt 2019..2026) und bleibt bis zum
-      Nachladen der QQQ-Tageskerzen offen. Befund und Tabelle:
-      MaxHirn/Wiki/Handel/Lektionen.md Abschnitt 'TSMOM (#0118)'.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
 
 
 
-- [ ] **T-204 — Breite-Reihe: Luecken nach laengerem Ausfall heilen**
-      Kontext: `breite-wache.py` fuellt beim taeglichen Lauf nur die letzten 5
-      Kerzentage nach (`HEIL_TAGE`). War der Rechner laenger aus, bleibt eine
-      Luecke in der Reihe stehen - sie faellt nur auf, wenn jemand `--reihe` liest.
-      Naechster Schritt: Luecken zwischen erster und letzter Zeile in `--reihe`
-      namentlich nennen und `HEIL_TAGE` an die Ausfalllaenge koppeln.
-      Angelegt: 2026-09-30
-      Zuletzt: 2026-09-30
-      Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Hermes/scripts/breite-wache.py
 
-- [ ] **T-205 — Wachenmeldung bei breitem Absturz begrenzen**
-      Kontext: Faellt die Breite von 96 % auf 20 %, nennt "Neu unter der EMA200"
-      bis zu 29 Paare auf einmal - aus einer Meldung werden viele Telegram-Stuecke.
-      Naechster Schritt: Liste auf die N naechsten am Durchschnitt begrenzen (die
-      sind der Massstab fuer "die Breite kippt") und den Rest als Zahl nennen
-      ("und 12 weitere"); Test in `Agenten/Hermes/scripts/test_breite_wache.py`.
-      Angelegt: 2026-09-30
-      Zuletzt: 2026-09-30
-      Betrifft: Agenten/Hermes/scripts/breite-wache.py
 
 
 - [ ] **T-203 - Backtest-Zahlen, die auf der alten Kerzenschluss-Regel beruhen, neu lesen**
@@ -1389,56 +1351,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-30
       Betrifft: Agenten/Handel/replay.py, MaxHirn/Wiki/Handel/Backtest-Fundament.md
 
-- [ ] **T-197 — Freqtrade-Bots: die Frequenz-Bremse fehlt in der Uebertragung**
-      Kontext: Der erste echte Backtest der drei Moon-Dev-Strategien (30.09.2026) ist in
-      allen Fenstern negativ, und der Grund ist nicht die Richtung, sondern die ZAHL der
-      Trades: `MoonDevTradingAgent` macht 3,23 Runden pro Tag, was bei 0,2 % je Runde
-      ueber 240 % Kosten im Jahr ergibt. Im Backtest stehen 8.399 USDT Gebuehren gegen
-      ein Ergebnis von -8.335 USDT - der Verlust IST die Gebuehr.
-      Im Haus gibt es zwei Bremsen, die in der Uebertragung fehlen:
-      `Agenten/Handel/risikovorfilter.py` (Verlust-/Gewinngrenze im 12-h-Fenster,
-      Buchrisiko-Deckel) und `handeln.in_zielsperre` (Sperrfrist nach Ziel-Ausstieg,
-      Spur scanner). Keine davon ist in `user_data/strategies/` angekommen.
-      Naechster Schritt: `populate_entry_trend` um einen Mindestabstand zwischen zwei
-      Einstiegen desselben Paares und um eine Sperrfrist nach Ziel-Ausstieg ergaenzen,
-      dann DENSELBEN Backtest erneut fahren - die Kosten muessen fallen, sonst ist die
-      Strategie unbrauchbar. Erst messen, dann bewerten.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/freqtrade/user_data/strategies/, Agenten/Handel/freqtrade/bots.json
 
-- [ ] **T-198 — Freqtrade-Bots sind long-only: die Short-Regeln fehlen**
-      Kontext: `bots.json` haelt es unter `_offen` selbst fest - alle drei Bots sind
-      long-only, weil `can_short = True` im Spot-Modus nicht laedt
-      (`strategy_resolver.py:167`). Die Short-Regeln der Agenten (marktlage: -2 % und
-      Breite <= 40 %) kommen also gar nicht zum Einsatz; die Uebertragung ist die halbe
-      Strategie.
-      Wichtig fuer die Bewertung: die Short-Seite erklaert den Verlust NICHT. In H1 war
-      der Markt +76,6 %, waehrend `MoonDevTradingAgent` -62,9 % machte - eine Long-Seite,
-      die in einem steigenden Markt verliert, wird durch Shorts nicht gerettet, und die
-      Gebuehrenlast (T-197) bliebe dieselbe.
-      Naechster Schritt: `trading_mode: futures` plus Futures-Daten fuer die 24 Paare
-      (`BTC/USDT:USDT`-Form) laden und denselben Backtest mit kurzer Seite fahren - als
-      MESSUNG, nicht als Umbau. Wegen T-197 erst nach der Frequenz-Bremse sinnvoll.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/freqtrade/user_data/bots/, Agenten/Handel/freqtrade/bots.json
 
-- [ ] **T-199 — bots.json: zwei Absagen sind durch den Feed-Backtest ueberholt**
-      Kontext: Die Liste `nicht_portierbar` (11 Eintraege) begruendet je Agent, warum
-      keine Uebertragung erfolgt. Zwei Absagen stuetzen sich auf "keine Historie
-      vorhanden" (Funding sowie Open Interest/Liquidationen): ohne Reihe kein Backtest.
-      Seit dem 29.09.2026 gibt es diese Reihe im Haus: `Agenten/Handel/moondev_historie.py`
-      archiviert den Marktquerschnitt UND Funding (6 Instrumente); `replay.lauf_c` faehrt
-      die Funding-Spur nach (23 Runden, 74 %, +5,99 % je Runde).
-      Was bleibt, ist eine Freqtrade-Frage, keine Datenfrage: der Spot-Backtest von
-      Freqtrade sieht keine Funding-Rate, sie steht in keiner Kerze. Wer das will,
-      braucht `informative_pairs` plus eigene Datenquelle - oder nimmt die Haus-Spur,
-      die es schon kann.
-      Naechster Schritt: `bots.json` an dieser Stelle richtigstellen (Grund auf den
-      Datenmodell-Punkt kuerzen statt auf die fehlende Historie) und pruefen, ob OI und
-      Liquidationen genauso nachrechenbar sind - `moondev_historie.py` deckt bisher nur
-      Preise und Funding.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Handel/freqtrade/bots.json, Agenten/Handel/moondev_historie.py
 
 - [ ] **T-200 — MCP_DOCKER-Abgleichkreis: die Wache nennt ihn, verhindert ihn nicht**
       Kontext: Am 30.09.2026 lief der Rechner eine Stunde mit 1,0 GB freiem Commit, weil
@@ -1468,6 +1382,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Naechster Schritt: pruefen, ob der Wartungslauf den Zustand selbst aufraeumen kann (bzw. ob
       der Starter einen abgebrochenen Bau sauber beenden soll), damit der naechste Start wieder
       Sekunden statt Minuten braucht.
+      STAND 04.10.2026: Der ausloesende Vermerk `installs/<hash>/source-completion-pending`
+      existiert auf dem System NICHT mehr (T-265 an demselben Tag befunden: Marker weg, kein
+      `.hermes-update-in-progress`, keine Completion-Attempts-Datei; find ueber installs = 0
+      Treffer) und das Dashboard antwortet HTTP 200 auf 9119. Damit faellt die Ursache des
+      Komplettneubaus weg: Solange der Vermerk scharf ist, faehrt (nur) der Launcher den
+      mehrminutigen Update-Schwanz; ohne ihn startet das Dashboard (Port 9119) ohne Vorbau. Die
+      Wache selbst unterscheidet einen laufenden Bau von einem Haenger ueber die CPU-Kurve der
+      Kette (test_dashboard_wache.py::BauLaeuftTest) und reisst einen Bau nicht ab - genau der
+      idempotente Zustandscheck statt Blind-Rebuild, den dieser Eintrag fordert. Kurzpfad zur
+      Reparatur, sollte der Vermerk wieder auftauchen (Desktop schliessen, dann `source_completion.py
+      --source Agenten/Hermes/hermes-agent --finish-update --desktop --prepared` losgeloest fahren, nie
+      mit eigenem Zeitlimit killen; in Skill hermes-maintenance dokumentiert).
       BELEG 30.09.2026 (2-Jahres-Laeufe, vollstaendige Paartabellen): Der Verlust
       sitzt in den KLEINEN Werten, nicht in den grossen. TopMovers 924 Trades,
       -46,02 %, maxDD 77,4 %, Treffer 37,4 %; je Paar LINK -14,94 %, AVAX -12,41 %,
@@ -3526,6 +3452,147 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-210 — Time-Series-Momentum und die QQQ/BTC-Rotation sind noch nicht auf eigenen Daten gemessen**
+      Kontext: Zwei weitere Quantpedia-Kandidaten sind gesichtet, aber NICHT
+      nachgerechnet: #0118 Time Series Momentum Effect (12-Monats-Rendite je
+      Instrument, Positionsgroesse invers zur Volatilitaet, monatliche
+      Neuverteilung, QuantConnect-Gegenprobe Sharpe 0,3 / CAGR 7,29 %) und die
+      Blog-Studie 'Tactical Asset Rotation Between NASDAQ-100 and Bitcoin'
+      (Donchian-Ausbruch 5-50 Tage, Rotation QQQ/BTC/Cash, Sharpe bis 1,69 ueber
+      2019-2026). Beide sind gebuehrenfreundlich (monatliche bzw. seltene
+      Neuverteilung) und mit dem Backtest-Fundament (historie_binance.py,
+      replay.py) pruefbar — TSMOM sogar auf den 20 vorhandenen Instrumenten.
+      Der zweite Kandidat braucht QQQ-Tageskerzen, die im Haus noch fehlen.
+      **Erledigt 2026-10-01 (Messung, nicht Entscheidung).** TSMOM (#0118:
+      12-Monats-Signal, inverse Vol, monatliche Neuverteilung) ist jetzt auf
+      den EIGENEN 1D-Kerzen gemessen (`tsmom_probe.py` BTC/ETH/SOL 1D,
+      2021-01..2026-09, 56 Monate):
+
+      | Instrument | Monate | Mittel/Monat | Treffer | t | Sharpe p.a. | brutto p.a. | max. Rueckgang | netto 0,1 %/Seite |
+      |---|---|---|---|---|---|---|---|---|
+      | BTC | 56 | +1,05 % | 34 % | +1,68 | +0,78 | +12,3 % | -14 % | +9,5 % |
+      | ETH | 56 | +0,32 % | 25 % | +0,58 | +0,27 | +3,0 % | -15 % | +0,5 % |
+      | SOL | 56 | +0,42 % | 29 % | +0,74 | +0,34 | +4,2 % | -22 % | +1,6 % |
+      | Buy & Hold BTC | — | — | — | — | — | +20,2 % | -77 % | — |
+
+      **Lesart.** TSMOM haelt auf BTC netto (+9,5 % p.a. bei -14 % gegen +20,2 %
+      bei -77 %) - die halbe Rendite gegen einen Bruchteil des Rueckgangs. ETH/SOL
+      sind netto Null (t +0,58/+0,74); die QQQ/BTC-Rotation ist eine DATENLUECKE
+      (nur 92 QQQ-1D-Kerzen ab 2026-06-30 statt 2019..2026) und bleibt bis zum
+      Nachladen der QQQ-Tageskerzen offen. Befund und Tabelle:
+      MaxHirn/Wiki/Handel/Lektionen.md Abschnitt 'TSMOM (#0118)'.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/quantpedia_probe.py, MaxHirn/Wiki/Handel/Lektionen.md
+- [x] **T-301 — Leitstand: dieselben Tabellen ohne Leiste nachziehen**
+      Kontext: Die Handelszentrale hat seit 01.10.2026 `tabelle_mit_leiste` (senkrecht +
+      waagerecht + Mausrad) und eine scrollbare Spuren-Seite. Grund war die Spurtabelle mit
+      `height=len(SPUREN)` - hoeher als jedes Fenster, der Rest unerreichbar. Im Leitstand ist
+      dieselbe Suche leer (grep `Scrollbar`/`scrollbar`/`_scroll` in
+      `Agenten/Handel/leitstand.py`: keine Treffer), und er bettet die Zentrale als Reiter
+      ein - seine eigenen Tabellen (Spuren-Holer, Backtests, Freigaben) haben dasselbe Problem
+      von vorgestern.
+      Naechster Schritt: die drei Helfer (`tabelle_mit_leiste`, `scrollbare_seite`,
+      `rad_selbst`) nach `Agenten/Werkzeuge/fenster_design.py` ziehen, damit beide Fenster
+      EINE Quelle haben, und sie im Leitstand anwenden.
+      Betrifft: Agenten/Handel/leitstand.py, Agenten/Werkzeuge/fenster_design.py, Agenten/Handel/handelszentrale.py
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+      **Erledigt 2026-10-04 (Messung).** Die Leitstand-`Tabelle` in `leitstand_bedienung.py` hat eine waagerechte Leiste und Mausrad und nutzt `handelszentrale.rad_selbst` als EINE geteilte Quelle - das Ergebnis erreicht beide Fenster aus einer Implementierung. Der urspruengliche Plan, die Helfer nach fenster_design.py zu ziehen, ist durch zwei bewachte Invarianten blockiert (fenster_design bleibt tkinter-frei laut test_kein_tkinter_import; tabelle_mit_leiste muss laut TabellenBauregelTest in handelszentrale.py bleiben). Nachweis: test_leitstand_bedienung 38/38, zusammen mit den leitstand-Modulen und handelszentrale_struktur 130/130 gruen.
+- [x] **T-288 — Freitext blockiert den SkillsBot bis zu 30 Minuten (ID-Korrektur 01.10.: T-283 war Doppelvergabe, der aeltere Eintrag mit Commit-Referenz 11992c4 behaelt die Nummer)**
+      Kontext: Seit 01.10.2026 wartet der SkillsBot bei Freitext bis A2A_FRIST_S
+      (1800 s, dieselbe Frist wie /bot) - vorher brach er nach 300 s ab und log
+      "(Aufgabe FAILED)", obwohl der Hauptagent weiterarbeitete. Der Bot ist in
+      dieser Zeit EINFADIG: /lage, /strategien und jede andere Nachricht warten,
+      bis der Auftrag fertig ist. Fuer einen einzelnen Auftrag ist das richtig
+      (sonst ist das Ergebnis verloren), fuer einen zweiten Auftrag nicht.
+      Naechster Schritt: den Freitext-Auftrag in einen Hintergrund-Thread geben,
+      sofort "angenommen" antworten und das Ergebnis als eigene Nachricht senden
+      (Muster: der Dauerlauf meldet asynchron; `sende()` ist thread-fest, die
+      Kontext-ID muss im Thread fortgeschrieben werden).
+      Angelegt: 2026-10-01 · Betrifft: Agenten/Bus/skillsbot.py
+      **Erledigt 2026-10-04 (Messung, Commit 285da507).** Der Freitext laeuft im Hintergrund-Thread, `bearbeite` antwortet sofort mit 'Angenommen.' und der Thread sendet das Ergebnis als eigene Nachricht - der Bot ist damit nicht mehr bis zu 30 Minuten blockiert. Nachweis: test_skillsbot_freitext 8/8 gruen.
+- [x] **T-241 - Acht klassik_*-Spuren: der Dauerlauf kennt sie noch nicht**
+      Kontext: Am 30.09.2026 hat eine parallele Sitzung acht Papierspuren
+      angelegt (klassik_bollinger, -donchian, -donchian_trend, -ema, -macd,
+      -rsi, -rsi2, -sma). Bedingung 4 meldet fuer alle acht "Kopie ausser
+      Haus nicht in Ordnung", weil der laufende Dauerlauf sie nicht faehrt
+      und ihre Q:-Ordner fehlen. Kein Fehler in den Spuren selbst.
+      Naechster Schritt: pruefen, ob sie in `dauerlauf.SPUREN` eingetragen
+      sind; wenn ja, den Dauerlauf in einem ruhigen Fenster neu starten
+      (dann zieht die Spiegelung nach), wenn nein, die Eintraege ergaenzen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/klassik_*, Agenten/Handel/dauerlauf.py
+      **Erledigt 2026-10-04 (Messung, Commit 1c24e4d3).** Die acht klassik_*-Spuren stehen in `dauerlauf.SPUREN` und werden seit dem Start des Dauerlaufs am 01.10. 13:35 in jedem Zyklus gefahren - Basis, mittel und hoch, zuletzt 23:02 alle acht 'ok' (305 klassik-Zeilen je Stufenlog). Kein Neustart noetig. `spiegelstand.py` meldet 41 von 41 Spuren byte-gleich nach Q:. T-255 (Bus-Anbindung) ist im selben Zug geschlossen.
+- [x] **T-199 — bots.json: zwei Absagen sind durch den Feed-Backtest ueberholt**
+      Kontext: Die Liste `nicht_portierbar` (11 Eintraege) begruendet je Agent, warum
+      keine Uebertragung erfolgt. Zwei Absagen stuetzen sich auf "keine Historie
+      vorhanden" (Funding sowie Open Interest/Liquidationen): ohne Reihe kein Backtest.
+      Seit dem 29.09.2026 gibt es diese Reihe im Haus: `Agenten/Handel/moondev_historie.py`
+      archiviert den Marktquerschnitt UND Funding (6 Instrumente); `replay.lauf_c` faehrt
+      die Funding-Spur nach (23 Runden, 74 %, +5,99 % je Runde).
+      Was bleibt, ist eine Freqtrade-Frage, keine Datenfrage: der Spot-Backtest von
+      Freqtrade sieht keine Funding-Rate, sie steht in keiner Kerze. Wer das will,
+      braucht `informative_pairs` plus eigene Datenquelle - oder nimmt die Haus-Spur,
+      die es schon kann.
+      Naechster Schritt: `bots.json` an dieser Stelle richtigstellen (Grund auf den
+      Datenmodell-Punkt kuerzen statt auf die fehlende Historie) und pruefen, ob OI und
+      Liquidationen genauso nachrechenbar sind - `moondev_historie.py` deckt bisher nur
+      Preise und Funding.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/freqtrade/bots.json, Agenten/Handel/moondev_historie.py
+      **Erledigt 2026-10-04 (Messung, Commit 1d7df386).** Zwei der zwoelf Absagen in `bots.json` sind richtiggestellt: Funding rechnet Freqtrade im Futures-Backtest mit (2199 Ereignisse, funding_fees in 425/425 Trades), und die OI-Reihe existiert oeffentlich (OKX rubik, 180 Tageswerte in 1D und 1H). Die Absage bei den Zwangsschluessen BLEIBT - aus dem richtigen Grund: Zwangsschluesse haben kein Archiv, nur ein 2,6 h laufendes Fenster. Zehn Absagen unveraendert.
+- [x] **T-198 — Freqtrade-Bots sind long-only: die Short-Regeln fehlen**
+      Kontext: `bots.json` haelt es unter `_offen` selbst fest - alle drei Bots sind
+      long-only, weil `can_short = True` im Spot-Modus nicht laedt
+      (`strategy_resolver.py:167`). Die Short-Regeln der Agenten (marktlage: -2 % und
+      Breite <= 40 %) kommen also gar nicht zum Einsatz; die Uebertragung ist die halbe
+      Strategie.
+      Wichtig fuer die Bewertung: die Short-Seite erklaert den Verlust NICHT. In H1 war
+      der Markt +76,6 %, waehrend `MoonDevTradingAgent` -62,9 % machte - eine Long-Seite,
+      die in einem steigenden Markt verliert, wird durch Shorts nicht gerettet, und die
+      Gebuehrenlast (T-197) bliebe dieselbe.
+      Naechster Schritt: `trading_mode: futures` plus Futures-Daten fuer die 24 Paare
+      (`BTC/USDT:USDT`-Form) laden und denselben Backtest mit kurzer Seite fahren - als
+      MESSUNG, nicht als Umbau. Wegen T-197 erst nach der Frequenz-Bremse sinnvoll.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/freqtrade/user_data/bots/, Agenten/Handel/freqtrade/bots.json
+      **Erledigt 2026-10-04 (Messung, Commit 1d7df386).** Futures-Daten fuer 12 Paare (BTC/USDT:USDT-Form) und `MoonDevMarketRegimeFutures` mit der einzigen belegten Short-Regel; nur lang -20,68 %, nur kurz -34,50 %, beide -48,13 %. Die kurze Seite erklaert den Verlust also NICHT, sie verdoppelt die gebuehrenzahlenden Runden. Groesster gemessener Hebel ist der Kostensatz: derselbe Bot, dieselbe lange Seite, 210 Runden - Spot -37,24 %, Futures -20,68 %. dry_run gemessen, keine Bot-Aenderung am Lauf.
+- [x] **T-197 — Freqtrade-Bots: die Frequenz-Bremse fehlt in der Uebertragung**
+      Kontext: Der erste echte Backtest der drei Moon-Dev-Strategien (30.09.2026) ist in
+      allen Fenstern negativ, und der Grund ist nicht die Richtung, sondern die ZAHL der
+      Trades: `MoonDevTradingAgent` macht 3,23 Runden pro Tag, was bei 0,2 % je Runde
+      ueber 240 % Kosten im Jahr ergibt. Im Backtest stehen 8.399 USDT Gebuehren gegen
+      ein Ergebnis von -8.335 USDT - der Verlust IST die Gebuehr.
+      Im Haus gibt es zwei Bremsen, die in der Uebertragung fehlen:
+      `Agenten/Handel/risikovorfilter.py` (Verlust-/Gewinngrenze im 12-h-Fenster,
+      Buchrisiko-Deckel) und `handeln.in_zielsperre` (Sperrfrist nach Ziel-Ausstieg,
+      Spur scanner). Keine davon ist in `user_data/strategies/` angekommen.
+      Naechster Schritt: `populate_entry_trend` um einen Mindestabstand zwischen zwei
+      Einstiegen desselben Paares und um eine Sperrfrist nach Ziel-Ausstieg ergaenzen,
+      dann DENSELBEN Backtest erneut fahren - die Kosten muessen fallen, sonst ist die
+      Strategie unbrauchbar. Erst messen, dann bewerten.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Handel/freqtrade/user_data/strategies/, Agenten/Handel/freqtrade/bots.json
+      **Erledigt 2026-10-04 (Messung, Commit 1d7df386).** Die Frequenzbremse liegt als `user_data/strategies/frequenzbremse.py` (reine Rechnung, vier Regeln mit Haus-Herkunft: Ziel-Sperrfrist 2 h, Abklingzeit nach Stop 96 h, Fenster-Vorfilter 12 h/5 %, Mindestabstand als Suchpunkt) und ist ueber `moondev_basis.confirm_trade_entry` angebunden, 22 Tests gruen. In 9 Einstellungen gemessen: die Rundenzahl faellt (2954 -> 1942 bei 48 h Abstand), das Ergebnis JE RUNDE bleibt bei -0,16 bis -0,21 % - deshalb ist die Bremse standardmaessig AUS, mit Beleg. Die Frequenzquelle ist der SIGNAL-Ausstieg (signal_ausstieg=false: 2954 -> 389 Runden, -83,35 % auf -25,99 %). Alles dry_run, kein Live-Schalter.
+- [x] **T-205 — Wachenmeldung bei breitem Absturz begrenzen**
+      Kontext: Faellt die Breite von 96 % auf 20 %, nennt "Neu unter der EMA200"
+      bis zu 29 Paare auf einmal - aus einer Meldung werden viele Telegram-Stuecke.
+      Naechster Schritt: Liste auf die N naechsten am Durchschnitt begrenzen (die
+      sind der Massstab fuer "die Breite kippt") und den Rest als Zahl nennen
+      ("und 12 weitere"); Test in `Agenten/Hermes/scripts/test_breite_wache.py`.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/scripts/breite-wache.py
+      **Erledigt 2026-10-04 (Messung, Commit 3ed06605).** Neue Abwaertskreuze sind auf NEU_UNTER_MAX = 5 begrenzt (die naechsten am Durchschnitt), der Rest wird als Zahl genannt. Gemessen an 23 neuen Kreuzen: vorher 27 Zeilen / 1045 Zeichen, jetzt 10 Zeilen / 406 Zeichen. Tests: test_breite_wache 31 und test_breite 47 gruen. Keine Live-Wirkung.
+- [x] **T-204 — Breite-Reihe: Luecken nach laengerem Ausfall heilen**
+      Kontext: `breite-wache.py` fuellt beim taeglichen Lauf nur die letzten 5
+      Kerzentage nach (`HEIL_TAGE`). War der Rechner laenger aus, bleibt eine
+      Luecke in der Reihe stehen - sie faellt nur auf, wenn jemand `--reihe` liest.
+      Naechster Schritt: Luecken zwischen erster und letzter Zeile in `--reihe`
+      namentlich nennen und `HEIL_TAGE` an die Ausfalllaenge koppeln.
+      Angelegt: 2026-09-30
+      Zuletzt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Hermes/scripts/breite-wache.py
+      **Erledigt 2026-10-04 (Messung, Commit 3ed06605).** `breite.py --reihe` nennt die Luecken jetzt namentlich (fehlende_tage/luecken_bereiche/luecken_text), und `breite-wache._heil_tage` koppelt die Heiltiefe an die Ausfalllaenge (min 5, max HEIL_MAX 120, plus Randkerze) und holt lange Luecken selbst nach; bleibt etwas aelter als HEIL_MAX, wird es gemeldet. Nachweis: echter Mess- und fuellen-Lauf gegen eine kuenstliche Reihe mit 19 fehlenden Tagen -> Heiltiefe 20, 19 Kerzentage nachgefuellt, 0 Luecken; die echte Reihe traegt 252 Kerzentage lueckenlos (22.01.-30.09.2026).
 - [x] **T-313 - Neun Spuren drucken die Sperrzeile nicht (Auto-Freigabe blind)**
       Kontext: `sperrgruende.py` zeigt fuer scanner, nautilus,
       nautilus_kraken, macd_mtf, squeeze, supertrend, wavetrend,
@@ -3540,7 +3607,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       blind. Geprueft werden sollte die Regel, nicht die Liste.
       Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft dauerlauf.py, lage.py
 
-
+
+
       ERLEDIGT 02.10.2026: alle neun Spuren melden wieder eine
       Sperrzeile (Gegenprobe mit sperrgruende.py). Ursachen waren
       drei: scanner druckte nur unter `if g:`; die Vorschau-Zweige
