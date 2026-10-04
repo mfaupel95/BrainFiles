@@ -597,13 +597,45 @@ class OmniquantReiter(ttk.Frame):
 
     # Leitstand-Interface (OmniquantGui hat eigenen 15-s-Timer)
     def refresh(self):
-        pass
+        # F5 auf diesem Reiter soll etwas tun: die Daten neu lesen. Der
+        # Kurs-Worker laeuft weiter (OmniquantGui.startet ihn bei jedem
+        # refresh_daten selbst und beendet seinen Vorgaenger), der Chart
+        # wird dadurch neu aufgebaut.
+        try:
+            self._gui.refresh_daten()
+        except Exception:                       # noqa: BLE001
+            # Ein Fehler darf den Leitstand nicht mitnehmen - der Timer
+            # des Reiters laeuft weiter und der Naechste ist wieder da.
+            pass
 
     def titel_zusatz(self):
+        """Ein Punkt, wenn die Spur live laeuft. Sonst nichts."""
+        z = getattr(self._gui, "zustand", None) or {}
+        # Das Feld heisst `modus` (zustand.json der Spur), nicht `live` -
+        # ein geratenes Feld faellt hier still aus und der Punkt bleibt aus.
+        if isinstance(z, dict) and z.get("modus") == "live":
+            return " ●"
         return ""
 
     def status(self):
-        return "Omniquant"
+        """Was in der Statusleiste steht - aus dem Gelesenen, nicht geraten."""
+        g = self._gui
+        teile = ["Omniquant"]
+        bericht = getattr(g, "bericht", None)
+        if isinstance(bericht, dict) and bericht:
+            treffer = bericht.get("treffer") or bericht.get("ergebnisse") or []
+            n = len(treffer) if isinstance(treffer, list) else "?"
+            teile.append("%d Treffer" % n)
+        alt = getattr(g, "bericht_alter", None)
+        if isinstance(alt, (int, float)):
+            teile.append("Bericht %.1f h alt" % alt)
+        if self.titel_zusatz():
+            teile.append("live")
+        return " — ".join(teile)
+
+    def abbrechbar(self):
+        """Omniquant haelt keinen Hintergrundprozess - immer schliessbar."""
+        return True
 
 
 def main():
