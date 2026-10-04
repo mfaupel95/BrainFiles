@@ -65,23 +65,65 @@ gleichnamige in `Handel/` verdecken.
 6. Rein lesende Fenster schreiben nichts - als Test festhalten (Muster:
    `Agenten/Handel/tests/test_handelszentrale_rein_lesend.py`).
 
-## Layout in Zahlen (die zwei Fehler, die jedes Mal auftreten)
+## Layout in Zahlen (die Fehler, die jedes Mal auftreten)
 
 - **Feste Pixelbreiten sind auf einem skalierten Monitor zu schmal.** Mit
   `dpi_bewusst()` setzt Tk die Schrift in Geraetepixeln: `winfo_fpixels('1i')`
   meldet dann z. B. 120 (Faktor 1,25), Consolas 11 hat 22 px Zeilenhoehe.
-  Spaltenbreiten also aus der WIRKLICHEN Widget-Breite und
-  `design.skalierung(root)` rechnen; beim Kuerzen zuerst die Nebenspalten, dann
-  die Hauptspalte, zuletzt die Spalte, die den Grund traegt.
 - **`stretch=True` (Tk-Vorgabe) verfaelscht jede gerechnete Breite.** Tk verteilt
   die Restbreite selbst, die Rechnung gilt dann nicht mehr (gemessen 191 statt
   125 px). Jede Spalte auf `stretch=False` setzen und Breiten ausdruecklich
-  vergeben - mit Abzug fuer Rollbalken und Innenrand (rund 40 px), sonst laeuft
-  die letzte Spalte aus dem Fenster; die Restbreite bekommt die breiteste
-  Textspalte.
+  vergeben.
 - Zeilenhoehe `max(18, Basis*2)` - darunter werden Buchstaben angeschnitten.
 - Texte, die in eine Spalte sollen, auf die Spalte kuerzen, nicht die Spalte auf
   den Text wachsen lassen.
+
+### Die eine Breitenregel (Textbedarf schlaegt Wunsch, Platz schlaegt beides)
+
+Spaltenbreiten sind eine **reine Funktion ohne Fenster** - Muster
+`handelszentrale.spaltenbreiten(spalten, kopf, wunsch, texte, zeichen_breite,
+verfuegbar)`. Feste Pixelzahlen im Aufbau sind der Grund, warum Tabellen nach
+einem Umbau oder einem Schriftwechsel ploetzlich abschneiden. Reihenfolge:
+
+1. **Untergrenze je Spalte** = Überschrift und der schlimmste ihrer Texte, bei
+   Consolas also `len(text) * zeichen_breite + rand`. Das ist keine Wunschzahl:
+   ein Text, der nicht passt, wird still abgeschnitten.
+2. **Wunsch** darueber, aber nie darunter. Der Wunsch ist eine Liste nach
+   *Rangfolge*, kein Dict - im Aufruf `{"zeit": 260}` bedeutet „eine breite
+   Spalte", nicht „alle Spalten 260". Ein Dict, das rueckwaerts vererbt, macht
+   aus einer Ausnahme eine ganze Tabelle (+359 px gemessen).
+3. **Kuerzen bis in den Platz**, von der letzten Spalte zuerst, in Runden bis
+   nichts mehr geht. Ein einziger Durchlauf reicht nicht: kam am Ende noch
+   Ueberhang, war er an den vorderen Spalten abgeschnitten.
+4. Reicht der Platz auch fuer die Untergrenzen nicht, ist das die **waagerechte
+   Leiste**, nicht ein Fehler.
+
+**„ZU BREIT" unterscheidet zwei Sachen, und die Meldung muss es auch.** Brauchen
+die Texte mehr als der Baum hergibt, ist Scrollen die richtige Antwort (Text
+passt, nur der Platz reicht nicht). Sind die Spalten breiter als ihr Text
+noetig, ist es der alte Fehler. Beide sehen in der Summe gleich aus. Die Sonde
+sagt deshalb „ZU BREIT - der Text braucht es" gegen „kein UEBERHANG".
+
+**Eine Breite, die nur nach dem Bauen gerechnet wird, ist die alte feste Breite
+mit neuem Namen.** Beim Bauen ist die Tabelle leer; nachrechnen muss gegen die
+**eingefuegten Zeilen** geschehen, und zwar in zwei Durchgaengen mit
+unveraenderter Zeilenzahl - beim ersten war nicht alles gelesen. Eine leere
+Tabelle wird trotzdem nach ihren Überschriften gerechnet (sie zeigt genau die).
+
+**Die Zeichenbreite ist eine Messung, keine Konstante.** `8 px` je Zeichen ohne
+`dpi_bewusst()`, `10 px` mit. Jeder Fall braucht einen **eigenen Prozess**:
+`dpi_bewusst()` muss vor dem **ersten** `Tk()` laufen, sonst misst der zweite
+Fall still falsch. Und der Nutzer waehlt die Schrift selbst - sie steht in der
+Zustandsdatei des Fensters (Leitstand: `schrift`, 8..16) und die Messprobe
+braucht sie als Parameter, sonst misst sie die Vorgabe und nicht den Alltag.
+
+**Der Platz fuer die Kuerzung kommt aus `winfo_width()` - und Tk vermisst ein
+neu gebautes oder noch nicht sichtbares Widget erst nach einem
+`update_idletasks`, sonst liefert es `1 px` und die Kuerzung unterbleibt
+grundsaetzlich.** Ein verborgenes Fenster ist schlimmer: es hat gar keine
+Geometrie, die Sonde misst dann eine kleinere Baumbreite als das echte Fenster
+und meldet einen Ueberhang, den es nicht gibt. Messfenster deshalb **sichtbar
+ausserhalb des Bildschirms** positionieren, nicht `withdraw()`.
 
 ## Scrollen: die drei Fälle, die immer wieder auftreten
 
@@ -103,9 +145,10 @@ gleichnamige in `Handel/` verdecken.
 
 ## Pruefen: messen, nicht schauen
 
-Den Fensteraufbau in einen Test nehmen, der das Fenster wirklich baut und
-unsichtbar laesst (`root.withdraw()` + `geometry()` + `update()`): so faellt ein
-Tippfehler in einem Widgetnamen auf, den reine Funktionstests nicht sehen.
+Den Fensteraufbau in einen Test nehmen, der das Fenster wirklich baut: so
+faellt ein Tippfehler in einem Widgetnamen auf, den reine Funktionstests nicht
+sehen. Fuer **Geometrie** (Scrollen, `winfo_width()`) ist ein verborgenes
+Fenster unbrauchbar - siehe Pitfalls.
 
 Das Layout wird **gemessen**, nicht angesehen: Spaltenbreite gegen
 `tkfont.measure(text)` je Spaltentext stellen und die zu schmalen zaehlen. Der
@@ -117,14 +160,48 @@ Hauses: `python tabellen-messprobe.py --fenster handelszentrale:Handelszentrale`
 baut das echte Fenster, sammelt alle Treeviews unterhalb der Wurzel ein und
 misst ohne einen Eingriff in den Fenstercode. Das Muster `modul:Klasse` macht
 den Aufrufer zum Parameter, also braucht die Probe keine Kopie je Fenster.
-Sonderfaelle der Probe: `root.withdraw()` erzeugt keine Geometrie, die Breite
-kommt aus `geometry()`; eine Tabelle, die im aktuellen Reiter NICHT sichtbar
-ist, hat `winfo_width() == 1` und ihre Spaltensumme wird deshalb ausdruecklich
-nicht als 'ZU BREIT' gewertet - sie ist eine Vorgabe, kein Messwert.
+Sonderfaelle der Probe:
+
+  * Das Fenster **sichtbar** bauen und ausserhalb des Bildschirms
+    positionieren. `root.withdraw()` erzeugt keine Geometrie - nicht nur
+    `yview()` bleibt dort stehen, auch `winfo_width()` liefert eine Zahl, die
+    kleiner ist als die des echten Fensters, und die Sonde meldet dann einen
+    Ueberhang, den es nicht gibt.
+  * Eine Tabelle, die im aktuiven Reiter NICHT sichtbar ist, hat
+    `winfo_width() == 1`; ihre Spaltensumme wird ausdruecklich nicht als
+    'ZU BREIT' gewertet - sie ist eine Vorgabe, kein Messwert. Fuer alle
+    Reiter also einmal umschalten und messen.
+  * `winfo_ismapped()` bleibt bei einer einmal gezeigten Notebook-Seite TRUE,
+    auch wenn sie nicht mehr vorne liegt. Ohne eigene Pruefung wird dieselbe
+    Tabelle unter jedem Reiternamen gezaehlt und die Summe ist das Zwei- bis
+    Vierfache der echten Zahl. Die Zuordnung gehoert aus dem **Widget-Pfad**,
+    nicht aus `nb.select()` - das steht beim Messen schon auf dem naechsten
+    Reiter.
+  * Nur **gezeichnete** Zeilen zaehlen (`baum.bbox(iid) is None` heisst: nicht
+    sichtbar). Eine Tabelle haelt mehrere hundert Zeilen und zeigt eine mit
+    `height=8`; alle zu zaehlen meldete 2276 statt der sichtbaren Zahl.
+  * Die Schriftgroesse als Parameter anbieten und den **gespeicherten Wert**
+    des Nutzers als Vorgabe nehmen, nicht den Modul-Default.
 
 > Eine Bildbeschreibung ist kein Zeuge. Sie nennt fremde Programme und meldet
 > Abschneiden, das die Messung widerlegt (gemessen: "Hinweis abgeschnitten" bei
 > 350 px Text in einer 457-px-Spalte). Ein Layoutbefund kommt nur aus der Messung.
+
+**Und die Sonde ist selbst die haeufigste Fehlerquelle.** Drei Befunde, alle am
+Fenster nachgewiesen, alle drei in dieser Sonde:
+
+- **Ein Zaehler ohne Abgrenzung zaehlt dasselbe mehrfach.** `winfo_ismapped()`
+  bleibt bei einer einmal gezeigten Notebook-Seite TRUE; dieselbe Tabelle wurde
+  unter vier Reiternamen gezaehlt (333 statt 124). Alle Zeilen einer Tabelle mit
+  `height=8` zu zaehlen zaehlt auch die nicht gezeichneten (2276 statt der
+  sichtbaren Zahl) - die Abgrenzung gehoert in den Zaehler, nicht in die
+  Bewertung des Ergebnisses.
+- **Ein Zustands-Check mit dem falschen Muster erkennt sich selbst.** `if
+  "self._flag" in datei` war wahr, weil die Methode die Flag las, nicht weil die
+  Zuweisung existierte. Immer auf die **Zeile der Zuweisung** pruefen.
+- **Eine Zahl, die sich beim Umbau nicht bewegt, ist auch ein Befund.** Bleibt
+  „ZU SCHMAL GESAMT" trotz sicherem Fix auf 0, ist die Sonde falsch, nicht die
+  Rechnung.
 
 Ein verdecktes Fenster laesst sich ohne Vordergrund aufnehmen:
 `scripts/fenster-foto.ps1` sucht per `EnumWindows` nach dem Titelpraefix und
@@ -202,6 +279,16 @@ und danach auslesen und **pruefen, dass das Ziel existiert**
 
 ## Reihenfolge bei einem Fensterumbau
 
+**Vorher sichern.** Dreifaelle, alle an diesem Umbau: `git show HEAD:<pfad> >
+<pfad>` fuer eine Gegenprobe hat die Arbeitsfassung zerstoert und eine
+Sicherung, die eine Ebene zu tief lag, das Original mitgeloescht. Der
+Weg zurueck war eine Kette idempotenter Umbau-Skripte (`cache/scratch/
+wiederherstellen2.py`) - einzeln geordnete, lose Werkzeuge lassen sich nicht
+mehr abspielen, weil der zweite Lauf am Anker des ersten scheitert. Vor dem
+ersten Schnitt: Kopie neben der Datei, `assert os.path.isfile(...)`, und nach
+jedem Schritt `git diff --numstat` (die gewollte Zeilenzahl, kein
+Ganzdatei-Diff).
+
 0. **Breite erst bestimmen.** Mehrere Fenster nebeneinander (Handelszentrale,
    Leitstand, Fremd-Repo-GUI) sind eine Aufgabe, kein Fenster: pro Familie ein
    **nur-lesender** Audit als Subagent, alle parallel, jeder mit dem Auftrag
@@ -230,14 +317,42 @@ und danach auslesen und **pruefen, dass das Ziel existiert**
 6. **Gegenprobe messen, nicht behaupten.** Nach dem Umbau dieselbe Probe mit
    der Zahl "ZU SCHMAL GESAMT: 0" belegen, und zwar bei ZWEI Fenstergroessen
    (1280 und 1000) - sonst ist der Umbau nur auf dem einen Monitor belegt.
+7. **Bei JEDER Schriftgroesse messen, die der Nutzer waehlen kann.** Die
+   Vorgabe des Moduls ist nicht sein Alltag - er speichert seine Wahl in der
+   Zustandsdatei des Fensters. Gemessen: bei Schrift 11 (Vorgabe) 0
+   abgeschnittene Texte, bei seiner gespeicherten Schrift 96.
+8. **Jeden Messfehler als solchen benennen, bevor die Zahl zitiert wird.**
+   Ein Befund aus einer Sonde, deren Fenster keine Geometrie hatte, ist kein
+   Befund am Fenster.
 
 ## Pitfalls
 
+- **Der patch-Werkzeug verschiebt die Einrueckung.** Beim Ersetzen eines
+  Blocks mit ungleichen Spaces rueckt es den Ersatz um vier Stellen nach
+  rechts und erzeugt `IndentationError`. Danach **nicht weiterpatchen** - zwei
+  Versuche scheitern genauso. Die Datei vollstaendig mit `read_file` lesen
+  (ohne `offset`/`limit`, sonst verweigert `write_file` die
+  Ueberschreibung als "partial view") und mit `write_file` neu schreiben.
+- **`.children` ist ein Tcl-Iterator, kein Tuple.** `len(baum.children)` und
+  `baum.children or ()` ergeben still falsche Zahlen - im gemessenen Fall
+  lieferte der Zaehler `(0, 0, 0)` fuer drei Tabellen mit 48, 96 und 6 Zeilen,
+  und die Nachrechnung galt danach als "fertig". Immer
+  `len(baum.get_children())`.
 - **Ein Fremd-Repo-Fenster gehoert nicht in diese Bibliothek.** Liegt die
   Oberflaeche in einem geklonten Fremd-Repo (eigenes `upstream`, Fremdarbeit
   im Arbeitsbaum), wird sie dort geaendert und hier nur der Weg dorthin
   beschrieben - ein fremder SKILL wird nicht importiert und eine fremde Datei
   nicht ueber den Haus-Index committed.
+- **`git show HEAD:<pfad> > <pfad>` zerstoert die Arbeitsfassung.** Wird es
+  fuer eine Gegenprobe benutzt (alte Version gegen neuen Code testen), ist die
+  eigene Aenderung danach weg - und eine Sicherung, die eine Ebene zu tief
+  abgelegt war, loescht dabei das Original mit. Also: **vor** der Umleitung
+  sichern, die Sicherung mit `assert os.path.isfile(...)` pruefen, oder die
+  Gegenprobe in einem zweiten Arbeitsbaum fahren. Wer es doch tut, braucht
+  einen Weg zurueck: eine Kette idempotenter Umbau-Skripte (jeder prueft
+  zuerst, ob sein Ergebnis schon da ist, und bricht mit `assert` ab, wenn
+  sein Anker fehlt) laesst sich mehrfach abspielen - einzeln geordnete,
+  lose Werkzeuge nicht.
 - Ein Messwerkzeug, das sich an die Fensterklasse bindet (Attribute des
   Fensters voraussetzt), muss beim Schreiben auf einen GEBAUTEN Bildschirm
   getestet werden. Platzhalter-Aufrufe, die nie liefen, sind Messwerkzeuge,
@@ -256,7 +371,9 @@ und danach auslesen und **pruefen, dass das Ziel existiert**
   auch mit 40 Zeilen in einer Fuenf-Zeilen-Tabelle — ein Test, der nach
   `yview_moveto` eine Bewegung verlangt, beweist Tk, nicht das Fenster. Geprueft
   wird die Verdrahtung (`yscrollcommand`, `xscrollcommand`, Rad-Bindung) und die
-  gesetzte Scrollregion.
+  gesetzte Scrollregion. Fuer eine **Messung** (Sonde, Breitenrechnung) ist
+  `withdraw()` zusaetzlich schaedlich: `winfo_width()` liefert dann eine zu
+  kleine Zahl, und jede daraus berechnete Breite ist zu breit.
 - Zweimal derselbe Funktionsname in einer Datei: Python laesst die LETZTE
   Definition gewinnen, die fruehere ist tot und eine Aenderung daran wirkt wie
   keine. Als AST-Pruefer festhalten (Muster

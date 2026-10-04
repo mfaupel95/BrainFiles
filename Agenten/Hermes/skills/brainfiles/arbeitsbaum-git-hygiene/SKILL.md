@@ -754,6 +754,29 @@ ungetrackten Dateien. Reihenfolge:
   committet wurde. Gegenprobe der Gegenprobe: `assert not hasattr(mod,
   "<die neue Funktion>")` — sonst ist die gebaute „Vor-Fassung“ gar nicht
   die alte.
+  **Wer doch `git show HEAD:<pfad> > <pfad>` schreibt, hat die
+  Arbeitsfassung vernichtet — und die Sicherung kann dabei mit
+  verschwinden.** Gemessen 04.10.2026: die Sicherung lag eine Ebene zu
+  tief (`cache/hz_neu.py` statt `Handel/cache/…`), das `cp` zum
+  Zurueckspielen fand sie nicht, und die Datei stand auf HEAD-Stand. Zwei
+  Regeln daraus: **(a) VOR der Umleitung sichern** und die Sicherung
+  **pruefen** — `assert os.path.isfile(<sicherung>)`, nie `cp` danach und
+  dann glauben; **(b) den Rueckweg vorbereiten**, weil ein sauberer Pfad
+  nicht garantiert ist: eine Kette idempotenter Umbau-Skripte laesst sich
+  mehrfach abspielen, wenn **jeder Schritt zuerst prueft, ob sein Ergebnis
+  schon da ist** (`if b"def spaltenbreiten(" in b: skip`) und mit `assert`
+  abbrecht, wenn sein Anker fehlt. Einzelne, lose Werkzeuge in Bauordnung
+  lassen sich **nicht** wiederholen: der zweite Lauf scheitert am Anker des
+  ersten und hinterlaesst einen halb angewandten Zustand, der schwerer zu
+  reparieren ist als der urspruengliche Fehler. Genau das ist beim
+  Wiederherstellen passiert: der erste Schritt suchte eine Abschnitts-
+  Ueberschrift, die sein eigener Vorganger selbst geschrieben hatte.
+- **Ein Zustands-Check mit dem falschen Muster erkennt sich selbst.** `if
+  "self._flag" in datei` war wahr, weil die Methode die Flag las, nicht weil
+  die Zuweisung existierte. Beim Wiederherstellen benutzt: `if
+  "self._breiten_gesetzt" in datei` traf **drei** Stellen — die Zuweisung und
+  zwei Verwendungen — und meldete „steht schon“, obwohl die Zuweisung fehlte.
+  Immer auf die **Zeile der Zuweisung** pruefen (`= False`, nicht der Name).
 - **Ein Test, der die Aufrufform mockt statt sie nachzubauen, sieht gruen
   aus und tut nichts.** Geaendert der Code von `subprocess.run` auf
   `Popen` + `communicate`, trifft ein `patch.object(subprocess, "run")`
