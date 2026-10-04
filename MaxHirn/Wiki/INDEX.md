@@ -62,6 +62,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Betrieb/Arbeitsverzeichnis.md](Betrieb/Arbeitsverzeichnis.md) | Hermes startet in `Agenten/Hermes` - `terminal.cwd` fuer Gateway/Cron, ein `hermes`-Wrapper im PowerShell-Profil fuer CLI und TUI; Pfade bleiben relativ zur Wurzel (Anker `cd "$HERMES_HOME/../.."`), die gemessene Falle und was unberuehrt bleibt |
 | [Betrieb/Desktop-Verknuepfungen.md](Betrieb/Desktop-Verknuepfungen.md) | Vier UI-Verknuepfungen, erzeugt per Skript: Handelszentrale, Werkzeug-Zentrale, Freqtrade-Bots, MoonDev-GUI - und warum das Arbeitsverzeichnis das Entscheidende ist |
 | [Betrieb/Fremd-Material.md](Betrieb/Fremd-Material.md) | Die Grenze zwischen eigenem Code und Fremd-Material: eine Quelle (`Agenten/FREMD-Liste.json`), der Leser `fremd.py`, 831 Dateien / 173.481 Zeilen eigener Code gegen 4,2 Mio. mit Fremdem |
+| [Betrieb/Bildschirm-Standby.md](Betrieb/Bildschirm-Standby.md) | Monitor geht nicht aus: Leerlauf-Timer gegen Auszeit messen statt Plan lesen, `powercfg -change` rechnet in MINUTEN (180 = drei Stunden), die Anzeige (`dwm.exe`) stirbt zuerst unter Speicherdruck |
 
 ### Handel
 

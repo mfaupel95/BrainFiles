@@ -87,6 +87,42 @@ verschieben**, mit Datum. Nicht löschen —
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-349 — Aufweck-Rechte der Geraete am Rechner sind nie geprueft worden**
+      Kontext: `powercfg -devicequery wake_armed` nennt auf diesem Rechner drei
+      Maeuse (u. a. Logitech Unifying), fuenf Tastaturen, den Xbox Wireless
+      Adapter und den Realtek USB-GbE-Controller. Beim Bildschirm-Standby sind
+      sie unauffaellig (zwei Messungen am 04.10.2026: Leerlauf lief 181 -> 512 s
+      und 746 -> 1076 s ohne Ruecksprung). Sie sind aber der erste Verdacht,
+      sobald der Bildschirm ausgeht und SOFORT wieder angeht: dann weckt ein
+      Geraet. Werkzeug: `Agenten/Werkzeuge/eingabe-quelle.py` nennt den
+      Geraetenamen (VID/PID) zu jeder Eingabe.
+      Naechster Schritt: Erst bei wiederkehrendem Verhalten eingrenzen - im
+      Geraete-Manager je Geraet "Energieverwaltung > Geraet kann den Computer
+      aktivieren" abwaehlen, eins nach dem anderen, dazwischen messen.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Energieoptionen, Geraete-Manager, Xbox Wireless Adapter
+- [ ] **T-350 — System-Standby steht im aktiven Plan auf "Nie" - Entscheidung von Max**
+      Kontext: Der Bildschirm schaltet nach 180 s ab, der Rechner selbst schlaeft
+      nie (SUB_SLEEP STANDBYIDLE Netzbetrieb = 0). Gemessen am 04.10.2026.
+      Ruhezustand ist systemweit aus (Hypervisor/"ueberwachter Host"), S3 steht
+      bereit. Ein PC-Schlaf wuerde Handels-Dauerlauf (drei Stufen), Telegram-Bots
+      und Gateway anhalten - deshalb bewusst NICHT geaendert.
+      Naechster Schritt: nur auf ausdrueckliche Anweisung setzen, z. B.
+      `powercfg -change -standby-timeout-ac 30` (ACHTUNG: Minuten, nicht Sekunden).
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Energieoptionen, Agenten/Handel/dauerlauf.py, Agenten/Bus
+- [ ] **T-351 — Dauergaeste im Autostart, die Eingaben/Verbindungen pollen**
+      Kontext: LogiOptions (zu Max' Logitech-Unifying-Maus), ROCCAT SWARM Monitor,
+      cua-driver (Agenten-Cursor-Overlay, `AppData\Local\Programs\Cua`) und die
+      PowerToys-Module laufen dauerhaft. In zwei Messungen am 04.10.2026 hat
+      keiner davon den Leerlauf-Timer zurueckgesetzt - sie sind also NICHT die
+      Ursache des damaligen Verhaltens. Sie bleiben als Kandidaten notiert, weil
+      das Werkzeug sie bei einem Ruecksprung OHNE Rohdaten-Ereignis als
+      Software-Verursacher ausweist.
+      Naechster Schritt: nichts abschalten, solange das Verhalten nicht
+      wiederkehrt; dann der Reihe nach beenden und je 5 Minuten messen.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: LogiOptions, ROCCAT SWARM, cua-driver, PowerToys
 - [ ] **T-346 — signal-executor laeuft seit 12 Laeufen rot: ModuleNotFoundError spur_buch**
       Kontext: Hermes-Cron 50921798e27a 'signal-executor' (jede Minute, no_agent,
       Agenten/Hermes/scripts/signal-executor.py). last_status=error,
