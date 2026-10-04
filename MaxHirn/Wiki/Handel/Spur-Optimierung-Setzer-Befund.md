@@ -48,14 +48,38 @@ Drei Aufrufstellen sind jetzt verdrahtet (`replay.py` Zeilen 1797, 1812, 1847).
 Nach dem Fix, mit der **Hausfunktion** `kosten_wendepunkt.kennzahlen()` — nicht
 mit einer Zeilenzählung:
 
-| Geometrie | Runden | Treffer | G/V gesamt | je Runde | auf der Marke |
-|---|---|---|---|---|---|
-| 5,0 % / 2,0R (heute) | 579 | 28,0 % | −464,18 | **−0,803** | 1181/1181 |
-| 3,0 % / 1,5R | 1007 | 39,0 % | −75,74 | **−0,074** | 1962/1962 |
+| Geometrie | Runden | Treffer | G/V gesamt | je Runde |
+|---|---|---|---|---|
+| **3,0 % / 1,5R** | 1007 | 39,0 % | −75,74 | **−0,074** |
+| 3,0 % / 3,0R | 779 | 21,8 % | −312,16 | −0,384 |
+| 5,0 % / 2,0R (heute) | 579 | 28,0 % | −464,18 | −0,803 |
+| 7,0 % / 1,5R | 428 | 31,8 % | −616,00 | −1,439 |
 
-**Die 3-%-Geometrie ist rund zehnmal besser als die heutige** — sie kostet 0,074
-USD je Runde statt 0,803. Sie ist damit **keine Optimierung**, sondern die
-Abstellung einer Fehlstellung.
+**Die 3-%-Geometrie kostet 0,074 USD je Runde statt 0,803 — rund zehnmal weniger.**
+Das ist keine Optimierung, das ist die Abstellung einer Fehlstellung.
+
+### Der Fix wirkt, zweifalt belegt
+
+Vier Laeufe wurden ueber die Zeit hinweg gestartet, in der der Fix eingebaut
+wurde. Die Wachen-Kopie ist dabei **kein Beweis**: `lauf_a` wendet den Patch auf
+das W-Dict im Speicher an (`replay.py` 794) und **schreibt ihn nicht in die
+Kopie** — die Kopie zeigt deshalb immer die Ausgangswerte. Der Docstring sagt
+ausdruecklich „so setzt der Optimierer …": die Faehigkeit war da, die Verdrahtung
+fehlte.
+
+Die Beweiskette ist die Geometrie selbst:
+
+| Lauf | Geometrie aufgerufen | Ergebnis | gelesen als |
+|---|---|---|---|
+| `rp_basis` | 5,0 / 2,0 | 579 Runden, −0,803 | Grundlinie |
+| `rp_s3_15` | 3,0 / 1,5 | 579 Runden, **−0,803** | **vor dem Fix — bitgleich zur Grundlinie** |
+| `rp_s3_30` | 3,0 / 3,0 | 779 Runden, −0,384 | nach dem Fix |
+| `rp_s7_15` | 7,0 / 1,5 | 428 Runden, −1,439 | nach dem Fix |
+| `fx_a` | 3,0 / 1,5 | 1007 Runden, −0,074 | nach dem Fix |
+
+**Dieselbe Geometrie (3,0/1,5) liefert vor dem Fix exakt die Grundlinie und nach
+dem Fix ein voellig anderes Ergebnis.** Damit ist der Fehler in beide Richtungen
+gemessen: er wurde gefunden und er ist weg.
 
 ### Was ich zuruecknehme
 
