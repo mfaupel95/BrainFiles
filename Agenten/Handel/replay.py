@@ -1791,7 +1791,10 @@ def main():
         if a.spur in MEHRZEITRAHMEN:
             runden, offen = lauf_mehrzeitrahmen(a.spur, geb, a.lauf,
                                                 max_kerzen=mk,
-                                                fenster=a.fenster)
+                                                fenster=a.fenster,
+                                                # siehe lauf_a: der Schalter
+                                                # heisst hier `wachen_patch`
+                                                wachen_patch=setzen_aus(a.setzen))
             print(json.dumps(
                 {"spur": a.spur, "runden": len(runden), "offen": offen,
                  "gebuehr_pct": geb, "gebuehr_quelle": geb_quelle,
@@ -1805,7 +1808,8 @@ def main():
                 indent=2, ensure_ascii=False))
             return
         if a.spur in EIGENE_RECHNUNG:
-            k = lauf_eigene_rechnung(a.spur, geb, a.lauf, max_kerzen=mk)
+            k = lauf_eigene_rechnung(a.spur, geb, a.lauf, max_kerzen=mk,
+                                      wachen_patch=setzen_aus(a.setzen))
             print(json.dumps({"spur": a.spur, "kennzahlen": k,
                               "gebuehr_quelle": geb_quelle},
                              indent=2, ensure_ascii=False))
@@ -1828,7 +1832,19 @@ def main():
             % (a.spur, fenster, bedarf(w), w.get("mindest_kerzen", 300),
                KERZEN_PUFFER, bedarf(w)))
     runden, offen = lauf_a(a.spur, geb, a.lauf, max_kerzen=mk,
-                           fenster=fenster)
+                           fenster=fenster,
+                           # Der Parameter heisst bei den Kerzenspuren
+                           # `wachen_patch`, NICHT `setzen` (das gibt es nur
+                           # bei lauf_c/lauf_feed). Vorher stand hier kein
+                           # Patch: `--setzen` wurde stillschweigend
+                           # verworfen, jeder Kandidat lief mit den HEUTIGEN
+                           # Werten, und die Suche meldete "kein Hebel",
+                           # ohne dass sich je etwas bewegt hat -
+                           # genau die stille Fehlalarmausnahme, vor der
+                           # der Optimierungs-Skill warnt. Gemessen am
+                           # 04.10.2026: Stop 3,0 %/Ziel 1,5R und
+                           # 5,0 %/2,0R lieferten bitgleiche Kennzahlen.
+                           wachen_patch=setzen_aus(a.setzen))
     print(json.dumps({"spur": a.spur, "runden": len(runden),
                       "offen": offen, "gebuehr_pct": geb,
                       "gebuehr_quelle": geb_quelle,
