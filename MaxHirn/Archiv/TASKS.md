@@ -9,7 +9,30 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 - **Am Sitzungsanfang lesen**, bevor gefragt wird, woran gearbeitet werden soll.
 - **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
   Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
-- **Erledigtes nach `## Erledigt` verschieben**, mit Datum. Nicht löschen —
+- **Erledigtes nach `## Erledigt` - [x]   **T-319 — Der ZRO-Ausstieg in moondev_topmovers scheitert seit 20:48 jeden Zyklus — ERLEDIGT 04.10.2026**
+      Kontext: OKX 51008 "Your available ZRO balance is insufficient" - gemessen im
+      Ereignisprotokoll, 20:48-23:32 am 02.10.2026. Die Position blieb im Buch,
+      jeder Zyklus versuchte denselben Verkauf und scheiterte.
+      
+      ERLEDIGT 04.10.2026 (Diagnose, kein Code): die ZRO-Position war ein
+      BUCH-GEIST, keine echte Position. Belegt an der Boerse:
+        - /account/balance ZRO: spotBal 0.983, frozenBal 0, availBal 0.983 -
+          kein eingefrorener Bestand, keine offene Spot-Position.
+        - /trade/orders-history, orders-history-archive, orders-pending fuer
+          ZRO-USDT: 0 Orders. Die Position wurde NIE real gehandelt.
+        - Journal: Kauf 02.10. 05:24 als modus=live (1.9143), Ausbuchung 02.10.
+          22:48 als papier-Stop (1.76). Der live-Kauf war ein Geist - dieselbe
+          Klasse wie der xperp-Fall vom 21.09.2026.
+        - Der 51008-Fehler war die Folge: die Spur versuchte, eine Position zu
+          verkaufen, die an der Boerse nie existierte.
+      
+      Die Spur laeuft seither sauber: letzter Lauf 04.10. 20:17, 250 Kandidaten,
+      keine Datenfehler, letzte Journal-Zeile ein normaler AR-Stop. Die ZRO-Fehler
+      endeten am 02.10. 23:32.
+      
+      Angelegt 03.10.2026 · Zuletzt 04.10.2026 · Betrifft: moondev_topmovers.
+
+verschieben**, mit Datum. Nicht löschen —
   Der Eintrag bleibt als `- [x]` mit Erledigt-Datum dort stehen.
 
 
@@ -381,20 +404,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Kontext: Der Scanner galt als beste Spur (+17,49 %, 85 % Treffer, t=15,3). vorschlaege() nahm den Einstieg aus dem Tagesbericht (schluss[-1] der 1D-Kerze). Am 19.09. war der Bericht zwei Tage alt: 7,531 gegen Markt 8,53-8,75, der Einstieg lag 12 % unter Markt, das Ziel (Einstieg+2xStop) war beim Kauf erfuellt. 82 Runden an einem Tag (+1866 %), 97 von 105 Ziel-Ausstiegen nach 0,25 h. Die ehrlichen Runden (>=6 h, n=16): +1,99 % Mean bei 38 % Treffer - auf dem Niveau von xperp. Fix gebaut und belegt: handeln.marktkurs() holt den Jetzt-Kurs, kein Rueckfall auf den Berichtspreis, fehlender Kurs = Ablehnung statt Ausnahme; 4 neue Tests + BilligeToreTest umgebaut, Gegenprobe belegt (3 von 4 fallen mit altem Code), Scanner-Suite 181 gruen, Vorschau zeigt Einstieg = Markt (BTC 84530). Befund: Agenten/Handel/scanner/BEFUND-einstiegspreis-20261003.md
       Naechster Schritt: Die Freigabe des Scanners stuetzte sich auch auf diese Runden. Bedingung 1 (Netto-positiv) ist seit 19.09. per Auftrag Max entfallen; die Zahl 124 belegt jetzt nichts mehr. Neu bewerten: entweder Freigabe zurueck auf false, bis echte Runden mit korrektem Einstieg vorliegen, oder Max entscheidet bewusst, mit dem korrigierten Code weiterzufahren. Die 5 offenen Positionen stammen teils aus der Fehlerzeit (Einstieg bis -5,4 % unter Markt) - nicht angefasst, Buchbereinigung ist Sache des Live-Laufs.
       Angelegt 03.10.2026 · Betrifft: scanner, xperp, strategie_kennzahlen, Wiki/Handel.
-- [ ]   **T-319 — Der ZRO-Ausstieg in moondev_topmovers scheitert seit 20:48 jeden Zyklus**
-      Kontext: OKX 51008 "Your available ZRO balance is insufficient, and your
-      available margin (in USD) is too low for borrowing" - gemessen im
-      Ereignisprotokoll (`Handel/cache/ereignis-fehler.jsonl`), 23:05 und 23:32
-      wiederholt. Die Position bleibt im Buch ("bleibt im Buch"), jeder Zyklus
-      versucht denselben Verkauf und scheitert. Das ist eine Kontolage, keine
-      Werkzeugpanne: entweder fehlt ZRO-Bestand oder das Guthaben ist gebunden.
-      Absichtlich nicht angefasst - eine Guthabenfrage kann die Spur nicht
-      entscheiden, und eine Sperre wäre eine stille Deaktivierung.
-      Naechster Schritt: /api/v5/account/balance?ccy=ZRO lesen und mit dem
-      Buchbestand halten (Buchmenge gegen Brokerbestand); bei fehlendem
-      Bestand ist die Position eine GEIST-Position und geht ueber eine
-      Boersenabgleich-Logik raus, nicht ueber weitere Verkaufsversuche.
-      Angelegt 03.10.2026 · Betrifft: moondev_topmovers.
+
 
 - [ ]   **T-320 — Der gesperrte Update-Waisen laesst sich nicht entfernen**
       Kontext: `Agenten\Hermes\state-snapshots\.20260930-204617-pre-update.48588.partial`
