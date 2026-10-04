@@ -121,7 +121,8 @@ def _rotieren(pfad: Path, *, byte_frist: int = ROTATION_BYTE_FRIST, behalten: in
     alte Fassung nach ``<name>.1`` (fruehere Generationen fallen weg - die
     Heilung im Log betrifft nur die Zyklen der letzten Stunden, die CPU-Bremse
     und die Fristen decken den Rest ab). Still bei Schreibfehlern: die Wache
-    darf nie an einem Protokoll scheitern.
+    darf nie an einem Protokoll scheitern (z. B. WinError am offenen Handle
+    eines gerade respawnten Backends - dann rotiert der naechste Lauf).
     """
     if not pfad.is_file():
         return
@@ -130,16 +131,14 @@ def _rotieren(pfad: Path, *, byte_frist: int = ROTATION_BYTE_FRIST, behalten: in
             return
     except OSError:
         return
-    for stufe in range(behalten, 0, -1):
-        alt = pfad.with_name(pfad.name + ("-%d" % stufe if stufe > 1 else ".1"))
-        neuer_alt = pfad.with_name(pfad.name + ("-%d" % (stufe + 1) if stufe + 1 > 1 else ".1"))
-        try:
-            if stufe == 1:
-                pfad.replace(neuer_alt)
-            elif alt.exists():
-                alt.replace(neuer_alt)
-        except OSError:
-            return
+    # Eine Generation: die aktuelle Fassung wird <name>.1; eine bereits
+    # liegende <name>.1 wird von Path.replace ueberschrieben (auf diesem
+    # Windows so atomar wie ein Posix-rename). Hohere Staende gibt es nicht -
+    # die Heilung im Log betrifft nur die Zyklen der letzten Stunden.
+    try:
+        pfad.replace(pfad.with_name(pfad.name + ".1"))
+    except OSError:
+        return
 
 
 # ---------------------------------------------------------------- Messen
@@ -366,6 +365,15 @@ def main(argv=None):
     ap.add_argument("--selbsttest", action="store_true",
                     help="Form der Meldung zeigen, ohne zu messen und ohne Zustand zu schreiben")
     a = ap.parse_args(argv)
+
+    # Protokollgrenze erhalten, bevor irgendetwas gelesen/gemeldet wird
+    # (T-196): dashboard-restart.log waechst nur durch den Writer in
+    # ``hermes_cli.main_dashboard._respawn_dashboard_processes``, ueber der
+    # Frist wandert die alte Fassung nach <name>.1. Still bei Schreibfehlern.
+    try:
+        _rotieren(HOME / "logs" / "dashboard-restart.log")
+    except OSError:
+        pass
 
     jetzt = datetime.now()
 

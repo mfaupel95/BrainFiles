@@ -41,7 +41,7 @@ wache = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(wache)
 
 SEAMS = ("antwortet", "port_halter", "dashboard_pids", "beenden", "starten",
-         "update_laeuft", "warten", "arbeitet")
+         "update_laeuft", "warten", "arbeitet", "_rotieren")
 
 
 class Basis(unittest.TestCase):
@@ -68,6 +68,7 @@ class Basis(unittest.TestCase):
         wache.update_laeuft = lambda: self.update
         wache.warten = lambda url=None, frist=None, schritt=None: self.gesund_nach_start
         wache.arbeitet = lambda pids=None, warte=None, schwelle=None: self.arbeitet_flag
+        wache._rotieren = lambda pfad, **kw: None   # das echte Log unberuehrt
 
     def tearDown(self):
         for name, fn in self._alt.items():
@@ -302,6 +303,72 @@ class BeendenTest(unittest.TestCase):
                          "taskkill beendet aus einer Sitzung nichts")
         self.assertEqual(beendet, [111, 222])
         self.assertEqual(uebrig, [])
+
+
+class RotationTest(unittest.TestCase):
+    """_rotieren() haelt dashboard-restart.log unter der Frist (T-196):
+    unterhalb nichts tun, oberhalb die alte Fassung nach <name>.1 wandern,
+    eine bestehende <name>.1 ersetzbar, kein Absturz bei fehlender Datei."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="wache-rotation-"))
+        self.log = self.tmp / "dashboard-restart.log"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_unter_der_frist_bleibt_die_datei(self):
+        self.log.write_text("a" * 10, encoding="utf-8")
+        wache._rotieren(self.log, byte_frist=1024)
+        self.assertTrue(self.log.exists(), "kleines Log wird nicht rotiert")
+        self.assertFalse((self.tmp / "dashboard-restart.log.1").exists())
+
+    def test_ueber_der_frist_wandert_nach_dot1(self):
+        self.log.write_text("a" * 5000, encoding="utf-8")
+        wache._rotieren(self.log, byte_frist=4096)
+        self.assertFalse(self.log.exists(), "grosses Log wird umbenannt")
+        self.assertTrue((self.tmp / "dashboard-restart.log.1").exists())
+        self.assertEqual((self.tmp / "dashboard-restart.log.1").stat().st_size, 5000)
+
+    def test_bestehende_dot1_wird_ersetzt(self):
+        (self.tmp / "dashboard-restart.log.1").write_text("alt", encoding="utf-8")
+        self.log.write_text("a" * 5000, encoding="utf-8")
+        wache._rotieren(self.log, byte_frist=4096)
+        self.assertEqual((self.tmp / "dashboard-restart.log.1").stat().st_size, 5000,
+                         "eine alte Generation wird ueberschrieben, nicht angehaengt")
+
+    def test_fehlt_die_datei_geschieht_nichts(self):
+        wache._rotieren(self.log, byte_frist=4096)   # darf nicht werfen
+        self.assertFalse((self.tmp / "dashboard-restart.log.1").exists())
+
+
+class RotationInLaufTest(Basis):
+    """Der Eigen-Lauf der Wache erhaelt die Protokollgrenze: main() ruft
+    _rotieren auf (getrennt, weil die Zustands-Laeufe die echte Datei
+    unberuehrt lassen muessen)."""
+
+    def test_der_eigenlauf_ruft_rotation(self):
+        alt = wache._rotieren
+        gerufen = []
+        wache._rotieren = lambda pfad, **kw: gerufen.append(str(pfad))
+        try:
+            code, ausgabe = self.lauf()
+        finally:
+            wache._rotieren = alt
+        self.assertEqual(code, 0)
+        self.assertTrue(any("dashboard-restart.log" in p for p in gerufen))
+
+    def test_selbsttest_ruft_rotation_ohne_netz(self):
+        alt = wache._rotieren
+        gerufen = []
+        wache._rotieren = lambda pfad, **kw: gerufen.append(str(pfad))
+        try:
+            code, ausgabe = self.lauf("--selbsttest")
+        finally:
+            wache._rotieren = alt
+        self.assertEqual(code, 0)
+        self.assertIn("Selbsttest", ausgabe)
+        self.assertTrue(any("dashboard-restart.log" in p for p in gerufen))
 
 
 if __name__ == "__main__":
