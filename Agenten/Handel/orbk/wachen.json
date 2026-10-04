@@ -79,7 +79,7 @@
     "groesster_ruecklauf_papierlauf_usd": null,
     "geprueft_am": null,
     "backtest_urteil": "kein Instrument bestanden (6 geprueft; ueberwiegend zu wenig Daten)",
-    "backtest_geprueft_am": "2026-09-30"
+    "backtest_geprueft_am": "2026-10-04"
   },
   "_freigabe": "Sperre 4 aus SPEC.md. handel_erlaubt erst true, wenn backtest_bestanden UND (>= 6 Wochen Papier) UND (>= 50 Sessions) UND netto_positiv.",
   "kraken_host": "https://api.kraken.com"

@@ -28,8 +28,8 @@
   "freigabe": {
     "erfuellt": false,
     "backtest_bestanden": false,
-    "backtest_urteil": "Gitter +1.57 % gegen Halten +29.20 % (5 Zyklen, 12 Stufen, 1344 Stundenkerzen) | Achtung: die laufende Leiter hat 12 Stufen, die wachen.json 6",
-    "backtest_geprueft_am": "2026-09-30"
+    "backtest_urteil": "Gitter +1.57 % gegen Halten +31.00 % (5 Zyklen, 12 Stufen, 1344 Stundenkerzen) | Achtung: die laufende Leiter hat 12 Stufen, die wachen.json 6",
+    "backtest_geprueft_am": "2026-10-04"
   },
   "journal_zweitziel": "Q:\\Handel_Journal\\gitter",
   "_gebuehr_quelle": "OKX-Spot, gemessen 01.10.2026 (Tarif Lv1 taker 0,10 %/Seite + echte Fuellung HYPE-USDC 0,1000 %). Die Spur handelt SPOT: ihre wachen.json bzw. ihr Code nennt <SYM>-USDC bzw. BTC-USDT.",
