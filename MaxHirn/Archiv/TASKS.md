@@ -86,6 +86,42 @@ verschieben**, mit Datum. Nicht löschen —
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-346 — signal-executor laeuft seit 12 Laeufen rot: ModuleNotFoundError spur_buch**
+      Kontext: Hermes-Cron 50921798e27a 'signal-executor' (jede Minute, no_agent,
+      Agenten/Hermes/scripts/signal-executor.py). last_status=error,
+      failure_streak=12, letzter Lauf 04.10. 22:24:43. Der Absturz ist in Zeile 153:
+      `from spur_buch import orderweg, venue_inst` -> ModuleNotFoundError. Der
+      Cron laeuft aus dem Hermes-Skriptordner, nicht aus Agenten/Handel/, und
+      spur_buch liegt dort nicht. Damit ist der AUSFUEHRUNGSWEG fuer
+      trigger_modus=signal-Spuren seit Stunden tot: die Spur legt einen Auftrag
+      in die Queue, aber niemand setzt ihn um. Genau die Trennung, die am
+      03.10. die Ueberhandelung verhindert hat (max. 96 gleiche Einstiege/Tag).
+      Naechster Schritt: sys.path auf Agenten/Handel ergaenzen (mit Pruefung
+      gegen __file__, wie es die Hausregel fuer Spuren-Imports verlangt), dann
+      `cronjob action='run'` und eine Ausgabe pruefen. Wichtig: signal-executor
+      darf erst mit lebendem spur_buch laufen - sonst stehen Orders in der
+      Queue, die beim ersten Lauf alle auf einmal durchgehen.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Hermes/scripts/signal-executor.py, Agenten/Handel/spur_buch.py
+- [ ] **T-347 — omnitrade_futures: echte Papierrunden abwarten, dann Live-Freigabe neu bewerten**
+      Kontext: Am 04.10.2026 gestartet: adx_macd auf BTCUSDC/15m im OKX-DEMO
+      (PID 61280, Log logs/live-adx_macd-BTCUSDC-20261004-2211.log). Erste
+      Kerze mit Signal nach 300: 'buy', 1 Order, 0 Ablehnungen, net_qty 0,00585.
+      Damit sieht die Spur zum ersten Mal ein Signal (`omni.signal -> long`),
+      und --vorschau meldete 'Live waere gesperrt durch: nichts' bei 69,88 USD
+      frei (Tor ab 25 USD). Auftrag Max 'Papier' hat die Spur zurueckgesetzt:
+      handel_erlaubt=false, freigabe.erfuellt=false (Commit 9a017bb0).
+      Naechster Schritt: Runden sammeln (Zyklus alle 15 Min), dann mit
+      auswertung_alle gegen den 28-Tage-Backtest (+117 USD) stellen. Vor einem
+      erneuten Freischalten MUESSEN zwei Dinge geklaert sein: T-341 (Lauf
+      stabil) und die Groessengrenze - max_pro_trade_usd 90000 auf einem
+      69,88-USD-Konto ist der NOMINALwert fuer genau 1 Kontrakt PF_XBTUSD
+      (1 Kontrakt = 1 BTC ≈ 84.700 USD, Margin bei 7x rund 12.130 USD). Die
+      Wache sagt dem Code damit 'du darfst 90.000 einsetzen', was das Guthaben
+      nie traegt - der Wert ist richtig als Nennwert, aber er darf nicht als
+      kaufbares Guthaben gelesen werden.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/omnitrade_futures/, Werkstatt/omnitrade/
 - [ ] **T-343 — Nautilus-Orderweg: der DEMO-Haken ist je Lauf wieder weg**
       Kontext: Seit dem 04.10.2026 (Leitstand Schritt 2) laesst sich der
       OKX-DEMO-Node im Leitstand starten, und der Reiter hat einen echten
