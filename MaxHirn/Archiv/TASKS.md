@@ -64,6 +64,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ]   **T-335 - Bereichs-Besitz steht, die Werkzeuge rufen ihn noch nicht auf**
+      Kontext: Drei Bereiche mit je einem Besitzer (`Agenten/BEREICHE.json`,
+      Leser `Agenten/Werkzeuge/bereiche.py`, 19 Tests, Regel in `AGENTS.md` +
+      `CLAUDE.md` byte-identisch). Damit die Regel nicht nur im Text steht,
+      soll JEDER Werkzeugschreiber vor dem Schreiben `pruefe(aufrufer, pfad)`
+      aufrufen und das Ergebnis als BEFUND melden - so wie es heute schon der
+      Dateischwund-Waechter und die Kanban-Worker tun. Ein fremder Bereich wird
+      NICHT blockiert, nur benannt: ein Werkzeug, das wegen einer Bereichs-
+      regel abbricht, arbeitet nicht weiter, sondern arbeitet gar nicht.
+      Naechster Schritt: die ersten drei Schreibwerkzeuge umstellen und die
+      Bereichsabfrage in die Hauswerkzeuge-Aufnahme (`Agenten/Werkzeuge/`) aufnehmen,
+      damit ein neues Werkzeug die Regel von Anfang an hat.
+      Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/bereiche.py.
 - [ ]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
       Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
       Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
