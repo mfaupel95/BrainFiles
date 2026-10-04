@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import handelszentrale as hz                                 # noqa: E402
 import leitstand_bedienung as lb                               # noqa: E402
 
 
@@ -249,10 +250,39 @@ class TabelleTest(MitTk):
         self.assertEqual(t.baum.column("Text", "width"), 50)
 
     def test_nur_die_letzte_spalte_nimmt_den_restplatz(self):
+        """Der Restplatz geht an die LETZTE Spalte - aber als gerechnete
+        Breite, nicht ueber `stretch=True`.
+
+        Der Test pruefte vorher `stretch == [False, False, True]`. Das ist
+        seit dem 04.10.2026 die FALSCHE Erwartung: Tk verteilt bei
+        `stretch=True` die Restbreite selbst und verfaelscht damit jede
+        gerechnete Breite (gemessen 191 statt 125 px, Skill
+        desktop-fenster). Die Regel ist jetzt zweigeteilt und wird auch so
+        geprueft:
+
+        1. keine Spalte dehnt sich (`stretch=False` ueberall), damit die
+           Breiten berechenbar und fuer den Nutzer ziehbar bleiben;
+        2. die letzte Spalte ist breiter als die reinen Textspalten, weil
+           sie den Restplatz bekommen hat.
+        """
         t = lb.Tabelle(self.root, ("Tor", "Wert", "Erklärung"), self.zustand, "probe")
         t.setze([("a", "1", "lang " * 30)])
         dehnt = [bool(int(str(t.baum.column(s, "stretch")))) for s in t.spalten]
-        self.assertEqual(dehnt, [False, False, True])
+        self.assertEqual(dehnt, [False, False, False],
+                         "keine Spalte darf sich ueber stretch dehnen")
+        breiten = [t.baum.column(s, "width") for s in t.spalten]
+        self.assertGreater(breiten[-1], breiten[0],
+                           "die letzte Spalte muss den Restplatz bekommen")
+        # Die Deckelung prueft nur, wo es einen Restplatz gibt: ohne
+        # Fenster (wie in diesem Test) ist der Baum 1 px breit, der
+        # Restplatz also 0 und die letzte Spalte traegt nur ihren
+        # Textbedarf - 1148 px fuer 150 Zeichen. Die Deckelung ist
+        # eine Eigenschaft des Restplatzes, nicht der Breite.
+        platz = t.baum.winfo_width() - hz.ROLLENDE
+        if platz > 100:
+            self.assertLessEqual(breiten[-1] - breiten[0], lb.REST_MAX + 1,
+                                 "der Restplatz ist gedeckelt - sonst wird "
+                                 "die Spalte zur Sackgasse aus Leerraum")
 
     def test_zebra_jede_zweite_zeile_andere_tags_bleiben(self):
         t = self._tabelle()

@@ -130,22 +130,51 @@ class Leitstand:
         self.buch = ttk.Notebook(root)
         self.buch.pack(fill="both", expand=True)
 
+        # Die Schrift wird VOR den Reitern gesetzt, nicht danach. Das ist
+        # keine Reihenfolge-Aesthetik: `Tabelle._breiten()` rechnet beim
+        # ERSTEN Befuellen und merkt sich `_breiten_da = True` - ab dann
+        # wird nie wieder gerechnet. Mit der alten Reihenfolge lief das
+        # Befuellen mit der Vorgabe (Consolas 11) und der gespeicherte Wert
+        # wurde erst danach gerendert. Nachgemessen bei Max' Wert 13:
+        # Spalte `Spur` blieb 177 px, der Bedarf fuer
+        # `nautilus_kraken_futures` ist 200 px - und Strg+Plus/Minus
+        # aenderten nur die Schrift, nie die Breiten (bei 13 sind es 59
+        # echte Abschneidungen, nicht 37 wie bei 11).
+        #
+        # `setze_schrift` bleibt VOR dem Reiterbau: `_zentrale()` gibt dann
+        # None zurueck (die Reiterliste ist noch leer) und faellt auf
+        # `stil.anwenden` zurueck - das ist der gewuenschte Weg.
         self.reiter, self.titel = [], []
+        self.schrift = hz.SCHRIFT_GROESSE
+        n = self.zustand.get("schrift")
+        if isinstance(n, int) and SCHRIFT_MIN <= n <= SCHRIFT_MAX:
+            self.schrift = n
+        # Zwei Anwendungen, zwei Gruende, in dieser Reihenfolge:
+        #   1. die Schrift VOR den Reitern, weil `Tabelle._breiten()` beim
+        #      ersten Befuellen misst und sich dann nicht mehr aendert
+        #      (sonst 100 Abschneidungen bei Max' gespeicherter Schrift 13);
+        #   2. den Stil nochmal NACH den Reitern, weil ein Reiter in
+        #      seinem Aufbau sein eigenes Treeview-Theme setzt und der
+        #      Leitstand ihn ueberschreiben muss. `stil.anwenden` ist fuer
+        #      beides dieselbe Funktion - sie wird hier zweimal gerufen,
+        #      weil die Reihenfolge der beiden Gruende sich nicht
+        #      vereinigen laesst. Nur 2. zu verschieben hat die Reiter ohne
+        #      Farbe auf dem Tisch gelassen (gemessen '#ffffff' statt
+        #      '#181825').
+        stil.anwenden(root, self.schrift)
+
         for titel, klasse in (reiter or REITER):
             r = klasse(self.buch, self)
             self.buch.add(r, text=titel)
             self.reiter.append(r)
             self.titel.append(titel)
+        stil.anwenden(root, self.schrift)   # nach den Reitern: sie setzen
+                                           # ihr eigenes Treeview-Theme
+
         i = self.zustand.get("reiter")
         if isinstance(i, int) and 0 <= i < len(self.reiter):
             self.buch.select(i)
         self.buch.bind("<<NotebookTabChanged>>", self._gewechselt, add="+")
-
-        self.schrift = hz.SCHRIFT_GROESSE
-        n = self.zustand.get("schrift")
-        if isinstance(n, int) and SCHRIFT_MIN <= n <= SCHRIFT_MAX:
-            self.setze_schrift(n, merken=False)
-        stil.anwenden(root, self.schrift)   # nach den Reitern: die Zentrale setzt eigenes
 
         for seq in KUERZEL:
             root.bind(seq, lambda _e, s=seq: self.kuerzel(s))

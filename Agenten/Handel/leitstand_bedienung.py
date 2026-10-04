@@ -27,6 +27,8 @@ SPEICHER_ABSTAND_S = 5.0          # Zustand hoechstens alle 5 s schreiben
 # Spaltenbreiten beim ersten Befuellen aus dem Inhalt; Pfad- und SHA-Spalten
 # bleiben schmal (wer sie braucht, zieht sie auf), lange Texte gedeckelt.
 SCHMAL, BREIT_MAX, BREIT_MUSTER = 90, 420, 200
+REST_MAX = 320              # mehr Rest in der letzten Spalte wird
+                             # Leerraum statt Information
 SCHMALE_SPALTEN = ("datei", "pfad", "sha")
 ZEITLIMIT_S = 120                 # Dialoge: ohne Bedienung zu, nichts geschrieben
 
@@ -335,7 +337,29 @@ class Tabelle(ttk.Frame):
         self._zeigen()
 
     def _breiten(self):
-        """Einmal, beim ersten Befuellen: danach gehoeren die Breiten dem Nutzer."""
+        """Einmal, beim ersten Befuellen: danach gehoeren die Breiten dem Nutzer.
+
+        Die Rechnung ist `handelszentrale.spaltenbreiten` - dieselbe reine
+        Funktion wie in der eingebetteten Handelszentrale, mit derselben
+        Reihenfolge: erst der Textbedarf (Ueberschrift und Texte), dann der
+        Wunsch, dann Kuerzen von hinten nach vorn bis in den Platz, nie
+        unter den Textbedarf.
+
+        Vorher stand hier eine eigene Rechnung ohne Ortsangabe: sie kannte
+        nur `BREIT_MAX = 420` als Deckel, nicht die Breite des Baums, und
+        kuerzte deshalb nie. Gemessen bei Schrift 13 (Max' gespeicherter
+        Wert): 100 abgeschnittene Texte in 15 Tabellen, davon 63 allein in
+        der Positionstabelle.
+
+        Zwei Aenderungen gegenueber dem Aufbau:
+
+        * `stretch=False` auf jeder Spalte. Tk verteilt bei `stretch=True` die
+          Restbreite selbst (gemessen 191 statt 125 px) und verfaelscht damit
+          jede hier gerechnete Breite.
+        * Die Ueberschrift wird mit der Font des Fensters gemessen, nicht mit
+          einer festen Breite - der Leitstand rendert Ueberschriften in
+          Segoe UI, Zeilen in Consolas.
+        """
         self._breiten_da = True
         try:
             f = tkfont.nametofont(stil.TABELLE, self)
@@ -343,13 +367,84 @@ class Tabelle(ttk.Frame):
         except tk.TclError:                      # ohne stil.anwenden (Tests)
             f = kopf = tkfont.nametofont("TkDefaultFont", self)
         muster = self._anzeige[:BREIT_MUSTER]
+
+        texte = {}
         for i, sp in enumerate(self.spalten):
-            inhalt = max((f.measure(str(z[i])) for z in muster), default=0)
-            b = max(kopf.measure(sp + " ▲") + 24, inhalt + 16)
-            schmal = any(s in sp.lower() for s in SCHMALE_SPALTEN)
-            # Restplatz nur fuer die letzte Spalte (meist Erklaerung/Ergebnis)
-            self.baum.column(sp, width=min(b, SCHMAL if schmal else BREIT_MAX),
-                             stretch=i == len(self.spalten) - 1)
+            werte = [str(z[i]) for z in muster if i < len(z) and z[i] not in (None, "")]
+            if werte:
+                texte[sp] = werte
+        kopftexte = {sp: sp + " ▲" for sp in self.spalten}
+
+        # Der Platz aus dem Baum. Tk vermisst ein neu gebautes oder noch
+        # verborgenes Widget erst nach einem `update_idletasks`; ohne das
+        # liefert es 1 px und die Kuerzung unterbleibt grundsaetzlich.
+        platz = 0
+        for _ in range(5):
+            platz = self.baum.winfo_width()
+            if platz >= 100:
+                break
+            try:
+                self.baum.update_idletasks()
+            except Exception:                            # noqa: BLE001
+                break
+            platz = self.baum.winfo_width()
+
+        # Der Wunsch je Spalte: die schmalen Spalten (Datei, Pfad, sha)
+        # bekommen einen eigenen Deckel, der Rest `BREIT_MAX`. Als Liste in
+        # Spaltenreihenfolge, wie `spaltenbreiten` sie erwartet.
+        wunsch = []
+        for sp in self.spalten:
+            schmal = any(x in sp.lower() for x in SCHMALE_SPALTEN)
+            wunsch.append(SCHMAL if schmal else BREIT_MAX)
+
+        breiten = dict(hz.spaltenbreiten(list(self.spalten), kopftexte, wunsch,
+                                        texte, zeichen_breite=None,
+                                        verfuegbar=platz))
+        # Der `SCHMAL`-Deckel ist eine HARTE Obergrenze und damit eine
+        # Ausnahme von der Textbedarfsregel: wer die Spalte braucht, zieht
+        # sie auf (das ist der Zweck von SCHMALE_SPALTEN - lange Pfade und
+        # Hashes zwingen sonst das ganze Fenster auf). Ohne diese Kappung
+        # bekam die Spalte `Datei` bei 80 Zeichen 648 px (gemessen) und
+        # schob alles andere aus dem Fenster.
+        #
+        # Die Regel ist damit: Textbedarf schlaegt Wunsch, aber nicht den
+        # ausdruecklich als schmal benannten Deckel. Genau das prueft
+        # `test_breiten_nach_inhalt_und_pfadspalte_schmal`.
+        schmal = {sp for sp in self.spalten
+                  if any(x in sp.lower() for x in SCHMALE_SPALTEN)}
+        for sp in self.spalten:
+            b = breiten.get(sp, 110)
+            if sp in schmal:
+                b = min(b, SCHMAL)
+            self.baum.column(sp, width=b, stretch=False)
+
+        # Der Restplatz geht an die LETZTE Spalte - als eigene Breite, nicht
+        # ueber `stretch=True`. Der Unterschied ist messbar: Tk verteilt bei
+        # stretch die Restbreite selbst und verfaelscht damit jede hier
+        # gerechnete Breite (191 statt 125 px, Skill desktop-fenster). Die
+        # Breite wird hier einmal ausgerechnet und gesetzt, und das ist auch
+        # die Breite, die der Nutzer ziehen kann.
+        #
+        # Gemessen: die Spurtabelle stand mit 830 px in 1181 px Platz - 351 px
+        # ungenutzt. Ohne das hier wird die Tabelle breiter, aber ihre
+        # Spaltenbreiten bleiben trotzdem berechnet.
+        # Der Restplatz geht an die LETZTE Spalte, aber gedeckelt: eine
+        # Spalte, die mehr als `REST_MAX` bekommen wuerde, liest sich wie
+        # eine Sackgasse aus Leerraum. Grund ist gemessen, nicht vermutet:
+        # die Erklaerungsspalte des Markt-Reiters traegt ganze Saetze (14
+        # Erklaerungen, bis 447 Zeichen, aus prognose_berichte/*.json) und
+        # stand mit 3584 px in einem Baum von 1351 px. Das ist kein
+        # Breitenfehler, sondern ein Text, der in eine Tabellenspalte
+        # gehoert - er umbricht, statt die Spalte zu dehnen.
+        letzte = self.spalten[-1] if self.spalten else None
+        if letzte and platz > 0:
+            gesetzt = sum(
+                self.baum.column(sp, "width") for sp in self.spalten[:-1])
+            rest = min(max(platz - gesetzt, 0), REST_MAX)
+            b = breiten.get(letzte, 110)
+            if letzte in schmal:
+                b = min(b, SCHMAL)
+            self.baum.column(letzte, width=b + rest, stretch=False)
 
     def _zeigen(self):
         gewaehlt = {str(z[0]) for z in self.auswahl()}

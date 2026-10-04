@@ -149,6 +149,12 @@ def main() -> int:
         pass
     ls.Handelszentrale = hz.Handelszentrale    # der Reiter braucht sie
     lei = ls.Leitstand(root)
+    root.update()
+    root.update_idletasks()
+    # Die Geometrie NACH dem Konstruktor und NACH einem Aufbau-Durchgang:
+    # ein Reiter, der beim Aufbau seinen Inhalt holt, vergroessert das Fenster
+    # ueber seine eigene Mindesthoehe hinaus (gemessen 1379x1469 statt
+    # 1280x860). Also erst aufbauen lassen, dann setzen.
     root.geometry("%dx%d-3200-0" % (args.breite, args.hoehe))
     root.update()
     root.update_idletasks()
@@ -182,6 +188,16 @@ def main() -> int:
         # zwei leere Tabellen (gemessen: "Tabellen 2" bei vier Reitern).
         # Der Reiter weiss selbst, wie er sich auffrischt: `_auffrischen`.
         i = list(nb.tabs()).index(pfad)
+        try:
+            lei._auffrischen(i)
+        except Exception:                                    # noqa: BLE001
+            pass
+        # ZWEIMAL auffrischen: manche Reiter lesen ihre Datei beim Bauen
+        # und bekommen den Inhalt erst danach (der Markt-Reiter haelt seine
+        # Berichte in prognose_berichte/, die der erste Durchlauf noch
+        # nicht kennt). Einmal gemessen: die Erkläerungsspalte stand mit
+        # 3584 px gegen 110 px im zweiten Durchlauf - das war der erste
+        # Bauwert, nicht das Ergebnis.
         try:
             lei._auffrischen(i)
         except Exception:                                    # noqa: BLE001
