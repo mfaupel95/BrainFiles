@@ -8,6 +8,7 @@ schreibt dann nichts.
 """
 
 import json
+import re
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -122,6 +123,47 @@ def notaus():
     return "Notaus: keine Spur war scharf — Anfragen verworfen"
 
 
+def freigeben_mehrfach(spuren, stunden):
+    """Mehrere Spuren nacheinander freigeben - eine Meldung je Ergebnis.
+
+    Bewusst NICHT in einer Sperre fuer alle: `freigabefenster.oeffnen()`
+    nimmt die Sperre je Spur. Ein Buendel nacher wuerde beim ersten Erfolg
+    alle anderen verpassen, und der Dauerlauf koennte in der Luecke dazwischen
+    eine Anfrage stellen. Jede Spur einzeln behandeln heisst: jede bekommt
+    ihren eigenen Eintrag, jede kann scheitern, und der Bericht sagt es.
+    """
+    if not spuren:
+        return []
+    ergebnis = []
+    for spur in spuren:
+        ergebnis.append((spur, freigeben(spur, stunden)))
+    return ergebnis
+
+
+def mehrfach_meldung(ergebnis):
+    """Aus [(spur, text)] eine Meldung: erst die Zahl, dann die Misserfolge.
+
+    Wer drei Spuren freigibt und eine scheitert, will beides sehen: die Zahl
+    der Erfolge UND den Grund der einen, die nicht ging.
+    """
+    if not ergebnis:
+        return ""
+    ok = [s for s, t in ergebnis if "scharf für" in t]
+    schlecht = [(s, t) for s, t in ergebnis if "scharf für" not in t]
+    teile = []
+    if ok:
+        teile.append("%d freigegeben" % len(ok))
+    for s, t in schlecht:
+        teile.append("%s: %s" % (s, t))
+    return " | ".join(teile)
+
+
+def _stunden_aus(text):
+    """'xperp scharf für 1:30 h' -> 90 Minuten."""
+    treffer = re.search(r"(\d+):(\d\d) h", text or "")
+    return (int(treffer.group(1)) * 60 + int(treffer.group(2))) if treffer else 0
+
+
 def vorbelegte_stunden(f):
     minuten = f.d.get("anfrage_dauer_minuten") or 60
     return max(1, min(24, round(minuten / 60)))
@@ -150,18 +192,32 @@ def neue_anfragen(gesehen, fenster):
 class FreigabeDialog(ZeitDialog):
     """Ergebnis: ("ja", stunden) | "nein" | "abgebrochen" | "zeitablauf"."""
 
-    def __init__(self, eltern, spur, grenzen, stunden, **kw):
-        super().__init__(eltern, "Freigabe %s" % spur, **kw)
+    def __init__(self, eltern, spur, grenzen, stunden, spuren=None, **kw):
+        # spuren=None -> Einzel spur (alte Form). Sonst Mehrfachauswahl mit
+        # einer gemeinsamen Dauer: 05.10.2026 Auftrag Max "im Freigabemenue
+        # die Funktion Spuren auch freizugeben" (mehrere auf einmal).
+        self.spuren = tuple(spuren) if spuren else (spur,)
+        titel = ("Freigabe %d Spuren" % len(self.spuren) if len(self.spuren) > 1
+                 else "Freigabe %s" % spur)
+        super().__init__(eltern, titel, **kw)
         i = self.inhalt
-        ttk.Label(i, text="Freigabe %s?" % spur,
+        ttk.Label(i, text=("Freigabe %d Spuren?" % len(self.spuren)
+                           if len(self.spuren) > 1 else "Freigabe %s?" % spur),
                   style="Titel.TLabel").grid(row=0, column=0,
                                              columnspan=2, sticky="w")
+        if len(self.spuren) > 1:
+            ttk.Label(i, text=", ".join(self.spuren[:6])
+                      + (" …" if len(self.spuren) > 6 else ""),
+                      foreground=stil.FARBEN["hinweis"]).grid(
+                          row=1, column=0, columnspan=2, sticky="w")
+        r_start = 2
         ttk.Label(i, text="Es gelten die Grenzen aus wachen.json:").grid(
-            row=1, column=0, columnspan=2, sticky="w", pady=(6, 2))
-        for n, (name, wert) in enumerate(grenzen, start=2):
-            ttk.Label(i, text=name).grid(row=n, column=0, sticky="w", padx=(10, 20))
+            row=r_start, column=0, columnspan=2, sticky="w", pady=(6, 2))
+        for n, (name, wert) in enumerate(grenzen, start=r_start + 1):
+            ttk.Label(i, text=name).grid(row=n, column=0, sticky="w",
+                                         padx=(10, 20))
             ttk.Label(i, text=wert).grid(row=n, column=1, sticky="w")
-        r = len(grenzen) + 2
+        r = r_start + len(grenzen) + 1
         ttk.Label(i, text="Dauer (Stunden):").grid(row=r, column=0, sticky="w",
                                                    pady=(8, 0))
         self.w_stunden = tk.IntVar(value=stunden)
@@ -188,7 +244,7 @@ class FreigabenReiter(ttk.Frame):
         self.ls, self.dialog, self.frage = leitstand, dialog, frage
         self._fenster, self._gesehen = {}, set()
         self.tabelle = Tabelle(self, SPALTEN, leitstand.zustand, "freigaben",
-                               hoehe=14)
+                               hoehe=14, auswahl="extended")
         self.tabelle.pack(fill="both", expand=True)
         self.tabelle.baum.bind("<<TreeviewSelect>>", lambda _e: self._knoepfe())
         leiste = ttk.Frame(self)
@@ -237,6 +293,24 @@ class FreigabenReiter(ttk.Frame):
         a = self.tabelle.auswahl()
         return a[0][0] if a else None
 
+    def gewaehlt_viele(self):
+        """Alle angeklickten Spuren. Mit Strg/Klick im Baum Mehrfachauswahl."""
+        return [z[0] for z in self.tabelle.auswahl()]
+
+    def _wartende(self, spuren):
+        """Nur Spuren mit wartender Anfrage - ohne Anfrage gibt es nichts zu
+        bestaetigen. So ein Dialog, der eine Spur ohne Anfrage nennt, waere
+        eine Frage, die keiner beantworten kann."""
+        wartend = []
+        for spur in spuren:
+            try:
+                f = ff.lade(spur)
+                if f.anfrage_offen():
+                    wartend.append(spur)
+            except Exception:
+                continue
+        return wartend
+
     def _knoepfe(self):
         spur = self.gewaehlt()
         f = (self._fenster.get(spur) or ff.Fenster(spur, {})) if spur else None
@@ -244,12 +318,18 @@ class FreigabenReiter(ttk.Frame):
             setze_knopf(self.k[name], self.tips[name], erlaubt, grund)
 
     def freigeben_klick(self):
-        spur = self.gewaehlt()
+        # Mehrfachauswahl: mit Strg oder Shift im Baum anklicken (05.10.2026,
+        # Auftrag Max: "im Freigabemenue die Funktion Spuren auch freizugeben").
+        viele = self.gewaehlt_viele()
+        spur = viele[0] if viele else None
         try:
             f = ff.lade(spur) if spur else None
             wartet = bool(f and f.anfrage_offen())
         except Exception as e:
             self.ls.melde(_fehler("Freigabe", e))
+            return
+        if len(viele) > 1:
+            self._freigeben_viele(viele)
             return
         if not wartet:
             self.ls.melde("%s: keine wartende Anfrage — nichts geändert" % spur)
@@ -263,6 +343,35 @@ class FreigabenReiter(ttk.Frame):
             self.ls.melde(ablehnen(spur))
         elif erg == "zeitablauf":
             self.ls.melde("Freigabe-Dialog ohne Bedienung geschlossen — nichts geändert")
+        else:
+            self.ls.melde("Freigabe abgebrochen — nichts geändert")
+        self.refresh()
+
+    def _freigeben_viele(self, viele):
+        """Mehrere Spuren in einem Dialog - eine Dauer fuer alle."""
+        wartend = self._wartende(viele)
+        if not wartend:
+            self.ls.melde("Keine der gewählten Spuren hat eine wartende "
+                          "Anfrage — nichts geändert")
+            self.refresh()
+            return
+        # Die Dauer ist die kuerzeste der Anfragen: eine Spur mit 30 Minuten
+        # Anfrage wuerde sonst eine Stunde bekommen, die niemand bestellt hat.
+        try:
+            stunden = min(vorbelegte_stunden(ff.lade(s)) for s in wartend)
+        except Exception:
+            stunden = 1
+        grenzen = []
+        for name, wert in grenz_zeilen(wartend[0]):
+            grenzen.append((name if len(wartend) == 1
+                            else "%s" % name, wert))
+        erg = self.dialog(self.ls.root, wartend[0], grenzen, stunden,
+                          spuren=wartend).zeige_modal()
+        if isinstance(erg, tuple) and erg[0] == "ja":
+            self.ls.melde(mehrfach_meldung(freigeben_mehrfach(wartend, erg[1])))
+        elif erg == "zeitablauf":
+            self.ls.melde("Freigabe-Dialog ohne Bedienung geschlossen — "
+                          "nichts geändert")
         else:
             self.ls.melde("Freigabe abgebrochen — nichts geändert")
         self.refresh()

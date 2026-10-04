@@ -347,5 +347,132 @@ class TabelleBaueinheitTest(unittest.TestCase):
         self.assertIn("hz.rad_selbst", quelle)
 
 
+class Spaltenfilter(unittest.TestCase):
+    """Freitext filtert in ALLEN Spalten; der Spaltenfilter in genau einer.
+
+    Auftrag Max (05.10.2026): "die PnL% etc als Auswahl in den Listen zum
+    Filtern". Ohne Vergleichszeichen ist es ein Teilstring, mit `>`/`<`/`=`
+    eine Zahl - sonst waere "12,5 %" nicht gegen "3 %" zu halten.
+    """
+
+    SP = ("Spur", "Runden", "Treffer %", "Ergebnis")
+
+    def t(self, bedingung, spalte="Treffer %"):
+        return lb.passt_spalte(self.zeile, self.SP, spalte, bedingung)
+
+    def setUp(self):
+        self.zeile = ("moondev_signalwelle", "16", "56 %", "+35.72 USD")
+
+    def test_ohne_bedingung_passt_alles(self):
+        for zelle in ("", None):
+            self.assertTrue(self.t(zelle))
+
+    def test_teilstring_in_einer_spalte(self):
+        self.assertTrue(self.t("signalwelle", "Spur"))
+        self.assertFalse(self.t("signalwelle", "Ergebnis"))
+
+    def test_groesser_als(self):
+        self.assertTrue(self.t(">50"))
+        self.assertFalse(self.t(">60"))
+
+    def test_kleiner_als(self):
+        self.assertTrue(self.t("<60"))
+        self.assertFalse(self.t("<50"))
+
+    def test_gleich_und_vergleich(self):
+        self.assertTrue(self.t("=56"))
+        self.assertTrue(self.t(">=56"))
+        self.assertTrue(self.t("<=56"))
+        self.assertFalse(self.t("<56"))
+
+    def test_negative_ergebnis_filtern(self):
+        zeile = ("kraken", "9", "40 %", "-12.30 USD")
+        self.assertTrue(lb.passt_spalte(zeile, self.SP, "Ergebnis", "<0"))
+        self.assertFalse(lb.passt_spalte(zeile, self.SP, "Ergebnis", ">0"))
+
+    def test_zahl_aus_text_mit_einheit_und_prozent(self):
+        self.assertEqual(lb.zahl_aus_text("12,5 %"), 12.5)
+        self.assertEqual(lb.zahl_aus_text("35.72 USD"), 35.72)
+        self.assertEqual(lb.zahl_aus_text("-3,10"), -3.1)
+        self.assertEqual(lb.zahl_aus_text("+2 %"), 2.0)
+        self.assertEqual(lb.zahl_aus_text("1.234,5"), 1234.5)
+        self.assertEqual(lb.zahl_aus_text("1,234.5"), 1234.5)
+        self.assertIsNone(lb.zahl_aus_text("Papier"))
+        self.assertIsNone(lb.zahl_aus_text(""))
+
+    def test_vergleich_ohne_zahl_treift_nichts(self):
+        # ">Papier" ist keine Zahl - stilles Nichts-Finden waere eine
+        # Falschaussage; die Zeile fliegt raus und man sieht es.
+        self.assertFalse(self.t(">Papier"))
+
+    def test_unbekannte_spalte_blendet_nicht_aus(self):
+        self.assertTrue(self.t(">1000", "Gibt es nicht"))
+
+    def test_fehlende_zelle_blendet_nicht_aus(self):
+        kurz = ("kraken", "9")
+        self.assertTrue(lb.passt_spalte(kurz, self.SP, "Treffer %", ">1"))
+
+
+class SpaltenfilterAmBaum(unittest.TestCase):
+    def setUp(self):
+        try:
+            self.root = tk.Tk()
+        except tk.TclError as e:
+            self.skipTest("kein Bildschirm: %s" % e)
+        self.root.withdraw()
+        self.addCleanup(self._zu)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.zustand = lb.Zustand(Path(self.tmp.name) / "z.json")
+
+    def _zu(self):
+        try:
+            self.root.destroy()
+        except tk.TclError:
+            pass
+
+    def tab(self):
+        t = lb.Tabelle(self.root, ("Spur", "Treffer %", "Ergebnis"),
+                       self.zustand, "probe")
+        t.setze([("signalwelle", "56 %", "+35.72 USD"),
+                 ("marktlage", "0 %", "-5.02 USD"),
+                 ("kraken", "67 %", "+12.00 USD")])
+        return t
+
+    def test_die_spalten_liste_ist_die_der_tabelle(self):
+        t = self.tab()
+        self.assertEqual(list(t.cmb_spalte.cget("values"))[1:],
+                         list(t.spalten))
+
+    def test_filteren_nach_spalte_und_wert(self):
+        t = self.tab()
+        t.w_spalte.set("Treffer %")
+        t.w_wert.set(">50")
+        # Die Reihenfolge bleibt die der Quelle - der Filter sortiert nicht.
+        # Sortieren macht der Spaltenkopf, das ist eine eigene Sache.
+        self.assertEqual([z[0] for z in t.sichtbare()],
+                         ["signalwelle", "kraken"])
+
+    def test_beide_filter_gleichzeitig(self):
+        t = self.tab()
+        t.w_filter.set("kraken")
+        t.w_spalte.set("Ergebnis")
+        t.w_wert.set("<0")
+        self.assertEqual(t.sichtbare(), [])      # kraken hat +12
+        t.w_wert.set(">0")
+        self.assertEqual([z[0] for z in t.sichtbare()], ["kraken"])
+
+    def test_filter_weg_leert_alles(self):
+        t = self.tab()
+        t.w_filter.set("a")
+        t.w_spalte.set("Ergebnis")
+        t.w_wert.set("<0")
+        t._filter_weg()
+        self.assertEqual(len(t.sichtbare()), 3)
+        self.assertEqual(t.w_filter.get(), "")
+        self.assertEqual(t.w_spalte.get(), "")
+        self.assertEqual(t.w_wert.get(), "")
+
+
 if __name__ == "__main__":
     unittest.main()

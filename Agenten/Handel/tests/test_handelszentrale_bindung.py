@@ -368,8 +368,22 @@ class SpurtabelleTest(unittest.TestCase):
     def test_unlesbarer_stand_ist_unbekannt_nicht_ok(self):
         self.assertEqual(self._spanne({}, {})["herzschlag"], "unbekannt")
 
-    def test_zeile_hat_sieben_zellen(self):
-        self.assertEqual(len(gui.spur_zeile(self._spanne({}, {}))), 7)
+    def test_zeile_hat_so_viele_zellen_wie_spalten(self):
+        """Nicht eine feste Zahl, sondern die EIGENSCHAFT (30.09.2026/05.10.).
+
+        Der Test stand hier auf "7", als die Zentrale drei Bilanzspalten
+        bekam (Auftrag Max "die PnL% etc als Auswahl"). Eine feste Zahl meldet
+        jede Spaltenerweiterung als Fehler und jede Kuerzung als Erfolg - sie
+        prueft nicht, ob die Anzeige stimmt, sondern nur, dass sie unveraendert
+        ist. Bei einem Tuple zu kurz verliert ttk.Treeview die hinteren Spalten
+        OHNE Fehlermeldung, das ist das, was hier auffallen muss.
+        """
+        zeile = gui.spur_zeile(self._spanne({}, {}))
+        spalten = gui.spalten_der_spurtabelle()
+        self.assertEqual(len(zeile), len(spalten))
+        # und jede Spalte hat auch wirklich eine Ueberschrift
+        self.assertEqual(len(set(spalten)), len(spalten), "Doppelte Spalte")
+        self.assertTrue(all(s for s in spalten), "Leere Spaltenueberschrift")
 
 
 class VerbotsnamenTest(unittest.TestCase):

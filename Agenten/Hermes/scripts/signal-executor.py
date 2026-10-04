@@ -150,7 +150,20 @@ def ausfuehren(spur, eintrag):
     if not (w.get("freigabe") or {}).get("erfuellt"):
         return False, "%s: freigabe nicht erteilt, Auftrag bleibt" % spur
     # Orderweg laden
-    from spur_buch import orderweg, venue_inst
+    #
+    # WICHTIG (05.10.2026): HANDEL muss VOR dem Import im sys.path stehen.
+    # `spur_buch` ist eine flache Datei im Handel-Ordner und kein Paket; der
+    # erste Import stand vorher vor jedem `sys.path.insert` und warf
+    # ModuleNotFoundError - der Executor brach bei JEDER Ausfuehrung ab und
+    # keine Spur mit trigger_modus=signal kam je zu einem Einstieg. Die drei
+    # Tore weiter unten machten es richtig; nur dieser erste stand falsch.
+    if HANDEL not in sys.path:
+        sys.path.insert(0, HANDEL)
+    try:
+        from spur_buch import orderweg, venue_inst
+    except ImportError:
+        return False, ("spur_buch.py nicht erreichbar (%s nicht im Pfad) - "
+                       "im Zweifel KEINE Order" % HANDEL)
     weg = orderweg(w)
     if weg is None:
         return False, "%s: kein Orderweg fuer boerse=%s" % (spur, w.get("boerse"))

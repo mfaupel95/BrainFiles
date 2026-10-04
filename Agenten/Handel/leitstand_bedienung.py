@@ -276,6 +276,65 @@ def setze_knopf(knopf, tip, erlaubt, grund):
     tip.setze("" if erlaubt else grund)
 
 
+def passt_spalte(zeile, spalten, spaltenname, bedingung):
+    """Trifft die Bedingung auf genau EINER Spalte zu?
+
+    Bedingung ist ein Freitext, aber mit drei Anweisungen, weil eine Zahl
+    anders verglichen wird als ein Wort:
+
+    * ``>50``  ``< 0``  ``>= 8``  ``<=3.5``  ``=7`` - numerisch. "10 USD"
+      und "-2,5 %" werden als Zahl gelesen, Einheiten und Prozentzeichen
+      sind egal. Ohne Zahl (etwa ein Wort) greift der Vergleich NICHT.
+    * sonst: Teilstring, wie der Freitext-Filter, aber nur in dieser Spalte.
+
+    Leerer Text heisst "keine Bedingung" - dann passt jede Zeile.
+    """
+    if not bedingung:
+        return True
+    if spaltenname not in spalten:
+        return True                     # unbekannte Spalte: nicht ausblenden
+    i = spalten.index(spaltenname)
+    if i >= len(zeile):
+        return True                     # fehlende Zelle: nicht ausblenden
+    zelle = zeile[i]
+    zahler = re.match(r"\s*(>=|<=|==|=|>|<)\s*(.+?)\s*$", str(bedingung))
+    if zahler:
+        op, roh = zahler.group(1), zahler.group(2)
+        zahl = zahl_aus_text(roh)
+        if zahl is None:
+            return False                # ">x" ist keine Zahl: nichts passt
+        ist = zahl_aus_text(zelle)
+        if ist is None:
+            return False                # Zelle ist kein Text mit Zahl
+        return {"<": ist < zahl, ">": ist > zahl,
+                "<=": ist <= zahl, ">=": ist >= zahl,
+                "=": ist == zahl, "==": ist == zahl}[op]
+    return str(bedingung).lower() in str(zelle).lower()
+
+
+def zahl_aus_text(text):
+    """Die erste Zahl in einem Text: '12,5 %' -> 12.5, '-3,10 USD' -> -3.1."""
+    if isinstance(text, (int, float)) and not isinstance(text, bool):
+        return float(text)
+    treffer = re.search(r"[-+]?\d[\d.,]*", str(text))
+    if not treffer:
+        return None
+    roh = treffer.group(0).replace(" ", "")
+    # Deutsche Schreibweise: 1.234,5 -> 1234.5 ; 1,234.5 -> 1234.5
+    if "," in roh and "." in roh:
+        roh = roh.replace(".", "").replace(",", ".") if roh.rfind(",") > roh.rfind(".") \
+            else roh.replace(",", "")
+    elif "," in roh:
+        # Komma ist Dezimal, wenn danach ein oder zwei Ziffern kommen
+        roh = roh.replace(",", ".") if len(roh.split(",")[-1]) in (1, 2) else roh.replace(",", "")
+    elif roh.count(".") > 1:
+        roh = roh.replace(".", "")
+    try:
+        return float(roh)
+    except ValueError:
+        return None
+
+
 class Tabelle(ttk.Frame):
     """Treeview mit Filterfeld, Sortieren per Spaltenkopf, Kopieren und CSV."""
 
@@ -296,6 +355,26 @@ class Tabelle(ttk.Frame):
         self.w_filter.trace_add("write", lambda *_: self._zeigen())
         ttk.Entry(kopf, textvariable=self.w_filter, width=24).pack(side="left",
                                                                    padx=4)
+        # SPALTEN-FILTER (05.10.2026, Auftrag Max: "die PnL% etc als Auswahl
+        # in den Listen zum Filtern"). Freitext-Filter sucht in ALLEN Spalten;
+        # wer gezielt eine Zahl sucht, will die Spalte WAEHLEN und den Wert
+        # eingeben - etwa "Treffer % > 50" oder "Ergebnis < 0".
+        ttk.Label(kopf, text="  |").pack(side="left")
+        self.w_spalte = tk.StringVar()
+        self.w_wert = tk.StringVar()
+        self.w_spalte.trace_add("write", lambda *_: self._zeigen())
+        self.w_wert.trace_add("write", lambda *_: self._zeigen())
+        self.cmb_spalte = ttk.Combobox(kopf, textvariable=self.w_spalte,
+                                        values=("",) + self.spalten,
+                                        state="readonly", width=18)
+        self.cmb_spalte.pack(side="left", padx=(4, 2))
+        self.cmb_spalte.bind("<<ComboboxSelected>>", lambda _e: self._zeigen())
+        self.ent_wert = ttk.Entry(kopf, textvariable=self.w_wert, width=16)
+        self.ent_wert.pack(side="left")
+        self.lbl_wert = ttk.Label(kopf, text="enthält")
+        self.lbl_wert.pack(side="left", padx=2)
+        ttk.Button(kopf, text="Filter weg", command=self._filter_weg,
+                   width=11).pack(side="left", padx=4)
         ttk.Button(kopf, text="CSV …", command=self.csv_speichern).pack(side="right")
         ttk.Button(kopf, text="Kopieren", command=self.kopieren).pack(side="right",
                                                                      padx=4)
@@ -446,10 +525,18 @@ class Tabelle(ttk.Frame):
                 b = min(b, SCHMAL)
             self.baum.column(letzte, width=b + rest, stretch=False)
 
+    def _filter_weg(self):
+        """Alle drei Filterfelder leeren - ein Knopf fuer alle drei."""
+        self.w_filter.set("")
+        self.w_spalte.set("")
+        self.w_wert.set("")
+
     def _zeigen(self):
         gewaehlt = {str(z[0]) for z in self.auswahl()}
+        spalte, bedingung = self.w_spalte.get(), self.w_wert.get()
         paare = [(z, t, a) for z, t, a in zip(self._alle, self._tags, self._anzeige)
-                 if passt(z, self.w_filter.get())]
+                 if passt(z, self.w_filter.get())
+                 and passt_spalte(z, self.spalten, spalte, bedingung)]
         if self.sortierung:
             i = self.spalten.index(self.sortierung[0])
             paare.sort(key=lambda p: sortier_schluessel(p[0][i]),

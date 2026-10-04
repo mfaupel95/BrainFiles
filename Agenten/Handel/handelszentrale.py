@@ -433,6 +433,75 @@ def spur_stand(spur, zustand, wachen, fenster, jetzt):
     }
 
 
+def spalten_der_spurtabelle():
+    """Die Spaltenschluessel der Spurtabelle - aus dem Aufbau, nicht geraten.
+
+    `spur_zeile` und die Tabelle muessen dieselbe Liste benutzen. Stand diese
+    Liste zweimal in der Datei, war eine Aenderung an der einen wirkungslos,
+    ohne Fehlermeldung (bei `spur_zeile` stand genau das bis 30.09.2026 zweimal
+    da). Deshalb kommt die Liste aus EINER Funktion, und der Test liest sie
+    von dort.
+    """
+    return tuple(SPUREN_SPALTEN)
+
+
+# Die Reihenfolge ist Vertrag: `spur_zeile` liefert die Zellen in genau dieser
+# Reihenfolge. Zwischen "pos" und "herzschlag" stehen seit 05.10.2026 die drei
+# Bilanzspalten (Runden, Treffer %, Ergebnis) - Auftrag Max: "die PnL% etc als
+# Auswahl in den Listen zum Filtern".
+SPUREN_SPALTEN = ("spur", "modus", "fenster", "stand", "pos", "runden",
+                  "treffer", "pnl", "herzschlag", "handel")
+SPUREN_KOPF = {"spur": "Spur", "modus": "Modus", "fenster": "Fenster",
+               "stand": "Stand", "pos": "Pos", "runden": "Runden",
+               "treffer": "Treffer %", "pnl": "Ergebnis",
+               "herzschlag": "Herzschlag", "handel": "handel_erlaubt"}
+# Wunschbreiten in RANGfolge, nicht je Spalte: der Name zuerst, dann die
+# Freigabe-Uhr als Hauptspalte.
+SPUREN_WUNSCH = (200, 90, 150, 90, 60, 70, 80, 110, 110, 130)
+
+
+def bilanz_zellen(spur, fenster=None):
+    """Runden, Treffer %, Ergebnis als drei Zellen fuer die Spurtabelle.
+
+    Ein VORHANDENER Aufruf: die Handelszentrale zeigte nie eine Bilanz, und
+    wer eine Spur beurteilen will, muesste ein zweites Fenster aufmachen.
+    Quelle ist `auswertung_alle.kennzahlen_fuer` - dieselbe wie im
+    Tagesbericht, damit beide dieselbe Zahl zeigen.
+
+    Fehlt eine Zahl (kein Journal, kaputte Datei), steht ein "?" dort. Eine
+    falsche Zahl waere schlimmer als eine fehlende.
+
+    `fenster` schneidet auf Tage zurueck (7 = die letzte Woche); ohne Angabe
+    zaehlt alles, wie im Tagesbericht.
+    """
+    if fenster is None:
+        z = {}
+        try:
+            z = auswertung_alle.kennzahlen_fuer(spur) or {}
+        except Exception:                        # noqa: BLE001
+            z = {}
+    else:
+        z = {}
+        try:
+            import datetime as _dt
+            bis = _dt.datetime.now(_dt.timezone.utc)
+            z = auswertung_alle.kennzahlen_fuer(
+                spur, bis - _dt.timedelta(days=int(fenster)), bis) or {}
+        except Exception:                        # noqa: BLE001
+            z = {}
+    n = z.get("n")
+    runden = str(n) if isinstance(n, int) and n > 0 else "?"
+    t_pct = z.get("treffer_pct")
+    treffer = "%d %%" % round(t_pct) if isinstance(t_pct, (int, float)) and n else "?"
+    erg = z.get("ergebnis")
+    if isinstance(erg, (int, float)) and n:
+        vorzeichen = "+" if erg > 0 else ""
+        pnl = "%s%.2f %s" % (vorzeichen, erg, z.get("einheit") or "USD")
+    else:
+        pnl = "?"
+    return runden, treffer, pnl
+
+
 def spur_zeile(stand):
     """Die Zellen der Spurtabelle, in Spaltenreihenfolge.
 
@@ -442,12 +511,16 @@ def spur_zeile(stand):
     haette gewirkt wie keine. Eine Fassung, ein Ort.
     """
     erlaubt = stand["handel_erlaubt"]
+    runden, treffer, pnl = bilanz_zellen(stand["spur"], stand.get("fenster_tage"))
     return (
         stand["spur"],
         stand["modus"],
         stand["fenster"],
         stand["stand"],
         str(stand["positionen"]),
+        runden,
+        treffer,
+        pnl,
         stand["herzschlag"],
         ("ja" if erlaubt else "nein") if erlaubt is not None else "?",
     )
@@ -1533,15 +1606,13 @@ class Handelszentrale:
         t_spur_label.pack(fill="x", padx=10)
         r1 = tk.Frame(seite, bg=FARBEN["blatt"])
         r1.pack(fill="x", padx=10)
-        sp_spur = ("spur", "modus", "fenster", "stand", "pos", "herzschlag",
-                   "handel")
-        kopf_s = {"spur": "Spur", "modus": "Modus", "fenster": "Fenster",
-                  "stand": "Stand", "pos": "Pos", "herzschlag": "Herzschlag",
-                  "handel": "handel_erlaubt"}
-        # Wunschbreiten in RANGfolge, nicht je Spalte: der Name zuerst
-        # (dort stand "nautilus_kraken_futures" abgeschnitten), die
-        # Freigabe-Uhr als Hauptspalte dahinter.
-        wunsch_s = [200, 90, 150, 90, 60, 110, 130]
+        # Die Spalten kommen aus EINER Quelle (05.10.2026): stand die Liste
+        # zweimal in der Datei, waere eine Erweiterung an der einen Stelle
+        # wirkungslos - ohne Fehlermeldung, weil ttk.Treeview ein Tuple zu
+        # kurz einfach abschneidet.
+        sp_spur = spalten_der_spurtabelle()
+        kopf_s = SPUREN_KOPF
+        wunsch_s = list(SPUREN_WUNSCH)
         # Zeilenweise Vorgabe statt `height=len(SPUREN)`: die Tabelle hatte
         # 42 Zeilen und damit eine angeforderte Hoehe ueber jedem Fenster -
         # die letzten Spuren waren unerreichbar. Zwolf Zeilen plus Leiste:
