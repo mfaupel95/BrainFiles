@@ -217,7 +217,12 @@ def test_rueckschritt_gegen_head_wird_nicht_uebernommen():
     try:
         fremdarbeit_anlegen(w)   # HEAD lernt die neue Fassung von datei_a
         assert lauf(w).returncode == 0
-        assert git("show", "HEAD:datei_a.txt", cwd=w) == "a geaendert"
+        # Blob-ID statt Textvergleich (T-318). 'git show' liefert den INHALT
+        # mit Zeilenumbruch, die git()-Hilfe strippt - der Vergleich hing am
+        # Zeilenumbruch und nicht am Verhalten und meldete eine korrekte
+        # Routine als Fehler. Die Blob-ID ist byte-genau und unempfindlich.
+        kopfA = git("rev-parse", "HEAD:datei_a.txt", cwd=w)
+        assert len(kopfA) == 40, "datei_a.txt fehlt in HEAD: %r" % kopfA
 
         # Zweite, RUECKFAELLIGE Sitzung schreibt die ALTE Fassung zurueck
         # und laesst sie ruhen - der klassische Rueckschritt-Fall.
@@ -232,7 +237,8 @@ def test_rueckschritt_gegen_head_wird_nicht_uebernommen():
             "Routine nennt den Rueckschritt nicht: %r %r" % (a.stdout, a.stderr)
         assert git("rev-parse", "HEAD", cwd=w) == vorher, \
             "Rueckschritt wurde committet - Reparatur aufgehoben!"
-        assert git("show", "HEAD:datei_a.txt", cwd=w) == "a geaendert"
+        assert git("rev-parse", "HEAD:datei_a.txt", cwd=w) == kopfA, \
+            "Inhalt von HEAD:datei_a.txt hat sich trotz Ablehnung geaendert"
         # Abgelehnte Datei liegt weiter als Aenderung im Arbeitsbaum
         assert " datei_a.txt" in git("status", "--porcelain", cwd=w)
     finally:
