@@ -1,5 +1,16 @@
 # Plattenplatz-Pruefung (Task 6 des Plans vom 30.09.2026, Vorfall T-228).
 #
+# BUS: Bibliothek - dieser Teilschritt ist KEIN eigener periodischer Lauf.
+# Er wird ausschliesslich aus systempruefung.ps1 Abschnitt 7b gestartet
+# (`& powershell -NoProfile -File $pp -OhneOrdner`, bei Warnung ohne den
+# Schalter), und die geplante Aufgabe gehoert der Systempruefung
+# (MaxHirn-Systempruefung) - eine eigene Plattenplatz-Aufgabe gibt es nicht.
+# Die Bus-Meldung traegt deshalb die Systempruefung: eine eigene hier erzeugte
+# wuerde denselben Befund ZWEIMAL ins Journal schreiben, weil die Datei bei
+# Bedarf zweimal laeuft (schnell, dann mit Ordner). test_anbindung_routinen.py
+# nimmt genau darum jede Datei mit dieser Kennzeichnung aus - die Ausnahme
+# steht in der Datei selbst und ist damit sichtbar.
+#
 # Meldet freien Platz je Laufwerk, den freien Commit (Commit-Grenze minus
 # zugesagter Speicher) und die drei groessten Wachstumsordner auf C:.
 # Warnt bei C: unter 60 GB frei oder freiem Commit unter 10 GB.
