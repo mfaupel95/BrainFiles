@@ -66,11 +66,37 @@ class Anwenden(unittest.TestCase):
 class KeineFestenWerte(unittest.TestCase):
     """Schriften und Farben stehen nur im Stil, sonst skaliert der Wechsel nicht mit."""
 
-    DATEIEN = sorted(p for p in HIER.glob("leitstand*.py") if p.name != "leitstand_stil.py")
+    # Fensterdateien - keine Werkzeuge. `glob("leitstand*.py")` fängt
+    # seit dem 04.10.2026 auch die Messsonden mit
+    # (`leitstand_messprobe.py`, `leitstand_palette_check.py`), und die
+    # enthalten zwangslaeufig Hexwerte und Fonttupel, weil sie
+    # gerade das pruefen. Ein Werkzeug baut kein Fenster; die Regel
+    # gilt fuer die Fenster.
+    # Ohne fuehrenden Unterstrich: die Dateien heissen
+    # `leitstand_messprobe.py` und `leitstand_palette_check.py`, ein
+    # Muster "_messprobe" traf also nie und die Liste blieb leer -
+    # der Test lief gegen NICHTS und war gruen.
+    # Achtung: ein Name im Klassenkoerper ist im genexpr einer
+    # KLASSENATTRIBUT-Liste nicht sichtbar (NameError, gemessen am
+    # 04.10.2026). Deshalb wird die Werkzeugliste beim Aufruf
+    # gebildet und nicht beim Anlegen der Liste.
+    DATEIEN = sorted(p for p in HIER.glob("leitstand*.py")
+                      if p.name != "leitstand_stil.py"
+                      and "messprobe" not in p.name
+                      and "palette_check" not in p.name
+                      and "check" not in p.name)
 
     def _baeume(self):
         for p in self.DATEIEN:
             yield p.name, ast.parse(p.read_text(encoding="utf-8"))
+
+    def test_die_liste_ist_nicht_leer(self):
+        """Gegenprobe: ein Muster, das nichts trifft, macht beide
+        Tests gruen, ohne zu pruefen. Genau das ist beim Bauen
+        passiert (`endswith("_messprobe")` traf nie)."""
+        self.assertGreaterEqual(len(self.DATEIEN), 5)
+        self.assertIn("leitstand_markt.py",
+                      [p.name for p in self.DATEIEN])
 
     def test_kein_font_tupel_mit_zahl(self):
         treffer = []

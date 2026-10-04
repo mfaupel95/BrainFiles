@@ -30,7 +30,13 @@ FARBEN = {
     "auswahl": "#45475a",     # Ausgewaehlte Zeile, aktiver Tab, Hover
     # Schrift
     "text": "#cdd6f4",
-    "matt": "#a6adc8",        # Nebeninfo, Achsen, Fusszeile
+    "matt": "#a6adc8",        # Nebeninfo, Achsen, Fusszeile (7.37:1 auf bg)
+    # Der hellere Ton fuer Nebeninfo, die auf einer FLAECHE steht (Tabellen-
+    # koepfe, Zellen): 9.91:1 gegen blatt, 9.92:1 gegen bg. Bis 05.10.2026
+    # gab der Leitstand dafuer einen zweiten Wert unter demselben Namen -
+    # ein Name, zwei Werte, zwei hausweite Bedeutungen. Jetzt ist es eine
+    # eigene Farbe mit eigener Bedeutung, gemessen mit kontrast_messen.py.
+    "matt_flache": "#bac2de",
     # Bedeutung
     "akzent": "#89b4fa",      # Titel, Tabellenkopf, aktiver Tab
     "blau": "#89b4fa",        # Einstiegslinie im Chart (= akzent)

@@ -12,15 +12,46 @@ from tkinter import font as tkfont, ttk
 
 import handelszentrale as hz
 
+# Zwei Regeln, beide am 04.10.2026 am Fenster gemessen
+# (`leitstand_palette_check.py`):
+
+# 1. `matt` hat hier einen ANDEREN Wert als die Hausquelle - ein Name, zwei
+#    Werte, zwei hausweite Bedeutungen. Das ist der eigentliche
+#    Wartungsfehler; der hellere Ton (#bac2de statt #a6adc8, 9.91:1 statt
+#    7.37:1 auf der Datenflaeche) war eine Begruendung, kein Zufall, und
+#    bleibt - nur mit ausdruecklichem Grund an der Quelle, damit ein
+#    hausweites Umstellen eine bewusste Entscheidung bleibt.
+# 2. `wahl` und `rand` waren zwei Namen fuer denselben Wert, den die Quelle
+#    `auswahl` nennt. Drei Namen, eine Farbe - jetzt zwei, weil `rand` der
+#    Quellenschluessel ist.
+#
+# `gedaempft` ist der Vordergrund GESPERRTER Knoepfe und der Grundlinie:
+# ein gesperrter Knopf soll lesbar bleiben und aus der Reihe fallen, der
+# Wert unter dem Standardtext ist dafuer die Absicht (4.75:1 auf der
+# Datenflaeche). `zebra`, `dunkelgelb`, `rand` und `wahl` sind Flaechen,
+# Rahmen und Auswahl - sie tragen keinen Text und werden nicht gegen
+# 4.5:1 geprueft.
 FARBEN = dict(hz.FARBEN,
-              matt="#bac2de",          # heller als in der Zentrale: lesbar auf bg
+              # `matt_flache` kommt aus der Quelle (9.91:1 auf blatt). Bis
+              # 05.10.2026 stand hier `matt="#bac2de"` und ueberschrieb den
+              # Quellwert - dieselbe Farbe unter zwei Namen. Der hellere Ton
+              # ist geblieben, nur mit eigener Bedeutung.
+              matt=hz.FARBEN["matt_flache"],
               gedaempft="#7f849c",     # Grundlinie, gesperrte Knoepfe
-              wahl="#45475a",          # Auswahl, aktiver Reiter
-              rand="#45475a",
+              # `auswahl` kommt aus der Hausquelle; `wahl` war ein zweiter
+              # Name fuer denselben Wert (#45475a) und wird nicht mehr
+              # gesetzt. Die Verwendungen (Text-Auswahl, Combobox-Liste,
+              # Treeview, Reiter, Rollbalken) stehen jetzt auf `auswahl`.
+              rand="#45475a",          # Rahmen
               zebra="#202031",
               hinweis="#fab387",       # statt #b35c00 auf Weiss
               dunkelgelb="#4a4128",
-              notaus="#c0392b", notaus_aktiv="#e74c3c")
+              # Beide Notaus-Toene tragen weissen Text mit 5.44:1. Bis
+              # 05.10.2026 war der aktive heller (#e74c3c, 3.82:1) - an
+              # dem einen Knopf, der sofort lesbar sein muss. Der
+              # Unterschied liegt jetzt in der Helligkeit des Randes, nicht
+              # in der Lesbarkeit der Beschriftung.
+              notaus="#c0392b", notaus_aktiv="#c0392b")
 
 # Benannte Schriften: (Name, Familie, relative Groesse, fett)
 TEXT, FETT, TITEL, MONO, TABELLE = ("LeitText", "LeitFett", "LeitTitel",
@@ -84,11 +115,11 @@ def anwenden(root, groesse):
                          ("*Text.background", f["blatt"]),
                          ("*Text.foreground", f["text"]),
                          ("*Text.insertBackground", f["text"]),
-                         ("*Text.selectBackground", f["wahl"]),
+                         ("*Text.selectBackground", f["auswahl"]),
                          ("*Text.font", MONO),
                          ("*TCombobox*Listbox.background", f["blatt"]),
                          ("*TCombobox*Listbox.foreground", f["text"]),
-                         ("*TCombobox*Listbox.selectBackground", f["wahl"]),
+                         ("*TCombobox*Listbox.selectBackground", f["auswahl"]),
                          ("*TCombobox*Listbox.font", TEXT),
                          # Feldschrift ist bei ttk eine Widget-Option, kein Stil
                          ("*TEntry.font", TEXT), ("*TCombobox.font", TEXT),
@@ -98,12 +129,12 @@ def anwenden(root, groesse):
     st.configure(".", background=f["bg"], foreground=f["text"],
                  fieldbackground=f["blatt"], bordercolor=f["rand"],
                  lightcolor=f["bg"], darkcolor=f["bg"], troughcolor=f["blatt"],
-                 selectbackground=f["wahl"], selectforeground=f["text"],
+                 selectbackground=f["auswahl"], selectforeground=f["text"],
                  insertcolor=f["text"], focuscolor=f["akzent"], font=TEXT)
     st.map(".", foreground=[("disabled", f["gedaempft"])])
     st.configure("TButton", background=f["gitter"], padding=(10, 4))
     st.map("TButton", background=[("disabled", f["bg"]), ("pressed", f["akzent"]),
-                                  ("active", f["wahl"])],
+                                  ("active", f["auswahl"])],
            foreground=[("disabled", f["gedaempft"]), ("pressed", f["bg"])],
            bordercolor=[("focus", f["akzent"])])
     for feld in ("TEntry", "TSpinbox", "TCombobox"):
@@ -124,19 +155,19 @@ def anwenden(root, groesse):
     st.configure("Treeview", background=f["blatt"], fieldbackground=f["blatt"],
                  foreground=f["text"], font=TABELLE, rowheight=zeilenhoehe(root),
                  borderwidth=0)
-    st.map("Treeview", background=[("selected", f["wahl"])],
+    st.map("Treeview", background=[("selected", f["auswahl"])],
            foreground=[("selected", f["text"])])
     st.configure("Treeview.Heading", background=f["gitter"],
                  foreground=f["akzent"], font=FETT, padding=(6, 4), relief="flat")
-    st.map("Treeview.Heading", background=[("active", f["wahl"])])
+    st.map("Treeview.Heading", background=[("active", f["auswahl"])])
     st.configure("TNotebook", background=f["bg"], borderwidth=0)
     st.configure("TNotebook.Tab", background=f["gitter"], foreground=f["text"],
                  padding=(14, 5), font=TEXT)
-    st.map("TNotebook.Tab", background=[("selected", f["wahl"])],
+    st.map("TNotebook.Tab", background=[("selected", f["auswahl"])],
            foreground=[("selected", f["akzent"])])
     st.configure("TScrollbar", background=f["gitter"], troughcolor=f["blatt"],
                  arrowcolor=f["matt"], bordercolor=f["bg"])
-    st.map("TScrollbar", background=[("active", f["wahl"])])
+    st.map("TScrollbar", background=[("active", f["auswahl"])])
     st.configure("Sash", sashthickness=6, gripcount=0, background=f["gitter"])
     st.configure("TLabelframe", background=f["bg"], bordercolor=f["rand"])
     st.configure("TLabelframe.Label", foreground=f["akzent"], font=FETT)
