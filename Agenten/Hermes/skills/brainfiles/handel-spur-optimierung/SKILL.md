@@ -162,6 +162,40 @@ je Arm ehrlich „nicht entschieden" sagen (n=1-Token-Falle bedenken), dann
 Waechter-Cron bis zur Schwele — vollstaendiger Ablauf in
 `references/schattenbuch-auswertung.md`.
 
+## Wenn alles negativ ist: nicht die Geometrie suchen, sondern reihen
+
+Der haeufigste Endstand einer Optimierung ist: **jede Kandidaten-Geometrie ist
+negativ.** Dann ist die Reihenfolge:
+
+1. **Am Werkzeug zweifeln, nicht am Markt.** Zwei Laeufe, ein Parameterwert
+   verschieden. Bleibt die Zahl gleich, war der Setzer tot und jede weitere
+   Messung Muell (`messwerkzeug-gegenprobe`). Gemessen 04.10.2026: `replay.py
+   --setzen` wirkte fuer die Kerzenspuren nicht, die Suche haette neunmal
+   dieselbe Rechnung gefahren.
+2. **Rohzeilen sind keine Runden.** Die Hausfunktion
+   `kosten_wendepunkt.kennzahlen()` rechnet die Paarung; eine selbst gezaehlte
+   `AUSSTIEG`-Zeile nicht (1181 Zeilen sind 579 Runden). Zwischenstand und
+   Ergebnis unterscheiden sich um fast eine Groessenordnung — die Zahl sah
+   schlimmer aus, als sie war.
+3. **Erst rechnen, wenn der Prozess beendet ist.** Eine geschriebene Datei ist
+   ein Zwischenstand mit derselben Form wie ein Ergebnis.
+4. **Dann die Hausregeln pruefen, wenn zwei Wege auseinanderlaufen.** Fehlt in
+   einem Weg eine Regel (gemessen: die Docht-Regel T-202/T-177 in
+   `backtest_prognose`), ist das die Ursache — nicht Stop, Ziel oder Sizing.
+
+Erst wenn das alles geprueft ist und die Zahl **trotzdem** negativ bleibt, ist
+das Verdikt „verworfen" ehrlich. Dann **kein Verdikt erfinden**, sondern den
+besten Kandidaten ausweisen **und ausdruecklich sagen, dass er noch nicht
+traegt**: das ist eine Fehlstellung abgestellt, kein Vorteil gewonnen. Dieser
+Satz gehoert in den Vermerk der geaenderten Wache, sonst liest die naechste
+Auswertung die Zahl als Freigabe.
+
+**Der Trost fuer die Spur, die nichts erreicht:** eine verworfene Geometrie ist
+oft eine Fehlstellung, kein Ergebnis — sie kann um eine Groessenordnung besser
+sein als die heutige (gemessen: 5,0 %/2,0R kostete 0,803 USD je Runde,
+3,0 %/1,5R nur 0,074, bei 1007 Runden). Ein Wechsel ist trotzdem **kein**
+Gewinn, und offene Positionen laufen unter der alten Geometrie aus.
+
 ## Tor-Regeln optimieren: erst den BINDENDEN Grund messen
 
 „Erlaubte Volatilitaet erhoehen" heisst nicht, die Zahl zu erhoehen - es heisst,

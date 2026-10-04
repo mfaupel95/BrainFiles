@@ -7,6 +7,65 @@ Journal oder der Messung, nicht aus dem Gedaechtnis.
 Jeder Fall in derselben Form: **Behauptung** — **wie sie entstand** — **wie sie
 auffiel** — **Beleg**.
 
+## Messwerkzeug (04.10.2026)
+
+### 1. Ein Werkzeug zaehlt eine Spur nicht
+- Behauptung: das Haus haelt 657,63 USD Gesamtrisiko.
+- Entstehung: `Agenten/Handel/risiko_beitrag.py` las offene Positionen aus
+  `zustand["positionen"]`. **gitter legt seine Stufen in `z["lose"]`** (Dict,
+  Schluessel = Stufennummer) und fuehrt zusaetzlich *eine* Position in
+  `positionen`. Die `lose`-Stufe wurde nicht gezaehlt.
+- Auffiel: die Risiko-Wache meldete eine BTC-Position von gitter **ohne
+  Schutz-Stop** — und als der Notaus gesetzt war, stand er am Nachmittag wieder
+  nicht im Zustand.
+- Beleg: nach dem Nachzaehlen 85 Positionen und 749,28 USD, Differenz 92 USD.
+  Die Abfrage mit dem richtigen Argument loest es auf:
+  `beitrag_der_spur('gitter','gitter')` -> 2 / 181,95 USD gegen
+  `beitrag_der_spur('gitter','gitter/zustand.json')` -> 0 / 0,00 USD.
+  Die Funktion erwartet den **Ordner**.
+
+### 2. Ein von Hand gesetzter Wert wird beim naechsten Zyklus ueberschrieben
+- Behauptung: die gitter-Position hat einen Notaus.
+- Entstehung: der Notaus wurde per Skript in `gitter/zustand.json` eingetragen.
+  **gitter schreibt den Zustand bei jedem Zyklus neu**; die Datei ist nicht
+  versioniert, es gab keine zweite Quelle. Stop um 01:00 im Zustand, um 01:11
+  vom Dauerlauf ueberschrieben.
+- Auffiel: die Risiko-Wache meldete dieselbe Position am Nachmittag wieder als
+  „OHNE SCHUTZ-STOP".
+- Beleg: Journalzeile `2026-09-23T15:01:28 … KAUF BTC-USDT 8 … 90,9087`.
+  Regel gehoert an die **Entstehungsstelle** (`KAUF`-Zweig in
+  `gitter/handeln.py`), gesteuert vom Wachen-Feld
+  `notaus_unter_gitterunterkante`.
+
+### 3. Ein Schalter wird stillschweigend verworfen
+- Behauptung: die Suche meldet „kein Hebel".
+- Entstehung: `replay.py` hatte zwei Namen fuer dasselbe Argument — `setzen=`
+  (Familien B/C) und `wachen_patch=` (Familien A/D). In `main()` stand an der
+  Aufrufstelle kein Patch. `--setzen` lief fuer die Kerzenspuren ins Leere.
+- Auffiel: zwei Laeufe mit verschiedenen Parametern lieferten **bitgleiche**
+  Kennzahlen (529 Runden, -0,803 USD je Runde).
+- Beleg: nach dem Verdrahten 579 / -0,803 gegen 1007 / -0,074. Die
+  zurueckgeschriebene Wachen-Kopie taugte **nicht** als Beweis — der Patch geht
+  auf das W-Dict im Speicher (`replay.py` 794), die Kopie zeigt immer die
+  Ausgangswerte. Siehe `messwerkzeug-gegenprobe`.
+
+### 4. Ein Fehler aus einem Hintergrundlauf beweist den Zustand nicht
+- Behauptung: die Wachen-Datei ist geraeumt (`KeyError: 'max_pro_trade_usd'`).
+- Entstehung: drei Backtest-Laeufe starteten im Sekundenfenster, in dem ein
+  `open(p,'wb')` die Datei auf 0 Byte gekuerzt hatte.
+- Auffiel: nach dem Prozessende war die Datei vollstaendig gueltig (30
+  Schluessel, JSON lesbar) und die Spur lief weiter.
+- Beleg: nur der Prozessstatus zu dem Zeitpunkt sagt, ob die Datei halb
+  geschrieben war. Inhalt **vor** dem `open(p,'wb')` zusammensetzen und pruefen.
+
+### 5. Ein Test, der einen alten Zwischenstand einfriert
+- Behauptung: der Fix hat den Test gebrochen.
+- Entstehung: `test_fuenf_schreibweisen_sind_eine_basis` erwartete noch
+  `{"BTC","XBT"}`, nachdem XBT spaeter auf BTC vereinheitlicht worden war.
+- Auffiel: der Test meldete den *richtigen* Fix als Fehler.
+- Beleg: Erwartungen nachziehen, wenn die **Regel** sich aenderte; gegen HEAD
+  pruefen, statt die Vermutung zu protokollieren (siehe Fall 1 unten).
+
 ## Handel
 
 ### 1. Vier Live-Positionen, die es nicht gab (21.09.2026, xperp)

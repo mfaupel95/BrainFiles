@@ -175,7 +175,38 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
 - **Prozesssuche nie ueber die eigene Kommandozeile filtern** —
   `CommandLine -like '*x.py*'` findet den Suchenden selbst; immer zusaetzlich
   `Name` einschraenken.
-- **Eine Dokumentation ist keine Messung.** „MaxHirn ist 45 GB" stand in
+- **Ein stillschweigend verworfener Schalter sieht aus wie ein Marktbefund.**
+  `replay.py --setzen` wirkte fuer die Kerzenspuren nicht (zwei Namen: `setzen=`
+  vs. `wachen_patch=`), die Suche meldete „kein Hebel". **Ein Schalter, dessen
+  Wirkung niemand geprueft hat, ist kein Schalter** — vor jeder Nutzung zwei
+  Laeufe mit einem verschiedenen Wert, und wenn die Zahl gleich bleibt, ist der
+  Werkzeugweg schuld, nicht der Markt (`messwerkzeug-gegenprobe`).
+- **Bei „0 Positionen" zuerst den Aufruf pruefen, nicht die Datenstruktur.**
+  `beitrag_der_spur(name, ordner)` erwartet den **Ordner**; mit der Datei als
+  Argument liefert dieselbe Funktion 0. Zwei Datenstruktur-Fehler wurden
+  „gemessen", ohne den Aufruf zu pruefen — **beides geraten**. Ein geaenderter
+  Code, der dieselbe Zahl liefert, ist kein Fortschritt, sondern ein zweiter
+  Irrtum.
+- **Nicht jede Spur legt ihre Positionen gleich ab.** Die meisten fuehren
+  `zustand["positionen"]`; **gitter** fuehrt seine Stufen in `z["lose"]` (Dict,
+  Schluessel = Stufennummer). Ein Werkzeug, das nur `positionen` liest, wies das
+  Hausrisiko 92 USD zu niedrig aus, **ohne Fehlermeldung** — die Zahl war rund
+  und kam aus einem echten Werkzeug.
+- **Ein Wert, den ein Prozess bei jedem Zyklus neu schreibt, gehoert an die
+  Entstehungsstelle.** Ein von Hand in `zustand.json` gesetzter Stop einer Spur,
+  die ihren Zustand je Zyklus neu schreibt und deren Datei nicht versioniert
+  ist, existiert bis zum naechsten Schreiben nicht.
+- **Ein Fehler aus einem Hintergrundlauf beweist den Zustand nicht.** Erst den
+  Prozess beenden, dann die Datei lesen; eine geschriebene Datei ist ein
+  Zwischenstand und traegt dieselbe Form wie ein fertiges Ergebnis.
+- **Selbst gezaehlte Zeilen sind keine Runden.** Die Hausfunktion rechnet die
+  Paarung (1181 `AUSSTIEG`-Zeilen = 579 Runden). Zwischenstaende aus eigenen
+  Zaehlungen sind nie ein Ergebnis — und sind sie schon genannt, werden sie
+  aktiv zurueckgenommen, nicht still ersetzt.
+- **Eine Hausregel gehoert in JEDEN Weg, der dieselbe Sache rechnet.**
+  `backtest_prognose.lauf` kannte die Docht-Regel T-202/T-177 nicht, die
+  `replay.lauf_a` seit dem 01.10. rief: ab Runde 2 nahmen die Wege verschiedene
+  Instrumente. Beide sahen richtig aus. „MaxHirn ist 45 GB" stand in
   `AGENTS.md` und war 6 GB; `sichern-ausser-haus.ps1` zielte auf `E:` und stieg
   mit Exitcode 2 lautlos aus, deshalb gab es nie eine Ausser-Haus-Kopie. Bei
   Zahlen aus Notizen: einmal nachmessen und die Notiz nachziehen.
