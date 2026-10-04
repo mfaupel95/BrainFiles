@@ -1070,6 +1070,15 @@ Agenten/Werkzeuge/jevgrep/__pycache__/
 # spaetere Regel gewinnt. Gegenprobe: git check-ignore -v <pfad>.
 Agenten/Werkzeuge/repos-zentrale/einstellungen.json
 
+# --- Routing-Plan (Kanban t_c2e6fe0c, 04.10.2026) ------------------------
+# Der Ordner ist gesperrt, sonst waere die Freigabe der *.py wirkungslos
+# (das Haus arbeitet mit 'erst alles ignorieren, dann einzeln freigeben').
+Agenten/Werkzeuge/routing-plan/agenten/
+Agenten/Werkzeuge/routing-plan/werkstatt/
+!Agenten/Werkzeuge/routing-plan/
+!Agenten/Werkzeuge/routing-plan/*.py
+!Agenten/Werkzeuge/routing-plan/README.md
+
 # Wurzel-Aufrufer fuer die Modelllisten der Bot-Profile (CRLF, kein LF):
 # liegt NACH allen Sperrregeln, weil die spaetere Regel gewinnt.
 !/profil-listen.cmd
