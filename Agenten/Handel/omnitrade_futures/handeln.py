@@ -33,6 +33,7 @@ Aufruf:
 
 import argparse
 import importlib.util
+import json
 import os
 import sys
 
@@ -52,18 +53,19 @@ _omni_spec = importlib.util.spec_from_file_location(
 # Ohne das nimmt lesen.dateien() ALLE live_*.json im Statusordner - und im
 # Ordner laeuft adx_macd ausser auf BTC noch auf ETH. Diese Spur ist eine
 # MONOstrategie-Spur: sie spiegelt genau einen Lauf.
-_ordner = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _status_name = ""
 try:
-    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "wachen.json"), encoding="utf-8") as _fh:
+    with open(os.path.join(HIER, "wachen.json"), encoding="utf-8") as _fh:
         _status_name = (json.load(_fh) or {}).get("statusdatei") or ""
 except Exception:                                            # noqa: BLE001
     _status_name = ""
 if _status_name:
-    _status_pfad = os.path.join(_ordner, _ordner, "..", "Werkstatt",
-                                "omnitrade", "status", _status_name)
-    os.environ["OMNITRADE_STATUS"] = os.path.normpath(_status_pfad)
+    # HIER ist Agenten/Handel/omnitrade_futures, ../.. waere Agenten und
+    # ../Werkstatt gibt es nicht - erst ../.. ../.. ist die Repo-Wurzel.
+    _status_pfad = os.path.normpath(os.path.join(
+        HIER, "..", "..", "..", "Werkstatt", "omnitrade", "status",
+        _status_name))
+    os.environ["OMNITRADE_STATUS"] = _status_pfad
 
 omni = importlib.util.module_from_spec(_omni_spec)
 sys.modules[_omni_spec.name] = omni
