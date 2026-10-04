@@ -80,15 +80,34 @@ REITER = [("Überwachen", UeberwachenReiter),
           ("Nautilus", NautilusReiter)]
 
 
+def pid_aus_datei(pfad):
+    """Die PID aus der Sperrdatei lesen.
+
+    Die Datei traegt ZWEI Felder: `PID Zeitstempel` (sperre.py schreibt beides,
+    damit ein Waechter eine verwaiste Sperre erkennt). `int()` auf die ganze
+    Zeile scheitert still - ValueError, dann `pid = None`, und der Herzschlag
+    meldet "laeuft nicht" fuer einen Dauerlauf, der laeuft.
+
+    Deshalb hier das ERSTE Feld nehmen, nicht die ganze Zeile.
+    """
+    try:
+        with open(pfad, encoding="ascii") as f:
+            roh = (f.read() or "").strip()
+    except OSError:
+        return None
+    if not roh:
+        return None
+    try:
+        return int(roh.split()[0])
+    except (ValueError, IndexError):
+        return None
+
+
 def herzschlag(jetzt=None):
     """Laeuft der Dauerlauf? Gelesen wie in der Handelszentrale (PID + Log)."""
     jetzt = jetzt or dt.datetime.now(dt.timezone.utc)
     pid_pfad, log_pfad = hz.dauerlauf_dateien()
-    try:
-        with open(pid_pfad, encoding="ascii") as f:
-            pid = int((f.read() or "0").strip() or 0) or None
-    except (OSError, ValueError):
-        pid = None
+    pid = pid_aus_datei(pid_pfad)
     lebt = hz.prozess_lebt(pid)
     _text, alt = hz.dauerlauf_stand(log_pfad, jetzt)
     if lebt and alt is not None and alt <= HERZ_MAX_MIN:

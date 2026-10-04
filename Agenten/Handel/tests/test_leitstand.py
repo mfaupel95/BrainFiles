@@ -356,5 +356,56 @@ class Lesepruefung(unittest.TestCase):
             self.assertFalse(lesepruefung.importiert(lst.__file__, modul), modul)
 
 
+class PidDatei(unittest.TestCase):
+    """Die Sperrdatei traegt ZWEI Felder - der Leser nahm die ganze Zeile.
+
+    `sperre.py` schreibt `PID Zeitstempel`, damit ein Waechter eine verwaiste
+    Sperre erkennt. `int()` auf die ganze Zeile scheitert still, `pid` wird
+    None, und der Herzschlag meldet "laeuft nicht" fuer einen Lauf, der
+    laeuft. Die Tests hier schrieben vorher selbst "1234" und konnten das
+    echte Format deshalb nie sehen.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.pfad = Path(self.tmp.name) / "dauerlauf.pid"
+
+    def test_echtes_format_liefert_die_pid(self):
+        self.pfad.write_text("27264 1791133901.9455156\n", encoding="ascii")
+        self.assertEqual(lst.pid_aus_datei(self.pfad), 27264)
+
+    def test_nur_pid_geht_auch(self):
+        self.pfad.write_text("1234", encoding="ascii")
+        self.assertEqual(lst.pid_aus_datei(self.pfad), 1234)
+
+    def test_leere_und_fehlende_datei(self):
+        self.assertIsNone(lst.pid_aus_datei(self.pfad))
+        self.pfad.write_text("   \n", encoding="ascii")
+        self.assertIsNone(lst.pid_aus_datei(self.pfad))
+
+    def test_kaputter_inhalt_ist_none_statt_ausnahme(self):
+        self.pfad.write_text("keine PID hier", encoding="ascii")
+        self.assertIsNone(lst.pid_aus_datei(self.pfad))
+
+    def test_herzschlag_sieht_den_lauf_mit_echtem_format(self):
+        """Gegenprobe: mit der echten Datei meldet der Herzschlag 'laeuft'.
+
+        Vor der Reparatur schrieb der Test '1234' und war gruen - genau
+        deshalb blieb der Fehler drei Tage unentdeckt.
+        """
+        self.pfad.write_text("27264 1791133901.9455156\n", encoding="ascii")
+        with patch.object(lst.hz, "dauerlauf_dateien",
+                          return_value=(str(self.pfad), "woegal.log")), \
+             patch.object(lst.hz, "prozess_lebt", return_value=True) as pl, \
+             patch.object(lst.hz, "dauerlauf_stand",
+                          return_value=("05.10. 00:20:57", 5.0)):
+            text = lst.herzschlag(dt.datetime(2026, 10, 5, 0, 26,
+                                              tzinfo=dt.timezone.utc))
+        self.assertIn("läuft", text)
+        self.assertIn("5 min", text)
+        pl.assert_called_once_with(27264)
+
+
 if __name__ == "__main__":
     unittest.main()
