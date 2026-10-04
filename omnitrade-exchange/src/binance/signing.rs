@@ -125,8 +125,8 @@ mod tests {
 
     #[test]
     fn test_sign_request_empty_query_has_no_leading_ampersand() {
-        let signed = BinanceSigner::sign_request("", "secret123", 1694527382000i64)
-            .expect("sign failed");
+        let signed =
+            BinanceSigner::sign_request("", "secret123", 1694527382000i64).expect("sign failed");
         assert!(signed.starts_with("timestamp=1694527382000&signature="));
     }
 

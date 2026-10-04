@@ -3,8 +3,8 @@
 //! Orchestrates live trading setup: initializes exchange connections,
 //! instantiates RiskGuard, and delegates to the live_loop.
 
-use crate::live_loop::live_loop;
-use omnitrade_exchange::{credentials, BinanceClient, Network};
+use crate::live_loop::{live_loop, LiveConfig};
+use omnitrade_exchange::{credentials, BinanceClient, Keystore, Network};
 use omnitrade_risk::guard::RiskGuard;
 use std::path::Path;
 use tracing::info;
@@ -26,6 +26,7 @@ pub async fn handle_live(
     symbol: &str,
     network_str: &str,
     initial_capital: f64,
+    order_quantity: f64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Validate that either script or grid is specified
     if script_path.is_none() && grid_config_path.is_none() {
@@ -42,13 +43,12 @@ pub async fn handle_live(
     };
 
     // Mainnet safety gate: require explicit environment variable
-    if network == Network::Mainnet
-        && std::env::var("OMNITRADE_MAINNET_APPROVED").is_err() {
-            return Err(
-                "Error: Mainnet trading requires OMNITRADE_MAINNET_APPROVED environment variable"
-                    .into(),
-            );
-        }
+    if network == Network::Mainnet && std::env::var("OMNITRADE_MAINNET_APPROVED").is_err() {
+        return Err(
+            "Error: Mainnet trading requires OMNITRADE_MAINNET_APPROVED environment variable"
+                .into(),
+        );
+    }
 
     // Initialize risk guard with appropriate limits
     let mut risk_guard = match network {
@@ -64,18 +64,18 @@ pub async fn handle_live(
         info!("Using strategy script: {}", script_path.display());
         info!("Script-based trading mode enabled");
 
-        // Load credentials from environment
-        let api_key = std::env::var("BINANCE_API_KEY")
-            .map_err(|_| "BINANCE_API_KEY environment variable not set")?;
-        let api_secret = std::env::var("BINANCE_API_SECRET")
-            .map_err(|_| "BINANCE_API_SECRET environment variable not set")?;
-
-        let creds_network = match network {
-            Network::Testnet => credentials::Network::Testnet,
-            Network::Mainnet => credentials::Network::Mainnet,
+        // Zugänge: Keystore (getrennt je Netzwerk) hat Vorrang, Umgebungs-
+        // variablen nur als Fallback für Läufe ohne Credential Manager.
+        let creds = if Keystore::credentials_exist("binance", network) {
+            Keystore::load_credentials("binance", network).map_err(|e| format!("Keystore: {e}"))?
+        } else {
+            let api_key = std::env::var("BINANCE_API_KEY").map_err(|_| {
+                "Keine Zugänge: weder Keystore-Eintrag omnitrade/binance/<netzwerk> noch BINANCE_API_KEY"
+            })?;
+            let api_secret = std::env::var("BINANCE_API_SECRET")
+                .map_err(|_| "BINANCE_API_SECRET environment variable not set")?;
+            credentials::ApiCredentials::new(api_key, api_secret, network)
         };
-
-        let creds = credentials::ApiCredentials::new(api_key, api_secret, creds_network);
         let trading_creds = creds.clone();
 
         // Two clients, one per role: the stream client owns the WebSocket
@@ -89,16 +89,14 @@ pub async fn handle_live(
 
         // Run the live loop
         let script_str = script_path.to_string_lossy().to_string();
-        live_loop(
-            &script_str,
+        let config = LiveConfig {
+            script_path: &script_str,
             symbol,
             network,
             initial_capital,
-            stream_client,
-            trading_client,
-            &mut risk_guard,
-        )
-        .await?;
+            order_quantity,
+        };
+        live_loop(&config, stream_client, trading_client, &mut risk_guard).await?;
 
         info!("Live trading loop completed gracefully");
     } else if grid_config_path.is_some() {

@@ -56,6 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             symbol,
             network,
             initial_capital,
+            quantity,
         } => {
             let capital = initial_capital.unwrap_or(1000.0);
             handle_live(
@@ -64,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &symbol,
                 &network,
                 capital,
+                quantity,
             )
             .await?;
         }

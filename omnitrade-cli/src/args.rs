@@ -73,6 +73,10 @@ pub enum Commands {
         /// Initial account balance for trading.
         #[arg(long, value_name = "AMOUNT")]
         initial_capital: Option<f64>,
+
+        /// Menge je Market-Order in der Basiswährung (Default 0.001).
+        #[arg(long, value_name = "QTY", default_value_t = 0.001)]
+        quantity: f64,
     },
     /// Emergency kill switch to halt all trading operations.
     ///
@@ -233,6 +237,7 @@ mod tests {
             symbol,
             network,
             initial_capital,
+            quantity,
         } = parsed.command
         {
             assert_eq!(script, Some(PathBuf::from("strategy.omni")));
@@ -240,6 +245,7 @@ mod tests {
             assert_eq!(symbol, "BTCUSDT");
             assert_eq!(network, "testnet");
             assert_eq!(initial_capital, None);
+            assert_eq!(quantity, 0.001);
         } else {
             unreachable!("Expected Commands::Live variant");
         }
@@ -268,6 +274,7 @@ mod tests {
             symbol,
             network,
             initial_capital,
+            quantity,
         } = parsed.command
         {
             assert_eq!(script, None);
@@ -275,6 +282,7 @@ mod tests {
             assert_eq!(symbol, "BTCUSDT");
             assert_eq!(network, "testnet");
             assert_eq!(initial_capital, None);
+            assert_eq!(quantity, 0.001);
         } else {
             unreachable!("Expected Commands::Live variant");
         }
@@ -307,6 +315,7 @@ mod tests {
             symbol,
             network,
             initial_capital,
+            quantity,
         } = parsed.command
         {
             assert_eq!(script, Some(PathBuf::from("strategy.omni")));
@@ -314,6 +323,7 @@ mod tests {
             assert_eq!(symbol, "ETHUSDT");
             assert_eq!(network, "testnet");
             assert_eq!(initial_capital, Some(5000.0));
+            assert_eq!(quantity, 0.001);
         } else {
             unreachable!("Expected Commands::Live variant");
         }

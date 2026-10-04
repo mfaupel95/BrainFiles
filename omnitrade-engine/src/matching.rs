@@ -445,7 +445,7 @@ mod tests {
     fn zero_remaining_quantity_marks_order_filled() {
         let mut engine = setup_engine();
         let mut order = create_test_order(1, Side::Buy, OrderType::Market, 0.0, 1.0);
-        order.filled_quantity = 1.0;  // Fully filled
+        order.filled_quantity = 1.0; // Fully filled
         order.status = OrderStatus::PartiallyFilled;
         let mut pending = vec![order];
 
@@ -456,7 +456,10 @@ mod tests {
         assert!(fills.is_empty());
         // Order should have been marked as Filled, but then removed from pending_orders
         // because retain() only keeps active orders (New, PartiallyFilled)
-        assert!(pending.is_empty(), "Filled orders are removed from pending_orders");
+        assert!(
+            pending.is_empty(),
+            "Filled orders are removed from pending_orders"
+        );
     }
 
     #[test]
