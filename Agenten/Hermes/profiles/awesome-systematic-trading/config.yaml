@@ -523,3 +523,5 @@ video_gen:
 #   model: anthropic/claude-sonnet-4
 _left_core_scoped:
   - homeassistant
+_left_core_installed:
+  - homeassistant

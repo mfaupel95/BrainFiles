@@ -1,5 +1,7 @@
 # Spur 4 — ORB Index-CFD (OANDA) Implementation Plan
 
+> **ÜBERHOLT (04.10.2026):** Die Spur läuft nicht über OANDA/Index-CFDs, sondern über OKX mit BTC_USDT/ETH_USDT (`Agenten/Handel/orb/wachen.json`; `tests/test_wachen_json.py` prüft „keine OANDA-Reste"). Backtest für beide Instrumente negativ, `handel_erlaubt` bleibt `false`. Dieser Plan ist nur noch Geschichte — maßgeblich ist der Code unter `Agenten/Handel/orb/`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Eine vierte bewachte Handelsspur bauen — Opening-Range-Breakout auf Index-CFDs über OANDA v20 —, deren Backtest die „81 %"-Behauptung prüft und deren Papierpfad parallel läuft, Live-Schalter aus, bis Backtest **und** 6 Wochen Papier bestehen.

@@ -2,7 +2,6 @@ model:
   default: stealth/space-bunny-alpha
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
-  api_mode: chat_completions
 providers:
   nous:
     models:

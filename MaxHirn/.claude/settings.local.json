@@ -73,7 +73,9 @@
       "PowerShell(Get-Process *)",
       "PowerShell($log = \"$env:LOCALAPPDATA\\\\Claude\\\\Logs\\\\main.log\"; if \\(Test-Path $log\\) { Get-Content $log -Tail 50 | Select-String -Pattern \"error|Error|ERROR|failed|Failed|FAILED|exception|Exception\" })",
       "PowerShell(Get-ChildItem *)",
-      "Bash(git commit -q -m 'TASKS: T-039 \\(ueberholte Hebel-Tabelle\\) und T-040 \\(SOL-Anlauf, Hebelkonflikt\\) eingetragen *)"
+      "Bash(git commit -q -m 'TASKS: T-039 \\(ueberholte Hebel-Tabelle\\) und T-040 \\(SOL-Anlauf, Hebelkonflikt\\) eingetragen *)",
+      "PowerShell(cd C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles; git cat-file -t 1850cd3; git branch --contains 1850cd3 -a; git reflog -n 25 --date=relative; Test-Path Agenten/Handel/orb; git ls-files Agenten/Handel/orb | Measure-Object | % Count; git worktree list)",
+      "PowerShell(cd C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles; git log --oneline 1850cd3..master -- Agenten/Handel/orb; git status --short Agenten/Handel/orb; Select-String -Path Agenten/Handel/orb/handeln.py -Pattern 'Live-Gate|--live|def hole_freigabe|def _schliesse' | % { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" }; Set-Location Agenten/Handel/orb; ..\\\\scanner\\\\.venv\\\\Scripts\\\\python.exe -m unittest discover -s tests 2>&1 | Select-Object -Last 4)"
     ]
   },
   "enableAllProjectMcpServers": true,
