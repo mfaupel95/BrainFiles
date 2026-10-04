@@ -63,6 +63,49 @@ nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-340 — Zwei neue Bus-Anbindungen fehlen: squeeze_eth.py und plattenplatz-pruefen**
+      Kontext: `python Agenten/Bus/tests/test_ende_zu_ende.py` bricht ab mit
+      'automatisch gestartet, aber ohne Bus-Anbindung: [PFAD]squeeze_eth.py'
+      (test_anbindung_handel) und `plattenplatz-pruefen` (test_anbindung_routinen).
+      Beide committet, beide von fremden Sitzungen. Suite-Gegenprobe: ohne diese
+      beiden Eintraege endet sie mit 'Ende-zu-Ende bestanden'. Dieselbe Klasse wie
+      T-253 (klassik-Spuren, 02.10. mit e6894cc6 behoben) - eine Spur, die der
+      Dauerlauf startet, aber nicht in den Bus meldet, laeuft still.
+      Naechster Schritt: je Datei das Bus-Muster nach Hausvorlage ergaenzen
+      (Ereignis.ps1 dot-sourcen, Melde-Start/Melde-Ende an allen Ausstiegen;
+      Spuren: bus_name als Literal in die ereignis.lauf-Rechnung).
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/squeeze/squeeze_eth.py, Agenten/Routinen/plattenplatz-pruefen.ps1
+- [ ] **T-341 — omnitrade_futures: kein Rust-Lauf laeuft, also null Signale**
+      Kontext: Nach dem Pin-Fix (bde64285) zeigt die Spur jetzt auf die richtige
+      Statusdatei, aber alle sechs Dateien in Werkstatt/omnitrade/status/ stehen
+      auf `state: stopped` (juengste: live_adx_macd_ETHUSDC.json, 02.10. 16:53).
+      `omnitrade.signal()` verlangt laeuft UND offen und liefert sonst None -
+      die Spur hat seit dem 01.10. nie ein Signal gesehen. Das ist unabhaengig
+      vom Pin-Fix: ein Fix an der Naht allein liefert weiter null Runden.
+      Naechster Schritt: einen Rust-Lauf wirklich starten
+      (`cargo build --release`, dann die .omni-Fassung) und die Wette, warum alle
+      Laeufe am 01./02.10. stehengeblieben sind. Erst dann sammelt die Spur
+      Papierrunden, erst dann ist eine Backtest-Aussage gegen eine eigene
+      Stichprobe moeglich.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Werkstatt/omnitrade/status/, Agenten/Handel/omnitrade_futures/
+- [ ] **T-342 — Backtest-Fensterlaenge: adx_macd 28 Tage positiv, Nachbarfenster 382 USD anders**
+      Kontext: gemessen am 04.10.2026, BTC 15m, 10.000 USD, 0,05 %/Seite,
+      OMNI_LONG_ONLY=1, echter Rust-Backtest. Nur adx_macd im 28-Tage-Fenster
+      bleibt nach Gebuehren positiv (+117,04 USD, 19 Runden, 36,8 % Treffer);
+      14 Tage -290,92, 42 Tage -129,95. rsi_long_only ist in ALLEN drei Fenstern
+      negativ (-13,15 / -198,78 / -40,25) trotz 60-78 % Trefferquote - Ziel zu
+      eng. Der gebuehrenfreie Lauf zeigt warum: die Gebuehren kosten 110-236 USD
+      je Fenster, also ueber der Bruttomarge.
+      Naechster Schritt: KEIN 6-Wochen-Fenster - das zerlegt die einzige positive
+      Zelle. 4 Wochen sind die beste der drei gemessenen, aber keine belegte
+      Kante (das Vorzeichen kippt mit dem Fenster, nicht mit der Parameter-
+      qualitaet). Vor dem Freischalten fehlen echte Papierrunden (T-341) und
+      Guthaben (T-291). Ziel-Geometrie der rsi-Fassung nachziehen, wenn sie
+      ueberhaupt weiterverfolgt wird.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/omnitrade/intervalle_messen.py, Werkstatt/omnitrade/
 - [ ] **T-339 — Bot-Profile: auxiliary + MoA auf die Desktop-Konfiguration nachziehen**
       Kontext: Am 04.10.2026 wurde die Desktop-Konfiguration (Hauptprofil)
       neu aufgebaut: alle vier MoA-Presets aggregieren auf
@@ -352,16 +395,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-318 — test_fremdarbeit_einziehen.test_rueckschritt_gegen_head ist rot (T-218-Fall)**
-      Kontext: Bus-Ende-zu-Ende-Suite faellt in
-      test_rueckschritt_gegen_head_wird_nicht_uebernommen (Assertion: nach dem Lauf steht
-      HEAD:datei_a.txt nicht auf 'a geaendert'). Der Test laeuft die ECHTE
-      fremdarbeit-einziehen.ps1 im Temp-Repo. Vorbestehend/fremd: die klassik-Spuren und die
-      paperclip-Anbindung (02.10.2026) beruehren den Test nicht - einzeln und in der Suite rot.
-      Naechster Schritt: pruefen, warum die Routine die ruhende datei_a nicht uebernimmt
-      (30-min-Schwelle gegen Ordnermtime, Stichwort T-218/Rueckschritt-Erkennung).
-      Angelegt: 2026-10-02 · Zuletzt: 2026-10-02
-      Betrifft: Agenten/Bus/tests/test_fremdarbeit_einziehen.py, Agenten/Routinen/fremdarbeit-einziehen.ps1
 - [ ] **T-314 - Long/Short auf den drei Freqtrade-Bots: gemessen schlechter, nicht gebaut**
       Kontext: Max 02.10.2026: "Die 3 trading bots umbauen auf xperp und
       future, gerne auch Long und Short abwechselnd nach Indikatoren."
@@ -427,26 +460,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-309 — `test_omniquant_fassung` schlaegt, weil der Schattenarm scharf ist**
-      Kontext: gefunden 02.10.2026, `test_omniquant_fassung.AuftragTest.test_schattenarm_weit_bleibt_papier`
-      (`AssertionError: None != 'weit'`). Auftrag Max 01.10.2026 war, die HAUPTspur scharf zu
-      schalten; damit schreibt der Papierzweig des Schattenarms `omniquant_weit` nichts
-      mehr, und der Test erwartet weiterhin einen Papierstand.
-      Naechster Schritt: der Test prueft eine EIGENSCHAFT, die Max entschieden hat (Haupt -
-      live, Schattenarm - Papier). Nachmessen, was der Schattenarm jetzt fuehrt, und die
-      Erwartung daran binden statt an einen Zustand vom 01.10.
-      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/tests/test_omniquant_fassung.py,
-      Agenten/Handel/omniquant/
 
-- [ ] **T-310 — `test_replay` schlaegt an der squeeze-Gegenprobe (Rundenzahl 20 vs. 12)**
-      Kontext: gefunden 02.10.2026, `test_replay.GegenprobeTest.test_squeeze_stimmt_mit_backtest_prognose_ueberein`
-      (`Rundenzahl: neu 20, alt 12`). Der Replay zaehlt mehr Runden, als der alte Stand, mit dem
-      der Test gebaut wurde. Ursache nicht gemessen - es kann die Kerzenschluss-Regel sein
-      (30.09.2026) oder die Paarungs-Regel (T-095), nicht der Replay selbst.
-      Naechster Schritt: die Gegenprobe neu rechnen und den ALT-Stand aus dem heutigen Code
-      erzeugen, nicht aus einer aufgezeichneten Zahl. Ein Test, der eine alte Rundenzahl
-      einfriert, meldet Aenderung statt Fehler.
-      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/tests/test_replay.py
 
 - [ ] **T-306 - docker-wache heilt die Engine nicht, wenn Docker Desktop schon laeuft**
       Kontext: gemessen am 01.10.2026. Die Wache heilt mit `wsl --shutdown` +
@@ -3145,6 +3159,54 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-309 — `test_omniquant_fassung` schlaegt, weil der Schattenarm scharf ist**
+      Kontext: gefunden 02.10.2026, `test_omniquant_fassung.AuftragTest.test_schattenarm_weit_bleibt_papier`
+      (`AssertionError: None != 'weit'`). Auftrag Max 01.10.2026 war, die HAUPTspur scharf zu
+      schalten; damit schreibt der Papierzweig des Schattenarms `omniquant_weit` nichts
+      mehr, und der Test erwartet weiterhin einen Papierstand.
+      Naechster Schritt: der Test prueft eine EIGENSCHAFT, die Max entschieden hat (Haupt -
+      live, Schattenarm - Papier). Nachmessen, was der Schattenarm jetzt fuehrt, und die
+      Erwartung daran binden statt an einen Zustand vom 01.10.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/tests/test_omniquant_fassung.py,
+      Agenten/Handel/omniquant/
+      Schattenarm liest die weite Fassung ueber das ARM-Suffix, nicht ueber das Wachen-Feld; Test auf die Eigenschaft gebunden, Gegenprobe rot (Commit 0919b566)
+      KORREKTUR 04.10.2026: die Kontext-Zeile war ebenfalls falsch. Der Schattenarm ist seit
+      dem 24.09.2026 aus dem Dauerlauf auskommentiert, weil der HAUPTARM die weite Fassung
+      selbst liest - NICHT wegen der Live-Schaltung. Der Test stand zudem schon auf
+      a4e60f26 auf 'geaendert' und war nicht rot; neu ist ein eigener Test, der festhaelt,
+      dass das Wachen-Feld die weite Fassung NICHT fuehren darf.
+- [x] **T-318 — test_fremdarbeit_einziehen.test_rueckschritt_gegen_head ist rot (T-218-Fall)**
+      Kontext: Bus-Ende-zu-Ende-Suite faellt in
+      test_rueckschritt_gegen_head_wird_nicht_uebernommen (Assertion: nach dem Lauf steht
+      HEAD:datei_a.txt nicht auf 'a geaendert'). Der Test laeuft die ECHTE
+      fremdarbeit-einziehen.ps1 im Temp-Repo. Vorbestehend/fremd: die klassik-Spuren und die
+      paperclip-Anbindung (02.10.2026) beruehren den Test nicht - einzeln und in der Suite rot.
+      Naechster Schritt: pruefen, warum die Routine die ruhende datei_a nicht uebernimmt
+      (30-min-Schwelle gegen Ordnermtime, Stichwort T-218/Rueckschritt-Erkennung).
+      Angelegt: 2026-10-02 · Zuletzt: 2026-10-02
+      Betrifft: Agenten/Bus/tests/test_fremdarbeit_einziehen.py, Agenten/Routinen/fremdarbeit-einziehen.ps1
+      Assertions vergleichen jetzt die Blob-ID statt gestrippten Text; 6/6 gruen, 5x hintereinander kein Flake (Commit 62e74817)
+      KORREKTUR 04.10.2026: die Kontext-Zeile war falsch, der Test verglich den GESTRIPTPTEN
+      TEXT von HEAD:datei_a.txt statt des Verhaltens - der Umbruch ging verloren, nicht die
+      Regel. Messung im nachgebauten Temp-Repo: datei_a.txt und sein Ordner waren je
+      120 min alt, Schwelle 30 - die 30-min-Schwelle war also NICHT die Ursache (widerlegt).
+      Gegenprobe: Erkennung abgeschaltet -> rot Z.236; nur Blob-ID-Assertion, Erkennung
+      aus -> rot Z.240. Die Routine selbst wurde nicht angefasst.
+- [x] **T-310 — `test_replay` schlaegt an der squeeze-Gegenprobe (Rundenzahl 20 vs. 12)**
+      Kontext: gefunden 02.10.2026, `test_replay.GegenprobeTest.test_squeeze_stimmt_mit_backtest_prognose_ueberein`
+      (`Rundenzahl: neu 20, alt 12`). Der Replay zaehlt mehr Runden, als der alte Stand, mit dem
+      der Test gebaut wurde. Ursache nicht gemessen - es kann die Kerzenschluss-Regel sein
+      (30.09.2026) oder die Paarungs-Regel (T-095), nicht der Replay selbst.
+      Naechster Schritt: die Gegenprobe neu rechnen und den ALT-Stand aus dem heutigen Code
+      erzeugen, nicht aus einer aufgezeichneten Zahl. Ein Test, der eine alte Rundenzahl
+      einfriert, meldet Aenderung statt Fehler.
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/tests/test_replay.py
+      Replay liest Marken aus dem Buch, Ausstiege FIFO mit pos_id (Commit 0919b566); Gegenprobe squeeze jetzt 25 vs 25, Abweichungen 0
+      KORREKTUR 04.10.2026: die Kontext-Zeile war falsch. Der Fehler war keine Rundenzahl,
+      sondern eine Abweichung der Brutto-Prozente je Runde (Runde 1 -1,4653 != -2,5195,
+      Runde 5 +4,50 != +5,058). Der Replay las nach der Skalierung die MARKEN AUS DEM
+      EINSTIEGSSNAPSHOT statt aus dem Buch (7 von 25 Runden) und paarte die berichtigten
+      Ausstiege ohne pos_id. Heute: 25 vs 25 Runden, 0 Abweichungen.
 - [x] **T-296 — Nous-Modellliste in den Profil-Configs nachziehen oder verwerfen**
       Kontext: Am 01.10.2026 sind alle 428 Modelle des Nous-Portals in der Hauptconfig
       eingetragen (`providers: nous: models:`, Commit fc395e3) - der Modellwaehler zeigte
