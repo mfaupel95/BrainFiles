@@ -616,6 +616,13 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Werkzeuge/desktop-verknuepfungen.ps1
 # Werkzeug: Fremd-Klone auf den Stand ihrer Quelle spulen (21.09.2026)
 !Agenten/Werkzeuge/repos-updaten.py
+# ZWEIG-WERKZEUG (04.10.2026): misst Zweige und Worktrees mit drei
+# unabhaengigen Zeugen (merge-base, rev-list, cherry/Patch-ID) und entfernt nur,
+# was BEIDES belegt. Ohne die Zeile liegt das Werkzeug nur auf der Platte - und
+# ein Aufraeumwerkzeug ohne Version ist im Mehrsitzungsbetrieb eine weitere
+# Fehlerquelle statt eine Loesung. Die Tests gehoeren in dieselbe Freigabe.
+!Agenten/Werkzeuge/zweige.py
+!Agenten/Werkzeuge/tests/test_zweige.py
 !Agenten/Werkzeuge/marktdaten.py
 !Agenten/Werkzeuge/fenster_design.py
 !Agenten/Werkzeuge/hermes-gateway-task-deaktivieren.ps1
