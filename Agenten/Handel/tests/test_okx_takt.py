@@ -283,6 +283,80 @@ class ScannerGegenprobeTest(unittest.TestCase):
         self.assertEqual(self.okx.MAX_429, len(aufrufe))
 
 
+class WindowsSchreibenTest(unittest.TestCase):
+    """Die Windows-Falle, gemessen am 05.10.2026.
+
+    Beim harten Gegenbeweis (8 Threads x 40 Abrufe gegen das ECHTE Fenster)
+    erschienen zweimal Meldungen wie
+
+        OKX-Transportfehler 1/6: [WinError 32] Der Prozess kann nicht auf die
+        Datei zugreifen ... fenster.json.tmp-70680 -> fenster.json
+
+    Ursache: unter Windows blockiert ein offenes Handle das Ersetzen der
+    Datei, und `stand()` las ohne Sperre. Die Meldung ging als 'Netzfehler' in
+    die Betriebsprotokolle, obwohl der Takt lief - eine falsche Auskuehrung,
+    die beim naechsten Lesen als Stoerung missverstanden wird.
+    """
+
+    def setUp(self):
+        self.ordner = tempfile.mkdtemp(prefix="takt-win-")
+        self.takt = lade(HANDEL / "okx_takt.py", "okx_takt_win")
+        self.takt.ORDNER = os.path.join(self.ordner, "fenster")
+        self.takt.DATEI = os.path.join(self.takt.ORDNER, "fenster.json")
+        self.takt.SPERRE = os.path.join(self.takt.ORDNER, "fenster.lock")
+        self.takt.leeren()
+
+    def test_ein_erstes_scheitern_wird_wiederholt(self):
+        """Der Aufrufer darf von einem offenen Handle nichts merken.
+
+        Die echte Ersetzung wird VOR dem Mocken festgehalten - ein Mock, der
+        selbst os.replace aufruft, ruft sich endlos selbst (das tat die erste
+        Fassung: RecursionError statt Pruefung).
+        """
+        echtes_replace = self.takt.os.replace
+        aufrufe = []
+
+        def tauschend(*a, **kw):
+            aufrufe.append(1)
+            if len(aufrufe) < 3:
+                raise PermissionError(32, "Die Datei wird verwendet")
+            return echtes_replace(*a, **kw)
+
+        with mock.patch.object(self.takt.os, "replace", tauschend):
+            self.takt._schreibe([1.0, 2.0])
+        self.assertEqual(3, len(aufrufe), "nicht genug Wiederholungsversuche")
+        self.assertEqual([1.0, 2.0], self.takt._lese())
+
+    def test_bleibt_es_hart_wird_geworfen_und_auf_geraeumt(self):
+        aufrufe = []
+
+        def immer(*a, **kw):
+            aufrufe.append(1)
+            raise PermissionError(32, "Die Datei wird verwendet")
+
+        alt = self.takt.SCHREIBVERSUCHE
+        self.takt.SCHREIBVERSUCHE = 3
+        try:
+            with mock.patch.object(self.takt.os, "replace", immer):
+                with self.assertRaises(PermissionError):
+                    self.takt._schreibe([1.0])
+        finally:
+            self.takt.SCHREIBVERSUCHE = alt
+
+        rest = [n for n in os.listdir(self.takt.ORDNER) if ".tmp-" in n]
+        self.assertEqual([], rest, "eine verwaiste .tmp-Datei blieb liegen")
+
+    def test_ein_unlesbarer_spiegel_gilt_als_leerer_takt(self):
+        """Sicherer Fehler: im Zweifel zuschlagen. Ein leer gelesener Spiegel
+        waere ein aufgehobener Takt - genau das erzeugt die Drosselung."""
+        with open(self.takt.DATEI, "w", encoding="utf-8") as f:
+            f.write("{kein json")
+        self.assertEqual([], self.takt._lese())
+
+    def test_ein_fehlender_spiegel_ist_kein_fehler(self):
+        self.assertEqual([], self.takt._lese())
+
+
 class SperrenfallTest(unittest.TestCase):
     """Regel 5: ein fremder Prozess darf den Takt nicht aufheben.
 

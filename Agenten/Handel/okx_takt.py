@@ -75,6 +75,10 @@ ORDNER = os.environ.get("OKX_TAKT_ORDNER") or os.path.join(
 DATEI = os.path.join(ORDNER, "fenster.json")
 SPERRE = os.path.join(ORDNER, "fenster.lock")
 
+# Wie oft das Ersetzen des Fensterspiegels wiederholt wird, bevor es als
+# Fehler gilt (siehe _schreibe - Windows haelt die Datei zeitweise offen).
+SCHREIBVERSUCHE = 8
+
 MAX_SPERREN_S = 5.0        # ein fremder Prozess darf uns nicht dauerhaft aussperren
 # Wie lange gewartet wird, BIS ein Platz frei ist. Das ist bewusst weit
 # ueber der Zeit, die der Takt braucht: bei TAKT_ABRUFE/TAKT_FENSTER_S = 8
@@ -110,24 +114,69 @@ def _bereit():
 
 
 def _lese():
+    """Den Fensterspiegel lesen - ohne Sperre, damit Lesen den Takt nicht
+    aufhaelt.
+
+    Der Leseversuch ist kurz und das `with` schliesst sofort: unter Windows
+    blockiert ein offenes Handle das Ersetzen der Datei (WinError 32/5), und
+    jeder Leser wuerde den Schreibvorgang stoeren. Ein unlesbarer Spiegel
+    gilt als LEER (kein Takt) - das ist der sichere Fehler: im Zweifel
+    zuschlagen statt durchlassen, weil ein zu schneller Durchlass genau die
+    Drosselung erzeugt, die die Bremse beseitigen soll.
+    """
     try:
         with open(DATEI, "r", encoding="utf-8") as f:
             roh = f.read().strip()
-        if not roh:
-            return []
-        werte = json.loads(roh)
-        return [float(w) for w in werte if isinstance(w, (int, float))]
-    except (OSError, ValueError):
+    except OSError:
         return []
+    if not roh:
+        return []
+    try:
+        werte = json.loads(roh)
+    except ValueError:
+        return []
+    return [float(w) for w in werte if isinstance(w, (int, float))]
 
 
 def _schreibe(werte):
-    # write+replace: ein halb geschriebener Fensterspiegel wuerde als
-    # leerer Takt gelesen und die Bremse aufheben.
+    """Den Fensterspiegel atomar ersetzen.
+
+    write+replace, damit ein halb geschriebener Spiegel nicht als leerer Takt
+    gelesen wird und die Bremse aufhebt.
+
+    Die Genauigkeit ist 6 Nachkommastellen (Mikrosekunden), NICHT 3: bei einem
+    Mindestabstand von 0,167 s kostet jede gerundete Marke bis zu 0,5 ms, und
+    ueber 10 aufeinanderfolgende Abrufe ergab das 0,166 statt 0,167 - der
+    Test 'zehn Abrufe' fand genau diese Abweichung. Wer hier spart,
+    verlangsamt still den Takt.
+
+    WINDOWS-FALLE (gemessen 05.10.2026, zweimal in 70 s unter Last):
+    `os.replace` scheitert mit WinError 32 (Sharing-Verletzung) oder
+    WinError 5 (Zugriff verweigert), sobald ein Prozess die Zieldatei zum
+    Zeitpunkt des Ersetzens offen haelt - und das tut `stand()`, das lesend
+    ohne Sperre auf die Datei zugreift. Der Effekt war harmlos (der Aufrufer
+    hat es als Transportfehler gefangen und neu geschrieben), aber die
+    Meldung ging als 'OKX-Transportfehler' in die Betriebsprotokolle und sah
+    nach einem Netzausfall aus. Deshalb wird hier mehrfach versucht, und
+    erst nach echtem Scheitern geworfen.
+    """
     tmp = DATEI + ".tmp-%d" % os.getpid()
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump([round(w, 3) for w in werte], f)
-    os.replace(tmp, DATEI)
+        json.dump([round(w, 6) for w in werte], f)
+    letzter = None
+    for versuch in range(SCHREIBVERSUCHE):
+        try:
+            os.replace(tmp, DATEI)
+            return
+        except OSError as e:                    # WinError 32/5 = Datei offen
+            letzter = e
+            time.sleep(0.005 * (versuch + 1))
+    # Aufraeumen, damit keine verwaisten .tmp-Dateien liegen bleiben
+    try:
+        os.remove(tmp)
+    except OSError:
+        pass
+    raise letzter
 
 
 def _sperre():
@@ -276,4 +325,14 @@ def stand():
     fuer die Wache und den Test."""
     jetzt = time.time()
     werte = [w for w in _lese() if jetzt - w < TAKT_FENSTER_S]
-    abstand = TAKT_
+    abstand = TAKT_ABSTAND_S
+    warte_bis = 0.0 if not werte else max(0.0, max(werte) + abstand - jetzt)
+    return jetzt, len(werte), warte_bis
+
+
+def leeren():
+    """Fensterspiegel loeschen - nur fuer Tests und nach einem Absturz, in dem
+    ein Zeitstempel liegen blieb. Im Betrieb ist das nie noetig: abgelaufene
+    Zeitstempel werden ohnehin verworfen."""
+    if _bereit():
+        _schreibe([])
