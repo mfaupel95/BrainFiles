@@ -129,6 +129,83 @@ class AuskunftTest(ZustandZuruecksetzen):
         self.assertIn("keinen Markt", str(c.exception))
 
 
+class BasisUmbenennungTest(ZustandZuruecksetzen):
+    """Die Basen, die am Zielmarkt ANDERS heissen (05.10.2026, gemessen).
+
+    ANLASS: Omniquant fuehrt OKX-Namen, Kraken Futures PF_-Namen. Zwei der
+    Basen tragen dort einen anderen Namen, und genau daran scheiterte die
+    Spur still: `ableitung()` baute `PF_BTCUSD` und `PF_CTUSD`, beide gibt es
+    nicht, die Meldung lautete "gibt es am Zielmarkt nicht" - fuer
+    Instrumente, die sehr wohl handelbar sind. Ein toter Markt im Haus sieht
+    genauso aus wie ein echter Fehlstand.
+
+    GEMESSEN am 05.10.2026 gegen GET /derivatives/api/v3/instruments
+    (204 tradeable PF_-Maerkte):
+        BTC -> PF_BTCUSD fehlt, PF_XBTUSD steht
+        CT  -> PF_CTUSD fehlt, PF_CTSIUSD steht
+        XMSTR und MAGIC: kein PF_-Markt ueberhaupt
+
+    Diese Tests fragen die EIGENSCHAFT (ein in PAARE stehender Name loest
+    ohne Marktliste und ohne Tor auf), nicht die eben eingetragene
+    Konstante - sonst waere der Test bei jeder Erweiterung rot.
+    """
+
+    def test_btc_loest_auf_xbt_auf(self):
+        self.assertEqual("PF_XBTUSD", kp.paar_fuer("BTC-USDC"))
+        self.assertEqual("PF_XBTUSD", kp.paar_fuer("BTC-USDT"))
+
+    def test_ct_loest_auf_ctsi_auf(self):
+        self.assertEqual("PF_CTSIUSD", kp.paar_fuer("CT-USDC"))
+        self.assertEqual("PF_CTSIUSD", kp.paar_fuer("CT-USDT"))
+
+    def test_basis_trägt_beide_quote_arten(self):
+        """Eine Basis, beide Quotes - der Zielmarkt hat nur eine (USD)."""
+        for inst in ("BTC-USDC", "BTC-USDT", "CT-USDC", "CT-USDT"):
+            self.assertTrue(kp.eingetragen(inst), inst)
+            self.assertTrue(kp.paar_fuer(inst).startswith("PF_"), inst)
+
+    def test_magier_und_xmstr_bleiben_laut_papier(self):
+        kp.merke_maerkte({"PF_XBTUSD"})
+        kp.setze_ableitung(True)
+        for inst in ("MAGIC-USDT", "MAGIC-USDC", "XMSTR-USDT", "XMSTR-USDC"):
+            with self.assertRaises(ValueError) as c:
+                kp.paar_fuer(inst)
+            self.assertIn("keinen Markt", str(c.exception), inst)
+        self.assertEqual({"MAGIC-USDC", "MAGIC-USDT", "XMSTR-USDC",
+                          "XMSTR-USDT"}, set(kp.KEIN_MARKT))
+
+    def test_abgeleitete_basis_stoesst_nicht_zurueck(self):
+        """Ein eingetragenes Instrument braucht weder Liste noch Freigabe."""
+        for inst in ("BTC-USDC", "CT-USDT"):
+            kp.merke_maerkte(set())
+            kp.setze_ableitung(False)
+            self.assertEqual("PF_XBTUSD" if inst.startswith("BTC")
+                             else "PF_CTSIUSD", kp.paar_fuer(inst))
+
+    def test_geprueft_gegen_die_echte_marktliste(self):
+        """Der Kern des Tests: keine Konstante, sondern die BOERSE.
+
+        `merke_maerkte` nimmt eine Attrappe an - hier ist sie die Liste, die
+        der Messlauf am 05.10.2026 von /instruments geholt hat. Ein Eintrag,
+        der dort nicht steht, ist FALSCH, egal wie plausibel er aussieht.
+        """
+        GEMESSEN = {"PF_STRKUSD", "PF_DOGEUSD", "PF_XRPUSD", "PF_WUSD",
+                    "PF_FILUSD", "PF_ETCUSD", "PF_WLDUSD", "PF_ZECUSD",
+                    "PF_ORDIUSD", "PF_XBTUSD", "PF_CTSIUSD"}
+        fehlend = {i: s for i, s in kp.PAARE.items() if s not in GEMESSEN}
+        self.assertEqual({}, fehlend,
+                         "PAARE-Eintrag nicht in der gemessenen Marktliste: %s"
+                         % fehlend)
+
+    def test_aus_der_messung_entfernte_maerkte_benennen_ihren_grund(self):
+        """XMSTR/MAGIC: kein Markt. Der Fehler muss das sagen, nicht 'unbekannt'."""
+        for inst in ("XMSTR-USDT", "MAGIC-USDT"):
+            with self.assertRaises(ValueError) as c:
+                kp.paar_fuer(inst)
+            self.assertIn("Kraken Futures fuehrt keinen Markt", str(c.exception))
+            self.assertIn("05.10.2026", str(c.exception))
+
+
 class _HandelnAttrappe:
     """Nur was `live_perp.kaufe` anfasst - keine echte Buchhaltung."""
 

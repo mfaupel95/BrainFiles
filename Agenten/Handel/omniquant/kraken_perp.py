@@ -17,8 +17,11 @@ Was GEMESSEN ist (01.10.2026, GET /derivatives/api/v3/instruments)
 -----------------------------------------------------------------
 Alle PF_-Maerkte tragen `contractSize: 1` - das sagt nichts. Verbindlich ist
 die Messung aus kraken_futures.py: **1 Kontrakt = 1 Einheit der Basiswaehrung.**
-Neun von Omniquants zehn Instrumenten haben einen PF_-Markt; **MAGIC-USDT hat
-keinen** und wird hier mit einem lauten Fehler abgewiesen - nie still
+Omniquant fuehrt OKX-Namen, Kraken Futures PF_-Namen - und zwei der Basen
+tragen dort einen ANDEREN Namen: BTC wird zu XBT gefuehrt, CT (Bestaendigen)
+zu CTSI. Beide Umbenennungen sind am 05.10.2026 gemessen und unten als
+gepruefte Tabelleneintraege eingetragen; **XMSTR und MAGIC haben keinen
+PF_-Markt** und werden mit einem lauten Fehler abgewiesen - nie still
 ersatzweise handeln (sonst landet die Order im falschen Markt).
 
 Was HEBEL hier heisst
@@ -61,10 +64,40 @@ PAARE = {
     "ZEC-USDC": "PF_ZECUSD",
     "ZEC-USDT": "PF_ZECUSD",
     "ORDI-USDT": "PF_ORDIUSD",
+
+    # --- GEMESSENE BASIS-UMBENENNUNGEN (05.10.2026, Auftrag Max
+    #     "dann auf kraken anbinden") --------------------------------
+    # Zwei Omniquant-Basen tragen am Zielmarkt einen ANDEREN Namen.
+    # Ohne diese Zeilen baute `ableitung()` ein Symbol, das es nicht
+    # gibt, und die Spur meldete "gibt es am Zielmarkt nicht" fuer ein
+    # Instrument, das sehr wohl handelbar ist - ein toter Markt im
+    # Haus sieht genauso aus wie ein echter Fehlstand.
+    #
+    # Belege (GET /derivatives/api/v3/instruments, 204 tradeable
+    # PF_-Maerkte, 05.10.2026):
+    #     PF_BTCUSD  -> nicht vorhanden;  PF_XBTUSD   -> vorhanden
+    #     PF_CTUSD   -> nicht vorhanden;  PF_CTSIUSD  -> vorhanden
+    # Kraken schreibt Bitcoin XBT (Hausregel: XBT ist BTC). "CT" ist
+    # die OKX-Schreibweise von CTSI, dem Bestaendigen-Ableger.
+    #
+    # Es sind bewusst GEPRUEFTE Tabelleneintraege und kein Sonderfall
+    # im Code: ein Eintrag umgeht weder die Marktliste noch das Tor
+    # `live_pf_ableitung` - er beantwortet nur die Frage "welches
+    # Symbol", mit einer geprueften Antwort statt einer abgeleiteten.
+    "BTC-USDC": "PF_XBTUSD",
+    "BTC-USDT": "PF_XBTUSD",
+    "CT-USDC": "PF_CTSIUSD",
+    "CT-USDT": "PF_CTSIUSD",
 }
 
 # Ohne PF_-Markt - namentlich, damit der Fehler den Grund nennt statt "unbekannt".
-KEIN_MARKT = {"MAGIC-USDT"}
+# GEMESSEN am 05.10.2026: weder PF_MAGICUSD noch PF_XMSTRUSD stehen in
+# der Marktliste (204 tradeable Maerkte). Beide bleiben deshalb laut
+# Papier - eine stille Ersatzbasis waere ein Handel im falschen Markt.
+KEIN_MARKT = {
+    "MAGIC-USDC", "MAGIC-USDT",
+    "XMSTR-USDC", "XMSTR-USDT",
+}
 
 HEBEL_VORGABE = 6.0
 
@@ -165,7 +198,7 @@ def pf_markt(inst, fuer_ausstieg=False):
     if name in KEIN_MARKT:
         raise ValueError(
             "Kraken Futures fuehrt keinen Markt fuer %s - dieses Instrument "
-            "bleibt Papier (gemessen 01.10.2026 gegen /instruments)" % name)
+            "bleibt Papier (gemessen 05.10.2026 gegen /instruments)" % name)
     if name in PAARE:
         return PAARE[name]
     kandidat = ableitung(name)
