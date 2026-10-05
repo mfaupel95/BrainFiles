@@ -115,10 +115,96 @@ def _befund(bilanz, inst, boerse, lage, text=""):
         {"inst": inst, "boerse": boerse, "lage": lage, "text": text})
 
 
+def _deckung_messen(bilanz, b, inst, name, p):
+    """Die vierte Stufe an EINER Position messen und melden.
+
+    Eigene Funktion, weil sie an ZWEI Stellen geprueft wird: einmal im
+    gesunden Zweig (der gemerkte Stop ist wirksam - **und kann trotzdem zu
+    klein sein**) und einmal im Zweig, der einen Stop nachsetzt. Ein Inline-
+    Block an der ersten Stelle waere an der zweiten eine zweite Wahrheit.
+
+    Schreibt `deckung_luecke` in die Position, damit Vorschau, Bericht und
+    eine Wache die Zahl sehen koennen, ohne die Regel nachzubauen.
+
+    **Setzt nichts.** `mosaic/stops_nachziehen.py` traegt Kennungen nach und
+    stellt KEINE Order; ein Nachsetzen braucht einen Schutzpreis, den
+    niemand genannt hat. Der Befund nennt die Rechnung, nicht einen
+    Aufruf, der sie erledigen wuerde.
+    """
+    gedeckt, soll_menge, auftraege = deckung(b, inst, p)
+    if gedeckt is None:
+        _befund(bilanz, inst, name, "unklar_deckung", "Deckung nicht lesbar")
+        bilanz["unklar"] += 1
+        return False
+    fehlende_menge = max(0.0, soll_menge - gedeckt - MENGE_TOLERANZ)
+    if fehlende_menge > 0:
+        bilanz["ungeschuetzt"] = bilanz.get("ungeschuetzt", 0) + 1
+        _befund(bilanz, inst, name, "ungeschuetzt",
+                "Buch %.8f, geschuetzt %.8f, fehlt %.8f (%d Auftrag/-e)"
+                % (soll_menge, gedeckt, fehlende_menge, len(auftraege)))
+        _ansage("UNGESCHUETZT: %s - Buch %.8f, an der Boerse %.8f ueber "
+                "%d Stop(s), es fehlen %.8f"
+                % (inst, soll_menge, gedeckt, len(auftraege),
+                   fehlende_menge))
+        _ansage("    Nachsetzen: das Werkzeug setzt keine Order. Der "
+                "Preis ist eine Freigabe - erst schliessen, dann "
+                "ueber ../scanner/.venv/Scripts/python.exe "
+                "kraken_spot.py mit einem genannten Stoppreis.")
+        p["deckung_luecke"] = round(fehlende_menge, 12)
+        return False
+    p.pop("deckung_luecke", None)
+    return True
+
+
 def _stop_id(p):
     """Die gemerkte Stop-Kennung einer Position (beide Schreibweisen)."""
     return (p.get("stop_algo_id") or p.get("stop_txid")
             or p.get("stop_ord_id") or None)
+
+
+# Rundung, nicht Handgriff: eine Bestandsmenge, die um Lot-Schritte abweicht,
+# ist dieselbe Position. Kraken rechnet in lot_decimals (SOL 8, BTC 8,
+# ETH 8); OKX in sz. 1e-9 ist darunter und damit unauffaellig.
+MENGE_TOLERANZ = 1e-9
+
+
+def deckung(b, inst, p):
+    """Wie viele Stueck der Position sind an der BOERSE geschuetzt?
+
+    Die vierte Abgleichsstufe (T-362, hier nach xperp gebaut). Die dritte
+    fragt nur, OB die **gemerkte** Kennung wirksam ist - und genau daran
+    scheitert sie zweifach:
+
+    1. **Existenz ist keine Menge.** Eine Position mit 0,48 SOL und einem
+       Stop ueber 0,47 ist kein geschuetzter Bestand, sondern ein Rest; die
+       Luecke laeuft bis zur Liquidation.
+    2. **Der gemerkte Auftrag ist nicht der einzige.** An Kraken lagen am
+       05.10.2026 fuenf Stops auf SOL (zusammen 9,539 gegen 0,481 im Buch),
+       vier davon von fremden Spuren (Solf, LME). Der Abgleich darf sie nicht
+       als Deckung zaehlen UND darf sie nicht anfassen.
+
+    **Die Basis wird aus beiden Schreibweisen aufgeloest.** Kraken nennt das
+    Paar in `AssetPairs` als `XXBTZEUR`, in `OpenOrders` als `XBTEUR` - ein
+    Register-Lookup auf den Paarnamen liefert `base=None` und damit **null
+    Treffer**, was sich wie "kein Stop" liest (gemessen: BTC und ETH zeigten
+    0 Stops, obwohl je eins an der Boerse lag). Die Aufloesung macht
+    `spot_stops.muenze_aus_paar()`, die beide Formen kennt; eine zweite
+    Wahrheit hier waere die dritte Fassung.
+
+    Rueckgabe: (geschuetzt, soll, auftraege). `geschuetzt=None` heisst
+    "nicht lesbar" und darf NICHT als "kein Stop" gelesen werden.
+    """
+    soll = _buch_menge(p)
+    if soll <= 0:
+        return None, 0.0, []
+    try:
+        basis = b.basis(inst)
+        auftraege = b.schutz_auftraege(inst, basis)
+    except Exception as e:                                     # noqa: BLE001
+        _ansage("Deckung %s nicht abrufbar (%s) - unangetastet" % (inst, e))
+        return None, soll, []
+    gedeckt = sum(a["menge"] for a in auftraege)
+    return gedeckt, soll, auftraege
 
 
 def _buch_menge(p):
@@ -150,8 +236,14 @@ class KrakenBoerse:
         if quote:
             self._spot.setze_quote(quote)
         self._kraken = self._spot.kraken
-        self._norm = _lade("kraken_spot_stops",
-                           os.path.join(HANDEL, "kraken", "spot_stops.py")).norm
+        # EINE Instanz des Hausmoduls, zwei Namen daraus: `norm` fuer die
+        # Basis und `muenze_aus_paar` fuer die Paarauflosung. Zweimal laden
+        # waere eine zweite Modulinstanz und damit eine zweite Wahrheit ueber
+        # dieselbe Regel.
+        _stops = _lade("kraken_spot_stops",
+                       os.path.join(HANDEL, "kraken", "spot_stops.py"))
+        self._norm = _stops.norm
+        self._muenze_aus_paar = _stops.muenze_aus_paar
         self._paare_roh = None
         self._konten = None
         self._details = {}
@@ -239,6 +331,48 @@ class KrakenBoerse:
             aus.append((txid, o))
         return aus
 
+    def schutz_auftraege(self, inst, basis):
+        """Offene Stop-Auftraege einer Basiswaehrung, mit ihrer MENGE.
+
+        Neu (T-362): die Deckung wird ueber die **Menge** gemessen, und der
+        Weg ist die offenen Orders des Kontos - nicht die gemerkte Kennung der
+        Position. Zwei Gruende, beide am 05.10.2026 gemessen:
+
+        * Ein Register-Lookup auf den Paarnamen findet nichts. `AssetPairs`
+          nennt das Paar `XXBTZEUR`, `OpenOrders` nennt es `XBTEUR`; der
+          Lookup liefert `base=None` und damit null Treffer. Die Aufloesung
+          macht `spot_stops.muenze_aus_paar()`, das beide Formen kennt.
+        * Ein gemerkter Auftrag ist nicht der einzige: fuenf Stops auf SOL,
+          vier davon von fremden Spuren (Solf, LME). Sie decken diese Position
+          mit, gehoeren ihr aber nicht - **anfassen tut der Abgleich keinen
+          davon**, das ist Sache von `waisen_stops`.
+
+        Als Schutz zaehlt nur, was wirklich schuetzt: `sell` (Gegenrichtung
+        einer Long-Position) und `stop-loss`/`stop-loss-limit`.
+        """
+        if self._paare is None:
+            self._paare = self._kraken._roh_oeffentlich("AssetPairs") or {}
+        gesucht = self._norm(basis)
+        aus = []
+        for txid, o in (self._kraken.offene_orders() or {}).items():
+            d = o or {}
+            if "stop" not in str(d.get("art") or "").lower():
+                continue
+            if str(d.get("seite") or "").lower() != "sell":
+                continue
+            paar = d.get("paar")
+            if self._muenze_aus_paar(paar, self._paare()) != gesucht:
+                continue
+            try:
+                menge = float(d.get("menge") or 0)
+            except (TypeError, ValueError):
+                continue
+            if menge <= MENGE_TOLERANZ:
+                continue
+            aus.append({"txid": txid, "menge": menge, "preis": d.get("preis"),
+                        "paar": paar})
+        return aus
+
     # -- schreibende Wege (nur im Live-Zyklus) -------------------------------
 
     def menge_gerundet(self, inst, menge):
@@ -275,6 +409,7 @@ class OkxBoerse:
     def __init__(self, quote=None):
         self._okx = _lade("scanner_okx", os.path.join(HANDEL, "scanner", "okx.py"))
         self._details = {}
+        self._algo = None
 
     def basis(self, inst):
         return str(inst).split("-")[0]
@@ -317,6 +452,45 @@ class OkxBoerse:
 
     def fremde_stops(self, bekannt):
         return None
+
+    def schutz_auftraege(self, inst, basis):
+        """Offene Schutz-Auftraege eines Instruments, mit ihrer MENGE.
+
+        Neu (T-362), gleiche Regel wie bei Kraken: gedeckt ist, was die MENGE
+        abdeckt. OKX fuehrt Stops je nach Anlageweg als `conditional` ODER
+        `oco` - eine Abfrage nur auf `conditional` liest sich bei einer
+        `oco`-Position wie "kein Stop" und wuerde einen zweiten Stop stellen.
+
+        **Alle Algotypen fragen.** Der Weg ist derselbe signierte GET wie in
+        `live_wache.boersenstops()`: `/api/v5/trade/orders-algo-pending` mit
+        `ordType=conditional`.
+        """
+        if self._algo is None:
+            self._algo = self._okx._roh(
+                "/api/v5/trade/orders-algo-pending?ordType=conditional",
+                "GET", signiert=True) or []
+        aus = []
+        for a in self._algo:
+            if a.get("instId") != inst:
+                continue
+            if str(a.get("side", "")).lower() != "sell":
+                continue
+            if str(a.get("reduceOnly", "")).lower() not in ("true", "1"):
+                continue
+            # Als Schutz traegt ein Trailing kein slTriggerPx - es zaehlt
+            # ueber tpTriggerPx (dieselbe Regel wie okxf.ist_schutz_stop).
+            if not (a.get("slTriggerPx") or a.get("tpTriggerPx")):
+                continue
+            try:
+                menge = float(a.get("sz") or 0)
+            except (TypeError, ValueError):
+                continue
+            if menge <= MENGE_TOLERANZ:
+                continue
+            aus.append({"txid": a.get("algoId"), "menge": menge,
+                        "preis": a.get("slTriggerPx") or a.get("tpTriggerPx"),
+                        "paar": inst})
+        return aus
 
     def menge_gerundet(self, inst, menge):
         m = self._okx.menge_gerundet(inst, menge)
@@ -486,8 +660,19 @@ def pruefe(z, anwenden=False, journal=None, standard="kraken", laden=None,
             bilanz["ok"] += 1
             if p.get("boersen_stop_fehlt"):
                 p["boersen_stop_fehlt"] = False
+            _deckung_messen(bilanz, b, inst, name, p)
             behalten.append(p)
             continue
+
+        # Vierte Stufe (T-362): die MENGE des Schutzes. Der gemerkte Auftrag
+        # kann wirksam sein und trotzdem zu klein - eine Position mit 0,48
+        # SOL und einem Stop ueber 0,47 ist kein geschuetzter Bestand.
+        #
+        # **Hier wird nichts gestellt.** `stops_nachziehen.py` traegt nur
+        # Kennungen nach; ein Nachsetzen braucht einen Schutzpreis, den
+        # niemand genannt hat. Ein geratener Notausstieg ist eine Order,
+        # die jemand nicht bestellt hat.
+        _deckung_messen(bilanz, b, inst, name, p)
 
         # Bestand da, Stop nicht (mehr) wirksam -> neu setzen. Gesichert wird
         # nur, was wirklich gehalten wird (nicht mehr als der Bestand).
