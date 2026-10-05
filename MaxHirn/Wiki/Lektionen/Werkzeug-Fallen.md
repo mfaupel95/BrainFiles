@@ -89,3 +89,13 @@ connection verified", solange das Kontingent traegt.
 `Archiv/TASKS.md` T-304).
 **Betroffene Version.** jevgrep 0.7.0 (npm `@dzhng/jevgrep`), Anbieter
 OpenCode Zen (`jev-1.13-free` / `jev-1.13`).
+## 3. „Datei verschwunden" erst messen - drei Fehlalarme an einem Abend (T-100, 05.10.2026)
+
+Drei Dateien galten als Opfer des Dateischwunds, keine war es:
+
+- `tasks_eintragen_strk.py` und `tasks_eintragen_t365.py`: die `.pyc` lagen noch in `__pycache__/`, die `.py` fehlten - aber die `.py` hatte ich selbst mit `rm -f` geloescht. Die `.pyc` bleibt dabei als Artefakt liegen; ein `pyc ohne py` ist deshalb KEIN Schwundbeweis, solange der eigene Loeschbefehl in derselben Sitzung liegt.
+- `commitmsg_skill_trailing.md`: galt als „beim Commit-Aufruf weg" - sie lag die ganze Zeit mit 2158 B da. Ich hatte sie als `.md` geschrieben und mit `-F ...txt` referenziert. `git commit -F` meldet dann `could not read log file`; das liest sich wie eine verschwundene Datei, ist aber ein Tippfehler im eigenen Aufruf.
+
+**Merksatz:** Vor jeder Schwundmeldung zwei Zeugen: (1) eine Markerdatei anlegen und ihr Alter messen (`date -r <datei>`), (2) die Uhr des eigenen Werkzeugs gegen die Host-Uhr pruefen (`git log -1 --format=%ci`). Erst wenn der Marker selbst verschwindet, ist es Schwund. `__pycache__`-Reste und `-F`-Fehlermeldungen sind Fehlalarme.
+
+**Zusatz:** `cache/scratch` ist als Wache-Ziel ungeeignet - der Ordner wird nach 24 h Ruhe automatisch geleert, eine Wache dort meldete planmaessiges Aufraeumen als Schwund.
