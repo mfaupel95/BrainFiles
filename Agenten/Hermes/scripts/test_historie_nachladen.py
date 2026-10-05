@@ -46,12 +46,13 @@ class Attrappe(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="nachladen-"))
-        self.ordner = self.tmp / "daten" / "historie"
+        self.ordner = self.tmp / "daten" / "historie" / "feed"
         self.ordner.mkdir(parents=True)
         w = _lade()
         self.alt_h, self.alt_p = w.HANDEL, str(w.PYTHON)
-        self.alt_gb = w._groesse_gb
+        self.alt_gb, self.alt_feed = w._groesse_gb, w.FEED_ORDNER
         w.HANDEL = self.tmp
+        w.FEED_ORDNER = self.ordner
         # `_groesse_gb(ordner)` nimmt den Pfad als Argument - das Lambda
         # muss dieselbe Signatur haben, sonst bricht schon die Vorschau (der
         # eigene Erstlauf: 9 Fehlschlaege aus einem `lambda` ohne Parameter).
@@ -63,6 +64,7 @@ class Attrappe(unittest.TestCase):
         self.w.HANDEL = self.alt_h
         self.w.PYTHON = self.alt_p
         self.w._groesse_gb = self.alt_gb
+        self.w.FEED_ORDNER = self.alt_feed
         shutil.rmtree(self.tmp, ignore_errors=True)
         self.assertFalse(self.tmp.exists())
 

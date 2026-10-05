@@ -67,6 +67,40 @@ TAKTE_BEACHTET = {"1D": 30, "1H": 4}
 TAG_MS = 86_400_000
 
 
+# Der ECHTE Ablageort. Als Modulwert, nicht als Funktionsweg: sonst
+# umgeht der Importweg jedes Umbiegen von `HANDEL` im Test (der eigene
+# Erstlauf: 15 Fehlschlaege, alle mit "Historie fehlt" - die Attrappe lag am
+# richtigen Ort, gelesen wurde trotzdem der echte Ordner).
+FEED_ORDNER = None
+
+
+def _feed_ordner():
+    """Der Ordner, in dem `moondev_historie` wirklich schreibt.
+
+    Quelle der Wahrheit ist das Abrufmodul (`ORDNER`), nicht eine
+    Pfadannahme: `daten/historie` und `daten/historie/feed` sind zwei
+    verschiedene Orte, und nur der zweite gehoert dem Backtest
+    (Befund 05.10.2026).
+    """
+    global FEED_ORDNER
+    if FEED_ORDNER is not None:
+        return FEED_ORDNER
+    import importlib.util
+    modul_pfad = HANDEL / "moondev_historie.py"
+    ergebnis = HANDEL / "daten" / "historie" / "feed"
+    if modul_pfad.is_file():
+        try:
+            spec = importlib.util.spec_from_file_location(
+                "mh_ordner", str(modul_pfad))
+            modul = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(modul)
+            ergebnis = Path(modul.ORDNER)
+        except Exception:
+            pass
+    FEED_ORDNER = ergebnis
+    return FEED_ORDNER
+
+
 def _reihen():
     """(takt -> [(symbol, letzte_kerze_ms, kerzen)]) aus dem Ordner.
 
@@ -74,7 +108,16 @@ def _reihen():
     die Wahrheit (dieselbe Regel wie in `moondev_historie._lade_universum`).
     Der `_stand.json`-Eintrag darf aelter sein als die Datei daneben.
     """
-    ordner = HANDEL / "daten" / "historie"
+    # `moondev_historie.ORDNER` ist `daten/historie/FEED` - dort schreibt der
+    # Abruf und von dort liest `replay.lauf_feed` (ueber
+    # `moondev_historie.lade_feed`). Die erste Fassung las `daten/historie`
+    # OHNE `feed`: sie zaehlte drei verwaiste Dateien vom 25.09. und meldete
+    # "zu wenig Reihen", waehrend im echten Ordner 30 lagen (Befund
+    # 05.10.2026, gefunden durch: Abruf meldete "30 geschrieben", Dateizahl
+    # blieb 3). Der Pfad wird hier bewusst als KONSTANTE aus dem
+    # Abrufmodul geholt, nicht geraten - sonst genau dieser Fehler beim
+    # naechsten Umbau.
+    ordner = _feed_ordner()
     if not ordner.is_dir():
         return None, []
     aus = {}

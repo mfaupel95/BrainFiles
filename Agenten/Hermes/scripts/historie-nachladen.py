@@ -58,6 +58,40 @@ def _groesse_gb(ordner):
     return sum(p.stat().st_size for p in ordner.glob("*.json")) / (1024 ** 3)
 
 
+# Der ECHTE Ablageort. Als Modulwert, nicht als Funktionsweg: sonst
+# umgeht der Importweg jedes Umbiegen von `HANDEL` im Test (der eigene
+# Erstlauf: 15 Fehlschlaege, alle mit "Historie fehlt" - die Attrappe lag am
+# richtigen Ort, gelesen wurde trotzdem der echte Ordner).
+FEED_ORDNER = None
+
+
+def _feed_ordner():
+    """Der Ordner, in dem `moondev_historie` wirklich schreibt.
+
+    Quelle der Wahrheit ist das Abrufmodul (`ORDNER`), nicht eine
+    Pfadannahme: `daten/historie` und `daten/historie/feed` sind zwei
+    verschiedene Orte, und nur der zweite gehoert dem Backtest
+    (Befund 05.10.2026).
+    """
+    global FEED_ORDNER
+    if FEED_ORDNER is not None:
+        return FEED_ORDNER
+    import importlib.util
+    modul_pfad = HANDEL / "moondev_historie.py"
+    ergebnis = HANDEL / "daten" / "historie" / "feed"
+    if modul_pfad.is_file():
+        try:
+            spec = importlib.util.spec_from_file_location(
+                "mh_ordner", str(modul_pfad))
+            modul = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(modul)
+            ergebnis = Path(modul.ORDNER)
+        except Exception:
+            pass
+    FEED_ORDNER = ergebnis
+    return FEED_ORDNER
+
+
 def vorschau(top=30, takt="1D", jetzt=None):
     """Was der Lauf tun wuerde. Reine Rechnung, kein Abruf.
 
@@ -67,7 +101,10 @@ def vorschau(top=30, takt="1D", jetzt=None):
     darunter und JEDE Reihe gilt als jung (gemessen: 2 Fehlschlaege, die Zahl
     "zu alt" blieb 0).
     """
-    ordner = HANDEL / "daten" / "historie"
+    # Derselbe Ordner wie in `historie-wache._feed_ordner()`: die Quelle
+    # der Wahrheit ist `moondev_historie.ORDNER`. `daten/historie` OHNE
+    # `feed` ist ein zweiter, verwaister Ort (Befund 05.10.2026).
+    ordner = _feed_ordner()
     jetzt = jetzt if jetzt is not None else time.time()
     alt, vorhanden = [], 0
     for pfad in sorted(ordner.glob("*_%s.json" % takt)):

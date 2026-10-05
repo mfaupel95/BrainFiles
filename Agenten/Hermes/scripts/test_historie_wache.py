@@ -56,19 +56,23 @@ class Attrappe(unittest.TestCase):
         # Der Pfad, den die Wache liest, ist `HANDEL/daten/historie` - die
         # Attrappe muss genau diese Form haben, sonst prueft der Test den
         # Fehlerpfad ("Ordner fehlt") statt der Regel.
-        self.ordner = self.tmp / "daten" / "historie"
+        self.ordner = self.tmp / "daten" / "historie" / "feed"
         self.ordner.mkdir(parents=True)
         w = _lade()
         # Die Wache liest den Pfad aus dem Modul - genau dieser Weg wird
         # umgebogen, sonst prueft der Test die echte Historie (Hausregel: ein
         # Test fasst keine echte Zieldatei an).
-        self.alt = w.HANDEL
+        self.alt, self.alt_feed = w.HANDEL, w.FEED_ORDNER
         w.HANDEL = self.tmp
+        # `FEED_ORDNER` ist die Naht, die `_feed_ordner()` zurueckgibt - sie
+        # muss mitgebogen werden, sonst liest der Test den echten Ordner.
+        w.FEED_ORDNER = self.ordner
         self.w = w
         self.addCleanup(self.aufraeumen)
 
     def aufraeumen(self):
         self.w.HANDEL = self.alt
+        self.w.FEED_ORDNER = self.alt_feed
         shutil.rmtree(self.tmp, ignore_errors=True)
         self.assertFalse(self.tmp.exists())
 
