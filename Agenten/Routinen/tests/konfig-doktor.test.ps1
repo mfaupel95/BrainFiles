@@ -178,6 +178,73 @@ $fx2 = Neue-Wurzel
 $r = Lauf $fx2 @('hermes')
 Pruefe 'kein Hermes-Ordner: UNKLAR statt Fehler' ((Hat $r 'HERMES-ORDNER-FEHLT') -and ((Schwere-Von $r 'HERMES-ORDNER-FEHLT') -eq 'UNKLAR'))
 
+Write-Host '--- hermes: Fix-Runde 1 ---'
+$fx = Neue-Wurzel
+$h = Join-Path $fx 'Agenten/Hermes'
+New-Item -ItemType Directory -Path $h -Force | Out-Null
+$r = Lauf $fx @('hermes')
+Pruefe '(5) config.yaml fehlt: KRITISCH' ((Schwere-Von $r 'HERMES-CONFIG-FEHLT') -eq 'KRITISCH')
+Pruefe '(7) auth.json fehlt ohne .corrupt: HINWEIS' ((Schwere-Von $r 'HERMES-AUTH-NICHT-ANGELEGT') -eq 'HINWEIS')
+Schreibe (Join-Path $h 'config.yaml') 'a: 1'
+Schreibe (Join-Path $h 'auth.json') '{"a":{"expires_at":0},"b":{"expires_at":""},"c":{"expires_at":null},"d":{"expires_at":-5},"e":{"expires_at":"0"}}'
+$r = Lauf $fx @('hermes')
+Pruefe '(6) expires_at <= 0 oder leer: kein ABGELAUFEN' (-not (Hat $r 'HERMES-AUTH-ABGELAUFEN')) "beleg=$((@($r | Where-Object { $_.id -eq 'HERMES-AUTH-ABGELAUFEN' }) | Select-Object -First 1).beleg)"
+$altOs = $env:OS
+$env:OS = 'Linux'
+$r = Lauf $fx @('hermes')
+$env:OS = $altOs
+Pruefe '(5) kein Windows: UNKLAR NICHT-WINDOWS' ((Schwere-Von $r 'HERMES-NICHT-WINDOWS') -eq 'UNKLAR')
+$altHome = $env:HERMES_HOME
+$anders = Join-Path $fx 'anders'
+Schreibe (Join-Path $anders 'config.yaml') 'a: 1'
+$env:HERMES_HOME = $anders
+$r = @(& $Doktor -Modul hermes -PassThru -Kurz -OhneExtern)
+Pruefe '(5) HERMES_HOME abweichend: HINWEIS' ((Schwere-Von $r 'HERMES-HOME-ABWEICHEND') -eq 'HINWEIS')
+$env:HERMES_HOME = 'Agenten/Hermes'
+$altCwd = [Environment]::CurrentDirectory
+Push-Location $fx
+[Environment]::CurrentDirectory = $fx
+$r = @(& $Doktor -Modul hermes -PassThru -Kurz -OhneExtern)
+[Environment]::CurrentDirectory = $altCwd
+Pop-Location
+$env:HERMES_HOME = $altHome
+Pruefe '(7) relativer HERMES_HOME wird gegen die Wurzel aufgeloest' (-not (Hat $r 'HERMES-HOME-ABWEICHEND')) "beleg=$((@($r | Where-Object { $_.id -eq 'HERMES-HOME-ABWEICHEND' }) | Select-Object -First 1).beleg)"
+
+# doctor-Pfad mit Stub: hermes.cmd steht im PATH VOR hermes.exe
+$stubCmd = Join-Path $fx 'stub-cmd'
+$stubExe = Join-Path $fx 'stub-exe'
+New-Item -ItemType Directory -Path $stubCmd, $stubExe -Force | Out-Null
+Schreibe (Join-Path $stubCmd 'hermes.cmd') "@echo [FAIL] falscher Starter`r`n@exit /b 3`r`n"
+$src = 'using System; using System.IO; public static class P { public static int Main() { string d = AppDomain.CurrentDomain.BaseDirectory; string s = Path.Combine(d, "sleep.txt"); if (File.Exists(s)) System.Threading.Thread.Sleep(int.Parse(File.ReadAllText(s).Trim()) * 1000); string o = Path.Combine(d, "out.txt"); if (File.Exists(o)) Console.Write(File.ReadAllText(o)); string e = Path.Combine(d, "exit.txt"); return File.Exists(e) ? int.Parse(File.ReadAllText(e).Trim()) : 0; } }'
+$exe = Join-Path $stubExe 'hermes.exe'
+Add-Type -TypeDefinition $src -OutputAssembly $exe -OutputType ConsoleApplication
+$altPath = $env:Path
+$env:Path = $stubCmd + ';' + $stubExe + ';' + $altPath
+Schreibe (Join-Path $stubExe 'out.txt') "[FAIL] auth: Authorization Bearer GEHEIMBEARERWERT`n[FAIL] cfg api_key=GEHEIMAPIWERT`n"
+$r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false }
+$alles = ($r | ConvertTo-Json -Depth 4)
+Pruefe '(1) .exe wird vor hermes.cmd gewaehlt' ((-not (Hat $r 'HERMES-DOCTOR-NICHT-AUFRUFBAR')) -and (Hat $r 'HERMES-DOCTOR')) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
+Pruefe '(1) Ausgabe stammt vom Stub, nicht vom .cmd' ($alles -notmatch 'falscher Starter')
+Pruefe '(3) Bearer-/api_key-Werte maskiert' (($alles -notmatch 'GEHEIMBEARERWERT') -and ($alles -notmatch 'GEHEIMAPIWERT') -and ($alles -match 'api_key=\*\*\*'))
+Schreibe (Join-Path $stubExe 'out.txt') "Checks: 0 errors`nno errors found`nOK`n"
+$r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false }
+Pruefe '(4) "0 errors"/"no errors found": kein Befund' (-not (Hat $r 'HERMES-DOCTOR')) "beleg=$((@($r | Where-Object { $_.id -eq 'HERMES-DOCTOR' }) | Select-Object -First 1).beleg)"
+Schreibe (Join-Path $stubExe 'sleep.txt') '7'
+$r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false; ModulLimitSek = 8 }
+$b = @($r | Where-Object { $_.id -eq 'HERMES-DOCTOR-ZEITLIMIT' }) | Select-Object -First 1
+Pruefe '(2) doctor-Timeout liegt unter dem Modul-Limit (5 s)' (($null -ne $b) -and ($b.beleg -match 'nach 5 s') -and (-not (Hat $r 'ZEITLIMIT-hermes'))) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
+Remove-Item -LiteralPath (Join-Path $stubExe 'sleep.txt')
+$env:Path = $stubCmd + ';' + [Environment]::GetFolderPath('System')
+$r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false }
+$b = @($r | Where-Object { $_.id -eq 'HERMES-DOCTOR-NICHT-AUFRUFBAR' }) | Select-Object -First 1
+Pruefe '(1) nur .cmd im PATH: NICHT-AUFRUFBAR nennt den Nicht-.exe-Treffer' (($null -ne $b) -and ($b.beleg -match 'hermes\.cmd'))
+New-Item -ItemType Directory -Path (Join-Path $h 'bin') -Force | Out-Null
+Copy-Item -LiteralPath $exe -Destination (Join-Path $h 'bin/hermes.exe')
+Copy-Item -LiteralPath (Join-Path $stubExe 'out.txt') -Destination (Join-Path $h 'bin/out.txt')
+$r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false }
+$env:Path = $altPath
+Pruefe '(1) Rueckfall auf <heim>/bin/hermes.exe' (-not (Hat $r 'HERMES-DOCTOR-NICHT-AUFRUFBAR')) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
+
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 if ($script:Fehler -gt 0) { Write-Host "konfig-doktor FEHLGESCHLAGEN: $($script:Fehler) Pruefung(en)"; exit 1 }

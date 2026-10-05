@@ -23,6 +23,7 @@ $script:Befunde = New-Object System.Collections.ArrayList
 # ---------- Hilfen ----------
 function Maske([string]$t) {
     if ($null -eq $t) { return '' }
+    $t = $t -replace '(?i)(bearer\s+|(api[_-]?key|token|secret|password)\s*[:=]\s*)\S+', '${1}***'
     $t = $t -replace '(?i)\b(sk|pk|ghp|gho|xox[abp]|AKIA)[-_A-Za-z0-9]{12,}', '***'
     $t = $t -replace '(?=[A-Za-z0-9_\-]*\d)(?=[A-Za-z0-9_\-]*[A-Za-z])[A-Za-z0-9_\-]{40,}', '***'
     return $t
@@ -262,8 +263,14 @@ function Get-AblaufListe($Obj, [string]$Pfad, [int]$Tiefe, $Liste) {
 function ConvertTo-Zeit($Wert) {
     if ($null -eq $Wert) { return $null }
     if ($Wert -is [datetime]) { return $Wert.ToUniversalTime() }
+    if ($Wert -is [string]) {
+        if ([string]::IsNullOrWhiteSpace($Wert)) { return $null }
+        $zahl = 0.0
+        if ([double]::TryParse($Wert, [System.Globalization.NumberStyles]::Float, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$zahl)) { $Wert = $zahl }
+    }
     if ($Wert -is [ValueType] -and $Wert -isnot [bool]) {
         $n = [double]$Wert
+        if ($n -le 0) { return $null }
         if ($n -gt 100000000000) { $n = $n / 1000 }
         return (New-Object DateTime 1970, 1, 1, 0, 0, 0, ([DateTimeKind]::Utc)).AddSeconds($n)
     }
@@ -283,8 +290,9 @@ function Pruefe-Hermes {
     $heim = $standard
     $envHome = [string]$env:HERMES_HOME
     if (-not $WurzelExplizit -and $envHome) {
-        $heim = $envHome
+        if (-not [System.IO.Path]::IsPathRooted($envHome)) { $envHome = Join-Path $Wurzel $envHome }
         $a = [System.IO.Path]::GetFullPath($envHome).TrimEnd('\', '/')
+        $heim = $a
         $b = [System.IO.Path]::GetFullPath($standard).TrimEnd('\', '/')
         if ($a -ne $b) {
             Add-Befund -Id 'HERMES-HOME-ABWEICHEND' -Modul 'hermes' -Schwere 'HINWEIS' -Titel 'HERMES_HOME zeigt nicht auf Agenten/Hermes' `
@@ -342,6 +350,10 @@ function Pruefe-Hermes {
         Add-Befund -Id 'HERMES-AUTH-FEHLT' -Modul 'hermes' -Schwere 'KRITISCH' -Titel 'auth.json fehlt, nur eine .corrupt-Kopie liegt vor' `
             -Beleg 'Test-Path auth.json negativ; auth.json.corrupt vorhanden' -Status 'gesichert' -Vorschlag 'Neu anmelden - nach Freigabe'
     }
+    else {
+        Add-Befund -Id 'HERMES-AUTH-NICHT-ANGELEGT' -Modul 'hermes' -Schwere 'HINWEIS' -Titel 'auth.json fehlt (keine .corrupt-Kopie)' `
+            -Beleg "Test-Path negativ: $auth" -Status 'gesichert' -Vorschlag 'Erwartbar, wenn nur API-Keys aus .env genutzt werden; sonst im Hermes-Client anmelden'
+    }
     if ($corrupt.Count -gt 0) {
         $namen = @($corrupt | ForEach-Object { "{0} ({1})" -f $_.Name, $_.LastWriteTime.ToString('yyyy-MM-dd') })
         Add-Befund -Id 'HERMES-CORRUPT-RESTE' -Modul 'hermes' -Schwere 'HINWEIS' -Titel "$($corrupt.Count) .corrupt-Reste im Hermes-Ordner" `
@@ -368,19 +380,30 @@ function Pruefe-Hermes {
         }
     }
     if (-not $OhneExtern -and -not $Kurz) {
-        $hc = Get-Command hermes -ErrorAction SilentlyContinue | Select-Object -First 1
-        if (-not $hc -or $hc.Source -notmatch '\.exe$') {
+        $alle = @(Get-Command hermes -All -CommandType Application -ErrorAction SilentlyContinue)
+        $hcPfad = $null
+        $hc = @($alle | Where-Object { $_.Source -match '\.exe$' }) | Select-Object -First 1
+        if ($hc) { $hcPfad = $hc.Source }
+        else {
+            $rf = Join-Path $heim 'bin\hermes.exe'
+            if (Test-Path -LiteralPath $rf) { $hcPfad = $rf }
+        }
+        if (-not $hcPfad) {
+            $andere = @($alle | Where-Object { $_.Source -notmatch '\.exe$' } | ForEach-Object { $_.Source })
+            $bl = 'Keine hermes.exe im PATH und nicht unter <heim>\bin'
+            if ($andere.Count -gt 0) { $bl += '; Nicht-.exe-Treffer: ' + ($andere -join ', ') }
             Add-Befund -Id 'HERMES-DOCTOR-NICHT-AUFRUFBAR' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'hermes.exe nicht gefunden, Selbstdiagnose uebersprungen' `
-                -Beleg 'Get-Command hermes liefert keine .exe' -Status 'gesichert' -Vorschlag 'hermes doctor von Hand mit bereinigter Umgebung (PYTHONHOME/PYTHONPATH entfernt) ausfuehren'
+                -Beleg $bl -Status 'gesichert' -Vorschlag 'hermes doctor von Hand mit bereinigter Umgebung (PYTHONHOME/PYTHONPATH entfernt) ausfuehren'
         }
         else {
-            $r = Invoke-Extern -Datei $hc.Source -Argumente @('doctor') -TimeoutSek $ModulLimitSek -EntferneEnv @('PYTHONHOME', 'PYTHONPATH') -SetzeEnv @{ HERMES_HOME = $heim }
+            $to = [Math]::Max(5, $ModulLimitSek - 5)
+            $r = Invoke-Extern -Datei $hcPfad -Argumente @('doctor') -TimeoutSek $to -EntferneEnv @('PYTHONHOME', 'PYTHONPATH') -SetzeEnv @{ HERMES_HOME = $heim }
             if ($r.TimedOut) {
                 Add-Befund -Id 'HERMES-DOCTOR-ZEITLIMIT' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'hermes doctor antwortet nicht im Zeitlimit' `
-                    -Beleg "Abbruch nach $ModulLimitSek s" -Status 'gesichert' -Vorschlag 'hermes doctor von Hand ausfuehren'
+                    -Beleg "Abbruch nach $to s (Modul-Limit $ModulLimitSek s)" -Status 'gesichert' -Vorschlag 'hermes doctor von Hand ausfuehren'
             }
             else {
-                $pz = @(($r.Out + "`n" + $r.Err) -split "`r?`n" | Where-Object { $_ -match '(?i)\[FAIL\]|error|fehler|failed' })
+                $pz = @(($r.Out + "`n" + $r.Err) -split "`r?`n" | Where-Object { $_ -match '(?i)\[FAIL\]|\b(ERROR|FAILED|Fehler)\b' })
                 if ($pz.Count -gt 0 -or $r.ExitCode -ne 0) {
                     $erste = @($pz | Select-Object -First 3 | ForEach-Object { if ($_.Length -gt 120) { $_.Substring(0, 120) } else { $_ } }) -join ' / '
                     Add-Befund -Id 'HERMES-DOCTOR' -Modul 'hermes' -Schwere 'HINWEIS' -Titel "hermes doctor: $($pz.Count) Problemzeile(n), Exit $($r.ExitCode)" `
