@@ -245,6 +245,26 @@ $r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false }
 $env:Path = $altPath
 Pruefe '(1) Rueckfall auf <heim>/bin/hermes.exe' (-not (Hat $r 'HERMES-DOCTOR-NICHT-AUFRUFBAR')) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
 
+Write-Host '--- Modul regelpaare ---'
+$fx = Neue-Wurzel
+$inh = "Zeile eins`nZeile zwei`nZeile drei`n"
+Schreibe (Join-Path $fx 'CLAUDE.md') $inh
+Schreibe (Join-Path $fx 'AGENTS.md') $inh
+Schreibe (Join-Path $fx 'MaxHirn/CLAUDE.md') ([string][char]0xFEFF + ($inh -replace "`n", "`r`n"))
+Schreibe (Join-Path $fx 'MaxHirn/AGENTS.md') $inh
+Schreibe (Join-Path $fx 'Werkstatt/CLAUDE.md') $inh
+Schreibe (Join-Path $fx 'Werkstatt/AGENTS.md') "Zeile eins`nZeile ZWEI`nZeile drei`n"
+$r = Lauf $fx @('regelpaare')
+Pruefe 'identische Bytes: kein Befund fuer Wurzel' (-not (Hat $r 'REGELPAAR-INHALT-Wurzel') -and -not (Hat $r 'REGELPAAR-ZEILENENDE-Wurzel'))
+Pruefe 'BOM+CRLF bei gleichem Inhalt: HINWEIS, nicht WARNUNG' ((Schwere-Von $r 'REGELPAAR-ZEILENENDE-MaxHirn') -eq 'HINWEIS' -and -not (Hat $r 'REGELPAAR-INHALT-MaxHirn'))
+Pruefe 'inhaltliche Abweichung: WARNUNG mit Zeilennummer' ((Schwere-Von $r 'REGELPAAR-INHALT-Werkstatt') -eq 'WARNUNG' -and (($r | Where-Object { $_.id -eq 'REGELPAAR-INHALT-Werkstatt' }).beleg -match 'Zeile 2'))
+Remove-Item -LiteralPath (Join-Path $fx 'Werkstatt/AGENTS.md')
+$r = Lauf $fx @('regelpaare')
+Pruefe 'fehlende Partnerdatei: WARNUNG' ((Schwere-Von $r 'REGELPAAR-FEHLT-Werkstatt') -eq 'WARNUNG')
+$fx2 = Neue-Wurzel
+$r = Lauf $fx2 @('regelpaare')
+Pruefe 'beide Dateien fehlen (frischer Checkout): UNKLAR' ((Schwere-Von $r 'REGELPAAR-ORDNER-FEHLT-Wurzel') -eq 'UNKLAR')
+
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 if ($script:Fehler -gt 0) { Write-Host "konfig-doktor FEHLGESCHLAGEN: $($script:Fehler) Pruefung(en)"; exit 1 }

@@ -414,6 +414,61 @@ function Pruefe-Hermes {
     }
 }
 
+# ---------- Modul 3: regelpaare ----------
+function Get-NormalText([byte[]]$Bytes) {
+    $t = [System.Text.Encoding]::UTF8.GetString($Bytes)
+    $t = $t.TrimStart([char]0xFEFF)
+    return ($t -replace "`r`n", "`n")
+}
+
+function Pruefe-Regelpaare {
+    foreach ($rel in @('', 'MaxHirn', 'Werkstatt')) {
+        $dir = $Wurzel
+        $ort = 'Wurzel'
+        if ($rel) { $dir = Join-Path $Wurzel $rel; $ort = $rel }
+        $c = Join-Path $dir 'CLAUDE.md'
+        $a = Join-Path $dir 'AGENTS.md'
+        $hc = Test-Path -LiteralPath $c
+        $ha = Test-Path -LiteralPath $a
+        if (-not $hc -and -not $ha) {
+            Add-Befund -Id "REGELPAAR-ORDNER-FEHLT-$ort" -Modul 'regelpaare' -Schwere 'UNKLAR' -Titel "Regelpaar in '$ort' nicht vorhanden" `
+                -Beleg "Weder CLAUDE.md noch AGENTS.md unter $dir" -Status 'gesichert' -Vorschlag 'Bei frischem Checkout oder toter Junction erwartbar; sonst klaeren'
+            continue
+        }
+        if ($hc -ne $ha) {
+            $fehlt = 'AGENTS.md'
+            if (-not $hc) { $fehlt = 'CLAUDE.md' }
+            Add-Befund -Id "REGELPAAR-FEHLT-$ort" -Modul 'regelpaare' -Schwere 'WARNUNG' -Titel "Regelpaar '$ort': $fehlt fehlt" `
+                -Beleg "Test-Path negativ fuer $fehlt unter $dir" -Status 'gesichert' -Vorschlag 'Partnerdatei aus der vorhandenen herstellen (Paar muss identisch bleiben) - nach Freigabe'
+            continue
+        }
+        $bc = [System.IO.File]::ReadAllBytes($c)
+        $ba = [System.IO.File]::ReadAllBytes($a)
+        $gleichBytes = ($bc.Length -eq $ba.Length) -and ([Convert]::ToBase64String($bc) -ceq [Convert]::ToBase64String($ba))
+        if ($gleichBytes) { continue }
+        $tc = Get-NormalText $bc
+        $ta = Get-NormalText $ba
+        if ($tc -ceq $ta) {
+            $crC = [regex]::Matches([System.Text.Encoding]::UTF8.GetString($bc), "`r`n").Count
+            $crA = [regex]::Matches([System.Text.Encoding]::UTF8.GetString($ba), "`r`n").Count
+            Add-Befund -Id "REGELPAAR-ZEILENENDE-$ort" -Modul 'regelpaare' -Schwere 'HINWEIS' -Titel "Regelpaar '$ort': nur Zeilenenden/BOM verschieden" `
+                -Beleg "CLAUDE.md $($bc.Length) Bytes (CRLF $crC), AGENTS.md $($ba.Length) Bytes (CRLF $crA); Text nach Normalisierung gleich" -Status 'gesichert' `
+                -Vorschlag 'Inhaltlich in Ordnung; AGENTS.md soll LF sein - nicht per Rewrite aendern (Hausregel)'
+        }
+        else {
+            $zc = $tc -split "`n"
+            $za = $ta -split "`n"
+            $n = [Math]::Min($zc.Count, $za.Count)
+            $erste = 0
+            for ($i = 0; $i -lt $n; $i++) { if ($zc[$i] -cne $za[$i]) { $erste = $i + 1; break } }
+            if ($erste -eq 0) { $erste = $n + 1 }
+            Add-Befund -Id "REGELPAAR-INHALT-$ort" -Modul 'regelpaare' -Schwere 'WARNUNG' -Titel "Regelpaar '$ort': Inhalt weicht ab" `
+                -Beleg "Erste Abweichung in Zeile $erste; CLAUDE.md $($zc.Count) Zeilen, AGENTS.md $($za.Count) Zeilen" -Status 'gesichert' `
+                -Vorschlag 'Diff beider Dateien ansehen; die gepflegte Fassung in beide uebernehmen (gezielter Ersatz) - nach Freigabe'
+        }
+    }
+}
+
 # === MODULE (neue Pruefe-*-Funktionen oberhalb dieser Zeile einfuegen) ===
 
 $ModulTabelle = [ordered]@{
