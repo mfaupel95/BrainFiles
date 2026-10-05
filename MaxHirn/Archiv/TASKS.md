@@ -1,4 +1,16 @@
 ## Offen
+- [ ] **T-360 — Repos-Zentrale: zwei Manifest-Eintraege zeigen auf den geloeschten Ordner `kopier1zu1`**
+      Kontext: Die vollstaendige Suite der Zentrale (296 Tests) meldet seit dem
+      05.10.2026 zwei rote Tests, BEIDE vorbestehend und beide mit derselben
+      Ursache: die Fremdarbeit-Uebernahme 607d9b51 vom 05.10. 00:20 hat den Ordner
+      `Agenten/Handel/kopier1zu1` aus dem Baum entfernt, zwei Manifest-Eintraege
+      tragen ihn aber weiter (der Ordner und `kopier1zu1/auswertung.py` mit
+      belegtem Startbefehl). Das Fenster zeigt beide unter FEHLT.
+      Naechster Schritt: entscheiden, ob `kopier1zu1` zurueckkommt oder der
+      Eintrag aus `repos-zentrale.json` wandert - `fuellen.py --anwenden` nimmt
+      vorhandene Eintraege NICHT mit heraus, das ist Handarbeit in der Kuratierung.
+      Angelegt: 2026-10-05 · Zuletzt: 2026-10-05
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Agenten/Handel/kopier1zu1
 - [ ] **T-349 — adx_macd: das Vorzeichen folgt dem Fenster, nicht der Strategie**
       Kontext: T-342 neu gemessen am 04.10.2026 (BTC 15m, 10.000 USD,
       0,05 %/Seite, OMNI_LONG_ONLY=1, echter Rust-Backtest):
