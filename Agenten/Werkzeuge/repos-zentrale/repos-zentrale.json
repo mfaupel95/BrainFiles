@@ -1,5 +1,5 @@
 {
-  "stand": "2026-09-30",
+  "stand": "2026-10-05",
   "repos": [
     {
       "ordner": "Agent-Reach",
@@ -212,7 +212,9 @@
       "notiz": "Jev-Aufsicht ueber Coding-Agenten (Codex/OpenCode) - Python-CLI mit rich-Oberflaeche. Bewusst ohne venv und ohne Start gefuehrt (T-251, 01.10.2026): fremder Klon, nur lesend, kein Verbraucher im Haus; die Bau- und Start-Anleitung bleibt unten stehen, falls das je gewechselt wird.",
       "venv_pflicht": false,
       "gruppe": "kein_start",
-      "warnungen": ["kein eigener Start: nur-lesen-Klon, niemand nutzt foreman (Anleitung unten, falls das anders wird)"],
+      "warnungen": [
+        "kein eigener Start: nur-lesen-Klon, niemand nutzt foreman (Anleitung unten, falls das anders wird)"
+      ],
       "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf."
     },
     {
@@ -795,7 +797,12 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "python",
-      "notiz": "Freqtrade-Bot-Suite in Docker, dry_run: Basiscontainer 8080, trading-agent 8081, topmovers 8082, marktlage-regime 8083"
+      "notiz": "Freqtrade-Bot-Suite in Docker, dry_run: Basiscontainer 8080, trading-agent 8081, topmovers 8082, marktlage-regime 8083",
+      "gruppe": "kein_start",
+      "warnungen": [
+        "kein eigener Start: das ist der Fremd-Klon von upstream. Der startbare Weg ist Agenten/Handel/freqtrade (drei Bots in Docker, traegt Start + Befehle im Manifest)"
+      ],
+      "anleitung": "Zum Starten die Zeile 'freqtrade' unter der Wurzel HANDEL benutzen (Start: bots.py liste; Befehl 'Bots starten' = bash bots_starten.sh). Dieser Klon liefert nur die Upstream-Dokumentation (docker-compose.yml, setup.sh)."
     },
     {
       "ordner": "handel-stack",
@@ -822,14 +829,29 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "node",
-      "notiz": "Lokaler Modell-Router (Next.js) auf Port 20128 - traegt Subagenten und die Bot-Profile; faellt er aus, scheitern alle delegate_task"
+      "notiz": "Lokaler Modell-Router (Next.js) auf Port 20128 - traegt Subagenten und die Bot-Profile; faellt er aus, scheitern alle delegate_task",
+      "start": [
+        "powershell",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1"
+      ],
+      "beleg_frist_s": 600
     },
     {
       "ordner": "omnitrade",
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "rust",
-      "notiz": "Rust-Workspace (Klon jackby03/omnitrade, AGPL-3.0): backtest, validate, live, kill - privat gesichert als mfaupel95/omnitrade"
+      "notiz": "Rust-Workspace (Klon jackby03/omnitrade, AGPL-3.0): backtest, validate, live, kill - privat gesichert als mfaupel95/omnitrade",
+      "start": [
+        "Agenten/Handel/scanner/.venv/Scripts/python.exe",
+        "Agenten/Handel/omnitrade/handeln.py",
+        "--vorschau"
+      ],
+      "beleg_frist_s": 120
     },
     {
       "ordner": "Protokolle",

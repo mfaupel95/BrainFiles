@@ -134,7 +134,83 @@ Das echte Journal liegt als `handelsjournal.csv` mit Kopfzeile bereit; die erste
 Zeile kommt mit dem ersten Geschaeft. Am 29.09. lag der Kurs mit 83.107 nur
 **0,48 %** ueber der unteren Grenze (82.705) - der Ausloeser ist also nah.
 
-**Offen geblieben.** Der Wandfilter selbst bleibt ungemessen (keine OI-Historie
+## 05.10.2026 - T-122: zweites Instrument und ein Ziel, das nicht traegt
+
+`spannenweg_zweites_instrument.py` misst den Spannenweg auf EINEM zweiten
+Instrument (ETH) und vergleicht die beiden Ziele getrennt. Der Grund fuer
+die Trennung: `backtest_iv_waelle.pruefe_fade()` rechnet den VOLLEN Rueckweg
+zur Tagesmitte, die Zahl oben (+0,276 %) kam aber aus `ziel_anteil=0.5`, dem
+HALBEN Rueckweg in `iv_waelle.signal()`. Zwei verschiedene Regeln an einem
+Ort - das ist jetzt getrennt gemessen, statt die eine gegen die andere zu
+stellen.
+
+Daten: Deribit oeffentlich, 400 Tage, IV aus dem Vortages-DVOL, Gebuehr
+0,05 % je Seite, keine OI-Historie.
+
+| Instrument | HALBER Rueckweg (NOTIZ-Regel) | voller Rueckweg |
+|---|---|---|
+| BTC | n=206, Treffer 66,5 %, **+0,285 % je Runde** (Summe +58,8 %) | n=206, **-0,028 % je Runde** |
+| ETH | n=191, Treffer 67,0 %, **+0,421 % je Runde** (Summe +80,4 %) | n=191, **+0,050 % je Runde** |
+
+Zwei Befunde:
+
+1. **Die BTC-Zahl der Notiz haelt** (+0,285 % gegen +0,276 %, Rundenzahl
+   206) - die Gueteprobe stimmt. ETH liegt mit +0,421 % hoeher, beide
+   Haelfften und beide Instrumente positiv (BTC +0,333 / +0,238 %,
+   ETH +0,498 / +0,345 %). Punkt (b) aus T-122 ist damit beantwortet: der
+   Spannenweg traegt nicht nur an BTC.
+2. **Der volle Rueckweg traegt NICHT** (-0,028 % je Runde an BTC). Das ist
+   kein Messfehler, sondern der Grund, warum die Spur `ziel_anteil=0.5`
+   setzt: der Kurs laeuft nach dem Stop oft weiter bis zur Mitte und dreht
+   dort. Wer den vollen Rueckweg nimmt, zahlt das. Diese Regel gehoert in
+   jeden Aufruf, der die Spur rechnet - eine Zahl aus dem Backtest-Default
+   waere hier eine falsche Zahl.
+
+**Was bleibt ungemessen (unveraendert).** Der WANDWEG, nicht der Spannenweg:
+Deribit liefert das offene Interesse je Strike nur als Momentaufnahme, es
+gibt keine Historie. Damit kann niemand sagen, ob eine Wand damals ein
+Signal war - rueckwaerts nicht rekonstruierbar, nur vorwaerts im Papierbetrieb.
+Das ist kein offener Arbeitsauftrag mehr, sondern eine Grenze der Daten.
+Im Code steht der Filter als Vorrang vor dem Spannenweg und wird im
+Journal als `wand` sichtbar, sobald er greift.
+
+
+**Offen geblieben.** Nur der Wandfilter (siehe oben), nicht der Spannenweg.
+Der Wandfilter laeuft mit und wird im Journal als `wand` sichtbar, wenn er
+einmal greift; Deribit-Finanzierung (Perpetual-Funding) fehlt weiter.
+
+## Aufbau
+
+- `daten.py` - Deribit oeffentlich (Index, DVOL, Kerzen, Optionskette), mit
+  Zwischenspeicher unter `daten/`.
+- `iv_waelle.py` - Spanne, Waende, Wandelage, Signal. Reine Standardbibliothek.
+- `backtest_iv_waelle.py` - Gueteprobe A (Spanne) und B (Fade).
+- `feinprobe_fade.py` - Raster ueber Grenze, Stop und Zielanteil.
+- `tests/test_iv_waelle.py` - 28 Tests, ohne Netz.
+- `wachen.json` - Grenzen; `handel_erlaubt` steht auf `false`.
+
+Start aus diesem Ordner:
+
+```
+python backtest_iv_waelle.py
+python feinprobe_fade.py
+cd tests && python -m unittest test_iv_waelle
+```
+
+## Offen
+
+1. **Waende im Papierbetrieb pruefen** - nur so wird der Filter gemessen. Dafuer
+   braucht die Spur einen Zyklus wie die anderen (Zustand, Journal, Spiegelung
+   nach `Q:\Handel_Journal\iv_waelle`).
+2. **Gebuehr**: 0,10 % je Runde sind im Backtest drin, aber Deribits
+   Kontraktgroesse und Finanzierung (Perpetual-Funding) fehlen. Der Backtest
+   rechnet den Kursgewinn, nicht die Haltedauer.
+3. **Zweite Waehrung erledigt** (05.10.2026, ETH +0,421 % je Runde -
+   siehe oben). Offen bleibt: nur 400 Tage, also EIN Regime, und kein
+   Walk-Forward.
+4. Die **0,80-%-Runde** aus dem Krypto-Abo gilt hier nicht: Deribit ist eine
+   andere Boerse. Ob Max dort ueberhaupt handeln will, ist seine Entscheidung.
+ (keine OI-Historie
 bei Deribit) - jetzt laeuft er wenigstens mit und wird im Journal als `wand`
 sichtbar, wenn er einmal greift. Nur BTC, nur ein Regime; Deribit-Finanzierung
 (Perpetual-Funding) fehlt weiter.
@@ -165,7 +241,8 @@ cd tests && python -m unittest test_iv_waelle
 2. **Gebuehr**: 0,10 % je Runde sind im Backtest drin, aber Deribits
    Kontraktgroesse und Finanzierung (Perpetual-Funding) fehlen. Der Backtest
    rechnet den Kursgewinn, nicht die Haltedauer.
-3. **Nur BTC, nur 400 Tage** - ein Regime. Zweite Waehrung (ETH) und
-   Walk-Forward stehen aus.
+3. **Zweite Waehrung erledigt** (05.10.2026, ETH +0,421 % je Runde -
+   siehe oben). Offen bleibt: nur 400 Tage, also EIN Regime, und kein
+   Walk-Forward.
 4. Die **0,80-%-Runde** aus dem Krypto-Abo gilt hier nicht: Deribit ist eine
    andere Boerse. Ob Max dort ueberhaupt handeln will, ist seine Entscheidung.
