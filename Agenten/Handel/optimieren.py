@@ -365,9 +365,9 @@ def suche(spur, gebuehr_pct, n_fenster=2, monate=6, max_kandidaten=40,
     # die virtuelle Uhr, der Index ist die Kerzenposition im Abschnitt.
     kuerzeste = None
     for i in replay._instrumente(w):
-        reihen = historie_binance.lade(i, takt)[von_index:]
+        reihen = replay.lade_reihen(i, takt)[von_index:]
         kuerzeste = reihen if kuerzeste is None else kuerzeste
-    reihen = historie_binance.lade(replay._instrumente(w)[0], takt)[von_index:]
+    reihen = replay.lade_reihen(replay._instrumente(w)[0], takt)[von_index:]
     grenzen = []
     for such_i, pruef_i in abschnitte:
         grenzen.append((

@@ -412,7 +412,7 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     brauch = bedarf(w)
     aus, fehlen, zu_klein = {}, [], []
     for inst in insts:
-        reihen = historie_binance.lade(inst, takt)
+        reihen = lade_reihen(inst, takt)
         # Die Laenge auf der PLATTE entscheidet, ob die Historie fehlt - erst
         # danach schneiden `bis_ms`, `abschnitt` und `max_kerzen`. Andersherum
         # gelesen entsteht ein falscher Befund: mit `--max-kerzen 200` blieben
@@ -1013,7 +1013,7 @@ def historische_quelle(modul, spur, zugriff):
     def quelle(w):
         daten, kurse, fehler = {}, {}, []
         for inst in _instrumente(w):
-            reihen = [r for r in historie_binance.lade(inst, _takt(w))
+            reihen = [r for r in lade_reihen(inst, _takt(w))
                       if r[0] <= zugriff["bis_ms"]]
             if zugriff.get("fenster"):
                 reihen = reihen[-int(zugriff["fenster"]):]
@@ -1064,8 +1064,8 @@ def lauf_b(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=400,
     with open(os.path.join(ordner, "wachen.json"), encoding="utf-8") as f:
         w = json.load(f)
     takt = _takt(w)
-    alle = {i: historie_binance.lade(i, takt) for i in _instrumente(w)
-            if historie_binance.lade(i, takt)}
+    alle = {i: lade_reihen(i, takt) for i in _instrumente(w)
+            if lade_reihen(i, takt)}
     if not alle:
         raise RuntimeError("keine Historie fuer %s - erst "
                            "'python historie_binance.py --auffuellen'" % spur)
@@ -1520,7 +1520,7 @@ def kerzen_mehrzeitrahmen(spur, spec, w, bis_ms=None, max_kerzen=None):
     brauch = bedarf_mehrzeitrahmen(spec, w)
     aus, fehlen, zu_klein = {}, [], []
     for inst in insts:
-        reihen = historie_binance.lade(inst, spec["basis"])
+        reihen = lade_reihen(inst, spec["basis"])
         gehabt = len(reihen)
         if bis_ms:
             reihen = [r for r in reihen if r[0] <= bis_ms]
@@ -1745,6 +1745,28 @@ def lauf_eigene_rechnung(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None,
     return zahlen
 
 
+def lade_reihen(inst, takt):
+    """lade_reihen() mit DEUTBARER Ausnahme.
+
+    Seit dem 05.10.2026 wirft `lade()` bei einer vorhandenen, aber unlesbaren
+    Datei `HistorieKaputt` statt still `[]` zurueck zu geben. Das ist richtig
+    (leere Kerzen als "keine Historie" ist eine Falschaussage), aber es
+    braucht eine Stelle, an der der Replay sie in seine eigene Sprache
+    uebersetzt: "die Historie fehlt - erst auffuellen" ist eine AKTION fuer
+    den Menschen, "die Datei wird gerade geschrieben" ist KEINE.
+
+    Deshalb EIN Aufrufer hier im Replay-Modul, und jeder Aufrufer im Haus
+    ruft das hier auf, nicht `lade_reihen()` direkt.
+    """
+    try:
+        return historie_binance.lade(inst, takt)
+    except historie_binance.HistorieKaputt as e:
+        raise RuntimeError(
+            "Historie unlesbar fuer %s/%s: %s - laeuft der Nachfueller "
+            "(historie_binance.py --auffuellen)? Das ist KEIN 'Historie fehlt'."
+            % (inst, takt, e)) from e
+
+
 def kerzenlaenge(spur, w=None):
     """Laenge der KUERZESTEN Reihe - so weit reicht ein Abschnitt.
 
@@ -1755,7 +1777,7 @@ def kerzenlaenge(spur, w=None):
     if w is None:
         w = wachen_von(spur)
     takt = _takt(w)
-    return min((len(historie_binance.lade(i, takt)) for i in _instrumente(w)), default=0)
+    return min((len(lade_reihen(i, takt)) for i in _instrumente(w)), default=0)
 
 
 def kennzahlen(journal_pfad):

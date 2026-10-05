@@ -142,5 +142,61 @@ class Lesen(Basis):
         self.assertFalse(issubclass(hb.HistorieKaputt, ValueError))
 
 
+class HistorieKaputt(unittest.TestCase):
+    """Die Ausnahme muss bis in die Aufrufer durchdringen - als BENANNTER Grund.
+
+    `replay.py` und `optimieren.py` lesen ueber `replay.lade_reihen()`. Ohne
+    diese eine Naht wuerde die neue Ausnahme in sieben Stellen einzeln
+    durchschlagen und jeder Aufrufer muesste sie selbst uebersetzen - oder
+    eben nicht, und dann bekaeme "wird gerade geschrieben" die Meldung
+    "erst auffuellen", also eine Anweisung an einen Menschen, die nichts
+    loest (05.10.2026).
+    """
+
+    def test_replay_hat_die_naht(self):
+        import replay
+        self.assertTrue(hasattr(replay, "lade_reihen"))
+
+    def test_kein_aufrufer_mehr_direkt(self):
+        """Kein Aufrufer liest historie_binance.lade() noch direkt."""
+        import replay
+        import optimieren
+        # replay.py: genau EIN Treffer - der in lade_reihen selbst.
+        # optimieren.py: NULL, es ruft nur replay.lade_reihen().
+        erlaubt = {replay: 1, optimieren: 0}
+        for modul, n in erlaubt.items():
+            quelle = Path(modul.__file__).read_text(encoding="utf-8")
+            self.assertEqual(quelle.count("historie_binance.lade("), n,
+                             "%s: %d erwartet" % (modul.__name__, n))
+
+    def test_kaputt_wird_ein_eigener_grund(self):
+        import replay
+        with patch.object(replay.historie_binance, "lade",
+                          side_effect=replay.historie_binance.HistorieKaputt(
+                              "C:\\x.json ist keine gueltige JSON-Datei")):
+            with self.assertRaises(RuntimeError) as ctx:
+                replay.lade_reihen("BTC", "1H")
+        text = str(ctx.exception)
+        self.assertIn("Historie unlesbar", text)
+        self.assertIn("KEIN 'Historie fehlt'", text)
+        # Die Ursache bleibt erhalten - wer nach dem Grund sucht, findet ihn
+        self.assertIsInstance(ctx.exception.__cause__,
+                              replay.historie_binance.HistorieKaputt)
+
+    def test_ein_fehlender_namen_bleibt_keyerror(self):
+        import replay
+        with patch.object(replay.historie_binance, "lade",
+                          side_effect=KeyError("kein Binance-Paar")):
+            with self.assertRaises(KeyError):
+                replay.lade_reihen("UNBEKANNT", "1H")
+
+    def test_der_normale_weg_bleibt_still(self):
+        import replay
+        with patch.object(replay.historie_binance, "lade",
+                          return_value=[[1, 2, 3, 4, 5, 6]]) as lade:
+            self.assertEqual(replay.lade_reihen("BTC", "1H"), [[1, 2, 3, 4, 5, 6]])
+        lade.assert_called_once_with("BTC", "1H")
+
+
 if __name__ == "__main__":
     unittest.main()
