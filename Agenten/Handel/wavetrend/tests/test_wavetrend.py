@@ -114,6 +114,95 @@ class TestSignal(unittest.TestCase):
         self.assertIsNone(handeln.signal(kerzen_welle(N_LONG), 0))
 
 
+class TestSchwelleAusDerWachen(unittest.TestCase):
+    """T-097: die Einstiegsschwelle steht in der Wachen, nicht im Quelltext.
+
+    Geprueft wird die EIGENSCHAFT, nicht ein Wert: ohne das Feld verhaelt sich
+    die Spur wie vorher (der Default ist der alte Code-Wert), ein gesetzter
+    Wert weitet das Signal auf Zonen aus, die vorher nicht zaehlten, und nach
+    Ruecknahme des Feldes ist der alte Stand wieder da. Ein Test gegen einen
+    festen Zahlenwert wuerde nur die eine Konfiguration messen.
+    """
+
+    def setUp(self):
+        self.alt = handeln.WACHEN
+        self.tmp = tempfile.mkdtemp(prefix="wt-schwelle-")
+        handeln.WACHEN = os.path.join(self.tmp, "wachen.json")
+        with open(self.alt, encoding="utf-8") as f:
+            self.wachen = json.load(f)
+
+    def tearDown(self):
+        handeln.WACHEN = self.alt
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _schreibe(self, wert):
+        d = dict(self.wachen)
+        d.pop("wt_ueberverkauft", None)
+        if wert is not None:
+            d["wt_ueberverkauft"] = wert
+        with open(handeln.WACHEN, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False)
+
+    def _kreuzung_mitte(self, k):
+        """Kerzen, deren Kreuzung zwischen -40 und +40 liegt."""
+        wt1, wt2 = ti.wavetrend(k)
+        return [i for i in range(1, len(k))
+                if None not in (wt1[i - 1], wt2[i - 1], wt1[i], wt2[i])
+                and wt1[i - 1] <= wt2[i - 1] and wt1[i] > wt2[i]
+                and -40 <= wt1[i] <= 40]
+
+    def test_ohne_feld_gilt_der_alte_wert(self):
+        """Kein Feld -> kein Verhalten, das vorher nicht da war."""
+        self._schreibe(None)
+        k = kerzen_welle(N_LONG)
+        mitte = self._kreuzung_mitte(k)
+        self.assertTrue(mitte, "Fixture sollte Kreuzungen in der Mitte haben")
+        for i in mitte:
+            self.assertIsNone(handeln.signal(k, i))
+
+    def test_engere_schwelle_nimmt_die_zonen_dazu(self):
+        """Eine ENGERE Schwelle macht aus derselben Lage ein Signal.
+
+        Richtung richtig herum: long verlangt `wt1 < -schwelle`. Je kleiner
+        die Schwelle, desto mehr Lagen fallen darunter - eine engere Schwelle
+        weitet das Signal also aus. Eine ENGERE im Wortsinn (hoeherer Wert)
+        wuerde es nur schrumpfen; die Gegenprobe steht darunter.
+        """
+        k = kerzen_welle(N_LONG)
+        wt1, wt2 = ti.wavetrend(k)
+        # Kreuzungen von unten, die mit -5 (nicht mit -40) zaehlen
+        nah = [i for i in range(1, len(k))
+               if None not in (wt1[i - 1], wt2[i - 1], wt1[i], wt2[i])
+               and wt1[i - 1] <= wt2[i - 1] and wt1[i] > wt2[i]
+               and -40 <= wt1[i] < -5]
+        self.assertTrue(nah, "Fixture braucht Kreuzungen zwischen -40 und -5")
+        self._schreibe(None)
+        for i in nah:
+            self.assertIsNone(handeln.signal(k, i),
+                             "bei -40 darf diese Lage kein Signal sein")
+        self._schreibe(5.0)
+        neue = [i for i in nah if handeln.signal(k, i) is not None]
+        self.assertTrue(neue, "engere Schwelle muss die Lage zu einem Signal machen")
+        self.assertEqual(len(neue), len(nah),
+                         "alle Lagen zwischen -40 und -5 muessen jetzt zaehlen")
+
+    def test_gegenprobe_wieder_urspruenglich(self):
+        """Nach Ruecknahme des Feldes ist der alte Stand wieder da."""
+        k = kerzen_welle(N_LONG)
+        mitte = self._kreuzung_mitte(k)
+        self._schreibe(100.0)
+        vorher = [handeln.signal(k, i) for i in mitte]
+        self._schreibe(None)
+        nachher = [handeln.signal(k, i) for i in mitte]
+        self.assertEqual(vorher, nachher)
+
+    def test_echte_wachen_traegt_das_feld(self):
+        """Die Wachen selbst fuehrt den Wert - sonst waere der Umbau stumm."""
+        with open(self.alt, encoding="utf-8") as f:
+            w = json.load(f)
+        self.assertIn("wt_ueberverkauft", w)
+
+
 class TestStopUndZiel(unittest.TestCase):
     """(b) Stop-Abstand und Ziel stehen 1:2."""
 

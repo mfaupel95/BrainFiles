@@ -52,6 +52,7 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
 import pos_kennung
+import mae                                         # noqa: E402
 from signal_wechsel import ERLAEUT, zugelassen  # noqa: E402  # noqa: E402
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
@@ -92,8 +93,13 @@ JOURNAL = risikostufe.datei(os.path.join(HIER, "handelsjournal.csv"))
 import boersenabgleich  # noqa: E402
 
 SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
-           "einsatz_usd", "stop", "ziel", "stop_pct", "grund",
-           "pos_id"]
+           "einsatz_usd", "stop", "ziel", "stop_pct", "grund", "pos_id",
+           # MAE/MFE seit 04.10.2026 (T-119). Die Spur hat die Spalten schon
+           # seit 15.09.2026 im Kopf, schrieb aber nie Werte hinein - ohne
+           # mae_pct ist kein Stop aus Daten begruendbar (strategie_metrics.
+           # stop_from_mae). Siehe mae.py: der Richtungsfaktor gehoert dazu,
+           # mosaic handelt auch short.
+           "mfe_pct", "mae_pct", "haltetage"]
 
 # Schreib-Flag: False in Tests, True im Betrieb.
 SCHREIBEN = True
@@ -749,6 +755,9 @@ def pruefe_ausstiege(z, k5, w, nur=None):
         if not kurs:
             behalten.append(p)
             continue
+        # MAE/MFE ueber die LEBENDAUER messen (T-119), nicht erst beim
+        # Ausstieg - sonst waere die Zahl der Ausstiegskurs selbst.
+        mae.merke_extrem(p, kurs)
 
         grund = None
         vz = 1 if p["seite"] == "long" else -1
@@ -777,7 +786,7 @@ def pruefe_ausstiege(z, k5, w, nur=None):
                 seite=p["seite"], preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % erloes, stop="%.6f" % p["stop"],
                 ziel="%.6f" % p["ziel"], stop_pct="%.2f" % p["stop_pct"],
-                grund=grund)
+                grund=grund, **mae.felder(p))
 
     z["positionen"] = behalten
     # Kein print hier: der Aufrufer meldet EINMAL je Zyklus (siehe lauf()),
@@ -1058,6 +1067,7 @@ def live_ausstiege(z, w):
                   file=sys.stderr)
             behalten.append(p)
             continue
+        mae.merke_extrem(p, kurs)
         grund = None
         vz = 1 if p["seite"] == "long" else -1
         if p["seite"] == "long":
@@ -1100,7 +1110,7 @@ def live_ausstiege(z, w):
                 seite=p["seite"], preis="%.6f" % kurs,
                 einsatz_usd="%.2f" % erloes, stop="%.6f" % p["stop"],
                 ziel="%.6f" % p["ziel"], stop_pct="%.2f" % p["stop_pct"],
-                grund=grund)
+                grund=grund, **mae.felder(p))
     z["positionen"] = behalten
     if wechsel:
         # Standardwahl der Spur wiederherstellen (Seams/Einstiege danach).

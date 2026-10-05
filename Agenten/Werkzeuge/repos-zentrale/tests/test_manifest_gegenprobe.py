@@ -7,6 +7,11 @@ das - Manifest gegen `logs/`.
 Auf einem frischen Klon gibt es keine Logs (sie sind Laufzeit und nicht
 versioniert). Dann wird der Test uebersprungen, mit klarem Text, statt gruen zu
 luegen.
+
+Ein zweiter Umgebungsbefund (05.10.2026): auch in einem WORKTREE fehlt `logs/`
+- dort meldete der Test 112 von 115 Startbefehlen als unbelegt, waehrend im
+Hausbaum alle 114 einen Beleg haben. Der Test prueft deshalb den HAUSBAUM,
+denn dort liegen die Belege.
 """
 
 import sys
@@ -18,7 +23,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import manifest  # noqa: E402
 
 HIER = Path(__file__).resolve().parent.parent
-LOGS = HIER / "logs"
+
+
+def _hauslogs():
+    """Der Log-Ordner des HAUSBAUMS - auch wenn der Test aus einem Worktree
+    laeuft. Ohne diesen Anker meldet der Test jeden Startbefehl als unbelegt."""
+    haus = Path("C:/Users/faupe/Documents/BrainFiles/Agenten/Werkzeuge/repos-zentrale")
+    if haus.is_dir() and any((haus / "logs").glob("*.log")):
+        return haus / "logs"
+    return HIER / "logs"
+
+
+LOGS = _hauslogs()
 
 
 class GegenprobeTest(unittest.TestCase):

@@ -127,6 +127,7 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
 import pos_kennung
+import mae                                         # noqa: E402
 from signal_wechsel import ERLAEUT, zugelassen  # noqa: E402                                        # noqa: E402
 import wachen_kraken as wp                               # noqa: E402
 
@@ -182,7 +183,13 @@ def journal(*felder):
             s.writerow(["zeit", "modus", "aktion", "paar", "preis", "eur",
                         "menge", "stop", "ziel", "grund",
                         # Die Kennung der Position (T-095) - letzte Spalte.
-                        "pos_id"])
+                        "pos_id",
+                        # MAE/MFE seit 04.10.2026 (T-119). Die Spalten standen
+                        # im Kopf, ohne je gefuellt zu werden; ohne mae_pct ist
+                        # kein Stop aus Daten begruendbar (strategie_metrics.
+                        # stop_from_mae). Kraken ist long-only, der
+                        # Richtungsfaktor aus mae.py ist damit +1.
+                        "mfe_pct", "mae_pct", "haltetage"])
         s.writerow(pos_kennung.zeile(felder, kopf))
 
 
@@ -464,7 +471,9 @@ def _schliesse(p, kurs, w, live, grund, z):
                     journal(_jetzt(), "live", "verkauf", p["paar"],
                             "%.8g" % kurs, "%.2f" % erloes,
                             "%.8f" % p["menge"], "", "", grund,
-                            p.get("pos_id", ""))
+                            p.get("pos_id", ""),
+                            mae.felder(p)["mfe_pct"], mae.felder(p)["mae_pct"],
+                            mae.felder(p)["haltetage"])
                     z["letzte_stops"][p["paar"]] = _heute()
                     return True
                 z.setdefault("offene_stops", []).append(
@@ -481,7 +490,9 @@ def _schliesse(p, kurs, w, live, grund, z):
           % (grund, p["paar"], kurs, erloes - p["eur"]))
     journal(_jetzt(), "live" if live else "papier", "verkauf", p["paar"],
             "%.8g" % kurs, "%.2f" % erloes, "%.8f" % p["menge"], "", "", grund,
-            p.get("pos_id", ""))
+            p.get("pos_id", ""),
+            mae.felder(p)["mfe_pct"], mae.felder(p)["mae_pct"],
+            mae.felder(p)["haltetage"])
     if grund == "stop":
         z["letzte_stops"][p["paar"]] = _heute()
     return True
@@ -510,6 +521,10 @@ def pruefe_ausstiege(z, w, live):
             behalten.append(p)
             continue
         kurs = kraken.letzter_kurs(p["paar"])
+        # MAE/MFE ueber die LEBENDAUER messen (T-119), nicht erst beim
+        # Ausstieg - sonst waere die Zahl der Ausstiegskurs selbst.
+        if kurs:
+            mae.merke_extrem(p, kurs)
         grund = None
         if kurs <= p["stop"]:
             grund = "stop"
@@ -575,7 +590,9 @@ def bueche_papier_altlasten_aus(z):
               % (p["paar"], kurs, gv))
         journal(_jetzt(), "papier", "verkauf", p["paar"], "%.8g" % kurs,
                 "%.2f" % erloes, "%.8f" % p.get("menge", 0.0), "", "",
-                "buchbereinigung", p.get("pos_id", ""))
+                "buchbereinigung", p.get("pos_id", ""),
+                mae.felder(p)["mfe_pct"], mae.felder(p)["mae_pct"],
+                mae.felder(p)["haltetage"])
     z["positionen"] = behalten
     return len(altlasten)
 

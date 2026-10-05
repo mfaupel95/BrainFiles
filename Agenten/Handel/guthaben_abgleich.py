@@ -157,7 +157,7 @@ def abgleich(spur, konto=None, bilanz=None, gebunden=None):
     rest = None if (fehler or unbekannt) else konto - bilanz - gebunden
     return {"spur": spur, "konto": konto, "bilanz": bilanz,
             "gebunden": gebunden, "rest": rest,
-            "waehrung": WAEHRUNG[spur], "fehler": fehler,
+            "waehrung": _waehrung(spur), "fehler": fehler,
             "konto_unbekannt": konto_unbekannt,
             "bilanz_unbekannt": bilanz_unbekannt}
 

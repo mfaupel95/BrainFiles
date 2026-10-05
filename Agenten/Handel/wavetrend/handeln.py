@@ -199,7 +199,8 @@ def signal(k, idx, w=None):
         import ti_indikatoren as ti
     except ImportError:
         return None
-    w = w or {}
+    if w is None:
+        w = lade_wachen()
     wt1, wt2 = ti.wavetrend(
         k,
         n1=int(w.get("wt_n1", WT_N1)),

@@ -1,13 +1,26 @@
-"""Bounded Kraken SPOT order smoke test. Never a strategy order path.
+"""Bounded Kraken SPOT order smoke test. NICHT MEHR VERDRAHTEN.
 
-Default is read-only preflight (account + open positions, no order).
---execute explicitly allows ONE tiny round-trip (~1 EUR, capped at 5 EUR):
-market BUY then market SELL (reduce_only) so no position stays open.
-Evidence is append-only JSONL, with no credentials or balances.
+WARUM DIESE DATEI TOT IST (T-064, Entscheidung Max 24.09.2026)
+------------------------------------------------------------
+Der Weg hier ist der Nautilus-Exec-Client. Er verlangt einen WebSocket-Token
+und bekommt ihn nicht: `Failed to get WebSocket token: API error:
+EGeneral:Permission denied` (gemessen 24.09.2026 18:49 UTC, siehe
+logs/kraken-orders-20260924T184919894096Z.jsonl -> success: false,
+entered: false). Ueber REST arbeitet derselbe Schluessel einwandfrei.
 
-Keys: reads KRAKEN_API_KEY/KRAKEN_API_SECRET from HKCU\\Environment (Max'
-existing Kraken spot keys) and builds the exec config explicitly - the
-nautilus adapter expects KRAKEN_SPOT_API_KEY/SECRET, which are not set.
+ENTSCHEIDUNG Max 24.09.2026: REST bleibt, dieser Exec-Client wird
+aufgegeben, und der Kraken-Schluessel wird NICHT um WebSockets-Rechte
+erweitert. Der lebende Weg ist `kraken_rest.py` (REST, am Adapter vorbei),
+mit dem Live-Zweig in `handeln.py`.
+
+Die Datei bleibt als BELEG stehen (der gemessene Fehler ist der Nachweis der
+Entscheidung) und damit niemand den toten Weg neu verdrahtet. Jeder Aufruf
+bricht sofort ab und sagt, welcher Weg gilt.
+
+Bisheriger Zweck (historisisch): read-only Preflight (Kontostand + offene
+Positionen, keine Order); `--execute` erlaubte EINEN winzigen Round-Trip.
+
+Keys: las KRAKEN_API_KEY/KRAKEN_API_SECRET aus HKCU\\Environment.
 """
 import argparse
 import asyncio
@@ -15,6 +28,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 import json
 from pathlib import Path
+import sys
 import winreg
 
 from nautilus_trader.adapters.kraken import KRAKEN
@@ -146,9 +160,25 @@ class RoundTrip(Strategy):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="TOT seit 24.09.2026 (T-064): der Nautilus-Exec-Client "
+                    "bekommt keinen WebSocket-Token. Es gilt der REST-Weg "
+                    "ueber kraken_rest.py.")
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
+
+    # T-064: der Weg ist aufgegeben. Wer ihn startet, soll die Meldung lesen
+    # und den lebenden Weg nehmen - nicht 90 Sekunden auf einen Token warten,
+    # den es nicht gibt.
+    sys.stderr.write(
+        "ABGEBROCHEN (T-064): dieser Weg nutzt den Nautilus-Exec-Client, der "
+        "seit 24.09.2026 'Failed to get WebSocket token: EGeneral:Permission "
+        "denied' liefert. Entscheidung Max: REST bleibt, der Schluessel wird "
+        "NICHT um WebSockets-Rechte erweitert.\n"
+        "Gilt: kraken_rest.py (REST, am Adapter vorbei) + der Live-Zweig in "
+        "handeln.py. Fuer den Orderweg-Nachweis: futures_probe.py bzw. "
+        "handeln.py --vorschau.\n")
+    return 3
 
     api_key, api_secret = load_keys()
     market_data = {

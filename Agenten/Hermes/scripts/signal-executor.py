@@ -151,19 +151,28 @@ def ausfuehren(spur, eintrag):
         return False, "%s: freigabe nicht erteilt, Auftrag bleibt" % spur
     # Orderweg laden
     #
-    # WICHTIG (05.10.2026): HANDEL muss VOR dem Import im sys.path stehen.
-    # `spur_buch` ist eine flache Datei im Handel-Ordner und kein Paket; der
-    # erste Import stand vorher vor jedem `sys.path.insert` und warf
-    # ModuleNotFoundError - der Executor brach bei JEDER Ausfuehrung ab und
-    # keine Spur mit trigger_modus=signal kam je zu einem Einstieg. Die drei
-    # Tore weiter unten machten es richtig; nur dieser erste stand falsch.
+    # T-346 (04./05.10.2026): dieser Import stand VOR dem sys.path-Eintrag. Der
+    # Cron startet aus Agenten/Hermes/scripts/, dort liegt spur_buch.py nicht ->
+    # ModuleNotFoundError, failure_streak 12 (Hermes-Cron 50921798e27a, jede
+    # Minute); der Executor brach bei JEDER Ausfuehrung ab und keine Spur mit
+    # trigger_modus=signal kam je zu einem Einstieg. Der Eintrag muss VOR dem
+    # Import stehen. Die Hausregel fuer Spuren-Imports verlangt ausserdem die
+    # Pruefung gegen __file__: sonst laedt ein gleichnamiges Modul aus einem
+    # anderen Verzeichnis (hier: der echte scanner/handeln.py statt der Spur).
+    # Die drei Tore weiter unten machten es richtig; nur dieser erste stand falsch.
     if HANDEL not in sys.path:
         sys.path.insert(0, HANDEL)
     try:
         from spur_buch import orderweg, venue_inst
-    except ImportError:
-        return False, ("spur_buch.py nicht erreichbar (%s nicht im Pfad) - "
-                       "im Zweifel KEINE Order" % HANDEL)
+    except ImportError as e:
+        return False, ("%s: spur_buch.py nicht ladbar (%s) - im Zweifel KEINE "
+                       "Order, Auftrag bleibt in der Queue" % (spur, e))
+    if not os.path.abspath(sys.modules["spur_buch"].__file__).startswith(
+            os.path.abspath(HANDEL) + os.sep):
+        return False, ("%s: spur_buch kam aus %s statt aus %s - im Zweifel "
+                       "KEINE Order" % (spur, sys.modules["spur_buch"].__file__,
+                                         HANDEL))
+
     weg = orderweg(w)
     if weg is None:
         return False, "%s: kein Orderweg fuer boerse=%s" % (spur, w.get("boerse"))
