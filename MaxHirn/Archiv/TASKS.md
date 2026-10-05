@@ -18,20 +18,27 @@
       Sitzung um 22:12 im Baum schrieb.
       Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
       Betrifft: Agenten/Hermes/scripts/konfig-doktor-wache.py, Werkstatt (Junction), Modelle (Junction)
-- [ ] **T-370 — Hermes-Sandbox-Container startet nicht (Exit 125), alle Docker-Werkzeuge aus**
-      Kontext: Am 05.10.2026 fielen waehrend der Sitzung ALLE Docker-gestuetzten
-      Werkzeuge aus: `terminal`, `write_file`, `read_file`, `patch`, `execute_code`
-      scheiterten mit 'docker run ... returned non-zero exit status 125' beim Start des
-      Containers hermes-<hash> (Image `nousresearch/hermes-sandbox:desktop`, 4,37 GB,
-      vorhanden). `docker info` meldet 29.8.2, Docker Desktop laeuft, `hermes-dashboard`
-      ist healthy - nur der Sandbox-Container wird abgelehnt. Workaround: Arbeit ueber
-      windows-mcp (PowerShell + FileSystem) auf dem Host; damit wurden Wache, Tests und
-      Commit dieser Sitzung gefahren.
-      Naechster Schritt: `docker run` von Hand nachstellen und die volle Fehlermeldung
-      lesen (Exit 125 heisst 'docker run selbst abgelehnt', nicht 'Container abgestuerzt');
-      Verdacht: eine ungueltige Mount-Option oder ein belegter Containername.
+- [ ] **T-370 — Docker-Terminal: Fix auf der Platte, Gateway hat ihn noch nicht gelesen**
+      Kontext: Am 05.10.2026 fielen waehrend einer Sitzung ALLE Docker-gestuetzten
+      Werkzeuge aus (`terminal`, `write_file`, `read_file`, `patch`, `execute_code`).
+      URSACHE BEWIESEN (nicht geraten), zwei Zeugen ohne Hermes:
+        `docker run -w 'C:\Users\...\Agenten\Hermes'` -> Exit 125,
+        'the working directory ... is invalid, it needs to be an absolute path'
+        `docker run -w /workspace` -> Exit 0.
+      Der rohe Windows-Pfad ging in `docker run -w`; `docker_mount_cwd_to_workspace`
+      stand auf false. Eine PARALLELE Sitzung hat das um 00:34 erkannt und auf true
+      gestellt (Commit 99da8bb6, byte-genau, mit Gegenprobe) - die Absicht ist richtig.
+      Auf der Platte verifiziert: yaml.safe_load liest
+      `docker_mount_cwd_to_workspace = True`, 12 terminal-Schluessel, backend docker.
+      Warum es trotzdem noch klemmt: der laufende Gateway (PID 40120, gestartet 22:13)
+      hat die Config VOR der Aenderung gelesen; Docker-Werkzeuge laufen als Kind des
+      Gateways und erben die alte Einstellung.
+      Naechster Schritt: Gateway einmal neu starten (Aufgabe Hermes_Gateway_2ef9d0b7,
+      danach `docker run`-Probe ueber das terminal-Werkzeug). MEINE FRUEHERE DEUTUNG
+      WAR FALSCH und ist zurueckgenommen: 'Duplicate mount point: /workspace' entstand
+      nur in MEINEM eigenen Testaufbau (zwei -v auf denselben Punkt), nicht im Hermes-Weg.
       Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
-      Betrifft: Agenten/Hermes (Terminal-Backend docker), Docker Desktop
+      Betrifft: Agenten/Hermes/config.yaml (terminal.docker_mount_cwd_to_workspace), Gateway
 - [ ] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
       Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
       habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
