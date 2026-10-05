@@ -356,6 +356,20 @@ Umschaltgrenze bei langsamen Routen): `references/bildroute.md`.
   AppData-Config. Nach Router-Fixes beide Ablagen auf denselben Stand ziehen
   (Details: Skill `hermes-config-ops`).
 
+## Kostenlose Provider aktivieren und Modelle synchronisieren
+
+Manche Verbindungen sind konfiguriert, aber inaktiv (`isActive: false`). Um sie zu aktivieren und ihre Modelle zu laden:
+
+1. **Verbindung aktivieren**: `PATCH /api/providers/<id>` mit `{"isActive": true}`. Die Antwort zeigt die Verbindung mit `isActive: true`.
+2. **Modelle synchronisieren**: `POST /api/providers/<id>/sync-models` — lädt den Modellkatalog vom Provider. Bei OpenRouter: ~459 Modelle, davon ~16 kostenlose (`:free`-Suffix).
+3. **Modellliste abrufen**: `GET /api/providers/<id>/models` — zeigt alle synchronisierten Modelle mit `id`, `name`, `inputTokenLimit`.
+4. **Kostenlose filtern**: `Where-Object { $_.id -match ':free$' }` — liefert die Gratis-Modelle.
+5. **Testen**: `POST /api/v1/providers/<provider>/chat/completions` mit `model: "openrouter/<model-id>"` — **das Provider-Präfix ist Pflicht** (`openrouter/nvidia/nemotron-3-ultra-550b-a55b:free`, nicht der reine Modellname). Ohne Präfix: 400 "does not belong to provider".
+
+**Beleg (06.10.2026):** OpenRouter aktiviert, 459 Modelle synchronisiert, 16 kostenlose gefunden, NVIDIA Nemotron 3 Ultra (550B) erfolgreich getestet.
+
+**Kostenlose OpenRouter-Modelle als Fallback:** Die `:free`-Modelle sind tauglich für einfache Aufgaben und als Fallback, wenn Claude OAuth down ist. Sie ersetzen Claude nicht (langsamer, schwächer), aber sie sind kostenlos und unbegrenzt.
+
 ## Eine Provider-Verbindung anlegen oder reparieren (Admin-API)
 
 Der Dashboard-Weg ist nicht der einzige; die Management-API ist scriptbar:

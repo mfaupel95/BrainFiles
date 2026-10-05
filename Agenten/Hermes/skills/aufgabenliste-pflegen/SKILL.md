@@ -134,6 +134,32 @@ assert [z for z in ("## Offen", "## Erledigt") if z in neu] == ["## Offen", "## 
    es ist Fremdtext mitgegangen.
 6. **Committen** mit namentlichem Pfad (`git add -- MaxHirn/Archiv/TASKS.md`),
    zusammen mit der Aenderung, zu der die Aufgabe gehoert.
+   **Der namentliche `git add` allein genuegt NICHT.** Er merkt nur vor; der
+   anschliessende `git commit` OHNE Pfadangabe committet den GANZEN Index —
+   also auch alles, was eine parallele Sitzung oder eine Routine Sekunden
+   vorher vorgemerkt hat. Deshalb zwei Blicke, die Pflicht sind:
+
+```bash
+git diff --cached --numstat    # VOR dem Commit LESEN, nicht nur ausfuehren
+git commit -m "..."
+git show HEAD --stat           # NACH dem Commit: steht hier ein fremder Pfad?
+```
+
+   Steht im `--cached`-Ergebnis oder im `--stat` ein Pfad, den man nicht kennt,
+   ist er fremd. Dann mit EIGENEM Index committen (`GIT_INDEX_FILE=<scratch>/idx_x`
+   + `git read-tree HEAD` + `git add <eigene pfade>` + `git commit`), und danach
+   `unset GIT_INDEX_FILE` plus dieselben Pfade im ECHTEN Index nachziehen.
+   **Die Deletions sind das Warnsignal:** mehr Loeschungen als der eigene Block
+   Zeilen hat heisst immer, dass Fremdtext mitgegangen ist. Belegt: ein
+   TASKS-Commit meldete `2 files changed, 15 insertions(+), 382 deletions(-)` —
+   die 382 Loeschungen waren eine fremde Datei, die eine Aufraeum-PR entfernt und
+   eine Routine Minuten vorher gerade wiederhergestellt hatte. Der eigene Commit
+   loeschte sie ein ZWEITES Mal, ohne dass das Wort „Loeschung" in der Meldung
+   stand.
+   **Ruecknahme einer mitgefahrenen Loeschung: FOLGE-Commit, nie `--amend`.**
+   Die Datei liegt meist noch auf der Platte (`git add <pfad>` holt sie zurueck),
+   und ein Umschreiben der Historie trifft in diesem Baum fremde Arbeit im
+   geteilten Index.
    Liegt in DERSELBEN Datei schon fremde, noch nicht committete Arbeit (bei einer
    geteilten Liste der Normalfall), laesst sich nicht nach Pfad trennen. Dann
    alles committen und die uebernommenen FREMDEN Eintraege in der Commit-Meldung
@@ -269,6 +295,18 @@ assert lf(neu) == lf(text)          # 18 -> 18
 grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
 ```
 
+  **Und die Nummer, die dabei herauskommt, ist nicht immer frei — sie kann der
+  eigene Text sein.** Ein Verweis im `Erledigt`-Belegsatz ("Folgeaufgabe
+  T-368") zaehlt im weiten Muster mit, obwohl es gar keinen Eintrag mit dieser
+  Nummer gibt. Vor dem Anlegen gegen die EINTRAGSFORM pruefen, nicht gegen die
+  blosse Ziffer:
+
+```bash
+grep -cE "^- \[[ x]\] \*\*T-368" MaxHirn/Archiv/TASKS.md   # 0 = Nummer ist frei
+```
+
+  Sonst weicht man auf eine hoehere Nummer aus, die niemand braucht, und der
+  Querverweis im Belegsatz zeigt auf die falsche Aufgabe.
   **Kein Muster mit fester Stellenzahl.** Ein `T-1[0-9][0-9]` findet nur
   dreistellige Nummern mit fuehrender 1 und liefert ab T-200 stillschweigend die
   falsche hoechste Nummer (und in einem zweistelligen Nummernkreis `T-99` gar

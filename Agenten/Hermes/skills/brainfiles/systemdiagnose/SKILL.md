@@ -186,6 +186,16 @@ fehlgedeutet.
   des ersten, ist es ein gewolltes Gespann (Fall: der Dauerlauf startet einen
   Unterprozess je Spur). Erst ein zweiter Prozess **ohne** diese Elternschaft
   ist ein Doppelstart-Befund.
+- **Auch die Startzeit gruppiert nicht — die KOMMANDOZEILE entscheidet.** Fuenf
+  Prozesse derselben Binary sind nicht zwei Doppelpaare plus einer, nur weil
+  zwei um 03:46 und zwei um 20:03 starteten: die Argumente koennen fuenf
+  VERSCHIEDENE Auftraege sein (verschiedenes `--script`, `--symbol`,
+  `--status-file`). Vor jedem Beenden `Get-CimInstance Win32_Process` mit
+  `CommandLine` je PID ausgeben und die Zeilen lesen — ein Duplikat ist erst
+  eines, wenn Kommandozeile **und** Zielressource (Statusdatei, Port, Symbol)
+  dieselben sind. Eine Beendeliste, die nur aus Name + Startzeit gebaut ist,
+  trifft lebende Arbeit; die Empfehlung dazu ist aktiv zurueckzunehmen, sobald
+  die Argumente sie widerlegen.
 - **In einer langen Sitzung ist ein Befund von vorhin kein Ist-Zustand.** Vor
   der Zusammenfassung `date` erneut aufrufen. Erscheint der Zeitstempel einer
   Datei **in der Zukunft**, ist nicht die Datei falsch, sondern die angenommene
@@ -338,6 +348,19 @@ der erste Mal heute bei MEHREREN Jobs? = gemeinsame aussenstehende Ursache wie S
   nicht im Skript — Gegenprobe mit genau dem Befehl, der scheitert
   (`git add -A --dry-run`; Exitcode 128 = kaputt, 0 = gesund), dann den Lauf einmal
   von Hand nachziehen, damit die Luecke zu ist.
+- **Ein Artefakt gehoert einem bestimmten STARTER — ohne ihn ist sein Alter kein
+  Befund.** Eine veraltete Statusdatei beweist nicht, dass etwas ausgefallen
+  ist: schreibt sie nur der eine Launcher (ein `start`-Befehl mit einem festen
+  Skript), waehrend mehrere andere Laeufe ihre EIGENEN Dateien fortschreiben,
+  ist sie voellig zu Recht alt. Vor jedem „veraltet / kein Lebenszeichen": den
+  Schreiber aus der Startzeile lesen (`--status-file`), die Geschwisterdateien
+  im selben Ordner auflisten und deren Alter vergleichen. Ist die Familie
+  frisch und nur die eine alt, laeuft der Betrieb — gemeldet wird dann die
+  verwaiste Datei, nicht ein Ausfall. Der Hausweg fuer diese Frage ist das
+  Werkzeug mit den zwei Zeugen (Statusdatei **und** PID), das 0/1 liefert; es
+  liest die Schreiberzuordnung selbst. Dasselbe gilt rueckwaerts: eine lebende
+  PID ohne Namenspruefung kann eine wiederverwendete PID sein (siehe
+  `trugschluesse`).
 
 ## Ereignis-IDs
 Welche ID was bedeutet (Kernel-Power 41, Volsnap 36, disk 11/153, Service

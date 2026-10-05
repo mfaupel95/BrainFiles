@@ -222,6 +222,17 @@ wirklich. Nachziehen ueber die Aufgabe mit Suffix:
 `Get-ScheduledTask | Where-Object { $_.TaskName -like 'Hermes_Gateway*' }` und
 `Start-ScheduledTask` darauf.
 
+**Aber: der Launcher startet einen LEBENDEN Gateway nicht neu.** `schtasks /run /tn <aufgabe>`
+(und `Start-ScheduledTask`) kehrt mit `LastTaskResult 0` zurueck, waehrend **dieselbe PID**
+weiterlaeuft — die Aufgabe startet nur, was noch nicht laeuft. Das ist besonders tueckisch nach
+einer **Config-Aenderung**: die Zeile steht in der Datei, die Aufgabe meldet Erfolg, und die
+Aenderung ist trotzdem nicht wirksam, weil der alte Prozess seine Config nie neu liest.
+**Nach jedem `schtasks /run` auf den Gateway also pruefen, ob die alte PID noch existiert**
+(`Get-Process -Id <pid>`) — sonst meldet man eine Wirkung, die es nicht gibt. Bleibt die PID,
+ist die Aenderung "verdrahtet", nicht "belegt" (SKILL.md-Regel 8), und der echte Beleg ist erst
+der naechste Aufruf, der die neue Einstellung benutzt. Ein Gateway, der per `--replace` laeuft,
+ist der saubere Wechselweg; die Aufgabe allein ist keiner.
+
 **Den Gateway NIE ueber Port 9900 oder einen Kommandozeilen-Teilstring pruefen.** Der laufende
 Gateway hat `gateway run` NICHT in seiner Kommandozeile (er laeuft als
 `<HERMES_HOME>/tools/python-3.14.7…/python.exe`), ein Filter darauf meldet „kein Gateway" -

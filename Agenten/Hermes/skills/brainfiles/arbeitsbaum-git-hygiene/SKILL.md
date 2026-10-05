@@ -552,6 +552,8 @@ ungetrackten Dateien. Reihenfolge:
 
 ## Datei soll aus dem Verlauf verschwinden
 
+Ruecknahme einer mitgefahrenen LOESCHUNG: `references/fremde-loeschung-zurueckholen.md`.
+
 1. **Erst den Schreiber finden, dann loeschen.** Taucht ein Nebenprodukt (Vorlage, Log,
    Cache) an wechselnden Stellen im Baum auf, sucht man die Quelle
    (`grep -rn "<dateiname>" <programmpfad>`) und gibt dem Programm ein festes

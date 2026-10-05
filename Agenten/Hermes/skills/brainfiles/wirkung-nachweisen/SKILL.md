@@ -190,11 +190,20 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   ls-files` leer), existiert er dort gar nicht. Ein Replay-Test aus
   `.worktrees/<karte>/Agenten/Handel/tests` meldete deshalb „Historie fehlt,
   0 Kerzen" fuer Reihen, die im Haus vollstaendig lagen — die Fehlermeldung war
-  richtig, der Schluss „348 Reihen weg" falsch. Vor jeder Verlustmeldung
+  richtige, der Schluss „348 Reihen weg" falsch. Vor jeder Verlustmeldung
   pruefen, aus WELCHEM Verzeichnis der rote Lauf kam (state.db, `session_id` +
   `cwd` des Aufrufers) und ob der Datenordner versioniert ist. Reproduktion:
   Modulkopie ohne `daten/` in einen Temp-Ordner legen — sie meldet belegt 0
   Kerzen.
+  **Die Gegenmassnahme gehoert ins WERKZEUG, nicht in die Wachsamkeit:** prueft
+  der Lader VOR dem Lesen, ob sein Ordner ueberhaupt existiert, und wirft einen
+  BENANNTEN Fehler ("Ordner X nicht da — diese Kopie des Baums hat kein daten/"),
+  dann sieht jeder kuenftige Lauf den Fehler statt einer plausiblen Null. Eine
+  leere Liste ist die gefaehrlichste Rueckgabe eines Datenladers: sie ist von
+  "wirklich keine Daten" nicht zu unterscheiden und wandert als Messergebnis in
+  die Auswertung. Merksatz: **wo ein Lader leer zurueckgeben kann, gehoert eine
+  Existenzpruefung mit benanntem Fehler hin** — die Regel gilt fuer jede relative
+  Datenablage, nicht nur fuer diesen Ordner.
 - **Eine Ordnermtime ist kein Loeschzeuge.** Sie aendert sich bei JEDEM
   Eintrag — auch wenn ein Unterordner angelegt wird. `daten/backtest/orb` mit
   mtime 04:23:17 sah aus wie der Moment des Verschwindens, war aber ein
