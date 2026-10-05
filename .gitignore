@@ -593,6 +593,16 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Werkzeuge/projectatlas/*.cmd
 !Agenten/Werkzeuge/projectatlas/*.sh
 !Agenten/Werkzeuge/projectatlas/*.py
+# MARKT-WERKZEUGE (05.10.2026): breite.py (Marktbreite als Reihe), topmover.py
+# (was bebt sich und traegt der Move) und marktdaten.py sind eigene
+# Hauswerkzeuge und gehoeren versioniert - topmover war bisher nur auf der
+# Platte (Regel .gitignore:20 '*') und damit bei jedem 'git add -A' nicht
+# mitgesichert.
+!Agenten/Werkzeuge/topmover.py
+!Agenten/Werkzeuge/breite.py
+!Agenten/Werkzeuge/marktdaten.py
+!Agenten/Werkzeuge/tests/*.py
+
 # PROJECTATLAS-DESIGNS (19.09.2026): Design-/Plan-Dokumente fuer die
 # Atlas-Erschliessung der Fremd-Agenten-Repos (Teilprojekte A/B/C).
 !Agenten/Werkzeuge/projectatlas/docs/
