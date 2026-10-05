@@ -533,6 +533,117 @@ def _minuten_seit(iso):
     return (datetime.now(timezone.utc).timestamp() * 1000 - t) / 60000.0
 
 
+def buche_verkaeufe_aus_boerse(z, live=True, still=False):
+    """Verkaeufe buchen, die die BOERSE bezeugt - VOR `bueche_geister_aus`.
+
+    ANLASS (gemessen in der Nacht 04./05.10.2026): vier echte Live-Positionen
+    wurden ueber Nacht von Hand verkauft (Stops). `bueche_geister_aus` sah,
+    dass sie an der Boerse fehlen, und buchte sie als
+    `grund="buchbereinigung_geist"` mit Erloes 0.00 - weil ein Geist neutral
+    gebucht wird (Einsatz zurueck, kein erfundenes Ergebnis). Die Boerse
+    fuehrte die Ergebnisse die ganze Zeit:
+
+        STRK   realizedPnl  +70,76 USD
+        SOL    realizedPnl   +0,96 USD
+        QUANT  realizedPnl  -18,47 USD
+
+    Sie waren nur nicht erreichbar, weil `_geist_erloes` den VERKAUFSKURS aus
+    `/account/positions-history` liest und dort `avgPx: None` bekommt. Der
+    Kurs steht an genau einer Stelle: `/trade/fills` -> `fillPx`.
+
+    Die Reihenfolge ist der eigentliche Fix. `buche_abgleich` ruft erst die
+    Geister (sie loeschen die Position) und DANACH
+    `bueche_groessen_abgleichen` (sie zieht das Buch auf die Boersengroesse).
+    Bei einer auf null gelaufenen Position hat die erste Stufe schon alles
+    entfernt - die zweite konnte nichts mehr angleichen. Diese Funktion geht
+    deshalb VOR beiden.
+
+    WAS SIE NICHT TUT: keine Order, kein Stop, kein Storno, kein Kauf. Nur
+    Buchhaltung. Und im Papierlauf (`live=False`) exakt nichts - sonst laege
+    eine Papierposition am Ende gegen die Boerse gerechnet.
+
+    Ohne `fills` wird NEUTRAL gebucht und als neutral benannt. Ein Verkauf
+    braucht den Kurs; ohne Zeugen wird nichts behauptet.
+    """
+    if not live:
+        # Der Papierlauf liest die Boerse nicht - sonst wuerde eine Papier-
+        # position gegen den echten Bestand gerechnet und am Ende als
+        # "verkauft" dastehen. Das ist die Grenze, die den Papierlauf sicher
+        # macht.
+        return 0
+    import boersen_bruecke as bruecke
+    try:
+        plan = bruecke.plan(z, live=True)
+    except Exception as e:                                     # noqa: BLE001
+        if not still:
+            print("  Boersen-Bruecke uebersprungen (%s) - Buch bleibt unberuehrt"
+                  % e)
+        return 0
+    if plan is None:
+        if not still:
+            print("  Boersen-Bruecke: Boerse nicht erreichbar - Buch bleibt "
+                  "unberuehrt")
+        return 0
+    verkaeufe = [e for e in plan if e["aktion"] == "verkauf"]
+    if not verkaeufe:
+        return 0
+    for e in verkaeufe:
+        p = next((q for q in z["positionen"] if q.get("pos_id") == e["pos_id"]),
+                 None)
+        if p is None:
+            continue
+        v = e.get("verkauf")
+        menge = e["differenz"]
+        if v:
+            preis = v["kurs"]
+            grund = "verkauf_von_hand"
+            quelle = "boerse"
+        else:
+            preis = float(p.get("einstieg") or p.get("preis") or 0.0)
+            grund = "verkauf_ohne_zeuge_neutral"
+            quelle = "neutral"
+        erloes = preis * menge
+        if not still:
+            print("  VERKAUF gebucht: %s %s %.0f Stuecke @ %.6f = %.2f USD "
+                  "(Boerse hat %s)"
+                  % (p.get("inst"), p.get("seite"), menge, preis, erloes,
+                     "bezeugt" if v else "KEINEN Zeugen -> neutral"))
+        journal(zeit=_jetzt(), modus="live", aktion="schliessen",
+                inst=p.get("inst", ""), pos_id=p.get("pos_id", ""),
+                seite=p.get("seite", ""), familie=p.get("familie", ""),
+                preis="%.8g" % preis, kontrakte="%.4f" % menge,
+                nominal_usd="%.2f" % erloes,
+                margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
+                grund=grund)
+        # Die Position bleibt stehen, wenn an der Boerse noch Rest steht -
+        # sie ist dann TEILVERKAUFT, und der Rest gehoert weiter ins Buch.
+        if e["boerse"] >= bruecke.MENGEN_TOLERANZ:
+            alt = abs(float(p.get("kontrakte") or 0.0))
+            if alt > 0:
+                faktor = e["boerse"] / alt
+                for feld in ("kontrakte",):
+                    if p.get(feld) is not None:
+                        p[feld] = float(p[feld]) * faktor
+                for feld in ("nominal", "margin"):
+                    if p.get(feld) is not None:
+                        p[feld] = float(p[feld]) * faktor
+                if not still:
+                    print("    Rest bleibt offen: %.2f Stuecke an der Boerse"
+                          % e["boerse"])
+        else:
+            z["positionen"] = [q for q in z["positionen"]
+                               if q.get("pos_id") != e["pos_id"]]
+            if p.get("ord_id"):
+                try:
+                    okxf.order_stornieren(p["inst"], p["ord_id"])
+                    if not still:
+                        print("    offene Order zu %s storniert (die Position "
+                              "ist verkauft)" % p.get("inst"))
+                except Exception as e:                         # noqa: BLE001
+                    print("    Storno der offenen Order fehlgeschlagen: %s" % e)
+    return len(verkaeufe)
+
+
 def bueche_geister_aus(z, w, still=False, stornieren=True):
     """Positionen aus dem Buch, die an der BOERSE nicht (mehr) existieren.
 
@@ -1031,6 +1142,15 @@ def buche_abgleich(z, w, live, still=False):
     if stand["wartende"] and not still:
         print("  %d wartende(r) Auftrag/Auftraege gefuellt und gebucht"
               % stand["wartende"])
+    # ERSTE Stufe, und die Reihenfolge ist der Fix (04./05.10.2026): ein
+    # Verkauf, den die Boerse bezeugt, muss VOR der Geisterpruefung gebucht
+    # werden. Andernfalls sieht die Geisterpruefung eine Position, die an der
+    # Boerse fehlt, und bucht sie neutral (Einsatz zurueck, Erloes 0.00) -
+    # vier echte Positionen verloren so ueber Nacht ihren Erloes.
+    stand["verkaeufe"] = buche_verkaeufe_aus_boerse(z, live, still=still)
+    if stand["verkaeufe"] and not still:
+        print("  %d Verkauf/Verkaeufe von der Boerse gebucht (echter Kurs)"
+              % stand["verkaeufe"])
     stand["geister"] = bueche_geister_aus(z, w, still=still, stornieren=live)
     if stand["geister"] and not still:
         print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
