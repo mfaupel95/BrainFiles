@@ -12,6 +12,10 @@
       ueber `historie_binance.py --auffuellen` neu geholt. Jetzt 57 Dateien,
       BTC/ETH/SOL-USDC je ~50.400 Kerzen. Replay-Fenster-, Historie- und
       Nichts-ausserhalb-Tests wieder gruen (15/15, 234 s).
+      BEWEIS 05.10.2026, 05:40: die komplette `tests/test_replay.py` in EINEM
+      Lauf, alle neun Klassen: 32/32 OK in 845 s, 0 Fehlschlaege. Der rote
+      Lauf, dessen Meldung nachlief, war der von 04:23 und damit vor der
+      Reparatur - Ausgabedatei 04:23, Historie-Datei 12:30.
       KORREKTUR 05.10.2026, 05:11: die Zahl "348 von 406 fehlen" war falsch
       gerechnet. 406 war die Zahl der DATEIEN (jede Reihe hat 1H/4H/1D), der
       Stand nennt 54 REIHEN; geprueft gegen alle wachen.json der Spuren fehlt
