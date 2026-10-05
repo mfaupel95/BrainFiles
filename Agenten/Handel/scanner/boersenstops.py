@@ -82,6 +82,131 @@ def stop_wirksam(okx, p):
     return state in WIRKSAM and not gefuellt, gefuellt
 
 
+# Alle OrdTypen, die OKX als offene Algo-Order fuehrt. Pro Frage darf OKX
+# genau EINEN ordType; die Antworten werden hier zusammengezogen. `oco` und
+# `move_order_stop` fehlen in vielen Abfragen - wer sie nicht mitfragt, liest
+# bei einer OCO-Position "kein Stop" und stellt einen zweiten daneben (T-278).
+ALGO_ORDTYPES = ("conditional", "oco", "move_order_stop")
+
+# Als Schutz zaehlt eine Ausloesung in BEIDEN Richtungen: ein Trailing-Stop
+# traegt `moveTriggerPx` statt `slTriggerPx` (okxf.ist_schutz_stop, T-278).
+STOP_FELDER = ("slTriggerPx", "moveTriggerPx", "tpTriggerPx")
+
+# Rundung, nicht Handgriff: OKX rechnet die Kontraktzahl in `lotSz`-Schritten
+# (ETH-USDC 0,000001, WLD-USDC 0,001 - **pro Markt verschieden**). Eine
+# Abweichung unterhalb eines halben Schritts ist dieselbe Position. Eine
+# feste Toleranz ist hier falsch: sie ist entweder zu streng (1e-9 meldet
+# Lot-Rundung als Luecke) oder zu lax (1e-3 verdeckt eine echte Luecke auf
+# einem feinen Markt). Deshalb kommt sie aus `instrument_regeln()`.
+MENGE_TOLERANZ = 1e-9          # Notfall, wenn kein lotSz gemeldet wird
+
+
+def toleranz(okx, inst):
+    """Ein halber Lot-Schritt des Marktes - die Rundung des Bestands.
+
+    Gemessen 05.10.2026: ETH 0,03730101 gegen Stop 0,03730100 (Differenz
+    1e-8 bei lotSz 1e-6) ist dieselbe Position, keine Luecke. Mit einer
+    festen Toleranz von 1e-9 meldete der Abgleich sie als ungeschuetzt.
+    Faellt die Instrumenttabelle aus, gilt die feste Notfallgrenze.
+    """
+    try:
+        lot = float(okx.instrument_regeln(inst).get("lotSz") or 0.0)
+    except Exception:                                      # noqa: BLE001
+        return MENGE_TOLERANZ
+    return lot / 2.0 if lot > 0 else MENGE_TOLERANZ
+
+
+def schutz_auftraege(okx, inst, seite="long"):
+    """Offene Schutz-Auftraege einer Position, mit ihrer MENGE.
+
+    Neu (T-362, nach xperp und mosaic): gedeckt ist, was die **MENGE** abdeckt.
+    `stop_wirksam` fragt nur, ob der **gemerkte** Auftrag wirksam ist - ein
+    Stop ueber 0,99 der Position gilt dort als Schutz.
+
+    Als Schutz zaehlt nur, was wirklich schuetzt:
+      * die Seite muss GEGEN die Position laufen (long -> sell),
+      * eine Ausloesung traegt (`slTriggerPx`/`moveTriggerPx`/`tpTriggerPx`).
+
+    **`reduceOnly` wird hier NICHT verlangt** - gemessen am 05.10.2026:
+    `scanner/okx.py:stop_setzen()` setzt das Feld nicht, also meldet OKX
+    `reduceOnly: "false"` fuer jeden Stop dieser Spur (WLD: sz 111,15,
+    slTriggerPx 0,5131, state live, reduceOnly false). Ein Filter, der wie
+    bei xperp auf `reduceOnly` filtert, verwirft JEDEN echten Stop und
+    meldet 7 von 8 Positionen als ungeschuetzt. Die xperp-Regel ist die
+    Regel des ORDWEGS, nicht des Marktes - sie gilt dort, weil
+    `okxf.schutz_stop_setzen()` das Feld setzt.
+
+    Rueckgabe: Liste von Dicts mit `sz` (float) und `preis`. Leer heisst
+    „kein Schutz gefunden", **nicht** „nicht lesbar" - das unterscheidet der
+    Aufrufer an der Exception.
+    """
+    gegenteil = "sell" if seite == "long" else "buy"
+    fund, fehler = [], None
+    for typ in ALGO_ORDTYPES:
+        pfad = ("/api/v5/trade/orders-algo-pending?ordType=" + typ
+                + "&instId=" + inst)
+        try:
+            for a in okx._roh(pfad, "GET", signiert=True) or []:
+                fund.append(dict(a, ordType=typ))
+        except Exception as e:                                 # noqa: BLE001
+            fehler = fehler or e
+    if not fund and fehler:
+        # Nichts gefunden, aber nichts bewiesen: wer im Zweifel einen Stop
+        # stellt, hat zwei (T-278). Der Aufrufer faengt das ab.
+        raise fehler
+    aus = []
+    for a in fund:
+        if a.get("instId") and a.get("instId") != inst:
+            continue
+        if str(a.get("side") or "").lower() != gegenteil:
+            continue
+        # reduceOnly wird bewusst NICHT geprueft - siehe der Docstring.
+        if not any(str(a.get(f) or "").strip() for f in STOP_FELDER):
+            continue
+        try:
+            menge = abs(float(a.get("sz") or 0.0))
+        except (TypeError, ValueError):
+            continue
+        if menge <= MENGE_TOLERANZ:
+            continue
+        aus.append({"sz": menge, "algoId": a.get("algoId"),
+                    "ordType": a.get("ordType"),
+                    "stop": next((a.get(f) for f in STOP_FELDER
+                                  if str(a.get(f) or "").strip()), None)})
+    return aus
+
+
+def deckung(okx, inst, p, bestand):
+    """(geschuetzt, soll, luecke) - die vierte Stufe.
+
+    **Gemessen wird gegen die BOERSE, nicht gegen das Buch.** Das ist der
+    ganze Unterschied, und er ist am 05.10.2026 teuer geworden: dieselben
+    acht Positionen ergaben
+
+        gegen das Buch   7 ungeschuetzt, 39,23 EUR
+        gegen die Boerse 1 ungeschuetzt,  2,08 EUR (nur WLD)
+
+    Der Grund: `usd / einstieg` im Buch ist der **geplante** Einsatz. Die
+    Boerse haelt den Bestand, den sie nach Gebuehr und Ausfuehrung behalten
+    hat. Ein Handgriff oder eine Nachfuellung verschiebt das Buch, ohne die
+    Boerse zu beruehren - und was die Boerse haelt, ist ungeschuetzt, egal
+    was das Buch behauptet (T-323, xperp/stopdeckung.py).
+
+    `bestand` ist der bereits geholte Gleichstand. `soll` ist der Bestand,
+    nie die Buchmenge. Rueckgabe: `(None, soll, None)` heisst „nicht lesbar".
+    """
+    soll = float(bestand or 0.0)
+    if soll <= 0:
+        return None, 0.0, None
+    try:
+        auftraege = schutz_auftraege(okx, inst, p.get("seite") or "long")
+    except Exception as e:                                     # noqa: BLE001
+        _ansage("Deckung %s nicht abrufbar (%s) - unangetastet" % (inst, e))
+        return None, soll, None
+    gedeckt = sum(a["sz"] for a in auftraege)
+    return gedeckt, soll, max(0.0, soll - gedeckt - toleranz(okx, inst))
+
+
 def setze_stop(okx, p, menge):
     """Notausstieg neu setzen. Rueckgabe: algoId oder None."""
     try:
@@ -128,6 +253,48 @@ def _buche_weg(z, p, okx, journal, grund_vermutung):
                 "%.4f" % float(p.get("mfe_pct") or 0.0),
                 "%.4f" % float(p.get("mae_pct") or 0.0), _haltetage(p))
     return True
+
+
+def _deckung_messen(bilanz, okx, p, bestand):
+    """Die vierte Stufe an EINER Position messen und melden (T-362).
+
+    Eigene Funktion, weil sie an ZWEI Stellen geprueft wird: im gesunden
+    Zweig (der gemerkte Stop ist wirksam - **und kann trotzdem zu klein
+    sein**) und im Zweig, der einen Stop nachsetzt. Ein Inline-Block an der
+    ersten Stelle waere an der zweiten eine zweite Wahrheit - genau das ist
+    bei mosaic passiert.
+
+    Schreibt `deckung_luecke` in die Position, damit Vorschau und Bericht die
+    Zahl sehen, ohne die Regel nachzubauen.
+
+    **Setzt nichts.** Ein Nachsetzen braucht einen Schutzpreis, den niemand
+    genannt hat; dieser Weg ist Buchhaltung.
+    """
+    inst = p.get("inst")
+    gedeckt, soll, luecke = deckung(okx, inst, p, bestand)
+    if gedeckt is None:
+        _befund(bilanz, inst, "unklar_deckung", "Deckung nicht lesbar")
+        bilanz["unklar"] += 1
+        return False
+    if luecke > 0:
+        bilanz["ungeschuetzt"] = bilanz.get("ungeschuetzt", 0) + 1
+        wert = luecke * float(p.get("stop") or 0.0)
+        _befund(bilanz, inst, "ungeschuetzt",
+                "Bestand %.8f, geschuetzt %.8f, fehlt %.8f (%.2f USD am Stop)"
+                % (soll, gedeckt, luecke, wert))
+        _ansage("UNGESCHUETZT: %s - Bestand %.8f, an der Boerse %.8f "
+                "geschuetzt, es fehlen %.8f (%.2f USD am Stop)"
+                % (inst, soll, gedeckt, luecke, wert))
+        p["deckung_luecke"] = round(luecke, 12)
+        return False
+    p.pop("deckung_luecke", None)
+    return True
+
+
+def _befund(bilanz, inst, lage, text=""):
+    """Was der Abgleich zu EINER Position gesehen hat (fuer eine Wache)."""
+    bilanz.setdefault("befunde", []).append(
+        {"inst": inst, "lage": lage, "text": text})
 
 
 def pruefe(z, okx, anwenden=False, journal=None):
@@ -189,8 +356,11 @@ def pruefe(z, okx, anwenden=False, journal=None):
             bilanz["ok"] += 1
             if p.get("boersen_stop_fehlt"):
                 p["boersen_stop_fehlt"] = False
+            _deckung_messen(bilanz, okx, p, eq)
             behalten.append(p)
             continue
+
+        _deckung_messen(bilanz, okx, p, eq)
 
         # Bestand da, Stop nicht (mehr) wirksam -> neu setzen.
         menge = okx.menge_gerundet(p["inst"], min(eq, buch_menge) if buch_menge

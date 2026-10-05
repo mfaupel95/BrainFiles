@@ -27,11 +27,17 @@ class FakeOKX:
     """Attrappe der vier Boersen-Funktionen, die der Abgleich braucht."""
 
     def __init__(self, bestaende=None, stops=None, fuellungen=None,
-                 setzen_fehler=None):
+                 setzen_fehler=None, algo=None, algo_fehler=None,
+                 lot=None):
         self.bestaende = bestaende or {}      # inst -> (eq, frei)
         self.stops = stops or {}              # algoId -> dict
         self.fuellungen = fuellungen or {}    # inst -> dict
         self.setzen_fehler = setzen_fehler
+        # T-362: die vierte Abgleichsstufe liest die offenen Algo-
+        # Orders ueber `_roh` (die dritte las nur `stop_details`).
+        self.algo = algo or {}                # ordType -> Liste
+        self.algo_fehler = algo_fehler
+        self.lot = lot or {}                   # inst -> {"lotSz": ...}
         self.gesetzt = []                     # (inst, menge, preis)
         self.storniert = []
 
@@ -59,6 +65,19 @@ class FakeOKX:
 
     def letzte_fuellung(self, inst, seite="sell"):
         return self.fuellungen.get(inst)
+
+    def _roh(self, pfad, methode="GET", body=None, signiert=False):
+        """Die offenen Algo-Auftraege je ordType (T-362)."""
+        if self.algo_fehler:
+            raise RuntimeError(self.algo_fehler)
+        for typ in ("conditional", "oco", "move_order_stop"):
+            if "ordType=%s" % typ in pfad:
+                return list(self.algo.get(typ) or [])
+        return []
+
+    def instrument_regeln(self, inst):
+        """lotSz/tickSz je Markt - die Toleranz der Deckung (T-362)."""
+        return dict((self.lot or {}).get(inst) or {})
 
 
 def position(inst="ETH-USDC", usd=100.0, einstieg=2500.0, stop=2400.0,
