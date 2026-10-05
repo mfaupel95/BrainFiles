@@ -51,10 +51,45 @@ Fehlermeldung.
 1. **Stand messen, nicht erinnern.** Die drei Kopien GETRENNT pruefen (Alter und
    Ergebnis je Kopie) aus `Agenten\Routinen\logs\` — der Hauptlauf schreibt
    `<name>-letzter-lauf.log`. „Die Sicherung ist aktuell" ist eine Aussage ueber
-   DREI Laeufe, nicht ueber einen.
+   DREI Laeufe, nicht ueber einen. Bei der Ausser-Haus-Kopie gehoert die EXISTENZ
+   ihrer geplanten Aufgabe dazu (Schritt 2b): ohne Aufgabe laeuft sie nicht mehr,
+   egal was das Protokoll zeigt.
+   **Die Wrapper-Protokolle sind UTF-16.** Roh gelesen (mit einem Zeilenwerkzeug)
+   kommt Nullbyte-Salat zurueck, der wie ein leeres oder kaputtes Protokoll
+   aussieht — mit einem Decoder lesen (BOM strippen, dann `utf-16-le`, danach erst
+   `utf-8`). Dasselbe gilt fuer die `.tmp`-Datei daneben.
+   **Ein Decode, der nicht abbricht, ist kein Decode, der funktioniert.**
+   `bytes.decode("utf-16-le")` wirft fast nie eine Ausnahme — bei falscher
+   Endianness oder falschem BOM liefert es still CJK-Salat, der wie ein kaputtes
+   Protokoll aussieht und einen zu der Fehlannahme verleitet, die Datei sei leer
+   oder beschaedigt. Deshalb NICHT die erste Ausnahme-freie Kodierung nehmen,
+   sondern die Kandidaten durchprobieren und das Ergebnis PRUEFEN: BOM strippen,
+   dann je Kodierung den Anteil druckbarer Zeichen in den ersten ~2000 Zeichen
+   messen (> 85 % = plausibel) und erst die beste nehmen, sonst `utf-8` mit
+   `errors="replace"`. Als Einzeiler:
+
+```python
+b = open(p, "rb").read()
+if b.startswith(b"\xef\xbb\xbf"):
+    b = b[3:]
+for enc in ("utf-16-le", "utf-8", "cp1252"):
+    try:
+        t = b.decode(enc)
+    except Exception:
+        continue
+    kopf = t[:2000]
+    if sum(1 for c in kopf if c.isprintable() or c in "\r\n\t") > len(kopf) * 0.85:
+        break
+```
 2. **Ziele pruefen.** Angesteckt und Platz frei?
    `Get-CimInstance Win32_LogicalDisk` (`DeviceID`, `VolumeName`, freier Platz).
    Ein Ziel, das nicht angesteckt ist, ist kein Skriptfehler.
+2b. **Bei der Ausser-Haus-Kopie zusaetzlich die Aufgabe selbst pruefen** —
+   `schtasks /query /tn 'MaxHirn-Ausserhaus-Kopie'` oder die Aufzaehlung
+   `Get-ScheduledTask | Where-Object { $_.TaskName -like 'MaxHirn*' }`.
+   `Get-ScheduledTask -TaskName <name>` findet auch VORHANDENE Aufgaben nicht
+   und taugt nicht als Zeuge. Fehlt die Aufgabe, laeuft die Kopie nicht mehr,
+   auch wenn ihr Protokoll einen frischen Lauf zeigt — das war ein Handlauf.
 3. **Hauptlauf fahren** — idempotent und schnell, wenn nichts geaendert wurde.
    Abgekoppelt starten, sonst reisst der Aufruf die Zeitgrenze des
    Host-Werkzeugs (~300 s):
@@ -84,7 +119,32 @@ Fehlermeldung.
   Sekunden mit **Exitcode 2 = "uebersprungen", und das ist kein Fehlschlag**
   (dieselbe Regel wie bei der Zweitkopie). Anlegen und Nachziehen uebernimmt der
   Hermes-Cron `ausserhaus-aufgabe-sichern` (taeglich 08:30): er legt eine
-  fehlende Aufgabe an und schaltet eine abgeschaltete wieder ein. Trotzdem gilt:
+  fehlende Aufgabe an und schaltet eine abgeschaltete wieder ein. **Dieser Cron
+  ist kein Beleg fuer Dauerhaftigkeit** — meldet er bei JEDEM Lauf
+  „war nicht vorhanden und ist angelegt", ist die Aufgabe offenbar nicht haltbar,
+  und die Kopie laeuft nur, wenn jemand sie von Hand nachzieht. Die wortgleiche
+  Wiederholung IST der Befund; der Zeuge sind seine Ausgabedateien
+  (`Agenten/Hermes/cron/output/<job-id>/*.md`, mehrere Tage nebeneinander), nicht
+  der letzte Lauf.
+  **Was dann zu tun ist — heilen UND messbar machen.** Ein Tages-Cron ist als
+  Wache untauglich: er heilt einmal um 08:30 und die Kopie um 21:30 faellt wieder
+  aus. Statt weiter zu raten, wer die Aufgabe entfernt, zwei Dinge in EINEM
+  Skript (Muster: `Agenten/Hermes/scripts/ausserhaus-aufgabe-wache.py`, Cron
+  alle 10 min, `no_agent`, leere Ausgabe = nichts senden):
+  (a) fehlt die Aufgabe, neu anlegen — im 10-Minuten-Takt, damit der eigentliche
+  Termin nicht mehr ausfaellt;
+  (b) bei JEDER Pruefung Anlege-/Weg-Zeitpunkt in eine Merkdatei schreiben
+  (`cache/<name>-wache.json`), sodass die UEBERLEBENSZEIT ablesbar wird. Ohne
+  (b) weiss man nach einer Woche nur „verschwindet", mit (b) „haelt 20 Minuten"
+  — und das ist die Angabe, die den Loescher eingrenzt (ein Prozess mit
+  Minuten-Takt, nicht ein Logon-Skript).
+  **Und die Reihenfolge: das Ereignisprotokoll VOR dem naechsten Ausfall
+  einschalten** (`wevtutil sl Microsoft-Windows-TaskScheduler/Operational /e:true`,
+  braucht Admin). Es ist im Auslieferungszustand AUS und hat KEINE Vorgeschichte —
+  nach dem Einschalten sind nur neue Faelle belegt, alles davor ist spurlos. Ein
+  Loeschvorgang erscheint dort als Ereignis **Id 141** (mit Benutzer/Prozess);
+  bleibt 141 leer, wurde die Aufgabe nicht ueber die Task-API entfernt. Wer erst
+  beim naechsten Mal einschaltet, hat wieder nichts. Trotzdem gilt:
   das Alter DIESER Kopie einzeln messen (Fristwache `ausserhaus-frist-wache`,
   14 Tage), und **"ausser Haus bringen" bleibt Handarbeit** — eine Kopie auf dem
   Schreibtisch ist keine Kopie ausser Haus.

@@ -182,6 +182,25 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   Suite im Worktree fahren, **dann** dieselben Suiten im Hauptbaum, mit einem
   Vorher/Nachher-Waechter auf den echten Spurenordnern (`spiegelstand.py` als
   Abschlussbeleg). Erst ein Befund, der in BEIDEN Baeumen steht, ist ein Befund.
+- **Ein Worktree-Test sieht eine ANDERE Datenwelt als das Haus — und meldet
+  eine plausible Zahl statt eines Fehlers.** Ein Modul, dessen Datenordner
+  relativ zur eigenen Datei liegt (`historie_binance.ORDNER =
+  HIER/daten/historie`), liest in einem `git worktree` einen ANDEREN Ordner;
+  ist der Datenordner nicht versioniert (`git check-ignore` belegt, `git
+  ls-files` leer), existiert er dort gar nicht. Ein Replay-Test aus
+  `.worktrees/<karte>/Agenten/Handel/tests` meldete deshalb „Historie fehlt,
+  0 Kerzen" fuer Reihen, die im Haus vollstaendig lagen — die Fehlermeldung war
+  richtig, der Schluss „348 Reihen weg" falsch. Vor jeder Verlustmeldung
+  pruefen, aus WELCHEM Verzeichnis der rote Lauf kam (state.db, `session_id` +
+  `cwd` des Aufrufers) und ob der Datenordner versioniert ist. Reproduktion:
+  Modulkopie ohne `daten/` in einen Temp-Ordner legen — sie meldet belegt 0
+  Kerzen.
+- **Eine Ordnermtime ist kein Loeschzeuge.** Sie aendert sich bei JEDEM
+  Eintrag — auch wenn ein Unterordner angelegt wird. `daten/backtest/orb` mit
+  mtime 04:23:17 sah aus wie der Moment des Verschwindens, war aber ein
+  Replay-Unterordner, der NACH dem Ereignis geschrieben wurde. Ein mtime-
+  Treffer ist ein Hinweis auf einen Zeitpunkt, kein Beweis fuer eine Aktion;
+  die Aktion belegt der Aufruf (state.db `tool_calls`), nicht der Zeitstempel.
 - **Eine Wache, die einen wachsenden Datenstand bemerkt, darf ihn nicht selbst
   beheben.** Nachfuellen gehoert entschieden, nicht gemeldet: ein Top-N-Universum
   bedeutet Tausende Kerzen und echte Laufzeit, und das ist eine Produktentscheidung.
@@ -309,10 +328,19 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   gibt — Registrierer-Skript, Commit-Text und eine abgehakte Aufgabe behaupten den
   festen Takt, waehrend die Aufgabe nie angelegt wurde oder nicht haelt (das
   Registrierer-Skript kann selbst dokumentieren, dass „Ready" samt naechstem Lauf
-  gemeldet wurde, ohne dass die Aufgabe blieb). Beleg ist die Liste ALLER Aufgaben
+  gemeldet wurde, ohne dass die Aufgabe blieb); (c) eine REGENERATOR-Routine,
+  die ihr eigenes Ziel taeglich neu anlegt und dabei taeglich DASSELBE meldet
+  („war nicht vorhanden und ist angelegt"). Die wortgleiche Wiederholung ueber
+  mehrere Tage IST der Befund — ein Selbstheiler, der nie aufhoert zu heilen,
+  heilt nichts, und das Erzeugnis (hier die Ausser-Haus-Kopie) laeuft nur noch
+  von Hand. Zeuge ist der Ausgabe-ARCHIV des Cron ueber mehrere Tage
+  nebeneinander (`cron/output/<job-id>/*.md`), nicht der letzte Lauf: der sieht
+  gruen aus und traegt die Wiederholung in sich. Beleg ist die Liste ALLER Aufgaben
   plus die Abfrage nach Namen (`schtasks /query /fo TABLE`, `schtasks /query /tn
   <name>`), nicht der Registrierer-Log — ein Log mit frischem Zeitstempel belegt
-  nur einen HANDLAUF. Merksatz: **ein Erzeugnis ohne Vollstaendigkeitszahl ist keine
+  nur einen HANDLAUF. Und `Get-ScheduledTask -TaskName <name>` findet auch
+  VORHANDENE Aufgaben nicht: nur die Aufzaehlung oder `schtasks` zaehlen als
+  Zeuge. Merksatz: **ein Erzeugnis ohne Vollstaendigkeitszahl ist keine
   Sicherung, und ein Auftrag ohne Eintrag im Planer laeuft nicht** — beide
   Gegenproben gehoeren in dieselbe Meldung wie das „ok".
 - **Eine Uebersprung-Wache, die fuer einen Teil gebaut wurde, schaltet den Rest
@@ -396,6 +424,21 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   und dessen `teile()`/`ist_stoerung()` aufrufen. Faellt der eigene Zaehler
   daneben, ist zuerst der Zaehler falsch — nicht die Komponente.
 
+- **Der Statusbericht luegt in BEIDE Richtungen — auch ein gemeldeter FEHLSCHLAG
+  ist zu pruefen.** Dieser Skill handelt vom gruenen Bericht ohne Wirkung; die
+  Umkehrung kostet genauso viel. Gemessen: ein Aufruf gab einen Fehlercode zurueck
+  (`wevtutil sl <Log> /e:true` -> Exit 5, "Zugriff verweigert"), und der Ziel-Abruf
+  (`wevtutil gl <Log>`) zeigte danach `enabled: true` — die Aenderung war
+  durchgelaufen. Wer den Code glaubt, meldet "braucht Admin" fuer etwas, das schon
+  wirkt, und laesst die Wirkung unbemerkt. Regel: Aktion fahren, DANN den
+  Ziel-Abruf lesen, und das Urteil aus DESSEN Ergebnis bilden; den Exitcode daneben
+  nennen, nie als Beweis — in keiner der beiden Richtungen.
+- **Ein Audit-Tor, das nur eine Richtung kennt, laesst die andere durch.** Wer eine
+  Menge gegen eine Quelle prueft (Dateien, Aufgaben, Positionen), prueft in der
+  Regel "ist alles da, was da sein soll". Der zweite Teil — "liegt dort etwas, das
+  NICHT dorthin gehoert" — wird vergessen und ist der teurere: ein verwaister
+  Eintrag faellt nie auf, weil jede Soll-Liste erfuellt ist. Beide Richtungen in
+  dieselbe Meldung: fehlend UND ueberzaehlig, je mit Namen.
 - **Ein Messwerkzeug, das am Betrieb vorbei misst, liefert ein praezise aussehendes
   falsches Urteil.** Gibt es fuer dieselbe Sache ZWEI Wege (zwei Schnittstellen,
   zwei Adapter, zwei Dateiformate), dann muss die Sonde den Weg ueber DIESELBE
