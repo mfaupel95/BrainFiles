@@ -3,7 +3,7 @@ id: 20260921-wachen-und-aufgaben
 title: 'Betrieb — Wachen und geplante Aufgaben'
 tags: [betrieb, wachen]
 created: 2026-09-21
-updated: 2026-09-23
+updated: 2026-10-05
 related: ['[[Betrieb/Hermes]]', '[[Handel/Gates-und-Freigabe]]']
 summary: 'Zwei Scheduler (Windows-Aufgabenplanung und Hermes-Cron), das Wachen-Muster, und die Frage, die man vor jeder Wache stellt.'
 ---
@@ -30,6 +30,85 @@ darf eine Wache nicht ueber den Weg melden, den sie ueberwacht.
 4. **Erst fragen: hat der Dienst ueberhaupt eine Wache?** Der Telegram-Bus hatte keine —
    er war vom 11.09. bis 15.09. aus, die Routinen schrieben weiter ins Journal, niemand
    bekam Meldungen. Vier Tage unbemerkt.
+
+## Leere Ausgabe: die gefaehrlichste Ausgabe (05.10.2026)
+
+**Regel: in einem Watchdog ist „leer" nicht eindeutig.** Punkt 1 oben sagt
+„leere Ausgabe heisst nichts senden" — das erzeugt eine doppelte Bedeutung: leer
+kann „nichts zu melden" heissen ODER „die Pruefung lief nie". Die zweite Form
+faellt nie auf, weil nichts auffaellt.
+
+Gemessen in `Agenten/Hermes/scripts/historie-auftrag.py`. Der Auftrag band die
+Wache als `HIER / "historie-wache.py"` ein, wobei `HIER = Path(__file__).resolve()`
+die **Datei** ist — der Pfad zeigte auf ein Verzeichnis mit py-Namen darin.
+`subprocess.run` meldet einen fehlenden Pfad **nicht** als Fehler, sondern mit
+leerer Ausgabe. Die Regel aus Punkt 1 machte daraus „alles in Ordnung". Der
+Auftrag haette taeglich „nichts zu tun" gemeldet, ohne dass jemand es gemerkt haette.
+
+Drei Regeln folgen daraus:
+
+1. **Der Werkzeugpfad braucht den ORDNER**: `HIER = Path(__file__).resolve().parent`,
+   oder `SCRIPTS = HIER.parent` wenn `HIER` die Datei bleibt.
+2. **Ein Fehlercode des Kindes ist eine Ausnahme**, kein leeres Ergebnis — sonst
+   wird „Abruf kaputt" zu „alles frisch".
+3. **Im Aufrufer darf ein Fehler der Pruefung nie in den stillen Zweig fuehren**,
+   sondern zu einem gemeldeten Exitcode (2 = Befund, nicht 0 = gesund).
+
+**Gegenprobe pflichtig:** den Fehlpfad zurueckbauen und pruefen, dass Tests rot
+werden. Ein Test, der den Fehlerpfad nicht kennt, prueft die Fehlerbehandlung nicht.
+
+**Merksatz: ein stiller Fehlpfad in einem Wecker ist die teuerste Form von gruen** —
+weil die Wette „leer ist gesund" ihn als Gesundheit liest.
+
+### Nachweis
+
+```bash
+python Agenten/Hermes/scripts/audit-werkzeugpfad.py --ordner <Ordner>
+```
+
+Exit 1 = Befund, Exit 0 = sauber. Stand 05.10.2026: `Agenten/Hermes/scripts`,
+`Agenten/Routinen`, `Agenten/Bus` und `Agenten/Handel` sauber — der Fehler war auf
+eine Datei beschraenkt. Der Auditor meldet die **Form**, nicht den Zustand: er
+kann nicht wissen, ob ein Werkzeug fehlt, ohne jeden Pfad zu pruefen. Ein Befund
+ohne Beleg waere das Gegenteil der Hausregel.
+
+### Zwei Auditoren wurden verworfen (gleicher Tag)
+
+Eine Fassung „subprocess mit geschluckter Ausgabe ohne `returncode`-Pruefung" nannte
+elf Dateien. Von Hand nachgeprueft: die beiden ersten fangen den Fehler **aktiv**
+ab (`except OSError` mit Klartext, danach `return ""` mit dokumentierter Bedeutung
+„leer heisst nicht messbar"). Der Befund war falsch. Eine breitere Fassung nannte
+63 Dateien ohne jede Meldung in `except` — das ist der Normalbau der
+Wachenfamilie, kein Befund.
+
+**Merksatz: ein Auditor, der elf Mal falsch alarmiert, ist schlimmer als keiner.**
+Breite zuerst messen, dann verengen — nie umgekehrt.
+
+## Zwei Ablageorte, ein Name (05.10.2026)
+
+**Regel: bei zwei gleichnamigen Ordnern ist die Quelle der Wahrheit das SCHREIBENDE
+Modul, nicht die Pfadannahme.**
+
+Die Feed-Historie der MoonDev-Spuren lag in zwei Orten:
+
+- **echt:** `Agenten/Handel/daten/historie/FEED/` — dorthin schreibt
+  `moondev_historie` (Konstante `ORDNER`, Zeile 42) und von dort liest
+  `replay.lauf_feed` ueber `moondev_historie.lade_feed`
+- **verwaist:** `Agenten/Handel/daten/historie/` OHNE `feed` — drei 1D-Dateien
+  (BTC, ETH, SOL) vom 25.09.2026, die kein Lauf liest
+
+Der Befund fiel **nicht** durch einen Test, sondern durch die Diskrepanz selbst:
+der Abruf meldete „30 Reihen geschrieben, 0 ohne Kerzen", die Dateizahl blieb bei
+drei. Ein Test mit einer Attrappe im falschen Ordner haette die Regel bestaetigt
+statt sie zu brechen.
+
+Beide Wachen holen den Pfad jetzt aus `moondev_historie.ORDNER` ueber das
+Modul-Schaetzfeld `FEED_ORDNER` — nicht geraten, und **nicht** als reiner
+Funktionsweg: der Importweg umgeht sonst jedes Umbiegen von `HANDEL` im Test
+(gemessen: 15 Fehlschlaege mit „Historie fehlt", alle dieselbe Ursache).
+
+**Nachweis:** `grep -n "^ORDNER" Agenten/Handel/moondev_historie.py` — die Konstante
+ist die Wahrheit; `ls Agenten/Handel/daten/historie/feed/*_1D.json` — 30 Reihen.
 
 ## Windows-Aufgaben: Fallen
 

@@ -3,7 +3,7 @@ id: 20260921-tests
 title: 'Lektionen — Tests'
 tags: [lektion, tests]
 created: 2026-09-21
-updated: 2026-09-30
+updated: 2026-10-05
 related: ['[[Handel/Lektionen]]', '[[Lektionen/Git-und-Textdateien]]']
 summary: 'Tests, die echte Datenordner ODER den laufenden Betrieb anfassen; Modulwaechter und Trockenmodus als Gegenmittel; sys.path-Reihenfolge; Tests, die nichts pruefen.'
 ---
@@ -216,6 +216,50 @@ def tearDown(self):
 **Merksatz:** ein Test-Wächter, der die echte Datei löscht, ist teurer als der
 Wächter selbst. Und: die Reihenfolge in einem `tearDown` ist Code, kein Detail —
 `Pfad zurücksetzen` und `Datei löschen` dürfen sich nicht über Kreuz kommen.
+
+## Ein Attrappenbau kann sieben Fehlschläge machen (05.10.2026)
+
+**Regel: eine Attrappe braucht EINEN Zeitanker für Datei und „jetzt".**
+
+Beim Bau der Historie-Wache (`test_historie_wache.py`) kostete die Attrappe
+vier Runden, weil jede Runde eine andere Annahme trug:
+
+1. **Zu hohe Ebene.** Die Attrappe lag in `tmp/historie`, die Wache liest
+   `tmp/daten/historie` — der Test prüfte den Fehlerpfad, nicht die Regel.
+2. **Zwei Zeitanker.** Datei und „jetzt" trugen verschiedene Konstanten; die
+   gespannte Datei lag damit in der **Zukunft**, jede Reihe war jünger als null
+   Tage, und **7 Fehlschläge** kamen aus einem Vorzeichenfehler im Attrappenbau,
+   nicht aus der Regel.
+3. **Zu wenige Reihen.** Die Tests legten je 1–4 Reihen an, der Backtest
+   verlangt `mindest_symbole=30`. Die Wache meldete dann immer die
+   *Mindestzahl*, und die *Altersregel* war gar nicht pruefbar (4 Fehlschläge).
+   Die beiden Regeln brauchen getrennte Attrappen-Mengen.
+4. **Falscher Anker.** `WURZEL = HIER.parents[3]` endete in `C:\Users\faupe\Documents`
+   statt im BrainFiles — der Test las ein `replay.py`, das es dort nicht gibt.
+5. **`self` im Lambda.** `w._groesse_gb = lambda: 0.0` statt
+   `lambda _ordner=None: 0.0` — 9 Fehlschläge, weil die echte Funktion einen
+   Pfad erwartet.
+
+**Merksatz: die Zahl der Fehlschläge sagt nichts über die Regel.** Sie sagt, wie
+viele Annahmen die Attrappe trug. Eine Attrappe mit **einer** Zeitkonstante
+(`Attrappe.JETZT`) und **genau** so vielen Reihen, wie die geprüfte Regel
+verlangt, ist die einzige Form, die eine Regel entscheidet.
+
+## Ein Test findet den Fehler, den die Messung nicht fand (05.10.2026)
+
+**Regel: eine geschätzte Zahl braucht eine Rechnung, die man nachrechnen kann.**
+
+In `historie-nachladen.py` zaehlte `vorhanden` die alten Reihen doppelt
+(`len(alt)` plus alle Dateien). Drei alte Reihen galten als „6 vorhanden",
+dadurch verschoben sich `fehlend` und die **geschaetzte Laufzeit**. Der Code las sich
+richtig; der Test `test_drei_alte_und_27_fehlende` rechnete `30 − 3 = 27` und
+bekam 24.
+
+Gegenprobe: den Zaehler rausnehmen, 2 von 10 Tests werden rot, zurueckgesetzt
+wieder gruen. **Ohne die Gegenprobe haette der Test den Fehler nur beschrieben.**
+
+**Merksatz: wer eine Zahl im Code FREI eintippt statt sie aus den Zaehlern zu
+rechnen, hat einen Befund und keinen Beleg.**
 
 ### Merksatz
 
