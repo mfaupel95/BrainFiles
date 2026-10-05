@@ -110,6 +110,18 @@ der Boerse offen bleibt - Schaden ohne jede Order.
   ueber den NAMEN, nicht ueber die Position. Beide Schreibweisen gegenproben,
   bevor "kein Bestand" gemeldet wird; sonst steht neben vier offenen
   Stop-Orders die Behauptung, das Konto sei leer.
+- **Ein Paar hat bei Kraken ZWEI Schreibweisen, und jede Quelle benutzt eine
+  andere.** `AssetPairs` fuehrt `XXBTZEUR`/`XETHEUR`, die offenen Auftraege fuehren
+  `XBTEUR`/`ETHEUR` (ohne X, plus Staking-Endungen `.S`/`.B`). Ein Abgleich, der
+  Deckung ueber einen direkten Paar-Vergleich baut, findet einen Deckungsgrad von
+  0 fuer eine Position, deren Stop mit korrekter Menge an der Boerse liegt - das
+  sieht wie eine offene Luecke aus und ist der haeufigste Fehlbefund dieser
+  Pruefung (gemessen: mosaic-ETH mit 0,0407 Stuecken "ungeschuetzt", Stop
+  `sell 0.04071724 ETHEUR @ stop loss` vorhanden). **Immer die HAUS-Funktion
+  benutzen** - `Agenten/Handel/kraken/spot_stops.muenze_aus_paar(paar, paare)` - und
+  nie die Praefix-Liste im Kopf nachbauen; die Liste kennt nur eine Handvoll Codes,
+  alles andere faellt durch. Ein Befund, bei dem eine Abfrage ALLES leer liefert,
+  ist immer die Abfrage, nicht der Bestand.
 - **`guthaben()` ohne Argument gibt den FIAT-Betrag als ZAHL zurueck, kein
   Dict.** Wer darueber wie ueber ein Woerterbuch laeuft (Werte filtern, Nullen
   ausblenden), erhaelt ein leeres Ergebnis, das wie "nichts vorhanden" aussieht.
@@ -164,6 +176,39 @@ Was sich lohnt:
 - Bestandsaufraeumer fuer Waisenstops und fuer DUPLIKATE im Buch: ein Merker, der
   nur beim Erfolg faellt, sammelt sonst bei jedem Zyklus dieselbe Kennung (eine
   Zustandsdatei trug 23 Kopien desselben Stops).
+
+### Eine Deckungsluecke schliessen: gegen die Boerse messen, auf volle Lose nachsetzen
+
+Die vierte Stufe der Pruefung beantwortet "WIEVIELE Stuecke sind geschuetzt", nicht
+"liegt ein Stop". Ihr Befund ist eine **Menge**, und die Menge gehoert auf die
+Bohrschaerfe der Boerse gerundet:
+
+1. **Luecke = Bestand an der Boerse − Summe aller Schutzauftraege − Toleranz.**
+   Nicht gegen das Buch rechnen: `usd / einstieg` ist der geplante Einsatz, die
+   Boerse haelt, was nach Gebuehren und Ausfuehrung blieb. Geplant 65,22 WLD,
+   gehalten 115,21 - das Buch unterzaehlt und meldet sieben statt einer Luecke.
+   Die Toleranz ist **ein halber Lot-Schritt des Marktes** (`lotSz/2` aus der
+   Instrumenttabelle, pro Markt verschieden); eine feste Toleranz ist entweder zu
+   streng (Los-Rundung wird Luecke) oder zu lax (eine echte Luecke geht
+   unter).
+2. **Die Nachsetzmenge ist der FREIE Bestand, nie der Gesamtbestand**, sonst
+   lehnt die Boerse die Order ab (bei OKX muss die Groesse unter der frei
+   verfuegbaren Menge liegen).
+3. **Auf volle Los-Schritte AUFgerunden nachsetzen, nicht abgerundet.** Ein
+   Nachsatz auf `menge_gerundet()` (ABgerundet auf `lotSz`) laesst den Rest
+   ungedeckt - nach einem Nachsatz von 4,059 bei einer Luecke von 4,060 meldet
+   die naechste Pruefung "es fehlen 0,0005" und sieht damit wie ein fortbestehender
+   Befund aus. Die Nachsetzmenge ist `ceil(Luecke / lotSz) * lotSz`, gedeckelt
+   durch den freien Bestand; faellt der Rest kleiner als ein Lot an, ist er
+   **Rundung, kein Befund** - und wird als solcher benannt, statt jeden Zyklus
+   erneut gemeldet zu werden.
+4. **Der Beleg ist die zweite Abfrage, nicht die Orderantwort.** Nach dem Nachsatz
+   die Deckung erneut gegen die Boerse messen und beide Zahlen nennen
+   (vorher/nachher); eine gesetzte Order mit falschem `instId`, `side` oder
+   `sz` gilt an der Boerse als kein Schutz.
+5. **Kein Nachsatz ohne Preiszustaendigkeit.** Ein Long-Stop auf/ueber dem Kurs
+   verkauft sofort, ein Stop unter der Liquidationsmarke kommt nie - beides
+   verweigert der Auftrag statt zu raten.
 
 ## Beleg-Tor (der einzige echte Orderweg)
 

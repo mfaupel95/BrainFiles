@@ -363,6 +363,15 @@ Hausweg nicht erzeugen kann (etwa ein Kraken-Spot-Limit mit „with N:1 leverage
 Beschreibungstext — der Haus-Spot-Weg hat keinen Hebel), von Hand gelegt. Beides
 gehoert in dieselbe Antwort, getrennt von den Spurzeilen.
 
+**Die Bestaetigung des Nutzers ist ein dauerhafter Stand, kein Einmalhinweis.**
+Er hat eigene Positionen auf demselben Konto (gemessen: Kraken-Futures-Kontrakte
+und ein Spot-Limit mit Hebel), die in keinem Spurenbuch stehen. Nach seiner
+Bestaetigung gilt: diese Kontostandzeilen sind als **von Hand** gefuehrt und
+tauchen in keinem Folgebefund mehr auf — sie weder ausbuchen noch „fremd" nennen
+noch bei jedem Lauf erneut vorlegen. Geaendert wird nur, was er selbst sagt. Ohne
+diese Regel wird dieselbe gepruefte Position bei jeder Sitzung neu als Befund
+gemeldet, und die Diagnose-Liste verliert ihre Aussagekraft.
+
 ### Ausgabeform fuer den Nutzer
 
 Je Boerse ein Block mit Kanal und Waehrung, darunter je Spur die Positionen mit

@@ -153,6 +153,35 @@ okx.stop_stornieren(algo_id, inst)                       # inst ist PFLICHT
 - Die eigene Kontraktfamilie pruefen (`BZ-USD_UM_XPERP-310509`), Handpositionen
   tragen `tag='OTversionB'`.
 
+## OKX: einen BESTEHENDEN Stop aendern statt stornieren und neu setzen
+
+```python
+okxf.stop_nachziehen(algo_id, inst, stop_preis)
+# POST /api/v5/trade/amend-algos
+# {"algoId": ..., "instId": ..., "newSlTriggerPx": ..., "newSlOrdPx": "-1"}
+```
+
+Die Position laeuft weiter, **nur der Ausloesepreis wandert**; die `algoId` bleibt
+dieselbe. Das ist der Unterschied zum Weg `algo_stornieren()` +
+`schutz_stop_setzen()`: dort gibt es zwischen beiden Aktionen ein Fenster OHNE
+Schutz, und der Weg traegt in der Antwort `sCode != 0` trotzdem kein Fehlerzeichen
+im Weg selbst — der Aufrufer muss `sCode` lesen. `-1` als Auftragspreis laesst als
+Market ausfuehren (ein Limit-Stop fuellt im Absturz nicht).
+
+**Probe ohne Geld: denselben Wert zurueckschreiben.** Ein offener Stop bekommt
+exakt seinen jetzigen Preis; nach der Aenderung muessen algoId, Marke und Menge
+unveraendert dastehen. Haette die Route nicht gegriffen, waere der Stop weg —
+so ist der Erfolg am Bestand ablesbar statt behauptet.
+
+Merksatz: **zwei Arten von Auftraegen, zwei Wege.** `algo_stornieren()`
+nimmt eine `algoId` aus `order-algo`, `order_stornieren()` eine `ordId` aus
+`order`. Wer beim Weglassen der einen Art das Falsche storniert, bekommt `51400`
+("gefuellt, storniert oder gibt es nicht") — was wie ein Erfolg aussieht und
+die Sorge ausloest, obwohl der Schutz noch steht.
+
+Der Trailing-Stop ueber diesen Weg, samt den drei Toren, die er braucht:
+`references/trailing-stop.md`.
+
 ## Die Werkzeuge
 
 | Werkzeug | Flags |
