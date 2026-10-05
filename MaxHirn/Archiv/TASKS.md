@@ -185,20 +185,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-368 — Worktree-Test sieht eine leere Historie: 'Historie fehlt' statt still 0 Kerzen**
-      Kontext: T-361 (05.10.2026) war kein Loeschvorgang - der rote Replay-Lauf
-      (00:43) kam aus .worktrees/t_5609d126/Agenten/Handel/tests, und daten/ ist
-      nicht versioniert (git check-ignore belegt, git ls-files leer).
-      historie_binance.ORDNER = HIER/daten/historie ist RELATIV zur Modulposition:
-      eine Modulkopie ohne daten/ meldet belegt 0 Kerzen (Gegenprobe im Temp-Ordner
-      reproduziert: 'ordner existiert: False, lade BTC 1H -> 0'). Bei 47 Spuren und
-      1801 Tests ist das eine wiederkehrende Fehlquelle, keine Ausnahme.
-      Naechster Schritt: eine Naht, damit ein Replay-Test in einem Worktree
-      'Historie fehlt' sagt statt still 0 Kerzen zu rechnen - z.B. ein Marker,
-      der fehlt, wenn daten/ nicht existiert, und der Test schlaegt dann an.
-      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
-      Betrifft: Agenten/Handel/replay.py, Agenten/Handel/historie_binance.py,
-      Agenten/Handel/tests/test_replay.py
 - [ ] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Wache haelt sie jetzt, Ursache offen**
       Kontext: Die Windows-Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30,
       Wrapper `Agenten/Routinen/ausserhaus-kopie.ps1`) war am 05.10. um 22:30
@@ -3688,6 +3674,21 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-368 — Worktree-Test sieht eine leere Historie: 'Historie fehlt' statt still 0 Kerzen**
+      Kontext: T-361 (05.10.2026) war kein Loeschvorgang - der rote Replay-Lauf
+      (00:43) kam aus .worktrees/t_5609d126/Agenten/Handel/tests, und daten/ ist
+      nicht versioniert (git check-ignore belegt, git ls-files leer).
+      historie_binance.ORDNER = HIER/daten/historie ist RELATIV zur Modulposition:
+      eine Modulkopie ohne daten/ meldet belegt 0 Kerzen (Gegenprobe im Temp-Ordner
+      reproduziert: 'ordner existiert: False, lade BTC 1H -> 0'). Bei 47 Spuren und
+      1801 Tests ist das eine wiederkehrende Fehlquelle, keine Ausnahme.
+      Naechster Schritt: eine Naht, damit ein Replay-Test in einem Worktree
+      'Historie fehlt' sagt statt still 0 Kerzen zu rechnen - z.B. ein Marker,
+      der fehlt, wenn daten/ nicht existiert, und der Test schlaegt dann an.
+      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
+      Betrifft: Agenten/Handel/replay.py, Agenten/Handel/historie_binance.py,
+      Agenten/Handel/tests/test_replay.py
+      **Erledigt 05.10.2026.** replay.py erkennt jetzt, wenn der Historie-Ordner auf einer Kopie des Baums fehlt (Worktree), und wirft HistorieFehlt mit klarem Text statt still 0 Kerzen zu rechnen. 48 Tests + 4 neue Gegenprobe-Tests gruen (472s + 0.078s). Commit 64ee998e, gepusht.
 - [x] **T-361 — `daten/historie/` war um 04:23 leer - und war vorher schon unvollstaendig**
       Kontext: Beim Nachtlauf des Replay-Tests (05.10.2026) kam
       `HistorieFehlt` fuer BTC-USDC, ETH-USDC und SOL-USDC mit 0 Kerzen –
