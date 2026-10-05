@@ -239,6 +239,115 @@ Minuten. Die Popen-Attrappe liefert ein Objekt mit `communicate()`,
 `returncode` und `kill()`; fuer den Abbruchpfad wirft `communicate`
 `TimeoutExpired`.
 
+## Alle drei Anbindungen in einem Durchgang pruefen
+
+"Telegram antwortet nicht" ist auf diesem Rechner **drei** Befunde mit einem
+Symptom. Der Gateway-Bot, der Multiplexer-Eintrag `bots:telegram` und die
+SkillsBot-Bruecke unter `Agenten/Bus` laufen als getrennte Prozesse - ein
+Neustart des einen heilt die anderen nicht, und ein Fehlen in der Statusdatei
+beweist nichts ueber die anderen.
+
+Einstieg: ueber das `terminal`-Werkzeug
+
+    python scripts/telegram_status.py --home "<HERMES_HOME>" --bus "<...>/Agenten/Bus"
+
+Exit 0 = mindestens eine Anbindung lebt. Das Skript liest `gateway_state.json`,
+sucht die vier entscheidenden Logzeilen (nur das Logende) und misst das
+Lebenszeichen `skillsbot.offset`. Es gibt **niemals** einen Tokenwert aus, nur
+Existenz und Laenge - Tokenabfragen laufen ueber `[Environment]::GetEnvironmentVariable`-
+Laenge, nie ueber `reg query` (das gibt Klartext aus).
+
+Der Mehrwert liegt im Zeitvergleich, den das Skript ausdruecklich ausweist:
+
+    missing   2026-10-05 03:36:56,898  'No adapter available for telegram'
+    connected 2026-10-05 06:55:44,030  '✓ telegram connected'
+
+Ohne Uhrzeiten sieht man nur zwei Zeilen und haelt sie fuer einen Widerspruch.
+
+## Ausfallbild: der Gateway startet OHNE Adapter (Zustand, nicht Datei)
+
+Der haeufigste Befund bei "Telegram antwortet nicht" ist **kein** Netz-, Token-
+ oder Paketproblem, sondern ein Prozess, der beim Start den Adapter nicht gebaut
+hat. `gateway_state.json` zeigt dann:
+
+    "telegram": {"state": "retrying", "error_code": "adapter_unavailable",
+                 "error_message": "No adapter available for enabled telegram;
+                  check the plugin, dependencies, and credentials.",
+                 "needs_attention": true}
+
+`logs/gateway.log` dazu, ab dem ERSTEN Auftreten:
+
+    WARNING gateway.run: No adapter available for telegram
+    INFO    gateway.run: Reconnecting telegram (attempt 1)...
+    INFO    gateway.run: Reconnect telegram: no adapter yet, next retry in 300s
+    WARNING gateway.run: telegram has been failing/reconnecting continuously for 2.0 hours (26 attempts)
+
+`gateway/run_startup.py:1213-1234` ist die Quelle: `_create_adapter` lieferte
+`None`, der Plattform wird `error_code=adapter_unavailable` geschrieben, und der
+Reconnect-Watcher versucht es alle 300 s weiter - **ohne** den Prozesszustand zu
+reparieren. Die Schleife heilt nichts; sie sieht nur aktiv aus.
+
+### Die drei Fehlalarme, die man NICHT mitbringen darf
+
+1. **"Das Paket fehlt."** Nicht aus dem Dateisystem schliessen. Der Gateway laeuft
+   aus `<HERMES_HOME>/tools/python-3.14.7…/python.exe`, dessen `site-packages` nur
+   `pip` enthaelt; die Fremdpakete kommen ueber `hermes_bootstrap` ->
+   `pm/environments.py::activate_dependencies` aus dem gestagten Umfeld
+   `<HERMES_HOME>/installs/<hash>/environments/<id>/venv/Lib/site-packages`. Eine
+   leere Paketliste ist **kein** Befund. Gemessen: Paket da (Import-Probe
+   `import telegram` gruen), Adapter trotzdem `None`.
+2. **"Die Credentials sind falsch."** Der Token liegt in `.env` (46 Zeichen
+   vorhanden), ein User-Store-Eintrag fehlt dafuer - richtig und harmlos. Ein
+   credential-fehler zeigt sich als `failed to connect` mit Telegram-HTTP-Fehler,
+   **nicht** als `adapter_unavailable`.
+3. **"Die Plugins sind nicht geladen."** Der Startpfad ruft
+   `discover_plugins()` (`run_startup.py:1061-1064`) korrekt auf. Eine Probe, die
+   `discover_plugins()` + `platform_registry` von Hand nachstellt, registriert
+   `telegram` fehlerfrei und `check_fn`/`ensure_deps_fn` liefern beide `True`.
+
+### Der heilende Neustart, richtig gefahren
+
+Ein Neustart heilt diesen Zustand. Er wird aber zum zweiten Fehler, wenn man ihn
+falsch macht:
+
+- **Nie ueber Port 9900 auf "laeuft" testen.** Der frisch gestartete Gateway
+  braucht ~5 Minuten, bis er hochgefahren ist; 9900 und `curl` liefern dann
+  `000`. Wer in diesem Fenster erneut startet, legt eine **zweite** Instanz an.
+- **Genau einen Prozess beenden, nicht die Kommandozeile filtern.** `stop` auf die
+  PID aus `gateway_state.json`, danach per `schtasks /run /tn Hermes_Gateway_<suffix>`
+  starten (Suffix ueber
+  `Get-ScheduledTask | Where-Object { $_.TaskName -like 'Hermes_Gateway*' }` - der
+  Task-Name aendert sich mit dem Update).
+- **Startzeit als Beleg**, nicht die Erfolgsmeldung: `gateway_state.json` mit neuer
+  `pid` und frischem `updated_at`.
+- **Der Erfolg ist die `✓ telegram connected`-Zeile im Log**, zusammen mit
+  `[Telegram] Telegram polling confirmed healthy: getUpdates progressing (generation 1)`.
+  Beides zusammen heisst: Adapter gebaut UND der Kanal pollt wirklich.
+
+Nebenbefund beim selben Neustart: `lifecycle_ledger` meldet die alte Lebensphase
+als `exited UNCLEANLY (… a pkill/taskkill of the host interpreter image)` - das
+ist die **eigene** Beendigung, kein unabhaengiger Crash, und wird nicht als
+zweiter Befund gefuehrt.
+
+### Was ich dabei NICHT gefunden habe (offen und so benannt)
+
+Der Grund, warum `_create_adapter` im laufenden Prozess `None` lieferte, obwohl
+Paket, `check_fn` und Plugin-Registrierung gruen waren, ist **nicht** belegt. Eine
+Probe mit exakt dem Bootstrap-Weg liefert den Adapter korrekt. Das gehoert als
+offenes Feld weiter, nicht in eine Erklaerung, die man sich aus dem Fehlerbild
+zusammenreimt - wer das Baums anfasst, muss den Zustands IM Gateway-Prozess
+messen, nicht eine Attrappe daneben.
+
+## Zwei Abgrenzungen, die man explizit zieht
+
+- **Ein Fehlalarm im Log bleibt ein Fehlalarm.** `telemetry/shared_metrics/outbox`
+  wirft `FileExistsError: [WinError 183]` im Sekundentakt (`exist_ok=True` gegen
+  ein als **Datei** existierendes Verzeichnis). Das ist beobachtbar, hat aber mit
+  keinem Plattform-Adapter zu tun - die Zeilen wuerden das Bild sonst verfaelschen.
+- **Ein Symptom, das man nicht reproduzieren kann, wird nicht repariert.** Wenn
+  alle drei Anbindungen `connected` melden und der Nutzer nichts bekommt, ist der
+  Weg zu fahren (siehe Ende), nicht eine dritte Bereinigung zu erfinden.
+
 ## End-to-End-Beweis, bevor "repariert" gemeldet wird
 
 Nach der Aenderung den WEG fahren, den der Nutzer am Handy nimmt - nicht
@@ -250,5 +359,42 @@ nur die Funktion, die man geaendert hat:
    Ziel muss danach `None` sein (ein Auftrag je Bot).
 
 **Merksatz: ein Beweis an der geaenderten Funktion ist kein Beweis fuer den
-Weg.** "Die Funktion tut es" und "der Nutzer sieht es" sind zwei Aussagen;
+Weg.** "Die Funktion tut es" und "Der Nutzer sieht es" sind zwei Aussagen;
 nur der zweite Weg belegt die zweite.
+
+Fuer den **Gateway-Kanal** ist dieser Weg eine echte Zustellung ueber genau den
+Sender, den der Dienst benutzt - nicht die eigene Testfunktion. Token nur aus der
+`.env` lesen, nie ausgeben. Beleg ist die Antwort des Senders, nicht ein
+`status: connected`:
+
+    {'success': True, 'platform': 'telegram', 'chat_id': '…', 'message_id': '10888'}
+
+Gemessen am 05.10.2026: `message_id 10888` nach dem Neustart bei
+`code_version 0.21.5`. Der Tokenwert wird dabei **nie** ausgegeben - nur seine
+Laenge, sonst landet er im Sitzungsprotokoll.
+
+## Was in dieser Sitzung (05.10.2026) wirklich geholfen hat
+
+1. **Zuerst alle drei Anbindungen zaehlen**, bevor irgendetwas repariert wird.
+   Gateway-Bot und SkillsBot-Bruecke hatten denselben Symptom-Satz und
+   verschiedene Ursachen: einer tot, der andere lebendig. Ein Neustart des einen
+   haette den anderen unberuehrt gelassen und "repariert" gemeldet, ohne dass
+   irgendetwas geholfen wurde.
+2. **Der Status ist die schnellste Wahrheit** (`gateway_state.json`, ein
+   JSON-Objekt) - nicht das Log und nicht der Prozessname. Das Logfile waechst auf
+   300 KB und mischt drei Tage; die Statusdatei nennt `error_code`,
+   `error_message` und `needs_attention` direkt.
+3. **Die Paketfrage mit einem Import beantworten, nicht mit einer Verzeichnisliste.**
+   `<HERMES_HOME>/tools/python-…/python.exe -c "import telegram"` ist gruen,
+   waehrend `ls site-packages` nur `pip` zeigt. Die Verzeichnisliste erzeugt den
+   Fehlalarm "Paket fehlt", der auf eine Nicht-Ursache zeigt.
+4. **Zeitstempel fuehren, nicht nur Zustandsnamen.** Der Vergleich
+   "missing 03:36 / connected 06:55" macht aus zwei scheinbar widerspruechlichen
+   Logzeilen eine Ursache mit Zeitverlauf. Deshalb misst `telegram_status.py`
+   ausdruecklich alle vier Marker mit Uhrzeit.
+5. **Neustarts ueber die Aufgabe, nicht ueber die Kommandozeile.** `schtasks /run`
+   auf `Hermes_Gateway_<suffix>` startet den Dienst genauso, wie der Rechner ihn
+   beim Anmelden startet - und genau einmal.
+6. **Ein nicht gefundener Grund wird als offenes Feld gefuehrt, nicht als
+   Erklaerung.** Der Adapter-Ausfall liess sich heilen, sein Grund nicht belegen;
+   die saubere Abschlussmeldung nennt beides getrennt.
