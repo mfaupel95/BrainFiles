@@ -106,6 +106,14 @@ Drei Faelle, die vorher keiner konnte:
   eine Korrektur an den ALTEN Geist-Zeilen bleibt eine eigene, benannte
   Arbeit - die Funktion repariert den Pfad, nicht die Vergangenheit.
 
+## 3b. Eine verkaufte Position: der Erloes gehoert in `nominal_usd`, in `margin_usd` die Margin
+
+Die Verkaufsbuchung `buche_verkaeufe_aus_boerse` schreibt `erloes = preis * menge` in BEIDE Felder — `nominal_usd` (richtig, das ist der Nennwert) UND `margin_usd` (falsch). Die Rundenleser rechnen `ergebnis = margin_usd(schliessen) − margin_usd(eroeffnen)` (`runden_xperp` in `auswertung_alle.py`) — die Auswertung liest das Margin-Feld der schliessen-Zeile als Erloes. Eine einzige so geschriebene Zeile erzeugt einen Phantomgewinn in der Groessenordnung des NENNWERTS: XAU 96 Kontrakte @ 4150 -> "Erloes" 398.419 USD gegen ~22 USD Einstiegs-Margin -> +398k in `kennzahlen_fuer` und damit in Handelszentrale, Tagesbericht und Strategiekennzahlen, waehrend die Boerse einen PnL im Dollar-Bereich bezeugt.
+
+Regel fuer jeden Schreibpfad einer schliessen-Zeile: `margin_usd` traegt die Margin der Position (das Kapital, das beim Schliessen zurueckfliesst), `nominal_usd` den Nennwert des Verkaufs. Vor dem Einbau die Feldbedeutung gegen die `runden_*`-Funktionen in `auswertung_alle.py` lesen — die sind die Wahrheit darueber, welches Feld die Auswertung als Erloes liest.
+
+**Erkennen:** zwei Auswertungen mit verschiedenen Rechenbasen zeigen den Schaden an. `spur_audit` rechnet Runden PROZENTUAL aus den Preisen (p1/p0−1) und ist gegen falsch befuellte Betragsfelder immun; `auswertung_alle.kennzahlen_fuer` rechnet mit den Betragsfeldern der Zeile. Meldet einer eine absurde Zahl und der andere normal, ist ein Feld vergiftet — nicht der Handel. Der `grund` der Zeile ist der Wegweiser zum Schreiber: `grep` auf den Grund findet die Funktion, die das Feld falsch befuellt. Diagnose in dieser Reihenfolge: (1) `kennzahlen_fuer` mit `n`/`ergebnis` ausgeben, (2) Journalzeilen mit |Betrag| > 1000 listen — preis/stop/ziel sind Preise und normal, verdaechtig sind die Betragsfelder, (3) die eine Zeile -> `grund` -> Schreiber gefunden.
+
 ## 4. Ein reparierter Schreibpfad repariert die ALTEN Zeilen nicht
 
 Der Code ist die halbe Miete. Was er bisher falsch geschrieben hat, steht
