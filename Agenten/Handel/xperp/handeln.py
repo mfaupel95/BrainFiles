@@ -79,12 +79,6 @@ import indikatoren
 import okxf
 import wachen_xperp as wx
 
-# Stop-DECKUNG (T-362): `stopdeckung` importierte `handeln`, und `handeln`
-# ruft jetzt dessen `deckung()` im Zyklus auf - ein Zirkel. Der Import von
-# `handeln` in `stopdeckung` ist deshalb auf `main()` verschoben (siehe dort
-# `_lade()`); hier wird nur das Werkzeug geladen, und das braucht nur `okxf`.
-import stopdeckung
-
 # Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
 # und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
 # Suffix) - das ist die Bedingung, unter der diese Umstellung in laufenden
@@ -934,71 +928,6 @@ def bueche_groessen_abgleichen(z, w, still=False):
     return abweichungen
 
 
-def bueche_stopdeckung(z, w, live, still=False):
-    """Wie viele Kontrakte einer Live-Position sind an der BOERSE geschuetzt?
-
-    Die vierte Abgleichsstufe (T-362). Die ersten drei fragen OB: steht die
-    Position da (Geister), stimmt die Kontraktzahl (Groesse), liegt EIN
-    Schutzauftrag (`_stop_vorhanden`). Keine davon fragt, WIEVIELE Kontrakte
-    dieser Schutz abdeckt. Gemessen am 02.10.2026: ZEC mit 145 Kontrakten,
-    sechs OCO-Stops ueber zusammen 126 - **19 Kontrakte bis zur
-    Liquidation**, waehrend Spur, Bericht und Abgleich "ok" sagten. Am
-    26.09. waren es vier Stops (rund 385 USD), die an der Boerse
-    weggestorner wurden, ohne dass das Buch es merkte.
-
-    Warum das hier steht und nicht im Werkzeug `stopdeckung.py`: der Abgleich
-    laeuft in JEDEM Zyklus (T-277), das Werkzeug nur, wenn jemand es von
-    Hand startet. Eine Pruefung, die niemand aufruft, meldet eine Luecke nur
-    dann, wenn sie zufaellig aufgefaellt wird.
-
-    **Hier wird NICHTS gestellt.** Diese Funktion liest und meldet. Ein
-    Nachsetzen braucht einen Schutzpreis, den niemand genannt hat - das
-    Werkzeug nimmt ihn ueber `--stop` und verweigert ohne den Schalter.
-    Ein geratener Notausstieg ist eine Order, die jemand nicht bestellt hat.
-
-    Rueckgabe: (befunde, abfrage_ok). `abfrage_ok=False` heisst "nicht
-    lesbar" - der Aufrufer darf daraus KEIN "kein Stop" ableiten.
-    """
-    try:
-        roh = {p["instId"]: p for p in okxf.positionen()}
-    except Exception as e:                                   # noqa: BLE001
-        print("  Stop-Deckung nicht abrufbar (%s) - es wird nichts gemacht"
-              % e)
-        return [], False
-    befunde = []
-    for p in z.get("positionen") or []:
-        if p.get("modus") != "live":
-            continue
-        inst = p.get("inst")
-        if inst not in roh:
-            continue                     # das ist die Geisterpruefung
-        d = stopdeckung.deckung(p, roh)
-        liq = None
-        try:
-            liq = float(roh[inst].get("liqPx") or 0.0) or None
-        except (TypeError, ValueError):
-            liq = None
-        tote = stopdeckung.tote_stops(inst, p.get("seite") or "long", liq)
-        if d["fehlt"] <= stopdeckung._MENGE_TOLERANZ and not tote:
-            continue
-        befunde.append({"position": p, "deckung": d, "liq": liq, "tote": tote})
-    if befunde and not still:
-        for b in befunde:
-            d = b["deckung"]
-            print("  %-26s %6.1f Kontrakte, geschuetzt %6.1f -> UNGESCHUETZT "
-                  "%.1f" % (b["position"]["inst"], d["soll"], d["gedeckt"],
-                            d["fehlt"]))
-            for t in b["tote"]:
-                print("      TOT: %-14s %8.1f  Stop %s liegt an/unter der "
-                      "Liquidation %s" % (t.get("ordType"), t["menge"],
-                                          t.get("stop"), t.get("liq")))
-            print("      Nachsetzen: ../scanner/.venv/Scripts/python.exe "
-                  "stopdeckung.py --anwenden --stop <preis>")
-    z["stopdeckung"] = {"geprueft": len(roh),
-                        "luecken": len(befunde)}
-    return befunde, True
-
-
 def buche_abgleich(z, w, live, still=False):
     """Buch gegen BOERSE - in JEDEM Zyklus, nicht nur im Live-Lauf (T-277).
 
@@ -1044,15 +973,6 @@ def buche_abgleich(z, w, live, still=False):
     if stand["groessen"] and not still:
         print("  %d Position(en) auf die Boersengroesse gezogen"
               % stand["groessen"])
-    # Vierte Stufe: die MENGE des Schutzes. Nur lesend - der Preis fuer ein
-    # Nachsetzen kommt vom Menschen (T-362). Ein stiller Zwischenstand zaehlt
-    # als Befund, damit `--wachen` und die Vorschau die Luecke zeigen.
-    deckung, deckung_abfrage = bueche_stopdeckung(z, w, live, still=still)
-    stand["deckung"] = len(deckung)
-    stand["deckung_abfrage"] = deckung_abfrage
-    if deckung and not still:
-        print("  %d Position(en) OHNE vollen Schutz-Stop (T-323) - kein "
-              "Nachsetzen im Zyklus, der Preis ist eine Freigabe" % len(deckung))
     return stand
 
 

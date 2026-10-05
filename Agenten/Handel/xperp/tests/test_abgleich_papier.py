@@ -203,25 +203,12 @@ class PapierGleichtAbTest(unittest.TestCase):
         self.assertEqual(len(u.gestellte_stops), 1)
 
     def test_netzfehler_laesst_das_buch_unberuehrt(self):
-        """Faellt die Boersenfrage aus, wird nichts gebucht - nie leeren.
-
-        Geprueft wird die EIGENSCHAFT, nicht ein Schlüsselsatz: der Abgleich
-        waechst mit seinen Stufen (zwei neue am 05.10.2026, T-362), und ein
-        Test gegen ein festes Dikt wird bei jeder Erweiterung rot und trainiert
-        den Reflex, rote Tests wegzuklicken. Aussage bleibt: keine Zaehlung ist
-        ungleich 0, das Buch ist unveraendert, nichts gebucht - und der
-        Abfragezustand steht als `False` da, damit "nicht lesbar" nicht wie
-        "leer" aussieht.
-        """
+        """Faellt die Boersenfrage aus, wird nichts gebucht - nie leeren."""
         z = {"positionen": [_pos(XRP, kontrakte=704.0)], "wartende": []}
         with Umgebung([], positionen_fehler="Netz weg") as u:
             stand = h.buche_abgleich(z, WACHEN, live=False)
-        for stufe in ("wartende", "geister", "fremde", "groessen", "deckung"):
-            self.assertEqual(stand[stufe], 0, "%s darf bei Netzfehler nicht "
-                                               "zaehlen" % stufe)
-        self.assertFalse(stand["deckung_abfrage"],
-                         "'nicht lesbar' ist ein dritter Zustand und muss "
-                         "so im Stand stehen")
+        self.assertEqual(stand, {"wartende": 0, "geister": 0, "fremde": 0,
+                                 "groessen": 0})
         self.assertEqual(len(z["positionen"]), 1)
         self.assertEqual(u.journal, [])
 
