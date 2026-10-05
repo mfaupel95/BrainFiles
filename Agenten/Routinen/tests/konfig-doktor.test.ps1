@@ -233,6 +233,13 @@ Schreibe (Join-Path $stubExe 'sleep.txt') '7'
 $r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false; ModulLimitSek = 8 }
 $b = @($r | Where-Object { $_.id -eq 'HERMES-DOCTOR-ZEITLIMIT' }) | Select-Object -First 1
 Pruefe '(2) doctor-Timeout liegt unter dem Modul-Limit (5 s)' (($null -ne $b) -and ($b.beleg -match 'nach 5 s') -and (-not (Hat $r 'ZEITLIMIT-hermes'))) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
+$r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false; ModulLimitSek = 3 }
+$b = @($r | Where-Object { $_.id -eq 'HERMES-DOCTOR-ZEITLIMIT' }) | Select-Object -First 1
+$m = [regex]::Match([string]$b.beleg, 'nach (\d+) s')
+Pruefe '(T8) ModulLimitSek 3: doctor-Timeout <= Limit' ($m.Success -and ([int]$m.Groups[1].Value -ge 1) -and ([int]$m.Groups[1].Value -le 3)) "beleg=$($b.beleg)"
+$r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false; ModulLimitSek = 0 }
+$b = @($r | Where-Object { $_.id -eq 'HERMES-DOCTOR-ZEITLIMIT' }) | Select-Object -First 1
+Pruefe '(T8) ModulLimitSek 0: doctor nicht gestartet, UNKLAR' (($null -ne $b) -and ($b.titel -match 'nicht gestartet') -and ($b.schwere -eq 'UNKLAR')) "titel=$($b.titel)"
 Remove-Item -LiteralPath (Join-Path $stubExe 'sleep.txt')
 $env:Path = $stubCmd + ';' + [Environment]::GetFolderPath('System')
 $r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false }
@@ -416,6 +423,67 @@ Pruefe 'Exit 1 ohne WARN-Zeile: UNKLAR' (Platz-Unklar $r)
 Platz-Fixture @('WARN Laufwerk C: nur 2 GB frei (Ordner commit-cache).', 'INFO Commit: 20 GB frei von 100 GB.') 1
 $r = Lauf $fx @('laufzeit')
 Pruefe 'commit nur im Text einer Laufwerkszeile: WARNUNG, nicht KRITISCH' (((Schwere-Von $r 'LAUFZEIT-PLATZ-1') -eq 'WARNUNG') -and -not (Hat $r 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR'))
+
+Write-Host '--- Sammelfix T8 ---'
+# Maske: JSON-Form "api_key": "wert" (Beleg von HERMES-LOGFEHLER)
+$fx = Neue-Wurzel
+$h = Join-Path $fx 'Agenten/Hermes'
+Schreibe (Join-Path $h 'config.yaml') 'a: 1'
+Schreibe (Join-Path $h 'logs/errors.log') ('ERROR cfg {"api_key": "GEHEIMJSON", "token": "zwei GEHEIMWORT"}' + "`n")
+$r = Lauf $fx @('hermes')
+$lf = @($r | Where-Object { $_.id -eq 'HERMES-LOGFEHLER' }) | Select-Object -First 1
+Pruefe 'Maske: JSON-Form "api_key": "wert" maskiert' (($null -ne $lf) -and ($lf.beleg -notmatch 'GEHEIMJSON') -and ($lf.beleg -notmatch 'GEHEIMWORT') -and ($lf.beleg -match '"api_key": \*\*\*')) "beleg=$($lf.beleg)"
+# auth.json mit Infinity/NaN/Riesenzahl: kein Modulabsturz
+Schreibe (Join-Path $h 'auth.json') '{"a":{"expires_at":"Infinity"},"b":{"expires_at":"NaN"},"c":{"expires_at":1e300},"d":{"expires_at":"2020-01-01T00:00:00Z"}}'
+$r = Lauf $fx @('hermes')
+$ul = @($r | Where-Object { $_.id -eq 'HERMES-AUTH-ABLAUF-UNLESBAR' }) | Select-Object -First 1
+Pruefe 'auth.json Infinity/NaN: kein PRUEFUNG-FEHLGESCHLAGEN' (-not (Hat $r 'PRUEFUNG-FEHLGESCHLAGEN-hermes')) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
+Pruefe 'auth.json Infinity/NaN: UNKLAR/Vermutung mit 3 Pfaden' (($null -ne $ul) -and ($ul.schwere -eq 'UNKLAR') -and ($ul.status -eq 'Vermutung') -and ($ul.titel -match '^3 ') -and ($ul.beleg -match '/a/expires_at'))
+Pruefe 'auth.json Infinity/NaN: gueltiger Ablauf wird trotzdem gemeldet' (Hat $r 'HERMES-AUTH-ABGELAUFEN')
+
+# regelpaare: Ordner statt Datei, CLAUDE.md fehlt, einzelnes CR, betroffene Datei, Schluss-Newline
+$fx = Neue-Wurzel
+$inh = "Zeile eins`nZeile zwei`n"
+New-Item -ItemType Directory -Path (Join-Path $fx 'CLAUDE.md') -Force | Out-Null
+Schreibe (Join-Path $fx 'AGENTS.md') $inh
+Schreibe (Join-Path $fx 'MaxHirn/CLAUDE.md') ($inh -replace "`n", "`r")
+Schreibe (Join-Path $fx 'MaxHirn/AGENTS.md') $inh
+Schreibe (Join-Path $fx 'Werkstatt/CLAUDE.md') $inh
+Schreibe (Join-Path $fx 'Werkstatt/AGENTS.md') "Zeile eins`nZeile zwei"
+$r = Lauf $fx @('regelpaare')
+Pruefe 'Ordner namens CLAUDE.md: CLAUDE.md fehlt (WARNUNG), kein Absturz' ((-not (Hat $r 'PRUEFUNG-FEHLGESCHLAGEN-regelpaare')) -and ((Schwere-Von $r 'REGELPAAR-FEHLT-Wurzel') -eq 'WARNUNG') -and (($r | Where-Object { $_.id -eq 'REGELPAAR-FEHLT-Wurzel' }).titel -match 'CLAUDE\.md fehlt'))
+$ze = @($r | Where-Object { $_.id -eq 'REGELPAAR-ZEILENENDE-MaxHirn' }) | Select-Object -First 1
+Pruefe 'einzelnes CR: ZEILENENDE-HINWEIS statt INHALT' (($null -ne $ze) -and ($ze.schwere -eq 'HINWEIS') -and -not (Hat $r 'REGELPAAR-INHALT-MaxHirn'))
+Pruefe 'ZEILENENDE-Vorschlag nennt die betroffene Datei (CLAUDE.md)' (($null -ne $ze) -and ($ze.vorschlag -match 'abweichend: CLAUDE\.md') -and ($ze.vorschlag -notmatch 'AGENTS\.md'))
+$wi = @($r | Where-Object { $_.id -eq 'REGELPAAR-INHALT-Werkstatt' }) | Select-Object -First 1
+Pruefe 'nur Schluss-Newline verschieden: WARNUNG Zeile 3' (($null -ne $wi) -and ($wi.schwere -eq 'WARNUNG') -and ($wi.beleg -match 'Zeile 3'))
+Remove-Item -LiteralPath (Join-Path $fx 'CLAUDE.md') -Force
+$r = Lauf $fx @('regelpaare')
+Pruefe 'CLAUDE.md fehlt (Datei): WARNUNG mit Dateinamen' (((Schwere-Von $r 'REGELPAAR-FEHLT-Wurzel') -eq 'WARNUNG') -and (($r | Where-Object { $_.id -eq 'REGELPAAR-FEHLT-Wurzel' }).titel -match 'CLAUDE\.md fehlt'))
+
+# git-regeln: porcelain -z, Umbenennung mit Sonderzeichen
+$fx = Neue-Wurzel
+git -C $fx init -q *> $null
+git -C $fx symbolic-ref HEAD refs/heads/master *> $null
+Schreibe (Join-Path $fx 'alt name.txt') 'a'
+git -C $fx add 'alt name.txt' *> $null
+git -C $fx -c user.name=t -c user.email=t@t -c commit.gpgsign=false commit -q -m init *> $null
+$sonder = "neu ; name 'q' #1.txt"
+git -C $fx mv 'alt name.txt' $sonder *> $null
+(Get-Item -LiteralPath (Join-Path $fx $sonder)).LastWriteTime = (Get-Date).AddDays(-8)
+$r = Lauf $fx @('git-regeln')
+$ru = @($r | Where-Object { $_.id -eq 'GIT-RUHEND' }) | Select-Object -First 1
+Pruefe 'porcelain -z: Umbenennung zaehlt einmal, Zielname im Beleg' (($null -ne $ru) -and ($ru.titel -match '\(1 insgesamt geaendert\)') -and ($ru.beleg -match [regex]::Escape($sonder)) -and ($ru.beleg -notmatch 'alt name')) "titel=$($ru.titel) beleg=$($ru.beleg)"
+$gs = @(Get-Content -LiteralPath $Doktor | Where-Object { $_ -match "'status', '--porcelain'" })
+Pruefe 'git status wird mit -z gelesen' (($gs.Count -eq 1) -and ($gs[0] -match "'--porcelain', '-z'"))
+
+# ballast: Titel ohne 'davon 0 unsicher' bei reinen .bak-Treffern
+$r = Lauf $fx4 @('ballast')
+$ak = @($r | Where-Object { $_.id -eq 'BALLAST-ALTKOPIEN' }) | Select-Object -First 1
+Pruefe 'nur .bak: Titel ohne "unsicher"' (($null -ne $ak) -and ($ak.titel -notmatch 'unsicher')) "titel=$($ak.titel)"
+$r = Lauf $fx3 @('ballast')
+$ak = @($r | Where-Object { $_.id -eq 'BALLAST-ALTKOPIEN' }) | Select-Object -First 1
+Pruefe 'mit .old: Titel nennt "davon 1 unsicher"' (($null -ne $ak) -and ($ak.titel -match 'davon 1 unsicher')) "titel=$($ak.titel)"
 
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }

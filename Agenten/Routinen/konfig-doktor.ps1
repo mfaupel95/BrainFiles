@@ -23,7 +23,8 @@ $script:Befunde = New-Object System.Collections.ArrayList
 # ---------- Hilfen ----------
 function Maske([string]$t) {
     if ($null -eq $t) { return '' }
-    $t = $t -replace '(?i)(bearer\s+|(api[_-]?key|token|secret|password)\s*[:=]\s*)\S+', '${1}***'
+    # auch JSON-/YAML-Form: "api_key": "wert" (Schluessel in Anfuehrungszeichen, Wert mit Leerzeichen)
+    $t = $t -replace '(?i)(bearer\s+|(api[_-]?key|token|secret|password)["'']?\s*[:=]\s*)("[^"]*"|''[^'']*''|\S+)', '${1}***'
     $t = $t -replace '(?i)\b(sk|pk|ghp|gho|xox[abp]|AKIA)[-_A-Za-z0-9]{12,}', '***'
     $t = $t -replace '(?=[A-Za-z0-9_\-]*\d)(?=[A-Za-z0-9_\-]*[A-Za-z])[A-Za-z0-9_\-]{40,}', '***'
     return $t
@@ -284,6 +285,7 @@ function ConvertTo-Zeit($Wert) {
 }
 
 function Pruefe-Hermes {
+    $uhr = [System.Diagnostics.Stopwatch]::StartNew()
     if ($env:OS -ne 'Windows_NT') {
         Add-Befund -Id 'HERMES-NICHT-WINDOWS' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'Hermes-Pruefung uebersprungen (kein Windows)' `
             -Beleg 'Linux/Cloud-Checkout: Junctions und venvs fehlen' -Status 'gesichert' -Vorschlag 'Auf Max'' Rechner ausfuehren'
@@ -339,9 +341,17 @@ function Pruefe-Hermes {
             Get-AblaufListe $json '' 0 $liste
             $jetzt = (Get-Date).ToUniversalTime()
             $abgelaufen = @()
+            $unlesbar = @()
             foreach ($e in $liste) {
-                $t = ConvertTo-Zeit $e.Wert
+                # "Infinity"/"NaN"/Riesenwerte: AddSeconds wirft - einzeln abfangen statt Modulabsturz
+                $t = $null
+                try { $t = ConvertTo-Zeit $e.Wert } catch { $unlesbar += $e.Pfad; continue }
                 if ($t -and $t -lt $jetzt) { $abgelaufen += ("{0} (seit {1})" -f $e.Pfad, $t.ToString('yyyy-MM-dd')) }
+            }
+            if ($unlesbar.Count -gt 0) {
+                Add-Befund -Id 'HERMES-AUTH-ABLAUF-UNLESBAR' -Modul 'hermes' -Schwere 'UNKLAR' -Titel "$($unlesbar.Count) expires_at-Wert(e) in auth.json nicht als Zeit lesbar" `
+                    -Beleg ('Pfade (Werte bewusst nicht ausgegeben): ' + ($unlesbar -join '; ')) -Status 'Vermutung' `
+                    -Vorschlag 'Ablauf von Hand im Hermes-Client pruefen (Wert ausserhalb des Datumsbereichs, z. B. Infinity/NaN)'
             }
             if ($abgelaufen.Count -gt 0) {
                 Add-Befund -Id 'HERMES-AUTH-ABGELAUFEN' -Modul 'hermes' -Schwere 'WARNUNG' -Titel "$($abgelaufen.Count) Anmeldung(en) in auth.json abgelaufen" `
@@ -399,9 +409,16 @@ function Pruefe-Hermes {
                 -Beleg $bl -Status 'gesichert' -Vorschlag 'hermes doctor von Hand mit bereinigter Umgebung (PYTHONHOME/PYTHONPATH entfernt) ausfuehren'
         }
         else {
-            $to = [Math]::Max(5, $ModulLimitSek - 5)
-            $r = Invoke-Extern -Datei $hcPfad -Argumente @('doctor') -TimeoutSek $to -EntferneEnv @('PYTHONHOME', 'PYTHONPATH') -SetzeEnv @{ HERMES_HOME = $heim }
-            if ($r.TimedOut) {
+            # Timeout nie ueber dem Restbudget des Moduls (auch bei -ModulLimitSek <= 5)
+            $rest = Get-RestBudget $uhr
+            $to = [Math]::Min([Math]::Max(5, $ModulLimitSek - 5), [Math]::Max(1, $rest - 1))
+            $r = $null
+            if ($rest -gt 0) { $r = Invoke-Extern -Datei $hcPfad -Argumente @('doctor') -TimeoutSek $to -EntferneEnv @('PYTHONHOME', 'PYTHONPATH') -SetzeEnv @{ HERMES_HOME = $heim } }
+            if ($null -eq $r) {
+                Add-Befund -Id 'HERMES-DOCTOR-ZEITLIMIT' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft, hermes doctor nicht gestartet' `
+                    -Beleg "Modul-Limit $ModulLimitSek s verbraucht" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+            }
+            elseif ($r.TimedOut) {
                 Add-Befund -Id 'HERMES-DOCTOR-ZEITLIMIT' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'hermes doctor antwortet nicht im Zeitlimit' `
                     -Beleg "Abbruch nach $to s (Modul-Limit $ModulLimitSek s)" -Status 'gesichert' -Vorschlag 'hermes doctor von Hand ausfuehren'
             }
@@ -421,7 +438,7 @@ function Pruefe-Hermes {
 function Get-NormalText([byte[]]$Bytes) {
     $t = [System.Text.Encoding]::UTF8.GetString($Bytes)
     $t = $t.TrimStart([char]0xFEFF)
-    return ($t -replace "`r`n", "`n")
+    return (($t -replace "`r`n", "`n") -replace "`r", "`n")
 }
 
 function Pruefe-Regelpaare {
@@ -431,8 +448,8 @@ function Pruefe-Regelpaare {
         if ($rel) { $dir = Join-Path $Wurzel $rel; $ort = $rel }
         $c = Join-Path $dir 'CLAUDE.md'
         $a = Join-Path $dir 'AGENTS.md'
-        $hc = Test-Path -LiteralPath $c
-        $ha = Test-Path -LiteralPath $a
+        $hc = Test-Path -LiteralPath $c -PathType Leaf
+        $ha = Test-Path -LiteralPath $a -PathType Leaf
         if (-not $hc -and -not $ha) {
             Add-Befund -Id "REGELPAAR-ORDNER-FEHLT-$ort" -Modul 'regelpaare' -Schwere 'UNKLAR' -Titel "Regelpaar in '$ort' nicht vorhanden" `
                 -Beleg "Weder CLAUDE.md noch AGENTS.md unter $dir" -Status 'gesichert' -Vorschlag 'Bei frischem Checkout oder toter Junction erwartbar; sonst klaeren'
@@ -452,11 +469,18 @@ function Pruefe-Regelpaare {
         $tc = Get-NormalText $bc
         $ta = Get-NormalText $ba
         if ($tc -ceq $ta) {
-            $crC = [regex]::Matches([System.Text.Encoding]::UTF8.GetString($bc), "`r`n").Count
-            $crA = [regex]::Matches([System.Text.Encoding]::UTF8.GetString($ba), "`r`n").Count
+            $crC = [regex]::Matches([System.Text.Encoding]::UTF8.GetString($bc), "`r").Count
+            $crA = [regex]::Matches([System.Text.Encoding]::UTF8.GetString($ba), "`r").Count
+            $bomC = ($bc.Length -ge 3 -and $bc[0] -eq 0xEF -and $bc[1] -eq 0xBB -and $bc[2] -eq 0xBF)
+            $bomA = ($ba.Length -ge 3 -and $ba[0] -eq 0xEF -and $ba[1] -eq 0xBB -and $ba[2] -eq 0xBF)
+            # betroffen ist, wer CR/BOM traegt (Ziel: LF ohne BOM); tragen beide etwas, beide nennen
+            $betroffen = @()
+            if ($crC -gt 0 -or $bomC) { $betroffen += 'CLAUDE.md' }
+            if ($crA -gt 0 -or $bomA) { $betroffen += 'AGENTS.md' }
+            if ($betroffen.Count -eq 0) { $betroffen = @('CLAUDE.md', 'AGENTS.md') }
             Add-Befund -Id "REGELPAAR-ZEILENENDE-$ort" -Modul 'regelpaare' -Schwere 'HINWEIS' -Titel "Regelpaar '$ort': nur Zeilenenden/BOM verschieden" `
-                -Beleg "CLAUDE.md $($bc.Length) Bytes (CRLF $crC), AGENTS.md $($ba.Length) Bytes (CRLF $crA); Text nach Normalisierung gleich" -Status 'gesichert' `
-                -Vorschlag 'Inhaltlich in Ordnung; AGENTS.md soll LF sein - nicht per Rewrite aendern (Hausregel)'
+                -Beleg "CLAUDE.md $($bc.Length) Bytes (CR $crC, BOM $bomC), AGENTS.md $($ba.Length) Bytes (CR $crA, BOM $bomA); Text nach Normalisierung gleich" -Status 'gesichert' `
+                -Vorschlag ("Inhaltlich in Ordnung; abweichend: " + ($betroffen -join ' und ') + " - Zeilenende/BOM angleichen, nicht per Rewrite aendern (Hausregel)")
         }
         else {
             $zc = $tc -split "`n"
@@ -535,7 +559,7 @@ function Pruefe-GitRegeln {
         Add-Befund -Id 'GIT-STATUS-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
             -Beleg "Modul-Limit $ModulLimitSek s verbraucht; git status nicht gestartet" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
     }
-    else { $s = Invoke-Extern -Datei $git -Argumente @('--no-optional-locks', '-c', 'core.quotepath=false', '-C', $Wurzel, 'status', '--porcelain') -TimeoutSek $t }
+    else { $s = Invoke-Extern -Datei $git -Argumente @('--no-optional-locks', '-c', 'core.quotepath=false', '-C', $Wurzel, 'status', '--porcelain', '-z') -TimeoutSek $t }
     if ($t -eq 0) { }
     elseif ($s.TimedOut -or $s.ExitCode -ne 0) {
         Add-Befund -Id 'GIT-STATUS-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'git status nicht lesbar oder zu langsam' `
@@ -544,13 +568,17 @@ function Pruefe-GitRegeln {
     else {
         $jetzt = Get-Date
         $alt = New-Object System.Collections.ArrayList
-        $zeilen = @($s.Out -split "`r?`n" | Where-Object { $_.Length -gt 3 })
-        foreach ($z in ($zeilen | Select-Object -First 300)) {
-            $p = $z.Substring(3)
-            if ($p -match ' -> ') { $p = ($p -split ' -> ')[-1] }
-            if ($p.Length -ge 2 -and $p.StartsWith('"') -and $p.EndsWith('"')) {
-                $p = ($p.Substring(1, $p.Length - 2) -replace '\\"', '"') -replace '\\\\', '\'
-            }
+        # -z: Eintraege NUL-getrennt, Pfade unquotiert; bei Umbenennung/Kopie (R/C) folgt der Quellpfad
+        # als eigenes Feld und wird uebersprungen - der Zielname zaehlt.
+        $felder = @($s.Out -split "`0")
+        $zeilen = New-Object System.Collections.ArrayList
+        for ($i = 0; $i -lt $felder.Count; $i++) {
+            $f = $felder[$i]
+            if ($f.Length -le 3) { continue }
+            if ($f.Substring(0, 2) -match '[RC]') { $i++ }
+            [void]$zeilen.Add($f.Substring(3))
+        }
+        foreach ($p in ($zeilen | Select-Object -First 300)) {
             $p = $p.TrimEnd('/')
             $it = Get-Item -LiteralPath (Join-Path $Wurzel $p) -Force -ErrorAction SilentlyContinue
             if ($it) {
@@ -685,7 +713,9 @@ function Pruefe-Ballast {
         if ($vermutAlt -gt 0) { $altStatus = 'Vermutung' }
         $altBeleg = ($alt | Select-Object -First 12) -join '; '
         if ($alt.Count -gt 12) { $altBeleg += '; ...' }
-        Add-Befund -Id 'BALLAST-ALTKOPIEN' -Modul 'ballast' -Schwere 'HINWEIS' -Titel "$($alt.Count) Altkopien (.bak/.orig/.corrupt/.old/.vor-; davon $vermutAlt unsicher)" `
+        $altTitel = "$($alt.Count) Altkopien (.bak/.orig/.corrupt/.old/.vor-)"
+        if ($vermutAlt -gt 0) { $altTitel = "$($alt.Count) Altkopien (.bak/.orig/.corrupt/.old/.vor-; davon $vermutAlt unsicher)" }
+        Add-Befund -Id 'BALLAST-ALTKOPIEN' -Modul 'ballast' -Schwere 'HINWEIS' -Titel $altTitel `
             -Beleg $altBeleg -Status $altStatus -Vorschlag 'Aufraeumen ist Teilprojekt B; vorher Inhalt gegen die aktuelle Datei pruefen'
     }
     if ($doppel.Count -gt 0) {
