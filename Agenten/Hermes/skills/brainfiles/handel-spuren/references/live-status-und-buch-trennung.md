@@ -307,3 +307,67 @@ Regel, in `swap/handeln.py` durchgesetzt (Vorbild `mosaic`):
 Beleg statt Vermutung: das JOURNAL liest man spaltenweise (`modus,aktion,...,grund`) und
 zwar fuer BEIDE Modi — drei `eroeffnen` mit `papier` und ein paar Minuten spaeter
 `buchbereinigung` sind der Beweis. Zustand und Log allein zeigen die Schleife nicht.
+
+## 10. „Welche Spur handelt live und auf welchem Kanal?“ — drei Zeugen, in dieser Reihenfolge
+
+Auf die Frage nach dem aktuellen Live-Stand gibt es vier Quellen, und jede allein
+liegt falsch. Die Reihenfolge ist die Antwort:
+
+1. **Die Boerse** (offene Positionen, offene Schutz-/Limit-Auftraege, Kontostand je
+   Waehrung) — einzige Quelle fuer „es existiert“.
+2. **Das Journal, nach echter Kauf-/Verkaufsaktion gefiltert** — einzige Quelle fuer
+   „die Spur hat es getan“.
+3. **Der Zustand** (`modus=live` je Position) — traegt die Kanal-Zuordnung, aber
+   Positionen ohne Orderkennung sind die bekannte Fiktion.
+4. **Das Log / die Wachen-Schalter** — nur Modus und Absicht, nie ein Beleg.
+
+### Die drei Zaehlfehler, die diese Abfrage teuer machen
+
+- **`(live)` im Dauerlauf-Log ist der MODUS DES DAUERLAUFS.** Die Zeile
+  `<spur> (live) ok` heisst, dass der Lauf mit `--live` gestartet wurde — sie sagt
+  nichts darueber, ob geordert wurde. Ein Buch mit `(live)` und null Orderkennung
+  ist genau diese Verwechslung.
+- **`modus=live` im Journal braucht einen AKTIONSfilter.** `zyklus`, `funding` und
+  `rollover` tragen denselben Modus wie ein Kauf. Ohne Filter zaehlt eine reine
+  Quote-Spur Hunderte „Live-Zeilen“, die nie eine Order waren (gemessen: eine
+  Futures-Arm-Spur 218 gegen 0 Kaeufe). Erlaubte Aktionen je Familie:
+  `kauf`/`verkauf` (scanner, Kraken-Spot), `eroeffnen`/`schliessen` (xperp, Nautilus-
+  Arme), `EINSTIEG`/`AUSSTIEG` (omniquant) — die Liste gehoert zu
+  `stoerungen.py`, nicht in den Kopf.
+- **Jede Boerse braucht ihren EIGENEN Zugang.** Ein Konto wird nie ueber einen Weg
+  vollstaendig sichtbar: OKX-Futures und OKX-Spot teilen sich das Konto, aber nur
+  `/api/v5/account/positions` kennt die gehebelten Positionen (Spot-Bestand steht in
+  `/api/v5/account/balance`), und Kraken hat zwei voellig getrennte Konten
+  (Spot-Bestand vs. Futures-flex) mit je eigenem Schluesselsatz und eigenem
+  Endpunkt. Ein Abruf, der beide Seiten beantworten soll, beantwortet eine.
+  Fertige lesende Wege:
+  - OKX (beides): `Agenten/Handel/okx_positionen_live.py` — Kontostand je Waehrung,
+    offene FUTURES-Positionen mit Einstieg/Liquidation, Schutz-Auftraege mit Menge.
+  - Kraken Spot: `kraken.kontostaende()` (Bestand = Position, Antwort OHNE
+    `open`-Mantel) und `kraken.offene_orders()` (Schutz + Limits).
+  - Kraken Futures: `nautilus_kraken/kraken_futures.py` — `guthaben()`,
+    `offene_positionen()`, `offene_orders()`; das Modul ueber den PFAD laden, es
+    liegt im Nautilus-Ordner und nicht in `kraken/`.
+- **Ein Buch fuehrt genau EINE Waehrung, eine Brieftasche kann Positionen in
+  mehreren fuehren.** Derselbe Basiswert auf zwei Boersen ist ZWEI Positionen; in
+  der Antwort nach Boerse und Kanal (Spot / gehebelt, Waehrung) gruppieren, nicht
+  nach Instrument.
+
+### Was ohne Buch dasteht, gehoert ausdruecklich dazu
+
+Eine Position an der Boerse, die in keinem Journal und keinem Zustand auftaucht,
+ist kein Befund zum rueckbuchen, sondern eine **Konto-Zeile** (Position, Menge,
+Einstieg, UPL, Kennung) neben den Spurbuechern — und der Nutzer entscheidet, ob er
+sie selbst angelegt hat. Umgekehrt ist eine offene Order mit einem Merkmal, das der
+Hausweg nicht erzeugen kann (etwa ein Kraken-Spot-Limit mit „with N:1 leverage“ im
+Beschreibungstext — der Haus-Spot-Weg hat keinen Hebel), von Hand gelegt. Beides
+gehoert in dieselbe Antwort, getrennt von den Spurzeilen.
+
+### Ausgabeform fuer den Nutzer
+
+Je Boerse ein Block mit Kanal und Waehrung, darunter je Spur die Positionen mit
+Menge und Kennung; danach eine kurze Liste „Live-Modus, aber keine Order“ (Spuren,
+deren Log `(live)` sagt und deren Buch leer ist) und die stummen Risikostufen
+ausdruecklich NICHT als live. Journal-Zeilen mit `modus=live` in einer stummen
+Stufe immer DATIEREN — sie sind Historie aus der Zeit vor der Stumm-Regel, kein
+aktuelles Handeln; die Gegenprobe ist der Zeitstempel der Zeile, nicht ihr Modus.
