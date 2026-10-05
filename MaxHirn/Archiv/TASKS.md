@@ -3435,6 +3435,41 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-356 — moongui: zweite Palette und die falsche Schrift in einer Fremdschnittstelle**
+      Kontext: Beim Umbau der drei Hausfenster (04./05.10.2026) fiel auf, dass
+      `Werkstatt/Repos/moon-dev-ai-agents/moongui.py` an keiner Stelle
+      `fenster_design.py` benutzt. Gemessen mit `Agenten/Handel/
+      design_quellen_check.py` und `moongui_palette_check.py`:
+        - 44 Farbangaben, 17 verschiedene Werte, **Schnittmenge mit der
+          Hauspalette: 0**. Es ist eine eigene Palette ohne Namen, nicht
+          ein abweichender Ton: #101418 (Fenster), #141b28 (Datenflaeche),
+          #2f4a7a (Akzent) gegen #1e1e2e, #181825, #89b4fa der Quelle.
+        - In **keinem** der acht `st.configure(...)`/`st.map(...)`-
+          Aufrufe steht ein `font=`. ttk erbt damit aus `TkDefaultFont`,
+          gemessen **Segoe UI 13** statt Consolas 11. Segoe UI ist
+          proportional: die Breiten von '0iWM.' sind 9/4/16/15/4 px,
+          Spanne 12 px. Consolas ist festbreit (8/8/8/8/8). Die
+          Boersentabelle hat fuenf Zahlenspalten - die fluchten nicht.
+      Warum das HIER steht und nicht als Aenderung im Klon: der Klon hat
+      ein eigenes `upstream` (yolojewjitsu/moon-dev-ai-agents) und wird
+      ueber `Agenten/Werkzeuge/repos-updaten.py` gepflegt. Eine
+      Haus-Umstellung der Palette wuerde dort als Fremdaenderung liegen und
+      beim naechsten Spulen zerstoert - dieselbe Falle wie bei
+      `handel-spuren`. Der Weg ist eine eigene Entscheidung IM Repo, mit
+      eigener Begruendung, nicht eine zweite Palette im Haus.
+      Naechster Schritt: zwei Wege, beide brauchen eine Entscheidung von
+      Max - (a) das Fenster bewusst beim Fremd-Look lassen und die
+      Abweichung in `moongui.py` dokumentieren (ein Kommentar, kein
+      Binding), oder (b) `fenster_design.py` als Dateipfad laden und die
+      Palette des Fremd-Fensters auf die Hauswerte umstellen. Vor (b) ist
+      zu klaeren, ob die Fenster absichtlich unterschiedlich aussehen
+      sollen: die GUI ist ein Werkzeug fuer Krypto-Bots, die drei
+      Handelsfenster sind ein Monitor.
+      Angelegt: 2026-10-05 · Zuletzt: 2026-10-05
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/moongui.py,
+      Agenten/Werkzeuge/fenster_design.py,
+      Agenten/Handel/design_quellen_check.py
+      Entscheidung Max 05.10.2026: der Fremd-Look bleibt. Die Abweichung steht jetzt im Modulkopf von moongui.py mit den gemessenen Zahlen (17 eigene Farbwerte, Schnittmenge mit der Hauspalette 0; Segoe UI 13 statt Consolas 11, proportional, die Zahlenspalten der Boersentabelle fluchten nicht). Commit 0c68062, auf GitHub. Messwerkzeuge: Agenten/Handel/design_quellen_check.py und moongui_palette_check.py
 - [x]   **T-332 — `doppelte_nummern.py` uebersah 26 Eintraege und meldete gruen**
       Kontext: Der Pruefer der Aufgabenliste erkannte nur `- [ ]` und `- [x]`. Die Datei
       traegt aber auch `- [?]` (9), `- [!]` (1) und `- [✓]` (1). Folge: `hoechste Nummer:
