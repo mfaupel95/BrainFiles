@@ -33,7 +33,8 @@ geprueft hat, ist kein Schalter.**
 
 **Don't use for:** eine Spur anbinden oder betreiben (`handel-spuren`), die
 Reihenfolge einer Optimierung (`handel-spur-optimierung`), allgemeine
-Zustandsbelege (`trugschluesse`).
+Zustandsbelege (`trugschluesse`), eine konkrete Bruecke reparieren
+(`telegram-bruecke-diagnose`).
 
 ## Prerequisites
 
@@ -149,6 +150,78 @@ Nach dem Nachziehen stimmen Rundenzahl, Instrumente und Seiten wieder. Der
 Ausstiegskurs wich noch ab (`brutto_pct`, gemessen bis 1,5 Prozentpunkte) — das
 ist eine echte offene Abweichung und wird als solche ausgewiesen, nicht als
 geklaert.
+
+## Eine Ausnahme, die man trotzdem meldet: die falsche Naht
+
+Der Satz aus der Einleitung gilt fuer **Wirkung** am Werkzeug. Zwei eigene
+Fehler desselben Tages gehoeren trotzdem hierher, weil beide das Werkzeug selbst
+betrafen und beide erst durch eine Gegenprobe auffielen.
+
+### 1. Ein gruener Kanal verdeckt einen toten
+
+- Behauptung (von mir): „mindestens eine Anbindung lebt" — Exit 0.
+- Entstehung: das Urteil war „irgendwas lebt". Im Status gab es zwei
+  Telegram-Eintraege: `telegram` (der tote Hauptbot) und `bots:telegram`
+  (verbunden). Ein `any()` liest nur, dass **irgendeiner** connected ist, und
+  meldet den toten daneben im Detail - ohne ihn zum Befund zu machen.
+- Auffiel: die Gegenprobe mit genau dieser Besetzung (Hauptbot `retrying`,
+  `bots` connected) lieferte **Exit 0** und das Wort „lebt". Das Werkzeug war
+  nicht falsch in der Messung, sondern in der **Aggregation**: es beantwortete
+  eine andere Frage als die gestellte.
+- Beleg: nach dem Umbau meldet derselbe Aufbau `1 Anbindung(en) nicht gesund:
+  Gateway telegram` und Exit 1; die Messwerte darueber bleiben unveraendert.
+- **Regel: das Urteil traegt die Frage, die gestellt wurde.** „Laeuft es ueber
+ haupt" und „laeuft jede Anbindung" sind zwei Fragen mit zwei Antworten.
+  Entscheidet man sich fuer die weiche, gehoert der Name des toten Eintrags in
+  die Antwort — nicht in eine Detailzeile, die man ueberliest.
+- **Uebertragbar:** jedes Werkzeug mit Sammelausgabe („mindestens einer",
+  „irgendeiner"). Der Fehler ist nicht die Messung, sondern das fehlende
+  Aufzaehlen der failures.
+
+### 2. Ein Gegenlauf prueft gegen nichts, wenn der Pfad falsch ist
+
+- Behauptung (von mir): die Gegenprobe belege „keine Anbindung lebt".
+- Entstehung: die Attrappe lag unter `$TMPDIR` — ein **MSYS**-Pfad. Das
+  Werkzeug laeuft als **native** Windows-Version und bildet den Pfad nicht ab;
+  die Datei wurde nie gefunden, `os.path.isfile` lieferte `False`, und das
+  Werkzeug meldete ehrlich „gateway_state.json fehlt". Die Gegenprobe war
+  gruen, weil sie nichts fand.
+- Auffiel: der Fehlertext war **richtig** — er sagte, was er sah. Falsch war
+  meine Deutung: ich las „fehlt" als Befund ueber die Attrappe, obwohl die
+  Attrappe unter einem anderen Namen als dem gesuchten Pfad existierte. Der
+  ehrliche Fehlertext ist keine Garantie, dass man die richtige Instanz
+  befragt hat.
+- Beleg: derselbe Aufbau mit `C:/…`-Pfaden lieferte die vollstaendige Tabelle
+  mit Logzeilen und Urteil.
+- **Regel: ein Fehlertext „Datei fehlt" beweist, dass du die FALSCHE Datei
+  gesucht hast.** Er beweist nicht, dass sie fehlt. Bei jedem Gegenlauf den
+  Pfad, unter dem die Attrappe wirklich liegt, gegen den Pfad halten, den das
+  Werkzeug aufloest — auf Windows gegen ein `C:`-Pfad, nicht gegen ein
+  `$TMPDIR`/`/tmp`-Pfad.
+- **Uebertragbar:** jeder Attrappenlauf. Die Gegenprobe muss die Instanz treffen,
+  die der Aufruf wirklich sieht.
+
+- **Ein Werkzeug darf nie eine echte Aktion ausloesen.** Der erste Entwurf
+  eines Status-Skripts wird gern gegen das echte System gebaut; eine
+  End-to-End-Sonde, die eine echte Nachricht sendet, gehoert in ein Skript mit
+  eigenem Namesraum und wird **einmal von Hand** gefahren, nicht im Testlauf.
+- **Kein Test darf eine echte Order ausloesen.** Am 05.10.2026 rief der erste
+  Entwurf `markt_kauf()` ungedeckt auf → `OKX 1: All operations failed`. Nichts
+  passierte, es haette etwas passieren koennen. Jede Boersenfunktion im Test
+  abfangen **und** zusaetzlich pruefen, dass im Ablehnungsfall **kein** Aufruf
+  an die Boerse ging.
+
+## Zwei Werkzeugarten, die man nicht gleich behandelt
+
+| Art | Was prueft | Wie |
+|---|---|---|
+| **Zahlwerkzeug** (rechnet, aggregiert, klassifiziert) | die Rechnung | zwei Laeufe, **ein** Wert verschieden; Ergebnis gegen die Hausfunktion |
+| **Statuswerkzeug** (liest Zustand, meldet je Eintrag) | die **Aggregation** | eine Attrappe, in der genau EIN Eintrag kaputt ist und alle anderen leben — die weiche Frage („lebt ueberhaupt\") muss daran scheitern |
+
+Ein Statuswerkzeug wird durch die erste Art von Gegenprobe **nicht** geprueft:
+zwei verschiedene Zustaende ergeben verschiedene Ausgaben, aber beide koennen
+gleichzeitig falsch aggregieren. Die zweite Art ist die, die den Fehler findet —
+und sie ist ein Lauf von Sekunden.
 
 ## Verification
 

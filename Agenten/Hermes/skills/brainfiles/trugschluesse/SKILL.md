@@ -22,13 +22,17 @@ die Regel, die vor dem Satz greift: „X ist so" oder „X ist nicht da".
 
 Keine spekulative Vollstaendigkeit: alle Faelle unten sind belegt, die
 ausfuehrlichen Belege stehen in `references/faelle.md` (laden mit
-`skill_view(name='trugschluesse', file_path='references/faelle.md')`) und
+`skill_view(name='trugschluesse', file_path='references/faelle.md')`),
 `references/faelle-0510.md` (laden mit
-`skill_view(name='trugschluesse', file_path='references/faelle-0510.md')`).
-Die zweite Datei ist eine ganze Sitzung, in der fast jede Zustandsaussage
-falsch war — teils im Haus, zweimal in meinen eigenen Zahlen. Ihr Satz:
-**ein Teilschritt, als Erfolg gemeldet, ist die teuerste Form einer
-Trugschluss-Aussage** („der Absturz war weg, das Handeln nicht").
+`skill_view(name='trugschluesse', file_path='references/faelle-0510.md')`) und
+`references/faelle-telegram-0510.md` (laden mit
+`skill_view(name='trugschluesse', file_path='references/faelle-telegram-0510.md')`).
+Die zweite Datei ist eine ganze Sitzung, in der fast jede Zustandsaussage falsch
+war — teils im Haus, zweimal in meinen eigenen Zahlen. Die dritte ist eine
+Sitzung, in der die **Diagnose** stimmte und trotzdem drei eigene Fehler
+entstanden: ein gruener Kanal, der einen toten verdeckte, eine Gegenprobe gegen
+den falschen Pfad, und eine fast erfundene Ursache. Ihr Satz: **eine Schleife,
+die einen Zustand nicht repariert, sieht wie Aktivitaet aus.**
 
 ## When to Use
 
@@ -273,6 +277,29 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
   `AGENTS.md` und war 6 GB; `sichern-ausser-haus.ps1` zielte auf `E:` und stieg
   mit Exitcode 2 lautlos aus, deshalb gab es nie eine Ausser-Haus-Kopie. Bei
   Zahlen aus Notizen: einmal nachmessen und die Notiz nachziehen.
+
+- **Der Rechner koennte es gewesen sein - der Nachweis sagt, dass er es nicht war.**
+  Vor jedem Fehlalarm-Durchgang den eigentlichen Nachweis ansehen, nicht die
+  Umgebung verdaechtigen. Belegt 05.10.2026: Der Rechner stand unter
+  Speicherdruck, 13 Gateway-Neustarts an einem Tag, `FreeVirtualMemory` zeitweise
+  bei 1,9 GB — die Aufraeumung brachte **nichts**. Die Kette war: Ein Update
+  wurde abgebrochen (`✗ Another Hermes update is already running`, Exit 2), der
+  Gateway startete danach **ohne den Telegram-Adapter** (`adapter_unavailable`),
+  und der Reconnect-Watcher versuchte es 41 Mal bis 06:48 — alle 300 s, ohne
+  den Prozesszustand zu reparieren. Ein kontrollierter Neustart ueber die
+  geplante Aufgabe heilte es, obwohl Paket, `check_fn` und Plugin-Registrierung
+  **alle gruen** waren. **Regel: eine Schleife, die einen Zustand nicht
+  repariert, sieht wie Aktivitaet aus.** `Reconnecting …` ist kein Fortschritt,
+  und die Frage ist nie „was loest sie aus", sondern „was repariert sie".
+- **Ein Lint-Hinweis kann der Hausregel widersprechen — dann ist er die
+  Fehlermeldung, nicht der Befund.** Beim Schreiben eines Skills meldete der
+  Linter `author 'Hermes' should be 'Hermes Agent' (proper caps)`; die
+  Hausregel und die Skill-Standards verlangen ausdruecklich den Literalwert
+  `Hermes`. Belegt: `telegram-bruecke-diagnose` trug `author: Hermes Agent` und
+  wurde auf `Hermes` korrigiert. **Regel: eine Automatik, die einer
+  verschriftlichten Regel widerspricht, wird benannt und ueberstimmt** — nicht
+  Befolgen und die Regel aufweichen. Umgekehrt gilt dasselbe: eine Faustregel
+  ohne Beleg ist selbst erst eine Behauptung.
 
 ## Verification
 
