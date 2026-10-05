@@ -14,11 +14,19 @@ metadata:
 
 # Telegram-Bruecke: "hat nicht funktioniert" eingrenzen
 
+Diagnose einer Telegram-Anbindung, die schweigt: Gateway-Plattform,
+Multiplex-Profil und SkillsBot-Bruecke. Dieser Skill **behandelt keinen
+Verdrahtungsfehler** (Token, A2A-Wiring, Task-Registrierung — das ist
+`a2a-telegram-skills`) und **repariert keinen Upstream-Bug**; er trennt die drei
+moeglichen Befunde, benennt den belegten Ausfallbild und fuehrt den Weg, den
+der Nutzer am Handy nimmt. Alle Befunde und Werkzeuge sind stdlib-only.
+
 ## When to Use
 
 - der Nutzer sagt, ein Befehl im SkillsBot/Handelsbot habe nichts getan
 - eine Bot-Antwort ist nicht angekommen, obwohl der Prozess laeuft
 - ein Befehl liefert nach ~5 Minuten nur einen Stummel statt einer Antwort
+- der Gateway-Status zeigt eine Plattform `retrying` mit `needs_attention`
 - bevor "der Bot ist kaputt" gemeldet oder der Task neu gestartet wird
 
 Wenn der Nutzer sagt, ein Befehl im SkillsBot/Handelsbot habe nichts getan oder
@@ -30,6 +38,39 @@ eine Antwort sei nicht angekommen. Zwei Grundsaetze vor jeder Aussage:
 
 Der Aufbau der Bruecke selbst (Token, A2A-Wiring, Task-Registrierung) steht in
 `a2a-telegram-skills`; dieser Skill ist die Diagnose.
+
+## Prerequisites
+
+- `HERMES_HOME` gesetzt, darin `gateway_state.json` und `logs/gateway.log`.
+- Fuer den SkillsBot: `Agenten/Bus/skillsbot.offset` und `skillsbot.log`.
+- Nur lesende Diagnose. Ein Tokenwert wird **nie** ausgegeben — Laenge und
+  Existenz genuegen, und Laengen misst man ueber
+  `[Environment]::GetEnvironmentVariable($k,'User').Length` bzw. die `.env`,
+  nie ueber `reg query` (das gibt Klartext ins Protokoll).
+
+## How to Run
+
+Alles ueber das `terminal`-Werkzeug. Der Einstieg ist ein Skript, kein
+Zustandsabfragen-Baukasten:
+
+    cd "<HERMES_HOME>/skills/brainfiles/telegram-bruecke-diagnose"
+    python scripts/telegram_status.py --home "<HERMES_HOME>" --bus "<...>/Agenten/Bus"
+
+Exit 0 = jede Anbindung meldet `connected`. Exit 1 = mindestens eine nicht. Der
+Aufruf liest nur; er repariert nichts und loest nichts aus.
+
+## Quick Reference
+
+    <HERMES_HOME>/gateway_state.json                      # platforms.telegram.state/error_code
+    <HERMES_HOME>/logs/gateway.log                         # nur Logende lesen
+    <HERMES_HOME>/skills/brainfiles/telegram-bruecke-diagnose/scripts/telegram_status.py
+    <...>/Agenten/Bus/skillsbot.offset                     # Lebenszeichen = mtime
+    <...>/Agenten/Bus/skillsbot.log                        # JSONL je Nachricht
+    Get-ScheduledTask | Where-Object { $_.TaskName -like 'Hermes_Gateway*' }
+    schtasks /run /tn Hermes_Gateway_<suffix>
+    Stop-ScheduledTask  -TaskName 'BrainFiles-SkillsBot'
+    Start-ScheduledTask -TaskName 'BrainFiles-SkillsBot'
+    [Environment]::GetEnvironmentVariable('TELEGRAM_BOT_TOKEN','User').Length
 
 ## Die Logzeile lesen (`Agenten/Bus/skillsbot.log`)
 
@@ -287,6 +328,12 @@ hat. `gateway_state.json` zeigt dann:
 Reconnect-Watcher versucht es alle 300 s weiter - **ohne** den Prozesszustand zu
 reparieren. Die Schleife heilt nichts; sie sieht nur aktiv aus.
 
+Der komplette Befund dieser Klasse mit allen vier widerlegten Hypothesen
+(Paket, Credentials, Plugins, Rechner), dem Quelltext, der Reihenfolge der
+Belege und der End-to-End-Zustellung liegt in
+`references/gateway-adapter-ausfall-0510.md` (laden mit
+`skill_view(name='telegram-bruecke-diagnose', file_path='references/gateway-adapter-ausfall-0510.md')`).
+
 ### Die drei Fehlalarme, die man NICHT mitbringen darf
 
 1. **"Das Paket fehlt."** Nicht aus dem Dateisystem schliessen. Der Gateway laeuft
@@ -373,28 +420,28 @@ Gemessen am 05.10.2026: `message_id 10888` nach dem Neustart bei
 `code_version 0.21.5`. Der Tokenwert wird dabei **nie** ausgegeben - nur seine
 Laenge, sonst landet er im Sitzungsprotokoll.
 
-## Was in dieser Sitzung (05.10.2026) wirklich geholfen hat
+Der vollstaendige Ausfallbild-Beleg steht in
+`references/gateway-adapter-ausfall-0510.md` (laden mit
+`skill_view(name='telegram-bruecke-diagnose', file_path='references/gateway-adapter-ausfall-0510.md')`);
+die **ueber** den Einzelfall hinausgehenden Regeln — Aggregation, Gegenlauf-Pfad,
+Schleife-als-Aktivitaet, Belegpflicht fuer Erklaerungen — stehen in
+`messwerkzeug-gegenprobe` und `trugschluesse`.
 
-1. **Zuerst alle drei Anbindungen zaehlen**, bevor irgendetwas repariert wird.
-   Gateway-Bot und SkillsBot-Bruecke hatten denselben Symptom-Satz und
-   verschiedene Ursachen: einer tot, der andere lebendig. Ein Neustart des einen
-   haette den anderen unberuehrt gelassen und "repariert" gemeldet, ohne dass
-   irgendetwas geholfen wurde.
-2. **Der Status ist die schnellste Wahrheit** (`gateway_state.json`, ein
-   JSON-Objekt) - nicht das Log und nicht der Prozessname. Das Logfile waechst auf
-   300 KB und mischt drei Tage; die Statusdatei nennt `error_code`,
-   `error_message` und `needs_attention` direkt.
-3. **Die Paketfrage mit einem Import beantworten, nicht mit einer Verzeichnisliste.**
-   `<HERMES_HOME>/tools/python-…/python.exe -c "import telegram"` ist gruen,
-   waehrend `ls site-packages` nur `pip` zeigt. Die Verzeichnisliste erzeugt den
-   Fehlalarm "Paket fehlt", der auf eine Nicht-Ursache zeigt.
-4. **Zeitstempel fuehren, nicht nur Zustandsnamen.** Der Vergleich
-   "missing 03:36 / connected 06:55" macht aus zwei scheinbar widerspruechlichen
-   Logzeilen eine Ursache mit Zeitverlauf. Deshalb misst `telegram_status.py`
-   ausdruecklich alle vier Marker mit Uhrzeit.
-5. **Neustarts ueber die Aufgabe, nicht ueber die Kommandozeile.** `schtasks /run`
-   auf `Hermes_Gateway_<suffix>` startet den Dienst genauso, wie der Rechner ihn
-   beim Anmelden startet - und genau einmal.
-6. **Ein nicht gefundener Grund wird als offenes Feld gefuehrt, nicht als
-   Erklaerung.** Der Adapter-Ausfall liess sich heilen, sein Grund nicht belegen;
-   die saubere Abschlussmeldung nennt beides getrennt.
+## Verification
+
+Ein Lauf beweist die ganze Diagnose:
+
+    cd "<HERMES_HOME>/skills/brainfiles/telegram-bruecke-diagnose"
+    python scripts/telegram_status.py --home "<HERMES_HOME>" --bus "<...>/Agenten/Bus"
+
+Exit 0 **und** alle drei Zeilen `OK` **und** im Log `✓ telegram connected` mit
+`getUpdates progressing` nach einer neueren Uhrzeit als das letzte
+`No adapter available`. Das allein ist noch kein Weg-Beweis — `connected` ist ein
+Zustandszeuge. Der Weg-Beweis ist eine echte Zustellung
+(`{'success': True, … 'message_id': '…'}`) ueber den Sender, den der Dienst
+selbst benutzt.
+
+**Die Gegenprobe des Werkzeugs** (ohne sie ist Exit 0 ein unbekanntes Urteil):
+eine Attrappe, in der **genau ein** Telegram-Eintrag `retrying` ist und alle
+anderen `connected` — der Aufruf muss Exit 1 liefern und den toten Eintrag
+**namentlich** nennen. Ein weiches „irgendwas lebt" faellt daran nicht durch.
