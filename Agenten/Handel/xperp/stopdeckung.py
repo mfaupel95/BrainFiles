@@ -46,15 +46,64 @@ from datetime import datetime
 
 # Eigene Spur ZULETZT einfuegen: scanner/ hat ebenfalls ein handeln.py.
 HIER = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(os.path.dirname(HIER), "scanner"))
-sys.path.insert(0, os.path.dirname(HIER))
-sys.path.insert(0, HIER)
 
-import handeln as h                                            # noqa: E402
-import okxf                                                    # noqa: E402
-import wachen_xperp as wx                                      # noqa: E402
 
-assert os.path.dirname(os.path.abspath(h.__file__)) == HIER,     "falsches handeln.py geladen: %s" % h.__file__
+def _lade():
+    """handeln + wachen_xperp, VERZOEGERT.
+
+    Grund: `handeln.py` ruft seit dem 05.10.2026 (T-362) `deckung()` und
+    `tote_stops()` im Zyklus auf, also importiert diese Datei - und importierte
+    hier schon `handeln`. Das ist ein Zirkel: beim Laden von `handeln` laeuft
+    der Rumpf, trifft `import stopdeckung`, und dessen `import handeln` holt
+    eine HALBE fertige Instanz.
+
+    Der Umweg ist der Nachweis, kein Umweg: die Rechnung
+    (`schutz_auftraege`/`deckung`/`tote_stops`/`preis_pruefbar`) braucht nur
+    `okxf`. `handeln` und `wachen_xperp` werden erst in `main()` gebraucht,
+    also erst dort geladen.
+    """
+    # Reihenfolge ist Absicht und muss UNBEDINGT sein: `import handeln` nimmt
+    # den ersten Treffer, und `Agenten/Handel/scanner/handeln.py` heisst genauso
+    # wie `Agenten/Handel/xperp/handeln.py`. Ohne das erzwungene Einfuegen
+    # bleibt der Pfad des Werkzeuglaufs (xperp) an Position 0, `scanner/`
+    # rutscht davor und der Guard laeuft mit der FALSCHEN Datei auf.
+    # Gemessen 05.10.2026.
+    for p in (os.path.join(os.path.dirname(HIER), "scanner"),
+              os.path.dirname(HIER), HIER):
+        sys.path.insert(0, p)
+    import okxf
+    import handeln as h
+    import wachen_xperp as wx
+    assert os.path.dirname(os.path.abspath(h.__file__)) == HIER, \
+        "falsches handeln.py geladen: %s" % h.__file__
+    return okxf, h, wx
+
+
+def _okxf():
+    """Das Borsenmodul, mit der Testnaht als Modulattribut.
+
+    Die 21 Tests in `tests/test_stopdeckung.py` setzen `stopdeckung.okxf =
+    attrappe`. Deshalb wird ZUERST das Modulattribut geprueft und erst danach
+    geladen - sonst muessten 21 Tests umgeschrieben werden, nur weil der Import
+    spaeter kommt. Gelesen wird aus `globals()`, nicht aus einem Cache: so sieht
+    ein Test die Attrappe auch nach jedem anderen Test.
+    """
+    attrappe = globals().get("okxf")
+    if attrappe is not None:
+        return attrappe
+    return _lade()[0]
+
+
+def __getattr__(name):
+    """`stopdeckung.okxf` lesbar halten, ohne es beim Import zu erzwingen.
+
+    PEP 562: diese Funktion wird nur befragt, wenn das Attribut NICHT im
+    Modulraum existiert. Sobald ein Test `sd.okxf = attrappe` gesetzt hat, ist
+    es ein echtes Attribut und der Name wird nie wieder hierher kommen.
+    """
+    if name == "okxf":
+        return _lade()[0]
+    raise AttributeError("module %r hat kein Attribut %r" % (__name__, name))
 
 
 # Rundung, nicht Handgriff: OKX rechnet die Kontraktzahl in Schritten.
@@ -77,6 +126,7 @@ def schutz_auftraege(inst, seite):
     Der Filter ist derselbe wie `okxf.ist_schutz_stop`, aber mit der Menge -
     `_stop_vorhanden` wirft die Menge weg und genau daran scheitert es.
     """
+    okxf = _okxf()
     gegenteil = "sell" if seite == "long" else "buy"
     raus = []
     for a in okxf.schutz_stops(inst) or []:
@@ -124,6 +174,7 @@ def preis_pruefbar(inst, seite, stop, liq):
         return False, "kein lesbarer Preis (%r)" % (stop,)
     if stop <= 0:
         return False, "Preis %s ist nicht positiv" % stop
+    okxf = _okxf()
     try:
         kurs = float(okxf.letzter_kurs(inst))
     except Exception as e:                                      # noqa: BLE001
@@ -169,6 +220,7 @@ def tote_stops(inst, seite, liq):
 
 def pruefe(z, still=False):
     """Alle Live-Positionen des Buchs gegen die Boerse. Rein lesend."""
+    okxf = _okxf()
     try:
         roh = {p["instId"]: p for p in okxf.positionen()}
     except Exception as e:                                      # noqa: BLE001
@@ -216,6 +268,7 @@ def main():
                         "erfindet keinen Schutzpreis")
     a = p.parse_args()
 
+    _, h, wx = _lade()
     with open(wx.WACHEN, encoding="utf-8") as fh:
         w = json.load(fh)
     z = h.lade_zustand()
@@ -260,7 +313,7 @@ def main():
             print("  %-26s nicht gestellt: %s" % (inst, grund))
             continue
         try:
-            d = okxf.schutz_stop_setzen(inst, seite, fehlt, a.stop)
+            d = _okxf().schutz_stop_setzen(inst, seite, fehlt, a.stop)
         except Exception as e:                                  # noqa: BLE001
             print("  %-26s FEHLGESCHLAGEN (%s) - die Position bleibt teilweise "
                   "ungeschuetzt" % (inst, e))
