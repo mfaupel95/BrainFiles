@@ -150,6 +150,46 @@ class Uebernahme(unittest.TestCase):
             h.bueche_fremde_positionen_uebernehmen(z2, _wachen())
         self.assertEqual(u2.gestellte_stops, [])
 
+    def test_oco_stop_wird_erkannt(self):
+        """Ein OCO-Auftrag (ordType=oco) mit slTriggerPx zaehlt als Schutz.
+
+        ANLASS (T-278, 01.10.2026): Beim Uebernehmen von Hand-Positionen
+        standen fuer ZEC und ADA langst OCOs an der Boerse. Die Pruefung
+        fragte nur 'conditional' und meldete 'Stop fehlt' - es wurde ein
+        zweiter Stop daneben gestellt.
+        """
+        z = self._z()
+        with _Umgebung([_boerse(BZ, 1467)],
+                       vorhandener_stop=[{"ordType": "oco", "slTriggerPx": "96.62"}]) as u:
+            h.bueche_fremde_positionen_uebernehmen(z, _wachen())
+        self.assertEqual(u.gestellte_stops, [])
+
+    def test_move_order_stop_wird_erkannt(self):
+        """Ein Trailing-Stop (ordType=move_order_stop) mit moveTriggerPx zaehlt.
+
+        ANLASS (T-278, zweite Haelfte, 01.10.2026): Ein Trailing-Stop fuehrt
+        KEIN slTriggerPx, sondern moveTriggerPx + callbackRatio. Wer nur
+        slTriggerPx liest, haelt eine geschuetzte Position fuer nackt.
+        """
+        z = self._z()
+        with _Umgebung([_boerse(BZ, 1467)],
+                       vorhandener_stop=[{"ordType": "move_order_stop",
+                                          "moveTriggerPx": "96.62"}]) as u:
+            h.bueche_fremde_positionen_uebernehmen(z, _wachen())
+        self.assertEqual(u.gestellte_stops, [])
+
+    def test_nackter_trigger_zaehlt_nicht(self):
+        """Ein nackter trigger (weder slTriggerPx noch moveTriggerPx) ist kein Stop.
+
+        Ein trigger kann auch ein Einstieg sein - er zaehlt nur, wenn er
+        einen Ausloesepreis fuehrt.
+        """
+        z = self._z()
+        with _Umgebung([_boerse(BZ, 1467)],
+                       vorhandener_stop=[{"ordType": "trigger"}]) as u:
+            h.bueche_fremde_positionen_uebernehmen(z, _wachen())
+        self.assertEqual(len(u.gestellte_stops), 1)  # Stop wird gestellt
+
     def test_vorschau_zeigt_ohne_zu_schreiben(self):
         z = self._z()
         with _Umgebung([_boerse(BZ, 1467)]) as u:
