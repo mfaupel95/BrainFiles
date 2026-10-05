@@ -609,6 +609,85 @@ function Pruefe-GitRegeln {
     }
 }
 
+# ---------- Modul 5: ballast (nur melden, nichts aufraeumen) ----------
+function Get-Levenshtein([string]$a, [string]$b) {
+    $la = $a.Length
+    $lb = $b.Length
+    if ($la -eq 0) { return $lb }
+    if ($lb -eq 0) { return $la }
+    $prev = 0..$lb
+    for ($i = 1; $i -le $la; $i++) {
+        $cur = New-Object int[] ($lb + 1)
+        $cur[0] = $i
+        for ($j = 1; $j -le $lb; $j++) {
+            $kosten = 1
+            if ($a[$i - 1] -ceq $b[$j - 1]) { $kosten = 0 }
+            $cur[$j] = [Math]::Min([Math]::Min($cur[$j - 1] + 1, $prev[$j] + 1), $prev[$j - 1] + $kosten)
+        }
+        $prev = $cur
+    }
+    return $prev[$lb]
+}
+
+function Pruefe-Ballast {
+    $ordner = @('', 'Agenten', 'Agenten/Routinen', 'Agenten/Hermes', 'Agenten/Bus', 'Agenten/Handel', 'Agenten/Werkzeuge')
+    $alt = New-Object System.Collections.ArrayList
+    $doppel = New-Object System.Collections.ArrayList
+    $zwillinge = New-Object System.Collections.ArrayList
+    foreach ($rel in $ordner) {
+        $d = $Wurzel
+        $anzeige = '.'
+        if ($rel) { $d = Join-Path $Wurzel $rel; $anzeige = $rel }
+        if (-not (Test-Path -LiteralPath $d)) { continue }
+        $dateien = @(Get-ChildItem -LiteralPath $d -File -Force -ErrorAction SilentlyContinue)
+        foreach ($f in $dateien) {
+            if ($f.Name -match '(?i)\.(bak|orig|corrupt|old)($|[._-])|\.vor-') { [void]$alt.Add("$anzeige/$($f.Name)") }
+            if ($f.Name -match '(?i)\.txt$') {
+                $basis = $f.Name.Substring(0, $f.Name.Length - 4)
+                if ($basis -and (Test-Path -LiteralPath (Join-Path $d $basis))) { [void]$zwillinge.Add("$anzeige/$($f.Name)") }
+            }
+        }
+        $skripte = @($dateien | Where-Object { $_.Extension -match '(?i)^\.(ps1|py|cmd)$' })
+        for ($i = 0; $i -lt $skripte.Count; $i++) {
+            for ($j = $i + 1; $j -lt $skripte.Count; $j++) {
+                if ($skripte[$i].Extension -ine $skripte[$j].Extension) { continue }
+                $na = ($skripte[$i].BaseName.ToLowerInvariant() -replace '[-_ ]', '')
+                $nb = ($skripte[$j].BaseName.ToLowerInvariant() -replace '[-_ ]', '')
+                if ($na.Length -lt 8 -or $nb.Length -lt 8) { continue }
+                if ($doppel.Count -ge 20) { continue }
+                if ((Get-Levenshtein $na $nb) -le 2) { [void]$doppel.Add("$anzeige/$($skripte[$i].Name) ~ $($skripte[$j].Name)") }
+            }
+        }
+    }
+    $agenten = Join-Path $Wurzel 'Agenten'
+    $zusatz = New-Object System.Collections.ArrayList
+    if (Test-Path -LiteralPath $agenten) {
+        foreach ($n in 'Werkstatt', 'Modelle', 'MaxHirn', 'Agenten') {
+            $p = Join-Path $agenten $n
+            if (Test-Path -LiteralPath $p) {
+                $anz = @(Get-ChildItem -LiteralPath $p -File -Force -ErrorAction SilentlyContinue).Count
+                [void]$zusatz.Add("Agenten/$n ($anz Dateien auf Ebene 1)")
+            }
+        }
+    }
+    if ($alt.Count -gt 0) {
+        Add-Befund -Id 'BALLAST-ALTKOPIEN' -Modul 'ballast' -Schwere 'HINWEIS' -Titel "$($alt.Count) Altkopien (.bak/.orig/.corrupt/.vor-)" `
+            -Beleg (($alt | Select-Object -First 12) -join '; ') -Status 'gesichert' -Vorschlag 'Aufraeumen ist Teilprojekt B; vorher Inhalt gegen die aktuelle Datei pruefen'
+    }
+    if ($doppel.Count -gt 0) {
+        Add-Befund -Id 'BALLAST-DOPPELNAMEN' -Modul 'ballast' -Schwere 'HINWEIS' -Titel "$($doppel.Count) Skriptpaar(e) mit fast gleichem Namen" `
+            -Beleg ($doppel -join '; ') -Status 'Vermutung' -Vorschlag 'Pruefen, welches aufgerufen wird (Aufrufer suchen), dann das andere in Teilprojekt B entfernen'
+    }
+    if ($zwillinge.Count -gt 0) {
+        Add-Befund -Id 'BALLAST-TXT-ZWILLINGE' -Modul 'ballast' -Schwere 'HINWEIS' -Titel "$($zwillinge.Count) .txt-Zwilling(e) von Dateien" `
+            -Beleg ($zwillinge -join '; ') -Status 'Vermutung' -Vorschlag 'Ist die .txt eine Kopie (z. B. zum Anhaengen an eine Mail)? Dann in Teilprojekt B entfernen'
+    }
+    if ($zusatz.Count -gt 0) {
+        Add-Befund -Id 'BALLAST-ZUSATZORDNER' -Modul 'ballast' -Schwere 'HINWEIS' -Titel 'Ordner unter Agenten/, die wie Wurzelordner heissen' `
+            -Beleg ($zusatz -join '; ') -Status 'Vermutung' -Vorschlag 'Inhalt ansehen: gehoert er in die gleichnamige Wurzel? Zusammenfuehren in Teilprojekt B'
+    }
+}
+
 # === MODULE (neue Pruefe-*-Funktionen oberhalb dieser Zeile einfuegen) ===
 
 $ModulTabelle = [ordered]@{

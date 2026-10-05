@@ -307,6 +307,32 @@ Pruefe 'Zeitbudget erschoepft: kein git-Aufruf, UNKLAR' ((($r | Where-Object { $
 $gz = @(Get-Content -LiteralPath $Doktor | Where-Object { $_ -match '-Datei \$git ' })
 Pruefe 'alle git-Aufrufe mit --no-optional-locks zuerst' (($gz.Count -ge 2) -and (@($gz | Where-Object { $_ -notmatch "-Argumente @\('--no-optional-locks'," }).Count -eq 0)) "Zeilen=$($gz.Count)"
 
+Write-Host '--- Modul ballast ---'
+$fx = Neue-Wurzel
+Schreibe (Join-Path $fx 'Agenten/Hermes/config.yaml') 'a'
+Schreibe (Join-Path $fx 'Agenten/Hermes/config.yaml.txt') 'a'
+Schreibe (Join-Path $fx 'Agenten/Hermes/config.yaml.bak-20260101') 'a'
+Schreibe (Join-Path $fx 'Agenten/Hermes/auth.json.corrupt') 'a'
+Schreibe (Join-Path $fx 'Agenten/Hermes/notiz.vor-umbau') 'a'
+Schreibe (Join-Path $fx 'Agenten/Routinen/sichern-aussenhaus.ps1') 'a'
+Schreibe (Join-Path $fx 'Agenten/Routinen/sichern-ausser-haus.ps1') 'a'
+Schreibe (Join-Path $fx 'Agenten/Routinen/a.ps1') 'a'
+Schreibe (Join-Path $fx 'Agenten/Routinen/b.ps1') 'a'
+Schreibe (Join-Path $fx 'Agenten/Werkstatt/rest.txt') 'a'
+$r = Lauf $fx @('ballast')
+$ak = $r | Where-Object { $_.id -eq 'BALLAST-ALTKOPIEN' }
+Pruefe 'Altkopien gefunden (bak, corrupt, vor-)' (($null -ne $ak) -and ($ak.beleg -match 'config\.yaml\.bak-20260101') -and ($ak.beleg -match 'auth\.json\.corrupt') -and ($ak.beleg -match 'notiz\.vor-umbau'))
+Pruefe 'normale Datei ist keine Altkopie' (($null -ne $ak) -and ($ak.beleg -notmatch 'config\.yaml(?!\.)'))
+$dn = $r | Where-Object { $_.id -eq 'BALLAST-DOPPELNAMEN' }
+Pruefe 'aehnliche Skriptnamen gemeldet' (($null -ne $dn) -and ($dn.beleg -match 'sichern-aussenhaus\.ps1') -and ($dn.beleg -match 'sichern-ausser-haus\.ps1'))
+Pruefe 'kurze Namen a/b sind kein Doppelname' (($null -ne $dn) -and ($dn.beleg -notmatch 'a\.ps1'))
+Pruefe 'txt-Zwilling einer Config gemeldet' ((Hat $r 'BALLAST-TXT-ZWILLINGE') -and (($r | Where-Object { $_.id -eq 'BALLAST-TXT-ZWILLINGE' }).beleg -match 'config\.yaml\.txt'))
+Pruefe 'Zusatzordner Agenten/Werkstatt gemeldet' ((Hat $r 'BALLAST-ZUSATZORDNER') -and (($r | Where-Object { $_.id -eq 'BALLAST-ZUSATZORDNER' }).beleg -match 'Werkstatt'))
+Pruefe 'alles nur HINWEIS' (@($r | Where-Object { $_.schwere -ne 'HINWEIS' -and $_.modul -eq 'ballast' }).Count -eq 0)
+$fx2 = Neue-Wurzel
+$r = Lauf $fx2 @('ballast')
+Pruefe 'leere Wurzel: kein Ballast, kein Absturz' (@($r | Where-Object { $_.modul -eq 'ballast' }).Count -eq 0)
+
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 if ($script:Fehler -gt 0) { Write-Host "konfig-doktor FEHLGESCHLAGEN: $($script:Fehler) Pruefung(en)"; exit 1 }
