@@ -157,6 +157,7 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - references/auxiliary-kompression.md — laden, wenn eine Karte/Sitzung mit "context window ... below the minimum 64,000" abbricht oder `auxiliary.compression` gesetzt werden soll
 - references/modellkette-messen.md — laden, wenn ein Modell eingesetzt werden soll ("bestmoegliche Hilfsmodelle", "welches Modell laeuft wo"): Fenster aus dem Loader holen, jeden Kandidaten einmal wirklich rufen, Aggregator/Hilfsmodelle/Mainmodell nach Rolle trennen, tote Schluessel finden; enthaelt auch die Nachweisstufen (verdrahtet ≠ belegt) und das zeilenweise Block-Ersetzen in YAML
 - references/moa-und-hilfsmodelle.md — laden, wenn `moa:`, `auxiliary:` oder `prompt_caching.cache_ttl` gestellt wird: der Aggregator IST das handelnde Modell (lokales Modell dort = Fehlbau), `provider: auto` erbt das Hauptmodell, und der 1h-Nachweis braucht eine Pause laenger als 5 min plus Gegenprobe auf 5m
+- references/docker-terminal-exit125.md — laden, wenn `terminal`, `write_file`, `patch` und `execute_code` GEMEINSAM ausfallen (Exit 125): `terminal.cwd` traegt einen Windows-Host-Pfad, und mit `docker_mount_cwd_to_workspace: false` geht er roh in `docker run -w`. Der Fix wirkt erst nach einem Gateway-Neustart, weil die Werkzeuge als dessen Kind laufen.
 
 ## Nachweis (Abschluss)
 
