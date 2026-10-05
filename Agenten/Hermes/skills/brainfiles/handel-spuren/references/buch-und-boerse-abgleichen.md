@@ -164,6 +164,55 @@ Was sich lohnt:
 - Ein Beleg ist einmalig und wird VOR der Order verbraucht - bleibt er liegen,
   kann die Hand dieselbe Order ein zweites Mal ausfuehren.
 
+## Doppelbuchung: Journal verkauft, Zustand fuehrt weiter
+
+Eine Buchung, die nur EINE der beiden Dateien anfasst, erzeugt einen Geist, und die
+Geisterrichtung ist immer dieselbe: **das Journal schliesst, der Zustand fuehrt die
+Position weiter als offen.** `pruefe_ausstiege()` sieht sie im Zustand und
+verkauft sie bei JEDEM Zyklus erneut - eine wiederholte Fehlbuchung, die jede
+Auswertung dieser Spur verfaelscht. Dieselbe Fehlerklasse wie die Bueros-Waisen,
+nur ohne Boerse im Spiel.
+
+**Die Erkennung ist eine Zeitmessung, kein Blick auf die Logik.** Beide Dateien
+der Spur tragen ihre mtime, und ein echter Zyklus schreibt IMMER beide
+(`schreibe_zustand` + `spiegeln` am Zyklusende). Also:
+
+```
+handelsjournal.csv   02:26:36   <- die Verkaufszeile
+zustand.json         VORHER     <- 12 Stunden aelter
+dauerlauf.log        02:20:22   <- der Lauf davor, OK
+```
+
+Faellt die Journalzeile in ein Fenster, in dem kein Zyklus lief, hat sie nicht der
+Zyklus geschrieben. Gemessen lag sie sechs Minuten nach dem Lauf, der als `ok`
+protokolliert war. Wer danach dennaechsten Lauf abwartet, sieht den Zustand
+wieder aufholen - und haelt das fuer eine Heilung. Der naechste Zyklus schreibt
+den Zustand, laesst die offene Position aber stehen, weil sie im Journal schon
+geschlossen ist: der Geist ist dann stabil und heilt nie von selbst.
+
+**Beim Befund drei Dinge getrennt pruefen, bevor die Ursache benannt wird:**
+(1) Spiegelt der Spiegel-Zweig, in dem diese Spur laeuft? Ein Signal-Modus mit
+`continue` vor der Spiegelung ist eine echte Fehlerklasse - aber sie zeigt sich als
+ABWEICHUNG, nicht als Doppelschluessel, und ist durch einen Attrappen-Lauf
+auszuschliessen. (2) Ist die Spiegelung nach aussen in Ordnung? `spiegelstand`
+meldet das je Spur und es kann vollstaendig gruen sein, waehrend das Buch
+daneben doppelt ist. (3) Wer hat die Zeile geschrieben - ein Rueckzug, eine
+manuelle Buchung, ein fremder Werkzeuglauf? `git log` derselben Stunde plus die
+mtime-Folge beantwortet das.
+
+**Nicht reparieren, indem man die Positionszeile loescht.** Das ist
+Datenmanipulation an einem fremden Buch, und der Geist geht dabei ohne Spur in
+der Kapitalkurve unter. Der ehrliche Weg: die Buchung nachvollziehen, die die
+Zeile geschrieben hat, dann EINE Aussage herstellen - gehoert der Verkauf in den
+Zustand, wandert die Position raus; gehoert er nicht ins Buch, wandert die
+Journalzeile nach `handelsjournal.verworfen-JJJJMMTT.csv`. Fertig ist das erst,
+wenn Journal und Zustand dieselbe Aussage tragen UND zwei Zyklen ohne neuen
+Doppelschluessel durchgelaufen sind.
+
+Der zugehoerige Test prueft die **Eigenschaft**: ein Ausstieg erzeugt genau eine
+Buchung. Er traegt keine Stand-Zahl, sonst wird er bei jeder Umstellung rot und
+trainiert den Reflex, rote Tests wegzuklicken.
+
 ## Spiegelung (Kopie ausser Haus)
 
 Jeder schreibende Ausgang spiegelt: Zyklusende, Herzschlag-/Fristausstieg,

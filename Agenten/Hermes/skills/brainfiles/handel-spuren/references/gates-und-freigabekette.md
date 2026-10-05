@@ -17,6 +17,148 @@ Im Zweifel **verweigern**: Ein Torschutz, der bei seinem eigenen Ausfall
 durchlaesst, ist kein Torschutz. Fehlt das Modul oder ist die Zahl nicht
 lesbar, lautet die Antwort "nein", nicht "weiter".
 
+### Ein gesetzter Haken loest nicht das Problem dahinter
+
+Wird auf Auftrag "setz die Freigabe" gesagt, ist das **eine** von N
+Sperren. Die Antwort ist dann eine Tabelle mit **einer Zeile je Tor** und
+ihrem Ergebnis - nicht das Wort "gesetzt". Tore sind AND-verknuepft: das
+Aufheben eines Hakens macht die Rechnung der anderen sichtbar, die vorher
+nie zur Sprache kam.
+
+Der typische Fehler ist die Meldung nach dem Setzen: „Haken gesetzt" mit dem
+Gefuehl von Erledigung. Sie ist falsch, sobald eine zweite Sperre greift -
+und der Nutzer prueft genau die, indem er ausprobiert. Gemessen: der Haken
+wurde auf `true` gesetzt, die Spur handelte trotzdem nicht, weil ein
+Gebuehren-Tor `excess +0,01 % - gebuehr 0,20 % = -0,19 %` rechnete. Auf
+„ja setzen" folgte deshalb zurueck auf Papier - nicht aus Sturheit, sondern
+weil das Einhalten des eigenen Kriteriums wichtiger war als das Erfuellen des
+Worts.
+
+Merksatz: **bei einer Kette aus drei Sperren ist die Antwort drei Zeilen,
+keine eine.** Und wer eine Sperre setzt, gegen deren Grundsatz er selbst
+geschrieben hat, misst die Bedingung nach, die er selbst notiert hat
+(„wiedereinschalten nur, wenn der Excess ueber der Gebuehr liegt") und
+nennt die Zahl. Faellt sie durch, ist das Ergebnis `zurueck auf Papier` -
+und die Historie des Vorgaenger-Vermerks bleibt daneben stehen, nicht
+ersetzt.
+
+### "X freigeben" heisst erst lesen, ob X schon freigegeben ist
+
+Ein Freigabeauftrag ist kein Freigabeschalter. Steht das Feld bereits auf `true`,
+ist die Arbeit gegenstandslos - und die Antwort ist dann nicht "gesetzt",
+sondern: **steht schon, und das, was tatsaechlich blockiert, ist Y.**
+
+Diese Diagnose ist selbst eine Messung, und sie hat denselben Fehlermodus wie
+jede andere Sperrpruefung: wer ein Tor aufruft, ohne den Zustand zu setzen, den
+der Aufrufer setzt (Flag aus der Wachen-Datei, geholte Marktliste, Freigabestufe),
+meldet **per Konstruktion** eine Sperre. Sie sieht vollstaendig plausibel aus,
+weil die Begruendung echt ist und der Marktzustand echt ist - nur der
+aufrufende Zustand fehlt. Deshalb drei Aufrufe mit derselben Eingabe: ohne
+Freigabe, mit Freigabe, mit Ausstiegs-Ausnahme. Nur wenn der mittlere durchlaesst,
+ist die Sperre echt. Gegenprobe dazu ist der Gegenentwurf: laesst die Freigabe
+nichts aendern, ist die Freigabe nicht die Sperre.
+
+### Ein gefilterter Kandidat ist meist kein Tor, sondern das Buch
+
+`N Treffer; N gefiltert` bei ansonsten offener Kette heisst in der Regel
+**nicht**, dass die Tore zu sind. Zwei Filter, die dort greifen und beide aus
+dem Buch kommen, nicht aus der Konfiguration:
+- `(inst, seite)` ist bereits offen -> der Kandidat ist ein Duplikat.
+- die **Basis** ist bereits belegt (`max_je_basiswert`).
+
+Beide zaehlen Buchbestand. Steht der Bestand im falschen Modus, filtern sie
+Signale, die es gibt. Der Weg zur Ursache: die Trefferzahl der Zeile gegen die
+Positionen im Buch halten, Basis fuer Basis, und dann **das Buch gegen die
+Boerse** - beide Abfragen gehoeren zusammen, weil der haeufigste Befund
+beide zugleich ist (siehe naechster Abschnitt).
+
+Zwei Namen desselben Basiswerts sind dabei EIN Filter, nicht zwei: ein
+gueltiger Kandidat auf `X-USDC` wird vom ge/offenen `X-USDT` derselben Basis
+gefiltert, wenn `max_je_basiswert` greift. Wer beide Treffer einzeln
+untersucht und keine Basis-Grenze nennt, findet fuer jeden eine
+Erklaerung und sieht die gemeinsame Ursache nicht.
+
+### Die Torkette gehoert in REIHENFOLGE geprueft, nicht stichprobenartig
+
+Wenn mehrere Tore moeglich sind, ist die Reihenfolge der Aufruf: erst das
+Tor, das die Spur selbst zuerst nimmt, bis zum ersten, das greift. Ein
+Skript, das ein mittleres Tor prueft, kann gruen sein und die Spur trotzdem
+nicht handeln - der echte Blocker stand eine Stufe weiter vorn oder hinten.
+
+Der beste Beleg ist der **Vorschau-Lauf im Betriebsmodus**
+(`MAXHIRN_ROUTINE=1 ... handeln.py --vorschau`): er liefert Filterzahlen UND
+die Sperrzeile in der Reihenfolge der Spur selbst, mit dem Wortlaut des
+Grundes. Wenn diese Zeile „nichts" nennt und trotzdem Treffer filtert, ist der
+Filter im Buch - siehe oben.
+
+## 1a. Papier-Positionen in einem Live-Buch blockieren jede Freigabe
+
+**Der Moduswechsel richtet nur das Zustandsfeld, nicht die Positionen.** Wird
+eine Spur scharf geschaltet, setzt der Zyklus `z["modus"]`, laesst aber jede
+Position stehen, die vorher aus einem `papier`-Einstieg entstanden ist. Diese
+Positionen tragen dann **kein `modus`-Feld** und **keinen Einsatz**.
+
+Die Folge ist dreifach und uebersieht man jede einzelne:
+- sie werden von der Platzrechnung **nicht** als belegt gezaehlt (sie zaehlt nur
+  `modus == "live"`), der Deckel aber schon - das Buch meldet dadurch eine
+  Belegung, die es rechnerisch nicht hat;
+- die Duplikat- und Basisfilter **sperren** neue Signale auf derselben Basis,
+  ohne dass eine Sperrenzeile entsteht;
+- sie sind ueber die Boerse **nicht vorhanden**, was als Platzmangel liest.
+
+**Deshalb hat eine Freigabe hier nichts zu tun.** Das Aufheben jeder Sperre
+aendert nichts, solange Buchpositionen ohne Börsen-Gegenstueck stehen. Der
+Nachweis ist billig und immer derselbe: **Buch gegen offene Positionen je
+Symbol, jede Position einzeln.** Alles im Buch, was an der Boerse 0 offene
+Positionen meldet, ist ein Geist und blockiert.
+
+Beim Ausbuchen gehoert die Buchung **neutral**: Wert = Einsatz, Grund
+`buchbereinigung`. Sonst erzeugt die Bereinigung selbst einen Verlust, der in
+die Kapitalkurve laeuft. Und die Reihenfolge ist nicht frei: erst alle
+neutraalen Papier-Geiste ausbuchen, **dann** die Positionen mit `modus: live`
+gegen die Boerse pruefen (die koennen echt sein und brauchen eine eigene
+Entscheidung), **erst dann** ist die Platzfrage messbar und eine neue Freigabe
+ueberhaupt eine Frage.
+
+Merksatz: **ein Tor, das an einem Buch haengt, dessen Eintraege es nicht gibt,
+ist kein Tor - es ist eine Buchhaltungsluecke, die sich als Sperre ausgibt.**
+
+### Ein Signal ohne Ausfuehrungsweg ist ein eigener Befund
+
+Ein Kandidat kann an einem PF_-Markt handelbar sein und trotzdem nicht
+orderbar sein, weil eine Ableitung (Basis-Umbenennung, `PF_<BASIS>USD`) am
+Zielmarkt unter einem ANDEREN Namen laeuft. Gemessen loeste `BTC` auf
+`PF_BTCUSD` auf - es gibt aber nur `PF_XBTUSD`; die Meldung „gibt es am
+Zielmarkt nicht" sah damit wie ein toter Markt aus, obwohl die Basis sehr
+wohl handelbar war.
+
+Zwei getrennte Fragen also: **handelbar** (steht ein Markt dafuer?) und
+**orderbar** (durchlaesst der Aufruf den Namen durch?). Der Unterschied
+entscheidet, wo man sucht - ein nicht aufloesbarer Name ist ein
+Tabellenproblem, keine Marktlage. Beide Namen einer Basis (alle Quotes)
+gleich behandeln, sonst zeigt die eine Quote „handelbar" und die andere
+„unbekannt".
+
+Merksatz: **ein toter Markt im Haus sieht genauso aus wie ein echter
+Fehlstand.** Bevor eine Basis als nicht handelbar gemeldet wird, die
+Marktliste selbst fragen und nach einem Namen mit abweichendem Praefix
+suchen.
+
+Merksatz zur Luecke: **eine Spur ohne Buchbereinigung kann ihre Altlasten nicht
+ausbuchen.** Der Aufraeumer `bueche_papier_altlasten_aus()` ist nicht ueberall
+der Standard - vor einer Freigabe fragen, ob die Spur ihn ueberhaupt hat. Fehlt
+er, ist das die Ursache und nicht der Schalter.
+
+### Ein Skript, das alle Tore selbst traegt, darf an keinem Import scheitern
+
+Jeder Weg ausserhalb des gewohnten Kettenverlaufs (Executor, Wache, Cron)
+importiert die Tor-Module selbst. Faellt einer dieser Importe aus, ist die
+**gesamte Kette** weg - und der Fehler sieht am Anfang wie ein Torschutz
+aus („im Zweifel keine Order"), ist aber keiner. Gemessen: `sys.path.insert`
+fehlte vor dem ersten von vier Importen einer flachen Datei, der Lauf brach
+jede Minute ab, und keine Spur kam je zu einem Einstieg - ohne eine Spur-
+Logzeile.
+
 ## 2. Wo ein Tor gehoert: VOR der Order, nicht in die Signallogik
 
 Jedes Tor gehoert an die Stelle, an der die Order wirklich entsteht:
@@ -92,6 +234,19 @@ Instrument wird dauerhaft gesperrt, sobald der Abruf einmal gehetzt hat.
 Merksatz: **Ein Ausfall ist kein Befund, sondern eine Luecke.** Beim
 Auffinden trennen: leere Liste -> Abbruch mit Grund; vollstaendig gelesene
 Liste ohne den gesuchten Eintrag -> "gibt es nicht".
+
+Zwei Zusatzregeln, die sich daraus ergeben und teurer sind als der Grundsatz:
+
+- **Ein Fehler aus einem laufenden Hintergrundvorgang beweist den Zustand
+  nicht.** Erst den Prozess beenden, dann die Datei lesen; ein Fehler, der in
+  einem ganzt sekundenfenster entstandenen Lauf auftrat, kann eine halb
+  geschriebene Datei beschreiben. Zurueckgenommen werden muss die Behauptung,
+  nicht der Vorgang.
+- **Ein Wert, der bei ALLEN Kandidaten fehlt, ist fast immer der Schluessel und
+  nie der Markt.** Ein Werkzeug, das ein Feld liest, das es nicht gibt, liefert
+  fuer alles `None` - und `None` sieht aus wie eine Eigenschaft der Daten.
+  Belegt wird das dadurch, dass man das Feld gegen den Schluessel des
+  Aufrufers prueft, nicht durch eine Vermutung ueber die Daten.
 
 ## 7. Der Rueckgabewert eines Tors ist Teil des Vertrags
 

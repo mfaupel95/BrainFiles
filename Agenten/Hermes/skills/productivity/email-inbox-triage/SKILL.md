@@ -63,6 +63,15 @@ harter Massstab `--grenze 2.0` setzen.
 5. **`--alle` zum Gegenlesen**, nie zum Melden: es zeigt, was die Treppe
    verworfen hat und mit welcher Begruendung. Erst wenn dort ein
    Fehlalarm steht, ist der Filter falsch und nicht die Post.
+6. **Leere Ausgabe beweist nicht, dass die Quelle lebt** (gemessen 05.10.2026).
+   Der letzte Lauf meldete nichts; die Frage war 'keine Post' oder 'Zugang tot'.
+   Gegenprobe mit einer eigenen IMAP-Sonde: `LOGIN` OK melden,
+   `post gesamt` aus `SEARCH ALL`, und die KOPFzeilen der fuenf juengsten
+   Nachrichten - **aber erst nach `SELECT`**. `SEARCH` im Zustand `AUTH` wirft
+   `imaplib.IMAP4.error: command SEARCH illegal in state AUTH, only allowed in
+   states SELECTED` (Reihenfolge in der Sonde: LOGIN -> LIST -> SELECT -> SEARCH).
+   Steht im Log `zuletzt_gelesen_bis` auf dem Datum der juengsten Mail, war
+   wirklich nichts neu.
 
 ## Gehoert NICHT gemeldet
 

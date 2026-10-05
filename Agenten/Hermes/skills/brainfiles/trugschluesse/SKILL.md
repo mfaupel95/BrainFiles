@@ -22,13 +22,24 @@ die Regel, die vor dem Satz greift: „X ist so" oder „X ist nicht da".
 
 Keine spekulative Vollstaendigkeit: alle Faelle unten sind belegt, die
 ausfuehrlichen Belege stehen in `references/faelle.md` (laden mit
-`skill_view(name='trugschluesse', file_path='references/faelle.md')`).
+`skill_view(name='trugschluesse', file_path='references/faelle.md')`) und
+`references/faelle-0510.md` (laden mit
+`skill_view(name='trugschluesse', file_path='references/faelle-0510.md')`).
+Die zweite Datei ist eine ganze Sitzung, in der fast jede Zustandsaussage
+falsch war — teils im Haus, zweimal in meinen eigenen Zahlen. Ihr Satz:
+**ein Teilschritt, als Erfolg gemeldet, ist die teuerste Form einer
+Trugschluss-Aussage** („der Absturz war weg, das Handeln nicht").
 
 ## When to Use
 
 - „X laeuft / ist live / hat N Positionen", „X ist nicht installiert", „die Datei gibt es nicht"
 - eine Zahl aus einer Datei, einem Zustandsstand oder einem Log soll als Bestand gelten
 - ein Befund klingt rund („alle gruen", „0 Treffer", „keine offenen Sitzungen") — runde Zahlen sind das Warnsignal
+- **ein Teilschritt ist fertig** („der Executor laeuft durch", „die Sperre ist weg", „die Suite ist gruen")
+- **eine Kette aus Sperren**: Haken gesetzt, aber handelt die Spur? Jede Sperre einzeln messen
+- **eine spaet eintreffende Hintergrundmeldung** (ein Lauf, der vor der Reparatur endete)
+- **eine Zahl, die absurd gross oder ungerade rund ist** — fast immer die Basis, nicht der Gegenstand
+- **ein Test, der seine eigene Attrappe schreibt** — prueft er das echte Format?
 - vor jedem Commit, jeder Freigabe und jeder Meldung an Max
 - zwei Zeugen widersprechen sich (Buch vs. Boerse, Datei vs. Prozess, Doku vs. Messung)
 
@@ -68,6 +79,11 @@ Gegenstand** (Boerse vor Buch, Prozess/Task vor Datei, Messung vor Doku).
 | Groesse/Alter aus einer Notiz | Dateisystem | `Get-ChildItem -Recurse | Measure-Object Length -Sum` (Doku veraltet still) |
 | „Speicher ist knapp" am RAM | Commit | `Win32_OperatingSystem` → `FreeVirtualMemory` (RAM sah gesund aus, Commit war bei 1,94 GB) |
 | „Der Agent stuerzt ab" (Zaehler im Treiberlog) | Absturzzeile mit Grund | Logzeilen mit Grund lesen; eigene `taskkill`-Abschuesse zaehlen mit (4294967295) |
+| „Der erste Teil ist behoben" | die **letzte** Sperre der Kette | Jede Sperre einzeln: `freigabe.erfuellt`, dann das Rechentor (`freigabe_tor.pruefe`), dann das Freigabefenster (`freigabefenster.lade(spur).offen()`) |
+| „Ein Instrument hat keinen Markt" | die Börse selbst | `GET /api/v5/public/instruments?instType=SPOT` — nie aus dem Namen folgern; `ADA-USDC` existiert (1143 Spotpaare), `GENIUS`/`BTW`/`QNT` nicht |
+| „N Reihen fehlen" | die Quelle der Forderung | Gegen die `instrumente` aller `wachen.json` zaehlen, nicht gegen `os.listdir()` — Datei, Reihe und Symbol sind drei Zaehlweisen |
+| Eine alte Hintergrundmeldung | ihr Zeitstempel | `ls -l <ausgabedatei>` gegen den Zeitstempel der reparierten Datei; ein Lauf, der **vor** dem Fix endete, kann ihn nicht gesehen haben |
+| „Ein Test beweist das Format" | die echte Datei | Selbst schreiben: eine Sperrdatei traegt `PID Zeitstempel`, eine Attrappe mit nur `1234` kann den Fehler nie sehen (`herzschlag` las 3 Tage lang `ValueError`) |
 
 ## Procedure — die fuenf haeufigsten Klassen
 
@@ -110,8 +126,18 @@ cd /c/Users/faupe/Documents/BrainFiles && git --no-pager diff --numstat
 ```
 
 Eine gewollte Zeile = **1 insertion / 1 deletion**. Zeigt eine Datei die ganze
-Datei, `git checkout HEAD -- <datei>` und neu patchen. Nach jeder Aenderung am
-Ziel **den Wert** nachlesen (`read_file`), nicht die Absicht.
+Datei, ist das Zeilenende falsch (nicht der Inhalt): `LF` und `CRLF` getrennt
+zaehlen und in die Form der Vorversion zurueckdrehen. **Nie `git checkout
+HEAD -- <datei>`**, wenn eine andere Sitzung darin arbeitet — das verwirft ihre
+Arbeit (am 05.10.2026 so geschehen, aus einer Sicherung gerettet). Nach jeder
+Aenderung am Ziel **den Wert** nachlesen (`read_file`), nicht die Absicht.
+
+Ein Test gegen eine **feste Zahl** (etwa „sieben Zellen") meldet jede
+Spaltenerweiterung als Fehler und jede Kuerzung als Erfolg — er prueft nicht,
+ob die Anzeige stimmt, sondern nur, dass sie unveraendert ist. Gegen die
+Eigenschaft pruefen: `len(spur_zeile(...)) == len(spalten_der_spurtabelle())`.
+Ausgerechnet dort ist der Fehler am teuersten: `ttk.Treeview` schneidet ein zu
+kurzes Tuple **ohne** Fehlermeldung.
 
 ### 4. Umgebung, die die Sitzung faelscht
 Fremde Variablen und fremde Interpreter erzeugen Aussagen, die in dieser
@@ -167,6 +193,11 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
 - **Nach Tests kurzzeitige Abweichungen sind normal.** Spurentests schreiben in
   die echten Spurenordner; `spiegelstand.py` zieht erst im naechsten Zyklus nach.
   Bleibt eine Abweichung ueber zwei Zyklen, ist es ein echter Befund.
+- **Kein Test darf eine echte Order ausloesen.** Am 05.10.2026 rief der erste
+  Entwurf `markt_kauf()` ungedeckt auf → `OKX 1: All operations failed`. Nichts
+  passierte, es haette etwas passieren koennen. Jede Börsenfunktion im Test
+  abfangen **und** zusaetzlich pruefen, dass im Ablehnungsfall **kein** Aufruf
+  an die Börse ging.
 - **Freie Auslagerungsdatei, nicht freier RAM, ist die Grenze fuer Massenlaeufe.**
   84 verwaiste Agentenprozesse drueckten `FreeVirtualMemory` auf 1,94 GB; danach
   scheiterte jeder Modellstart und `git` starb mit WinError 1455. Solche Laeufe
@@ -203,6 +234,38 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
   Paarung (1181 `AUSSTIEG`-Zeilen = 579 Runden). Zwischenstaende aus eigenen
   Zaehlungen sind nie ein Ergebnis — und sind sie schon genannt, werden sie
   aktiv zurueckgenommen, nicht still ersetzt.
+- **Ein Teilschritt ist kein Erfolg.** Am 05.10.2026 meldete ich „der Executor
+  laeuft durch bis zur Sachpruefung" und nannte es „Fix wirkt". Der Executor
+  erreichte die Börse und wurde dort von zwei Sperren gestoppt. Ein Teilschritt,
+  als Erfolg gemeldet, ist die teuerste Form: sie sieht aus wie ein Beleg und
+  ist es nicht.
+- **Eine Kette aus Toren pruefen, nicht das erste.** Drei Sperren
+  (`freigabe.erfuellt`, Gebuehren-Tor, Freigabefenster) — ein gesetzter Haken
+  loest genau eines. Bei `moondev_topmovers`: Excess +0,01 % minus 0,20 %
+  Gebuehr je Runde = −0,19 %, obwohl der Haken auf `true` stand. Der Haken war
+  nie die Sperre.
+- **Eine erfundene Tatsache ist schlimmer als ein Fehler.** „ADA-USDC hat an der
+  OKX keinen Spotmarkt" stand 36 Stunden im Merkfilei und sperrte eine Spur
+  mit einem Instrument, das die Börse fuehrt (1143 Spotpaare). Ursache: die
+  Quote wurde ans Paar gehaengt (`ADA-USDC-USDC`). Wer ueber die Welt
+  behauptet, braucht einen unabhaengigen Zeugen, bevor jemand gesperrt wird.
+- **Ein Test beweist seine Attrappe.** Eine Sperrdatei traegt `PID Zeitstempel`;
+  ein Test, der selbst `"1234"` schreibt, kann `int()` auf der ganzen Zeile nie
+  scheitern sehen — so blieb der Fehler drei Tage unentdeckt.
+- **Datei, Reihe und Symbol sind drei Zaehlweisen.** „406 Dateien" gegen „54
+  Reihen" gegen die `instrumente` aller `wachen.json`: dieselbe Lueke war 348,
+  0 und 0. Geprueft wurde am Ende die Forderungsquelle, nicht die Dateiliste.
+- **Bei einer spaet eintreffenden Hintergrundmeldung den Zeitstempel halten.**
+  Ein `EXIT=1` aus einem Lauf, der vor der Reparatur endete, ist kein Befund
+  ueber den jetzigen Stand.
+- **Zum Trennen von Commits `GIT_INDEX_FILE`, nie `checkout --`.** Ich habe
+  einmal die Fremdarbeit einer Parallelsitzung mit `git checkout --
+  <datei>` verworfen (Hausregel verbietet es) und aus einer Sicherung
+  gerettet. Der Index gehoert allen Sitzungen; die Arbeitskopie gehoert der
+  gerade schreibenden.
+- **Nach jedem Arbeitsschritt committen (Faustregel).** Sonst sammelt
+  `fremdarbeit-einziehen.ps1` die Arbeit ein und sie erscheint unter der
+  Meldung einer anderen Sitzung (belegt: `cb165f55`).
 - **Eine Hausregel gehoert in JEDEN Weg, der dieselbe Sache rechnet.**
   `backtest_prognose.lauf` kannte die Docht-Regel T-202/T-177 nicht, die
   `replay.lauf_a` seit dem 01.10. rief: ab Runde 2 nahmen die Wege verschiedene
@@ -226,3 +289,19 @@ ein Befund, kein Werkzeugfehler — gemessen am 21.09.2026: `scanner` (Q: lief 2
 min hinterher, die Spiegelung wurde auf einem frueheren Zykluspfad uebersprungen)
 gegen `27 von 28 gleich`. Kommt eine Zahl ohne diese zwei Zeugen in die Antwort,
 gehoert sie nicht in die Antwort.
+
+**Bei „der Fix wirkt"** reicht der Befund nicht, es braucht die **letzte** Stufe
+der Kette:
+
+```bash
+cd /c/Users/faupe/Documents/BrainFiles/Agenten/Handel && ./scanner/.venv/Scripts/python.exe -c "
+import json, freigabefenster as ff, freigabe_tor
+for s in ('moondev_topmovers','moondev_signalwelle'):
+    w=json.load(open(s+'/wachen.json',encoding='utf-8'))
+    ok,gr=freigabe_tor.pruefe(s,w)
+    print('%-22s haken=%s tor=%s fenster=%s' % (s,(w.get('freigabe') or {}).get('erfuellt'), ok or gr, ff.lade(s).offen()))
+"
+```
+
+Erwartet: je Spur alle drei Stufen. Ein `tor=False` mit Begruendung heisst: die
+Sperre ist **nicht** der Haken, sondern die Rechnung.

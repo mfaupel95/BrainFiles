@@ -118,6 +118,29 @@ Zwei Nachwirkungen, die man kennen muss:
   Kraken-EUR frei 0,71 EUR, `mindest_guthaben_eur` 60 bzw. 1,00 EUR). Das ist
   die ehrliche Lage - nicht die Papierposition war der letzte Grund.
 
+## 4a. Ein Pruefskript, das den Zustand nicht setzt, erfindet Sperren
+
+Bevor du auf einen Auftrag reagierst, der eine Freigabe oder ein Tor
+nennt: **hat der Aufruf den Zustand gesetzt, den der BETRIEB setzt?** Ein
+Pruefskript, das ein Wachen-Feld liest, ohne es vorher zu setzen, hat seinen
+eigenen Vorgabewert erfunden und meldet eine Sperre, die es nicht gibt -
+und verschiebt damit die Arbeit auf die falsche Baustelle.
+
+Merksatz: **eine Sperre, die nur dein Aufruf erzeugt, ist kein Befund.**
+Gegenprobe: denselben Namen einmal ohne und einmal mit dem Betriebszustand
+aufrufen. Identisches Ergebnis heisst: es gab nie eine Sperre. Danach die
+Torkette in REIHENFOLGE prüfen, jede Tuer einzeln, mit dem Grund im
+Klartext - der echte Blocker liegt selten bei der Tuer, die man zuerst
+vermutet. (Beispiel: gemeldet „durch `live_pf_ableitung` gesperrt", das Feld
+stand seit Tagen auf `true`; der Blocker lag eine Stufe tiefer - das Buch
+war voll mit Positionen, die es an der Boerse nicht gab.)
+
+Der beste Befund dieser Art kommt aus dem **Vorschau-Lauf im
+Routine-Modus** (`MAXHIRN_ROUTINE=1 ... handeln.py --vorschau`), nicht aus
+einem eigenen Skript: er zeigt Filter- und Sperrzeilen in der Reihenfolge,
+in der die Spur sie selbst nimmt, samt Zeile „Live waere gesperrt durch:
+…". Ein Skript ahmt diese Reihenfolge nach und kann sie verschieben.
+
 ## 5. Buchbereinigung ist keine Handelsrunde
 
 Zeilen mit dem Grund `buchbereinigung` gehoeren in dieselbe Klasse wie
@@ -128,6 +151,48 @@ bleibt ungefiltert** — eine Buchung ist gebucht; Drawdown, Halbierung und Kill
 weiter auf allen Zeilen. Wer eine neue Ausstiegsart einfuehrt, traegt ihren Grund dort
 als Merkmal ein und laesst die Spuren-Suite laufen — eine vergessene Zeile zaehlt sonst
 stillschweigend als Runde und verschiebt jede Kennzahl.
+
+### Drei Fehler, die eine Bereinigung stillschweigend falsch macht
+
+1. **Das richtige Feld lesen.** Die Felder einer Position heissen je nach
+   Spur `einstieg` (nicht `preis`) und `nominal` (nicht `einsatz_usd`). Ein
+   falscher Feldname liefert **keinen Fehler, sondern `0.00`** - und bucht
+   damit neun Positionen zu 50 statt 450 USD. Deshalb gehoeren Kurs und
+   Einsatz je Position in die **Trockenlauf-Ausgabe**, einzeln und mit dem
+   Feldnamen daneben: nur so sieht man, dass alle 50 statt aller 0.00 sind.
+2. **Ohne Kurs nicht buchen.** Eine Position ohne Einstiegskurs laesst sich
+   nicht ehrlich ausgleichen; sie bleibt stehen und wird als Befund
+   gemeldet. Eine Ausgleichszeile mit Kurs `0.00` waere geraten, und
+   geraten wird hier nichts.
+3. **Gegen die BOERSE klassifizieren, nicht gegen das Buch.** Ein Filter,
+   der `(inst, seite)` gegen `z["positionen"]` prueft, findet einen Geist
+   genauso wie eine echte Position - beide haben denselben Schluessel. Nur
+   die Boersenantwort trennt sie. (Deshalb blockierte eine von neun
+   Positionen den Einstieg, obwohl keine davon an der Boerse stand.)
+
+Und die **Gegenprobe, die nie bestehen kann**: wer eine eigene Summe
+vorher/nachher vergleicht (etwa „Runden-Bestand"), zieht per Definition
+genau das ab, was gerade ausgetragen wurde, und meldet bei JEDER korrekten
+Bereinigung eine Abweichung. Richtig sind die **Eigenschaften**:
+Rundenzahl der Hausrechnung vor/nachher (muss gleich sein), Ergebnis der
+Hausrechnung (muss unveraendert sein), und je Zeile `wert_usd ==
+einsatz_usd`. Eine Pruefung, die nie anschlaegt, wird abgeschaltet und
+damit blind.
+
+## 5a. Der Schutznachweis einer Position ist eine eigene Pruefdimension
+
+„Die Position steht an der Boerse" und „die Position ist geschuetzt" sind
+zwei Fragen. Die erste beantwortet eine offene-Positions-Abfrage, die zweite
+einen lesbaren Weg zu den **offenen Schutzauftraegen** - und genau der
+fehlt manchen Borsen-Wegen. Ein Endpunkt, der mit `requiredArgumentMissing`
+antwortet, ist ein **fehlgeschlagener Abruf**, nicht „keine Auftraege" -
+beide zu verwechseln heisst, einen Long ohne Stop fuer geschuetzt zu halten.
+
+Also: meldet die Schutzabfrage einen Fehler, ist das eine offene Luecke mit
+Task, kein beruhigender Befund. Ein Long ohne nachweisbaren Stop ist die
+ganze Position, und genau daran sind im Haus mehrere Geister entstanden.
+Ist der Leser nicht vorhanden, gehoert der Zustand als **„nicht lesbar"**
+gemeldet, nicht als „kein Stop".
 
 ## 6. Waehrung einer Spur umstellen
 
