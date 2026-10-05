@@ -310,6 +310,25 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
    mitziehen, je Stelle ein datierter Vermerk.
 
 ## Pitfalls
+- **Eine AUFTRAGSBANDZAHL ist selten die Filterachse.** „Alle Spuren mit 1-3
+  Takeprofit", „mit Quote ueber 50 %", „ab 2R" bezeichnen Merkmale
+  GESCHLOSSENER Runden; ein Mechanismus, der eine OFFENE Position
+  veraendert, haengt am Buch (Einstieg, Stop, Kurs). Bandzahl als Relevanz
+  beantworten, Mechanismus an den Zustand haengen; Gegenprobe: dieselbe
+  Position mit verschiedenem `ziel_r` rechnen — gleicher Stop heisst: das
+  Band war nie die Achse. Herleitung und vier Schranken (Trigger in R,
+  nur schuetzende Richtung, nie ueber die Liquidationsmarke, Mindestabstand
+  zum Kurs) in `references/trailing-stop-gehebelt.md`.
+- **Nach einem Signaturumbruch JEDE Aufrufstelle pruefen, nicht die
+  umgebaute.** Ein `return (wert, grund)` statt `return wert` macht jeden
+  Aufrufer zum `TypeError`, und wenn der Aufrufer es abfaengt, tarnt das den
+  Fehler als Testfehler: sieben echte Fehler sahen wie Testfehler aus. Nach
+  dem Umbruch `search_files` nach dem Funktionsnamen und jede Stelle gegenlesen.
+- **Eine Funktion gibt IMMER dieselbe Form zurueck — auch im Erfolgsfall.**
+  Ein `return (kandidat, grund)` mit `kandidat=None` im Missfall und ein nacktes
+  `return {...}` im Erfolgsfall zwingt jeden Aufrufer zu `isinstance(...)`,
+  und diese Verteidigung verbirgt den naechsten echten Fehler in derselben
+  Zeile.
 - **Ein Datenstand, auf dem eine Gegenprobe laeuft, ist selbst eine
   Voraussetzung — und verfällt still.** Ein Backtest-Gegenvergleich bricht mit
   „nichts geprueft" ab, wenn die Historie zu duenn ist (gemessen: 3 von 30
@@ -521,5 +540,7 @@ eigene Runden gegen dieselbe Quelle (T-347) und Guthaben (T-291). Beide fehlen -
 die Spur bleibt Papier, und das ist ein Befund, kein Widerstand.
 
 Regelkatalog, Werkzeugaufruf und Paritaetsprobe: `references/filter-studie.md`.
-Kostenschaetzung gegen echte Tiefe messen: `references/kosten-slippage.md`.
+Kostenschaetung gegen echte Tiefe messen: `references/kosten-slippage.md`.
 Wachen-Datei aendern ohne Fremdtext und Ganzdatei-Diff: `references/wachen-applier.md`.
+Trailing-Stop an gehebelten Positionen: `references/trailing-stop-gehebelt.md` -
+dort auch, WARUM ein R-Band aus dem Auftrag fast nie die Filterachse ist.

@@ -194,6 +194,51 @@ ganze Position, und genau daran sind im Haus mehrere Geister entstanden.
 Ist der Leser nicht vorhanden, gehoert der Zustand als **„nicht lesbar"**
 gemeldet, nicht als „kein Stop".
 
+## 5b. Ein Orderweg pro Produktart, und was daran verschieden ist
+
+Eine Spur kann heute Spot und morgen gehebelt handeln — dann braucht sie einen
+ZWEITEN Weg, nicht einen umgebauten. Der beste Bau ist ein eigenes Modul mit
+**denselben Funktionsnamen**, das in die Boersentabelle des Spurcodes kommt
+(`BOERSEN = {"okx": okx_spot, "okx_perp": okx_perp}`). Der Rest der Spur
+aendert sich nicht; was sich aendert, steht an genau zwei bis drei Stellen und
+muss dort benannt sein:
+
+1. **Der Betrag bedeutet etwas anderes.** `menge_fuer(inst, betrag, kurs)`
+   rechnet bei Spot die MARGIN aus, bei Futures den NOMINALWERT. Derselbe
+   Aufruf, zwei Bedeutungen. Gehebelt gehoert deshalb eine Umrechnung in den
+   Aufrufer (Margin x Hebel), nicht in die Wache — eine Wache, die den Hebel
+   traegt, wird sonst an einer Stelle als Nominal gelesen.
+2. **Der Hebel geht als Argument an den Kauf**, gesetzt VOR der Order. Nicht
+   im Modul als versteckter Wert: sonst laeuft ein Aufruf ungehebelt auf einem
+   gehebelten Weg, ohne dass irgendetwas es meldet.
+3. **Der Pflicht-Stop braucht eine ZUSATZPRUEFUNG, die es bei Spot nicht
+   gibt**: er muss zwischen Liquidationsmarke und Kurs liegen, sonst kommt er
+   nie. Die Pruefung gehoert VOR den Einstieg (ein verweignerter Einstieg
+   kostet nichts, eine Position ohne wirksamen Stop kostet die Margin).
+
+Weitere Stolpersteine, gemessen beim Bau:
+
+- **Die Kontowaehrung steht nicht auf der oberen Ebene der Balance-Antwort.**
+  `/api/v5/account/balance?ccy=USDC` liefert oben `availEq=''`, `availBal=None`
+  und erst in `details[0]` die Zahlen. Wer die oberen Felder liest, bekommt 0.00
+  — das sieht wie ein leeres Konto aus und sperrt die Spur an einem
+  Guthaben-Tor, das offen ist. Der richtige Wert ist `details[0].availEq` (freie
+  Margin), nicht `eq` (das auch Gebundenes enthaelt).
+- **Ein gemeinsamer Bausen-Stop lohnt sich, eine neue Signatur nicht.** Der Weg
+  holt HTTP, Takt und Schluessel aus dem vorhandenen gehebelten Modul per Pfad.
+  Eine zweite Signatur im Haus ist eine zweite Fehlerquelle mit demselben
+  Aufgabenbereich.
+- **Ein Vertragstest, der die Funktionsnamen des neuen Wegs gegen die des
+  Bestandswegs haelt, findet echte Luecken.** Beim Bauen fehlte eine Funktion,
+  die der Aufrufer spaeter bindet — beim Lesen des Codes fiel sie nicht auf,
+  der erste Lauf an echten Kursen haette es gezeigt.
+- **Der Liquidationsabstand folgt aus 1/hebel, nicht aus dem Wunsch.** Bei 6x
+  rund 16 %, bei 12x rund 8 % (Wartungsmarge 0,5 % mitgerechnet) — damit ist
+  die Grenze benennbar, ab der ein 5-%-Stop unerreichbar wird.
+- **`posMode` liest man, statt `posSide` zu setzen.** Steht das Konto auf
+  `net_mode`, lehnt OKX eine `posSide`-Angabe ab; auf `long_short_mode` wird sie
+  gebraucht. Die Antwort entscheidet das, nicht die Gewohnheit.
+
 ## 6. Waehrung einer Spur umstellen
 
 Vor dem Umstellen auf ein anderes Quote- oder Margin-Produkt pruefen, was die Boerse

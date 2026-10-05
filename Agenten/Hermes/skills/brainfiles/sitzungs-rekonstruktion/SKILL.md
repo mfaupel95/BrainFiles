@@ -178,6 +178,49 @@ Damit ist die Ursache belegt statt geraten, und die Restfehler der Suite sind
 gegen den belegten Stand abzugrenzen (vorhanden und vorbestehend sind
 verschiedene Antworten).
 
+## Lektionen einer Parallel-Sitzung uebernehmen (nicht nur ihren Stand)
+
+Ein fertiger Bericht einer anderen Sitzung ist eine Behauptung (siehe Regeln). Aber
+er ist auch eine **Quelle**: eine Sitzung, die 1000+ Zeilen in Skills schreibt,
+beweist das mit `git log` — und ihre Lehren stehen dann **nur** dort. Skills laden
+nur bei greifendem Trigger, eine frische Sitzung findet sie sonst nicht. Wer fremde
+Arbeit uebernimmt, muss sie deshalb spiegeln, sonst hat er sie zur Haelfte uebernommen.
+
+Reihenfolge, weil jede spaetere von der vorherigen abhaengt:
+
+1. **Bestand in einem Lauf** — `git log --oneline -12` (Rohfassung der Lehren, oft
+   schon mit Messwert und Gegenprobe), `git status --porcelain` (Pfade **ohne**
+   Meldung), `git diff --stat` (Gewicht je Pfad). Ein `??`-Eintrag kann ein ganzer
+   Skill-Baum sein:
+   `git status --porcelain | grep '^??' | awk '{print $2}' | while read f; do if [ -d "$f" ]; then find "$f" -type f | head -20; else echo "$f"; fi; done`
+   Je Pfad ohne Meldung: erst die erste Bildschirmzeile (der Docstring sagt, worum es
+   geht), dann `git diff` — das reicht zur Einordnung.
+2. **Spiegelstand messen, nicht annehmen.** Je Lehrbegriff `grep -rl <begriff>
+   MaxHirn/Wiki/ | wc -l`. **Null Treffer = steht nirgends** — das ist der Befund, den
+   man nennt. Ein Treffer bedeutet *diese* Seite erweitern, nicht danebenlegen; ein
+   Treffer in einer Nachbarrubrik ist kein Treffer.
+3. **Zeilenenden aller Zieldateien messen, BEVOR die erste geschrieben wird.** In
+   einem Baum mischen sich LF- und CRLF-Seiten, und eine Seite kann ohne
+   Schluss-`\n` ausgeliefert worden sein:
+   `python -c "b=open(p,'rb').read(); print(b.count(b'\\r\\n'), b.count(b'\\n'), b.endswith(b'\\n'))"`
+   Wer erst beim Schreiben misst, hat die erste Datei schon kaputt.
+4. **Byte-sicher anhaengen.** `open(p,'wb')` wertet **zuerst** aus und kuerzt auf
+   0 Byte, bevor der Ausdruck scheitern kann — Inhalt zuerst fertigstellen, mit
+   `assert neu != alt`, `open()` in der letzten Zeile. Ein Rewrite mit `\n` in einer
+   CRLF-Datei zeigt im Diff die **ganze** Datei; `git diff --numstat` je Datei ist
+   die einzige Kontrolle.
+5. **Gegenprobe.** Der neue Absatz findet sich mit demselben `grep -rl`, mit dem
+   Schritt 2 gearbeitet hat, und `git diff --numstat` zeigt fuer jede angefasste
+   Wiki-Datei wenige Zeilen.
+
+**Fremde Arbeitsstaende werden gelesen und gespiegelt, nie umgebaut** — die Sitzung
+kann gerade darin schreiben. Ueber Aenderung oder Uebernahme entscheidet der
+Bericht; eine fremde offene Aufgabe gehoert mit ihrer T-Nummer **erwaehnt**, nicht
+ersetzt. Mit in den Spiegel gehoert auch eine **getestete Ruecknahme** („erst geloest,
+dann mit Protokoll zurueckgenommen, weil die Zahl X“) — das ist eine Regel; „man hat
+es gewechselt“ nicht. Nicht hinein: Zahlen ohne Datei/Lauf/Kommando, Zeitstempel aus
+Commit-Meldungen, Vorgaengernamen.
+
 ## Regeln (Standing)
 
 - **Zuerst suchen, dann fragen.** Eine Nachricht ohne Bezug ist in dieser Umgebung fast

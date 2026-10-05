@@ -302,8 +302,43 @@ sagten. Dieselbe Blindstelle hatte T-278 gestreift (ein Trailing-Stop ohne
   gegen die Kontraktzahl an der **Boerse** stellen (nicht gegen das Buch: ein
   Handgriff kann das Buch verkleinert haben, und was die Boerse haelt, ist
   ungeschuetzt, egal was das Buch behauptet). Die Restmenge ist die Luecke.
+  **Der Unterschied ist teuer, er ist nicht theoretisch.** Dieselben acht
+  Positionen einer Spur, zweimal gerechnet: gegen das Buch (`usd / einstieg`)
+  sieben ungeschuetzt und 39,23 EUR; gegen die Boerse (Bestand) eine
+  ungeschuetzte Position und 2,08 EUR. Der Faktor 19 kam daher, dass
+  `usd / einstieg` der **geplante** Einsatz ist, waehrend die Boerse den
+  Bestand nach Gebuehr und Ausfuehrung haelt. Ein Handgriff verschiebt das
+  Buch, ohne die Boerse zu beruehren — und jede Coverage-Zahl, die das Buch
+  als `soll` nimmt, misst Buchhaltung und nennt sie Deckung.
+- **`reduceOnly` ist eine Regel des ORDWEGS, nicht des Marktes.** Es zu
+  verlangen ist richtig, wenn der eigene Bestellweg das Feld setzt
+  (`okxf.schutz_stop_setzen()`); es ist falsch, wenn er es nicht setzt. Eine
+  Spur, deren `stop_setzen()` kein `reduceOnly` schreibt, bekommt von der
+  Boerse `reduceOnly: "false"` fuer **jeden** ihrer Stops — und ein Filter
+  darauf verwirft jeden echten Schutz und meldet die ganze Position als
+  ungeschuetzt. Gemessen: sieben von acht Positionen als ungeschuetzt gemeldet,
+  weil die Regel aus der Nachbarspur kopiert war. **Vor dem Uebernehmen eines
+  Schutz-Filters aus einer anderen Spur fragen, ob deren Bestellweg dasselbe
+  Feld setzt** — die Filterregel folgt dem Bestellweg, nicht dem Markt.
+- **Die Toleranz kommt aus `lotSz`, nicht aus einer festen Zahl.** OKX rechnet
+  die Kontraktzahl in Instrument-Schritten, und die unterscheiden sich
+  (`lotSz` 0,000001 gegen 0,001 auf zwei Maerkten derselben Spur). Zu streng
+  (1e-9 fest) meldet eine Lot-Rundung von 1e-8 als Luecke; zu lax (1e-3 fest)
+  verdeckt sie eine echte. Korrekt ist **ein halber Lot-Schritt des jeweiligen
+  Marktes**, aus der Instrumenttabelle. Die Toleranz steckt danach im Ergebnis,
+  nicht im Vergleich — die gemeldete Luecke ist die um die Toleranz verminderte.
+- **Mehr Bestand an der Boerse als im Buch ist KEINE Deckungsluecke.** Ein
+  Buch, das 55 Stueck fuehrt, bei einem Bestand von 123 an der Boerse, ergibt
+  gegen die Boerse gerechnet eine "Luecke" von 68 — und beschreibt genau das
+  Gegenteil: ungebuchter oder von Hand gehaltener Bestand. Eine Stufe, die das
+  als Deckungsluecke meldet, behauptet etwas Falsches und erzeugt einen
+  Aufraeumauftrag, den niemand bestellt hat. **Vor dem Bauen der Stufe
+  feststellen, wer den Mehrbestand gehoert** (andere Spur? Handkauf?).
+  Gehoert er niemandem ausser dem Nutzer, ist das eine **Entscheidung von ihm**
+  und keine Codefrage: der Befund geht als Bestandsliste in den Bericht, und
+  es wird nichts angefasst.
 - **Ein reiner Mengen-Zaehler verwechselt sich mit einem Schutz-Zaehler.** Als
-  Schutz zaehlt ein Auftrag nur, wenn `reduceOnly` gesetzt ist, die Seite
+  Schutz zaehlt ein Auftrag, wenn die Seite
   GEGEN die Position laeuft und eine Ausloesung traegt (`slTriggerPx` ODER
   `tpTriggerPx` - ein Trailing traegt kein `slTriggerPx`). Der Filter ist
   derselbe wie `okxf.ist_schutz_stop`, nur MIT der Menge - genau daran scheitert
@@ -346,9 +381,60 @@ sagten. Dieselbe Blindstelle hatte T-278 gestreift (ein Trailing-Stop ohne
 - **Testform:** Filter entfernen -> rot; Preissperre entfernen -> rot. Der
   Gegenbeweis gehoert in den Aufbau, sonst prueft die Suite nur, dass der Code
   laeuft. Attrappen-Regel: die Auftrags-Attrappe muss ein **dict** sein, weil der
-  Produktionscode per `.get()` liest - ein Objekt mit Attributen laesst jeden
+  Produktionscode per `.get()` liert - ein Objekt mit Attributen laesst jeden
   Test an der Kapazitaet der Attrappe scheitern statt an der Regel (bei
   `okxf.schutz_stops` zusaetzlich die Liste liefern, nicht nur `positionen`).
+- **Die Stufe muss an BEIDEN Zweigen haengen, nicht nur am Nachsetz-Zweig.**
+  Der gemessene Fall liegt im *gesunden* Zweig: der gemerkte Stop ist wirksam
+  und deckt trotzdem zu wenig. Eine Inline-Passage hinter
+  `if wirksam: continue` ist toter Code, den keine Suite sieht, die nur den
+  Reparierzweig fahrt. Beide Zweige rufen **eine** Funktion - zwei Aufrufe
+  bedeuten zwei Wahrheiten, die auseinanderlaufen koennen.
+
+### 5e. Die Deckungsstufe in eine neue Spur einziehen: erst messen, dann bauen
+
+Diese Regel hat vier Spuren gebaut und bei der fuenften **bewusst nichts
+gebaut**. Die Reihenfolge ist nicht Geschmack:
+
+- **Ein Pruefpfad, der in drei Nachbarspuren steht, ist kein Auftrag, ihn in
+  der vierten auch zu bauen.** Zuerst messen. Kommt "alles gedeckt" heraus,
+  ist das ein **Ergebnis**, kein offener Punkt: die Stufe wuerde eine
+  Boersenabfrage je Zyklus fuer eine Zahl kaufen, die immer 0 ist. Sag es
+  und hoer auf.
+- **Kommt die Rechnung gegen die Boerse zu hoch, loest sie sich als
+  Bestandsdifferenz auf.** Ein Buch mit 55 Stueck bei einem Bestand von 123
+  ergibt "68 ungeschuetzt" — und beschreibt das Gegenteil: ungebuchter
+  Bestand. Ein Bestand ohne Buch ist **Geld des Nutzers** (Handkauf, oder eine
+  Position, die keine Spur fuehrt). Eine Stufe, die das als Deckungsluecke
+  meldet, erzeugt einen Aufraeumauftrag, den niemand bestellt hat.
+- **In beiden Faellen gehoert der Befund in den Bericht, nicht in den Code.**
+  Als Bestandsliste mit der Frage: gehoert das dir, oder ist es ungebucht?
+  Das ist eine **Entscheidung von ihm**, und eine Task-Zeile, die eine
+  Entscheidung als Arbeit tarnt, wird naechste Woche wie eine offene Arbeit
+  behandelt.
+- Umgekehrt gebaut ist die Stufe ein permanenter Zyklusaufruf, der eine Zahl
+  produziert, die niemand verantwortet.
+
+### 5f. Filterregeln folgen dem BESTELLWEG, nicht dem Markt
+
+Beim Einziehen der Coverage in eine neue Spur kommen drei Filter mit, die
+dort **falsch** sein koennen. Alle drei erzeugen eine Zahl, die plausibel
+aussieht und falsch ist — und alle drei fallen sofort auf, wenn die neue
+Stufe "alles ungeschuetzt" meldet. Deshalb: **bei "alles ungeschuetzt" ist
+zuerst der Filter der Verdacht, nicht der Bestand**, und dann liest man die
+Rohfelder eines einzelnen Auftrags (`reduceOnly`, `sz`, `state`), statt das
+Ergebnis zu deuten.
+
+| Mitgebrachter Filter | Wann er falsch ist | Symptom |
+|---|---|---|
+| `reduceOnly` verlangen | der Bestellweg der neuen Spur setzt das Feld nicht | die Boerse meldet `reduceOnly: "false"` fuer jeden Stop, der Filter verwirft alle |
+| feste Toleranz (`1e-9`) | der Markt rechnet in `lotSz`-Schritten | Lot-Rundung von `1e-8` wird als Luecke gemeldet |
+| `soll` aus dem Buch (`usd / einstieg`) | der geplante Einsatz != der Bestand nach Gebuehr | Faktor 19 zwischen Buch- und Boersenrechnung (Abschnitt 5d) |
+
+Das ist die Verallgemeinerung von Abschnitt 5d fuer den Einbau, und es ist
+zugleich der Grund, warum die drei Regeln dort je **fuer sich** begruendet
+sind statt gemeinsam: sie haben verschiedene Mechanismen und verschiedene
+Belege.
 
 ## 15. Eine UNBESTAETIGTE Fuellung ist keine Null - und eine Null wird nie zur Order
 

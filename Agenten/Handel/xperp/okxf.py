@@ -637,9 +637,40 @@ def gefuellte_kontrakte(inst, ord_id):
         return None
 
 
-def order_stornieren(inst, ord_id):
-    body = {"instId": inst, "ordId": ord_id}
-    return _roh("/api/v5/trade/cancel-order", "POST", body, signiert=True)
+def algo_stornieren(inst, algo_id):
+    body = {"instId": inst, "algoId": algo_id}
+    return _roh("/api/v5/trade/cancel-algos", "POST", body, signiert=True)
+
+
+def stop_nachziehen(algo_id, inst, preis):
+    """Den Stop eines BESTEHENDEN Algo-Auftrags an der Boerse aendern.
+
+    GEMESSEN am 05.10.2026 am echten EEA-Account (sCode=0, ohne dass der Stop
+    gewandert waere): POST /api/v5/trade/amend-algos mit
+    {algoId, instId, newSlTriggerPx, newSlOrdPx:"-1"}. Der Auftrag bleibt
+    derselbe algoId, die Position laeuft weiter - nur der Ausloesepreis
+    wandert.
+
+    DAS IST NICHT stornieren-und-neu-setzen: dort gaebe es zwischen beiden
+    Aktionen ein Fenster OHNE Schutz, genau die Lektion aus ZEC (26.09.2026,
+    23 Kopien desselben Stops im Zustand). `algo_stornieren()` +
+    `schutz_stop_setzen()` bleibt als Ausweg, wenn eine Aenderung abgelehnt
+    wird - der Trailing-Code ruft dann NICHT automatisch auf, weil ein
+    doppelter Versuch in zwei Stops enden kann.
+
+    Rueckgabe: die algoId. `newSlOrdPx="-1"` laesst als Market ausfuehren -
+    ein Limit-Stop fuellt im Absturz nicht.
+    """
+    body = {"algoId": str(algo_id), "instId": inst,
+            "newSlTriggerPx": str(preis), "newSlOrdPx": "-1"}
+    d = _roh("/api/v5/trade/amend-algos", "POST", body, signiert=True)
+    if not d:
+        return None
+    eintrag = d[0]
+    code = str(eintrag.get("sCode") or "0")
+    if code not in ("0", ""):
+        raise OKXFehler("OKX amend-algos %s: %s" % (code, eintrag.get("sMsg")))
+    return eintrag.get("algoId") or str(algo_id)
 
 
 def schutz_stop_setzen(inst, seite, kontrakte, stop, ziel=None,

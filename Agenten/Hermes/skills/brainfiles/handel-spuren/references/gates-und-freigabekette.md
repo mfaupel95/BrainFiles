@@ -159,6 +159,43 @@ fehlte vor dem ersten von vier Importen einer flachen Datei, der Lauf brach
 jede Minute ab, und keine Spur kam je zu einem Einstieg - ohne eine Spur-
 Logzeile.
 
+## 1b. Drei getrennte Schalter, drei getrennte Belege
+
+`handel_erlaubt` (Zulassung der Spur), `freigabe.erfuellt` (der von Hand
+gesetzte Haken) und das **Zeitfenster** sind drei Dinge. Ein Auftrag kann eins,
+zwei oder alle drei meinen — jede Fehlzuordnung ergibt eine scharfe Spur, die
+es nicht ist, oder eine gesperrte, die es nicht mehr ist.
+
+Reihenfolge beim Umlegen, jede Stufe mit eigenem Beleg:
+
+1. **Der Haken in der Wache** (`freigabe.erfuellt`). Gehoert als
+   `<feld>_vermerk` daneben: WORUM es geht, welche Messung vorher stand und was
+   der Vermerk ueberholt. Ein Vermerk, der eine Abschaltung begruendet, wird
+   bei einer neuen Freigabe **nicht geloescht, sondern ergaenzt** — er ist die
+   Historie und der Grund, warum die Freigabe eine Entscheidung war. Ersetzt
+   man ihn, verliert die naechste Sitzung die Begruendung; laesst man ihn
+   unverändert stehen, behauptet er das Gegenteil des heutigen Zustands. Beides
+   ist schlecht: **ergaenzen mit Datum und Auftrag**.
+2. **Der Vorschau-Lauf im Routine-Modus**
+   (`MAXHIRN_ROUTINE=1 handeln.py --vorschau`) als Zwischenbeleg. „Live waere
+   gesperrt durch: nichts" heisst: jeder Schalter ist offen, es fehlt nur noch
+   das Fenster. Das ist die Aussage, die man dem Auftraggeber vorlegt — und sie
+   unterscheidet „klar" von „setzen war nicht moeglich".
+3. **Das Zeitfenster ueber den VORGESEHENEN Weg**: `anfrage_stellen()` und
+   dann `oeffnen()` — genau die beiden Aufrufe, die `AUTO_FREIGABE` im
+   Dauerlauf und `/ja` vom Handy gehen. **Nie `offen_bis` von Hand schreiben**
+   und die Datei-Sperre umgehen: das ueberspringt die Wiedervorlage-Fristen
+   (dieselbe Frage alle 30 Minuten) und hinterlaesst keinen Vermerk, warum es
+   offen ist.
+4. **Der echte Dauerlauf-Zyklus als Endbeleg**, aus dem Log, mit Zeit und
+   Spur: die Zeile `(live) ok` der SPUR. Sie belegt den Modus des Laufs, nicht
+   eine Order — die Order belegt erst die Journalzeile mit `modus=live`.
+
+Bei jeder Freigabe-Erhoehung gilt dieselbe Grenze wie bei einer Grenz-Erhoehung
+(siehe Abschnitt 4): **`oeffnen()` kann keine Grenze heben.** Einsatz, Hebel
+und Platzzahl kommen aus der Wache. Wer beides in einem Auftrag meint, macht
+zwei Schritte und sagt, welcher welcher war.
+
 ## 2. Wo ein Tor gehoert: VOR der Order, nicht in die Signallogik
 
 Jedes Tor gehoert an die Stelle, an der die Order wirklich entsteht:
