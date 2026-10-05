@@ -43,6 +43,23 @@ import historie_binance
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 
+def historie_ordner_fehlt():
+    """True, wenn der Historie-Ordner auf dieser Kopie des Baums fehlt.
+
+    `historie_binance.ORDNER` ist `HIER/daten/historie` - RELATIV zur
+    Modulposition. Ein Worktree bekommt alle .py-Dateien, aber daten/ ist
+    nicht versioniert (git check-ignore belegt, git ls-files leer). Eine
+    Modulkopie ohne daten/ laedt dann still 0 Kerzen, und der Lauf meldet
+    "0 Runden" - ein falsches Messergebnis, das aussieht wie ein Befund.
+
+    Die Naht: kerzen_fuer() prueft das VOR dem Laden und wirft HistorieFehlt
+    mit dem klaren Text "Historie fehlt - Ordner nicht da". Ein Test in einem
+    Worktree sieht dann den Fehler, nicht die leere Rechnung.
+    """
+    return not os.path.isdir(historie_binance.ORDNER)
+
+
+
 # Spuren mit eigenem Buch im Modul (Familie A).
 #
 # `orb` und `orbk` standen hier bis zum 01.10.2026 und waren doch nicht
@@ -407,6 +424,17 @@ def kerzen_fuer(spur, w, bis_ms=None, max_kerzen=None, abschnitt=None):
     und ein Index, der versehentlich als `bis_ms` uebergeben wird, ergibt ein
     still falsches, winziges Fenster.
     """
+    # T-368: Worktree-Blindheit - fehlt der Ordner, ist jede Reihe leer.
+    # Ohne diese Pruefung laeuft der Lauf mit 0 Runden durch und meldet
+    # ein falsches Messergebnis. HistorieFehlt zwingt den Aufrufer, die
+    # Historie nachzuladen oder den Lauf abzubrechen.
+    if historie_ordner_fehlt():
+        raise HistorieFehlt(
+            "Historie fehlt - Ordner %s nicht da. "
+            "Diese Kopie des Baums hat kein daten/ (Worktree?). "
+            "Erst 'python historie_binance.py --auffuellen'."
+            % historie_binance.ORDNER)
+
     insts = _instrumente(w)
     takt = _takt(w)
     brauch = bedarf(w)
