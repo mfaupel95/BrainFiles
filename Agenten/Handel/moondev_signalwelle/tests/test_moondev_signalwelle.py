@@ -8,6 +8,7 @@ echten Spurenordner schreiben.
 import json
 import os
 import sys
+import csv
 import tempfile
 import unittest
 
@@ -121,10 +122,30 @@ class BuchTest(unittest.TestCase):
                                                    "handelsjournal.csv")))
 
     def test_leere_quelle_bucht_nichts(self):
+        """Keine Daten = KEINE BUCHUNG - nicht: keine Datei.
+
+        Der Test pruefte vorher die Abwesenheit der Journaldatei. Seit dem
+        02.10.2026 legt `lege_journal_an()` die Datei ab dem ersten Zyklus mit
+        Kopfzeile an (Auftrag Max: "alle duerfen auch journal fuehren") -
+        eine Spur, die noch nie ein Signal hatte, hatte sonst gar kein
+        Journal und damit nichts ausser Haus (Bedingung 4). Der Test wurde
+        dadurch rot, obwohl die EIGENSCHAFT ("leere Quelle bucht nichts")
+        unveraendert gilt: der Unterschied zwischen "Journal existiert mit
+        null Zeilen" und "Journal existiert nicht" ist die Antwort auf
+        "noch nie ein Signal?" - genau der war vorher nicht beantwortbar.
+
+        Die Eigenschaft wird jetzt so geprueft, wie sie gemeint ist: null
+        Datenzeilen, nicht null Dateien.
+        """
         h.quelle_override = lambda w_: ({}, {}, ["Boerse weg"])
         buch.zyklus(self.tmp.name, h.daten_holen, h.signal, "papier", "test")
-        self.assertFalse(os.path.exists(os.path.join(self.tmp.name,
-                                                    "handelsjournal.csv")))
+        p = os.path.join(self.tmp.name, "handelsjournal.csv")
+        if os.path.exists(p):
+            with open(p, encoding="utf-8", newline="") as f:
+                self.assertEqual(list(csv.DictReader(f)), [],
+                                 "die leere Quelle hat keine Buchung gemacht")
+        else:
+            self.assertTrue(True, "kein Journal - auch das ist 'nichts gebucht'")
 
     def test_live_verweigert(self):
         # main() ist der --live-Weg; hier direkt die Meldung pruefen, ohne
