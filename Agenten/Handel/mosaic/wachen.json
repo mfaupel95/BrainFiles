@@ -55,14 +55,14 @@
   "live_max_gesamt_usd": 400.0,
   "_live_grenzen_vermerk": "400 USD gesamt auf Auftrag Max 21.09.2026 (vorher 200). Stand 23.09.2026 binden JE TRADE 100 (Auftrag Max 'Mosaic 100') und der Deckel 400 (4 x 100); darunter bindet das Kraken-Guthaben (88.56 EUR frei, Tor 60 EUR). Die Grenzen sind derzeit NICHT der Engpass - mehr Einsatz verlangt Guthaben.",
   "freigabe": {
-    "erfuellt": false,
+    "erfuellt": true,
     "papierlauf_min_wochen": 2,
     "_netto_positiv_entfaellt": "19.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer mosaic (Handelsregeln Bedingung 1).",
     "groesster_ruecklauf_papierlauf_usd": null,
     "geprueft_am": null,
     "_aenderung": "2026-09-19: neu angelegt fuer Stufe A (MOSAIC-LIVE-PLAN-OKX.md). Aktuell 1 Papierrunde - unter jeder Mindestzahl. Seit 19.09.2026 entfaellt die Netto-positiv-Bedingung (Max); erfuellt bleibt false, bis 50 echte Papierrunden und der Ruecklauf-Deckel liegen.",
     "_abgeschaltet_am": "20261003-184535",
-    "_abschaltung_grund": "03.10.2026 abgeschaltet (Auftrag Max: \"Drei aus\"): spur_audit weist nach Abzug der Gebuehr der eigenen Boerse einen negativen Excess aus - mosaic -1,19 % bei 1,20 % Gebuehr je Runde, kraken -0,97 %, moondev_topmovers -0,19 %. Die Spur verdient also weniger als das blosse Halten ihres Instruments. OFFENE POSITIONEN BLEIBEN: eine bestehende Position zu schliessen ist eine Order und gehoert in die Freigabekette wie jede andere; abgeschaltet ist nur die ZULASSUNG, damit keine neuen dazukommen. Wiedereinschalten nur, wenn der Gebuehren-Excess positiv ist und mit genug Runden belegt ist."
+    "_abschaltung_grund": "03.10.2026 abgeschaltet (Auftrag Max: \"Drei aus\"): spur_audit weist nach Abzug der Gebuehr der eigenen Boerse einen negativen Excess aus - mosaic -1,19 % bei 1,20 % Gebuehr je Runde, kraken -0,97 %, moondev_topmovers -0,19 %. Die Spur verdient also weniger als das blosse Halten ihres Instruments. OFFENE POSITIONEN BLEIBEN: eine bestehende Position zu schliessen ist eine Order und gehoert in die Freigabekette wie jede andere; abgeschaltet ist nur die ZULASSUNG, damit keine neuen dazukommen. Wiedereinschalten nur, wenn der Gebuehren-Excess positiv ist und mit genug Runden belegt ist. Auftrag Max 05.10.2026: 'freigabe.erfuellt bei mosaic' - der Haken ist damit von Hand gesetzt. Der Vermerk zur Abschaltung bleibt als Historie stehen, wird aber ueberholt: die Spur handelt jetzt ueber den OKX-Futures-Weg (okx_perp, Hebel 6, Commit faf59cbe), nicht mehr ueber Kraken-Spot. Die Gebuehrenrechnung aendert sich damit von 1,20 auf 0,10 Prozent je Runde, die Substanz nicht: 12 Runden, 0,10 Prozent Excess - eine duenne Stichprobe, kein belegter Vorteil. Kein Gebuehren- oder Edge-Zwang wird hier behauptet."
   },
   "guthaben_waehrung_je_boerse": {
     "kraken": "EUR",
