@@ -24,7 +24,7 @@ $marke = Melde-Start -Wer 'routine/sicherung' `
 "=== Lauf $($start.ToString('yyyy-MM-dd HH:mm:ss')) ===" | Set-Content $log -Encoding UTF8
 try {
   $tmp = Join-Path $logs 'sicherung-lauf.tmp'
-  & powershell -ExecutionPolicy Bypass -File (Join-Path $wurzel 'sichern.ps1') *> $tmp
+  & powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File (Join-Path $wurzel 'sichern.ps1') *> $tmp
   if (Test-Path $tmp) { Get-Content $tmp -Encoding UTF8 | Add-Content $log -Encoding UTF8; Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
   $code = $LASTEXITCODE
   $s = [int]((Get-Date) - $start).TotalSeconds
