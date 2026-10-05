@@ -14,6 +14,13 @@ Dienste, Ports, Prozesse, Registry, alles unter `C:\Users\faupe\`.
 
 - `terminal`, `read_file` oder `write_file` finden `C:\...` nicht, oder der
   Aufruf landet offensichtlich in einem Linux-Sandkasten statt auf dem Rechner.
+- **Das Terminal laeuft, aber die Wurzel fehlt.** Im Docker-Backend bindet der
+  Container nur `terminal.cwd` (haeufig `Agenten/Hermes`). Dann antwortet das
+  Terminal normal, `Agenten/Handel`, `MaxHirn` und jedes `git` im
+  BrainFiles-Repo sind aber unsichtbar (`/workspace/..` zeigt die
+  Container-Wurzel, kein `/mnt/c`). Kein Fehler, sondern der Sichtbereich —
+  Wurzel-Arbeit laeuft ueber windows-mcp. Herkunft und Fix: Skill
+  `hermes-config-ops`, Datei `references/docker-sandbox.md`.
 - Ein Befehl **muss** auf dem Arbeitsrechner laufen: Aufgabenplanung, Dienste,
   Ports, Prozesse, Registry, Pfade unter `C:\Users\faupe\`.
 - Ein Skript soll geprüft werden, das auf dem Host liegt (Routinen, Sicherungen,
@@ -213,6 +220,16 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
 
 ### Fallen, die anders aussehen als sie sind
 
+- **Eine Referenz mit der FALSCHEN ENDUNG meldet „No such file or directory"
+  und sieht wie eine verschwundene Datei aus.** `git commit -F <pfad>` (und jedes
+  andere native Programm, das eine Pfadangabe bekommt) liest genau den Pfad, den
+  man getippt hat: wird die Meldung als `.md` geschrieben und mit `-F ….txt`
+  referenziert, bricht der Commit mit `could not read log file` ab, waehrend die
+  Datei unversehrt daneben liegt. Das Schreibwerkzeug hatte Erfolg gemeldet
+  (`bytes_written`), also existiert die Datei — unter dem Namen, den man ihm
+  GEGEBEN hat. Vor jedem „die Datei ist weg": das Verzeichnis auflisten und den
+  Namen lesen, statt den Dateischwund zu diagnostizieren. Gilt genauso fuer
+  Endungs-Verwechslungen bei `.json`/`.yaml`/`.csv`-Zielen.
 - `Split-Path -LiteralPath <datei> -Leaf` liefert leer (in 7.x gesehen). Daraus
   entsteht ein Ziel ohne Dateinamen, und Windows PowerShell 5.1 bricht mit
   `AmbiguousParameterSet` / „Parametersatz kann nicht aufgelöst werden" ab — die
@@ -582,6 +599,12 @@ Die Sonden im Detail (`.lnk`-Bytes, Halte-Test, Prozess-Schnappschuss,
 Aufgaben-Dump, `FileSystemWatcher`, begrenztes Grep):
 `references/herkunft-belegen.md`.
 
+Der Rueckwaerts-Weg von der Tatzeit (wer hat um 22:12:52 geschrieben?), die
+Temp-Fixture-Gegenprobe, die eine Testsuite entlastet, und die Grenze dessen,
+was ein Zeitgleichlauf beweist: `references/schreiber-finden.md` — laden,
+wenn ein Ordner, eine Datei oder ein Junction ohne erklaerenden Prozess
+entstanden oder verschwunden ist.
+
 ## "Keine Verbindung" zu einem Dienst: erst lokal von global trennen
 
 Wenn ein Dienst (Claude Desktop, eine API, eine Webseite) „keine Verbindung“
@@ -714,11 +737,46 @@ Fehler sieht wie ein bestandener Test aus.
 - Ein Prozessfilter traegt seinen Suchtext selbst und muss den EIGENEN Aufruf
   ausschliessen (das Muster aus Teilen bauen) — sonst findet und beendet er die eigene Shell.
 
-## Abgrenzung
+## Junctions im Baum: still durch echte Ordner ersetzt
 
-- `BrainFiles\Werkstatt` ist ein Junction auf `O:\Werkstatt`: dasselbe Verzeichnis,
-  zwei Namen. Host-Werkzeuge melden beim Schreiben den `O:`-Pfad, `Test-Path`
-  findet die Datei unter beiden. Beim Nachlesen nicht irritieren lassen.
+`BrainFiles\Werkstatt` (und `Modelle`) sind Junctions auf `O:\…`: dasselbe
+Verzeichnis, zwei Namen. Host-Werkzeuge melden beim Schreiben den `O:`-Pfad,
+`Test-Path` findet die Datei unter beiden. Beim Nachlesen nicht irritieren
+lassen.
+
+**Eine Junction kann still durch einen echten (fast leeren) Ordner ersetzt
+werden** — eine parallele Sitzung oder ein Tool, das in den Pfad schreibt und
+dabei `rm -rf` + `mkdir` macht. Symptom: alles unter dem Pfad „verschwindet"
+(Repos, omnitrade, Projekte), obwohl die Daten auf `O:` unversehrt liegen —
+`omnitrade.cmd` meldet dann „keine Statusdatei", Repo-Bots lesen ins Leere.
+Nichts ist verloren, nur der Verweis ist weg.
+
+- **Erkennung:** `test -L <pfad>` (MSYS) bzw. `Get-Item <pfad> -Force |
+  Select-Object LinkType,Target` (PowerShell) — `LinkType` leer = echter Ordner,
+  kein Junction. `cmd //c dir /AL` listet alle Junctions.
+- **Reparatur (verlustfrei, reversibel):** 1) versionierte Dateien im echten
+  Ordner zuerst nach `O:\Werkstatt` kopieren (git sieht sie über die Junction
+  wieder); 2) echten Ordner per `Remove-Item -LiteralPath <pfad> -Recurse -Force`
+  entfernen (aus der bash-Schicht **nicht** `rm -rf` — siehe unten); 3) `New-Item -ItemType Junction -Path
+  <pfad> -Target O:\Werkstatt`. 4) Verifizieren: `test -L`, Inhalt, `git status`.
+- **`cmd //c mklink /J` aus bash ist unzuverlaessig** (haengt/Timeout). Die
+  PowerShell-Form `New-Item -ItemType Junction` in einer `.ps1`-Datei ist der
+  verlaessliche Weg — und `$`-Variablen gehoeren in die Datei, nicht in einen
+  doppelt-quotierten `-Command`-String (bash expandiert sie vorher, siehe oben).
+- **Auch das ENTFERNEN des echten Ordners gehoert in die PowerShell-Datei.**
+  `rm -rf <pfad>` aus der bash-Schicht auf einen Pfad, der ein Junction sein
+  KOENNTE, ist doppelt falsch: das Verhalten beim Aufloesen des Reparse-Punkts
+  ist unklar (es kann das ZIEL treffen statt den Verweis), und der Aufruf lief
+  in einen Timeout, dessen Abbruch den Zustand offen liess. `Remove-Item
+  -LiteralPath -Recurse -Force` trifft genau den benannten Pfad; danach mit
+  `Test-Path` belegen, dass er weg ist, und erst dann den Junction neu setzen.
+  `-LiteralPath` ist Pflicht — ein Pfad mit eckigen Klammern wird sonst als
+  Wildcard gelesen.
+- **Nach der Reparatur zeigt `git status` die Whitelist-Dateien als `??`** —
+  das ist normal (Werkstatt = Durchgangsware, per `.gitignore` freigegeben),
+  kein neuer Schaden.
+
+## Abgrenzung
 - Bus-Meldungen und ihre Abnahme: `bus-integration`
 - MCP-Server zwischen Claude und Hermes abgleichen: `mcp-sync`
 - Hermes' eigene `config.yaml`/`.env`: `hermes-config-ops`

@@ -39,6 +39,7 @@ weiterlaufen und die Änderung mit einem echten Lauf belegt ist.
   Modellnamen ist kein Beleg, und ein `provider: auto` in einem
   `auxiliary`-Block erbt still das Hauptmodell
 - "das Terminal geht nicht mehr" / "Terminal environment unavailable" / jedes Kommando scheitert mit Exit 125 - dann den Windows-Host-Pfad in `terminal.cwd` und `docker_mount_cwd_to_workspace` pruefen (references/docker-sandbox.md)
+- nach einem Backend-Fix "welche Ordner sehe ich jetzt ueberhaupt noch" / `git` im Terminal findet kein Repository / ein Pfad ausserhalb `Agenten/Hermes` ist plotzlich weg - dann den SICHTBEREICH des Containers messen, nicht nur den Fehler (references/docker-sandbox.md, Abschnitt *Was der Fix kostet*)
 - "mach einen Bot / ein Profil fuer Telegram" / "der Bot antwortet nicht" /
   "passiert nichts" — dann zuerst die drei Tore messen, nicht die Config
   umbauen (references/profil-kanalzugangsdaten.md, Abschnitte *Ein NEUES
@@ -132,6 +133,16 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
     ueberschreiben, sondern den Nutzer korrigieren lassen
     (references/profil-kanalzugangsdaten.md, Abschnitt *Ein von Hand
     eingetragener Token*).
+16. **Nach einem Fix nicht nur messen, ob der Fehler weg ist, sondern was jetzt
+    da ist.** Ein Backend-Schalter kann einen Zustand reparieren und dabei einen
+    anderen veraendern: `docker_mount_cwd_to_workspace: true` behebt Exit 125 und
+    bindet zugleich NUR noch den `terminal.cwd` — die uebrigen Ordner der Wurzel
+    sind danach unsichtbar. Wer nur den Exitcode prueft, meldet Erfolg und laesst
+    die halbierte Sicht als Ueberraschung fuer die naechste Sitzung stehen. Also
+    nach dem Beleg der Wirkung den neuen Zustand selbst abfragen (was liegt in
+    `/workspace`, was in `/workspace/..`, funktioniert `git`) und das Ergebnis in
+    den Bericht — als Faehigkeit oder als Grenze, nicht als Nebensatz
+    (references/docker-sandbox.md, Abschnitt *Was der Fix kostet*).
 
 ## Index — references laden, wenn ...
 
@@ -157,7 +168,6 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - references/auxiliary-kompression.md — laden, wenn eine Karte/Sitzung mit "context window ... below the minimum 64,000" abbricht oder `auxiliary.compression` gesetzt werden soll
 - references/modellkette-messen.md — laden, wenn ein Modell eingesetzt werden soll ("bestmoegliche Hilfsmodelle", "welches Modell laeuft wo"): Fenster aus dem Loader holen, jeden Kandidaten einmal wirklich rufen, Aggregator/Hilfsmodelle/Mainmodell nach Rolle trennen, tote Schluessel finden; enthaelt auch die Nachweisstufen (verdrahtet ≠ belegt) und das zeilenweise Block-Ersetzen in YAML
 - references/moa-und-hilfsmodelle.md — laden, wenn `moa:`, `auxiliary:` oder `prompt_caching.cache_ttl` gestellt wird: der Aggregator IST das handelnde Modell (lokales Modell dort = Fehlbau), `provider: auto` erbt das Hauptmodell, und der 1h-Nachweis braucht eine Pause laenger als 5 min plus Gegenprobe auf 5m
-- references/docker-terminal-exit125.md — laden, wenn `terminal`, `write_file`, `patch` und `execute_code` GEMEINSAM ausfallen (Exit 125): `terminal.cwd` traegt einen Windows-Host-Pfad, und mit `docker_mount_cwd_to_workspace: false` geht er roh in `docker run -w`. Der Fix wirkt erst nach einem Gateway-Neustart, weil die Werkzeuge als dessen Kind laufen.
 
 ## Nachweis (Abschluss)
 

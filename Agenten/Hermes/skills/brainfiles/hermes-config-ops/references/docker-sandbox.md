@@ -1,4 +1,4 @@
-# Docker-Sandbox: Umgebungsvariablen hineinreichen
+# Docker-Sandbox: Variablen hineinreichen, cwd, und was im Container sichtbar ist
 
 Trigger: Tools laufen im Docker-Terminal-Backend (Desktop/GUI) und sehen
 Variablen nicht — `${env:NAME}` bleibt leer, Ollama findet keine Modelle,
@@ -103,44 +103,102 @@ Weitere Fallen an derselben Stelle:
 - **`docker ps` und `docker run` haben verschiedene Voraussetzungen.** Dass
   `docker ps` antwortet, beweist nur den laufenden Daemon; die 125 kommt vom
   Daemon selbst und hat mit Erreichbarkeit nichts zu tun.
-## Sonderfall Windows-Host: `terminal.cwd` im Docker-Backend
+- **Der Container wird WIEDERVERWENDET — deshalb bleibt es lange unauffaellig.**
+  `persist_across_processes` + `container_persistent: true` + ein Idle-Reaper
+  (`terminal.lifetime_seconds`, Vorgabe 300 s): solange ein Sandbox-Container
+  laeuft, gehen alle Kommandos durch, obwohl die Konfiguration falsch ist. Erst
+  nach dem Reaper oder einem Docker-Neustart bricht **jedes** Kommando auf.
+  Nie „laeuft doch" als Entwarnung nehmen — der Dauerzustand ist schon da und
+  wartet nur.
+- **Auch die Dateiwerkzeuge fallen mit.** `read_file`, `write_file` und `patch`
+  gehen durch denselben Sandbox-Container; scheitern sie mit demselben
+  Traceback, ist die **ganze** Werkzeugkette betroffen, nicht nur das Terminal.
+  Dann alles ueber `mcp__windows_mcp__PowerShell` auf dem Host fahren —
+  Dateien schreiben, lesen, pruefen, committen — bis die Config neu geladen ist.
+- **Kein Live-Schalter: die Zeile wirkt erst nach dem Neuladen.** Der laufende
+  Hermes-Prozess (Gateway/Desktop) haelt die alte Config. **Der Gateway-Launcher
+  als geplante Aufgabe startet einen LEBENDEN Gateway nicht neu** — ein Aufruf
+  wie `schtasks /run` kehrt mit Ergebnis 0 zurueck, waehrend dieselbe PID
+  weiterlaeuft. Erst ein Neustart der Oberflaeche (oder ein Prozess, der die
+  Config neu liest) bringt sie zur Wirkung. Also: Aenderung verdrahtet melden,
+  Wirkung als offenen Beleg stehen lassen — nicht als Erfolg. **Ein Probelauf
+  VOR dem Neustart scheitert weiter und sieht wie ein misslungener Fix aus.**
+- **Aendern NIE per `hermes config set`.** Es schneidet den Kommentar-Schwanz
+  der `config.yaml` ab und schreibt die Datei mit LF, obwohl sie CRLF fuehrt.
+  Byte-genau ersetzen und danach drei Gegenproben: `Compare-Object`
+  Sicherung <-> Datei = **ein** Zeilenpaar, `yaml.safe_load` parst (Schluessel-
+  zahl des Blocks unveraendert), CRLF-Zaehler vor == nach. Vorher eine
+  `.bak-JJJJMMTT` nach `.sicherung/`.
 
-Auf einem Windows-Host ist `terminal.cwd` ein **Host**-Pfad
-(`C:\Users\...`), im Container existiert er nicht. Drei Zustaende:
+### Die Gegenprobe muss den HERMES-Aufruf nachbauen, nicht einen eigenen
 
-| Zustand | was passiert |
-|---|---|
-| `docker_mount_cwd_to_workspace: true` | Host-Pfad wird gebunden, `cwd` auf `/workspace` umgeschrieben - laeuft |
-| `false` **und** `cwd` ein Container-Pfad (`/workspace`) | laeuft |
-| `false` **und** `cwd` ein Windows-Pfad | **Exit 125** |
+Eine selbst gebaute `docker run`-Zeile prueft den eigenen Aufbau, nicht den Weg,
+den Hermes geht. Wer zwei `-v …:/workspace` in denselben Aufruf schreibt, bekommt
+`Duplicate mount point: /workspace` — und meldet das als Ursache, obwohl die
+Mount-Liste im Traceback genau EINEN `/workspace` zeigt. Die eigene Zeile war
+der Fehler.
 
-**Symptom des kaputten Zustands:** JEDES `terminal`-Kommando scheitert
-("Terminal environment unavailable"), im Traceback steht
-`docker: Error response from daemon: the working directory 'C:\Users\...' is
-invalid, it needs to be an absolute path`, Rueckgabecode 125.
+Richtig ist, den Aufruf aus dem **Traceback** nachzubauen — Zeile fuer Zeile,
+insbesondere die `-w`-Angabe und die `-v`-Liste. Erst wenn die eigene Zeile
+dieselbe Meldung liefert wie der Traceback, ist es dieselbe Ursache. Das gilt
+fuer jede Backend-Diagnose: der Traceback ist die Vorlage, nicht das Gedaechtnis.
 
-**Beleg:** `_resolve_config_cwd()` in `hermes-agent/tools/terminal_tool.py`.
-Mit `mount_docker_cwd=True` (Zeilen 685-692) wird `host_cwd = candidate` und
-`cwd = "/workspace"` gesetzt. Mit `False` greift der Windows-Zweig (Zeilen
-693-702) und setzt `cwd = candidate` - der Windows-Pfad geht roh in
-`docker run -w`.
+### Was der Fix kostet: der Container sieht nur noch `terminal.cwd`
 
-Gegenprobe ohne Hermes (am schnellsten):
+`docker_mount_cwd_to_workspace: true` repariert das Terminal, aendert aber den
+Sichtbereich. Gebunden wird **genau der `cwd`** (`_mount_args`), und ein zweiter
+Mount entsteht nur, wenn `docker_volumes` **denselben Host-Pfad** noch einmal
+nennt (`_existing_host_mount` vergleicht ueber `_host_path_key`). Ohne einen
+solchen Eintrag faellt der Zusatz-Mount weg.
 
-    docker run -d --name probe -w 'C:\Users\...\Agenten\Hermes' <image> sleep infinity   # Exit 125
-    docker run -d --name probe -w /workspace <image> sleep infinity                          # Exit 0
+Gemessen mit `cwd: …\Agenten\Hermes`: der Container hat `/workspace` =
+`Agenten\Hermes` (WorkingDir `/workspace`), und **die BrainFiles-Wurzel ist
+nicht da** — `/workspace/../MaxHirn` und `/workspace/../Agenten` existieren
+nicht, kein `/mnt/c`, kein `/host-cwd`. Weil `Agenten/Hermes` kein eigenes
+Repository ist, gibt es dort auch **kein `.git`**: `git` im Terminal kann die
+Wurzel nicht erreichen.
 
-**Zweiter Faktor - warum es lange unauffaellig bleibt:** der Container wird beim
-ERSTEN Kommando gebaut und danach **wiederverwendet**
-(`persist_across_processes` + `container_persistent: true`). Solange einer laeuft,
-faellt nichts auf; erst nach dem Idle-Reaper (`terminal.lifetime_seconds`) oder
-einem Docker-Neustart bricht jedes Kommando auf. Deshalb nie "laeuft doch" als
-Entwarnung nehmen.
+Folge fuer die Arbeitsteilung — nicht als Fehler behandeln, sondern einplanen:
 
-**Wirkt erst nach dem Neuladen der Config** durch den Hermes-Prozess
-(Gateway/Desktop) - kein Live-Schalter.
+- Alles unterhalb `Agenten/Hermes` (Config, Skills, Profile) geht normal ueber
+  `terminal`.
+- Alles an der **Wurzel** (`MaxHirn/`, `Agenten/Handel/`, jedes `git` im
+  BrainFiles-Repo) laeuft ueber `mcp__windows_mcp__PowerShell` (siehe Skill
+  `windows-host-zugriff`).
+- Wer das Terminal wieder auf die ganze Wurzel braucht, schaltet **nicht**
+  `docker_mount_cwd_to_workspace` zurueck (das bricht alles) und schreibt auch
+  **nicht** den `cwd` um (das verschiebt das Arbeitsverzeichnis jeder Sitzung),
+  sondern ergaenzt `terminal.docker_volumes` um einen Eintrag, der die Wurzel
+  bindet:
 
-**Aendern NIE per `hermes config set`:** das schneidet den Kommentar-Schwanz der
-`config.yaml` ab und schreibt die Datei mit LF (Falle vom 29.09.2026).
-Byte-genau ersetzen, Zeilenenden vorher/nachher zaehlen, danach `Compare-Object`
-Sicherung <-> Datei: genau ein Zeilenpaar.
+      terminal.docker_volumes: ["C:\\Users\\...\\BrainFiles:/brainfiles"]
+
+  Der Pfad liegt ausserhalb des gemounteten `cwd`, wird also als eigener `-v`
+  angehaengt statt ersetzt. Wie jede Config-Aenderung: byte-genau setzen, sichern,
+  gegenproben, und die Wirkung als offenen Beleg melden, bis ein Lauf sie zeigt.
+
+### PowerShell auf dem Host, solange kein Terminal da ist
+
+`write_file`, `patch` und `read_file` brauchen denselben Container. Fuer die
+Dauer des Ausfalls auf den Host ausweichen: `mcp__windows_mcp__PowerShell` und
+`mcp__windows_mcp__FileSystem` (Modi read/write/list/info). Damit liessen sich
+Wache, Tests und Commits vollstaendig fahren — nur ohne die Bequemlichkeit von
+bash.
+
+**Achtung in PowerShell:** Heredocs (`python - <<'EOF'`) gibt es nicht, und ein
+Apostroph im Text bricht einen einfachen `-Command`-String (`Unerwartetes Token`).
+Skripte als Datei schreiben und mit `-File` aufrufen; lange Commit-Meldungen per
+FileSystem-Werkzeug in eine Datei legen und mit `git commit -F <C:/-Pfad>` lesen.
+
+Dazu drei Fallen, die in dieser Lage Zeit gekostet haben:
+
+- **Eine Here-String-Nutzlast in eine `.ps1` legen, nicht in den Aufruf.**
+  `$code = @'…'@` mit `$`-Zeichen direkt in `-Command` wird von der bash-Schicht
+  vorher expandiert (`Unerwartetes Token "$"`). Skript per `write_file` ablegen,
+  dann `& $py <skript>`.
+- **Den Interpreter absolut aufrufen.** Das venv-Python eines Fremdordners ist
+  unter Windows kein MSYS-Pfad; `/c/Users/...` funktioniert im Terminal, aber ein
+  per `-Command` gestarteter Prozess braucht die `C:\`-Form.
+- **`docker rm -f` fuer Probe-Container nachziehen.** Die Proben (`probeA`,
+  `probeB`, `probeC`) bleiben sonst liegen und tauchen spaeter in jeder
+  Container-Liste als Raetsel auf.
