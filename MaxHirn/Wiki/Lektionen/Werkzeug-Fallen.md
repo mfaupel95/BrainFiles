@@ -99,3 +99,32 @@ Drei Dateien galten als Opfer des Dateischwunds, keine war es:
 **Merksatz:** Vor jeder Schwundmeldung zwei Zeugen: (1) eine Markerdatei anlegen und ihr Alter messen (`date -r <datei>`), (2) die Uhr des eigenen Werkzeugs gegen die Host-Uhr pruefen (`git log -1 --format=%ci`). Erst wenn der Marker selbst verschwindet, ist es Schwund. `__pycache__`-Reste und `-F`-Fehlermeldungen sind Fehlalarme.
 
 **Zusatz:** `cache/scratch` ist als Wache-Ziel ungeeignet - der Ordner wird nach 24 h Ruhe automatisch geleert, eine Wache dort meldete planmaessiges Aufraeumen als Schwund.
+## 4. Ein fremder Eintrag im geteilten Index nimmt eine Loeschung mit (06.10.2026)
+
+Beim Schliessen von T-368 (Commit `8e4afed6`) landete eine FREMDE Loeschung im eigenen
+Commit: `Werkstatt/FREQTRADE-SETUP-GUIDE.md`, 368 Zeilen. Die Datei war Minuten vorher
+von der Routine `fremdarbeit-einziehen` gerade WIEDERHERGESTELLT worden (Commit `bb348a7c`,
+24 ruhende Dateien) - eine PR hatte sie am 05.10. 22:30 entfernt, die Routine holte sie zurueck,
+mein `git add MaxHirn/Archiv/TASKS.md` + `git commit` nahm die Vormerkung mit.
+
+DAS MUSTER: `git add <eigene Pfade>` + `git commit` OHNE Pfadangabe committet den GANZEN Index,
+nicht die eben vorgemerkten Pfade. Eine parallele Sitzung (oder eine Routine) kann Sekunden vorher
+etwas anderes vorgemerkt haben - es faehrt mit, unter MEINER Meldung.
+
+GEGENMITTEL, drei Schritte, alle drei noetig:
+
+1. **Vor** dem Commit `git diff --cached --numstat` LESEN (nicht nur ausfuehren) - steht dort ein
+   Pfad, den man nicht kennt, ist er fremd.
+2. Bei fremden Pfaden mit EIGENEM Index committen: `GIT_INDEX_FILE=<scratch>/idx_<thema>` +
+   `git read-tree HEAD` + `git add <eigene Pfade>` + `git commit` (ohne Pfadangabe).
+3. **Nach** dem Commit `git show HEAD --stat` pruefen. Steht dort eine Datei, die nicht ins Thema
+   gehoert, ist sie mitgenommen worden - und die Reparatur ist ein FOLGE-Commit, der den Inhalt
+   aus dem Vorgaenger-Stand zurueckholt (`git checkout <vorgaenger> -- <pfad>`), NIE ein `--amend`
+   oder force-push (der Baum hat einen geteilten Index und fremde Arbeit).
+
+WARUM ES SCHLIMM IST: die geloeschte Datei war schon einmal weg und gerade wieder da. Der eigene
+Commit loeschte sie ein ZWEITES Mal, ohne dass die Meldung das Wort 'Loeschung' enthielt -
+`2 files changed, 15 insertions(+), 382 deletions(-)` liest sich wie eine TASKS-Aenderung.
+MERKSATZ: `git diff --cached --numstat` vor dem Commit und `git show HEAD --stat` danach sind
+die beiden Blicke, die den geteilten Index beherrschbar machen. Ohne sie faellt es erst auf,
+wenn jemand die Datei vermisst.
