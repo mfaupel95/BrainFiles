@@ -129,6 +129,21 @@ live_menge_fuer = okx_spot.menge_fuer
 # (siehe Test-Seams oben) und keine echte Order wird je gestellt.
 import kraken_spot  # noqa: E402
 
+# OKX-FUTURES-WEG (05.10.2026, Auftrag Max: 'mosaic auf futures ... anbinden').
+# Dritte Boerse neben okx_spot (SPOT) und kraken_spot (SPOT EUR). Sie stellt
+# dieselben Funktionsnamen bereit, damit der Rest der Spur unveraendert bleibt
+# - aber zwei ihrer Funktionen BEDEUTEN etwas anderes als bei den beiden
+# anderen, und diese beiden Stellen sind der ganze Aufbau:
+#   * `menge_fuer(inst, betrag, kurs)` rechnet bei Spot die MARGIN aus, bei
+#     Futures den NOMINALWERT. Derselbe Aufruf, zwei Bedeutungen: 600 USD
+#     heissen hier 600 USD Nennwert, nicht 600 USD Margin. Wer das verwechselt,
+#     kauft eine 6-fache Wette mit der Margin eines Spottkaufes.
+#   * `guthaben_waehrung` liefert die FREIE MARGIN, nicht den Spotbestand.
+# Darum steht der Hebel in der wachen.json (`hebel`) und wird VOR der Order an
+# das Modul uebergeben - niemals als Wert in der Wache, den der Code als
+# Nominal missversteht.
+import okx_perp  # noqa: E402
+
 # EINE Paar-Tabelle fuer alle Kraken-Nutzer im Haus (EUR-Vorgabe, USDC waehlbar).
 KRAKEN_PAARE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             os.pardir, "kraken_paare.py")
@@ -136,11 +151,23 @@ _kp_spec = spec_from_file_location("kraken_paare", KRAKEN_PAARE)
 kraken_paare = module_from_spec(_kp_spec)
 _kp_spec.loader.exec_module(kraken_paare)
 
-# Modul je Boersenname. Beide stellen dieselben Funktionsnamen bereit.
-BOERSEN = {"okx": okx_spot, "kraken": kraken_spot}
+# Modul je Boersenname. Alle drei stellen dieselben Funktionsnamen bereit.
+# `okx_perp` traegt dieselbe Nummer wie die beiden Spot-Wege - siehe BOERSEN
+# weiter unten fuer die Sonderfaelle des gehebelten Wegs.
+BOERSEN = {"okx": okx_spot, "kraken": kraken_spot, "okx_perp": okx_perp}
 # Kontowaehrung je Boerse, wenn die wachen.json keine nennt: Kraken handelt in
-# EUR, OKX-Spot gegen USDC.
-WAEHRUNG_JE_BOERSE = {"kraken": "EUR", "okx": "USDC"}
+# EUR, OKX-Spot gegen USDC, OKX-Futures mit USDC-Margin.
+WAEHRUNG_JE_BOERSE = {"kraken": "EUR", "okx": "USDC", "okx_perp": "USDC"}
+# Wege, deren `menge_fuer` den NOMINALWERT statt der Margin rechnet. Nur an
+# diesen drei Orten wird daraus der Einstiegsbetrag berechnet.
+NOMINAL_STATT_MARGINAL = {"okx_perp"}
+
+# Der Hebel des gehebelten Wegs. Er wird an `markt_kauf` uebergeben und dort
+# VOR der Order gesetzt - als Modulwert, nicht aus einer Wache, damit kein
+# Aufrufer einen gehebelten Kauf mit einem ungehebelten ausloest. Der Wert
+# kommt in live_einstiege() aus der Wache (Feld `hebel`), mit diesem Deckel.
+HEBEL = 6
+HEBEL_MAX = 6
 
 VENUE = okx_spot                       # aktives Boersenmodul (fuer die Sperren)
 VENUE_NAME = "okx"                     # Name des aktiven Moduls
@@ -778,6 +805,44 @@ def _live_grenze(w, name, ersatz):
     return w.get("live_" + name, w.get(name, ersatz))
 
 
+def nominal_aus_betrag(betrag, w):
+    """Was `betrag` als NOMINALWERT bedeutet - oder als Margin.
+
+    Der gehebelte Weg rechnet in Nominalwerten, die beiden Spot-Wege in
+    Margin. Ohne diese Umrechnung wuerde ein 100-EUR-Betrag auf dem
+    gehebelten Weg 100 EUR Nennwert kaufen - 100 statt 600 USD Wette bei
+    6x. Der Betrag aus der Wache ist die MARGIN des Spuren-Gebots (so hat
+    Max 'Mosaic 100' verstanden); auf dem gehebelten Weg wird er mit dem
+    Hebel zum Nennwert.
+
+    Rueckgabe: (nominal, hinweis oder None).
+    """
+    h = hebel_aus(w)
+    if VENUE_NAME not in NOMINAL_STATT_MARGINAL:
+        return betrag, None
+    return betrag * h, ("Einsatz %.2f %s sind bei %dx Nennwert %.2f %s "
+                        "(Margin x Hebel)"
+                        % (betrag, GUTHABEN_WAEHRUNG, h, betrag * h,
+                           GUTHABEN_WAEHRUNG))
+
+
+def hebel_aus(w):
+    """Der Hebel des gehebelten Wegs aus der Wache, gedeckelt.
+
+    Vorgabe ist HEBEL, nicht die Wache: eine Spur, deren Wache keinen Hebel
+    nennt, laeuft auf dem gehebelten Weg nie ungehebelt - das waere der
+    schlimmste Fehler dieser Verdrahtung. Der Deckel HEBEL_MAX ist hart.
+    """
+    if VENUE_NAME not in BOERSEN or not hasattr(VENUE, "hebel_setzen"):
+        return 1
+    roh = w.get("hebel", HEBEL)
+    try:
+        h = float(roh)
+    except (TypeError, ValueError):
+        h = float(HEBEL)
+    return max(1.0, min(float(HEBEL_MAX), h))
+
+
 def betrag_gedeckelt(betrag, w):
     """Den Live-Einsatz auf das FREIE Guthaben deckeln (Gebuehr + etwas Luft).
 
@@ -1099,6 +1164,13 @@ def live_einstiege(z, w, s):
     betrag, deckel_hinweis = betrag_gedeckelt(betrag, w)
     if deckel_hinweis:
         print("  " + deckel_hinweis)
+    # Der gehebelte Weg rechnet in Nominalwerten (Margin x Hebel), die beiden
+    # Spot-Wege in Margin. Der GEBOCHENE Betrag ist die Grenze in beiden
+    # Faellen - deshalb wird hier nur der Betrag an `menge_fuer` gereicht,
+    # der gebundene Wert im Buch bleibt der Betrag, nicht der Nominalwert.
+    nominal, nominal_hinweis = nominal_aus_betrag(betrag, w)
+    if nominal_hinweis:
+        print("  " + nominal_hinweis)
     maxoffen = int(_live_grenze(w, "max_offene_positionen", 4))
     maxges = float(_live_grenze(w, "max_gesamt_usd", 200.0))
     ziel_r = float(w.get("ziel_r_vielfaches", 2.0))
@@ -1136,7 +1208,18 @@ def live_einstiege(z, w, s):
         ziel = kurs + abstand * ziel_r
         if gebunden + betrag > maxges:
             continue
-        menge, fehler = live_menge_fuer(inst, betrag, kurs)
+        # Der Pflicht-Stop muss VOR der Liquidationsmarke liegen - auf dem
+        # gehebelten Weg ist das eine zusaetzliche Pruefung, die es bei Spot
+        # nicht gibt. Sie laeuft VOR dem Kauf, nicht danach: ein verweigerter
+        # Einstieg kostet nichts, eine Position ohne wirksamen Stop kostet die
+        # Margin.
+        if hasattr(VENUE, "stop_vor_liq"):
+            h = hebel_aus(w)
+            stop_ok, stop_grund = VENUE.stop_vor_liq(stop, kurs, h, "long")
+            if not stop_ok:
+                print("  -- %-9s uebersprungen: %s" % (inst, stop_grund))
+                continue
+        menge, fehler = live_menge_fuer(inst, nominal, kurs)
         if fehler:
             print("  -- %-9s uebersprungen: %s" % (inst, fehler))
             continue
@@ -1162,7 +1245,10 @@ def live_einstiege(z, w, s):
             print("  Freigabe abgelehnt/leer - kein Einstieg %s" % inst)
             continue
         try:
-            ord_id = op_kauf(inst, menge)
+            if hasattr(VENUE, "hebel_setzen"):
+                ord_id = op_kauf(inst, menge, hebel_aus(w))
+            else:
+                ord_id = op_kauf(inst, menge)
             gefuellt = op_gefuellt(inst, ord_id)
             menge = gefuellt if gefuellt and gefuellt > 0 else menge
             algo_id = None
