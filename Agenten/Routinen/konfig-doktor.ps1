@@ -46,7 +46,8 @@ function Add-Befund {
 function Invoke-Extern {
     param(
         [string]$Datei, [string[]]$Argumente = @(), [int]$TimeoutSek = 20,
-        [string[]]$EntferneEnv = @(), [hashtable]$SetzeEnv = @{}, [string]$Arbeitsordner = ''
+        [string[]]$EntferneEnv = @(), [hashtable]$SetzeEnv = @{}, [string]$Arbeitsordner = '',
+        [switch]$StdinLeer
     )
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $Datei
@@ -55,12 +56,14 @@ function Invoke-Extern {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
+    if ($StdinLeer) { $psi.RedirectStandardInput = $true }
     $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
     $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
     if ($Arbeitsordner) { $psi.WorkingDirectory = $Arbeitsordner }
     foreach ($e in $EntferneEnv) { [void]$psi.EnvironmentVariables.Remove($e) }
     foreach ($k in $SetzeEnv.Keys) { $psi.EnvironmentVariables[$k] = [string]$SetzeEnv[$k] }
     $p = [System.Diagnostics.Process]::Start($psi)
+    if ($StdinLeer) { try { $p.StandardInput.Close() } catch { } }
     $so = $p.StandardOutput.ReadToEndAsync()
     $se = $p.StandardError.ReadToEndAsync()
     if (-not $p.WaitForExit($TimeoutSek * 1000)) {
@@ -466,6 +469,111 @@ function Pruefe-Regelpaare {
                 -Beleg "Erste Abweichung in Zeile $erste; CLAUDE.md $($zc.Count) Zeilen, AGENTS.md $($za.Count) Zeilen" -Status 'gesichert' `
                 -Vorschlag 'Diff beider Dateien ansehen; die gepflegte Fassung in beide uebernehmen (gezielter Ersatz) - nach Freigabe'
         }
+    }
+}
+
+# ---------- Modul 4: git-regeln ----------
+function Get-Python {
+    $venv = Join-Path $Wurzel 'Agenten/Handel/scanner/.venv/Scripts/python.exe'
+    if (Test-Path -LiteralPath $venv) { return $venv }
+    foreach ($n in 'python', 'python3') {
+        $c = Get-Command $n -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($c -and $c.Source -notmatch 'WindowsApps') { return $c.Source }
+    }
+    return $null
+}
+
+function Pruefe-GitRegeln {
+    if (-not (Test-Path -LiteralPath (Join-Path $Wurzel '.git'))) {
+        Add-Befund -Id 'GIT-KEIN-REPO' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Wurzel ist kein Git-Repository' `
+            -Beleg "Test-Path negativ: $(Join-Path $Wurzel '.git')" -Status 'gesichert' -Vorschlag 'Nur zur Kenntnis (Test-Fixture oder Export)'
+        return
+    }
+    $gc = Get-Command git -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $gc) {
+        Add-Befund -Id 'GIT-FEHLT' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'git nicht im PATH' -Beleg 'Get-Command git liefert nichts' `
+            -Status 'gesichert' -Vorschlag 'git installieren oder PATH pruefen'
+        return
+    }
+    $git = $gc.Source
+
+    # Zweige gegen die Zweigregel
+    $r = Invoke-Extern -Datei $git -Argumente @('-C', $Wurzel, 'for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes') -TimeoutSek $ModulLimitSek
+    if ($r.TimedOut -or $r.ExitCode -ne 0) {
+        $e1 = (($r.Err -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
+        Add-Befund -Id 'GIT-ZWEIGE-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Zweige nicht lesbar' `
+            -Beleg "TimedOut=$($r.TimedOut) Exit=$($r.ExitCode) $e1" -Status 'gesichert' -Vorschlag 'git for-each-ref von Hand ausfuehren'
+    }
+    else {
+        $erlaubt = '^refs/heads/(master|zwischenstand)$|^refs/remotes/origin/(master|zwischenstand|HEAD)$'
+        $fremd = @($r.Out -split "`r?`n" | Where-Object { $_ -and $_ -notmatch $erlaubt } | ForEach-Object { $_ -replace '^refs/(heads|remotes)/', '' })
+        if ($fremd.Count -gt 0) {
+            Add-Befund -Id 'GIT-ZWEIGE' -Modul 'git-regeln' -Schwere 'WARNUNG' -Titel "$($fremd.Count) Zweig(e) ausserhalb der Zweigregel (nur master, zwischenstand)" `
+                -Beleg (($fremd | Select-Object -First 10) -join ', ') -Status 'gesichert' `
+                -Vorschlag 'Offene PR-Zweige sind erlaubt (Ausnahme seit 29.09.2026); alle anderen auf master fuehren und loeschen - nur nach Freigabe'
+        }
+    }
+
+    # ruhende, uncommittete Dateien
+    $s = Invoke-Extern -Datei $git -Argumente @('-c', 'core.quotepath=false', '-C', $Wurzel, 'status', '--porcelain') -TimeoutSek $ModulLimitSek
+    if ($s.TimedOut -or $s.ExitCode -ne 0) {
+        Add-Befund -Id 'GIT-STATUS-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'git status nicht lesbar oder zu langsam' `
+            -Beleg "TimedOut=$($s.TimedOut) Exit=$($s.ExitCode)" -Status 'gesichert' -Vorschlag 'git status von Hand ausfuehren; Index-Sperre oder sehr grosser Arbeitsbaum?'
+    }
+    else {
+        $jetzt = Get-Date
+        $alt = New-Object System.Collections.ArrayList
+        $zeilen = @($s.Out -split "`r?`n" | Where-Object { $_.Length -gt 3 })
+        foreach ($z in ($zeilen | Select-Object -First 300)) {
+            $p = $z.Substring(3)
+            if ($p -match ' -> ') { $p = ($p -split ' -> ')[-1] }
+            if ($p.Length -ge 2 -and $p.StartsWith('"') -and $p.EndsWith('"')) {
+                $p = ($p.Substring(1, $p.Length - 2) -replace '\\"', '"') -replace '\\\\', '\'
+            }
+            $p = $p.TrimEnd('/')
+            $it = Get-Item -LiteralPath (Join-Path $Wurzel $p) -Force -ErrorAction SilentlyContinue
+            if ($it) {
+                $tage = ($jetzt - $it.LastWriteTime).TotalDays
+                if ($tage -ge 3) { [void]$alt.Add([pscustomobject]@{ Pfad = $p; Tage = [int]$tage }) }
+            }
+        }
+        if ($alt.Count -gt 0) {
+            $aelteste = @($alt | Sort-Object Tage -Descending | Select-Object -First 5)
+            $schwere = 'HINWEIS'
+            if ($aelteste[0].Tage -ge 7) { $schwere = 'WARNUNG' }
+            Add-Befund -Id 'GIT-RUHEND' -Modul 'git-regeln' -Schwere $schwere -Titel "$($alt.Count) uncommittete Eintraege aelter als 3 Tage ($($zeilen.Count) insgesamt geaendert)" `
+                -Beleg ('Aelteste: ' + (($aelteste | ForEach-Object { "$($_.Pfad) ($($_.Tage) d)" }) -join '; ')) -Status 'gesichert' `
+                -Vorschlag 'Gehoert die Arbeit einer Sitzung? Dann committen (gezielt, nur eigene Dateien) - lange ungesicherte Arbeit war die Ursache gefuehlt verlorener Arbeit'
+        }
+    }
+
+    # Besitz-Verstoesse
+    $bpy = Join-Path $Wurzel 'Agenten/Werkzeuge/bereiche.py'
+    if (-not (Test-Path -LiteralPath $bpy)) {
+        Add-Befund -Id 'GIT-BESITZ-NICHT-PRUEFBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Besitzpruefung nicht moeglich' `
+            -Beleg "Test-Path negativ: $bpy" -Status 'gesichert' -Vorschlag 'Nur zur Kenntnis (Fixture oder Export)'
+        return
+    }
+    $py = Get-Python
+    if (-not $py) {
+        Add-Befund -Id 'GIT-BESITZ-NICHT-PRUEFBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Besitzpruefung nicht moeglich: kein Python' `
+            -Beleg 'Weder venv noch python/python3 im PATH gefunden' -Status 'gesichert' -Vorschlag 'Python bereitstellen'
+        return
+    }
+    # stdin leer schliessen: bereiche.py liest sonst bei Nicht-TTY Pfade von stdin (blockiert/fremde Daten)
+    $b = Invoke-Extern -Datei $py -Argumente @($bpy, '--register') -TimeoutSek $ModulLimitSek -Arbeitsordner $Wurzel -StdinLeer
+    if ($b.TimedOut) {
+        Add-Befund -Id 'GIT-BESITZ-NICHT-PRUEFBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Besitzpruefung im Zeitlimit nicht fertig' `
+            -Beleg "Abbruch nach $ModulLimitSek s" -Status 'gesichert' -Vorschlag 'bereiche.py --register von Hand ausfuehren'
+    }
+    elseif ($b.ExitCode -eq 1) {
+        $zl = @(($b.Out + "`n" + $b.Err) -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 5) -join ' / '
+        Add-Befund -Id 'GIT-BESITZ' -Modul 'git-regeln' -Schwere 'WARNUNG' -Titel 'Besitz-Verstoss gemeldet' -Beleg "bereiche.py --register Exit 1: $zl" `
+            -Status 'gesichert' -Vorschlag 'Als BEFUND melden (--aufrufer <bereich> --pfad <pfad>); nicht blockieren'
+    }
+    elseif ($b.ExitCode -ne 0) {
+        Add-Befund -Id 'GIT-BESITZ-NICHT-PRUEFBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Besitzpruefung lieferte unerwarteten Exit-Code' `
+            -Beleg "bereiche.py --register Exit $($b.ExitCode)" -Status 'gesichert' -Vorschlag 'Skript von Hand ausfuehren'
     }
 }
 

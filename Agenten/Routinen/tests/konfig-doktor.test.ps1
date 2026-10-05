@@ -265,6 +265,40 @@ $fx2 = Neue-Wurzel
 $r = Lauf $fx2 @('regelpaare')
 Pruefe 'beide Dateien fehlen (frischer Checkout): UNKLAR' ((Schwere-Von $r 'REGELPAAR-ORDNER-FEHLT-Wurzel') -eq 'UNKLAR')
 
+Write-Host '--- Modul git-regeln ---'
+$fx = Neue-Wurzel
+$r = Lauf $fx @('git-regeln')
+Pruefe 'ohne .git: UNKLAR statt Fehler' ((Schwere-Von $r 'GIT-KEIN-REPO') -eq 'UNKLAR')
+git -C $fx init -q *> $null
+git -C $fx symbolic-ref HEAD refs/heads/master *> $null
+Schreibe (Join-Path $fx 'a.txt') 'a'
+Schreibe (Join-Path $fx 'x y.txt') 'x'
+git -C $fx add a.txt 'x y.txt' *> $null
+git -C $fx -c user.name=t -c user.email=t@t -c commit.gpgsign=false commit -q -m init *> $null
+$r = Lauf $fx @('git-regeln')
+Pruefe 'nur master: keine Zweig-Warnung' (-not (Hat $r 'GIT-ZWEIGE'))
+git -C $fx branch 'claude/test-x' *> $null
+$r = Lauf $fx @('git-regeln')
+Pruefe 'Fremdzweig: WARNUNG mit Namen' (((Schwere-Von $r 'GIT-ZWEIGE') -eq 'WARNUNG') -and (($r | Where-Object { $_.id -eq 'GIT-ZWEIGE' }).beleg -match 'claude/test-x'))
+$umlaut = 'z ' + [char]0x00E4 + '.txt'
+git -C $fx mv 'x y.txt' $umlaut *> $null
+Schreibe (Join-Path $fx ('alt ' + [char]0x00F6 + '.txt')) 'alt'
+(Get-Item -LiteralPath (Join-Path $fx $umlaut)).LastWriteTime = (Get-Date).AddDays(-10)
+(Get-Item -LiteralPath (Join-Path $fx ('alt ' + [char]0x00F6 + '.txt'))).LastWriteTime = (Get-Date).AddDays(-9)
+Schreibe (Join-Path $fx 'neu.txt') 'neu'
+$r = Lauf $fx @('git-regeln')
+$ru = $r | Where-Object { $_.id -eq 'GIT-RUHEND' }
+Pruefe 'ruhende Dateien (Leerzeichen, Umlaut, Umbenennung): WARNUNG' (($null -ne $ru) -and ($ru.schwere -eq 'WARNUNG'))
+Pruefe 'umbenannte Datei wird unter neuem Namen gefunden' (($null -ne $ru) -and ($ru.beleg -match [regex]::Escape($umlaut)))
+Pruefe 'frische Datei zaehlt nicht als ruhend' (($null -ne $ru) -and ($ru.beleg -notmatch 'neu\.txt'))
+Pruefe 'ohne bereiche.py: UNKLAR' ((Schwere-Von $r 'GIT-BESITZ-NICHT-PRUEFBAR') -eq 'UNKLAR')
+if (Get-Command python -ErrorAction SilentlyContinue) {
+    Schreibe (Join-Path $fx 'Agenten/Werkzeuge/bereiche.py') "import sys`nprint('KONFLIKT: demo')`nsys.exit(1)`n"
+    $r = Lauf $fx @('git-regeln')
+    Pruefe 'Besitz-Konflikt (Exit 1): WARNUNG' ((Schwere-Von $r 'GIT-BESITZ') -eq 'WARNUNG')
+}
+else { Write-Host '  uebersprungen: Besitz-Test (kein python im PATH)' }
+
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 if ($script:Fehler -gt 0) { Write-Host "konfig-doktor FEHLGESCHLAGEN: $($script:Fehler) Pruefung(en)"; exit 1 }
