@@ -87,6 +87,7 @@ Refactoring, das niemand bestellt hat.
 | Ist eine Verdrahtungsliste vollstaendig? | Liste aus **beiden Modulen importieren**, dann Differenz | Kandidat, kein Befund |
 | Ist eine Messzahl **verdaechtig glatt** (0 Runden, 0 %, exakt runde Zahl)? | Das Betriebsmerkmal der Konfiguration pruefen: loest es im Messweg ueberhaupt aus? | Befund — ein Gatter, das nur im Betrieb zuegt |
 | Meldet eine Sonde **alles leer/gesperrt/fehlend**? | Erst ihren eigenen Pfad und ihre Config-Aufloesung pruefen | Der Befund liegt an der Sonde, nicht am Bestand |
+| Meldet eine Sonde **alles leer**, obwohl der Bestand voll ist? | Aufloesen, ob ihr Datenwurzelpfad **aus `__file__`** kommt, und `git ls-files` auf den Datenordner | Sie sieht in jeder Kopie ohne den (nicht versionierten) Bestand einen anderen Ordner — der Befund liegt an der **Aufrufumgebung**, der Bestand ist richtig |
 | Bewegt sich die Zahl eines Pruefers nach einer bekannten Aenderung **nicht**? | Der Pruefer liest nicht alles, was er zu lesen glaubt | Pruefer-Fehler, nicht Datenfehler |
 | Stimmt ein Kandidat? | Aufrufer + Prosa im Modul | Befund oder Fehlalarm |
 | Wirkt ein Fix ueberhaupt? | zwei Laeufe, ein Wert verschieden | siehe `messwerkzeug-gegenprobe` |
@@ -164,7 +165,7 @@ weggelassen: sie zeigen dem Nutzer, dass die Suche geprueft hat.
 
 Wenn eine Sonde **systematisch** „nichts vorhanden", „alles gesperrt",
 „kein Ziel" oder „0" meldet, ist das Ergebnis verdächtiger als ein
-G mixed-Resultat: ein Fehler in der **Pfad- oder Config-Aufloesung der Sonde**
+gemischtes Ergebnis: ein Fehler in der **Pfad- oder Config-Aufloesung der Sonde**
 erzeugt genau diese Form, weil `open()` fehlende Dateien als leeres Dict
 liefert und ein falscher Basispfad **keinen** Fehler ausloest. Ein Beispiel aus
 dem Haus: ein Werkzeug bildete seine Basis mit einem festen `dirname` zwei
@@ -172,6 +173,48 @@ Ebenen zu hoch, bekam fuer jede Einheit `{}` und meldete daraufhin
 „alle 12 gesperrt" — was plausibel klingt und die Umkehrung der Wahrheit war
 (10 waren scharf). **Die Form des Ergebnisses ist das Warnsignal:** je
 einheitlicher das Ergebnis, desto eher ist es die Sonde.
+
+#### Der fuenfte Filter: derselbe Filter, aber der Leser sitzt woanders
+
+Der vierte Filter prueft die **Basis** der Sonde. Diese Variante ist
+schwieriger, weil der Code **richtig** ist: das Werkzeug bildet seinen
+Datenwurzelpfad aus der Modulposition (`HIER = os.path.dirname(os.path.abspath(__file__))`,
+dann `ORDNER = HIER/daten/…`). Das ist portabel und richtig — und **falsch**
+in jeder Kopie, die der Pfad aufloest, ohne den Datenbestand mitzubringen.
+Betroffen sind Worktrees (`.worktrees/<karte>`), Kloene und jede Kopie, die nur
+den Code bekommt. Was **nicht** versioniert ist (`git ls-files '<ordner>'` leer),
+fehlt in **allen** Kopien — eine Testsuite aus einem Worktree meldet dann
+ehrlich „Historie fehlt, 0 Kerzen", und der Bestand auf der Platte ist voll.
+
+Beim Befund gehoeren deshalb **drei** Dinge zusammen, nicht die Meldung allein:
+
+1. **der Pfad, den der Aufruf wirklich aufloest** — `python -c "import modul;
+   print(modul.ORDNER); print(os.path.isdir(modul.ORDNER))"`, nicht der
+   Pfad, den man im Kopf hat;
+2. **das Arbeitsverzeichnis des Absenders**, im Sitzungsspeicher belegt und
+   damit in Sekunden auffindbar: `state.db`, Tabelle `messages`,
+   `role='assistant'`, `tool_calls` als JSON, **`session_id` mitschreiben** —
+   ohne diese Spalte sieht man nur die eigene Sitzung und schliesst die
+   Nachbarsitzungen aus, die zur selben Minute liefen;
+3. **der Gegenbeweis ohne den Bestand**: eine Kopie der `.py`-Dateien im
+   Temp-Ordner **ohne** den Datenordner erzeugt dieselbe Meldung. Damit ist
+   belegt, dass kein Loeschvorgang stattgefunden haben muss.
+
+Zwei Fehlinterpretationen, beide gemessen, und beide teuer, weil sie als Beleg
+auftreten: der **mtime eines Nachbarverzeichnisses** gilt nicht als
+Loeschbeleg (ein Ordner ohne Inhalt traegt keinen eigenen Zeitstempel; man
+greift dann zum Nachbarn, und dessen frische mtime ist ein Schreibvorgang),
+und eine Suche nach dem **Loesch-Aufruf** beantwortet nicht die Frage, **ob**
+geloecht wurde — 28 Loeschaufrufe im Zeitfenster, keiner davon im Zielordner,
+ist das richtige Ergebnis und gehoert in den Bericht. **Reihenfolge: hat der
+Leser den Bestand ueberhaupt gesehen, dann wer ihn nicht sieht, dann ob
+ueberhaupt jemand zustandig war.**
+
+Die Nachfuehrung ist eine **Naht**, keine neue Rechnung: die Meldung nennt den
+gelesenen Pfad, oder ein Schalter laesst den Pfad aus der Umgebung kommen. Ein
+zweiter Treffer derselben Art (Werkzeug **und** Testsuite bilden den Pfad
+gleich) ist ein Muster und der richtige Moment fuer die Naht — nicht fuer eine
+weitere Fehlermeldung.
 
 #### Ein Gatter, das im Messweg nie ausloest
 

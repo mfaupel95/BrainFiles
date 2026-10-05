@@ -26,7 +26,9 @@ Fuer den Einzelfall gilt der jeweilige Spezialskill: Platz →
 „pruef das System“, „check system for problems“, „was ist kaputt“,
 „vollstaendiger Systemcheck“, „laeuft alles“, oder als Vorarbeit, wenn ein
 einzelnes Symptom (Haenger, Absturz, ein Dienst antwortet nicht) eine noch
-unbekannte Ursache hat.
+unbekannte Ursache hat. Auch der Einstieg bei **„computer haengt“ / „alles
+zieht“** — dann ist die Reihenfolge Speicher → CPU → **Datentraegerlast**, und
+der dritte Schritt wird oft der einzige mit einem Befund.
 
 ## Vorgehen
 
@@ -149,6 +151,16 @@ fehlgedeutet.
 
 ## Pitfalls
 
+- **„Der Rechner haengt“ heisst zuerst: Warteschlange je Platte messen.** RAM
+  (20 GB frei), Commit (16 GB frei) und CPU (0 %) koennen alle gesund sein,
+  waehrend eine einzige Platte mit `CurrentDiskQueueLength` > 5 ihre Schlange
+  nicht abarbeitet. Je Volume `Win32_PerfFormattedData_PerfDisk_PhysicalDisk`
+  nehmen, das Feld mit der Warteschlange benennen, dann den Schreiber ueber
+  die **I/O-Rate je PID** (`Win32_PerfFormattedData_PerfProc_Process`,
+  `IODataBytesPersec`) suchen — nie ueber `Sort-Object CPU`, das
+  Lebenszeit sortiert und den Schuldigen weg von der Spitze fuehrt. Vollstaendige
+  Messfolge, Indexer/Watcher-Muster, Waisen derselben Binary und die Fallstricke
+  einer begrenzten Volumensuche: `references/datentraegerlast-und-schreiber.md`.
 - **Ein Anzeige-Symptom ist kein Energieplan-Problem, solange die Auszeit nicht
   gemessen ist.** Unter Speicherdruck faellt zuerst die Anzeige-Schicht aus: gehaeufte
   Ereignisse 2004 (Ressourcenerschoepfung) und Abstuerze von `dwm.exe` im

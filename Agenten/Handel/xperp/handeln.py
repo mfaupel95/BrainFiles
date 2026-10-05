@@ -78,6 +78,10 @@ import bot
 import indikatoren
 import okxf
 import wachen_xperp as wx
+# Der Trailing-Stop rechnet in EINER Datei fuer alle Spuren (Handel/trailing.py,
+# 05.10.2026). Sie ist reines Rechnen - kein Netzzugriff, keine Order -
+# damit ist sie ohne Attrappe testbar. Der Boersen-Aufruf bleibt bei okxf.
+import trailing as trailing_modul
 
 # Stop-DECKUNG (T-362): `stopdeckung` importierte `handeln`, und `handeln`
 # ruft jetzt dessen `deckung()` im Zyklus auf - ein Zirkel. Der Import von
@@ -1176,6 +1180,88 @@ def buche_abgleich(z, w, live, still=False):
     return stand
 
 
+def _trailing_versuch(p, kurs, w):
+    """Den Stop dieser Position nachziehen, wenn der Weg es kann.
+
+    Drei Bedingungen muessen ALLE stimmen, und jede einzelne traegt eine
+    Fehlermeldung in den Journal - nicht nach stdout:
+
+    1. Die Wache muss den Trailing ueberhaupt einschalten. Vorgabe ist aus
+       (`trailing_aktiv` fehlt), damit keine Spur durch ein vergessenes
+       Feld plötzlich nachzieht.
+    2. Die Position braucht EINE Boersen-Stop-Kennung. Liegen drei Stops
+       auf derselben Position (der HYPE-Fall vom 05.10.2026: 33+22+12 auf
+       67 Kontrakte), ist das KEIN Trailing-Fall: der engste Stop feuert
+       beim naechsten Tick, die anderen bleiben als Waisen liegen. Solche
+       Positionen sagt dieser Weg ab und ruft stopdeckung.py auf.
+    3. Der Weg muss `stop_nachziehen` haben - sonst waere es Storno und
+       Neuaufbau, mit einem Fenster OHNE Schutz dazwischen.
+
+    Rueckgabe: True, wenn der Stop an der Boerse gewandert wurde.
+    """
+    # Den Hochstand IMMER pflegen, auch wenn nicht nachgezogen wird - ohne
+    # ihn waere der naechste Vergleich gegen einen zu neuen Wert. Deshalb
+    # VOR der Aktivitaetspruefung: sonst faellt die Pflege bei einer Spur
+    # aus, die den Trailing noch nicht freigeschaltet hat, und der Wert
+    # fehlt beim ersten echten Lauf.
+    trailing_modul.erst_hoch(p, kurs)
+    if not w.get("trailing_aktiv"):
+        return False
+    kennungen = [x for x in (p.get("stop_ids") or []) if x]
+    if len(kennungen) > 1:
+        journal(zeit=_jetzt(), modus="live", aktion="vermerkt",
+                inst=p.get("inst") or "", seite=p.get("seite") or "",
+                preis="%.6f" % kurs, einsatz_usd="", stop="", ziel="",
+                stop_pct="",
+                grund="trailing nicht ausgefuehrt: %d Boersen-Stops auf "
+                      "einer Position (%s) - erst mit stopdeckung.py auf "
+                      "einen zusammenfuehren"
+                      % (len(kennungen), ", ".join(str(x) for x in kennungen)))
+        return False
+    kennung = p.get("stop_id") or (kennungen[0] if kennungen else None)
+    if not kennung:
+        journal(zeit=_jetzt(), modus="live", aktion="vermerkt",
+                inst=p.get("inst") or "", seite=p.get("seite") or "",
+                preis="%.6f" % kurs, einsatz_usd="", stop="", ziel="",
+                stop_pct="",
+                grund="trailing nicht ausgefuehrt: keine Boersen-Stop-Kennung "
+                      "in der Position (stopdeckung.py / stops_nachziehen.py)")
+        return False
+    p["stop_id"] = kennung
+    tick = _tick_fuer(p.get("inst"))
+    ergebnis, grund = trailing_modul.nachziehen(
+        p, kurs, okxf, w, liq=float(p.get("liq") or 0.0) or None,
+        tick=tick)
+    if ergebnis is None:
+        # Kein Trailing ist der NORMALFALL (vor dem Trigger, Hub zu klein,
+        # Stop zu nah am Kurs). Das ist kein Fehler und gehoert NICHT ins
+        # Journal - sonst waende sich die Auswertung mit jedem Zyklus.
+        return False
+    alt = float(p.get("stop") or 0.0)
+    p["stop"] = float(ergebnis["stop"])
+    if ergebnis.get("kennung"):
+        p["stop_id"] = ergebnis["kennung"]
+    print("    TRAILING %s Stop %.6f -> %.6f (Hoch %.6f, %.2fR)"
+          % (p.get("inst"), alt, p["stop"],
+             float(ergebnis["hoechstkurs"]), float(ergebnis["hoch_r"])))
+    journal(zeit=_jetzt(), modus="live", aktion="trailing",
+            inst=p.get("inst") or "", seite=p.get("seite") or "",
+            preis="%.6f" % kurs, einsatz_usd="", stop="%.6f" % p["stop"],
+            ziel="", stop_pct="",
+            grund=("Stop %.6f -> %.6f (Hoch %.6f, %.2fR)"
+                   % (alt, p["stop"], float(ergebnis["hoechstkurs"]),
+                      float(ergebnis["hoch_r"]))))
+    return True
+
+
+def _tick_fuer(inst):
+    """Tick-Groesse des Kontrakts (0.0 = nicht lesbar, dann ungerundet)."""
+    try:
+        return float(okxf._instrument_tick(inst))
+    except Exception:                                              # noqa: BLE001
+        return 0.0
+
+
 def pruefe_ausstiege(z, live, w):
     behalten = []
     for p in z["positionen"]:
@@ -1209,6 +1295,15 @@ def pruefe_ausstiege(z, live, w):
             grund = "stop"
         elif vz * (kurs - p["ziel"]) >= 0:
             grund = "ziel"
+
+        if not grund and live:
+            # TRAILING (Auftrag Max 05.10.2026: "intelligent an den
+            # gehebelten Positionen Stop-Loss nachziehen"). Nur im
+            # Live-Zweig: ein Papierlauf aendert keinen Boersen-Auftrag.
+            # `trailing.stop_nachziehen()` rechnet und ruft die Boerse; ein
+            # Fehler laesst den ALTEN Stop stehen (dort ist der Grund nicht
+            # Zufall, sondern eine Eigenschaft des Wegs).
+            _trailing_versuch(p, kurs, w)
 
         if not grund:
             behalten.append(p)
