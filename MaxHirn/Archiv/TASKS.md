@@ -1,4 +1,28 @@
 ## Offen
+- [ ] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
+      Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
+      habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
+      DictReader, Spalten NACH DEM NAME - eine feste Spaltennummer hatte zuerst
+      151 Fehlbefunde im scanner gemeldet, dort steht `pos_id` an Stelle 14 statt 12).
+      Befund: 16 Doppelverkäufe, KEINE Geister (keine Position ist im Zustand offen
+      und zugleich verkauft) - der Zustand hat den Code-Fix `ee3ff9be` also ueberall
+      richtig ueberlebt, nur das Journal trage Altlast:
+        iv_wand 7 (BTC-USDT, alle `ziel`, 30.09.-04.10.)
+        liq_wand 3 (BTC-USDT-SWAP, 01.-04.10.)
+        moondev_topmovers 2 (BP mit 3 Zeilen am 01.10., AR am 04.10.)
+        prophet_signal 2 (BTC- und SOL-USDT-SWAP, je 2x `trend_umkehr` am 02.10.)
+        klassik_ema 1 (ETH-USDT-SWAP, 2x `gegensignal` am 03.10.)
+        robinhood_radar 1 (02.10., 2x `ziel`)
+      Alle Befunde liegen VOR dem 05.10. - seit `ee3ff9be` kann keiner neu entstehen.
+      Das Merkmal ist ueberall dasselbe: 10-30 Minuten Abstand, gleiche Position,
+      `ziel` oder `gegensignal` zweimal. Das sieht nach einem Vorschau-Aufruf aus
+      (`dauerlauf.nur_fenster_fehlt()` je Takt), genau der Weg, der NIGHT erzeugt hat.
+      Naechster Schritt: je Spur mit `buch_reconcile.py` (der Regel-Rechner aus
+      t_0f4fa35d, `spur_buch.SPALTEN` deckt alle Buch-Spuren ab) aufloesen lassen -
+      Vorschau zuerst, die verworfenen Zeilen bleiben daneben. Vorher die Herkunft
+      klaeren: sind es dieselben Vorschau-Aufrufe oder ein zweiter Weg?
+      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
+      Betrifft: Agenten/Handel/{iv_wand,liq_wand,moondev_topmovers,prophet_signal,klassik_ema,robinhood_radar}/handelsjournal*.csv
 - [ ] **T-361 — `daten/historie/` war um 04:23 leer - und war vorher schon unvollstaendig**
       Kontext: Beim Nachtlauf des Replay-Tests (05.10.2026) kam
       `HistorieFehlt` fuer BTC-USDC, ETH-USDC und SOL-USDC mit 0 Kerzen –
