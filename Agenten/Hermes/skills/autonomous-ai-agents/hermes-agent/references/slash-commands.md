@@ -110,3 +110,46 @@ it. New commands land often; `/help` in-session is always authoritative.
 ```
 /quit (/exit) [--delete] Exit CLI; --delete also removes session history
 ```
+
+## /queue im Detail (Routing, Verben, Inline-Dispatch)
+
+Quelle: `hermes_cli/cli_loops_mixin.py:320-452` (`_cmd_queue` und die
+`_queue_*`-Handler). Ein einziger Befehl, zwei Bedeutungen - die Unterscheidung
+ist eine **Argument-Routing-Regel**, kein zweiter Befehl:
+
+- **Enqueuen (Vorgabe):** `/queue <beliebiger Text>` stellt den Text als Prompt
+  fuer den naechsten Turn an. Auch `add` davor erzwingt explizites Enqueuen.
+- **Verwalten:** ein fuehrendes Verb, dessen Argumente passen. Verb-Tabelle
+  `_QUEUE_VERBS` (Zeile 48): `list|ls|show` (ohne Argument), `clear` (ohne
+  Argument), `edit|set N <text>`, `rm|remove|delete|del|pop N`, `move A B`.
+- **Die Falle:** passt das Argument NICHT zur Verb-Semantik, ist es ein Prompt.
+  `/queue clear the logs` enqueut "clear the logs" als Prompt - es leert NICHT.
+  `/queue rm` OHNE Nummer druckt nur die Usage-Zeile (Verb allein = Management-
+  Fall, Handler fragt Argument). Ein Index wird mit
+  `_parse_queue_index` (1-basiert, weiße-zeichenfreies Token) geparst;
+  `str.isdigit()` allein reicht nicht (akzeptiert `²`, `②`).
+
+**Inline-Dispatch waehrend der Agent laeuft** (`cli_info_mixin.py:470-476`):
+`/queue` und `/steer` werden SOFORT verarbeitet, wenn die Agent-Schleife gerade
+laeuft (`_should_handle_steer_command_inline`), statt roh in die Warteschlange
+gelegt zu werden. Grund: roh eingereiht haette sich `/queue <prompt>` nach dem
+Turn selbst nochmal enqueued, und `/queue list|rm|edit` haette die Schlange erst
+nach dem Leeren zu sehen bekommen (beide beobachteten Fehlerbilder). Die
+1-basierte Nummerierung erscheint im `list`-Ausdruck, `[voice]` markiert
+Sprachaufnahmen, `_preview` kuerzt auf 80 Zeichen.
+
+**Weitere semantische Punkte:**
+- Enqueuen waehrend der Agent laeuft ist NICHT unterbrechend: der Text kommt als
+  naechster Turn, die laufende Antwort bleibt unberuehrt (anders als
+  `/steer`, das nach dem naechsten Werkzeugaufruf injiziert).
+- `_queue_enqueue` streckt zuerst Paste-Referenzen
+  (`_expand_paste_references`); ein eingefuegter Dateiinhalt wird aufgeloest,
+  bevor er in die Schlange kommt.
+- Ein Sprachaufnahme-Eintrag behaelt seinen Sentinel beim `edit`
+  (`_VoiceInputMessage` bleibt `_VoiceInputMessage`, damit die knappe
+  Sprachantwort-Praefix weiter gilt; #65827).
+- Reihenfolge der Verwaltung ist FIFO in `_pending_input` (eine
+  `queue.Queue`); `move A B` ordnet um.
+- `/queue` ist (CLI): die Messaging-Gateway-Plattformen (Telegram-Bot,
+  SkillsBot-Bruecke) haben KEINEN queue-Handler — dort angekommen, wird die
+  Nachricht als Freitext/Bot-Auftrag behandelt statt enqueued.
