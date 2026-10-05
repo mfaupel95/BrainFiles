@@ -110,6 +110,58 @@ Funktionsweg: der Importweg umgeht sonst jedes Umbiegen von `HANDEL` im Test
 **Nachweis:** `grep -n "^ORDNER" Agenten/Handel/moondev_historie.py` — die Konstante
 ist die Wahrheit; `ls Agenten/Handel/daten/historie/feed/*_1D.json` — 30 Reihen.
 
+## Ein Verweis kann verschwinden, ohne dass es jemand merkt (05.10.2026, T-369)
+
+Am 05.10.2026 um 22:12:52 war `BrainFiles/Werkstatt` kein Verweis mehr auf
+`O:/Werkstatt`, sondern ein **echter, fast leerer Ordner** - nur die zwei
+konfig-doktor-Dateien lagen darin. Alle 49 Repos, omnitrade, OmniRoute und die
+Projekte waren ueber den BrainFiles-Pfad unsichtbar. Auf `O:` lag alles unversehrt;
+nur der Verweis war weg. Aufgefallen ist es **nur**, weil eine Sitzung zufaellig den
+omnitrade-Stand pruefen wollte: `omnitrade.cmd` meldete 'keine Statusdatei'.
+
+Es gab keine Wache dafuer - obwohl der konfig-doktor `LAUFZEIT-JUNCTION-*` als
+KRITISCH kennt. Nur rief ihn niemand auf. **Ein Pruefer ist keine Wache.**
+
+### Die Wache: zwei Zeugen, absichtlich
+
+`Agenten/Hermes/scripts/konfig-doktor-wache.py`, Cron `konfig-doktor-wache`
+(`1beb6d64a8c8`, alle 4 h, `no_agent`, Telegram, leere Ausgabe = nichts senden):
+
+1. **Direkter Verweis-Test** (schnell, ohne Fremdprozess): existiert der Pfad, ist er
+   ein Reparse-Punkt, ist das Ziel erreichbar. Das faengt den Vorfall in
+   Millisekunden - und funktioniert auch, wenn der Doktor selbst defekt ist.
+2. **Konfig-Doktor** (`konfig-doktor.ps1 -Kurz -OhneExtern`, ~8 s): der breite Blick.
+   Gemeldet wird **nur KRITISCH** - WARNUNGEN und HINWEISE sind fuer eine Wache
+   Rauschen.
+
+### Zwei Lehren, beide uebertragbar
+
+* **Ein Fehler der Pruefung ist nie ein leeres Ergebnis.** Exitcode 2, Zeitueberschreitung
+  und unlesbare Ausgabe werden GEMELDET, nicht verschwiegen. Eine leere Ausgabe heisst
+  genau eines: alles geprueft, nichts KRITISCH.
+* **Die Merkkennung ignoriert Zahlen als ganze Folge** (`re.sub(r'[0-9]+', '#', text)`).
+  Je Ziffer ersetzt macht aus `3` -> `#` und `99` -> `##` zwei VERSCHIEDENE Kennungen -
+  derselbe Befund meldet dann doch bei jedem Lauf. Der Test
+  `test_zahlen_aendern_die_kennung_nicht` hat genau das gefunden.
+
+### Die Reparatur (verlustfrei, wiederholbar)
+
+```
+# 1. Inhalt des echten Ordners nach O: retten (hier: die zwei Dateien)
+# 2. Remove-Item -LiteralPath <wurzel>\Werkstatt -Recurse -Force
+# 3. New-Item -ItemType Junction -Path <wurzel>\Werkstatt -Target 'O:\Werkstatt'
+# 4. (Get-Item <wurzel>\Werkstatt -Force).LinkType  -> muss 'Junction' melden
+```
+
+**NIE `rm -rf` aus bash auf einen Pfad, der ein Junction sein koennte** - das
+Junction-Removal-Verhalten ist unklar, und ein Fehlgriff loescht das ZIEL mit.
+PowerShell `Remove-Item -LiteralPath` + `New-Item -ItemType Junction` nehmen.
+
+**Ursache unbewiesen** (T-369): `konfig-doktor.ps1` (schreibt nur eine Datei) und seine
+Testsuite (Fixtures in `GetTempPath` mit eigener GUID) sind ausgeschlossen. Zeitgleich
+22:12:52 wurden `datensortierung.ps1`, `sicherung.ps1` und `wissen-index-pruefen.ps1`
+geschrieben - eine parallele Sitzung war im Baum; keine dieser drei fasst Werkstatt an.
+
 ## Windows-Aufgaben: Fallen
 
 - **`IgnoreNew` fehlt → Instanzen wachsen.** Am 16.09.2026 liefen vier Dauerlaeufe

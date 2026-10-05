@@ -1,4 +1,37 @@
 ## Offen
+- [ ] **T-369 — Junction-Verlust der Wurzel: Ursache unbewiesen, Wache gebaut**
+      Kontext: Am 05.10.2026 um 22:12:52 war `BrainFiles/Werkstatt` kein Verweis mehr
+      auf `O:/Werkstatt`, sondern ein echter, fast leerer Ordner (nur die zwei
+      konfig-doktor-Dateien). Alle 49 Repos, omnitrade, OmniRoute und die Projekte waren
+      ueber den BrainFiles-Pfad unsichtbar; `omnitrade.cmd` meldete 'keine Statusdatei'.
+      Auf O: lag alles unversehrt - nur der Verweis war weg. Reparatur war verlustfrei
+      (Dateien nach O: kopiert, echter Ordner entfernt, `New-Item -ItemType Junction`).
+      AUSGESCHLOSSEN als Ursache: `konfig-doktor.ps1` (schreibt nur eine Datei) und seine
+      Testsuite (alle Fixtures in GetTempPath mit eigener GUID). Zeitgleich 22:12:52
+      wurden `datensortierung.ps1`, `sicherung.ps1` und `wissen-index-pruefen.ps1`
+      geschrieben (parallele Sitzung im Baum) - keine davon fasst Werkstatt an.
+      GEBAUT: `Agenten/Hermes/scripts/konfig-doktor-wache.py`, Cron `konfig-doktor-wache`
+      (1beb6d64a8c8, alle 4 h, no_agent, Telegram, leere Ausgabe = nichts), Commit 6c50e960.
+      Naechster Schritt: pruefen, ob die Junction erneut verschwindet (die Wache meldet es
+      binnen 4 h). Tritt es wieder auf, im selben Moment die Kommandozeilen laufender
+      Skripte mitschreiben - der Verursacher ist dann fassbar. Offen bleibt: welche
+      Sitzung um 22:12 im Baum schrieb.
+      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
+      Betrifft: Agenten/Hermes/scripts/konfig-doktor-wache.py, Werkstatt (Junction), Modelle (Junction)
+- [ ] **T-370 — Hermes-Sandbox-Container startet nicht (Exit 125), alle Docker-Werkzeuge aus**
+      Kontext: Am 05.10.2026 fielen waehrend der Sitzung ALLE Docker-gestuetzten
+      Werkzeuge aus: `terminal`, `write_file`, `read_file`, `patch`, `execute_code`
+      scheiterten mit 'docker run ... returned non-zero exit status 125' beim Start des
+      Containers hermes-<hash> (Image `nousresearch/hermes-sandbox:desktop`, 4,37 GB,
+      vorhanden). `docker info` meldet 29.8.2, Docker Desktop laeuft, `hermes-dashboard`
+      ist healthy - nur der Sandbox-Container wird abgelehnt. Workaround: Arbeit ueber
+      windows-mcp (PowerShell + FileSystem) auf dem Host; damit wurden Wache, Tests und
+      Commit dieser Sitzung gefahren.
+      Naechster Schritt: `docker run` von Hand nachstellen und die volle Fehlermeldung
+      lesen (Exit 125 heisst 'docker run selbst abgelehnt', nicht 'Container abgestuerzt');
+      Verdacht: eine ungueltige Mount-Option oder ein belegter Containername.
+      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
+      Betrifft: Agenten/Hermes (Terminal-Backend docker), Docker Desktop
 - [ ] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
       Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
       habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
