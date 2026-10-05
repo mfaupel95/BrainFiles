@@ -175,10 +175,19 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
 
 ## Pitfalls
 
+- **Ein eingefrorener PID beweist keinen lebenden Lauf — und umgekehrt.** Vor
+  dem Neustart eines Statusordner-Laufs die alte Datei **loeschen**: sie behauptet
+  `state: running` und eine verwaiste PID, und eine Bruecke, die nur die Datei
+  liest, haelt den frischen Lauf fuer tot.
 - **Ein zweiter Zeuge, der dieselbe Quelle liest, ist kein Zeuge.**
   `zustand.json` und das eigene Journal sind EIN Zeuge; die Boerse, der Task,
   die Registry sind der andere.
 - **`archive`/Filter decken offene Sitzungen nicht ab.** „No sessions match" bei
+- **Zum Trennen von Commits `GIT_INDEX_FILE`, nie `checkout --`.** Ich habe
+  einmal die Fremdarbeit einer Parallelsitzung mit `git checkout --
+  <datei>` verworfen (Hausregel verbietet es) und aus einer Sicherung
+  gerettet. Der Index gehoert allen Sitzungen; die Arbeitskopie gehoert der
+  gerade schreibenden. „No sessions match" bei
   `--older-than 30d` heisst nur: beendete Sitzungen passten nicht — 46 offene
   Sitzungen blieben still liegen. Bestand nur ueber die DB zaehlen.
 - **`git.exe`-Prozesse beweisen keinen Committer.** 12 gleichzeitige `git.exe`
@@ -262,7 +271,28 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
 - **Bei einer spaet eintreffenden Hintergrundmeldung den Zeitstempel halten.**
   Ein `EXIT=1` aus einem Lauf, der vor der Reparatur endete, ist kein Befund
   ueber den jetzigen Stand.
-- **Zum Trennen von Commits `GIT_INDEX_FILE`, nie `checkout --`.** Ich habe
+- **Eine Statusdatei ist ein Zeuge. Der Prozess dahinter ist der andere.**
+  Am 05.10.2026 las ich `status/live.json` (`state: running`, `pid: 8516`) und
+  schloss daraus „der Lauf ist tot" — dann startete ich ihn neu und die Datei
+  zeigte `pid: 73440`. Der Prozess `8516` existierte nie mehr, der neue Lauf
+  schrieb dieselbe Datei. Zwei Fehler in einem Durchgang: ich hielt eine alte
+  PID aus der Datei fest, und mein „Gegenprobe"-Lauf (`tasklist` direkt nach
+  dem Start) war ebenso veraltet wie der Befund davor. Die Hausregel stand
+  bereits im Wrapper: **der Programmname beweist nichts, entscheide an zwei
+  Zeugen (Statusdatei + PID).** Eine Momentaufnahme, die man einmal liest,
+  ist keine Messung — sie ist eine Behauptung mit Zeitstempel.
+- **Ein Vordergrundprozess stirbt mit dem Werkzeugaufruf, der ihn gestartet
+  hat.** `omnitrade.cmd start` blockiert absichtlich („Beenden: Strg+C hier").
+  Ein `terminal`-Aufruf mit Timeout nimmt ihn mit: der Prozess bekommt ein
+  SIGTERM/Kill und hinterlaesst genau die eingefrorene Statusdatei, die man
+  dann fuer einen Totalausfall haelt. Fuer Dauerlaeufe `Start-Process` ueber
+  `mcp__windows_mcp__PowerShell` mit `-PassThru`, `-RedirectStandardOutput` auf
+  eine Logdatei — der Prozess lebt dann unabhaengig vom Werkzeug, und die
+  Logdatei bekommt ohne die Umleitung den Inhalt gar nicht erst.
+- **Ein eingefrorener PID beweist keinen lebenden Lauf — und umgekehrt.** Vor
+  dem Neustart eines Statusordner-Laufs die alte Datei **loeschen**: sie behauptet
+  `state: running` und eine verwaiste PID, und eine Bruecke, die nur die Datei
+  liest, haelt den frischen Lauf fuer tot. Ich habe
   einmal die Fremdarbeit einer Parallelsitzung mit `git checkout --
   <datei>` verworfen (Hausregel verbietet es) und aus einer Sicherung
   gerettet. Der Index gehoert allen Sitzungen; die Arbeitskopie gehoert der

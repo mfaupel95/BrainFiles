@@ -53,6 +53,13 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
    setzt keine Order.
    Buch gegen Boerse stellen (Fuellung, Geister, Wiederherstellung):
    `references/buch-gegen-boerse.md`.
+   **Und der teuerste Fall davon: ein HANDVERKAUF, der als Geist gebucht wird** —
+   `references/handverkauf-geist.md`. Drei eigene Befunde vom 05.10.2026:
+   `positions-history` liefert `avgPx: None`, der Verkaufspreis steht nur in
+   `/trade/fills`; die Geisterpruefung kannte nur „da" oder „weg" und keinen
+   TEILVERKAUF; und der Groessenabgleich lief NACH der Geisterpruefung, war bei
+   einer auf null gelaufenen Position also wirkungslos. Vier echte Positionen
+   verloren ueber Nacht ihren Erloes (STRK realisiert +70,76 USD, gebucht 0,00).
    **Was offen ist, abgesichert und wie viel Luft bleibt** (Kontostand je
    Waehrung, offene Positionen, Stops mit ihrer Menge): 
    `references/kontostand-und-positionen.md` — dort steht auch, warum die
@@ -75,6 +82,13 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
    Commit nur eigener Pfade (`brainfiles-auftrag`).
 8. **Kein Dauerlauf-Neustart noetig**: der Dauerlauf startet `handeln.py` je
    Zyklus als eigenen Prozess — die Aenderung wirkt im naechsten Zyklus.
+9. **Wenn der Befund „Handverkauf" lautet, ist der GEIST fast schon gebucht.**
+   Wer eine Position von Hand schliesst, erzeugt drei Zustandsuebergaenge
+   gleichzeitig (Menge kleiner, dann 0, offene Algo-Order verschwindet) — und
+   die Geisterpruefung sieht davon nur „fehlt". Bevor du `buchbereinigung_geist`
+   in einem Journal suchst, frag `/trade/fills` (der einzige Ort mit dem
+   Ausfuehrungspreis) und stelle die Buerge-Menge gegen die Buchmenge. Details,
+   Uhrzeit-Kette und die gebaute Bruecke: `references/handverkauf-geist.md`.
 
 ## Pitfalls
 
@@ -235,6 +249,25 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   neu lesen: zwischen Analyse und Order aendern sich Mengen und Stops, und wer
   auf einer Tabelle von vor einer Minute handelt, baut die zweite Schutzebene.
   Messung und Order gehoeren in **einen** Lauf.
+- **Ein HANDVERKAUF im Buch, der als Geist gebucht wird, ist der teuerste
+  Fall — und er sieht harmlos aus.** Am 05.10.2026 hat Max ueber Nacht vier
+  echte Live-Positionen per Hand verkauft (Stops). Das Haus buchte sie als
+  `buchbereinigung_geist` mit Erloes 0.00 — ein Geist wird neutral gebucht — und
+  die Kapitalkurve zeigte vier Verkaeufe ohne Verlust. Die Boerse fuehrte die
+  Ergebnisse die ganze Zeit: STRK `realizedPnl +70,76`, QUANT `−18,47`, SOL
+  `+0,96`. Drei belegte Ursachen: (a) `_geist_erloes` liest den Verkaufspreis aus
+  `/account/positions-history` und bekommt dort `avgPx: None` — der Preis steht
+  nur in `/trade/fills` → `fillPx`; (b) die Geisterpruefung kannte nur „da" oder
+  „weg" und keinen TEILVERKAUF (Buch 19.616 → 12.033 → 8.033 → 0, jede Welle als
+  `handanpassung` gebucht, nie als Verkauf); (c) `bueche_groessen_abgleichen` lief
+  NACH der Geisterpruefung und war bei einer auf null gelaufenen Position
+  wirkungslos. **Merksatz: ein im Journal verbuchter Verkaufspreis, der EXAKT dem
+  Einstand entspricht, ist kein Verkauf — das ist das Kennzeichen eines
+  Geisters.** So findet man die betroffenen Positionen:
+  `grep -h ",live," handelsjournal*.csv | grep -v anpassen`. Und die Regel NICHT
+  abschalten — sonst bleiben Positionen stehen, die die Boerse schon verkauft
+  hat, und die Spur kauft beim naechsten Signal in eine Position, die es nicht
+  gibt. Details und die gebaute Bruecke: `references/handverkauf-geist.md`.
 - **Antwortform an Max.** Zuerst die Ursache in einem Satz, dann die Belege
   (Zahlen, nicht Adjektive), dann was jetzt anders ist und was absichtlich NICHT
   angefasst wurde (Fremdarbeit im Arbeitsbaum, laufende Prozesse), am Ende genau
