@@ -207,7 +207,7 @@ def tagesende(p, w) -> str | None:
 
 # --- Einstieg ---------------------------------------------------------------
 
-def einstieg(z, inst, d, sig, w, faktor, journal_pfad):
+def einstieg(z, inst, d, sig, w, faktor, journal_pfad, zustand_pfad):
     """Einstieg zum Signal: Stop hinter der Wand, Ziel der halbe Rueckweg.
 
     buch.einstieg kann den Stop NICHT als Marktpunkt setzen (nur als Prozent,
@@ -259,13 +259,15 @@ def einstieg(z, inst, d, sig, w, faktor, journal_pfad):
     print("EINSTIEG %s %s @ %.6f  Stop %.6f  Ziel %.6f  Nominal %.2f USD  "
           "(%s)" % (seite.upper(), inst, einstieg_p, stop, ziel, nominal,
                     p["ausloeser"]))
-    buch.journal(journal_pfad, zeit=_jetzt(), modus="papier",
-                 aktion="kauf", inst=inst, seite=seite,
-                 preis="%.6f" % einstieg_p, einsatz_usd="%.2f" % nominal,
-                 stop="%.6f" % stop, ziel="%.6f" % ziel,
-                 stop_pct="%.2f" % stop_pct,
-                 grund="%s:%s" % (w.get("_grund") or w.get("grund") or
-                                  "iv_waelle", p["ausloeser"]))
+    # Journal UND Zustand zusammen (buch.buche): eine Buchung, die nur das
+    # Journal erreicht, wuerde einen Geist erzeugen (T-356).
+    buch.buche(z, zustand_pfad, journal_pfad, zeit=_jetzt(), modus="papier",
+               aktion="kauf", inst=inst, seite=seite,
+               preis="%.6f" % einstieg_p, einsatz_usd="%.2f" % nominal,
+               stop="%.6f" % stop, ziel="%.6f" % ziel,
+               stop_pct="%.2f" % stop_pct,
+               grund="%s:%s" % (w.get("_grund") or w.get("grund") or
+                                "iv_waelle", p["ausloeser"]))
     return p
 
 
@@ -330,12 +332,14 @@ def lauf(modus):
         buch.spiegeln(zustand_pfad, journal_pfad, z, w)
         return 0
 
-    buch.pruefe_ausstiege(z, kurse, w, journal_pfad, zusatz=tagesende)
+    buch.pruefe_ausstiege(z, kurse, w, journal_pfad, zusatz=tagesende,
+                          zustand_pfad=zustand_pfad)
     for inst in sorted(daten):
         sig = spanne_und_signal(daten[inst], w)
         if sig["richtung"] == "kein_signal":
             continue
-        einstieg(z, inst, daten[inst], sig, w, faktor, journal_pfad)
+        einstieg(z, inst, daten[inst], sig, w, faktor, journal_pfad,
+                 zustand_pfad)
 
     buch.schreibe_zustand(zustand_pfad, z)
     buch.spiegeln(zustand_pfad, journal_pfad, z, w)

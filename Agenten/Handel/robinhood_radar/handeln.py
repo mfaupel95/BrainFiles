@@ -223,6 +223,7 @@ def raeume_ohne_kurs(w, ordner=None, con=None, jetzt_ts=None):
             return [], [], ["Radar-Datenbank nicht lesbar (%s)" % e]
 
     behalten, geraeumt, befund = [], [], []
+    buchungen = []   # (p, kurs, gv, alter_h) - nach der Schleife GEMEINSAM gebucht
     try:
         for p in positionen:
             preis, ts = lesen.letzte_beobachtung(con, p["inst"])
@@ -234,18 +235,7 @@ def raeume_ohne_kurs(w, ordner=None, con=None, jetzt_ts=None):
             kurs = preis if preis > 0 else float(p["einstieg"])
             vz = 1 if p["seite"] == "long" else -1
             gv = float(p["nominal"]) * (kurs / float(p["einstieg"]) - 1.0) * vz
-            spur_buch.journal(
-                journal_pfad, zeit=spur_buch.jetzt(), modus="papier",
-                aktion="verkauf", inst=p["inst"], seite=p["seite"],
-                preis=spur_buch.pformat(kurs),
-                einsatz_usd="%.2f" % (float(p["nominal"]) + gv),
-                stop=spur_buch.pformat(p["stop"]), ziel=spur_buch.pformat(p["ziel"]),
-                stop_pct="%.2f" % float(p["stop_pct"]),
-                grund="buchbereinigung_kein_kurs", pos_id=p.get("pos_id", ""))
-            print("GERAEUMT %s: letzte Beobachtung %s -> %.8g, G/V %+.2f USD"
-                  % (p["inst"],
-                     ("vor %.1f h" % alter_h) if alter_h is not None else "nie",
-                     kurs, gv))
+            buchungen.append((p, kurs, gv, alter_h))
             geraeumt.append(p["inst"])
             befund.append((p["inst"], kurs, alter_h))
     finally:
@@ -253,8 +243,25 @@ def raeume_ohne_kurs(w, ordner=None, con=None, jetzt_ts=None):
             con.close()
 
     if geraeumt:
+        # Erst verschwinden die Positionen aus dem Zustand, dann kommt je
+        # Ausstieg Zeile UND Zustand zusammen (spur_buch.buche) - eine
+        # Buchung, die nur das Journal erreicht, wuerde einen Geist
+        # erzeugen (T-356).
         z["positionen"] = behalten
-        spur_buch.schreibe_zustand(zustand_pfad, z)
+        for p, kurs, gv, alter_h in buchungen:
+            spur_buch.buche(
+                z, zustand_pfad, journal_pfad, zeit=spur_buch.jetzt(),
+                modus="papier", aktion="verkauf", inst=p["inst"],
+                seite=p["seite"], preis=spur_buch.pformat(kurs),
+                einsatz_usd="%.2f" % (float(p["nominal"]) + gv),
+                stop=spur_buch.pformat(p["stop"]),
+                ziel=spur_buch.pformat(p["ziel"]),
+                stop_pct="%.2f" % float(p["stop_pct"]),
+                grund="buchbereinigung_kein_kurs", pos_id=p.get("pos_id", ""))
+            print("GERAEUMT %s: letzte Beobachtung %s -> %.8g, G/V %+.2f USD"
+                  % (p["inst"],
+                     ("vor %.1f h" % alter_h) if alter_h is not None else "nie",
+                     kurs, gv))
         spur_buch.spiegeln(zustand_pfad, journal_pfad, z, w)
     return geraeumt, befund, []
 

@@ -141,6 +141,30 @@ def journal(journal_pfad, **felder):
         w.writerow(felder)
 
 
+def buche(z, zustand_pfad, journal_pfad, **felder):
+    """EINE Buchung: Journalzeile UND Zustand in einem Aufruf.
+
+    WARUM ES DAS GIBT (T-356, 05.10.2026): `pruefe_ausstiege()` schrieb die
+    Verkaufszeile direkt ins Journal, `schreibe_zustand()` kam erst am Ende
+    des Zyklus. Eine Vorschau, die zwischen den beiden zurueckkehrte, liess
+    das Journal den Verkauf fuehren und der Zustand die Position noch offen -
+    der Dauerlauf verkaufte sie dann jede Runde neu (NIGHT doppelt gebucht).
+
+    Diese Funktion ist der EINZIGE Weg, eine Buchung zu schreiben: die Zeile
+    und der dazugehoerige Zustand entstehen in einem Aufruf, es gibt keinen
+    Rueckkehrpunkt dazwischen. `zustand_pfad` ist Pflicht - eine Buchung
+    ohne Zustand ist ein Geist und bricht laut ab statt still zu schreiben.
+    `SCHREIBEN=False` (Replay, Tests) schreibt gar nichts.
+    """
+    if not SCHREIBEN:
+        return
+    if zustand_pfad is None:
+        raise ValueError("Buchung ohne Zustandspfad: Journal und Zustand "
+                         "gehoeren zusammen (T-356)")
+    journal(journal_pfad, **felder)
+    schreibe_zustand(zustand_pfad, z)
+
+
 def lege_journal_an(journal_pfad):
     """Das Journal anlegen, falls es fehlt - mit Kopfzeile, ohne Buchung.
 
@@ -662,13 +686,14 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
 
 
 def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
-                    weg=None, zusatz=None):
+                    weg=None, zusatz=None, zustand_pfad=None):
     """Stop und Ziel pruefen. Der G/V laeuft auf den NOMINALWERT.
 
     Die rohe Kursdifferenz war der Fehler vom 15.09.2026: bei BTC ein Faktor
     von Zehntausenden, der Erloes stand in Kurshoehe im Journal.
     """
     behalten = []
+    buchungen = []   # Ausstiege, die nach der Schleife GEMEINSAM gebucht werden
     for p in z.get("positionen", []):
         if nur is not None and p.get("inst") != nur:
             behalten.append(p)
@@ -768,21 +793,28 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
                       % (p["inst"], e), file=sys.stderr)
                 behalten.append(p)
                 continue
-        print("AUSSTIEG (%s) %s %.6f G/V %+.2f USD"
-              % (grund, p["inst"], kurs, gv))
-        journal(journal_pfad, zeit=jetzt(),
-                modus="live" if ist_live else "papier", aktion="verkauf",
-                inst=p["inst"], seite=p["seite"], preis=pformat(kurs),
-                # Die Kennung der Position, die hier endet (T-095). Ohne sie
-                # waere diese Zeile bei zwei offenen Positionen im selben
-                # Instrument nicht mehr zuzuordnen.
-                pos_id=p.get("pos_id", ""),
-                einsatz_usd="%.2f" % (p["nominal"] + gv),
-                stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
-                stop_pct="%.2f" % p["stop_pct"], grund=grund,
-                **mae.felder(p))
+        buchungen.append((p, kurs, grund, gv, ist_live))
 
     z["positionen"] = behalten
+    # GEMEINSAM buchen: erst verschwindet die Position aus dem Zustand, dann
+    # kommt die Verkaufszeile ins Journal - beides in EINEM Aufruf (buche).
+    # Vorher schrieb das Journal hier sofort, der Zustand erst am Ende des
+    # Zyklus; eine Vorschau oder ein Absturz dazwischen liess die Position
+    # offen, waehrend das Journal sie verkauft hatte (T-356).
+    for p, kurs, grund, gv, ist_live in buchungen:
+        print("AUSSTIEG (%s) %s %.6f G/V %+.2f USD"
+              % (grund, p["inst"], kurs, gv))
+        buche(z, zustand_pfad, journal_pfad, zeit=jetzt(),
+              modus="live" if ist_live else "papier", aktion="verkauf",
+              inst=p["inst"], seite=p["seite"], preis=pformat(kurs),
+              # Die Kennung der Position, die hier endet (T-095). Ohne sie
+              # waere diese Zeile bei zwei offenen Positionen im selben
+              # Instrument nicht mehr zuzuordnen.
+              pos_id=p.get("pos_id", ""),
+              einsatz_usd="%.2f" % (p["nominal"] + gv),
+              stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
+              stop_pct="%.2f" % p["stop_pct"], grund=grund,
+              **mae.felder(p))
 
 
 # --- Das Lauf-Geruest ------------------------------------------------------
@@ -847,7 +879,9 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
             print("Live waere gesperrt durch: " + ("; ".join(gruende) if gruende
                                                   else "nichts"))
 
-        if s.get("kill"):
+        # Die Vorschau ist der lesende Blick: sie darf auch einen Kill-Stand
+        # nicht flachlegen - alles, was hier steht, SCHREIBT (T-356).
+        if modus != "vorschau" and s.get("kill"):
             print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach."
                   % ruecklauf)
             z["positionen"] = []
@@ -877,9 +911,15 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
             spiegeln(zustand_pfad, journal_pfad, z, w)
             return 0
 
-        pruefe_ausstiege(z, kurse, w, journal_pfad, live=live, weg=weg,
-                         zusatz=zusatz_ausstieg)
         if modus == "vorschau":
+            # NICHTS schreiben - auch keine Ausstiege. Genau das war der
+            # Geist vom 05.10.2026 (T-356): `pruefe_ausstiege()` buchte die
+            # Verkaufszeile, der Vorschau-Zweig kehrte danach ohne
+            # `schreibe_zustand()` zurueck - das Journal hatte den Verkauf,
+            # der Zustand die Position noch offen, und der Dauerlauf
+            # verkaufte sie jede Runde neu. Die Vorschau steht deshalb VOR
+            # jeder Buchung: sie rechnet nur. Auch dauerlauf.nur_fenster_
+            # fehlt() ruft sie auf - lesend, fuer die Sperrenzeile.
             for inst in sorted(daten):
                 seite = signal(daten[inst], w)
                 if seite:
@@ -889,6 +929,9 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                              ("  Ziel %.2f" % linie) if linie else ""))
             print("Vorschau: keine Dateien geschrieben.")
             return 0
+
+        pruefe_ausstiege(z, kurse, w, journal_pfad, zustand_pfad=zustand_pfad,
+                         live=live, weg=weg, zusatz=zusatz_ausstieg)
 
         # TRIGGER_MODUS (seit 03.10.2026, Auftrag Max "weniger handeln"):
         # Im Signal-Modus wird nur dann gehandelt, wenn sich die Richtung des
@@ -920,7 +963,7 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                       "Nominal %.2f USD"
                       % (seite.upper(), inst, p["einstieg"], p["stop_pct"],
                          p["ziel"], p["nominal"]))
-                journal(journal_pfad, zeit=jetzt(),
+                buche(z, zustand_pfad, journal_pfad, zeit=jetzt(),
                         modus="live" if live else "papier",
                         aktion="kauf", inst=inst, seite=seite,
                         # Die Kennung entsteht in `einstieg()` und steht in

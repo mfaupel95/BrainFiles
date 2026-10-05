@@ -16,6 +16,7 @@ haelt fest:
 Kein Netz, keine Boerse: der Orderweg ist eine Attrappe.
 """
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -130,6 +131,7 @@ class AusstiegLiveTest(unittest.TestCase):
 
     def setUp(self):
         self.tmp = HIER / "tmp_journal_orderweg.csv"
+        self.zustand_tmp = HIER / "tmp_zustand_orderweg.json"
         self.weg = Attrappe()
         self.live = {"inst": "ABC-USDC", "seite": "long", "einstieg": 100.0,
                      "stop": 93.0, "ziel": 114.0, "stop_pct": 7.0, "nominal": 20.0,
@@ -138,34 +140,51 @@ class AusstiegLiveTest(unittest.TestCase):
         self.papier = dict(self.live, modus="papier")
 
     def tearDown(self):
-        if self.tmp.exists():
-            self.tmp.unlink()
+        for p in (self.tmp, self.zustand_tmp,
+                  Path(str(self.zustand_tmp) + ".bak")):
+            if p.exists():
+                p.unlink()
+
+    def _zustand_offen(self):
+        """Insts, die der geschriebene Zustand noch als offen fuehrt."""
+        with open(self.zustand_tmp, encoding="utf-8") as f:
+            return [p["inst"] for p in json.load(f)["positionen"]]
 
     def test_live_ausstieg_storniert_erst_den_stop(self):
         z = {"positionen": [dict(self.live)]}
         buch.pruefe_ausstiege(z, {"ABC-USDC": 92.0}, W, self.tmp,
-                              live=True, weg=self.weg)
+                              live=True, weg=self.weg,
+                              zustand_pfad=self.zustand_tmp)
         self.assertEqual([a[0] for a in self.weg.aufrufe], ["stop-storno", "verkauf"])
         self.assertEqual(z["positionen"], [])
+        # T-356: die Buchung ist EINE - Journal UND Zustand zusammen.
+        self.assertEqual(self._zustand_offen(), [],
+                         "der Zustand fuehrt die verkaufte Position nicht mehr")
 
     def test_papier_position_geht_nie_an_die_boerse(self):
         """Eine Papier-Position darf im Live-Lauf geschlossen werden - aber NUR
         im Buch: kein Storno, kein Verkauf, keine Order."""
         z = {"positionen": [dict(self.papier)]}
         buch.pruefe_ausstiege(z, {"ABC-USDC": 92.0}, W, self.tmp,
-                              live=True, weg=self.weg)
+                              live=True, weg=self.weg,
+                              zustand_pfad=self.zustand_tmp)
         self.assertEqual(self.weg.aufrufe, [], "Papier wird nie an die Boerse geschickt")
         self.assertEqual(z["positionen"], [], "im Buch wird sie sauber geschlossen")
         zeile = self.tmp.read_text(encoding="utf-8").strip().splitlines()[1]
         self.assertIn("papier", zeile, "und die Journalzeile nennt Papier")
+        self.assertEqual(self._zustand_offen(), [],
+                         "der Zustand fuehrt die Position nicht mehr offen")
 
     def test_verkauf_scheitert_position_bleibt(self):
         self.weg.verkauf_ok = False
         z = {"positionen": [dict(self.live)]}
         buch.pruefe_ausstiege(z, {"ABC-USDC": 92.0}, W, self.tmp,
-                              live=True, weg=self.weg)
+                              live=True, weg=self.weg,
+                              zustand_pfad=self.zustand_tmp)
         self.assertEqual(len(z["positionen"]), 1,
                          "was nicht verkauft ist, bleibt im Buch")
+        self.assertFalse(self.zustand_tmp.exists(),
+                         "keine Buchung ohne Verkauf - kein Zustands-Schreiben")
 
 
 class SperrenTest(unittest.TestCase):

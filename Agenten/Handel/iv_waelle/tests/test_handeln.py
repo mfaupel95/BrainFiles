@@ -184,7 +184,7 @@ class EinstiegTest(unittest.TestCase):
         z = {"positionen": []}
         d, sig = self._signal()
         p = h.einstieg(z, "BTC-PERPETUAL", d, sig, _wachen("/tmp"), 1.0,
-                       h.journal_pfad)
+                       h.journal_pfad, h.zustand_pfad)
         self.assertIsNotNone(p)
         (pos,) = z["positionen"]
         self.assertEqual(pos["seite"], "short")
@@ -198,7 +198,8 @@ class EinstiegTest(unittest.TestCase):
         z = {"positionen": []}
         sig = {"richtung": "kein_signal"}
         self.assertIsNone(h.einstieg(z, "BTC-PERPETUAL", {}, sig,
-                                     _wachen("/tmp"), 1.0, h.journal_pfad))
+                                     _wachen("/tmp"), 1.0, h.journal_pfad,
+                                     h.zustand_pfad))
         self.assertEqual(z["positionen"], [])
 
     def test_buch_voll_laesst_keinen_einstieg(self):
@@ -207,15 +208,17 @@ class EinstiegTest(unittest.TestCase):
         z = {"positionen": [{"inst": "ANDERE"}]}
         d, sig = self._signal()
         self.assertIsNone(h.einstieg(z, "BTC-PERPETUAL", d, sig, w, 1.0,
-                                     h.journal_pfad))
+                                     h.journal_pfad, h.zustand_pfad))
 
     def test_ratsche_halbiert_das_nominal(self):
         z = {"positionen": []}
         d, sig = self._signal()
         w = _wachen("/tmp")
-        p_voll = h.einstieg(z, "BTC-PERPETUAL", d, sig, w, 1.0, h.journal_pfad)
+        p_voll = h.einstieg(z, "BTC-PERPETUAL", d, sig, w, 1.0,
+                            h.journal_pfad, h.zustand_pfad)
         z2 = {"positionen": []}
-        p_half = h.einstieg(z2, "BTC-PERPETUAL", d, sig, w, 0.5, h.journal_pfad)
+        p_half = h.einstieg(z2, "BTC-PERPETUAL", d, sig, w, 0.5,
+                            h.journal_pfad, h.zustand_pfad)
         self.assertAlmostEqual(p_half["nominal"], p_voll["nominal"] * 0.5,
                                places=4)
 
