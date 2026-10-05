@@ -295,18 +295,15 @@ def lauf(kurz=False, alle=False, melden=True, werte=None):
     # Mindestumsatz, absteigend nach Umsatz. Zuerst der Umsatz, dann die
     # Kerzen - sonst zieht der Lauf an den toten Paaren die meiste Zeit.
     #
-    # `maerkte` darf seit dem 05.10.2026 FEHLEN (Auftrag Max: "maerkte und
-    # werte erhoehen"), deshalb der Zugriff mit .get() statt k["maerkte"]:
-    # ein fehlender Schluessel ist "kein Quotefilter", ein KeyError waere ein
-    # Abbruch des Laufs. `okx.alle_paare(quote=None)` heisst "alle Quotes".
-    #
-    # BEFUND vom 05.10.2026, der die Erweiterung wieder zuruecknahm: ohne
-    # Filter liegen 62 Paare ueber 3 Mio USD da, mit USDT+USDC 50 - aber die
-    # 12 Differenzen sind ALLE Fiat-Paare (TRY, BRL, EUR) und fallen am
-    # C/R-Tor durch (0,02 bis 0,62). Ohne Fiat bleiben exakt 50. Der Filter
-    # kostete also keinen Kandidaten; die Erweiterung haette nur zusaetzlich
-    # Krypto-Markt gegen ueberhitzte Wechselkurs-Paare gestellt. Begruendung
-    # und Ruecknahme stehen in prognose.json unter "_maerkte".
+    # `maerkte` fehlt seit dem 05.10.2026 ABSICHTLICHT in beiden
+    # Konfigurationen (Auftrag Max: "maerkte und werte erhoehen"). Der
+    # ZUGRIFF hier ist deshalb mit .get() und nicht mit k["maerkte"]: ein
+    # fehlender Schluessel ist "kein Quotefilter", und ein KeyError waere
+    # ein Abbruch des Laufs. Gemessen am 05.10.: der Filter USDT+USDC
+    # schloss 12 echte Kandidaten aus, ohne einen tauglichen zu retten
+    # (BTC-EUR, BTC-BRL, CT-TRY, PI-TRY sind Fiat-Paare, die OKX-Spot
+    # fuehrt und Kraken Futures nicht). `okx.alle_paare(quote=None)` heisst
+    # "alle Quotes" - das ist die gewollte Breite, kein Versehen.
     paare = okx.alle_paare(quote=k.get("maerkte"),
                            min_volumen_usd=k["min_volumen_24h_usd"])
     if werte:

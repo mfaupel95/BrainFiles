@@ -192,6 +192,27 @@ verschieben**, mit Datum. Nicht löschen —
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+
+- [ ] **T-363 — Die Binance-Gegenprobe des Feed-Backtests ist an einer 25-%-Toleranz zu eng fuer Meme-Coins**
+      Kontext: Nach dem Nachladen der Historie (30 x 1D, Cron `historie-wache`,
+      05.10.2026) arbeitet `test_replay_feed.GegenprobeBoerseTest` zum ersten Mal
+      wirklich und schlaegt fehl: STRK, Binance 0.058320 gegen CoinGecko
+      0.042504 = 37 Prozent, bei `TOLERANZ = 0.25`. Gemessen an der Probe
+      `daten/historie/coingecko_probe.json` (250 Maerkte, Abzug 30.09.2026
+      21:13): STRK = starknet, 0.04250401 USD, 24-h-Volumen 33.518.255 USD.
+      Vor der Historie-Reparatur meldete derselbe Test "kein Zeitpunkt mit
+      genug Reihen" - er pruefte nichts. Die Gegenprobe ist damit von
+      unbrauchbar auf zu streng gewechselt.
+      Zwei Lesarten, beide offen: (a) die Toleranz ist je INSTRUMENT zu
+      setzen (Liquiditaetsklasse statt einer Zahl fuer alle 250), (b) die
+      Probe um STRK ergaenzen und den Fall als bekannt markieren. Eine
+      dritte, ehrlichere: CoinGecko und Binance vergleichen zwei
+      PREISQUELLEN, deren Spread bei dünnen Meme-Coin-Markten strukturell
+      gross ist - die Gleichheit zu pruefen ist dann die falsche Frage.
+      Naechster Schritt: entscheiden, welche der drei Lesarten gilt, und die
+      Toleranz als ZWEITE Zahl (Liquiditaet) fuehren statt als eine fuer alle.
+      Angelegt: 05.10.2026 - Zuletzt: 05.10.2026
+      Betrifft: Agenten/Handel/tests/test_replay_feed.py, Agenten/Handel/daten/historie/coingecko_probe.json
 - [ ] **T-355 — Omniquant: `signal_quelle` ist ein toter Schalter, `maerkte` steht noch auf USDT**
       Kontext: Der Auftrag "dann auf kraken anbinden" (05.10.2026) hat drei
       getrennte Baustellen. Schritt 1 ist erledigt (Commit 24208fb2): die
