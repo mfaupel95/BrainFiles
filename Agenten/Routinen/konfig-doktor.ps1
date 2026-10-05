@@ -96,6 +96,115 @@ function Pruefe-SelbsttestKritisch {
         -Beleg 'Schluessel sk-abcdefghijklmnopqrstuvwxyz123456 im Text' -Status 'gesichert' -Vorschlag 'keiner'
 }
 
+# ---------- Modul 1: mcp-pfade ----------
+function Test-PfadAufgeloest([string]$Pfad, [string]$Cwd) {
+    if ([System.IO.Path]::IsPathRooted($Pfad)) {
+        if (Test-Path -LiteralPath $Pfad) { return $Pfad } else { return $null }
+    }
+    foreach ($basis in @($Cwd, $Wurzel)) {
+        $k = Join-Path $basis $Pfad
+        if (Test-Path -LiteralPath $k) { return $k }
+    }
+    return $null
+}
+
+function Ist-PfadArg([string]$a) {
+    if (-not $a) { return $false }
+    if ($a -match '^[-@]' -or $a -match '://') { return $false }
+    return ($a -match '[\\/]' -or $a -match '\.(js|mjs|cjs|py|ps1|cmd|bat|exe|json)$')
+}
+
+function Get-Eig($Objekt, [string]$Name) {
+    $p = $Objekt.PSObject.Properties[$Name]
+    if ($p) { return $p.Value }
+    return $null
+}
+
+function Pruefe-McpPfade {
+    $mf = Join-Path $Wurzel 'Agenten/MCP-Manifest.json'
+    if (-not (Test-Path -LiteralPath $mf)) {
+        Add-Befund -Id 'MCP-MANIFEST-FEHLT' -Modul 'mcp-pfade' -Schwere 'KRITISCH' -Titel 'MCP-Manifest fehlt' `
+            -Beleg "Test-Path negativ: $mf" -Status 'gesichert' -Vorschlag 'Manifest aus git wiederherstellen; ohne Manifest sind die Server nicht pruefbar'
+        return
+    }
+    $man = $null
+    try { $man = Get-Content -LiteralPath $mf -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop }
+    catch {
+        Add-Befund -Id 'MCP-MANIFEST-DEFEKT' -Modul 'mcp-pfade' -Schwere 'KRITISCH' -Titel 'MCP-Manifest ist kein gueltiges JSON' `
+            -Beleg "ConvertFrom-Json scheitert fuer $mf" -Status 'gesichert' -Vorschlag 'Manifest mit git diff gegen den letzten guten Stand vergleichen'
+        return
+    }
+    $ausserhalb = New-Object System.Collections.ArrayList
+    $wl = $Wurzel.ToLowerInvariant()
+    foreach ($s in @($man.servers)) {
+        if ($null -eq $s) { continue }
+        $name = [string](Get-Eig $s 'name')
+        if ((Get-Eig $s 'enabled') -eq $false) { continue }
+        $cwd = $Wurzel
+        $cwdRoh = [string](Get-Eig $s 'cwd')
+        if ($cwdRoh) {
+            if ([System.IO.Path]::IsPathRooted($cwdRoh)) { $cwd = $cwdRoh } else { $cwd = Join-Path $Wurzel $cwdRoh }
+            if (-not (Test-Path -LiteralPath $cwd)) {
+                Add-Befund -Id "MCP-CWD-FEHLT-$name" -Modul 'mcp-pfade' -Schwere 'KRITISCH' -Titel "Arbeitsverzeichnis von '$name' fehlt" `
+                    -Beleg "cwd '$cwdRoh' aufgeloest zu $cwd, Test-Path negativ" -Status 'gesichert' -Vorschlag 'cwd im Manifest korrigieren oder Ordner wiederherstellen'
+                continue
+            }
+        }
+        $cmd = [string](Get-Eig $s 'command')
+        $fehlend = New-Object System.Collections.ArrayList
+        $aufgeloest = New-Object System.Collections.ArrayList
+        if ($cmd) {
+            if ($cmd -match '[\\/]') {
+                $r = Test-PfadAufgeloest $cmd $cwd
+                if ($r) { [void]$aufgeloest.Add($r) } else { [void]$fehlend.Add("command: $cmd") }
+            }
+            elseif (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
+                Add-Befund -Id "MCP-COMMAND-NICHT-IM-PFAD-$name" -Modul 'mcp-pfade' -Schwere 'WARNUNG' -Titel "Command '$cmd' von '$name' nicht im PATH" `
+                    -Beleg "Get-Command $cmd liefert nichts (in dieser Shell; Server-Start kann anderen PATH haben)" -Status 'Vermutung' `
+                    -Vorschlag 'Programm installieren oder vollen Pfad ins Manifest schreiben'
+            }
+        }
+        foreach ($a in @(Get-Eig $s 'args')) {
+            $as = [string]$a
+            if (-not (Ist-PfadArg $as)) { continue }
+            $r = Test-PfadAufgeloest $as $cwd
+            if ($r) { [void]$aufgeloest.Add($r) } else { [void]$fehlend.Add("args: $as") }
+        }
+        if ($fehlend.Count -gt 0) {
+            Add-Befund -Id "MCP-PFAD-FEHLT-$name" -Modul 'mcp-pfade' -Schwere 'KRITISCH' -Titel "Server '$name': Pfad fehlt" `
+                -Beleg ("Fehlend: " + ($fehlend -join '; ') + ". Geprueft gegen cwd $cwd und Wurzel $Wurzel; Test-Path negativ") -Status 'gesichert' `
+                -Vorschlag 'Datei bauen/wiederherstellen oder Manifest-Eintrag korrigieren (Reparatur nur nach Freigabe)'
+        }
+        $voll = (@($cmd) + @(@(Get-Eig $s 'args') | ForEach-Object { [string]$_ })) -join ' '
+        if ($voll -match '(?i)(curl|wget|iwr|invoke-webrequest)[^|]*\|\s*(sh|bash|zsh|iex|invoke-expression)\b') {
+            Add-Befund -Id "MCP-STARTER-AUFFAELLIG-$name" -Modul 'mcp-pfade' -Schwere 'WARNUNG' -Titel "Starter von '$name' holt Code aus dem Netz und fuehrt ihn aus" `
+                -Beleg 'command/args enthalten Download-Pipe in eine Shell oder iex' -Status 'gesichert' -Vorschlag 'Skript lokal ablegen und pruefen; Entscheidung liegt bei Max'
+        }
+        foreach ($p in $aufgeloest) {
+            $voll2 = [System.IO.Path]::GetFullPath($p).ToLowerInvariant()
+            if (-not $voll2.StartsWith($wl)) { [void]$ausserhalb.Add("$name -> $p"); break }
+        }
+    }
+    if ($ausserhalb.Count -gt 0) {
+        Add-Befund -Id 'MCP-AUSSERHALB-WURZEL' -Modul 'mcp-pfade' -Schwere 'HINWEIS' -Titel "$($ausserhalb.Count) Server starten Programme ausserhalb der Wurzel" `
+            -Beleg (($ausserhalb | Select-Object -First 8) -join '; ') -Status 'gesichert' -Vorschlag 'Nur zur Kenntnis: Pfade ausserhalb der Wurzel ueberleben einen Umzug auf die SSD nicht'
+    }
+    $sc = Join-Path $Wurzel 'Agenten/mcp-sync-check.ps1'
+    if ((Test-Path -LiteralPath $sc) -and -not $OhneExtern) {
+        $ps = (Get-Process -Id $PID).Path
+        $r = Invoke-Extern -Datei $ps -Argumente @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $sc) -TimeoutSek $ModulLimitSek
+        if ($r.TimedOut) {
+            Add-Befund -Id 'MCP-SYNC-ZEITLIMIT' -Modul 'mcp-pfade' -Schwere 'UNKLAR' -Titel 'mcp-sync-check.ps1 antwortet nicht im Zeitlimit' `
+                -Beleg "Abbruch nach $ModulLimitSek s" -Status 'gesichert' -Vorschlag 'Skript einzeln ausfuehren'
+        }
+        elseif ($r.ExitCode -ne 0) {
+            $zl = @(($r.Out + "`n" + $r.Err) -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 3) -join ' / '
+            Add-Befund -Id 'MCP-SYNC-ABWEICHUNG' -Modul 'mcp-pfade' -Schwere 'HINWEIS' -Titel 'mcp-sync-check.ps1 meldet Abweichung' `
+                -Beleg "Exit $($r.ExitCode): $zl" -Status 'gesichert' -Vorschlag 'Ausgabe des Skripts lesen; Abgleich Manifest und Client-Configs'
+        }
+    }
+}
+
 # === MODULE (neue Pruefe-*-Funktionen oberhalb dieser Zeile einfuegen) ===
 
 $ModulTabelle = [ordered]@{
