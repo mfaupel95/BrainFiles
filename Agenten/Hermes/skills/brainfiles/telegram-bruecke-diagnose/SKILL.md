@@ -2,14 +2,14 @@
 name: telegram-bruecke-diagnose
 category: brainfiles
 description: Use when ein Telegram-Bot nicht geantwortet hat.
-version: 0.1.0
-author: Hermes Agent
+version: 0.2.0
+author: Hermes
 license: MIT
 platforms: [windows]
 metadata:
   hermes:
-    tags: [Diagnose, Telegram, Bruecke, SkillsBot, Belege]
-    related_skills: [a2a-telegram-skills, stille-ausfaelle-eingrenzen, wirkung-nachweisen]
+    tags: [Diagnose, Telegram, Bruecke, SkillsBot, Belege, Gateway, Adapter]
+    related_skills: [a2a-telegram-skills, stille-ausfaelle-eingrenzen, wirkung-nachweisen, hermes-maintenance]
 ---
 
 # Telegram-Bruecke: "hat nicht funktioniert" eingrenzen
