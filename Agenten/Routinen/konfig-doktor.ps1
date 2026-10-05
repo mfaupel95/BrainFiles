@@ -244,6 +244,153 @@ function Pruefe-McpPfade {
     }
 }
 
+# ---------- Modul 2: hermes ----------
+function Get-AblaufListe($Obj, [string]$Pfad, [int]$Tiefe, $Liste) {
+    if ($null -eq $Obj -or $Tiefe -gt 5) { return }
+    if ($Obj -is [System.Management.Automation.PSCustomObject]) {
+        foreach ($p in $Obj.PSObject.Properties) {
+            if ($p.Name -eq 'expires_at') { [void]$Liste.Add([pscustomobject]@{ Pfad = "$Pfad/expires_at"; Wert = $p.Value }) }
+            else { Get-AblaufListe $p.Value "$Pfad/$($p.Name)" ($Tiefe + 1) $Liste }
+        }
+    }
+    elseif ($Obj -is [System.Collections.IEnumerable] -and $Obj -isnot [string]) {
+        $i = 0
+        foreach ($e in $Obj) { Get-AblaufListe $e "$Pfad[$i]" ($Tiefe + 1) $Liste; $i++ }
+    }
+}
+
+function ConvertTo-Zeit($Wert) {
+    if ($null -eq $Wert) { return $null }
+    if ($Wert -is [datetime]) { return $Wert.ToUniversalTime() }
+    if ($Wert -is [ValueType] -and $Wert -isnot [bool]) {
+        $n = [double]$Wert
+        if ($n -gt 100000000000) { $n = $n / 1000 }
+        return (New-Object DateTime 1970, 1, 1, 0, 0, 0, ([DateTimeKind]::Utc)).AddSeconds($n)
+    }
+    $d = [datetime]::MinValue
+    $stil = [System.Globalization.DateTimeStyles]::AdjustToUniversal -bor [System.Globalization.DateTimeStyles]::AssumeUniversal
+    if ([datetime]::TryParse([string]$Wert, [System.Globalization.CultureInfo]::InvariantCulture, $stil, [ref]$d)) { return $d }
+    return $null
+}
+
+function Pruefe-Hermes {
+    if ($env:OS -ne 'Windows_NT') {
+        Add-Befund -Id 'HERMES-NICHT-WINDOWS' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'Hermes-Pruefung uebersprungen (kein Windows)' `
+            -Beleg 'Linux/Cloud-Checkout: Junctions und venvs fehlen' -Status 'gesichert' -Vorschlag 'Auf Max'' Rechner ausfuehren'
+        return
+    }
+    $standard = Join-Path $Wurzel 'Agenten/Hermes'
+    $heim = $standard
+    $envHome = [string]$env:HERMES_HOME
+    if (-not $WurzelExplizit -and $envHome) {
+        $heim = $envHome
+        $a = [System.IO.Path]::GetFullPath($envHome).TrimEnd('\', '/')
+        $b = [System.IO.Path]::GetFullPath($standard).TrimEnd('\', '/')
+        if ($a -ne $b) {
+            Add-Befund -Id 'HERMES-HOME-ABWEICHEND' -Modul 'hermes' -Schwere 'HINWEIS' -Titel 'HERMES_HOME zeigt nicht auf Agenten/Hermes' `
+                -Beleg "HERMES_HOME=$envHome, erwartet $standard" -Status 'gesichert' -Vorschlag 'Pruefen, ob das gewollt ist (zweite Instanz?)'
+        }
+    }
+    if (-not (Test-Path -LiteralPath $heim)) {
+        Add-Befund -Id 'HERMES-ORDNER-FEHLT' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'Hermes-Ordner nicht vorhanden' `
+            -Beleg "Test-Path negativ: $heim" -Status 'gesichert' -Vorschlag 'Bei frischem Checkout erwartbar; sonst Pfad/HERMES_HOME klaeren'
+        return
+    }
+    $cfg = Join-Path $heim 'config.yaml'
+    if (-not (Test-Path -LiteralPath $cfg)) {
+        Add-Befund -Id 'HERMES-CONFIG-FEHLT' -Modul 'hermes' -Schwere 'KRITISCH' -Titel 'Hermes config.yaml fehlt' `
+            -Beleg "Test-Path negativ: $cfg" -Status 'gesichert' -Vorschlag 'Aus der juengsten Altkopie (config.yaml.bak-*) wiederherstellen - nach Freigabe'
+    }
+    else {
+        $gr = (Get-Item -LiteralPath $cfg).Length
+        $baks = @(Get-ChildItem -LiteralPath $heim -File -Filter 'config.yaml.bak*' -ErrorAction SilentlyContinue)
+        if ($baks.Count -gt 0) {
+            $max = ($baks | Measure-Object -Property Length -Maximum).Maximum
+            if ($gr -lt (0.5 * $max)) {
+                Add-Befund -Id 'HERMES-CONFIG-GESCHRUMPFT' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'Hermes config.yaml ist deutlich kleiner als die groesste Altkopie' `
+                    -Beleg ("config.yaml {0} KB, groesste Altkopie {1} KB" -f [math]::Round($gr / 1KB, 1), [math]::Round($max / 1KB, 1)) -Status 'Vermutung' `
+                    -Vorschlag 'Max: Ist das Schrumpfen gewollt (Bereinigung) oder gingen Abschnitte verloren? Diff gegen die Altkopie zeigt es'
+            }
+        }
+    }
+    $auth = Join-Path $heim 'auth.json'
+    $corrupt = @(Get-ChildItem -LiteralPath $heim -File -Filter '*.corrupt' -ErrorAction SilentlyContinue)
+    if (Test-Path -LiteralPath $auth) {
+        $json = $null
+        $lesbar = $true
+        try { $json = Get-Content -LiteralPath $auth -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop } catch { $lesbar = $false }
+        if (-not $lesbar -or $null -eq $json) {
+            Add-Befund -Id 'HERMES-AUTH-DEFEKT' -Modul 'hermes' -Schwere 'KRITISCH' -Titel 'auth.json ist kein gueltiges JSON' `
+                -Beleg 'ConvertFrom-Json scheitert (Inhalt bewusst nicht ausgegeben)' -Status 'gesichert' -Vorschlag 'Neu anmelden oder aus Sicherung holen - nach Freigabe'
+        }
+        else {
+            $liste = New-Object System.Collections.ArrayList
+            Get-AblaufListe $json '' 0 $liste
+            $jetzt = (Get-Date).ToUniversalTime()
+            $abgelaufen = @()
+            foreach ($e in $liste) {
+                $t = ConvertTo-Zeit $e.Wert
+                if ($t -and $t -lt $jetzt) { $abgelaufen += ("{0} (seit {1})" -f $e.Pfad, $t.ToString('yyyy-MM-dd')) }
+            }
+            if ($abgelaufen.Count -gt 0) {
+                Add-Befund -Id 'HERMES-AUTH-ABGELAUFEN' -Modul 'hermes' -Schwere 'WARNUNG' -Titel "$($abgelaufen.Count) Anmeldung(en) in auth.json abgelaufen" `
+                    -Beleg ($abgelaufen -join '; ') -Status 'Vermutung' -Vorschlag 'Ein Refresh-Token kann den Ablauf ausgleichen; Login im Hermes-Client erneuern, falls Aufrufe scheitern'
+            }
+        }
+    }
+    elseif (@($corrupt | Where-Object { $_.Name -like 'auth.json*' }).Count -gt 0) {
+        Add-Befund -Id 'HERMES-AUTH-FEHLT' -Modul 'hermes' -Schwere 'KRITISCH' -Titel 'auth.json fehlt, nur eine .corrupt-Kopie liegt vor' `
+            -Beleg 'Test-Path auth.json negativ; auth.json.corrupt vorhanden' -Status 'gesichert' -Vorschlag 'Neu anmelden - nach Freigabe'
+    }
+    if ($corrupt.Count -gt 0) {
+        $namen = @($corrupt | ForEach-Object { "{0} ({1})" -f $_.Name, $_.LastWriteTime.ToString('yyyy-MM-dd') })
+        Add-Befund -Id 'HERMES-CORRUPT-RESTE' -Modul 'hermes' -Schwere 'HINWEIS' -Titel "$($corrupt.Count) .corrupt-Reste im Hermes-Ordner" `
+            -Beleg ($namen -join '; ') -Status 'gesichert' -Vorschlag 'Ursache der Beschaedigung klaeren, danach aufraeumen (Teilprojekt B)'
+    }
+    $pro = Join-Path $heim 'profiles'
+    if (Test-Path -LiteralPath $pro) {
+        $ohne = @(Get-ChildItem -LiteralPath $pro -Directory -ErrorAction SilentlyContinue | Where-Object { -not (Test-Path -LiteralPath (Join-Path $_.FullName 'config.yaml')) })
+        if ($ohne.Count -gt 0) {
+            Add-Befund -Id 'HERMES-PROFILE-OHNE-CONFIG' -Modul 'hermes' -Schwere 'HINWEIS' -Titel "$($ohne.Count) Profil(e) ohne eigene config.yaml" `
+                -Beleg (($ohne | Select-Object -First 10 | ForEach-Object { $_.Name }) -join ', ') -Status 'gesichert' `
+                -Vorschlag 'Pruefen, ob das Profil die Hauptconfig erbt (empirisch, nicht annehmen)'
+        }
+    }
+    $log = Join-Path $heim 'logs/errors.log'
+    if (Test-Path -LiteralPath $log) {
+        $zeilen = @(Get-Content -LiteralPath $log -Tail 200 -ErrorAction SilentlyContinue)
+        $fz = @($zeilen | Where-Object { $_ -match '\bERROR\b|Traceback' })
+        if ($fz.Count -gt 0) {
+            $letzte = [string]$fz[-1]
+            if ($letzte.Length -gt 160) { $letzte = $letzte.Substring(0, 160) }
+            Add-Befund -Id 'HERMES-LOGFEHLER' -Modul 'hermes' -Schwere 'HINWEIS' -Titel "$($fz.Count) Fehlerzeilen in den letzten 200 Zeilen von errors.log" `
+                -Beleg "Letzte: $letzte" -Status 'gesichert' -Vorschlag 'Log lesen, bevor spekuliert wird'
+        }
+    }
+    if (-not $OhneExtern -and -not $Kurz) {
+        $hc = Get-Command hermes -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $hc -or $hc.Source -notmatch '\.exe$') {
+            Add-Befund -Id 'HERMES-DOCTOR-NICHT-AUFRUFBAR' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'hermes.exe nicht gefunden, Selbstdiagnose uebersprungen' `
+                -Beleg 'Get-Command hermes liefert keine .exe' -Status 'gesichert' -Vorschlag 'hermes doctor von Hand mit bereinigter Umgebung (PYTHONHOME/PYTHONPATH entfernt) ausfuehren'
+        }
+        else {
+            $r = Invoke-Extern -Datei $hc.Source -Argumente @('doctor') -TimeoutSek $ModulLimitSek -EntferneEnv @('PYTHONHOME', 'PYTHONPATH') -SetzeEnv @{ HERMES_HOME = $heim }
+            if ($r.TimedOut) {
+                Add-Befund -Id 'HERMES-DOCTOR-ZEITLIMIT' -Modul 'hermes' -Schwere 'UNKLAR' -Titel 'hermes doctor antwortet nicht im Zeitlimit' `
+                    -Beleg "Abbruch nach $ModulLimitSek s" -Status 'gesichert' -Vorschlag 'hermes doctor von Hand ausfuehren'
+            }
+            else {
+                $pz = @(($r.Out + "`n" + $r.Err) -split "`r?`n" | Where-Object { $_ -match '(?i)\[FAIL\]|error|fehler|failed' })
+                if ($pz.Count -gt 0 -or $r.ExitCode -ne 0) {
+                    $erste = @($pz | Select-Object -First 3 | ForEach-Object { if ($_.Length -gt 120) { $_.Substring(0, 120) } else { $_ } }) -join ' / '
+                    Add-Befund -Id 'HERMES-DOCTOR' -Modul 'hermes' -Schwere 'HINWEIS' -Titel "hermes doctor: $($pz.Count) Problemzeile(n), Exit $($r.ExitCode)" `
+                        -Beleg $erste -Status 'gesichert' -Vorschlag 'Ausgabe als Hypothese lesen, nicht als Befund (Meldungen koennen aus falschem Kontext stammen)'
+                }
+            }
+        }
+    }
+}
+
 # === MODULE (neue Pruefe-*-Funktionen oberhalb dieser Zeile einfuegen) ===
 
 $ModulTabelle = [ordered]@{

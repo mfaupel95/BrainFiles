@@ -146,6 +146,38 @@ $r = Lauf $fx @('mcp-pfade') @{ OhneExtern = $false; ModulLimitSek = 8 }
 $b = @($r | Where-Object { $_.id -eq 'MCP-SYNC-ZEITLIMIT' }) | Select-Object -First 1
 Pruefe '(b) Sync-Zeitlimit liegt unter dem Modul-Limit (5 s)' (($null -ne $b) -and ($b.beleg -match 'nach 5 s') -and (-not (Hat $r 'ZEITLIMIT-mcp-pfade'))) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
 
+Write-Host '--- Modul hermes ---'
+$fx = Neue-Wurzel
+$h = Join-Path $fx 'Agenten/Hermes'
+Schreibe (Join-Path $h 'config.yaml') ('x' * 100)
+Schreibe (Join-Path $h 'config.yaml.bak-20260101') ('x' * 1000)
+Schreibe (Join-Path $h 'auth.json') '{"providers":{"demo":{"access_token":"FAKE-SECRET-VALUE-ABC123XYZ","expires_at":"2020-01-01T00:00:00Z"}}}'
+Schreibe (Join-Path $h 'auth.json.corrupt') 'zzz'
+Schreibe (Join-Path $h 'profiles/mit/config.yaml') 'a: 1'
+New-Item -ItemType Directory -Path (Join-Path $h 'profiles/ohne') -Force | Out-Null
+Schreibe (Join-Path $h 'logs/errors.log') ("ok`nERROR erster`nERROR zweiter token sk-abcdefghijklmnopqrstuvwxyz123456`nINFO fertig`n")
+$r = Lauf $fx @('hermes')
+$alles = ($r | ConvertTo-Json -Depth 4)
+Pruefe 'Config-Schrumpfung wird als UNKLAR gemeldet' ((Hat $r 'HERMES-CONFIG-GESCHRUMPFT') -and ((Schwere-Von $r 'HERMES-CONFIG-GESCHRUMPFT') -eq 'UNKLAR'))
+Pruefe 'abgelaufene expires_at: WARNUNG' ((Hat $r 'HERMES-AUTH-ABGELAUFEN') -and ((Schwere-Von $r 'HERMES-AUTH-ABGELAUFEN') -eq 'WARNUNG'))
+Pruefe 'kein Auth-Wert in irgendeinem Befund' ($alles -notmatch 'FAKE-SECRET-VALUE')
+Pruefe 'kein Log-Schluessel in irgendeinem Befund' ($alles -notmatch 'sk-abcdefghijklmnopqrstuvwxyz123456')
+Pruefe '.corrupt-Reste: HINWEIS' ((Hat $r 'HERMES-CORRUPT-RESTE') -and ((Schwere-Von $r 'HERMES-CORRUPT-RESTE') -eq 'HINWEIS'))
+Pruefe 'Profil ohne Config: HINWEIS' (Hat $r 'HERMES-PROFILE-OHNE-CONFIG')
+Pruefe 'Logfehler gezaehlt: HINWEIS' ((Hat $r 'HERMES-LOGFEHLER') -and ((Schwere-Von $r 'HERMES-LOGFEHLER') -eq 'HINWEIS'))
+Pruefe 'gesunde Config + gueltige Auth: kein AUTH-DEFEKT' (-not (Hat $r 'HERMES-AUTH-DEFEKT'))
+Schreibe (Join-Path $h 'auth.json') '{ kaputt FAKE-SECRET-VALUE-ABC123XYZ'
+$r = Lauf $fx @('hermes')
+$alles = ($r | ConvertTo-Json -Depth 4)
+Pruefe 'kaputte auth.json: KRITISCH' ((Hat $r 'HERMES-AUTH-DEFEKT') -and ((Schwere-Von $r 'HERMES-AUTH-DEFEKT') -eq 'KRITISCH'))
+Pruefe 'kaputte auth.json: Inhalt nicht ausgegeben' ($alles -notmatch 'FAKE-SECRET-VALUE')
+Remove-Item -LiteralPath (Join-Path $h 'auth.json')
+$r = Lauf $fx @('hermes')
+Pruefe 'auth.json fehlt, .corrupt da: KRITISCH' ((Hat $r 'HERMES-AUTH-FEHLT') -and ((Schwere-Von $r 'HERMES-AUTH-FEHLT') -eq 'KRITISCH'))
+$fx2 = Neue-Wurzel
+$r = Lauf $fx2 @('hermes')
+Pruefe 'kein Hermes-Ordner: UNKLAR statt Fehler' ((Hat $r 'HERMES-ORDNER-FEHLT') -and ((Schwere-Von $r 'HERMES-ORDNER-FEHLT') -eq 'UNKLAR'))
+
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 if ($script:Fehler -gt 0) { Write-Host "konfig-doktor FEHLGESCHLAGEN: $($script:Fehler) Pruefung(en)"; exit 1 }
