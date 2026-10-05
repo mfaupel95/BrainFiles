@@ -215,6 +215,92 @@ der Stop-Funktion selbst — nicht beim Aufrufer. So sind alle Spuren mitgemeint
   `AssetPairs` pruefen; OKX ist bei zu vielen Stellen nachsichtig (live
   angenommene Stops mit 5 Stellen), Kraken nicht.
 
+## Einen HEGEBELTEN Weg an eine SPUR haengen (derselbe Aufbau, andere Produktklasse)
+
+Der Aufbau oben haengt einen zweiten Boersenweg mit DERSELBEN Oberflaeche an
+eine Spur - beide Beispiele dort sind SPOT. Kommt die Anweisung "mit 6x Hebel",
+ist das kein Parametersatz, sondern eine **andere Produktklasse**: der
+bestehende Weg kann es strukturell nicht, und das steht in seinem eigenen
+Modulkopf. `tdMode` ist dort fest `"cash"`, die Menge ist eine Basiseinheit,
+eine `hebel_setzen`-Funktion existiert nicht. Ein Schalter auf
+`handel_erlaubt` in diesem Zustand liefert **ungehebelten** Spot - nicht das,
+was bestellt wurde. Diese Behauptung gehoert VOR der Zusage am Code geprueft
+(`hasattr(okx_spot, "hebel_setzen")` und `'"tdMode": "cash"' im Quelltext), nicht
+begruendet.
+
+**Vier Stellen unterscheiden einen gehebelten Weg vom Spotweg. Jede davon war
+schon ein Fehler, bevor sie benannt war.**
+
+1. **`menge_fuer(inst, betrag, kurs)` bedeutet auf dem einen Weg MARGIN, auf dem
+   anderen NOMINALWERT.** Derselbe Funktionsname, zwei Bedeutungen: 100 USD
+   heissen im Spot 100 USD Bestand, im Futures 100 USD Nennwert. Ohne
+   Umrechnung kauft der gehebelte Weg eine 1x-Wette mit dem Margin-Betrag eines
+   6x-Kontrakts - und niemand sieht es am Journal, weil die Zahl plausibel
+   aussieht. Die Umrechnung gehoert an EINER Stelle und wird als Vorrang
+   bestimmt, nicht am Aufrufer: `NOMINAL_STATT_MARGINAL = {"okx_perp"}` neben der
+   Boersentabelle, und `live_menge_fuer(inst, nominal, kurs)` an der einen
+   Aufrufstelle. **Der gebundene Wert im Buch bleibt die Margin, der
+   Nominalwert geht nur an die Mengenrechnung** - sonst bookt die Spur das
+   Sechsfache ihres eigenen Deckels.
+2. **`stop_vor_liq()` ist eine eigene Pruefung, die es bei Spot nicht gibt, und
+   sie laeuft VOR dem Kauf.** Ein Long verliert, wenn der Kurs faellt: er
+   trifft zuerst den naeher am Einstieg liegenden Stop, erst danach die
+   Liquidationsmarke. Also muss `liq < stop < einstieg` gelten (Short
+   spiegelbildlich). Die Ungleichung ist leicht verkehrt herum zu lesen, und
+   **eine verkehrte Fassung lehnt jeden regulaeren Stop ab** - sie faellt nicht
+   durch, weil sie "vorsichtig" wirkt. Zwei Preise werden verweigert statt
+   geraten: ein Stop auf/ueber dem Kurs (verkauft sofort) und einer jenseits der
+   Marke (kaeme nie). Die Grenze ist eine Rechnung und gehoert in den Vermerk:
+   bei 6x liegt die Marke rund 16 % entfernt, ein 5-%-Stop kommt vorher, erst
+   jenseits von etwa 20x nicht mehr.
+3. **Die Kontowaehrung steht in `details`, nicht auf der obersten Ebene.**
+   `/api/v5/account/balance?ccy=USDC` liefert oben `availEq=''` und erst in
+   `details[0]` die Zahlen. Wer die oberen Felder liest, bekommt `0.00` - das
+   sieht wie ein leeres Konto aus und sperrt die Spur an einem Guthaben-Tor,
+   das offen ist. Derselbe Stoff, dreimal im Haus falsch gelesen; der Test
+   haelt genau diese Antwortform fest (`availEq` oben leer, `details[0]`
+   gefuellt).
+4. **Ein Vertragstest auf die vollstaendige Funktionsliste findet, was Lesen
+   nicht findet.** Die Binde-Funktion setzt jede Seam ueber einen NAMEN -
+   `live_kurs_quelle = modul.letzter_kurs` -, und ein fehlender Name crasht erst
+   beim ersten Kursabruf im Live-Zweig, also nach dem Freigabefenster. Ein
+   Test der die Namen beider Wege gegeneinander haelt (`hatattr` je Name,
+   plus die Negativ-Aussage: der Spotweg darf `hebel_setzen` NICHT haben,
+   sonst ist der ganze Aufbau ueberfluessig) findet es vor dem ersten Order.
+
+**Den Hebel als Parameter an den Kauf geben, nie als Wert in der Wache, den
+irgendein Aufrufer als Nominal missversteht.** `markt_kauf(inst, menge, hebel)`
+setzt ihn ueber `set-leverage` VOR der Order; der Aufrufer uebergibt ihn aus
+der Wache ueber eine Deckel-Funktion mit hartem Maximum. Ein Kauf auf einem
+Kontrakt mit fremdem Hebel ist eine Wette, die niemand bestellt hat.
+
+**Der gehebelte Weg leiht die Signatur, statt eine zweite zu bauen.** Schluessel,
+Signatur und Takt kommen ueber den Pfad aus dem Modul der Nachbarspur
+(`xperp/okxf.py`). Zwei Signaturen im Haus sind zwei Fehlerquellen fuer ein
+Problem, das es nur einmal gibt. Was der gehebelte Weg selbst beitraegt: die
+Produktklasse (`tdMode=isolated`, Kontrakte statt Basiseinheiten, `ctVal`
+aus dem Instrumentenrecord), die Instrument-Aufloesung und die beiden
+Pruefungen oben.
+
+**Die Marktdeckung ist je Produktklasse verschieden und muss gemessen werden.**
+OKX fuehrt **null USDC-SWAP-Maerkte** (gemessen ueber die volle
+Instrumentenliste) - nur `BTC-USDT-SWAP` und die `_UM_XPERP`-Futures. Ein Weg,
+der auf eine Waehrung gebaut wurde, die es fuer dieses Produkt nicht gibt,
+sieht aus wie ein Konfigurationsfehler und ist einer. Der Kontrakt nennt seinen
+`ctVal` (0.0001 BTC / 0.001 ETH / 0.01 SOL) - das ist die Kontraktgroesse, und
+ohne sie kommt der Faktor Zehntausend zu gross heraus. **Ein unbekannter
+Basiswert ist ein Fehler, kein Rueckfall auf ein anderes Instrument**: still das
+falsche zu handeln waere der teuerste Fehler der ganzen Datei. Und `posSide`
+gehoert nur mit, wenn das Konto nicht im Net-Modus steht - `posMode` vorher
+lesen, sonst wird jede Order abgelehnt.
+
+**Der Auftrag "Hebel xN" aendert die Substanzfrage nicht.** Ein Hebel macht
+dieselbe Stichprobe riskanter, nicht besser: er vergroessert den Verlust JE
+Position und senkt die Liquidationsmarke, die Trefferquote bleibt dieselbe. Wenn
+die Spur vorher keinen Edge zeigte, ist der Hebel eine Ausgabe, keine
+Verbesserung - das gehoert in den Bericht, sonst liest "live mit 6x" wie ein
+Vorteil.
+
 ## Ein zweiter Dienst sieht aus wie eine zweite Boerse
 
 Dieselbe Firma, anderes Produkt: **Kraken Futures ist ein eigener Dienst**, nicht
@@ -373,6 +459,13 @@ davon nur ihre 10 % an, der Rest des Einsatzes bleibt freie Margin. Das gehoert
 so in den Bericht, sonst liest "Hebel 6" wie eine sechsfache Besicherung. Und:
 **ein Stop von x % kostet bei Hebel 6 rund 6x % des Einsatzes** - der Hebel
 erhoeht den Verlust JE POSITION, nicht die Trefferchance.
+**UND der Stop muss zwischen Einstieg und Liquidationsmarke liegen, sonst kommt
+er nie** - dieselbe Regel wie beim gehebelten OKX-Weg weiter oben
+(`stop_vor_liq`, `liq < stop < einstieg`). Das ist beim Kraken-Weg bisher NICHT
+abgesichert, nur beim OKX-Weg: wer beide Wege nutzt, zieht die Pruefung hier nach.
+Der Rechenweg ist derselbe (Liquidationsmarke aus Hebel und Wartungsmarge), und
+die Grenze ist bei Kraken eher enger, weil dort ein Kontrakt die Einheit der
+Bstwaehrung ist und der Hebel das Vielfache der Margin ausmacht.
 
 **3. Die Mindestmenge kann den Hebel sprengen - dann wird GESPERRT, nicht
 aufgerundet.** 1 Kontrakt ist die kleinste Order und 1 Einheit der
@@ -427,6 +520,17 @@ Zielmarkt kommt. Drei Regeln dafuer, jede aus einem echten Ausfall:
    zweihundert Instrumente rotiert: gemessen passten elf von etwa zweihundert,
    und die zwei Kandidaten des Tages wurden abgewiesen, obwohl der Zielmarkt
    sie fuehrt.
+   **Die geprueften Tabelleneintraege sind trotzdem kein Ersatz fuer die
+   Ableitung.** Sie beantworten nur "welches Symbol", und sie decken genau die
+   Faelle ab, in denen die Regel falsch liegt - dort, wo die Basis am Zielmarkt
+   anders heisst als an der Quelle. Beide Wege braucht es: die Regel fuer die
+   Regelmaessigen, die geprueften Eintraege fuer die Ausnahmen. Ein Eintrag
+   umgeht dabei weder die Marktliste noch das Ableitungs-Tor, er beantwortet
+   nur die Namensfrage mit einer gemessenen statt einer abgeleiteten Antwort.
+   **Gegenprobe jeder geprueften Tabelle gegen die echte Marktliste** (jeder
+   Eintrag muss dort stehen), nicht nur gegen die eigene Datei - sonst altert
+   die Tabelle lautlos, und ein veralteter Eintrag sieht aus wie ein Markt, den
+   die Boerse nicht fuehrt.
 2. **Die Ableitung ist ein eigener Schalter, der von Hand kommt.** Sie gibt Geld
    fuer ein Instrument aus, das der Nutzer nie gesehen hat — genau da gehoert
    sein Ja hin, also `live_pf_ableitung: false` als Vorgabe plus Vermerk. Der
@@ -641,11 +745,51 @@ Reihenfolge arbeiten:**
 **Die Marktbreite der neuen Quote zuerst messen — sie ist die eigentliche
 Entscheidung, nicht die Schreibweise.** Gesichert oeffentlich, ohne Schluessel:
 der volle Ticker-Satz, dann auf die Quote filtern und gegen den Mindestumsatz
-zählen. Der Wechsel einer breiten auf eine schmale Quote kostet Dutzende
-Kandidaten: gemessen USDT+USDC 49 Paare über dem Filter gegen USDC allein 6
+zaehlen. Der Wechsel einer breiten auf eine schmale Quote kostet Dutzende
+Kandidaten: gemessen USDT+USDC 49 Paare ueber dem Filter gegen USDC allein 6
 (bei 298 USDC-Paaren insgesamt). Steht die Antwort auf wenige Märkte, gehört
-DIE Zahl in den Vermerk der Config-Datei — sonst hält später jemand die kleine
-Zahl für einen Fehler und stellt die Quote zurück.
+DIE Zahl in den Vermerk der Config-Datei — sonst haelt später jemand die kleine
+Zahl fuer einen Fehler und stellt die Quote zurueck.
+
+**Umgekehrt gilt derselbe Massstab: eine Filterwegnahme, die mehr Kandidaten
+zeigt, ist erst dann eine Verbesserung.** Die Breitenmessung beantwortet "wie
+viele Kandidaten sehen wir"; die Frage, die ueber die Konfiguration entscheidet,
+ist "wie viele davon erfuellen die Tore und sind an der Zielboerse orderbar".
+Beide Zahlen sind richtig und fuehren zu entgegengesetzten Entscheidungen.
+
+Deshalb bei jeder Filteraenderung die **Differenzmenge gegen die Tore fahren**,
+nicht nur zaehlen. Zwei Klassen, die dabei regelmaessig herausfallen und getrennt
+zu benennen sind:
+
+- **Fiat-Quote-Paare** (EUR, BRL, TRY, ...) stehen in derselben Tickerliste wie
+  die Krypto-Paare und fallen an Toren durch, die aus dem Wechselkurs folgen —
+  das Ziel liegt strukturell nah am 60-Tage-Hoch, also ist der Chance-Risiko-
+  Quotient kleiner als der Stop. Sie sind als Signal wertlos, egal wie gross ihr
+  Umsatz ist. Ohne diese Trennung liest man die Breite als Kandidatengewinn.
+- **Kandidaten ohne Markt an der Zielboerse** sind als Signal vollwertig (der
+  Kurs stimmt) und als Position wertlos. Beide in einer Zahl zu mischen meldet
+  eine Breite, die es nicht gibt.
+
+Gemessen (Filterwegnahme gegen die echte Ticker- und Instrumentenliste): die
+Differenzmenge war vollstaendig Fiat, und ohne Fiat blieben exakt so viele
+Kandidaten uebrig wie mit dem Filter. Die Erweiterung wurde daraufhin aktiv
+zurueckgenommen — mit Begruendung und Messung im Vermerk der geaenderten
+Config-Datei, nicht nur in der Antwort.
+
+**Was neben einer Filterwegnahme wirklich 0 Treffer verursacht, ist fast nie
+der Filter.** Ein Lauf ueber 50 bis 60 Maerkte mit 0 Treffern liegt am Tor, das
+gegen die aktuelle Marktlage rechnet (typisch Chance-Risiko gegen das
+60-Tage-Hoch, wenn der Markt ueberall dort steht). Das ist eine Marktlage und
+keine Konfiguration; **an ihr aendert kein Filter etwas.** Deshalb bei 0
+Treffern zuerst die Tore gegen die vorhandenen Kandidaten fahren und den
+geschlossenen Tor nennen, bevor eine Konfigurationsaenderung vorgeschlagen wird.
+
+**Ein fehlender Konfigurationsschluessel ist ein Filter, kein Fehler.** Wird ein
+Schluessel entfernt, um eine Vorgabe zu loeschen, muss der **Aufrufer** den
+Schluessel mit `.get()` lesen — sonst bricht der Lauf mit `KeyError` ab, und
+der Abbruch sieht nach einem Fehler in der Konfiguration aus statt nach dem
+Absicht. Gehoert der Wert in eine Meldung (etwa "ueber welche Maerkte"), tritt
+an seine Stelle ein lesbarer Ersatz ("alle Quotes").
 
 **Der Orderweg muss die Basis-ABWEICHUNG können, sonst ist die Umstellung eine
 Verschlimmbesserung.** Die Regel `PF_<BASIS>USD` ist fast, aber nicht ganz
@@ -784,3 +928,9 @@ verschiedenen Zeitpunkten:
   Rueckbau: die Orderfunktionen, Tests und das Buch bleiben, damit die Spur ohne
   Neubau wieder scharf gestellt werden kann. Wer den Code entfernt, muss ihn
   spaeter neu schreiben - und die Testsuite verliert dabei ihren Gegenstand.
+
+Zwei Beispiele fuer die Nutzbarkeit dieser Unterscheidung: **eine Waehrung, die
+es fuer die Produktklasse nicht gibt, sieht aus wie ein Konfigurationsfehler
+und ist einer** (gemessen: null USDC-SWAP-Maerkte bei OKX, waehrend die Spur auf
+USDC laeuft) - und **ein Gebuehrensatz aus der anderen Produktklasse** (Spot gegen
+Futures) verschiebt das Vorzeichen einer Rundenauswertung.

@@ -225,6 +225,41 @@ Die Format-Vorlage steht in `## Eintragsformat` und traegt `T-0NN` - niemals ein
 
 ## Fallen
 
+- **Ein Nummernmuster muss die HAUSFORM lesen, sonst zaehlt es null.** Die
+  Kopfzeile lautet `- [ ] **T-NNN \u2014 Titel` - ein **Em-Dash** steht direkt
+  hinter der Nummer. Ein Muster mit `\*\*` NACH der Nummer
+  (`\*\*(T-\d+)\*\*`) trifft hier **0** Eintraege; `max()` auf dieser leeren
+  Menge bricht ab, und der Fehler liest sich wie ein kaputtes Skript statt wie
+  ein zu enges Muster. **Das Muster vor dem Lauf gegen die echte Datei messen**,
+  nicht die Trefferzahl glauben:
+```python
+print(len(re.findall(r"- \[[ x]\] \*\*(T-\d+)", t)))     # 326
+print(len(re.findall(r"- \[[ x]\] \*\*(T-\d+)\*\*", t)))  # 0
+```
+  `(-\w+)` ist das Muster, das sich in \u00dcberarbeitungen als Klassen-tauglich
+  bewiesen hat; die Kastenstellung gehoert dazu (`[ x]` und `[?]`, nicht nur
+  `[ x]`), sonst fallen wartende Eintraege aus der Zaehlung.
+- **Die LF-Gegenprobe vergleicht VORHER mit NACHHER, nicht mit einer alten Zahl.**
+  Der Einbau-Vorfall: die Datei trug 18 LF-only aus fremder Hand (die bleiben
+  duerfen), und der Check verglich gegen die vor dem Skript gespeicherte Zahl
+  \u2014 fehlgeschlagen mit „eigene LF eingeschlichen", ohne zu sagen **wo**. Die
+  richtige Aussage ist ein Vergleich zweier gleich gebauter Texte:
+```python
+lf = lambda a: a.count("\n") - a.count("\r\n")
+assert lf(neu) == lf(text)          # 18 -> 18
+```
+  **Und jede Zeile, die der eigene Vorgang baut, traegt `nl`** - auch der
+  Trenner zwischen Kopfzeile und Block. Ein nacktes `"\n"` an dieser Stelle war
+  genau die eine eingeschlichene LF (18 -> 19); der Block selbst war korrekt,
+  der Diff sah harmlos aus, und nur die Bilanz fand es. Bei einer Datei mit
+  fremden LF-Zeilen ist die LF-Bilanz die einzige Probe, die eine eingeschlichene
+  LF zuordnet \u2014 `assert lf == 0` waere hier falsch und wuerde einen richtigen
+  Zustand als kaputt melden.
+- **Ein alter Block-Replace laeuft ueber die neue Zuweisung, wenn er weiter
+  unten steht.** Wer denselben Wert zweimal setzt (zuerst im if/else, dann nach
+  dem Block) hat die korrigierte Fassung stillschweigend wieder verworfen, und
+  der Fix tut nichts. Nach zwei Zuweisungen auf dieselbe Variable im selben
+  Skript: `grep -n "<name> =" <datei>` und zaehlen, welche uebrig bleiben soll.
 - **Die hoechste Nummer NIE aus dem Gedaechtnis nehmen.** Die eigene
   Memory-Notiz nennt einen Stand von gestern ("hoechste am 24.09.: T-056");
   gemessen am 29.09.2026 stand die Datei bei T-159, und die aus dem Kopf

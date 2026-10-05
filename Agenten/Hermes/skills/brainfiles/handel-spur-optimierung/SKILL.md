@@ -78,6 +78,22 @@ an Spuren.
    Stoerungen (ein Herzschlag-Zwangsschluss ist keine Handelsentscheidung). Ein
    frueheres Lesebild darf kippen, wenn die Stichprobe waechst — die groessere
    Stichprobe gewinnt.
+
+   **Die Zahl, ueber die ein SPUR-URTEIL faellt, ist der GEBUEHREN-EXCESS —
+   nicht `mean%` und nicht die Trefferquote.** Reihenfolge und Auslesefragen
+   stehen in `handel-spuren/references/edge-und-statistik-audit.md`; hier nur
+   die Kurzform, weil sie bei JEDER Optimierung anfaellt: Excess gegen
+   BUY & HOLD des eigenen Instruments, dann gegen die Gebuehr der Boerse der
+   Position, und die drei Alarme der Echtheit (Haltedauer im Aufrufertakt,
+   ein Instrument traegt die Stichprobe, identische Einstiegspreise je
+   (Instrument, Tag) = Preis uebernommen statt geholt). Weicht der Excess
+   zwischen kurzen und langen Runden um mehr als ein paar Prozentpunkte ab,
+   misst die Zahl die Auswahl — das ist ein Befund ueber die Auswahl und
+   entwertet die Gesamtzahl, auch wenn sie gross aussieht.
+   Und: **eine gute Kennzahl ersetzt die Sperrenkette nie.** „Darf handeln"
+   ist eine Aussage ueber den Boersen-Stop und das Freigabefenster, nicht
+   ueber die Performance; eine Spur mit sauberem Excess bleibt abgeschaltet,
+   wenn ihr Schalter das sagt.
 2. **Pruefbarkeit aus den Journalfeldern ableiten, nicht aus der Idee.**
    `handelsjournal.csv` traegt: zeit, modus, aktion, kette, wallet, token,
    symbol, preis, menge, einsatz_usd, wert_usd, marktkap_usd, slippage_pct,
@@ -294,6 +310,22 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
    mitziehen, je Stelle ein datierter Vermerk.
 
 ## Pitfalls
+- **Ein Datenstand, auf dem eine Gegenprobe laeuft, ist selbst eine
+  Voraussetzung — und verfällt still.** Ein Backtest-Gegenvergleich bricht mit
+  „nichts geprueft" ab, wenn die Historie zu duenn ist (gemessen: 3 von 30
+  noetigen Tagesreihen, davon 10 Tage alt — beide Gegenproben meldeten 0
+  gepruefte Punkte, alle Tests sonst gruen). Das ist KEIN Defekt der Spur und
+  kein Defekt der Gegenprobe, sondern ein Befund ueber die Datenmenge: als
+  solcher melden (Reihen auf der Platte, ihre Anzahl, das Alter der jüngsten
+  Kerze), mit Vermerk, wo sie nachgefüllt wird. Ein `grep` nach dem
+  Nachladeaufruf zeigt die eigentliche Ursache: ein Datenstand, den nur ein
+  Handgriff fuellt und den keine Routine auffaellt, waechst nie von allein.
+  Daraus folgt die Wache-Regel unter `wirkung-nachweisen` — melden, nicht
+  nachladen. Ob ein Nachladeaufruf im Baum überhaupt existiert, beantwortet
+  eine Volltextsuche ueber `Agenten/Routinen/` und `Agenten/Hermes/scripts/`
+  (`search_files`, Muster der Funktionsname des Nachladens). Laeuft der
+  Befund in einem Worktree, zuerst gegen den HAUPTBAUM pruefen: dort fehlen
+  die Reihen nicht.
 - **Identische Geometrie in mehreren Spuren heisst: nie einzeln optimiert.**
   Tragen N Schwestern-Spuren denselben `pflicht_stop_prozent_min` und
   `ziel_r_vielfaches`, ist das keine Konfiguration, sondern eine kopierte
@@ -393,6 +425,18 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
   bestaetigen, dass die fremde Arbeit nicht ueberschrieben wurde. Ein fremder
   Commit, der nur zwei Zeilen derselben Datei aendert, ist dabei harmlos und
   wird korrekt ueberbaut — man muss es nur wissen statt zu raten.
+- **Eine Gegenprobe, die den geprueften Zweig nie erreicht, beweist nichts.** Bei
+  jedem Test gegen einen Ausfuehrer mit Vorbedingungen (leere Warteschlange,
+  fehlender Auftrag, keine Daten) enden beide Varianten mit demselben exit 0, und
+  der Test gilt als gruen. Gemessen: beide Laeufe stumm, die unterschiedliche
+  Zeile wurde nie gelesen. Deshalb den Zweig **direkt nachbauen** (den Import,
+  nicht den ganzen Lauf) und beide Fassungen im selben Kontext fahren, bis die
+  eine rot ist.
+- **Eine Attrappen-Wache, die selbst eine Sperre ausloest, prueft die Sperre.**
+  `0.0` in Kill- und Ratschenfelden bedeutet „sofort ausloesen“, nicht „keine
+  Schwelle“ — der Test nimmt den Kill-Pfad statt des Signal-Zweigs und meldet
+  Erfolg am falschen Ort. Gemessen: drei Laeufe mit Mirror-Aufrufen, alle in der
+  Kill-Verzweigung. Sperrfelder weglassen, dann den Weg erneut fahren.
 - **In-Sample-Falle.** Alle Regeln stammen aus derselben Stichprobe; die
   Zeithalbierung mildert das, hebt es nicht auf. Ergebnis als Vorschlag
   ausweisen, nie als Beweis.

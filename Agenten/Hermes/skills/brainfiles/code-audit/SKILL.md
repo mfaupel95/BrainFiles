@@ -228,6 +228,30 @@ Fixture, die ihnen zustimmt.** Drei Formen, alle im Haus gemessen:
   ueberschrieben: es kam EIN Eintrag heraus statt zwei, ohne Fehlermeldung.
   **Blockstrukturen als Bloecke lesen.**
 
+  **Und dieselbe Regel fuer Testattrappen: eine Attrappe traegt die ANNAHMEN des
+  Pruefers, nicht die Regel.** Fuenf Baufehler einer Attrappenklasse, alle an
+  einem Tag gemessen, mit 7 / 4 / 9 Fehlschlaegen aus drei davon:
+  (a) **eine Ebene zu hoch** — die Attrappe lag in `tmp/historie`, das Werkzeug
+  liest `tmp/daten/historie`; getestet wurde der Fehlerpfad. (b) **zwei
+  Zeitanker** — Datei und „jetzt" trugen verschiedene Konstanten, die gespannte
+  Datei lag damit in der ZUKUNFT, jede Reihe war juenger als null Tage, und die
+  Fehlschlaege kamen aus einem Vorzeichenfehler im Attrappenbau, nicht aus der
+  Regel. (c) **zu wenig Datenmenge** — die Tests legten 1–4 Reihen an, der
+  Verbraucher verlangt `mindest_symbole=30`; die Meldung handelte dann immer von
+  der Mindestzahl und die eigentlich gepruefte Regel (Alter) war gar nicht
+  entscheidbar. (d) **falscher Anker** — `HIER.parents[3]` endete eine Ebene zu
+  weit und las eine Datei, die es dort nicht gibt; die Meldung liest sich wie
+  ein Dateifehler, nicht wie ein Ankerfehler. (e) **`self` im falschen Lambda** —
+  eine umgebogene Funktion braucht dieselbe **Signatur** wie das Original,
+  sonst bricht schon der Aufbau.
+  **Die zwei Massvorgaben, die die Klasse abschaffen:** EIN Zeitanker fuer
+  Datei und „jetzt" (eine Konstante `Attrappe.JETZT`), und **genau die Menge,
+  die die gepruefte Regel verlangt** — jede Regel mit eigener Menge, sonst
+  entscheidet die benachbarte Regel. Und die Regel darueber: **die Zahl der
+  Fehlschlaege sagt nichts ueber die Regel, sie zaehlt die Annahmen der
+  Attrappe.** Fuenf solcher Baufehler hintereinander sind kein Zufall, sondern
+  fehlende Massvorgaben — ab dann ist die Attrappe das Problem, nicht der Code.
+
 Dazu zwei Regeln, die beim Bau von Werkzeugen mit Handlungsfolgen gelten und
 die ein Audit als **Befund an der Bremse** pruefen soll, nicht an der
 Funktion: ein Pflichtfall muss **unveraendert ueberleben** (ein Objekt mit

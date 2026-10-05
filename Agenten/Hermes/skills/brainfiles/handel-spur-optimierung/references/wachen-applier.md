@@ -63,7 +63,46 @@ geschriebene Datei noch einmal `json.loads`, und der echte Lauf
 3. **Ein Ganzdatei-Diff heisst immer Zeilenenden oder Einrueckung**, nicht "viele
    Felder geaendert". Drei Felder + Vermerk ergaben `3 3` und `2 2`.
 
-## Die Datei vor dem Anfassen sichern und den Zustand pruefen
+## Ein NEUER Schluessel ans Dateiende: das Komma gehoert an die VORZEILE
+
+Der haeufigste Fall nach "Feld ersetzen": eine Wache traegt den neuen Wert
+noch gar nicht (`hebel`, `boersen`, ein Sperrfeld). Dann wird vor der LETZTEN
+Klammer eingefuegt, und beide Enden sind Fehlerquellen - in BEIDEN Richtungen
+gemacht:
+
+```python
+idx = t.rstrip().rfind("}")
+vor = t[:idx].rstrip()
+assert not vor.endswith(","), vor[-40:]      # die letzte Zeile hat kein Komma
+block = nl.join([
+    '  "_hebel_vermerk": %s,' % json.dumps(vermerk, ensure_ascii=False),
+    '  "hebel": 6',                            # LETZTER Zeile: KEIN Komma
+]) + nl
+t = vor + "," + nl + block + t[idx:]
+d = json.loads(t)                              # VOR dem Schreiben
+```
+
+Das Komma gehoert an die **letzte bestehende** Zeile (sie hatte keins), und der
+**letzte** neue Eintrag darf keins haben (sonst `trailing comma`). Beide
+Fehler erscheinen ausschliesslich als `JSONDecodeError` an einer Stelle, die
+nichts mit der Absicht zu tun hat - und `json.loads` vor dem Schreiben ist der
+Schutz. Wer es erst nach dem Schreiben prueft, hat schon die kaputte Datei.
+
+## Ein ERGÄNZTER Vermerk ist kein LOESCHVORGang
+
+Wenn ein `_…_vermerk` eine fruehere Entscheidung dokumentiert und der neue
+Auftrag sie ueberholt, wird der Text **ergaenzt, nicht ersetzt**: die Messung,
+die zur Abschaltung gefuehrt hat, bleibt lesbar und der neue Auftrag steht mit
+Datum daneben. Loeschen macht die Datei zur Wahrheit der letzten Meinung, und
+die naechste Sitzung kann nicht mehr nachvollziehen, worueber sie eigentlich
+entscheidet. Der Abschaltvermerk einer zurueckgenommenen Freigabe ist die
+Begruendung dafuer, warum der Haken wieder true gesetzt wurde - ohne ihn sieht
+das Umschalten nach Willkuer aus.
+
+Bei einem Vermerk mit escaped Quotes (`\"`) den Text NICHT mit `find('"')`
+abtrennen: das trifft ein escaped Anfuehrungszeichen. Von der Startstelle aus
+vorwaerts laufen und den ersten **unescaped** `"` nehmen
+(`text[k-1] != chr(92)`).
 
 `.bak-JJJJMMTT` anlegen, und die Zeilenenden VOR dem ersten Ersetzen messen: ist
 die Datei gemischt, traegt der neue Block das dominante Ende und alle

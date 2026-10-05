@@ -28,7 +28,12 @@ finish cleanly on its own.
 - Every `hermes` call dies with `Fatal Python error: init_import_site` (PYTHONHOME section below).
 - `mcp_<server>_*` tools silently vanish from sessions.
 - The gateway drops out, or its log says "Another gateway instance … started".
-- A maintenance run is finished and the findings have to be written down (Wiki, TASKS.md, commit).
+- `hermes -p <profil>` (TUI) haengt nach der Eingabe, waehrend `hermes -p <profil> chat -q "…"`
+  in Sekunden antwortet — siehe "Hänger im TUI, Antwort im Einzelschritt".
+- A maintenance run is finished and the findings have to been written down (Wiki, TASKS.md, commit).
+- The session store grew large (\"archivierte Gespräche löschen\", `state.db` several hundred MB):
+  `references/session-store-aufraeumen.md` — mess, backup, pin the exceptions, stop every writer,
+  prune, then optimize (a delete alone never shrinks the file).
 
 ## Prerequisites
 
@@ -378,6 +383,49 @@ geteilte Kennung anzutasten. Achtung beim `hermes config set`: danach `git diff 
 PRUEFEN (Zeilenende CRLF koennen umgebrochen werden) und die diff zeigt evtl. fremde
 nebenlaeufige Aenderungen mit — nur die eigene Zeile stagen.
 
+## Hänger im TUI, Antwort im Einzelschritt: erst der Weg, dann die Credentials
+
+Ein Profil-Bot „antwortet nicht" heisst zuerst einmal **nichts** über die
+Credentials. Die Reihenfolge der Prüfung ist fest, weil jeder Schritt den
+Fehlerraum verkleinert und die beiden Symptome von aussen identisch aussehen:
+
+| Schritt | Befehl | Befund |
+|---|---|---|
+| 1. Zweiter Aufrufweg | `hermes -p <profil> chat -q "Sag genau das Wort: ok" -Q` | antwortet = Zustand gesund, nur der TUI-Weg haengt |
+| 2. Auth beider Profile | `hermes -p <profil> auth status nous` (und `anthropic`, `openai-codex`) | `logged in` = der Pool stimmt |
+| 3. Profil-Gesundheit | `hermes -p <profil> doctor` | `✓ <profil>: gateway running, <modell>` |
+| 4. Letzte Logzeile | `read_file` auf `profiles/<profil>/logs/agent.log` (oder `search_files` nach `conversation turn` / `API call #`) | siehe unten |
+
+**Schritt 1 ist der entscheidende.** `chat -q` nimmt den schlankeren,
+nicht-interaktiven Pfad (kein TUI-Event-Loop, kein Hintergrund-Discovery-Thread,
+kein Terminal-Backend); die interaktive Flaeche nimmt den vollen. Antwortet der
+Erzelsauftrag, sind Auth, `auth.json`-Verknuepfung, Modell, Konfiguration und
+Netzpfad **alle ausserhalb der Schusslinie** — sie aus zehn Minuten Suche
+herauszuhalten ist der eigentliche Gewinn dieses Schritts.
+
+**Schritt 4 grenzt den Aufhaenger ein, statt ihn zu erraten.** Die Logzeile
+`conversation turn: session=… msg=…` ist der Eintritt in den Turn; die Zeile
+`agent.conversation_loop: API call #N` ist der erste echte Modellaufruf. Endet
+das Log **vor** `conversation turn`, stirbt der Prozess im Startpfad. Endet es
+**danach** und vor dem ersten `API call`, stirbt er zwischen Turn-Aufnahme und
+Modellaufruf — das ist eine andere Klasse als ein Credential-Fehler (der
+wuerde als Retry mit Fehlertext oder 401 im Log stehen, nicht als Stille).
+Eine Zeile `Background MCP discovery previously exited with no connected
+servers; retrying discovery thread` ist ein **Hinweis auf eine Retry-Schleife**,
+kein Beweis, dass sie den aktuellen Turn blockiert: sie steht auch in Logs von
+Laeufen, die im selben Sekundenbereich sauber bis `API call #1` durchliefen.
+
+**Ein haeufiger Befund daneben ist ein zweiter Befund, nicht die Ursache.** Eine
+Prozess-Flut auf dem Rechner (MCP-Server je Gruppe, Speicherreservierung) ist
+ein echter Fund und wird mit der vorhandenen Wache bereinigt — **bleibt der
+Hänger danach bestehen, sind es zwei Befunde** und der zweite ist ungeklaert.
+Diese Trennung ausdruecklich aussprechen; „bereinigt, Symptom bleibt" als
+gelöst zu fuehren ist die haeufigste falsche Abschlussmeldung in diesem Bereich.
+
+Wer den Hänger nicht findet, sagt das und **nimmt den belegten Arbeitsweg als
+Antwort**, statt einen Erfolg zu behaupten: der Einzelschritt-Weg funktioniert
+und ist der Weg, den der Nutzer dann nimmt.
+
 ## Gateway-Ausfall: Diagnose und Waechter (Windows)
 
 Zuerst `logs/gateway-exit-diag.log` lesen (Exit 75 = Neustart-Verbleib, echter Crash hinterlaesst
@@ -583,6 +631,34 @@ GELINKTE SQLite-Fassung, nicht die Python-Version. Die Reparatur
 `uv` zur Laufzeit schon installiert ist: uv nachziehen, Update erneut fahren, mit
 `hermes doctor` pruefen. Manueller Cutover, Windows-Selbstsperre und der `-I`-Smoke-Fehlalarm:
 `references/sqlite-wal-reset.md`.
+## Sitzungsspeicher aufräumen: archivierte Gespräche löschen
+
+Zwei Kommandos, zwei Fallstricke — und der teure zuerst:
+
+1. **`prune` verweigert bei jedem offenen Schreiber** (`_HELD_STORE_ACTIONS` =
+   `optimize`/`optimize-storage`/`prune` in `hermes_cli/sessions_cmd.py`, Wächter
+   `hermes_state_holders.held_store_refusal`). Exit 1 mit der Halter-Liste
+   (`PID <n> (python.exe -m hermes_cli.main …): state.db`) und dem Hinweis, dass ein Rewrite
+   unter aktivem Schreiber jeden Agenten in den retired-WAL-Fehler laufen laesst. Das ist der
+   **richtige** Schutz — `--force` hebt ihn auf, tut aber genau das, worvor er warnt. Also:
+   Gateway stoppen, Desktop (`Hermes.exe`) schliessen, laufende TUI/CLI-Kinder beenden, dann
+   erneut. `hermes sessions delete <id>` (Einzelruecknahme) ist davon NICHT betroffen.
+2. **Ein Delete schrumpft die Datei nicht.** SQLite gibt Seiten erst beim VACUUM frei, die
+   FTS-Indizes erst beim Segment-Merge. Nach dem Prune gehoert `hermes sessions optimize`
+   (FTS-Merge + VACUUM + WAL-Checkpoint) in denselben Block — die Dateigroesse ist der
+   eigentliche Auftrag, nicht die Zeilen in der Tabelle.
+
+Reihenfolge: messen (read-only SQL gegen `state.db`, Spalten `archived`/`hidden`/`pinned` und
+`messages` je Session) → Ausnahmen pinnen (`hermes sessions pin <id>`; `hidden` allein reicht
+dem Prune nicht) → Backup über die SQLite-**backup-API** (die Datei ist offen, ein Kopieren
+gibt ein inkonsistentes Bild) → Trockenlauf → Writer stoppen → Prune → Optimize → Gateway
+starten. Grenze waehlen, bevor gefahren wird: `--include-archived` schaltet die Vorauswahl der
+archivierten Zeilen ueberhaupt erst frei, ein blankes Prune hat eine 90-Tage-Vorgabe, und
+**irgendein** Filter hebt sie auf. Nach dem Lauf `PRAGMA freelist_count` und die Dateigroesse
+belegen, nicht die Erfolgsmeldung.
+
+Volles Rezept mit Mess-SQL, Halter-Erkennung und den Belegen: `references/session-store-aufraeumen.md`.
+
 ## Further repair cases (MCP tools, npm advisories, egress, benign warnings)
 
 - **`mcp_<server>_*` verschwindet:** der MCP-Client laeuft unter dem INTERPRETER des Launchers,

@@ -120,6 +120,76 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
 
 ## Pitfalls
 
+- **In einem Watchdog ist LEER doppeldeutig — und die zweite Deutung ist die
+  gefaehrlichere.** Das Muster „leere Ausgabe = nichts senden" haengt davon ab,
+  dass die Pruefung ueberhaupt gelaufen ist. Leer kann aber auch heissen: die
+  Pruefung hat ihr Ziel nie gefunden. `subprocess.run` auf einen fehlenden Pfad
+  liefert **leere Ausgabe statt eines Fehlers**, und die Wette „leer ist gesund"
+  liest das als Gesundheit — die Wache meldet taeglich „alles ok", ohne je etwas
+  geprueft zu haben, und weil nichts auffaellt, faellt es nie auf. Gemessen: ein
+  Auftragsskript band seine Wache als `HIER / "wache.py"` ein, wobei
+  `HIER = Path(__file__).resolve()` die **Datei** ist — der Pfad zeigte auf ein
+  Verzeichnis mit py-Namen darin. Drei Regeln: (a) den Werkzeugpfad ueber den
+  **ORDNER** bauen (`SCRIPTS = HIER.parent`), wenn `HIER` die Datei bleibt;
+  (b) den Pfad auf Existenz pruefen, BEVOR er benutzt wird; (c) ein
+  **Fehlercode des Kindes ist eine Ausnahme**, kein leeres Ergebnis — und im
+  Aufrufer darf ein Fehler der Pruefung nie in den stillen Zweig fuehren,
+  sondern zu einem gemeldeten Exitcode (2 = Befund, nicht 0 = gesund).
+  **Gegenprobe pflichtig:** den Fehlpfad zurueckbauen und pruefen, dass Tests rot
+  werden. Ein Test, der den Fehlerpfad nicht kennt, prueft die
+  Fehlerbehandlung nicht. Merksatz: **ein stiller Fehlpfad in einem Wecker ist
+  die teuerste Form von gruen** — ein Test faellt auf, ein Wecker meldet
+  „nichts".
+- **Ein Auditor, der N Mal falsch alarmiert, ist schlimmer als keiner.** Ein
+  breites Muster nannte elf Wachen mit „subprocess ohne `returncode`-Pruefung";
+  von Hand nachgeprueft fangen die beiden ersten den Fehler aktiv ab
+  (`except OSError` mit Klartext, danach `return ""` mit dokumentierter
+  Bedeutung) — der Befund war falsch. Eine noch breitere Fassung nannte 63
+  Dateien: das ist der Normalbau der Wachenfamilie. **Breite zuerst messen, dann
+  verengen, NIE umgekehrt.** Nur eng genug traegt eine Aussage; und was bleibt,
+  meldet die FORM, nicht den Zustand — ein Auditor kann nicht wissen, ob ein
+  Werkzeug fehlt, ohne jeden Pfad zu pruefen, und ein Befund ohne Beleg waere
+  das Gegenteil der Hausregel. `Agenten/Hermes/scripts/audit-werkzeugpfad.py`
+  (Exit 1 = Befund) macht das fuer den Datei-Anker; `references/wachter-pruefen.md`
+  traegt die Muster und die Fallunterscheidung.
+- **Bei zwei gleichnamigen Ablageorten ist die Quelle der Wahrheit das
+  SCHREIBENDE Modul, nicht die Pfadannahme.** Ein Datenbestand lag doppelt: im
+  echten Ordner (dorthin schreibt das Abrufmodul ueber seine Konstante `ORDNER`,
+  und von dort liest der Verbraucher) und daneben in einem zweiten Ordner ohne
+  die Dateiendung, den kein Lauf liest. Ein Werkzeug, das den Pfand ANNIMMT,
+  zaehlt drei verwaiste Dateien und meldet eine Luecke, waehrend 30 frische
+  daneben liegen. **Der Beleg fuer „leer" oder „voll" ist die Diskrepanz
+  zwischen dem, was der Abruf meldet, und dem, was auf der Platte liegt** — nicht
+  ein Test mit einer Attrappe, denn eine Attrappe im falschen Ordner bestaetigt
+  die Regel. Abhilfe: den Pfad aus dem schreibenden Modul holen und ihn als
+  **Modulwert** ablegen, nicht als reiner Funktionsweg — sonst umgeht der
+  Importweg jedes Umbiegen im Test.
+- **Ein Fehler, der einen `mkdtemp`-Pfad nennt, ist eine Aussage ueber die
+  FASSUNG, nicht ueber den Ort.** Legt der Test die Datei selbst an (`setUp`),
+  ist die Meldung die ehrliche Beschreibung einer alten Testfassung: die hat
+  eine Nachbar-Datei geschrieben, nicht die, die `spur_buch.zyklus` liest.
+  Bevor am Code gesucht wird, die FASSUNG belegen — der Sitzungsspeicher
+  beantwortet „welche Fassung lief" in Sekunden, und die git-Historie zeigt
+  die Reparatur (`git log --oneline -- <testdatei>`). Ein Gegenbau derselben
+  Attrappe OHNE die Datei muss mit derselben Meldung abbrechen; bricht sie
+  durch, ist die Ursache nicht belegt.
+- **Eine rote Suite im Worktree ist kein Befund, solange der HAUPTBAUM
+  ungeprueft ist.** Ein Worktree kann ganze Ordner missen, die ausserhalb
+  liegen (verschachtelte Repos, per `.gitignore` gesperrte Pfade) — jeder Test
+  ueber `wachen.json`/`handeln.py` meldet dann `FileNotFoundError` fuer Code,
+  den es gibt. Zweitens kann der Worktree mitten in der Pruefung verschwinden
+  (der Worker beendet und raeumt auf), dann ist die Beweislage weg. Reihenfolge:
+  Suite im Worktree fahren, **dann** dieselben Suiten im Hauptbaum, mit einem
+  Vorher/Nachher-Waechter auf den echten Spurenordnern (`spiegelstand.py` als
+  Abschlussbeleg). Erst ein Befund, der in BEIDEN Baeumen steht, ist ein Befund.
+- **Eine Wache, die einen wachsenden Datenstand bemerkt, darf ihn nicht selbst
+  beheben.** Nachfuellen gehoert entschieden, nicht gemeldet: ein Top-N-Universum
+  bedeutet Tausende Kerzen und echte Laufzeit, und das ist eine Produktentscheidung.
+  Muster: melden nach ALTER (nicht nach Kalender) und nach der Zahl, die der
+  Verbraucher selbst verlangt (aus seinem Quelltext lesen, nicht schaetzen) —
+  sonst ist die Wache strenger als der Lauf, den sie warnt, und meldet einen
+  Lauf, der laeuft. Nur die Takte beobachten, die ein Lauf wirklich liest;
+  Altbestand ohne Leser waere taegliches Rauschen. Leer = gesund (Watchdog).
 - **Zwei Formen derselben Bedingung: eine kann still fehlen.** Eine Freigabe
   existiert am Bildschirm (Fenster, Klick je Vorgang) UND im Dauerbetrieb
   (Zeitfenster/Zustandsdatei, vom Fahrer oder per Befehl geoeffnet). Eine Spur,
