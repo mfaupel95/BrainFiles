@@ -1,10 +1,19 @@
 # Die Messsonde selbst ist die haeufigste Fehlerquelle
 
-Zehn Befunde, alle am echten Fenster nachgewiesen, alle zehn in der Sonde,
-nicht in der Rechnung. Wer sie kennt, muss sie beim Bau der naechsten Sonde
-nicht erneut suchen. Abschnitt 11 weiter unten hat den Sonderfall, dass die
-Sonde richtig ist und die **Zahl falsch bleibt, weil sie richtig gemessen hat** -
-die Rechnung im Fenster war falsch.
+Befunde, alle am echten Fenster nachgewiesen, alle in der Sonde, nicht in
+der Rechnung. Wer sie kennt, muss sie beim Bau der naechsten Sonde nicht
+erneut suchen.
+
+Zwei Sorten, die man beim Reparieren auseinanderhalten muss:
+
+* **Die Sonde misst das Falsche** (Punkte 1-11). Der Code im Fenster ist in
+  Ordnung, die Zahl beschreibt eine Oberflaeche, die es nicht gibt.
+* **Die Sonde misst richtig, und die Zahl stimmt trotzdem nicht** (Punkt 12).
+  Der Fenstercode war falsch - das ist der teuerste Fall, weil man der
+  Sonde fast glaubt.
+
+Ein dritter Fall kam dazu, der kein Fenster betrifft: **Punkt 13**, ein
+Pruefskript, das den falschen Vordergrund misst.
 
 ## 1. `winfo_ismapped()` bleibt bei einer einmal gezeigten Notebook-Seite TRUE
 
@@ -15,8 +24,6 @@ Vierfache der echten Zahl (333 statt 124).
 Die Zuordnung Tabelle -> Reiter gehoert aus dem **Widget-Pfad**, nicht aus
 `nb.select()` - der steht beim Messen schon auf dem naechsten Reiter, waehrend
 noch der alte Aufbau sichtbar ist.
-
-Zaehler:
 
 ```python
 def pfad_von(w):
@@ -97,6 +104,16 @@ Merksatz fuer Breiten ausserhalb des Fensters: eine in Pixeln gesetzte Breite
 gilt nur fuer die Skalierung, bei der sie gesetzt wurde. Wer ohne Fenster
 rechnet, braucht beides - den skalierten Wunsch UND die Zeichenbreite des
 echten Fonts, als Parameter, nicht als Konstante.
+
+### `GetDeviceCaps` luegt ohne Awareness - es meldet immer 96
+
+Die physische Monitor-DPI laesst sich nur **nach** `SetProcessDpiAwareness`
+ablesen. Ohne sie skaliert Windows die Abfrage auf den logischen Wert: der
+erste Lauf meldete 96 dpi und damit Faktor 1.0, dieselbe Maschine lieferte im
+dpi-bewussten Zustand `winfo_fpixels('1i')` 119 (120 dpi, Faktor 1.25). Der
+gemessene Unterschied, den das klaert: **ein dpi-unawares Fenster sieht 36 %
+weniger Bildschirm** (3072x1728 statt 3840x2160). Wer die Skalierung des
+Monitors belegen will, setzt die Awareness zuerst.
 
 ## 7. „ZU BREIT" ist nicht automatisch ein Fehler
 
@@ -179,6 +196,13 @@ nicht ueberein, ist die Messung wertlos und das sagt die Sonde dann selbst.
 Ein Argparse-Schalter, den die Geometrie ueberschreibt, ist ein stiller
 Schalter - er sieht wie eine Konfiguration aus und wirkt nicht.
 
+**Zwei Luecken in derselben Sonde, beide aus derselben Ursache:** sie hielt
+nur den *sichtbaren* Reiter fuer gemessen und liest das erste `## Offen`
+einer Dokumentdatei. Sie zaehlte 2 Tabellen bei 4 Reitern und schrieb einen
+Bericht gegen eine Fenstergroesse, die es nicht gibt. Wer eine Sonde baut,
+fragt einmal nach: *welche Reiter wurden ueberhaupt gemessen, und ist das die
+Menge, die es gibt?*
+
 ## 10. Zwei Schriftfamilien in einem Fenster brauchen zwei Messungen
 
 `leitstand_stil.py` setzt Consolas fuer Tabellenzellen und eine
@@ -192,12 +216,6 @@ gross = lei.schrift                       # die Fenstergrundgroesse
 schrift_zeile = tkfont.Font(family=hz.SCHRIFT_ART, size=gross)
 schrift_kopf = tkfont.Font(family=familie_der_ueberschrift(gross), size=gross)
 ```
-
-Der Sonderfall, der sich nicht allgemein formulieren laesst, ist der
-**Bestandsschutz durch zwei Quellen**: kopiert ein Fenster die Palette
-statt sie zu importieren, ist sie heute wertgleich und morgen nicht. Die
-Messprobe erkennt das nicht - das ist ein Befund aus dem Farbvergleich, siehe
-`code-audit` und die Einstiegskapitel dieses Skills.
 
 ## 11. Eine Zahl, die nach einem Fix SPRINGEN ist, war eine Falschmessung
 
@@ -218,7 +236,7 @@ sondern "welche Rechnung lief vorher und welche laeuft jetzt". Der Test dazu:
 1. Vorher und nachher mit **derselben** Sonde messen, nicht mit einer, die
    zwischendurch dazukam.
 2. Die Zahl **auf mehrere Tabellen aufteilen**. Springt eine davon, ist es ein
-   Befund; springen alle gleichmäßig, ist es eine globale Aenderung (Schrift,
+   Befund; springen alle gleichmaessig, ist es eine globale Aenderung (Schrift,
    Farbe, Skalierung).
 3. Nachrechnen, was die Regel mit den konkreten Daten tut - ein reiner
    Aufruf der Breitenfunktion mit den Zeilen aus dem Journal, ohne Fenster.
@@ -230,3 +248,71 @@ Satz Text, der in eine Tabellenspalte gehoert (447 Zeichen), wird nicht durch
 eine bessere Breitenregel kleiner - er umbricht. Wird eine Spalte sehr breit
 gemessen, ist zuerst zu fragen, ob der Text hineingehoert, und erst dann, ob
 die Rechnung falsch ist.
+
+## 12. Der Kontrast gehoert gegen den Text, der AUF der Farbe steht
+
+Ein Farbwert, der unter 4,5:1 liegt, ist nur dann ein Befund, wenn er
+**Text traegt**. Gemessen zwei Befunde, von denen einer keiner war:
+
+* Ein Knopf mit `bg=#c0392b`, `fg="white"` kam gegen die Standardfarbe auf
+  3,23:1 und sah wie ein Befund aus - gegen Weiss sind es 5,44:1, also
+  in Ordnung. Das Standardverhaeltnis misst die falsche Flaeche.
+* Ein Zellenhintergrund, ein Rahmen und eine Auswahlfarbe tragen gar keinen
+  Text. `zebra` bei 1,10:1 und eine Rahmenfarbe bei 1,92:1 sind die Absicht,
+  keine Flaeche dunkel zu halten - kein Befund.
+
+Also **je Farbe ihren eigenen Vordergrund mitgeben**, und die Farben ohne
+Text getrennt fuehren:
+
+```python
+TRAGEND = {"matt": d.FARBEN["blatt"], "hinweis": d.FARBEN["bg"],
+           "notaus": "#ffffff"}            # Knopf mit weissem Text
+FLAECHE = {"zebra", "dunkelgelb", "rand", "wahl"}   # traegt keinen Text
+```
+
+Und das Gegenstueck, das dieselbe Sonde produziert hat: **ein Wert, der
+zweimal unter zwei Namen steht** (zwei Namen fuer dieselbe Farbe, einmal als
+zweiter Name noch in der Quelle), ist ein Wartungsbefund - unabhaengig vom
+Kontrast. Zwei Namen, eine Farbe, drei Namen, wenn die Quelle sie auch
+fuehrt.
+
+## 13. Ein Pruefskript liest den WERT aus dem Objekt, nicht aus dem Text
+
+Beim Pruefen einer Palette wurde der Wert per **Regex aus dem Quelltext**
+gelesen. Das ging schief, sobald der Wert aus der Quelle kam
+(`matt=hz.FARBEN["matt_flache"]`): der Regex las die Erklaerung darueber, die
+den ALTEN Wert nennt, und meldete weiter "ueberschreibt die Quelle" fuer
+eine Farbe, die genau daraus stammt. Vier Anpassungen des Regex, dann auf
+gegeben.
+
+**Kein Regex-Feinschliff hilft, wenn die Aussage im Objekt steht.** Das
+Modul laden und die Ableitung lesen:
+
+```python
+spec = importlib.util.spec_from_file_location("stil_probe", STIL)
+stil = importlib.util.module_from_spec(spec); spec.loader.exec_module(stil)
+gefunden = {k: v for k, v in stil.FARBEN.items() if k not in d.FARBEN}
+```
+
+Dieselbe Regel in der einen anderen Form, die im selben Lauf auffiel: eine
+Zeile **im Kommentar** einer Quelldatei ist kein Wert. Will man den *alten*
+Stand lesen, gehoert er in die `.bak` oder in `git show` - nicht in den
+Lebendtext daneben.
+
+## 14. Ein Muster, das nichts trifft, macht den Test gruen - ohne zu pruefen
+
+Ein Test sammelte alle `leitstand*.py` ein, um "keine Hexfarben ausserhalb des
+Stils" zu erzwingen. Zwei Messskripte kamen mit ins Raster und machten ihn
+rot. Der Test wurde auf einen Ausschluss von `*messprobe*` umgestellt - und
+war danach gruen, **ohne eine einzige Datei zu pruefen**: das Muster stand auf
+`_messprobe` mit fuehrendem Unterstrich, die Datei hiess `leitstand_messprobe`,
+und `endswith` traf nie. Die Liste war leer, der Test lief ins Leere.
+
+Zwei Regeln daraus, und die zweite ist die allgemeine:
+
+* Ein Werkzeug baut kein Fenster und gehoert nicht in eine Fenster-Regel.
+  Sonst enthaelt es zwangslaeufig die Werte, gegen die die Regel steht.
+* **Ein Test, dessen Datensatz leer sein kann, braucht eine Gegenprobe:**
+  `assertGreaterEqual(len(self.DATEIEN), 5)` und eine Benennung, die
+  beweist, dass die richtige Datei darin ist. Ein Filter, der nichts findet,
+  ist kein bestandener Test, sondern ein stiller Ausfall.

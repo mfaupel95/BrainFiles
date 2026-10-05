@@ -118,6 +118,45 @@ Weg, der bei Unsicherheit durchlaesst, ist kein Weg. Gegenprobe je Tor:
 eine Spur ohne Freigabe und eine abgeschaltene Spur geben beide `False` zurueck
 und lassen den Auftrag in der Queue liegen.
 
+### JEDER Import eines flachen Moduls braucht vorher den Pfad
+
+Der Executor ist kein Modul im Handel-Ordner, sondern ein Skript unter
+`Agenten/Hermes/scripts/`. `spur_buch`, `freigabefenster`, `freigabe_tor` und
+`basis_deckel_tor` liegen als **flache Dateien** im Handel-Ordner und sind
+keine Pakete. Jeder Import braucht deshalb `sys.path.insert(0, HANDEL)`
+**davor**.
+
+Gemessen: die drei Tore machten es richtig, nur der **erste** Import stand
+davor. Der Executor brach damit bei **jedem** Lauf mit `ModuleNotFoundError`
+ab, und **keine** Spur mit `trigger_modus: signal` kam je zu einem Einstieg -
+tageelang, ohne dass ein Spur-Log etwas meldete. Ein Skript, das ausserhalb
+des Betriebsordners liegt und Module von innen laedt, braucht diese Regel an
+**jedem** Import, nicht an den ersten dreien.
+
+Merksatz: ein Importfehler am Anfang einer Kette sieht wie ein Torschutz aus
+(„im Zweifel keine Order") und ist es nicht - er nimmt die ganze Kette mit.
+
+## Wie man merkt, dass der Executor steht
+
+Der Dauerlauf meldet die Spur **jeden Takt** als `(live) ok`, unabhaengig
+davon, ob die Queue geleert wurde. Das ist kein Lebenszeichen des Executors.
+Drei unabhaengige Zeugen, und erst ihre Kombination sagt etwas:
+
+| Zeuge | sagt aus |
+|---|---|
+| Journal der Spur | letzte **Handels**zeile - nicht die letzte Dateiaenderung |
+| Queue-Datei der Spur | 2 B (`[]`) = nichts zu tun; gefuellt = es liegt Arbeit |
+| Merkdatei des Executors | die Meldung des letzten Laufs |
+
+Steht die Queue gefuellt, der Executor meldet aber dieselbe Meldung im
+Minutentakt, laeuft er nicht durch - oder er scheitert an einer
+Vorbedingung. **Die Meldung unterscheidet das:** ein `ModuleNotFoundError`
+endet mit `exited with code 1` und einem Traceback, eine gesperrte Spur mit
+`bleibt in Queue`. Ohne diese Unterscheidung heisst „er meldet etwas" nichts.
+
+Und eine leere Queue beweist **nicht**, dass der Executor repariert wurde - er
+kann seit dem Absturz nichts zu tun gehabt haben.
+
 ## Die Queue ist STUFENfaehig, sonst ist sie ein Echo
 
 `pfade()` legt Zustand und Journal **je Risikostufe** ab — `risikostufe.datei()`

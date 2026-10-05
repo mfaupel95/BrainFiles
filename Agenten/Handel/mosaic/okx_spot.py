@@ -45,7 +45,23 @@ from datetime import datetime, timezone
 BASIS = "https://www.okx.com"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}
 MAX_FEHLER = 6
+# Wie oft eine Drosselung je Aufruf geheilt wird, bevor sie doch ein
+# Fehler bleibt (Einordnung wie in scanner/okx.py).
+MAX_429 = 4
 
+
+# Die Haus-Bremse gegen OKX-Drosselung (okx_takt.py, eine Ebene hoeber).
+# Gemessen 05.10.2026: 120 Abrufe nacheinander -> 0 Fehler, 6 Threads
+# gleichzeitig -> 93x "OKX 50011: Too Many Requests (HTTP 429)". Der
+# Ausloeser ist die Parallelitaet, nicht die Menge - drei Dauerlauf-Stufen,
+# die Handelszentrale und die Wachen laufen als eigene Prozesse gegen
+# dieselbe IP. Der Handel-Ordner wird ANGEHAENGT (nicht vorn eingefuegt):
+# sys.path[0] ist der eigene Spur-Ordner, sonst wuerde hier das falsche
+# okx-Modul eines anderen Ordners gewinnen.
+_HANDEL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _HANDEL not in sys.path:
+    sys.path.append(_HANDEL)
+import okx_takt  # noqa: E402
 
 class OKXFehler(RuntimeError):
     """Fachlicher Fehler aus einer gueltigen OKX-Antwort (code != 0)."""
@@ -110,6 +126,8 @@ def _roh(pfad, methode="GET", body=None, signiert=False):
         })
     req = urllib.request.Request(
         url, data=daten.encode() if daten else None, headers=kopf, method=methode)
+    # Haus-Bremse: begrenzt die Zahl der VERSUCHE, nicht nur der Antworten.
+    okx_takt.reserviere()
     try:
         with urllib.request.urlopen(req, timeout=20) as antwort:
             d = json.loads(antwort.read().decode())
@@ -131,12 +149,31 @@ def _roh(pfad, methode="GET", body=None, signiert=False):
 
 
 def _mit_wiederholung(*a, **kw):
+    """Drei Fehlerarten, drei Behandlungen (siehe scanner/okx.py).
+
+    50011/429 ist DROSSELUNG und der einzige Fehler, der sich durch Warten
+    heilt: gemessen am 05.10.2026 loest Parallelitaet ihn aus (6 Threads ->
+    93 Fehler, nacheinander 120 Abrufe -> 0 Fehler). Er wird deshalb gefangen
+    statt nach oben gegeben - vorher beendete er den Zyklus. Fachliche Fehler
+    (falscher instId, zu kleine Menge) werden sofort geworfen: Wiederholen
+    aendert daran nichts, und beim Schreiben kann jeder Versuch eine echte
+    Order sein.
+    """
     fehler = 0
+    gedrosselt = 0
     while True:
         try:
             return _roh(*a, **kw)
-        except OKXFehler:
-            raise
+        except OKXFehler as e:
+            if not okx_takt.ist_429(e):
+                raise
+            gedrosselt += 1
+            if gedrosselt >= MAX_429:
+                raise
+            warten = okx_takt.warte_s(gedrosselt)
+            print("  OKX-Spot gedrosselt (%d/%d) - warte %.1f s, kein Ausfall"
+                  % (gedrosselt, MAX_429, warten), file=sys.stderr)
+            time.sleep(warten)
         except Exception as e:  # noqa: BLE001 - Transportfehler, wird gezaehlt
             fehler += 1
             if fehler >= MAX_FEHLER:

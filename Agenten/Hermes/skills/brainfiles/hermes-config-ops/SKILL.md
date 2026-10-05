@@ -38,6 +38,10 @@ weiterlaufen und die Änderung mit einem echten Lauf belegt ist.
   wirklich zu rufen (references/modellkette-messen.md); eine Tabelle aus
   Modellnamen ist kein Beleg, und ein `provider: auto` in einem
   `auxiliary`-Block erbt still das Hauptmodell
+- "mach einen Bot / ein Profil fuer Telegram" / "der Bot antwortet nicht" /
+  "passiert nichts" — dann zuerst die drei Tore messen, nicht die Config
+  umbauen (references/profil-kanalzugangsdaten.md, Abschnitte *Ein NEUES
+  Kanal-Profil* und *Ein von Hand eingetragener Token*)
 
 **Don't use for:** MCP-Server-Einträge zwischen Claude und Hermes (`mcp-sync`),
 Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
@@ -79,6 +83,54 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
    verdecken: der Aufruf scheitert, der Nutzer bekommt trotzdem eine gute Antwort
    und sieht keinen Fehler. Immer die Fehlschlagspur im Log mitlesen, nicht die
    Antwort (references/config-gegenprobe.md, Abschnitt *Abnahme*).
+10. **Ein Ersatzzblock wird ALLEIN stehend geparst, bevor eine Datei angefasst
+   wird.** `yaml.safe_load("\\n".join(block + zu_erhalten))`, dann die
+   erwarteten Felder asserten. Grund: die Einrückungstiefe ist eine
+   Eigenschaft der Zieldatei, nicht des Hauses — Profil-Configs führen
+   Skalarfelder mit zwei Leerzeichen unter einem Top-Level-Schlüssel, die
+   Hauptkonfiguration mit vier. Ein Block aus dem einen Haus parst im anderen
+   nicht (`expected <block end>`); wird erst NACH dem Schreiben gegengeprüft,
+   ist der Schlüssel bereits ein String und alle folgenden Felder sind
+   verschluckt. Rollback dann byteweise aus `.bak-JJJJMMTT`, Beleg ist
+   `git status --porcelain -- <pfade>` **leer** (references/modellwechsel-flotte.md).
+11. **Ein Trockenlauf ohne Treffer bei erwartetem Befund ist ein Fehler des
+   Suchers.** `text.split("\n")` lässt das abschließende `\r` an jeder Zeile
+   stehen, wodurch jedes Präfix still null Treffer hat. Nach dem Split jede
+   Zeile auf `\r` prüfen, dann neu messen — „nichts zu tun" ist nie die
+   Erklärung für einen leeren Lauf.
+12. **Ein NEUES Kanal-Profil ist erst fertig, wenn drei Dinge gemessen sind:**
+    `platforms.<plattform>.enabled`, ein EIGENER Bot-Token in der `.env` (ein
+    Token haengt an maximal einem Profil), und `auxiliary.compression` gesetzt.
+    `hermes profile list` fuehrt ein angelegtes, gestartet-werdendes Profil als
+    `running`, auch wenn kein Prozess davon existiert — die Liste liest die
+    Served-Liste des Gateways (references/profil-kanalzugangsdaten.md, Abschnitt
+    *Ein NEUES Kanal-Profil*).
+13. **`gateway.multiplex_profiles: false` ist KEIN Blocker — das Flag ist als
+    Opt-out abgeschafft.** `hermes_cli/gateway_multiplex_mode.py::resolve_multiplex_mode`
+    loest ein explizites `false` wie ein unset auf, warnt und multiplexed trotzdem
+    (der Rueckfallpfad ist nicht optimistisch: ein echter Blocker wie ein s6-
+    Container, ein sekundaeres eigenes Gateway oder eine doppelte Bot-Kennung
+    laesst den Host solo starten und sagt warum). Wer `false` in einer
+    Profil-Config als Kanal-Blocker liest, jagt einen Fehler, den es nicht gibt.
+    Der echte Kanal-Blocker ist die fehlende Credential im Profilscope.
+14. **Ein Kommentar ist ein Kommentar — nie als YAML-Schluessel schreiben.**
+    `delegation_fallback_note: >` mit einem Text darunter erzeugt eine
+    erfundene Einstellung: sie taucht in jeder Config-Ansicht, jedem
+    `config get` und jedem Dashboard als Schalter auf, den es nicht gibt, und
+    sieht beim naechsten Lesen wie Absicht aus. Erklaerungen gehoeren an die
+    Zeile, die sie erklaeren. Nach jedem Einfuegen von Bloecken die
+    Schluesselmenge gegenpruefen, nicht nur die Werte (`set(cfg) == vorher`).
+15. **Ein von Hand eingetragener Kanalwert braucht drei getrennte Messungen:**
+    richtiger Bot (`getMe` beider Token vergleichen — der Nutzer schreibt dem
+    vertrauten Bot), ueberhaupt je eine Nachricht empfangen (`getUpdates` leer
+    heisst "noch nie geschrieben", nicht "kaputt"), und die Form der
+    Nutzerkennung (Zeichenart je Position, Laenge, Vergleich ueber
+    Normalisierung — ohne den Wert auszugeben). `getChat` ist als Probe
+    unbrauchbar: Telegram meldet fuer einen privaten Chat ohne bestehende
+    Nachricht `400 chat not found`. Einen vermutlich falschen `.env`-Wert nicht
+    ueberschreiben, sondern den Nutzer korrigieren lassen
+    (references/profil-kanalzugangsdaten.md, Abschnitt *Ein von Hand
+    eingetragener Token*).
 
 ## Index — references laden, wenn ...
 

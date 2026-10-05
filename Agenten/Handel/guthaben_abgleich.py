@@ -25,7 +25,33 @@ import zeitfenster
 HIER = os.path.dirname(os.path.abspath(__file__))
 
 LIVE = ("scanner", "kraken", "xperp")
-WAEHRUNG = {"scanner": "USD", "kraken": "EUR", "xperp": "USD"}
+
+
+def _waehrung(spur):
+    """Die Waehrung der Zahlen dieser Spur - aus der EINEN Hausquelle.
+
+    T-311: `WAEHRUNG` behauptete "USD" fuer den Scanner. Das Konto (OKX EEA)
+    fuehrt kein USDT - gemessen am 05.10.2026: 302,39 USDC frei, 0,00 USDT,
+    0,0003 EURC. Eine Tabelle, die eine Waehrung behauptet, die es dort nicht
+    gibt, ist schlimmer als keine: sie stellt eine Zahl in eine falsche
+    Einheit und der Rest sieht danach wie ein Buchfehler aus.
+
+    Die Regel steht in `auswertung_alle.einheit_fuer()` und wird hier GELESEN,
+    nicht wiederholt - dieselbe Quelle wie Tagesbericht, Handelszentrale und
+    Strategiekennzahlen. Vier Anzeigen mit vier eigenen Tabellen laufen
+    auseinander; das war am 23.09.2026 (Kraken-BTC-Kurs aus der OKX-Tabelle)
+    und am 05.10.2026 (dieser Bericht) jeweils der Fall.
+
+    `xperp` bleibt USD: das sind die USDC-Margen auf USD_UM_XPERP, und ihre
+    Einheit wird an dieser Stelle NICHT aus dem Buch abgeleitet - das waere
+    eine zweite Aussage ueber dieselbe Spur.
+    """
+    try:
+        return str(auswertung_alle.einheit_fuer(spur) or "USD")
+    except Exception:                                        # noqa: BLE001
+        # Berichtsweg nicht lesbar: Zahl zeigen, nicht scheitern - wie in
+        # handelszentrale.waehrung_fuer().
+        return "USD"
 
 
 def _scanner_quote():

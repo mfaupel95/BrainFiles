@@ -1,5 +1,5 @@
 {
-  "stand": "2026-09-30",
+  "stand": "2026-10-05",
   "repos": [
     {
       "ordner": "Agent-Reach",
@@ -209,11 +209,13 @@
       "ordner": "foreman",
       "rolle": "Werkzeug",
       "art": "python",
+      "gruppe": "kein_start",
       "notiz": "Jev-Aufsicht ueber Coding-Agenten (Codex/OpenCode) - Python-CLI mit rich-Oberflaeche. Bewusst ohne venv und ohne Start gefuehrt (T-251, 01.10.2026): fremder Klon, nur lesend, kein Verbraucher im Haus; die Bau- und Start-Anleitung bleibt unten stehen, falls das je gewechselt wird.",
       "venv_pflicht": false,
-      "gruppe": "kein_start",
-      "warnungen": ["kein eigener Start: nur-lesen-Klon, niemand nutzt foreman (Anleitung unten, falls das anders wird)"],
-      "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf."
+      "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf.",
+      "warnungen": [
+        "kein eigener Start: nur-lesen-Klon, niemand nutzt foreman (Anleitung unten, falls das anders wird)"
+      ]
     },
     {
       "ordner": "gbrain",
@@ -853,7 +855,6 @@
       "rolle": "Projekt",
       "art": "python",
       "notiz": "Fremd-Klon RLTrader (Vorgaenger von TensorTrade, upstream seit 2019 ruhend; privat gesichert mfaupel95/rltrader). Laeuft in Docker (CPU): erst rltrader.cmd build, dann train. Nur Simulation, kein Orderweg.",
-      "venv_pflicht": false,
       "start": [
         "cmd",
         "/c",
@@ -871,7 +872,14 @@
         "rltrader.cmd",
         "build"
       ],
+      "venv_pflicht": false,
       "beleg_frist_s": 1500
+    },
+    {
+      "ordner": "scanner-varianten",
+      "wurzel": "werkstatt",
+      "art": "python",
+      "notiz": "Scanner-Varianten (Werkstatt, Stand 01.10.2026)"
     },
     {
       "ordner": "scrapling-wissen",
@@ -999,6 +1007,13 @@
       "art": "ablage",
       "gruppe": "doku",
       "notiz": "Arbeitsablaeufe der Projekte"
+    },
+    {
+      "ordner": "5m_historie_holen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "5m-Historie fuer mosaic nachladen (Binance, oeffentlich, kein Schluessel)."
     },
     {
       "ordner": "abgleich.py",
@@ -1402,6 +1417,13 @@
       "venv_pflicht": true
     },
     {
+      "ordner": "dpi_fall.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Was macht `tk scaling 1.1` gegenueber `dpi_bewusst()` - und was ist besser?"
+    },
+    {
       "ordner": "einsatz_nachziehen.py",
       "wurzel": "handel",
       "pfad": "kraken/einsatz_nachziehen.py",
@@ -1553,6 +1575,20 @@
           "hinweis": "leer = keiner laeuft"
         }
       ]
+    },
+    {
+      "ordner": "gebuehr_boerse_abgleich.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Gebuehr gegen die AKTIVE Boerse - der Abgleich, den es vorher nicht gab (T-330)."
+    },
+    {
+      "ordner": "gebuehren_setzen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Die Handelsgebuehren der Spuren auf den GEMESSENEN Satz ziehen."
     },
     {
       "ordner": "geist_zurueckbuchen.py",
@@ -1786,6 +1822,13 @@
       ]
     },
     {
+      "ordner": "klassik_pmax",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "klassik_pmax"
+    },
+    {
       "ordner": "klassik_rsi",
       "wurzel": "handel",
       "rolle": "Spur",
@@ -1820,6 +1863,20 @@
         "handeln.py",
         "--vorschau"
       ]
+    },
+    {
+      "ordner": "klassik_sr_breaks",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "klassik_sr_breaks"
+    },
+    {
+      "ordner": "klassik_supertrend",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "klassik_supertrend"
     },
     {
       "ordner": "kopier",
@@ -1911,6 +1968,13 @@
       ]
     },
     {
+      "ordner": "leitstand_messprobe.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Messprobe fuer den Leitstand - dasselbe Prinzip wie `messprobe.py`."
+    },
+    {
       "ordner": "liq_wand",
       "wurzel": "handel",
       "rolle": "Spur",
@@ -1956,6 +2020,20 @@
       "warnungen": [
         "verschickt Telegram-Nachrichten - nicht zum Ausprobieren aufrufen"
       ]
+    },
+    {
+      "ordner": "messprobe.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Messprobe: passen Spalten und Ueberschriften in das Fenster?"
+    },
+    {
+      "ordner": "modus_nachtragen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "T-354: Das Feld `modus` in alten Buch-Positionen nachtragen."
     },
     {
       "ordner": "moondev_basis.py",
@@ -2163,6 +2241,13 @@
       ]
     },
     {
+      "ordner": "nautilus_emacross",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "nautilus_emacross — der EMA-Cross aus nautilus_trader"
+    },
+    {
       "ordner": "nautilus_kraken",
       "wurzel": "handel",
       "rolle": "Spur",
@@ -2195,6 +2280,20 @@
         "..\\.venv\\Scripts\\python.exe",
         "waechter.py"
       ]
+    },
+    {
+      "ordner": "okx_positionen_live.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "OKX-Positionen LIVE lesen und je Position auswerten."
+    },
+    {
+      "ordner": "okx_tp_stufen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Take-Profit in Stufen und Schutz-Stop fuer EINE OKX-Position."
     },
     {
       "ordner": "okx_waisen.py",
@@ -2357,6 +2456,13 @@
       ]
     },
     {
+      "ordner": "omnitrade_futures",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Handelsspur `omnitrade_futures` - das Hebel-Bein der omnitrade-Spur."
+    },
+    {
       "ordner": "OpenAlice",
       "wurzel": "handel",
       "rolle": "Fremdprojekt",
@@ -2436,6 +2542,13 @@
       "art": "daten",
       "gruppe": "doku",
       "notiz": "Taegliche Prognose-Berichte (neuester.json) - Eingang der Spur omniquant"
+    },
+    {
+      "ordner": "prophet_signal",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Prophet-Signal Spur"
     },
     {
       "ordner": "pruefe_ratschen.py",
@@ -2586,6 +2699,13 @@
       ]
     },
     {
+      "ordner": "spur_audit.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Spur-Audit: hat eine Spur Edge, und ist ihre Statistik ueberhaupt echt?"
+    },
+    {
       "ordner": "spuren_stand.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
@@ -2647,6 +2767,13 @@
       "art": "daten",
       "gruppe": "doku",
       "notiz": "Tagesstaende des Handels"
+    },
+    {
+      "ordner": "stapel_raeumen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Gestapelte Positionen zusammenfassen (Auftrag Max 03.10.2026)."
     },
     {
       "ordner": "stille_spuren.py",
@@ -2764,6 +2891,13 @@
         "handeln.py",
         "--vorschau"
       ]
+    },
+    {
+      "ordner": "universum_messen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Wie gross ist das Universum, mit dem eine Feed-Spur im Ruecklauf rechnet?"
     },
     {
       "ordner": "verbesserer",

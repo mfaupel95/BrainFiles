@@ -279,10 +279,23 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   **Auch ein doppelt-quotierter `-Command "…"`-String ist bash-Land:** bash
   expandiert `$name` VOR PowerShell, das Skript sieht eine leere Variable und
   meldet still Erfolg — gemessen blieb ein so gesetzter PATH-Eintrag einfach
-  aus, ohne Fehlermeldung. PowerShell-Variablen also nicht in einen
-  doppelt-quotierten Inline-String schreiben: `.ps1` per `-File` starten (immer
-  die verlaessliche Form), oder mindestens einfach quotieren, damit `$` literal
-  ankommt.
+  aus, ohne Fehlermeldung. Am haeufigsten beisst `$_`: bash kennt ES als
+  „letztes Argument des vorherigen Kommandos" und ersetzt es IMMER durch einen
+  Pfad — ein `Where-Object { $_.ProcessId -eq N }` inline kommt kaputt an
+  (Syntaxfehler mit dem Pfad statt `$_` im Text; gemessen dreimal mit
+  `powershell -Command` aus bash). PowerShell-Variablen also nicht in einen
+  doppelt-quotierten Inline-String schreiben: `.ps1` per `-File` starten
+  (immer die verlaessliche Form), oder mindestens einfach quotieren, damit `$`
+  literal ankommt.
+- **`cmd //c <wrapper>.cmd` aus bash kann nur den cmd-Banner drucken und die
+  Batch-Datei NICHT ausfuehren** (gemessen: Log enthielt nur die
+  Versionszeile und den Prompt, kein Skript-Output). Der Aufruf meldet
+  Erfolg — es ist kein Fehlschlag mit Meldung, sondern ein Nichtstart. Vertrau
+  nie dem Wrapper-Output: die Wirkung am ZIEL pruefen (Prozessliste + frische
+  Statusdatei-mtime nach dem erwarteten Start), oder den Befehl, den der
+  Wrapper ausfuehren wuerde, direkt als Hintergrundprozess starten
+  (`./target/debug/...exe live ... > log 2>&1`) und danach die Statusdatei
+  lesen — ein lebender Lauf schreibt sie weiter.
 - **Dasselbe fuer Python-Code: Datei statt Heredoc.** Ein Heredoc
   (`python - <<'PY' … PY`) durch die Terminal-Schicht loest die Fluchtfolgen VOR
   Python auf — aus dem zweibuchstabigen `\n` INNERHALB eines String-Literals wird ein

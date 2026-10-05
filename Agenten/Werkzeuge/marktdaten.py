@@ -29,6 +29,28 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+# Die Haus-Bremse gegen OKX-Drosselung: sie begrenzt ALLE OKX-Abrufe des
+# Hauses prozessuebergreifend (Fensterspiegel in Agenten/Handel/cache/okx-takt),
+# damit Wache, Handelszentrale und die drei Dauerlauf-Stufen sich nicht
+# gegenseitig in die Drosselung laufen. Gemessen 05.10.2026: 6 parallene
+# Threads -> 93x 'OKX 50011', nacheinander 120 Abrufe -> 0 Fehler.
+#
+# Sie wird ueber den PFAD geladen (importlib), nicht ueber sys.path: diese
+# Datei laeuft aus Agenten/Werkzeuge/, wo der Handel-Ordner nicht im Pfad
+# steht. Genau darum nehmen es die Spuren (sys.path.append) und die Werkzeuge
+# hier (importlib) auf zwei Wegen - einer waere an einer Stelle falsch.
+import os as _os
+import sys as _sys
+import importlib.util as _ilu
+_s = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(
+    __file__))), "Handel", "okx_takt.py")
+if not _os.path.exists(_s):
+    raise RuntimeError("Haus-Bremse fehlt: %s" % _s)
+_spec = _ilu.spec_from_file_location("okx_takt", _s)
+okx_takt = _ilu.module_from_spec(_spec)
+_sys.modules["okx_takt"] = okx_takt
+_spec.loader.exec_module(okx_takt)
+
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -55,6 +77,7 @@ KRYPTO_ENDUNGEN = ("-USDT", "-USDC", "-USD")
 def hole(url, zeitgrenze=ZEITGRENZE):
     """Rohtext einer URL (RSS ist XML, kein JSON)."""
     anfrage = urllib.request.Request(url, headers=KOPF)
+    okx_takt.reserviere()
     with urllib.request.urlopen(anfrage, timeout=zeitgrenze) as antwort:
         return antwort.read().decode("utf-8", "replace")
 

@@ -87,6 +87,50 @@ Die zweite Luecke derselben Art: ein Aufgaben-Block auf `auto` erbt das
 Konfiguration fuer Bild- oder Strukturaufgaben wertlos - korrekt verdrahtet und
 doch unbrauchbar.
 
+### Der Provider-Pin ist erst nach dem Aufruf-Ausschluss wert
+
+Bevor "auf nous umstellen" geschrieben wird, **jeden behaupteten Provider
+wirklich rufen** - ein toter Zweig ist kein Verdacht, sondern ein Befund mit
+Fehlertext:
+
+```python
+# GET-Liste zuerst: existiert der Zweig ueberhaupt?
+# dann jeder Kandidat einzeln, Key aus der .env, Antwort-Inhalt pruefen
+```
+
+Gemessen fielen dabei zwei Sorten heraus: `401 "No active credentials for
+provider: X"` (der Zweig braucht eine Anmeldung, die er nicht hat) und `403`
+(ein Freemodell, das nur innerhalb seines Anbieters funktioniert). Beides heisst
+**nicht**, dass der Provider tot ist - es heisst, dass er nicht nutzbar ist.
+Der Unterschied entscheidet die Art der Reparatur: Anmeldung nachziehen
+(Provider bleibt) oder auf einen anderen Provider umstellen (Block darf als
+Verkabelung fuer den spaeteren Fall liegen bleiben, wird aber nicht mehr als
+Aktivposten gefuehrt).
+
+Die Reihenfolge ist damit: **messen, dann umstellen** - und im Bericht die
+Fehlertexte nennen, die zur Entscheidung gefuehrt haben. "Der Router ist tot"
+ist eine Behauptung; "401 fuer Ollama, 403 fuer oc/big-pickle, 200 fuer nous
+in 2,1 s" ist ein Befund.
+
+### Was ein Massenlauf aus einer falschen Absicht nicht mitnehmen darf
+
+Beim Uebertragen einer Hauptprofil-Konfiguration auf die Flotte steht neben dem
+Umstellen eine Liste von Werten, die **richtig aussehen und trotzdem nicht
+umgestellt** gehoeren. Diese Liste gehoert in den Auftrag und in den Bericht,
+sonst wandert der naechste Auftrag mit:
+
+- `cache_ttl: 5m` auf einem maschinell getakteten Profil (`auto` gaebe ihm
+  ohnehin 5m) - eine Aenderung ohne Wirkung ist eine zweite Wahrheit.
+- `compression.threshold` auf einem Profil mit kurzen Sitzungen: eine Schwelle
+  nahe 0.7 schaltet die Kompression praktisch ab, statt sie zu tunen.
+- Ein Preset-Block, den das Profil gar nicht hat: MoA auf einem Bot-Profil ist
+  eine MoA-Verdrahtung, keine Profilverdrahtung.
+
+Der Nachweis, dass man die Absicht getroffen hat, ist eine **Gegenprobe am
+Zielzustand**: je Wert pruefen, dass er in der Flotte UNVERAENDERT ist, und diese
+Pruefung im Bericht nennen. Eine Massenaenderung, die belegt was sie tat, aber
+nicht was sie liess, ist halb geliefert.
+
 ## Beheben: drei Befunde, drei Werkzeuge
 
 | Befund (aus dem Bericht) | Werkzeug | Wirkung |

@@ -67,6 +67,31 @@ Zwei Aufraeumer, zwei Ursachen: `bueche_papier_altlasten_aus()` (Position ohne
 Live-Herkunft, Feld `modus`) und `bueche_geister_aus()` (kein Bestand an der
 Boerse). Beide laufen im Live-Zweig VOR der ersten Sperrenpruefung.
 
+## 3b. Ein Verkauf, der mit 51008 scheitert, ist erst mal ein GEIST, kein Kontoproblem
+
+„ZRO balance insufficient“ beim Verkauf einer Position, die das Buch als
+`modus=live` fuehrt, heisst nicht „Guthaben zu klein“ — es heisst: an der
+Boerse gibt es NICHTS zu verkaufen. Pruef-Reihenfolge, alles lesend:
+
+1. **Die Orderhistorie des Instruments KOMPLETT fragen.** `orders-history` kann
+   LEER sein, waehrend `orders-history-archive` die Order hat und umgekehrt -
+   beide Endpunkte lesen, dazu `orders-pending`. Findet sich dort keine
+   Kauf-Order, hat die Position nie existiert (der Endpunkt, der den Fehler
+   ausloest, sind die Verkaufsversuche — die KAUF-Seite ist der Beleg).
+2. **Balance des Coins: spotBal gegen frozenBal.** `frozenBal > 0` = es haelt
+   etwas (Margin/Order gebunden); `spotBal > 0` bei `frozenBal 0` = freie
+   Coins, keine Position — der Restbestand kann von einem anderen Vorgang
+   stammen und sieht wie der Beleg einer Position aus.
+3. **Der 51008 ist die FOLGE, nicht die Ursache.** Die Spur versucht, eine
+   Position zu verkaufen, die kein Kauf kreiert hat; jeder weitere Versuch
+   wiederholt denselben Fehler und fuellt das Fehlerprotokoll.
+
+MERKSATZ: `modus: live` im Journal ist ein BUCHVERMERK, kein Orderbeleg. Der
+Beleg ist die Order in der Boersen-Historie. Diese Geist-Klasse trat bei drei
+Spuren auf und jede Diagnose begann mit dem Verkaufsfehler und endete bei
+„nie gehandelt“ — bei einem 51008/insufficient-Fehler IMMER zuerst die
+Kauf-Historie suchen, bevor am Konto oder an der Menge gedreht wird.
+
 ## 4. Eine echte Position zurueck ins Buch
 
 Werte aus der EROEFFNUNGSZEILE des Journals nehmen (Einstieg, Kontrakte,

@@ -37,48 +37,6 @@ $logs     = Join-Path $PSScriptRoot 'logs'
 $waechter = Join-Path $PSScriptRoot 'safe-file-ops.ps1'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 
-# --- Einzelinstanz-Schutz (T-240, 01.10.2026) ------------------------------
-# Die Aufgabe steht auf IgnoreNew - das haelt nur die Aufgabe selbst. Am
-# 30.09.2026 liefen drei von Hand gestartete Instanzen (14:30, 15:37, 17:22/26)
-# parallel und schrieben sich gegenseitig das Tagesprotokoll platt; eine hing
-# ueber eine Stunde im Suchblock. Sperrdatei mit PID und Startzeit, gemustert
-# an Handel/sperre.py: nur wer Prozess-NAMEN und Startzeit prueft, haelt einer
-# Windows-PID-Wiederverwendung stand (Hausakte 21.09.). Ein Handstart bricht
-# mit klarer Meldung ab; die eigene PID sperrt sich nie selbst.
-$sperre = Join-Path $logs 'datensortierung.pid'
-function Sperre-LebtFremd {
-  if (-not (Test-Path $sperre)) { return $null }
-  $inh = @(((Get-Content $sperre -Raw -Encoding UTF8) -split '\s+') | Where-Object { $_ -ne '' })
-  if ($inh.Count -lt 1) { return $null }
-  $fremd = 0
-  if (-not [int]::TryParse($inh[0], [ref]$fremd)) { return $null }
-  if ($fremd -eq $PID) { return $null }
-  $p = Get-Process -Id $fremd -EA SilentlyContinue
-  if (-not $p) { return $null }
-  if (@('powershell', 'pwsh') -notcontains $p.Name) { return $null }
-  if ($inh.Count -ge 2) {
-    $gesetzt = [datetime]::MinValue
-    if ([datetime]::TryParse($inh[1], [ref]$gesetzt)) {
-      try {
-        if ((($p.StartTime) - $gesetzt).Duration() -gt [timespan]::FromMinutes(2)) { return $null }
-      } catch { return $null }
-    }
-  }
-  return "$fremd"
-}
-$fremdPid = Sperre-LebtFremd
-if ($fremdPid) {
-  $alt = (Get-Item $sperre).LastWriteTime
-  $alter = [int](((Get-Date) - $alt).TotalMinutes)
-  Write-Output ("Es laeuft bereits eine Datensortierung (PID $fremdPid, Sperre von " +
-    ('{0:yyyy-MM-dd HH:mm}' -f $alt) + ", ${alter} min alt). Dieser Start bricht ab - " +
-    'die Aufgabe steht auf IgnoreNew, ein zweiter Handstart gefaehrdet nur das Protokoll. ' +
-    "Ist die Sperre verwaist (Prozess toter Name, Datei juenger als zwei Stunden): " +
-    "Remove-Item '$sperre' und erneut starten.")
-  exit 3
-}
-Set-Content -Path $sperre -Value ("$PID " + (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')) -Encoding UTF8
-
 . (Join-Path $agenten 'Bus\Ereignis.ps1')                                # neu
 $marke = Melde-Start -Wer 'routine/datensortierung' `
            -Log 'Agenten/Routinen/logs/datensortierung-letzter-lauf.md' # neu
@@ -334,12 +292,5 @@ exit 0
 
 } catch {                                                                # neu
   Melde-Ende -Marke $marke -Code 1 -Text "$_"                           # neu
-  throw                                                                  # neu
-} finally {                                                              # T-240
-  # Die Sperre nur freigeben, wenn sie dem eigenen Prozess gehoert - ein
-  # ueberlebender Frame darf die Sperre eines juengeren Laufs nicht tilgen.
-  if (Test-Path $sperre) {
-    $eigene = (((Get-Content $sperre -Raw -Encoding UTF8) -split '\s+')[0])
-    if ($eigene -eq "$PID") { Remove-Item $sperre -Force -EA SilentlyContinue }
-  }
+  throw                                                                 # neu
 }                                                                        # neu

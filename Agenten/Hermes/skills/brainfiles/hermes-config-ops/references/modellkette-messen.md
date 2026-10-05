@@ -209,3 +209,25 @@ dem Neustart gestartet wurde, oder die Einstellung ist nicht angekommen. Die
 ehrliche Kontrollfrage ist dabei immer: hat nach dem Neustart ueberhaupt ein
 Turn durch den geaenderten Pfad gelaufen? Eine neue Sitzung ohne Turn belegt den
 Prozess, nicht die Wirkung.
+
+**Die Prozessliste zaehlen ist nicht dasselbe wie das Flag zuordnen.** Mehrere
+Prozesse desselben Namens (Electron-Launcher, Renderer, Helper - oft ein Dutzend
+Eintraege mit demselben `Name`) lassen die richtige Zeile im Rauschen verschwinden.
+Deshalb **die Zuordnung filtern, nicht die Liste lesen**:
+
+```
+Where-Object { \$_.CommandLine -match 'max-old-space' }
+```
+
+Ergaenzend die **Startzeit** mitschreiben (`CreationDate`) und gegen den
+Neustartzeitpunkt halten: eine Zeile mit passendem Text, aber altem
+`CreationDate` ist ein Prozess von VOR der Aenderung und beweist nichts. Beide
+Filter zusammen sind der Beleg; jeder allein liefert eine Fehlmoeglichkeit in
+beide Richtungen - zu viel Treffer (falscher Prozess) oder zu wenige (der
+gesuchte Prozess war nicht neu).
+
+**Zahlen aus Sammelzaehlern sind keine Wirkung** - das gilt fuer jeden
+Sitzungs-Summenwert, nicht nur fuer den Cache: eine Session kann 700 Aufrufe
+zusammengezaehlt haben und trotzdem nie durch den geaenderten Pfad gelaufen sein.
+Fuer den Nachweis einer geaenderten Route ist der Einzelaufruf die Einheit, die
+zaehlt (siehe die Logzeilen oben).

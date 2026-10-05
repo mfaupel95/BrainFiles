@@ -6,7 +6,7 @@
 |---|---|---|
 | `51000` | Parameter ungueltig | Ein Wert ist leer/`None` (z. B. `ordId`, weil die Position keine Order-Kennung hat). `urlencode` schreibt `None` als Text „None". |
 | `51603` | Order unbekannt | Kennung formal gueltig, aber die Order existiert nicht / liegt ausserhalb des Orderhistorie-Fensters. |
-| `51008` | zu wenig Guthaben | Quote-Waehrung des Paares ist leer (0 USDT bei gefuelltem USDC). |
+| `51008` | zu wenig Guthaben | Quote-Waehrung des Paares ist leer (0 USDT bei gefuelltem USDC). **Beim VERKAUF ist der Code meist die Folge einer Position, die es an der Boerse nie gab** (Buch-Geist: `modus: live` im Journal, keine Order in der Historie) — dann ist nicht die Kontolage, sondern der Geist zu pruefen (siehe Deutung unten). |
 | `50119` | Key existiert nicht (in dieser Umgebung) | **Haeufigster Grund ist der falsche HOST**, nicht ein toter Schluessel: der Schluessel kam ueber den Registry-Rueckfall, der Host aber nicht (nur `os.environ`) — ein EEA-Schluessel gegen `www.okx.com` gibt genau diesen Code. Erst die Basis pruefen, dann den Schluessel. |
 | `50101` | Key passt nicht zur Umgebung | Basis (www vs eea) oder Demo-Modus (`OKX_DEMO`/`OKX_SIMULATED`) — dieselbe Wurzel wie `50119`. |
 | `50124` | keine Handelsberechtigung FUER DIESEN MARKT | Meist der falsche NAMENSRAUM desselben Marktes: die Spur schickt `XAU-USDT-SWAP` (`instType=SWAP`), handelbar ist nur der XPERP-Kontrakt (`instType=FUTURES`, `XAU-USD_UM_XPERP-…`). `perm`/`acctLv` sind dabei in Ordnung. |
@@ -65,7 +65,17 @@ Weg ueber den PFAD, nicht ueber `sys.path`-Eintraege in den Spuren.
 
 - `details: []` beim Kontostand UND `[]` in der Orderhistorie: die Position hat es
   am Handelsplatz nie gegeben — sie lebt nur im Journal. Der abgebrochene Verkauf
-  war dann korrekt (nichts zu verkaufen), und es ist kein Geld verloren.
+  war dann korrekt (nichts zu verkaufen), und es ist kein Geld verloren. Diese
+  Geist-Diagnose ist bei einem `51008 insufficient`-Verkauf der ERSTE Schritt,
+  nicht der letzte: **erst die Orderhistorie bewusst pruefen, dann ein Urteil**
+  (`orders-history` UND `orders-history-archive` UND `orders-pending` — die
+  Standard-Historie kann fuer den Zeitraum leer sein, waehrend das Archiv die
+  Wahrheit traegt; alle drei Endpunkte fragen, nicht nur den ersten). Und beim
+  Kontostand `spotBal` gegen `frozenBal` lesen: `frozenBal > 0` heisst
+  eingefrorener Bestand (offene Position), `frozenBal == 0` bei gefuelltem
+  `spotBal` heisst frei verfuegbare Menge ohne Position. Merksatz: `modus: live`
+  im Journal ist ein BUCHVERMERK, kein Orderbeleg — der Beleg ist die Order in
+  der Boersen-Historie.
 - `details` gefuellt, Orderhistorie leer: falsches Instrument oder falsches
   Fenster (Historie reicht nur wenige Tage zurueck).
 - Quote pruefen: `ccy=USDT` gegen `ccy=USDC`. Die `availBal` der Quote-Waehrung ist

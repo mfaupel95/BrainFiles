@@ -149,6 +149,13 @@ fehlgedeutet.
 
 ## Pitfalls
 
+- **Ein Anzeige-Symptom ist kein Energieplan-Problem, solange die Auszeit nicht
+  gemessen ist.** Unter Speicherdruck faellt zuerst die Anzeige-Schicht aus: gehaeufte
+  Ereignisse 2004 (Ressourcenerschoepfung) und Abstuerze von `dwm.exe` im
+  Application-Log gehen jedem unerklaerlichen Anzeige-/Grafikverhalten voraus — nach
+  einem Neustart mit wieder freier Commit-Luft ist das Symptom weg, ohne dass eine
+  Einstellung geaendert wurde. Beide Quellen lesen, bevor eine Einstellung verdaechtigt
+  wird; fuer die Messung selbst `windows-energie-und-anzeige`.
 - **Werkzeugnamen nie erfinden.** Schlaegt ein Aufruf mit „Tool X does not
   exist. Available tools: …“ fehl, ist die zurueckgegebene Liste die Wahrheit:
   den naechsten Aufruf daraus waehlen, nicht aus der Erinnerung an die

@@ -51,17 +51,28 @@ Lauf stoesst darauf.
 SELECT id, kind, started_at FROM runs WHERE finished_at IS NULL ORDER BY started_at;
 ```
 
-Gemessen: 91 offene Zeilen, der aelteste 96 Stunden alt, aus jedem
-abgebrochenen Lauf — jeder erzeugte den naechsten. Die Einzelschritte des
-Skripts liefen zusammen 39 s, der Cron meldete 349 s. **Zwei Fixes, nicht
-einer:** die offenen Zeilen schliessen (sonst wartet der erste Lauf nach dem
-Timeout-Fix wieder) und die Frist anheben. Die Frist allein laesst die
+Gemessen: 95 offene Zeilen, der aelteste 99,9 Stunden alt, aus jedem
+abgebrochenen Lauf — jeder erzeugte den naechsten (etwa vier pro Stunde). Die
+Einzelschritte des Skripts liefen zusammen 39 s, der Cron meldete 349 s. **Zwei
+Fixes, nicht einer:** die offenen Zeilen schliessen (sonst wartet der erste Lauf
+nach dem Timeout-Fix wieder) und die Frist anheben. Die Frist allein laesst die
 Akkumulation weiterlaufen.
 
 Gegenprobe: jeden Unterbefehl **einzeln** mitlaufen und die Dauer messen, statt
 die Summe des Skripts zu behaupten. Wer die Einzelschritte nicht misst, weiss
 nicht, ob die Frist zu knapp oder der Zustand zu gross war — beides fuehrt zur
-falschen Reparatur.
+falschen Reparatur. Nach dem Schliessen der offenen Zeilen fiel derselbe
+Unterbefehl von 349 s auf 5 s; das ist der Beweis, dass die Zeit **im Zustand**
+saß, nicht in der Arbeit.
+
+### Die Frist steht meist im Skript, nicht im Cron-Job
+
+Ein Timeout-Feld am Job zu setzen ist wirkungslos, wenn die Zahl im Skript
+steht: `subprocess.run(..., timeout=frist)` mit einem Modulstandard oder einem
+Parameter beim Aufruf liest die Job-Konfiguration nie. **Vor der Reparatur
+greppen, WO die Frist steht** (`grep -n "timeout" <skript>`), und dort aendern.
+Andernfalls steht nach dem Fix ein Vermerk in `jobs.json`, den niemand liest —
+das sieht wie eine Konfiguration aus und aendert nichts.
 
 ### Ein Exitcode, den nur der Cron zeigt, ist eine Umgebungsfrage
 
@@ -70,6 +81,13 @@ Skript gedreht wird: beide Wege fahren und die Ausgaben vergleichen. Oft
 schlaegt der Watchdog-Prozess in der Scheduler-Umgebung in ein Working-Dir,
 ein fehlendes Netz oder eine Prozessgrenze, die es von Hand nicht gibt. Ohne
 den Vergleich repariert man ein Skript, das nie das Problem war.
+
+**Exit 15 heisst SIGTERM, nicht Skriptfehler.** Unter MSYS/Git-Bash liefern
+`timeout N` und der Bash-Job-Abbau 15 (bzw. 143); die Windows-Kommandos
+(`taskkill`, `Stop-Process`, `os.kill`) erzeugen 15 **nie**. Steht dort 15,
+ist der Lauf von aussen beendet worden — die richtige Antwort lautet „Abbruch",
+nicht „Skript kaputt". Wer die Zahl sieht, faengt an, im Skript zu suchen, was
+gar nicht dort steht.
 
 ### Zwei Datenquellen dieselbe Frage gestellt: der Zaehler stimmt, die Erzaehlung luegt
 

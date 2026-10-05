@@ -589,6 +589,18 @@ liest:
    frischer Datei UND lebender PID (`omnitrade_lauf.pid_lebt`); der Ausstieg
    greift auch bei `stopped` (die CLI verkauft beim Beenden), **nie** bei
    `starting`/`error` — ein Abbruch ist kein Handelssignal.
+   **`omnitrade_start.py` schreibt JE LAUF eine eigene Statusdatei
+   (`live_<strategie>_<symbol>.json`); `status/live.json` ist nur der
+   Standard-Anker der ANZEIGE** (`omnitrade_bridge.pfad()` =
+   `OMNITRADE_STATUS` oder `live.json`). Ein Wrapper, der ohne Argument den
+   Stand zeigt, kann damit auf eine TOTE Alt-Datei zeigen (gemessen:
+   `live.json` mit PID 55888 — Prozess laengst weg — meldete „veraltet",
+   waehrend `live_adx_macd_BTCUSDC.json` mit PID 61280 frisch lief).
+   „veraltet" an der Anzeige ist kein Beleg, dass kein Lauf laeuft: erst
+   `tasklist`/`pid_lebt` nach omnitrade-cli.exe fragen und ALLE `live*.json`
+   im Statusordner lesen (die Spur `lesen.py` macht das automatisch), dann
+   urteilen. Der Anzeige-Anker laesst sich ueber `OMNITRADE_STATUS` auf den
+   lebenden Lauf richten.
 3. **Den echten Orderpreis buchen, nicht den letzten Kerzenschluss.** Ein
    Fremdlauf steigt mit einer echten Order aus; ihr Preis steht in
    `recent_orders`. `last_close` als Verkaufskurs ins Journal zu schreiben,
@@ -608,6 +620,62 @@ landet. Und: **`spur_buch.zyklus` steigt bei leeren Daten VOR `pruefe_ausstiege`
 aus** — liefert `quelle()` nur laufende Laeufe, kann ein beendeter Lauf die
 Position nie schliessen. Deshalb kommen ALLE lesbaren Laeufe ins `daten`-Dict
 und `signal()` prueft `laeuft` UND `offen`.
+
+## Einen WAEHRUNGSWECHSEL der Signalquelle planen (USDT -> USDC)
+
+"Nur noch USDC" klingt nach einer Zeile in der Konfiguration und ist ein
+Fünf-Stellen-Vorgang. Die Signalquelle, der Orderweg, die Anzeige, die
+Auswertung und die Schattenarme tragen die Quote jeweils an eigener Stelle —
+wer nur die Quelle umstellt, verliert Kandidaten, ohne dass irgendwo ein Fehler
+erscheint. **Vor dem Umstellen alle fünf Stellen messen, dann in dieser
+Reihenfolge arbeiten:**
+
+| Stelle | Was dort die Quote traegt | Folge, wenn sie stehen bleibt |
+|---|---|---|
+| Konfiguration der Signalquelle (`maerkte` in der Berichts-Config, je Fassung) | welche Paare der Lauf ueberhaupt sieht | Kandidaten bleiben auf der alten Quote |
+| Instrumenten-Aufloesung des Orderwegs (Paar-Tabelle + Ableitung) | `Inst-QUOTE` → Markt-Symbol | Einstieg wird mit „gibt es am Zielmarkt nicht" abgewiesen |
+| GUI der Spur | fest verdrahteter Berichtspfad, Spaltenueberschrift „Wert USD" | zeigt den falschen Bericht oder die falsche Waehrung |
+| Berichts-Holer (`lage.py`) | `waehrung`, `papierfest` als Konstante | zeigt „kein Live-Zweig" fuer eine live handelnde Spur |
+| Schattenarm-Config | `handel_erlaubt`, Vermerk „kein Orderpfad" | Widerspruch zum Hauptarm, den niemand aufloest |
+
+**Die Marktbreite der neuen Quote zuerst messen — sie ist die eigentliche
+Entscheidung, nicht die Schreibweise.** Gesichert oeffentlich, ohne Schluessel:
+der volle Ticker-Satz, dann auf die Quote filtern und gegen den Mindestumsatz
+zählen. Der Wechsel einer breiten auf eine schmale Quote kostet Dutzende
+Kandidaten: gemessen USDT+USDC 49 Paare über dem Filter gegen USDC allein 6
+(bei 298 USDC-Paaren insgesamt). Steht die Antwort auf wenige Märkte, gehört
+DIE Zahl in den Vermerk der Config-Datei — sonst hält später jemand die kleine
+Zahl für einen Fehler und stellt die Quote zurück.
+
+**Der Orderweg muss die Basis-ABWEICHUNG können, sonst ist die Umstellung eine
+Verschlimmbesserung.** Die Regel `PF_<BASIS>USD` ist fast, aber nicht ganz
+richtig: gemessen gibt es `PF_XBTUSD` statt `PF_BTCUSD`, `PF_CTSIUSD` statt
+`PF_CTUSD` und gar kein `PF_XMSTRUSD`. Eine Ableitung, die das nicht abbildet,
+erzeugt ein Symbol, das es nicht gibt — und das faellt als „am Zielmarkt nicht
+handelbar" durch, also als *unbelegter Markt*, nicht als *fehlende Abbildung*.
+Deshalb: **die Basis-Ausnahmen als gemessene Abbildung in die Aufloesung, und
+alles, was die Boerse nicht fuehrt, namentlich sperren** (`KEIN_MARKT` + Fehler mit
+dem Namen), nie still auf einen anderen Markt umlenken.
+
+**Eine offene Position auf der alten Quote laesst man stehen.** Der Wechsel der
+Signalquelle fasst sie nicht an; sie wird nur im Buch weiter unter ihrem alten
+Namen gefuehrt (inklusive Zielmarkt-Symbol). Wer sie vorher schliesst, nimmt
+dem Nutzer eine Position weg, ohne zu fragen — die Aufgabe war die
+Signalquelle, nicht das Buch.
+
+**Anzeige und Berichts-Holer lesen die Konfiguration, nie eine Konstante.**
+Faellt die Anzeige auf den fest verdrahteten Berichtspfad zurueck, zeigt sie
+einen anderen Report als den, den die Spur handelt, und der Bildschirm
+widerspricht dem Journal, ohne dass jemand den Widerspruch bemerkt. Der Pfad
+gehoert aus der Wachen-Datei gelesen (Fassungsfeld), die Waehrungsangabe aus der
+Order-Boerse, und die Live-Faehigkeit als Parameter des Holers statt als
+festes Etikett.
+
+**Schattenarme nicht als Kopien der Hauptarm-Datei behandeln.** Beide teilen das
+Wissen („diese Spur hat keinen Orderweg"), aber sie werden zu verschiedenen
+Zeiten angefasst. Ein `handel_erlaubt: false` plus ein Vermerk, der die
+Faehigkeit des Hauptarms verneint, ist nach dem Bau des Orderwegs FALSCH —
+mit Datumsvermerk berichtigen, nicht stillschweigend.
 
 ## Instrumentenwechsel mit offenem Buch
 

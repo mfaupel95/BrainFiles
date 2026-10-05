@@ -255,12 +255,21 @@ def instrument_index(inst, takt="1H"):
         reihe = historie_binance.lade(b, takt)
     except KeyError:
         reihe = []
+    except historie_binance.HistorieKaputt as e:
+        # 05.10.2026: die Datei ist da, aber unlesbar (im Betrieb ein Moment,
+        # in dem gerade geschrieben wird). Frueher gab `lade()` still [] zurueck
+        # und der Audit rechnete mit leeren Kerzen - das ist die Basislinie,
+        # also wurde ein Instrument als "keine Marktbewegung" gewertet und die
+        # Spur als messbar ausgewiesen. Jetzt: Luecke melden, nicht raten.
+        KAPUTTE_DATEIEN.add(str(e).split(" ist keine")[0])
+        reihe = []
     idx = {int(r[0]): r for r in reihe}
     _INDEX_CACHE[schluessel] = idx
     return idx
 
 
 _INDEX_CACHE = {}
+KAPUTTE_DATEIEN = set()          # Instrument -> Meldung im Fuss des Berichts
 
 
 def halte_dauer(ein, aus):

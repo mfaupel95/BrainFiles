@@ -30,6 +30,27 @@ import json
 import os
 import subprocess
 import sys
+# Die Haus-Bremse: okx_takt begrenzt ALLE OKX-Abrufe des Hauses
+# prozessuebergreifend (Datei in Agenten/Handel/cache), damit
+# Wache, Zentrale und die drei Dauerlauf-Stufen sich nicht
+# gegenseitig in die Drosselung laufen. Gemessen 05.10.2026:
+# 6 parallene Threads -> 93x 'OKX 50011', nacheinander -> 0.
+import os as _os, sys as _sys
+# Die Haus-Bremse gegen OKX-Drosselung. Sie liegt in Agenten/Handel/ und wird
+# ueber den PFAD geladen (importlib), nicht ueber sys.path: diese Datei laeuft
+# aus Agenten/Hermes/scripts/, wo der Handel-Ordner nicht im Pfad steht. Genau
+# darum nehmen es die Spuren (sys.path.append) und die Werkzeuge hier
+# (importlib) auf zwei Wegen - Einer waere an einer Stelle falsch.
+_s = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(
+    _os.path.abspath(__file__)))), "Handel", "okx_takt.py")
+if not os.path.exists(_s):
+    raise RuntimeError("Haus-Bremse fehlt: %s" % _s)
+import importlib.util as _ilu
+_spec = _ilu.spec_from_file_location("okx_takt", _s)
+okx_takt = _ilu.module_from_spec(_spec)
+_sys.modules["okx_takt"] = okx_takt
+_spec.loader.exec_module(okx_takt)
+
 import urllib.request
 from pathlib import Path
 
@@ -72,6 +93,7 @@ def hole_json(url, zeitgrenze=ZEITGRENZE):
     anfrage = urllib.request.Request(
         url, headers={"User-Agent": "Mozilla/5.0 okx-trading-bericht"})
     try:
+        okx_takt.reserviere()
         with urllib.request.urlopen(anfrage, timeout=zeitgrenze) as r:
             return json.loads(r.read().decode("utf-8", "replace"))
     except (OSError, ValueError, urllib.error.URLError):

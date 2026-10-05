@@ -45,10 +45,42 @@ Laden per **Dateipfad** (importlib), nicht ueber `sys.path`: ein Eintrag auf
 `Werkzeuge/` wuerde dort liegende Module (`marktdaten.py`) einblenden und
 gleichnamige in `Handel/` verdecken.
 
+**Die Quelle selbst pruefen, nicht nur ihre Benutzung.** Farbe, Schrift und
+Kontrast sind Behauptungen, bis man sie nachrechnet. Zwei Handgriffe, beide
+ohne Fenster:
+
+1. **Kontrast gegen WCAG 2.1 rechnen.** Fuer jedes Paar, das im Haus wirklich
+   vorkommt (Flaeche x Schrift, Datenflaeche x Nebenspalte, Zellhintergrund x
+   Text, Auswahl x Text) das Verhaeltnis `(L1+0.05)/(L2+0.05)` aus der
+   relativen Leuchtdichte bilden und gegen 4.5 (Fliesstext) bzw. 3.0 (gross)
+   halten. Muster `Agenten/Handel/kontrast_messen.py` (reines Rechnen, keine
+   Bildschirm noetig). Ein Wert knapp ueber der Grenze ist der Befund - nicht
+   der schoenste Wert im Set.
+2. **Die Schrift begruenden, nicht nur setzen.** Eine FESTBREITE Schrift
+   (Consolas) fuer Zahlenspalten ist eine Wahl mit Grund und gehoert als solcher
+   kommentiert. Eine Vorgabe- oder Systemschrift (Inter, `system-ui`) ist der
+   Anti-Slop-Befund "Vorgabe statt gewaehlt" und braucht dieselbe Begruendung
+   oder einen Ersatz.
+
+Ein fremder Web-Design-Skill ersetzt diese Quelle nicht: siehe
+`fremde-skill-sammlung-einbinden`, Abschnitt "Medienpassung pruefen".
+
 ## Procedure
 
 1. `dpi_bewusst()` **vor** dem ersten `Tk()` - sonst streckt Windows das fertige
    Bild und jede Schrift wird unscharf. Fehlertolerant halten (`except Exception`).
+   **`tk scaling` ist kein Ersatz dafuer, sondern ein anderer (schlechterer)
+   Hebel.** `tk scaling N` aendert nur Tk-interne Punkte in Pixel; WINDOWS weiss
+   weiterhin nicht, dass die Anwendung dpi-aware ist, und stretcht das fertige
+   Bitmap. Gemessen auf einem 120-dpi-Monitor: `SetProcessDpiAwareness` ->
+   `winfo_fpixels('1i')` 119, `skalierung` 1.25, System 3840x2160; ohne ->
+   Faktor 1.0, System **3072x1728 = 36 % weniger Bildschirm**, Schrift 8 statt
+   10 px je Zeichen. Beides zusammen ergibt 1.666 statt 1.25 - der
+   `scaling`-Aufruf macht die dpi-Absicht also zunichtemachen. Faellt er weg,
+   wenn `dpi_bewusst()` gesetzt ist. Als Aufruf im `main()` **einer** Fenster
+   geht er kaputt, sobald das Fenster als Reiter in ein anderes eingebettet
+   wird (`main()` laeuft dort nie) - die DPI-Absicht muss dort stehen, wo der
+   Reiter gebaut wird, und gilt prozessweit.
 2. Einmal zentral gestalten: `design.stil_anwenden(ttk.Style(), BASIS)`. Alles,
    was nichts Eigenes setzt, erbt von `"."` - Einzel-Widgets nur fuer
    Abweichungen (fett, andere Groesse).
@@ -98,6 +130,24 @@ einem Umbau oder einem Schriftwechsel ploetzlich abschneiden. Reihenfolge:
 4. Reicht der Platz auch fuer die Untergrenzen nicht, ist das die **waagerechte
    Leiste**, nicht ein Fehler.
 
+**Eine ausdruecklich als schmal benannte Spalte hat eine HARTE Obergrenze** und
+ist damit die eine Ausnahme von der Textbedarfsregel: Textbedarf schlägt den
+*Wunsch*, aber nicht einen Deckel, den der Aufrufer ausdrücklich gesetzt hat
+(`SCHMALE_SPALTEN = ("datei", "pfad", "sha")` → 90 px). Ohne diese Kappung
+bekam die Spalte `Datei` bei 80 Zeichen 648 px und schob alles andere aus dem
+Fenster. Der Zweck ist der, im Kommentar zu benennen: lange Pfade und Hashes
+sollen die Ansicht nicht aufziehen - wer sie braucht, zieht sie auf.
+
+**Der Restplatz geht an die letzte Spalte, aber gedeckelt.** Sonst wird die
+letzte Spalte zur Sackgasse aus Leerraum: gemessen stand eine Spalte mit ganzen
+Sätzen (14 Erklärungen bis 447 Zeichen) bei 3584 px in einem Baum von 1351 px.
+Das ist kein Breitenfehler, sondern ein Text, der in eine Tabellenspalte
+gehört - er umbricht, statt die Spalte zu dehnen. Die Deckelung ist eine
+Eigenschaft des *Restplatzes*, nicht der Breite: ohne Fenster ist der Baum 1 px
+breit, es gibt keinen Rest, und die Spalte traegt nur ihren Textbedarf. Ein
+Test dieser Regel braucht darum ein gebautes Fenster oder eine
+Vorbedingung.
+
 **„ZU BREIT" unterscheidet zwei Sachen, und die Meldung muss es auch.** Brauchen
 die Texte mehr als der Baum hergibt, ist Scrollen die richtige Antwort (Text
 passt, nur der Platz reicht nicht). Sind die Spalten breiter als ihr Text
@@ -107,8 +157,40 @@ sagt deshalb „ZU BREIT - der Text braucht es" gegen „kein UEBERHANG".
 **Eine Breite, die nur nach dem Bauen gerechnet wird, ist die alte feste Breite
 mit neuem Namen.** Beim Bauen ist die Tabelle leer; nachrechnen muss gegen die
 **eingefuegten Zeilen** geschehen, und zwar in zwei Durchgaengen mit
-unveraenderter Zeilenzahl - beim ersten war nicht alles gelesen. Eine leere
+unveraenderter Zeilenzahl - beim erste war nicht alles gelesen. Eine leere
 Tabelle wird trotzdem nach ihren Überschriften gerechnet (sie zeigt genau die).
+
+**Die Nachrechnung muss ENDEN, und ihre Grenze wird VOR dem Rechnen geprueft.**
+Eine Konstante `MAX_DURCHGAENGE` im Baum, die nirgends gelesen wird, ist keine
+Grenze: die Rechnung laeuft bei jeder Aenderung der Zeilenzahl weiter und
+ueberschreibt beim naechsten Takt jede Breite, die der Nutzer gezogen hat
+(gemessen: 600 px zurueck auf 200 px nach EINEM `refresh()`). Zwei Regeln
+daraus, beide mit Gegenprobe:
+
+- **Die Grenze vor dem Zaehler pruefen, nicht danach.** Sonst feuert sie im
+  selben Takt wie das Ziehen und die Nutzerbreite geht doch verloren - der
+  Zaehler stand auf 4, die Grenze auf 5, und der fuenfte Durchgang war der
+  erste nach dem Ziehen.
+- **Gegenprobe bauen, die am Nutzerzeichen haengt:** Spalte breit ziehen, einen
+  Takt laufen lassen, danach messen. Das Skript behauptet nicht "der Nutzer
+  kann ziehen", es zeigt die gerettete Zahl.
+
+**Jede Fenstereigenschaft, die in eine Messung eingeht, wird VOR den Widgets
+gesetzt, die messen - nicht danach.** Wer einmalig beim ersten Befuellen misst
+und das Ergebnis merkt, rechnet genau einmal: mit dem Vorgabewert. Später
+umgestellt, ist die Tabelle für den Rest der Sitzung zu breit (gemessen: Spalte
+`Spur` 177 px bei gespeichertem Schriftgrad, Bedarf 200 px; ein späterer
+Tastendruck auf die Schrift änderte die Breite nicht mehr, weil die Sperre
+saß). Das betrifft Schriftgrad, Schriftart und jeden Zoom.
+
+**Manche Eigenschaften gehören zweimal gesetzt, aus zwei verschiedenen Gründen.**
+Der Stil muss **nach** den Reitern, weil ein Reiter in seinem Bau sein eigenes
+Treeview-Theme setzt, das der Rahmen überschreiben muss. Die Schrift muss
+**vor** den Reitern, weil sie in deren Breitenrechnung eingeht. Beides ist
+dieselbe Funktion an zwei Stellen - wenn man sie an eine Stelle setzt, bricht
+entweder die Farbe (Reiter ohne Theme, gemessen `#ffffff` statt `#181825`)
+oder die Breite. Vor dem Verschieben beide Tests nacheinander fahren: der
+Stiltest und der Breitennachweis.
 
 **Die Zeichenbreite ist eine Messung, keine Konstante.** `8 px` je Zeichen ohne
 `dpi_bewusst()`, `10 px` mit. Jeder Fall braucht einen **eigenen Prozess**:
@@ -127,6 +209,14 @@ ausserhalb des Bildschirms** positionieren, nicht `withdraw()`.
 
 ## Scrollen: die drei Fälle, die immer wieder auftreten
 
+- **JEDER Reiter braucht seine eigene Scrollflaeche, nicht der erste.** Ein
+  Reiter bekommt sie, weil sein Inhalt einmal hoeher war als das Fenster; die
+  Diagnose an einem Reiter gemacht und dann nicht an den anderen wiederholt,
+  laesst zwei Seiten unerreichbar. Gemessen bei 1280x860: zwei Seiten zeigten
+  zusammen 262 px von ueber 4000 px Inhalt, ohne Hinweis. Gegenprobe je
+  Reiter umschalten - ein nicht vermessener Reiter ist nicht geprueft, sondern
+  unbekannt. Bauform und die drei Fehler dabei: Punkt 8 in
+  `references/messsonde-fehler.md`.
 - **`height=<Anzahl Objekte>` ist kein Layout.** Eine Tabelle, die so viele
   Zeilen anfordert, wie es Daten gibt (gemessen: `height=len(SPUREN)` bei 42
   Spuren), ist hoeher als jedes Fenster — und mit `fill="x"` gepackt gibt es
@@ -142,6 +232,150 @@ ausserhalb des Bildschirms** positionieren, nicht `withdraw()`.
   an jede Tabelle einzeln binden UND die Nachfahren der Seite mitbinden; die
   eigenen Handler geben `"break"` zurueck, damit dieselbe Bewegung nicht noch
   einmal die Seite scrollt.
+
+## Fremde Fenster-Oberflaechen einbetten
+
+Eine bestehende GUI als Reiter in ein Notebook (oder als Karte in eine
+Seitenleiste) aufzunehmen ist eine eigene Bauform. Sie hat zwei Formen, und
+welche vorliegt, entscheidet ueber den Aufwand.
+
+| Form | Beispiel | Was beim Einbetten passiert |
+|---|---|---|
+| baut in ein uebergebenes Widget | `Klasse(root)` mit `pack()`/`grid()` | fast nichts: `ttk.Frame` ist ein Widget, `after()` geht darauf |
+| **ist** selbst ein Fenster | `class X(tk.Tk)` | muss zerlegt werden: Inhalt in ein Frame, Fenster drumherum |
+| ist eine **Komposition** ohne eigene Widget-Basis | Klasse mit `self.root = root` | der Container ist das Widget; die Klasse ist es nicht |
+
+**Fensterpflege gehoert dem Fenster, nie dem Inhalt.** `title`, `geometry`,
+`minsize`, `protocol` und `destroy` liegen beim Fenster-Wrapper; das Frame
+darf keine davon aufrufen. Der Fehler faellt erst zur Laufzeit auf (Fenster im
+Fenster), deshalb als **AST-Pruefung des Quelltexts** festhalten - nicht als
+Klick: suche in der Frame-Klasse nach `self.title`/`self.geometry`/
+`self.minsize`/`self.protocol` und verlange, dass es keine Treffer gibt.
+
+Bei der Zerlegung den **alten Namen als Alias** auf den Fenster-Wrapper
+stehen lassen (`Alt = NeuFenster`). Sonst bricht jeder Aufrufer von vor dem
+Umbau, und die Anzeigewerte wandern eine Ebene tiefer: wer sie las, nimmt sie
+danach aus `fenster.frame`.
+
+**Der Aufrufer darf das schwere Rad nicht selbst importieren.** Fehlt eine
+Abhaengigkeit (auch nur in einem frischen venv), waere ein Import im Rahmen ein
+**toter Rahmen** - ein Werkzeug nimmt den ganzen Rahmen mit, weil eine
+Nebensache fehlt. Der Reiter laedt das Rad zur Laufzeit ueber eine
+Ladefunktion mit `try/except ImportError` und **zeigt die
+Installationsanweisung**, statt zu crashen. Braucht das Modul Schwester-Dateien
+ohne `__init__.py`, gehoert ihr Ordner an den Anfang von `sys.path`.
+
+**Ein `after()`-Timer wird zur Leiche, sobald der Reiter verschwindet, waehrend
+das Fenster weiterlebt.** Im eigenen Fenster faellt das nicht auf; eingebettet
+meldet Tk beim feuern `invalid command name <id>_poll_queue`. Der Inhalt
+bindet deshalb `<Destroy>` und raeumt auf:
+
+```python
+def _beim_abbau(self, event=None):
+    if event is not None and event.widget is not self:
+        return          # nicht der eigene Abbau: Kinder sterben mit
+    self._abgebrochen = True
+    self.after_cancel(self._poll_id)
+```
+
+Dabei **einen laufenden Hintergrundprozess mitstoppen**, sonst bleibt er als
+Waise zurueck und haelt den Prozess. Ein Reiter, der etwas haelt, muss dem
+Rahmen das ueber `abbrechbar()` sagen - der Rahmen fragt es vor dem Schliessen
+und verweigert es mit einer Meldung.
+
+### Zwei Fallen beim Testen dieser Reiter
+
+**Ein Test, der eine Startmethode aufruft, startet den echten Prozess.**
+`patch.object(f, "_log")` schluckt nur die Ausgabe — der Aufbau laeuft weiter
+(gemessen: 13 s Logausgabe eines echten Baus). Die Naht ist die Funktion, die
+den Prozess **baut**, nicht die, die ihn startet: deren `side_effect` wirft,
+bevor etwas entsteht.
+
+**Ein Patch auf eine Klasse trifft kein Instanzattribut.** `patch.object(Klasse,
+"_gui", ...)` bricht mit `does not have the attribute '_gui'` ab, weil das
+Attribut erst in `__init__` entsteht — gemessen viermal in Folge am selben
+Aufbau. Dann hilft auch nicht, das Objekt nach dem Bauen zu ersetzen: es
+verliert genau die Methoden, die der Test pruefen soll. Die Fassung, die
+trägt: **die Klasse im Modul** ersetzen (`patch.object(modul, "GuiKlasse",
+Attrappe)`) und danach **nur die Anzeigedaten** am echten Reiter-Objekt
+austauschen (`reiter._gui = ...`). Die Reiter-Methoden bleiben echt — nur
+ihre Daten sind ersetzt. Merksatz: `patch.object` auf eine Klasse ist fuer
+KLASSENATTRIBUTE, Instanzattribute gehoeren dem Objekt.
+
+**Eine Komposition ist kein Widget — `winfo_*` fehlt ihr.** Die dritte Form
+der Einbettungstabelle (unten) baut in ein uebergebenes `root` hinein und
+erbt selbst nichts von Tk. Wer sie prueft, ruft `gui.winfo_children()` und
+bekommt `AttributeError`; wer stattdessen `gui.root` prueft und die Kinder des
+**Containers** zaehlt, hat es richtig getroffen. Vor dem Schreiben an der
+Grenze lesen, was die Klasse wirklich IST (`class X:` ohne Basis = Komposition),
+nicht was sie benutzt.
+
+**Ein geratener Feldname faellt still aus.** Wer `zustand.get("live")` liest,
+obwohl die Datei `modus` fuehrt, sieht nie einen Punkt und bekommt es nicht
+mit. Das echte `zustand.json` **vor** dem Schreiben ansehen und den Feldnamen
+von dort nehmen.
+
+**Ein Knopf, der wie ein Orderweg aussieht und keiner ist, wird beschriftet -
+nicht entfernt.** Ein Schalter fuer echtes Handeln sieht per Definition wie
+ein Schalter aus. Traegt er nicht dieselben Sperren wie die Hauswege
+(Sperrenkette, Freigabefenster, Spiegelung), sagt er das an **drei** Stellen:
+beim Anhaeken (erscheinender Hinweis), dauerhaft in der Warnzeile ueber der
+Nutzflaeche, und bei jedem Start im Protokoll - das Log ist das Einzige, was
+den Lauf *spaeter* noch zeigt. Eine Fussnote wird ueberlesen. Zwei Tests, einer
+gegen die Anzeige und einer gegen die Logzeile.
+
+## Der Herzschlag: LEBENDE Zeugen lesen, nicht Dateiformate raten
+
+Eine Statuszeile, die „laeuft nicht“ sagt, ist die gefaehrlichste Anzeige im
+Haus: sie sieht wie eine Messung aus und ist eine Vermutung. Sie liest
+**zwei** unabhaengige Zeugen — lebt der Prozess, und ist der letzte Eintrag
+frisch — und beide muessen stimmen.
+
+**Ein Sperr-/PID-Mechanismus traegt fast immer MEHRERE Felder, und der Leser
+nimmt die ganze Zeile.** Gemessen: `sperre.py` schreibt `PID Zeitstempel`,
+damit ein Waechter eine verwaiste Sperre erkennt. `int()` auf die ganze Zeile
+scheitert still (`ValueError` → `pid = None`), `prozess_lebt(None)` gibt
+`None`, und die Statuszeile meldet „laeuft nicht“ fuer einen Lauf, der seit
+Stunden laeuft. Also: **das erste Feld nehmen, nicht parsen** —
+`int(roh.split()[0])`, mit `try/except` auf `None`. Gleiches Muster bei jeder
+Datei, die ein Lock belegt: PID + Zeit, Host + Port, Name + Kennung.
+
+**Warum es drei Tage unentdeckt blieb: der Test schrieb selbst ein
+erfundenes Format.** Die Tests legten `"1234"` in die PID-Datei — also genau
+das Format, das der Code erwartete, und nie das, das der Schreiber erzeugt.
+Eine Attrappe, die dem Code entgegenkommt, beweist nichts; sie beweist nur,
+dass der Code mit der Attrappe umgehen kann. **Ein Test, der einen echten
+Formatvertrag prueft, schreibt das echte Format hinein** — den Wert, den
+der SCHREIBER erzeugt, nicht den, den man selbst fuer richtig haelt. Als
+Werkzeug: die Datei einmal mit dem Schreiber erzeugen und byte-genaue
+Kopien als Fixture nehmen.
+
+**Der Beweis ist der Aufruf mit den echten Werten, nicht die Rechnung
+einzeln.** Dieselbe Funktion liefert beim Aufruf aus dem echten Betrieb
+5,35 Minuten und in einer Testumgebung mit alter Basis Tausende — die
+isolierte Rechnung kann recht haben und der Aufruf trotzdem falsch sein.
+Deshalb am Ende `herzschlag()` (oder was auch immer die Anzeige faedt) **einmal
+gegen die echten Dateien** laufen lassen und die Zeile nennen, die sie
+zurueckgibt. Eine Statuszeile, die man nur in einer Attrappe gesehen hat,
+kann man nicht als gelaufen melden.
+
+**Eine Grenze braucht einen Grund im Bericht, nicht nur eine Zahl.** „Läuft
+nicht" bei gleichzeitig lebendem Prozess ist ein Befund, kein Zustand: er
+gehoert mit PID, Log-Alter und der gelesenen Zeile in den Bericht, sonst
+sieht die naechste Sitzung „Dauerlauf steht" und startet doppelt.
+
+## Tabellen filtern und auf mehrere Zeilen wirken
+
+Freitextfilter allein beantwortet "welche Spuren haben ueber 50 % Treffer"
+nicht - die Zahl steht in mehreren Spalten. Bauform, Zahlenregeln und die
+Mehrfachaktion auf einer Auswahl stehen in
+[references/tabellen-interaktion.md](references/tabellen-interaktion.md).
+Kurzform der drei Regeln, die dort begruendet werden: der Spaltenfilter
+vergleicht numerisch, wenn ein Vergleichszeichen davor steht (`>50`, `<0`),
+sonst als Teilstring; **ohne** Zahl wirft er die Zeile raus statt still nichts
+zu finden; eine unbekannte Spalte blendet **nicht** aus. Die Spaltenliste steht
+an **einer** Stelle - ein Tuple zu kurz als `values` verliert die hinteren
+Spalten bei `ttk.Treeview` ohne Fehlermeldung.
 
 ## Pruefen: messen, nicht schauen
 
@@ -187,21 +421,19 @@ Sonderfaelle der Probe:
 > Abschneiden, das die Messung widerlegt (gemessen: "Hinweis abgeschnitten" bei
 > 350 px Text in einer 457-px-Spalte). Ein Layoutbefund kommt nur aus der Messung.
 
-**Und die Sonde ist selbst die haeufigste Fehlerquelle.** Drei Befunde, alle am
-Fenster nachgewiesen, alle drei in dieser Sonde:
+**Und die Sonde ist selbst die haeufigste Fehlerquelle.** Zehn belegte
+Fehlerbilder mit den Gegenproben - Zaehler ohne Abgrenzung, Zustands-Check mit
+falschem Muster, DPI im selben Prozess gemessen, `.children` statt
+`get_children()`, die Canvas-Flaeche statt ihres Inhalts gemessen, eine von
+dem Konstruktor ueberschriebene `geometry()` - und die Rechnung dahinter
+stehen in [references/messsonde-fehler.md](references/messsonde-fehler.md).
+**Lies das, bevor du die naechste Sonde schreibst.**
 
-- **Ein Zaehler ohne Abgrenzung zaehlt dasselbe mehrfach.** `winfo_ismapped()`
-  bleibt bei einer einmal gezeigten Notebook-Seite TRUE; dieselbe Tabelle wurde
-  unter vier Reiternamen gezaehlt (333 statt 124). Alle Zeilen einer Tabelle mit
-  `height=8` zu zaehlen zaehlt auch die nicht gezeichneten (2276 statt der
-  sichtbaren Zahl) - die Abgrenzung gehoert in den Zaehler, nicht in die
-  Bewertung des Ergebnisses.
-- **Ein Zustands-Check mit dem falschen Muster erkennt sich selbst.** `if
-  "self._flag" in datei` war wahr, weil die Methode die Flag las, nicht weil die
-  Zuweisung existierte. Immer auf die **Zeile der Zuweisung** pruefen.
-- **Eine Zahl, die sich beim Umbau nicht bewegt, ist auch ein Befund.** Bleibt
-  „ZU SCHMAL GESAMT" trotz sicherem Fix auf 0, ist die Sonde falsch, nicht die
-  Rechnung.
+Und die Probe **gegen sich selbst pruefen**, bevor ihre Zahl zitiert wird:
+ihre Ausgabe nennt anfanglich, was sie angefordert hat und was das Fenster
+tatsaechlich ist. Zwei Ziffern, die sich unterscheiden, machen die ganze
+Messung wertlos - und sagen das dann von selbst, statt einen Befund gegen
+eine Fenstergroesse zu liefern, die es nicht gibt.
 
 Ein verdecktes Fenster laesst sich ohne Vordergrund aufnehmen:
 `scripts/fenster-foto.ps1` sucht per `EnumWindows` nach dem Titelpraefix und
@@ -297,6 +529,23 @@ Ganzdatei-Diff).
    Schreibzugriff, kein `git`: eine parallele Sitzung kann im selben Baum
    arbeiten. Der Umbau bleibt beim Hauptagenten, sonst gibt es drei
    auseinanderlaufende Aenderungen an derselben Datei.
+   **Die Note eines Audits ist kein Befund.** Ein Subagent, der gegen eine
+   Anti-Slop-Checkliste scored, meldet „1/10, praktisch kein Befund" neben
+   Zeilen, die ein Funktionsausfall sind - ein Reiter, dessen Inhalt
+   unerreichbar war, und eine Breite, die der Nutzer nicht halten konnte.
+   Beides fiel unter „der Slop-Score ist niedrig". Also: **jeden Befund
+   einzeln gegen die eigene Messprobe stellen**, nicht gegen die Note. Der
+   Wert eines Audits ist die Zahl am Anfang; die Arbeit ist darunter. Und:
+   ein Audit, das eine Kontrastzahl oder eine Pixelbreite nennt, ohne den
+   Weg zu nennen, ist zu behandeln wie jede andere Zahl im Bericht - nach
+   dem Preis fragen, gegen die eigene Sonde halten.
+   **Ein Fremd-Repo-Fenster wird nach demselben Maß auditiert, aber
+   geaendert an ORT UND nicht im Haus-Index.** Steht der Befund am Ende im
+   Modulkopf des Fremd-Fensters, ist das eine Entscheidung und kein Reparatur-
+   Schema: die fremde Palette bleibt fremd, mit den gemessenen Zahlen und
+   dem Grund benannt. Das schuetzt vor der Zerstoerung beim naechsten
+   `repos-updaten` und macht den Unterschied sichtbar, statt ihn zu
+   ueberziehen.
 1. **Erst messen, dann lesen.** Die Messprobe laufen lassen, BEVOR ueber die
    Datei gelesen wird. Wer von oben an liest, findet die breitesten Spalten
    zuerst und haelt sie fuer die Ursache; die Messung nennt in Sekunden die
@@ -316,17 +565,25 @@ Ganzdatei-Diff).
    einmal je Reiter laeuft.
 6. **Gegenprobe messen, nicht behaupten.** Nach dem Umbau dieselbe Probe mit
    der Zahl "ZU SCHMAL GESAMT: 0" belegen, und zwar bei ZWEI Fenstergroessen
-   (1280 und 1000) - sonst ist der Umbau nur auf dem einen Monitor belegt.
-7. **Bei JEDER Schriftgroesse messen, die der Nutzer waehlen kann.** Die
-   Vorgabe des Moduls ist nicht sein Alltag - er speichert seine Wahl in der
-   Zustandsdatei des Fensters. Gemessen: bei Schrift 11 (Vorgabe) 0
-   abgeschnittene Texte, bei seiner gespeicherten Schrift 96.
-8. **Jeden Messfehler als solchen benennen, bevor die Zahl zitiert wird.**
-   Ein Befund aus einer Sonde, deren Fenster keine Geometrie hatte, ist kein
-   Befund am Fenster.
+   (1280 und 1000) - sonst ist der Umbau nur auf dem einen Monitor belegt. Und
+   **bei JEDER Schriftgroesse, die der Nutzer waehlen kann**: die Vorgabe des
+   Moduls ist nicht sein Alltag, er speichert seine Wahl in der Zustandsdatei
+   des Fensters (gemessen: bei Schrift 11 null abgeschnitten, bei seiner
+   gespeicherten Schrift 96).
 
 ## Pitfalls
 
+- **Ein roter Test ist nicht automatisch ein Codefehler - und ein grüner
+  erst recht nicht die Regel.** Wird ein Test rot, während du dieselbe Regel
+  gerade reparierst, ist zuerst die Frage: welche Seite hat die Erwartung
+  eingefroren? Ein Test kann den Fehler festhalten, den du behebst. Gefroren
+  war hier eine Erwartung, `stretch == [False, False, True]` - genau das
+  Verhalten, das jede gerechnete Breite verfaelscht. **Pruefe die Regel, die
+  der Test schuetzt, nicht den Wert, den er einsteckte**, und schreibe ihn so
+  um, dass beide Teile der Regel getroffen sind (hier: keine Spalte dehnt
+  sich, UND die letzte ist breiter, UND der Zugewinn ist gedeckelt). Wird
+  dagegen eine Regel entfernt, ohne ihren Zweck zu pruefen, verliert der Test
+  seine Aussage - und mit ihr die Absicherung fuer den naechsten Umbau.
 - **Der patch-Werkzeug verschiebt die Einrueckung.** Beim Ersetzen eines
   Blocks mit ungleichen Spaces rueckt es den Ersatz um vier Stellen nach
   rechts und erzeugt `IndentationError`. Danach **nicht weiterpatchen** - zwei
@@ -353,10 +610,19 @@ Ganzdatei-Diff).
   zuerst, ob sein Ergebnis schon da ist, und bricht mit `assert` ab, wenn
   sein Anker fehlt) laesst sich mehrfach abspielen - einzeln geordnete,
   lose Werkzeuge nicht.
-- Ein Messwerkzeug, das sich an die Fensterklasse bindet (Attribute des
+- **Ein Messwerkzeug, das sich an die Fensterklasse bindet (Attribute des
   Fensters voraussetzt), muss beim Schreiben auf einen GEBAUTEN Bildschirm
   getestet werden. Platzhalter-Aufrufe, die nie liefen, sind Messwerkzeuge,
-  die nichts messen.
+  die nichts messen.**
+- **Ein Helfer, der seinen Zielpfad aus `__file__` ableitet, kann danebenliegen.**
+  Ein Werkzeug, das neben sich sucht statt in einem relativen Pfad, meldet
+  "FEHLT: <ziel>", obwohl der Ordner sichtbar daneben liegt - die Meldung
+  sieht nach kaputtem Import aus und war eine falsch gezaehlte Zahl von
+  `dirname`-Aufrufen (hier eine zu wenige und eine zu viel, in zwei
+  Werkzeugen). Gegenprobe statt Fehlersuche: **das Skript behauptet nicht,
+  es fragt** - am Anfang einen Existenz-Assert einbauen,
+  `assert os.path.isdir(ZIEL), ZIEL`, dann nennt der Fehler den
+  RECHNER Pfad statt eines Zielnamens, den man erraten muss.
 - Farben oder Schrift daneben setzen, statt `fenster_design` zu benutzen.
 - Zustand nur ueber Farbe zeigen (rot/gruen) - ein Farbenblinder oder ein
   Ausdruck sieht nichts.

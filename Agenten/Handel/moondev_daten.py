@@ -97,18 +97,61 @@ def binance_paare():
 # Zwangsschluesse (Liquidationen) und einen Kurs (alle).
 OKX = "https://www.okx.com/api/v5"
 
+# Die Haus-Bremse gegen OKX-Drosselung (okx_takt.py im Handel-Ordner).
+import os as _os
+import sys as _sys
+_H = _os.path.dirname(_os.path.abspath(__file__))
+if _H not in _sys.path:
+    _sys.path.append(_H)
+import okx_takt  # noqa: E402
+
 # ctVal je Instrument - einmal geholt, dann gemerkt. Ohne diese Zahl waeren die
 # Liquidationssummen um Faktor 100 falsch: OKX liefert `sz` in KONTRAKTEN
 # (BTC-USDT-SWAP: 0.01 BTC je Kontrakt), nicht in Coins.
 _CTV = {}
 
 
-def okx_json(pfad, felder=None, zeitgrenze=ZEITGRENZE):
-    """Ein oeffentlicher OKX-Endpunkt. `felder` sind die Query-Parameter."""
+def okx_json(pfad, felder=None, zeitgrenze=ZEITGRENZE, max_429=4):
+    """Ein oeffentlicher OKX-Endpunkt - mit Haus-Bremse und 429-Heilung.
+
+    Die Bremse haengt HIER und nicht in hole_json(): das Ressourcen-Sel ist der
+    Grund, warum Pump.fun/CoinGecko unberuehrt bleiben - deren Grenzen sind
+    andere (und eigene, bereits vorhandene Heiler in pump_letzter_preis).
+    Jede OKX-Quelle des Hauses teilt sich dadurch denselben Takt, nicht
+    denselben Endpunkt.
+
+    50011/429 heilt durch Warten; sonst wird geworfen. Gemessen 05.10.2026:
+    moondev_whale lief am 04.10. in genau so einem 50011.
+    """
     url = "%s/%s" % (OKX, pfad.lstrip("/"))
     if felder:
         url = "%s?%s" % (url, urllib.parse.urlencode(felder))
-    return hole_json(url, zeitgrenze)
+    gedrosselt = 0
+    while True:
+        anfrage = urllib.request.Request(url, headers=KOPF)
+        okx_takt.reserviere()
+        try:
+            with urllib.request.urlopen(anfrage, timeout=zeitgrenze) as antwort:
+                daten = json.loads(antwort.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            # Ueber okx_takt.ist_429, nicht ueber 'e.code != 429': beide Formen
+            # kommen vor (HTTP-Status und Code 50011 im Rumpf), und eine eigene
+            # Pruefung je Spur war genau die Sorte Fehler, die wir abstellen.
+            if not okx_takt.ist_429(e):
+                raise
+            gedrosselt += 1
+            if gedrosselt >= max_429:
+                raise
+            time.sleep(okx_takt.warte_s(gedrosselt))
+            continue
+        if str(daten.get("code")) == "50011" or okx_takt.ist_429(
+                RuntimeError(daten.get("msg") or "")):
+            gedrosselt += 1
+            if gedrosselt >= max_429:
+                raise RuntimeError("OKX 50011: Too Many Requests")
+            time.sleep(okx_takt.warte_s(gedrosselt))
+            continue
+        return daten
 
 
 def okx_offenes_interesse(inst="BTC-USDT-SWAP"):

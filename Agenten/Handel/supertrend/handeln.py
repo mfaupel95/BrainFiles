@@ -182,7 +182,28 @@ def atr_abs(k, idx, n=14):
     return summ / n
 
 
-def signal(k, idx):
+# Indikatorschwellen (T-097, 05.10.2026). supertrend_n / supertrend_faktor
+# standen bis hierher fest in diesem Aufruf - trendwende_btc las dieselben
+# beiden Zahlen bereits aus seiner wachen.json, diese Spur nicht. Jetzt tut
+# sie es auch; ohne Schluessel gilt exakt der alte Wert (10 / 3.0).
+ST_N = 10
+ST_FAKTOR = 3.0
+ATR_N = 14
+
+
+def supertrend_indikator(k, w=None):
+    """SuperTrend-Linie und -Richtung mit den Schwellen aus den Wachen."""
+    xperp = os.path.join(HANDEL, "xperp")
+    if xperp not in sys.path:
+        sys.path.insert(0, xperp)
+    import indikatoren as xi
+    w = w or {}
+    return xi.supertrend(k,
+                         n=int(w.get("supertrend_n", ST_N)),
+                         faktor=float(w.get("supertrend_faktor", ST_FAKTOR)))
+
+
+def signal(k, idx, w=None):
     """SuperTrend-Signal an Kerze idx. Gibt 'long', 'short' oder None."""
     if idx < 1:
         return None
@@ -191,15 +212,11 @@ def signal(k, idx):
     # ImportError hat diese Spur fuenf Tage lang signalfrei laufen lassen,
     # ohne dass es auffiel - deshalb bricht der Fehlschlag jetzt laut ab.
     try:
-        xperp = os.path.join(HANDEL, "xperp")
-        if xperp not in sys.path:
-            sys.path.insert(0, xperp)
-        import indikatoren as xi
+        linie, richtung = supertrend_indikator(k, w)
     except ImportError as e:
         raise RuntimeError(
             "supertrend: indikatoren.py aus xperp nicht ladbar (%s). "
             "Ohne den Indikator kann die Spur kein Signal bilden." % e)
-    linie, richtung = xi.supertrend(k, n=10, faktor=3.0)
     if richtung[idx - 1] is None or richtung[idx] is None:
         return None
     # LONG: Wechsel -1 -> +1
@@ -242,13 +259,13 @@ def pruefe_einstieg(inst, k, z, w, faktor):
         return
 
     idx = len(k) - 1
-    sig = signal(k, idx)
+    sig = signal(k, idx, w)
     if not sig:
         return
     seite, _linie = sig
 
     einstieg = k[idx][4]
-    atr = atr_abs(k, idx, 14)
+    atr = atr_abs(k, idx, int(w.get("atr_n", ATR_N)))
     if not atr or atr <= 0:
         return
 
@@ -320,10 +337,12 @@ def pruefe_ausstiege(z, k, w, nur=None):
     einen Kurs geprueft (15.09.2026).
     """
     behalten = []
+    # DIESELBEN Schwellen wie im Einstieg (T-097, 05.10.2026). Stand hier
+    # noch fest 10/3.0, waere der Ausstieg auf einer anderen Linie als der
+    # Einstieg, sobald jemand supertrend_n in der wachen.json aendert - die
+    # Position haette dann einen Stop, den es beim Kauf nie gab.
     try:
-        sys.path.insert(0, HANDEL)
-        import indikatoren as xi
-        linie, richtung = xi.supertrend(k, n=10, faktor=3.0)
+        linie, richtung = supertrend_indikator(k, w)
     except Exception:
         linie, richtung = None, None
 

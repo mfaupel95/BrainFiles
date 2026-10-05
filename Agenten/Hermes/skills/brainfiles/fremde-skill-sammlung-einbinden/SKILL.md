@@ -105,6 +105,24 @@ leise verschaerft werden:
    `grep -icE '<name-teil>'` — die Zahl muss den beabsichtigten Ordner
    nennen, nicht einen Pfad, der nicht mehr existiert.
 
+**Die Zahl der GELADENEN Skills ist das Gegenstueck, nicht die Zahl der
+Dateien.** Sie ist der einzige Wert, der beides zugleich zeigt: der Import
+wirkte und der Import ist eindeutig. Vor dem Import die Ausgangszahl notieren,
+nachher die Differenz gegen die Zahl der hinzugefuegten Ordner halten:
+
+```bash
+./bin/hermes.exe skills list 2>&1 | tail -2      # "N enabled" vorher/nachher
+./bin/hermes.exe skills list | grep -icE '<teil des skill-namens>'
+```
+
+Steigt die Zahl um weniger als die Zahl der uebernommenen Skills, ist etwas
+doppelt (Gegenprobe 3); staegt sie um mehr, hat ein Ordner mehrere Skills
+geliefert, die man nicht erwartet hatte. **Die Tabelle im Terminal kuerzt die
+Namensspalte** - `grep` auf die Ausgabe findet einen importierten Skill nicht,
+wenn der Name in der Spalte abgeschnitten ist. Die Kategorie-Spalte ist die
+belastbare Abgrenzung: sie nennt den Ordner, aus dem der Skill geladen wurde,
+und damit steht und faellt der Umzug zwischen den beiden Ablageorten.
+
 ## Medienpassung pruefen, bevor ein fremder Design-Skill geladen wird
 
 Ein fremder Skill kann fachlich passen und trotzdem das FALSCHE Medium

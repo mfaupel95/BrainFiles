@@ -126,6 +126,114 @@ nicht verwechseln, `grep '^fallback_providers:'` findet beide. Werkzeug im Haus:
 `--zuruecknehmen`). Regeln und Fallen: references/fallback-kette.md, Abschnitt „Fallback-Kette und lokale
 Provider".
 
+## Ein NEUES Kanal-Profil: drei Tore, alle drei messen
+
+Ein angelegtes Profil mit `.env` und `SOUL.md` ist noch kein laufender Bot.
+`hermes profile list` fuehrt es bereits als `running`, obwohl kein Prozess davon
+existiert - die Liste liest die Served-Liste des Gateways, nicht die Wirklichkeit.
+Vor der Meldung "fertig" diese drei Dinge getrennt pruefen:
+
+1. **Der Kanal ist ueberhaupt eingeschaltet.** Ein Adapter startet nur mit
+   `platforms.<plattform>: {enabled: true}` in der Profil-Config. Fehlt der Block
+   ganz (nicht `enabled: false`), startet nichts - unabhaengig davon, ob die
+   `.env` vollstaendig gefuellt ist.
+2. **Die Zugangsdaten stehen drin - und es ist ein EIGENER Bot.** Ein Token kann
+   nicht an zwei Profilen haengen (`acquire_scoped_lock` verhindert das aktiv);
+   der Hauptbot der `.env` ist fuer ein zweites Profil unbrauchbar. Ein
+   `.env`-Geruest mit Werten im Format `NAME = <wert>` und einem Kommentar
+   darueber ist eine VORLAGE, kein Eintrag - vor jeder Aussage ueber Kanalbereit-
+   schaft Namen und Laengen zeigen, nie den Wert.
+3. **Die Hilfsmodelle sind gesetzt.** `auxiliary.compression` fehlt in einem
+   frischen Profil; der Lauf bricht dann mit "context window below the minimum
+   64.000" ab (references/auxiliary-kompression.md).
+
+Fehlt eine dieser drei Voraussetzungen, ist das ein Befund und keine
+Nachlassigkeit: jede der drei pruefen, jeden einzeln mit seinem Werkzeug
+belegen, und die offene Frage stellen, **bevor** gebaut wird - ein Bot-Token
+haengt am BotFather des Nutzers und ist nicht selbst erstellbar.
+
+### `gateway.multiplex_profiles: false` ist KEIN viertes Tor
+
+Diese Zeile wird leicht zum vermeintlichen Kanal-Blocker, weil ein
+Multiplex-Gateway, das 20+ Profile in `served_profiles` fuehrt, im Profil-Check
+wie ein Widerspruch aussieht. Er ist keiner:
+`hermes_cli/gateway_multiplex_mode.py::resolve_multiplex_mode` loest ein
+explizites `false` **wie ein unset** auf - gewarnt wird, multiplexed wird
+trotzdem. Der Rueckfall ist nicht optimistisch: haelt ein echter Blocker (ein
+s6-Container, ein sekundaeres Profil mit eigenem Gateway, eine doppelte
+Bot-Kennung), startet der Host solo und **sagt im Log warum**. `false`
+aufzusetzen ist damit eine zweite Wahrheit ohne Wirkung.
+
+Der echte Kanal-Blocker ist die **fehlende Credential im Profilscope**.
+`_platform_has_bot_credential` (`gateway/run.py`) liest nur `token`/`api_key`
+aus der Profil-Config bzw. `extra` - **nie `os.environ`**. Ohne Token meldet der
+Gateway `[MULTIPLEX] Profile 'X': skipping <plattform> - no bot credential in
+this profile's secrets` und ueberspringt den Kanal. Diese Logzeile ist das
+zuverlaessigste Signal fuer "Kanal aus, Token fehlt"; sie steht im Gateway-Log
+und nicht in der Profil-Config.
+
+## Ein von Hand eingetragener Token: drei Tore, und keines davon ist der Kanal
+
+Sobald der Nutzer den Token selbst eingetragen hat, ist "es passiert nichts" die
+wahrscheinlichste Meldung - und sie hat drei getrennte Ursachen. In dieser
+Reihenfolge messen, weil jede spaetere Messung eine fruehere als gegeben
+voraussetzt.
+
+**Tor 1: Ist es ueberhaupt der richtige Bot?** Beide Token (Startprofil und
+neues Profil) mit `getMe` befragen und die `username` vergleichen. Der
+Nutzer schreibt dem vertrauten Bot; ein zweiter Bot, der nur durch seinen
+Anzeigenamen aehnelt, sieht nichts, weil er nie eine Nachricht bekommen hat.
+Ein `getMe`-Vergleich beantwortet das in zwei Sekunden und ohne Geheimnis
+auszugeben.
+
+**Tor 2: Hat der Bot ueberhaupt je etwas empfangen?** `getUpdates` aufrufen.
+Null Eintraege heisst: der Bot hat vom Nutzer noch nichts bekommen - das ist
+kein Defekt, sondern der Normalfall fuer einen frisch angelegten Bot, und es
+bleibt es, bis der Nutzer ihm zum ersten Mal schreibt. Ein neuer Bot sieht
+ausserdem nichts, was **vor** seiner Erstellung geschrieben wurde.
+
+**Tor 3: Passt die Nutzerkennung?** `getChat` ist als Probe **unbrauchbar**:
+Telegram beantwortet es fuer einen privaten Chat mit `400 chat not found`,
+solange keine Nachricht existiert - auch bei einer vollstaendig richtigen ID.
+Nicht als Fehlerbericht verwenden.
+
+Der Wert wird von Hand eingetragen, also ist die Frage nach seiner Form vor
+dem Wertvergleich zu stellen. Ohne ihn auszugeben pruefen:
+
+- **Zeichenart je Position**, nicht den Wert: ist jeder Zeichen ein `-` oder eine
+  Ziffer? Ein haengender Punkt am Ende einer zehnstelligen Nummer ist die
+  haeufigste Kopierpaste-Marke und sieht in jeder Laengen- und Hash-Ausgabe
+  vollstaendig gesund aus.
+- **Laenge gegen eine bekannte Referenz** aus einer anderen Datei desselben
+  Nutzers (`strlen` vergleichen, nie den Inhalt). Zwei Ziffernfolgen desselben
+  Nutzers muessen gleich lang sein.
+- **Vergleich ueber Normalisierung** (`rstrip('.')`): stimmt die bereinigte
+  Fassung mit dem Referenzwert ueberein, ist der Fund die Ursache.
+
+Die Kombination ist das Belegbare: Formfehler gefunden, Referenzwert stimmt
+nach Normalisierung, `getUpdates` leer. Der Nutzer entscheidet dann ueber das
+Korrektieren - ein `.env`-Wert wird nicht ueberschrieben, auch wenn er mit
+hoher Wahrscheinlichkeit falsch ist.
+
+## Was in eine leere Kanalzeile gehoert
+
+Bevor der Nutzer eine leere `.env`-Zeile fuellt, die Bedeutung in einem Satz
+und die **Form des Werts** nennen - die Frage kommt, und sie kommt vor dem
+Warten. Fuer Telegram heisst das:
+
+- `TELEGRAM_BOT_TOKEN` - der einzige Wert, der sich pro Profil unterscheidet.
+- `TELEGRAM_ALLOWED_USERS` - wer dem Bot schreiben darf; im privaten DM die
+  Nutzerkennung.
+- `TELEGRAM_HOME_CHANNEL` - Ziel-Chat fuer **Cron-Zustellung**
+  (`cron/scheduler_delivery.py`, registriert vom Adapter als
+  `cron_deliver_env_var`). Ohne Wert findet ein geplanter Job keinen
+  Empfaenger. Im privaten DM mit dem Nutzer ist das dieselbe Zahl wie oben; eine
+  Gruppe hat eine negative ID und braucht zusaetzlich eine Gruppen-Politik,
+  sonst ignoriert der Adapter die Gruppe.
+
+Den Leser im Code zu benennen ist hier Pflicht: "steht in der Doku" ist keine
+Belegkette, ein Dateipfad mit Funktion ist eine.
+
 ## Wenn der Zieltext nur in uncommitteter Fremdarbeit steht
 
 Die Skill-Bibliothek unter `Agenten/Hermes/skills/` kann uncommittete Aenderungen

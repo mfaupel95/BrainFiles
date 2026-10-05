@@ -181,7 +181,17 @@ def atr_abs(k, idx, n=14):
     return summ / n
 
 
-def signal(k, idx):
+# Indikatorschwellen (T-097, 05.10.2026). Bis hierher standen sie fest im
+# Vergleich des WaveTrend-Oszillators (-40 / +40); der Optimierer konnte sie
+# deshalb nicht anfassen. Die Zahl im Default ist der alte Wert - ein
+# Weglassen des Schluessels erzeugt exakt das alte Signal.
+WT_BAND = 40.0
+WT_N1 = 10
+WT_N2 = 21
+ATR_N = 14
+
+
+def signal(k, idx, w=None):
     """WaveTrend-Signal an Kerze idx. Gibt 'long', 'short' oder None."""
     if idx < 1:
         return None
@@ -189,15 +199,21 @@ def signal(k, idx):
         import ti_indikatoren as ti
     except ImportError:
         return None
-    wt1, wt2 = ti.wavetrend(k)
+    w = w or {}
+    wt1, wt2 = ti.wavetrend(
+        k,
+        n1=int(w.get("wt_n1", WT_N1)),
+        n2=int(w.get("wt_n2", WT_N2)),
+    )
     # Alle Werte muessen gesetzt sein
     if None in (wt1[idx - 1], wt2[idx - 1], wt1[idx], wt2[idx]):
         return None
+    band = float(w.get("wt_ueberverkauft", WT_BAND))
     # LONG: wt1 kreuzt wt2 von unten, im ueberverkauften Bereich
-    if wt1[idx - 1] <= wt2[idx - 1] and wt1[idx] > wt2[idx] and wt1[idx] < -40:
+    if wt1[idx - 1] <= wt2[idx - 1] and wt1[idx] > wt2[idx] and wt1[idx] < -band:
         return "long"
     # SHORT: wt1 kreuzt wt2 von oben, im ueberkauften Bereich
-    if wt1[idx - 1] >= wt2[idx - 1] and wt1[idx] < wt2[idx] and wt1[idx] > 40:
+    if wt1[idx - 1] >= wt2[idx - 1] and wt1[idx] < wt2[idx] and wt1[idx] > band:
         return "short"
     return None
 
@@ -220,12 +236,12 @@ def pruefe_einstieg(inst, k, z, w, faktor):
         return
 
     idx = len(k) - 1
-    sig = signal(k, idx)
+    sig = signal(k, idx, w)
     if not sig:
         return
 
     einstieg = k[idx][4]
-    atr = atr_abs(k, idx, 14)
+    atr = atr_abs(k, idx, int(w.get("atr_n", ATR_N)))
     if not atr or atr <= 0:
         return
 

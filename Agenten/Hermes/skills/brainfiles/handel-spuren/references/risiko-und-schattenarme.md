@@ -129,7 +129,70 @@ Buchdatei. Vier Pflichten:
 Aenderungszeit des Haupt-Zustands vergleichen. Nicht nur die Dateinamen
 pruefen.
 
-## 6. "Sollte ich die Spuren auf andere Coins umlegen?" - MESSEN, nicht vermuten
+## 7. OFFENER BESTAND: Schutzdruck messen, Luecken schliessen
+
+Wenn bereits Positionen offen sind, ist die Frage nicht „hat die Position einen
+Stop?", sondern „**wie viele Stuecke sind geschuetzt?**". Ein booleaner Treffer
+genuegt nicht. Werkzeuge: `okx_positionen_live.py` (nur lesend),
+`okx_tp_stufen.py` (Trockenlauf als Vorgabe).
+
+1. **Von der Boerse lesen, nie aus dem Hausbuch.** Das Buch kann
+   `fremdposition_uebernommen` fuehren und damit eine Stop behaupten, den die
+   Boerse nicht traegt — und umgekehrt.
+2. **Je Position drei Distanzen einzeln benennen**: Abstand zum Einstand, Luft
+   bis zur Liquidationsmarke, gesetzte Marge. Die Luft rechnet sich
+   `(liqPx/markPx - 1) * -Richtung`, damit Long und Short beide **positiv**
+   sind; ein negatives Vorzeichen ist der Befund „Kurs ueber der
+   Liquidationsmarke" und wird nicht mit `abs()` verschluckt.
+3. **Menge summieren, Seite pruefen, nach Stop und Ziel trennen.** Schutz
+   zaehlt nur mit `reduceOnly`, Seite gegen die Position und vorhandener
+   Ausloesung. Zwei halbe Stops schuetzen nicht so viel wie ein ganzer.
+4. **Alle ordTypes lesen** (`conditional`, `oco`, `trigger`,
+   `move_order_stop`). Ein reiner `conditional`-Abruf uebersieht genau die
+   OCO-Ordnungen, die die Haelfte der Absicherung tragen.
+5. **Abstand zum EINSTAND und zum KURS getrennt rechnen.** Ein Stop am
+   Einstand-Niveau ist nach einem Nachkauf weit vom Kurs entfernt — er schuetzt
+   den Ruecksetzer, nicht mehr den Einstieg. Ein Zielpreis 1-2 % ueber dem Kurs
+   heisst: die Position ist rechnerisch schon am Ziel. Beides gehoert in den
+   Bericht, **bevor** eine weitere Order darueber gelegt wird.
+6. **Luecke mit einem OCO schliessen, Preise vom bestehenden Order
+   uebernehmen.** Der vorhandene Preis ist der Beleg, dass die Position vom Haus
+   aufgebaut wurde; ein neu gerechneter waere eine zweite Wahrheit neben der
+   ersten. Ein OCO loest pro Stueck nur einmal aus, zwei getrennte Orders
+   koennen sich beim Treffer ueberschneiden.
+7. **Eigener Orderweg, wenn die Hausfunktion fest auf eine Marktform verdrahtet
+   ist.** Eine Spot-Hilfe mit festem `tdMode: cash` und `side: sell` tut auf
+   einem Perpetual nichts.
+
+**Der Auftrag kann erledigt sein, bevor er ausgefuehrt wird.** „Setz drei
+Take-Profit-Stufen" auf eine Position, die kurz zuvor einen OCO mit Stop **und**
+Ziel auf die volle Menge bekommen hatte, haette eine zweite TP-Ebene auf
+dieselbe Position gelegt, deren Menge sich mit der Zielmenge ueberschneidet und
+beim ersten Treffer doppelt verkauft. **Vor dem Bauen den Bestand messen und
+sagen, ob der Auftrag ueberhaupt noetig ist.** Dass sich zwischen zwei Messungen
+etwas geaendert hat (Parallelsitzung, Nachkauf-Leiter, Handgriff), ist ein
+Befund und wird benannt — nicht stillschweigend uebergangen.
+
+## 8. MESSWERKZEUG GEGEN DIE BOERSE: die Uebersetzung liefert 0, ohne zu melden
+
+Beim Bau von `okx_positionen_live.py` lieferten vier verschiedene
+Uebersetzungsfehler **alle eine 0**, ohne eine Exception — ein Konto mit 949
+Einheiten meldete „0.00". Diese Klasse ist in `messwerkzeug-gegenprobe` und
+`trugschluesse` ausgefuehrt; fuer Handelswerkzeuge kommen drei davon vor:
+
+- **Ein Feld kann auf der uebergeordneten Ebene fehlen und je Einheit da
+  sein.** Leerer String und `null` heissen „hier nicht", nicht „null". Bei
+  `/account/balance` steht `totalEq` auf Kontoebene, `availEq` ist dort LEER
+  und `stgyEq` ist `null` — die Zahlen stehen je Waehrung in `details`.
+  Ein Feld mit zwei Ebenen wird **pro Ebene** gelesen.
+- **`/positions` kennt kein `instType=SPOT`** (51000). Spot ist Bestand, keine
+  Position — nachfragen statt den Fehler als Befund zu melden.
+- **Eine Hilfsfunktion mit fest verdrahteter Marktform** liefert auf der
+  anderen Form keinen Fehler, sondern gar nichts.
+
+**Kontrollzeile braucht einen Nicht-Null-Sollwert.** `abs(gesamt - kontrolle)
+< 0.01` meldete `passt: True`, waehrend beide Zahlen 0 waren. Gegen 0 pruefen
+ist gegen nichts pruefen.
 
 Der Reflex "Konzentration loesen = streuen" ist meist falsch, und die
 Messung kostet einen Blick in die Wachen:

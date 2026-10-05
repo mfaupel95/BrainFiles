@@ -46,6 +46,11 @@ Karten abgearbeitet werden soll, je THEMA EINE Karte anlegen, nicht je Punkt.
 Das spart Kontext (58 Punkte -> 7 Karten) und verhindert, dass der Dispatcher
 viele Prozesse auf einmal startet.
 
+**Zuerst messen** (`references/offene-liste-messen.md`): was offen ist, was
+bereits eine Karte hat, welche blockierten Karten technisch statt fachlich
+blockiert sind. Ohne diese Messung entstehen Karten fuer bereits laufende
+Arbeit und fuer Entscheidungen, die niemand getroffen hat.
+
 1. Liste vollstaendig lesen, offene Punkte extrahieren, aufsteigend sortieren
    (T-Nummer).
 2. Nach ARBEITSART zu 5-8 Karten buendeln. Jede Karte nennt im Body WOERTLICH
@@ -57,9 +62,25 @@ viele Prozesse auf einmal startet.
 5. Nur priority-1-Karten auf Telegram abonnieren, nicht alle.
 6. Nach Freigabe in WELLEN von 3-5 Karten promoten, nicht alles auf einmal.
 
-Was nur eine ENTSCHEIDUNG von Max ist (Loeschen zustimmen, Bindeadresse,
-Modellliste), wird KEINE Karte - es bleibt in TASKS.md und wird im
-Abschlussbericht als offene Entscheidung benannt.
+**Was KEINE Karte wird:** jede Zeile, deren `Naechster Schritt:` mit
+"entscheiden" beginnt oder die eine `Wartet auf: Max`-Zeile traegt, ist eine
+ENTSCHEIDUNG von Max und bleibt in TASKS.md. Solche Punkte duerfen hoechstens
+als Kontext in einer Karte stehen (z. B. "wartet auf Freigabe"), nie als
+Arbeitsauftrag - sonst arbeitet ein Worker an etwas, das niemand entschieden
+hat. Echte ENTSCHEIDUNGen (Loeschen zustimmen, Bindeadresse, Modellliste,
+Geld freigeben) werden im Abschlussbericht als offene Entscheidung benannt.
+
+**Sammel-Anlage als Schleife:** wenn viele Karten auf einmal entstehen, eine
+Python-/execute_code-Schleife ueber eine Liste von Kartenspezifikationen
+fahren und je Spezifikation `--idempotency-key <schluessel>` mitgeben. Der Key
+macht den Lauf retry-sicher (ein zweiter Versuch liefert die vorhandene Karte
+statt eines Duplikats) und macht die erzeugten IDs direkt als JSON abholbar.
+Ein gemeinsamer VERBOTE-/ABNAHME-Block liegt einmal in der Spezifikation und
+wird in jeden Body interpoliert - getippte Hausverbote driften sonst auseinander.
+Die Karten-Bodies nennen ihre T-Nummern woertlich; weil parallel laufende
+Sitzungen Nummern doppelt vergeben, den aktuellen Nummernstand vorher mit dem
+Pruefer des Listen-Skills messen (siehe Referenz), sonst ist der Body nicht
+eindeutig.
 
 ## Board-Satz des Hauses
 
@@ -216,6 +237,12 @@ Datenbankstand.
   Auto-Decomposer zerlegt eine getriagte Karte sofort und aendert dabei
   Assignee, Workspace und Parents. Nach jedem `create --triage` mit `show`
   pruefen; `list` allein sagt nicht, ob ein Child-Plan existiert.
+  **Das auffaelligste Symptom sind Eltern an einer NEUEN Karte:** die frisch
+  angelegte Karte erscheint mit `parents: t_..., t_..., ...` und bleibt damit
+  dauerhaft `todo` (nicht `triage`) - sie promotet nie selbst und wartet auf
+  Karten, die ihr nichts zu tun haben. Eltern einer neuen Sammelkarte
+  weiss nicht zuzuordnen sind: als Eltern gesetzte Altkarten pruefen, sonst
+  bleibt sie liegen.
 - **Workspace `dir:` muss in `show` bestaetigt werden.** Wird nicht
   zuverlaessig aus einem vorherigen CLI-Aufruf geerbt. Vor dem Promote
   `kanban show <id>` auf `workspace_kind: dir` lesen.

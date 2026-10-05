@@ -231,6 +231,17 @@ der Block dazukam.
 `providers.<name>` nicht kennt (frisch angelegte Profile haben nur `omniroute`), kann
 den Namen nicht aufloesen — den Block (api/base_url/model/name) mit einsetzen, sonst
 zeigt die Kette auf einen Namen, den nur andere Profile kennen.
+- **Ein GEPINNTES Kind erbt die Hauptkette nicht - es hat dann gar keine.**
+  `scoped_fallback_chain` gibt einem Besitzer mit eigenem Provider, Endpunkt
+  oder Modell die geerbte Kette NICHT mit: der Betreiber hat die Route gewaehlt,
+  und ein Ketteneintrag ist ein anderer Provider. Ein Profil, das
+  `delegation.provider` oder `delegation.model` setzt und KEINE eigene
+  `delegation.fallback_providers` mitbringt, hat damit fuer seine Subagenten
+  keinen Rueckfall - das ist der Befund, nicht die Modellwahl. Die Diagnose ist
+  eine Kreuzung ueber die Flotte: `delegation.provider` gesetzt UND
+  `delegation.fallback_providers` fehlt. Beim Umstellen die eigenen
+  Einstellungen, die nicht zur Verdrahtung gehoeren (`max_iterations`,
+  `reasoning_effort`, `max_concurrent_children`), im Block erhalten.
 - **Eine lokale Reserve gehoert als ERSTER Eintrag in die Kette, die alten bleiben dahinter.**
 Der Zweck ist, den Ausfall des Primärpfads ohne fremde Abhaengigkeit zu ueberbruecken — steht
 die lokale Adresse hinten, entscheidet zuerst der (moeglicherweise genauso tote) Cloud-Eintrag

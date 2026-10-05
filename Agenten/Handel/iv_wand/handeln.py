@@ -38,6 +38,8 @@ import argparse
 import json
 import os
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -49,6 +51,7 @@ for p in (HANDEL, os.path.join(HANDEL, "scanner"), HIER):
         sys.path.insert(0, p)
 
 import spur_buch as buch  # noqa: E402
+import okx_takt          # noqa: E402  (Haus-Bremse, HANDEL ist im Pfad)
 
 OPTIONEN = "https://www.okx.com/api/v5"
 KOPF = {"User-Agent": "brainfiles-handelsspur/1.0 (privater Papierlauf)"}
@@ -59,13 +62,52 @@ options_quelle = None
 spot_quelle = None
 
 
-def hole_json(url, zeitgrenze=ZEITGRENZE):
-    anfrage = urllib.request.Request(url, headers=KOPF)
-    with urllib.request.urlopen(anfrage, timeout=zeitgrenze) as antwort:
-        daten = json.loads(antwort.read().decode("utf-8", "replace"))
-    if daten.get("code") not in ("0", 0):
-        raise RuntimeError("OKX: %s" % (daten.get("msg") or daten.get("code")))
-    return daten.get("data") or []
+def hole_json(url, zeitgrenze=ZEITGRENZE, max_429=4):
+    """Ein oeffentlicher OKX-Abruf - mit Haus-Bremse und 429-Heilung.
+
+    Vorher stand hier ein nacktes urlopen: diese Spur hatte als einzige weder
+    den Takt der beiden anderen OKX-Wege noch eine Wiederholung. Sie holt
+    ZWEI Endpunkte je Zyklus (open-interest + opt-summary), und wenn ihre drei
+    Geschwister zur selben Zeit laufen, hat sie den 50011 ausgeloest - genau das
+    stand am 05.10.2026 dreimal im Bus-Journal als 'iv_wand ende code 1'.
+
+    Die Drosselung heilt durch Warten (okx_takt.warte_s); alles andere wird
+    sofort geworfen, weil es sich nicht aendert. `okx_takt.reserviere()` kommt
+    VOR dem Senden - begrenzt werden muss die Zahl der Versuche.
+    """
+    gedrosselt = 0
+    while True:
+        anfrage = urllib.request.Request(url, headers=KOPF)
+        okx_takt.reserviere()
+        try:
+            with urllib.request.urlopen(anfrage, timeout=zeitgrenze) as antwort:
+                daten = json.loads(antwort.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            # Die Erkennung laeuft ueber okx_takt.ist_429 und nicht ueber
+            # 'e.code != 429': es gibt beide Formen (HTTP-Status und der Code
+            # 50011 im Rumpf), und eine eigene Prüfung je Spur hat genau die
+            #两类 Fehler erzeugt, die wir abstellen wollten.
+            if not okx_takt.ist_429(e):
+                raise
+            gedrosselt += 1
+            if gedrosselt >= max_429:
+                raise
+            time.sleep(okx_takt.warte_s(gedrosselt))
+            continue
+        if daten.get("code") not in ("0", 0):
+            if not okx_takt.ist_429(RuntimeError(daten.get("msg") or "")) and \
+                    str(daten.get("code")) != "50011":
+                pass
+            else:
+                # OKX meldet die Drosselung teils mit HTTP 200 und einem Code
+                # im Feld - dann greift der HTTP-Zweig oben nicht.
+                gedrosselt += 1
+                if gedrosselt >= max_429:
+                    raise RuntimeError("OKX 50011: Too Many Requests")
+                time.sleep(okx_takt.warte_s(gedrosselt))
+                continue
+            raise RuntimeError("OKX: %s" % (daten.get("msg") or daten.get("code")))
+        return daten.get("data") or []
 
 
 def _zahl(wert):

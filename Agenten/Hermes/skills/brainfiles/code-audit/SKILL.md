@@ -92,6 +92,8 @@ Refactoring, das niemand bestellt hat.
 | Wirkt ein Fix ueberhaupt? | zwei Laeufe, ein Wert verschieden | siehe `messwerkzeug-gegenprobe` |
 
 Die vier Schnellpruefungen als Kopiervorlage: `references/dispatch-briefs.md`.
+Der Sweep fuer tote Konstanten: `scripts/tote_konstanten.py` (fuenfte
+Schnellpruefung).
 
 ## Procedure
 
@@ -134,6 +136,10 @@ pruefen statt nur zu warten:
 2. `Parser::ParseFile` ueber alle eigenen `.ps1`
 3. AST auf `except:` und auf Handler mit leerem Rumpf
 4. Verdrahtungslisten aller Module **importieren** und Differenz bilden
+5. **Tote Modulkonstanten**: `scripts/tote_konstanten.py` meldet jede
+   Konstante, die definiert, aber nie gelesen wird — und jede, die nur im
+   Docstring vorkommt. Beides behauptet eine Sicherung, die es nicht gibt
+   (`python scripts/tote_konstanten.py --breite <ordner>`).
 
 Ihr Ergebnis ist eine **Baseline**: „null Syntaxfehler, null stille
 Ausnahmen" ist eine Aussage, die man dem Nutzer geben kann, und sie grenzt
@@ -267,7 +273,51 @@ Gegenprobe beider Formen ist dieselbe: **eine Aenderung ausloesen, von der man
 weiss, dass der Pruefer sie sehen muss**, und die Zahl sich bewegen sehen. Ein
 Pruefer, dessen Zahl sich nicht bewegt, ist kaputt, egal was er sagt.
 
-### 11. Erwartete Fehlalarmklassen
+### 11. Ein Massstab aus einem ANDEREN Skill: erst die Uebertragbarkeit pruefen
+
+Wenn ein Zielbild in einem Skill steht (eine Design-Rubrik, eine
+Konformitaetsliste, eine Stilregel), ist der naheliegende Auftrag an die
+Kinder, sie daran zu messen. Das erzeugt ohne eine Zusatzregel systematisch
+Fehlbefunde, weil **ein Kriterium nicht in jedes Medium uebertragbar ist**.
+Das richtige Schema ist: jede Rubrikposition wird gegen ihre Uebertragbarkeit
+geprueft und die Entscheidung mitgeliefert — „gilt voll / gilt in dieser
+Form nicht, weil X im Medium fehlt / gilt als Aequivalent in Form Y".
+
+Der Nutzen ist doppelt: die Kinder melden echte Befunde statt solcher, die
+die Oberflaeche gar nicht haben kann, und die Urteilsfaehigkeit „welche
+Kriterien ueberhaupt gelten" wird selbst zum Ergebnis. Ein Audit, das nur
+zaehlt, verhaelt sich zum angebotenen Massstab wie ein Pruefer, der nicht
+alles liest — es beweist nur, was es zu pruefen hatte.
+
+Zwei Formen der Uebertragbarkeit, beide im Haus gemessen:
+
+- **Medium, nicht Werkzeug:** Kriterien, die eine CSS-Eigenschaft
+  beschreiben (Verlauf, Weichzeichner, abgerundete Bildflaeche), existieren
+  im Desktop-Widget-Baum nicht. Sie als „nicht erfuellt\" zu melden waere
+  ein Fehlbefund — **ersetzen durch das, was dasselbe Problem in diesem
+  Medium loest**, oder als gegenstandslos streichen und begruenden.
+- **Sonderfall Nutzen:** eine Rubrik verlangt, keine Zahl zur Schau zu
+  stellen. In einem Werkzeug, in dem die Zahl selbst der Nutzen ist, gilt
+  das nicht. Der richtige Befund ist dann die **Umkehrung** — die
+  wichtigste Zahl ist die kleinste und blasseste, waehrend eine
+  nebensachliche Anzeige die groessere bekommt.
+
+Zaehlt eine Rubrik am Ende nur „ein Punkt von zehn", ist die Frage nicht die
+Punktezahl, sondern ob die Punkte ueberhaupt die schweren Befunde tragen. Ein
+niedriger Wert neben zwei Funktionsausfaellen ist ein Befund ueber die
+**Reihenfolge der Arbeit**: die schweren Dinge lagen nicht in dem, was die
+Rubrik misst. **Ein Rubrikpunkt ist kein Freipass fuer das, was er nicht
+prueft** - die Score-Zahl gehoert neben die Liste der Funktionsausfaelle in
+dieselbe Zeile, sonst liest sie sich als Entwarnung fuer das ganze Fenster.
+
+Daraus folgt die Frage, die man sich nach jedem Rubriklauf stellt: **welche
+Klasse von Schaden kann diese Rubrik ueberhaupt nicht sehen?** Fuer eine
+Layout-Rubrik sind es drei, und alle drei kamen im Haus vor: eine Funktion,
+die gar nicht aufgerufen wird; ein Wert, der nach einem Bedienvorgang
+ueberschrieben wird; ein Text, der gar nicht sichtbar ist. Keines davon hat
+Punkte gekostet.
+
+### 12. Erwartete Fehlalarmklassen
 
 Diese vier treten bei dieser Pruefung regelmaessig auf und gehoeren
 ausdruecklich zur Arbeit:
@@ -316,6 +366,19 @@ ausdruecklich zur Arbeit:
   nicht abgeschrieben.** Fest verdrahtete Namen fallen bei der naechsten neuen
   Einheit still aus — und eine neue Einheit, die in keiner Liste steht, sieht
   vollstaendig aus.
+- **Eine Grenze, die als Konstante dasteht und von niemandem gelesen wird,
+  ist keine Grenze.** Der teuerste Befund dieser Klasse hat die Form „das Feld
+  ist gesetzt, der Code prueft es nie" — eine Abbruchbedingung im Kommentar
+  beschrieben, im Abbruch selbst vergessen. Gemessen: eine Oberflaeche, die
+  Spaltenbreiten nach dem ersten Befuellen nachrechnen sollte, tat das bei
+  jeder Aenderung weiter; die Nutzereinstellung war nach EINEM Takt wieder
+  weg. **Die Suche nach toten Konstanten ist eine eigene Sweep und gehoert in
+  die vier Schnellpruefungen**: ein Modulkonstante, die definiert, aber im
+  Modul (inklusive Docstring) nirgands gelesen wird, ist ein Befund — sie
+  behauptet eine Sicherung, die es nicht gibt. Umgekehrt gilt dasselbe fuer
+  eine **Erklaerung im Code, die der Code nicht einhaelt**: zwei
+  uebereinanderliegende Kommentarbloecke, von denen der zweite den ersten
+  widerlegt, sind ein Befund, weil die naechste Pflege dem oberen folgt.
 
 ## Verification
 

@@ -149,5 +149,17 @@ Der Grund für Skripte statt Einzelbearbeitung war nicht Eleganz, sondern Kosten
 Vielfaches an Tokens gekostet, ohne dass dabei Nachdenken nötig gewesen wäre.
 Das Verfahren steht im Skill `umzug`.
 
+## Laufwerksregel (seit 05.10.2026)
+
+- **C:** System, Programme, Repo-Textebene.
+- **O:** Daten: `Modelle`, `Werkstatt`, `Archiv`, `Wiki` (Junction), `MaxHirn-Zweitkopie`
+  (Sicherungsziel), dazu die alten Bestände `Documents` und `iTunes` (bleiben bewusst).
+- **G:/J:** Sicherung. **Q:/H:** Musik.
+- In `O:\` entsteht direkt nichts Neues außer diesen Ordnern. Systemgebundenes
+  (`WindowsApps`, `WpSystem`, `XBOX Games`, `MapData`, `Program Files`) nicht anfassen.
+- Leere Reste `iCloudDrive` und `Mary Ann` wurden am 05.10.2026 entfernt. `O:\faupe`
+  (nur `Documents\desktop.ini`) ist für Werkzeuge als Systempfad gesperrt und muss von
+  Hand im Explorer gelöscht werden.
+
 Verwandt: [[Schutzregeln]], [[Portabilitaet]], [[Verbindungen]],
 [[KI-Ablagen-im-Benutzerordner]], [[Hermes]]

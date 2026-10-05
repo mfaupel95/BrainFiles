@@ -17,16 +17,56 @@ gateway:
   platforms:
     a2a:
       enabled: false
+    # Eigener Bot-Token in profiles/bots/.env (TELEGRAM_BOT_TOKEN). Ein Token
+    # haengt an genau einem Profil - der Hauptbot in der Haupt-.env ist hier
+    # nicht verwendbar (acquire_scoped_lock).
+    telegram:
+      enabled: true
   multiplex_profiles: false
 fallback_providers:
-  - provider: ollama-launch
-    model: gemma-e4b-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
+  # Nicht gemma-e4b-8k:cpu (8.192 Fenster) - ein Fallback unter dem 64k-Boden
+  # von Hermes macht aus dem Notfall den Ausfall.
+  - provider: nous
+    model: deepseek/deepseek-v4-flash-0731
+  - provider: anthropic
+    model: claude-opus-5
+  - provider: nous
+    model: google/gemini-3.1-flash-lite
 plugins:
   enabled: []
 delegation:
   provider: nous
   model: deepseek/deepseek-v4-flash-0731
+  # Eigene Kette, weil ein gepinntes Kind die Hauptkette NICHT erbt
+  # (scoped_fallback_chain) - ohne diese Liste hatte der Subagent keinen.
+  fallback_providers:
+    - provider: nous
+      model: deepseek/deepseek-v4-flash-0731
+    - provider: anthropic
+      model: claude-opus-5
+    - provider: nous
+      model: google/gemini-3.1-flash-lite
+  child_timeout_seconds: 600
+auxiliary:
+  compression:
+    provider: nous
+    model: deepseek/deepseek-v4-flash-0731
+    timeout: 180
+  vision:
+    provider: nous
+    model: 'qwen/qwen3-vl-235b-a22b-instruct'
+compression:
+  enabled: true
+  threshold: 0.7
+  target_ratio: 0.2
+  protect_last_n: 8
+prompt_caching:
+  # auto = 1h fuer menschengetippte Quellen, 5m fuer maschinell getaktete. Der
+  # Interpool tippt von Hand -> 1h.
+  cache_ttl: auto
+memory:
+  memory_char_limit: 220000
+  user_char_limit: 137500
 _config_version: 49
 onboarding:
   seen:

@@ -34,3 +34,7 @@ auxiliary:
     provider: nous
     model: deepseek/deepseek-v4-flash-0731
     timeout: 180
+telemetry:
+  shared_metrics:
+    enabled: false
+    send: false

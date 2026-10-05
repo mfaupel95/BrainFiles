@@ -105,6 +105,18 @@ assert sorted(re.findall(MUSTER, neu)) == sorted(re.findall(MUSTER, alt))
 
    Fehlt etwas: wortgleich aus `git show HEAD:MaxHirn/Archiv/TASKS.md`
    zurueckholen, nicht neu formulieren.
+   **Eine Ausnahme gibt es, und sie muss benannt sein: das ENTFERNEN eines
+   Eintrags verletzt die Gleichheit absichtlich.** Wird ein Eintrag entfernt statt
+   nach `## Erledigt` gezogen (typisch: ein Auftrag, den dieselbe Sitzung
+   angelegt und dieselbe Sitzung erledigt hat), faellt die Nummernmenge genau um
+   diese eine Nummer - die Regel „vorher/nachher gleich" ist dann falsch und
+   schlaegt fehl. Fuer diesen Fall gilt die Ersatzaussage: **genau eine Nummer
+   weniger, keine andere Verschiebung**, `ids(neu) - ids(alt) == {entfernte}` und
+   `ids(alt) - ids(neu) == {entfernte}`. Wer den Check unveraendert laesst,
+   haelt einen korrekten Zustand fuer kaputt und beginnt zu „reparieren".
+   Nach dem Entfernen trotzdem beide Abschnitte und den Diff pruefen:
+   `git diff --numstat` muss reine Loeschungen zeigen (0 Insertions), und die
+   Kopfzeile des Nachfolger-Eintrags muss unveraendert dastehen.
    **Und die Abschnitte gegenpruefen** - die Nummernmenge allein merkt nicht, dass
    eine Ueberschrift weg ist. Ein Umbau-Skript baut die Datei neu zusammen, und
    wer dabei `kopf + eintraege + "## Erledigt"` schreibt, verliert `## Offen`
@@ -270,16 +282,31 @@ grep -oE "T-[0-9]+" MaxHirn/Archiv/TASKS.md | sort -u -t- -k2 -n | tail -3
   der Pruefer (`doppelte_nummern.py`) muss danach gruen sein. War sie es NICHT,
   ist der Verlust endgueltig - dann ist die parallele Arbeit gemeldet, nicht
   heimlich ersetzt.
-  **Der Schreibvorgang gehoert in eine Datei, nicht in einen Heredoc.** Der Weg,
-  der die Falle zuverlaessig schliesst: den Mutationsvorgang als Skript unter
-  `Agenten/Hermes/cache/scratch/<zweck>.py` ablegen und mit
-  `python -m py_compile <datei>` pruefen, BEVOR es laeuft. Ein Tippfehler im
-  Variablennamen ist dann ein Syntaxfehler im Skript und wird vor dem ersten
-  `open()` gemeldet - im Heredoc ist er ein Laufzeitfehler hinter dem
-  `open()`, und der Loescher steht schon. (Der Scratch-Pfad ist auch der Weg
-  um `$TMPDIR` herum: `python /tmp/x.py` scheitert unter Windows mit
-  `can't open file 'C:\tmp\x.py'`, weil das native Python `$TMPDIR` nicht auf
-  `/tmp` abbildet - ein C:-Pfad funktioniert.)
+  **Der Ausweg aus dem Null-Byte-Zustand ist `git show HEAD:<pfad>`, und der
+  Umweg dorthin lohnt sich:** `git show HEAD:MaxHirn/Archiv/TASKS.md > <datei>`
+  schreibt die Datei byte-genau (inklusive CRLF) zurueck, danach
+  `git diff --numstat <pfad>` - leer heisst "byte-identisch mit HEAD", das ist
+  der Beweis, und `doppelte_nummern.py` muss gruen sein. **Ein leeres
+  `git diff` ist hier das ERWUENSCHTE Ergebnis, nicht ein Fehlerzeichen.**
+  Wer stattdessen die letzte Sicherung (.bak) zurueckholt, verliert alles, was
+  seitdem committet wurde.
+  **Und danach in Skriptdateien, nicht in Heredocs.** Der Schreibvorgang gehoert
+  nach `Agenten/Hermes/cache/scratch/<zweck>.py` und wird mit
+  `python -m py_compile <datei>` geprueft, BEVOR er laeuft. Ein Tippfehler im
+  Variablennamen ist dann ein Syntaxfehler VOR dem ersten `open()` und wird
+  gemeldet, ohne dass die Datei je gekuerzt wurde - im Heredoc ist er ein
+  Laufzeitfehler HINTER dem `open()`. Zwei Korrekturen an derselben Datei in
+  einem Zug (Payload bauen, dann `open` als letzte Zeile) sind Pflicht, sobald
+  ein erster Versuch gescheitert ist: die zweite Korrektur trifft denselben Weg.
+  Der Scratch-Pfad ist zugleich der Weg um `$TMPDIR` herum: `python /tmp/x.py`
+  scheitert unter Windows mit `can't open file 'C:\tmp\x.py'`, weil das native
+  Python `$TMPDIR` nicht auf `/tmp` abbildet - ein C:-Pfad funktioniert.
+  **Nach dem Schreiben immer die EIGENEN Zeilen gegen die fremden zaehlen, nicht
+  die ganze Datei:** `roh.count(b"\n") - roh.count(b"\r\n")` vor und nach dem
+  Vorgang muss GLEICH sein, sonst hat der eigene Block Zeilenenden eingeschlichen
+  (siehe naechster Punkt). Gesamtzeilenzahl gleich ist dafuer keine Probe - eine
+  faelschlich gebaute Korrektur kann beide Zahl und Inhalt verschieben, ohne
+  dass ein globaler Zaehler es zeigt.
 - **Eine gemischte Datei ist der NORMALZUSTAND, kein Abbruchgrund.** Beim Byte-Schreiben zuerst `roh.count(b"\r\n")` gegen `roh.count(b"\n")` stellen und daraus das **dominante** Ende ableiten (`crlf > lf_gesamt - crlf`); ein Skript, das bei Mischung abbricht, verhindert genau den Fall, den man kennt — und der haeufigste ist. Voraussetzung ist nur, dass der Schnitt **nichts normalisiert**: der neue Block bekommt das dominante Ende, alle bestehenden Zeilen bleiben unangetastet. Die Vorpruefung „Datei ist gemischt, also riskant" ist damit eine Pruefung ohne Aussage — der Beweis ist `git diff --numstat` (reine Einfuegungen, 0 Loeschungen), nicht die Vorpruefung. Ein Skript, das misst und dann **trotzdem abbricht**, traegt eine Regel in sich, die es nie pruefen wollte: lieber messen und den Diff sprechen lassen.
 
 - **Ein Sichtfenster (`sed -n '1,40p'`) zeigt nur den Kopf.** Die eigene Aufgabe
@@ -386,6 +413,31 @@ grep -oE '^\s*- \[[ x]\] \*\*T-[0-9]{3}' MaxHirn/Archiv/TASKS.md \
   der aeltere behaelt seine Nummer, damit Verweise in aelteren Notizen gueltig
   bleiben; die neuen Nummern fortlaufend ab der hoechsten vergeben; Sicherung
   (`TASKS.md.bak-JJJJMMTT`) vor dem Schreiben.
+  **Die Kollision trifft auch den EIGENEN neuen Eintrag - und dann erst nach dem
+  Schreiben.** Der Gang: hoechste Nummer gemessen, zwei eigene Eintraege
+  darunter eingetragen, Gate gefahren - und das Gate meldet `DOPPELT`, weil eine
+  parallele Sitzung in den Minuten dazwischen SELBST dreie neue Nummern vergeben
+  hat (gemessen: eigene T-343/T-344 gegen fremde T-343/T-344/T-345, dieselben
+  Zahlen, anderer Inhalt). Deshalb gilt die Reihenfolge: **Gate NACH dem
+  Schreiben ist Pflicht, nicht Nachsorge**, und die Korrektur ist eine
+  UMBENENNUNG ueber den eindeutigen TITEL, nicht ueber die Nummer:
+
+```python
+kopf = "- [ ] **T-343 — <eigener Titel>"
+i = t.index(kopf); j = t.index("<Anfang des naechsten Blocks>", i)
+t = t[:i] + block_mit_neuer_nummer + t[j:]      # nur die Zahl im eigenen Block
+```
+
+  Der fremde Eintrag mit derselben Nummer bleibt unangetastet, und sein Inhalt
+  entscheidet, wessen Nummer gilt - hier behielt der fremde (er war aelter),
+  also wanderte der eigene auf die naechsten freien Nummern **ueber der
+  fremdenhoehe**, nicht darunter. Zwei eigene Bloecke wandern gemeinsam und
+  bekommen eine gemeinsame Endnummer, sonst zerfallen sie ueber die fremde
+  Nummerfolge. **Im Blocktext mitgeschleppte Querverweise auf die eigenen
+  Nummern** (im Kontext, im `Betrifft:`) mitziehen - sonst zeigt der
+  umbenannte Block auf eine fremde Nummer. Gegenprobe nach der Umbenennung:
+  das Gate erneut, und der Blick auf den Block, ob der Fremde wirklich
+  unveraendert dasteht.
 - **Datum zuerst MESSEN, dann sortieren.** Die Eintraege tragen nicht EIN
   Format: `Angelegt 27.09.2026 · Zuletzt ...`, `Angelegt: 27.09.2026` und
   `Angelegt 2026-09-29` stehen nebeneinander. Ein Sortier- oder Gruppier-Muster
@@ -415,7 +467,15 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   Gegenprobe scheitern (oder, schlimmer, sie geht durch und hat nichts
   geprueft). Abschnittsgrenzen ueber die Zeilen suchen, die es wirklich gibt:
   `text.find("\n## Offen")` fuer den Anfang, `text.rfind("\n## Erledigt")` fuer
-  das Ende. Und die offene Liste zusaetzlich ueber die KASTENSTELLUNG zaehlen —
+  das Ende.
+  **Und die REIHENFOLGE der Abschnitte ist nicht stabil.** Eine parallele
+  Sitzung kann `## Erledigt` UEBER `## Offen` ziehen (gemessen: Erledigt bei
+  Position 508, Offen bei 3109). Ein Schnitt `text[offen:erledigt]` mit
+  `offen > erledigt` ist dann LEER, jede Regex darauf findet still nichts und
+  meldet „0 Eintraege" — ein Befund, der nie geprueft wurde. Vor dem Schnitt
+  beide Positionen suchen und `min`/`max` nehmen (oder ueber die Liste der
+  Ueberschriften arbeiten), nie die Reihenfolge voraussetzen. Und die offene
+  Liste zusaetzlich ueber die KASTENSTELLUNG zaehlen —
   `alt.count("- [ ] ")` gegen `neu.count("- [ ] ")` muss um genau die Zahl der
   eingefuegten Eintraege steigen; diese eine Zeile faengt sowohl ein
   fehlgeschlagenes Einfuegen als auch einen falsch gefundenen Abschnitt.

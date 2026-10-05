@@ -66,6 +66,12 @@ BASIS = "https://www.okx.com"
 RUBIK_BASIS = "https://www.okx.com"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}
 MAX_FEHLER = 6
+# Wie oft eine Drosselung je Aufruf geheilt wird, bevor sie
+# doch ein Fehler bleibt. OKX gibt das Zeitfenster frei, der
+# Takt verhindert die naechste; danach ist die Spur fuer diesen
+# Zyklus lahm, aber nicht tot - und das ist der Unterschied zu
+# vorher, wo ein einzelner 429 den Zyklus beendete.
+MAX_429 = 4
 
 # instCategory trennt die XPERP-Familien - geprueft am 01.09.2026:
 #   1 = Krypto (111 Werte), 3 = Aktien (46), 4 = Rohstoffe (4)
@@ -73,6 +79,19 @@ KRYPTO = "1"
 AKTIE = "3"
 ROHSTOFF = "4"
 
+
+# Die Haus-Bremse gegen OKX-Drosselung (okx_takt.py, eine Ebene hoeber).
+# Gemessen 05.10.2026: 120 Abrufe nacheinander -> 0 Fehler, 6 Threads
+# gleichzeitig -> 93x "OKX 50011: Too Many Requests (HTTP 429)". Der
+# Ausloeser ist die Parallelitaet, nicht die Menge - drei Dauerlauf-Stufen,
+# die Handelszentrale und die Wachen laufen als eigene Prozesse gegen
+# dieselbe IP. Der Handel-Ordner wird ANGEHAENGT (nicht vorn eingefuegt):
+# sys.path[0] ist der eigene Spur-Ordner, sonst wuerde hier das falsche
+# okx-Modul eines anderen Ordners gewinnen.
+_HANDEL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _HANDEL not in sys.path:
+    sys.path.append(_HANDEL)
+import okx_takt  # noqa: E402
 
 class OKXFehler(RuntimeError):
     """Fachlicher Fehler aus einer gueltigen OKX-Antwort (code != 0).
@@ -146,6 +165,8 @@ def _roh(pfad, methode="GET", body=None, signiert=False, basis=None):
 
     req = urllib.request.Request(
         url, data=daten.encode() if daten else None, headers=kopf, method=methode)
+    # Haus-Bremse: begrenzt die Zahl der VERSUCHE, nicht nur der Antworten.
+    okx_takt.reserviere()
     try:
         with urllib.request.urlopen(req, timeout=20) as antwort:
             d = json.loads(antwort.read().decode())
@@ -171,12 +192,40 @@ def _roh(pfad, methode="GET", body=None, signiert=False, basis=None):
 
 
 def _mit_wiederholung(*a, **kw):
+    """Drei Fehlerarten, drei Behandlungen.
+
+    - OKXFehler MIT 50011/429: DROSSELUNG. Der einzige Fehler, der sich durch
+      Warten heilt, darum wird er hier gefangen statt nach oben gegeben - vorher
+      tötete er den ganzen Zyklus (43 Abbruche im Bus-Journal, 40 davon der
+      scanner: 19.-20.09., 26.-29.09., 2.-5.10.). Der Aufrufer sieht statt
+      eines Abbruchs die Daten, die es vor der Drosselung gab, oder eben keine.
+    - OKXFehler OHNE 429: fachlich (falscher instId, zu kleine Menge). Ein
+      zehnter Versuch aendert daran nichts, darum sofort werfen. Fuer eine
+      Verkaufsorder ist Wiederholen sogar gefaehrlich: jeder Versuch kann eine
+      echte Order sein.
+    - alles andere: Transportfehler, wird gezaehlt und mit wachsender Pause
+      wiederholt.
+
+    Wichtig: der Wiederholpfad unterscheidet NICHT, ob geschrieben wird. Er
+    heilt nur LESEabrufe gefahrlos. Beim Schreiben bleibt eine Drosselung ein
+    Fehler - eine Order, die nicht abgesetzt wurde, wird nicht erfunden.
+    """
     fehler = 0
+    gedrosselt = 0
     while True:
         try:
             return _roh(*a, **kw)
-        except OKXFehler:
-            raise  # fachlich, nicht durch Wiederholen zu heilen
+        except OKXFehler as e:
+            if not okx_takt.ist_429(e):
+                raise              # fachlich, nicht durch Wiederholen zu heilen
+            gedrosselt += 1
+            if gedrosselt >= MAX_429:
+                raise
+            warten = okx_takt.warte_s(gedrosselt)
+            print("  OKX gedrosselt (%d/%d) - warte %.1f s, kein Ausfall"
+                  % (gedrosselt, MAX_429, warten),
+                  file=sys.stderr)
+            time.sleep(warten)
         except Exception as e:  # noqa: BLE001 - Transportfehler, wird gezaehlt
             fehler += 1
             if fehler >= MAX_FEHLER:

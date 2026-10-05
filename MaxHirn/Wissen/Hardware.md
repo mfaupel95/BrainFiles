@@ -1197,3 +1197,10 @@ importieren **beide** Wege `pydantic_core 2.46.4` - das `tools`-Python und
 - Sieben saubere Zweitklone aus Documents/GitHub nach Werkstatt/Ausgemustert/klon-doppel-20260930 (Repos/ bleibt fuehrend). Dreckige Klone (EasyCLIProxyAPI) unberuehrt.
 - Offen: Windows11-"(Kopie)"-Ordner (11 identisch, Maximilian und Native Instruments weichen ab, je ~1,3 GB), Repos/kraken-cli 3,4 GB.
 - C: frei aktuell ca. 84 GB.
+
+## 05.10.2026 - Sicherung nach G: und Platte Q: geprueft
+
+- **G: (MaxHirn-Sicherung):** Agenten, MaxHirn/Wissen und MaxHirn/Archiv stehen drauf, Stand 04.10. 20:07. Dateizahlen Bilder, Dokumente, Musik, Protokolle, Videos gleich der Quelle O:\Archiv; Posteingang 277 zu 276 (Quelle neuer geleert). Software nicht gezaehlt (54.964 Dateien).
+- **Luecke:** Lauf 22:30 am 04.10. endete mit 267014 (vom Planer beendet), das Protokoll hat nur die Kopfzeile. Aufgabe: Limit 3 h, MultipleInstances=IgnoreNew; der 20:00-Lauf lief vermutlich noch, als 22:30 startete. Naechster Lauf 05.10. 20:00. Archiv-Stand seit 04.10. nicht mehr nachgezogen.
+- **Q: (SanDisk Portable SSD, exFAT, Disk 3):** Platte Healthy, Volume meldet Warning / Full Repair Needed. Ereignis 11 (Controllerfehler) und viele 153 am 12.09. - passt zu Kabel/Port-Problem. Zuverlaessigkeitszaehler ohne Adminrechte nicht lesbar.
+- **Offen:** `chkdsk Q: /scan` mit Admin, danach ggf. `/f` - vorher mit H: abgleichen. Nicht ohne Max' Freigabe reparieren.

@@ -12,6 +12,38 @@ Liquidationsnaehe bei 10x Hebel). Ausgabe ist LEER, wenn nichts Neues passiert
 """
 import json
 import os
+# Die Haus-Bremse gegen OKX-Drosselung: sie begrenzt ALLE OKX-Abrufe des
+# Hauses prozessuebergreifend (Fensterspiegel in Agenten/Handel/cache/okx-takt),
+# damit Wache, Handelszentrale und die drei Dauerlauf-Stufen sich nicht
+# gegenseitig in die Drosselung laufen. Gemessen 05.10.2026: 6 parallene
+# Threads -> 93x 'OKX 50011', nacheinander 120 Abrufe -> 0 Fehler.
+#
+# Der Pfad wird nicht GEZAEHLT, sondern GESUCHT: aus Agenten/Hermes/scripts/ fuehren
+# zwei Ebenen hoch zur Wurzel, aus einer Spur unter Handel/ faengt es die
+# Schleife bei "Handel". Ein Zaehlen aus der Quelle heraus war an drei von
+# vier Stellen falsch (Lehre: cache/scratch-Skripte brauchen drei Ebenen, ein
+# Werkzeug unter Agenten zwei) - gesucht wird nie falsch.
+import os as _os
+import sys as _sys
+import importlib.util as _ilu
+
+
+def _lade_okx_takt():
+    hier = _os.path.dirname(_os.path.abspath(__file__))
+    kandidat = _os.path.join(hier, "..", "Handel", "okx_takt.py")
+    if not _os.path.exists(kandidat):
+        kandidat = _os.path.join(hier, "..", "..", "Handel", "okx_takt.py")
+    if not _os.path.exists(kandidat):
+        raise RuntimeError("Haus-Bremse nicht gefunden (gesucht ab %s)" % hier)
+    _s = _ilu.spec_from_file_location("okx_takt", _os.path.normpath(kandidat))
+    _m = _ilu.module_from_spec(_s)
+    _sys.modules["okx_takt"] = _m
+    _s.loader.exec_module(_m)
+    return _m
+
+
+okx_takt = _lade_okx_takt()
+
 import urllib.request
 
 BASELINE = 0.00340          # Referenz "ab jetzt" (OKX-Kurs beim Einrichten)
@@ -32,6 +64,7 @@ def fetch_ticker():
     req = urllib.request.Request(
         TICKER,
         headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+    okx_takt.reserviere()
     with urllib.request.urlopen(req, timeout=20) as r:
         d = json.loads(r.read().decode("utf-8"))
     t = d["data"][0]

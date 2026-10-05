@@ -181,7 +181,18 @@ def atr_abs(k, idx, n=14):
     return summ / n
 
 
-def signal(k, idx):
+# Indikatorschwellen (T-097, 05.10.2026): Zeitrahmen-Faktoren und
+# MACD-Perioden lagen fest im Aufruf. Der Optimierer braucht sie in der
+# wachen.json. Die Zahl im Default ist der alte Wert - ein Weglassen des
+# Schluessels erzeugt exakt das alte Signal.
+MTF_FAKTOREN = (1, 4, 16)
+MTF_SCHNELL = 12
+MTF_LANGSAM = 26
+MTF_SIGNAL = 9
+ATR_N = 14
+
+
+def signal(k, idx, w=None):
     """MACD-MTF-Signal an Kerze idx. Gibt 'long', 'short' oder None."""
     if idx < 1:
         return None
@@ -189,19 +200,32 @@ def signal(k, idx):
         import ti_indikatoren as ti
     except ImportError:
         return None
+    w = w or {}
+    # Die Faktoren kommen als Liste aus der wachen.json (JSON kennt kein
+    # Tupel); ohne Schluessel gilt die alte Festverdrahtung.
+    faktoren = w.get("mtf_faktoren") or list(MTF_FAKTOREN)
+    if isinstance(faktoren, str):
+        faktoren = [int(x) for x in faktoren.split(",") if x.strip()]
+    else:
+        faktoren = [int(f) for f in faktoren]
     try:
-        ergebnis = ti.macd_mtf(k, faktoren=(1, 4, 16))
+        ergebnis = ti.macd_mtf(
+            k, faktoren=faktoren,
+            schnell=int(w.get("mtf_schnell", MTF_SCHNELL)),
+            langsam=int(w.get("mtf_langsam", MTF_LANGSAM)),
+            signal=int(w.get("mtf_signal", MTF_SIGNAL)),
+        )
     except Exception:
         return None
     if not ergebnis.get("einig"):
         return None
 
     # Ausrichtung +1/-1
-    if all(ergebnis[f]["ausrichtung"] == 1 for f in (1, 4, 16)):
+    if all(ergebnis[f]["ausrichtung"] == 1 for f in faktoren):
         hist = ergebnis[1]["hist"]
         if hist[idx] is not None and hist[idx - 1] is not None and hist[idx] > hist[idx - 1]:
             return "long"
-    if all(ergebnis[f]["ausrichtung"] == -1 for f in (1, 4, 16)):
+    if all(ergebnis[f]["ausrichtung"] == -1 for f in faktoren):
         hist = ergebnis[1]["hist"]
         if hist[idx] is not None and hist[idx - 1] is not None and hist[idx] < hist[idx - 1]:
             return "short"
@@ -226,12 +250,12 @@ def pruefe_einstieg(inst, k, z, w, faktor):
         return
 
     idx = len(k) - 1
-    sig = signal(k, idx)
+    sig = signal(k, idx, w)
     if not sig:
         return
 
     einstieg = k[idx][4]
-    atr = atr_abs(k, idx, 14)
+    atr = atr_abs(k, idx, int(w.get("atr_n", ATR_N)))
     if not atr or atr <= 0:
         return
 

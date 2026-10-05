@@ -241,15 +241,52 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
    mitgegangen" benennen — und in so einer Registerdatei die eigene Aenderung
    ZUERST und in EINER Ausfuehrung mit `git add` + `git commit` erledigen, statt
    sie zwischen zwei Rechercheschritten liegen zu lassen.
+
+   **Der eigene Anteil muss auch dann als solcher erkennbar sein.** Nach dem
+   fremden Commit pruefen, ob die Herkunft im Commit selbst steht — ein
+   `Co-Authored-By`-Trailer oder ein Autorenpaar, das die eigene Zuarbeit
+   nennt, erspart die Nachbesserung vollstaendig. Fehlt er, ist der Commit
+   inhaltlich richtig und trotzdem falsch etikettiert; das im Bericht benennen
+   statt die Historie umzuschreiben. Und **die Commit-Meldung nicht nachtraeglich
+   an das fremde Commit haengen wollen**: der Versuch scheitert meist an einer
+   Sperre, die gerade eine andere Sitzung haelt, und endet mit einer
+   Fehlermeldung, die wie ein Fehlschlag aussieht — waehrend der Commit
+   vollstaendig in Ordnung ist.
 6. **Eine fremde Aenderung, die einen Absturz oder Testfehlschlag verursacht, wird
-   wie ein eigener Bug behandelt — nicht nur liegen gelassen.** Eine plausibel
-   klingende Begruendung im Fremd-Commit ('X sollte nicht wie Y zaehlen') ist kein
-   Beleg: vor dem Vertrauen alle echten Aufrufer des geaenderten Codes greppen und
-   pruefen, ob der behauptete Fall ueberhaupt im echten Code vorkommt. Nach jeder
-   verdaechtigten externen Aenderung die volle Testsuite laufen lassen, nicht nur
-   den vom Fremd-Commit behaupteten Fall — ein Fix fuer einen nie eintretenden Fall
-   kann echte Aufrufer zerstoert haben, ohne dass ein einzelner gezielter Test das
- zeigt.
+  wie ein eigener Bug behandelt — nicht nur liegen gelassen.** Eine plausibel
+  klingende Begruendung im Fremd-Commit ('X sollte nicht wie Y zaehlen') ist kein
+  Beleg: vor dem Vertrauen alle echten Aufrufer des geaenderten Codes greppen und
+  pruefen, ob der behauptete Fall ueberhaupt im echten Code vorkommt. Nach jeder
+  verdaechtigten externen Aenderung die volle Testsuite laufen lassen, nicht nur
+  den vom Fremd-Commit behaupteten Fall — ein Fix fuer einen nie eintretenden Fall
+  kann echte Aufrufer zerstoert haben, ohne dass ein einzelner gezielter Test das
+zeigt.
+  **Vor dem Herumreparieren die ZUORDNUNG messen — sonst behebt man einen fremden
+  Fehler und laesst den eigenen ungeprueft.** Ein `git diff --name-only <eigener
+  commit>~1 <eigener commit>` je eigener Commit, gehalten gegen die Pfade der
+  roten Testdateien, ist der Beleg: beruehrt keiner davon eine dieser Dateien,
+  ist der Fehlschlag fremd. Zwei Ergaenzungen, die diese Messung fast unglaublich
+  machen: (a) **ein `--author`-Filter greift nicht**, weil Fremdarbeit- und
+  Nachbar-Commits den fremden Autor tragen und das Label „ich" zusammenfaellt —
+  stattdessen `git log -1 --format="%h %ad %an" --date=format:"%H:%M" <sha>` je
+  Commit lesen und die Uhr vergleichen; zwei Sitzungen derselben Maschine
+  committed im selben Fenster; (b) **eine Datei kann ohne Commits seit Tagen fest
+  stehen und ihre Tests trotzdem juengstes rot machen** — wenn eine fremde
+  SITZUNG sie gerade bearbeitet, zeigt `git status --porcelain` ein `M` und die
+  mtime die Minuten. Eine Datei „faellt nicht aus" heisst dann nicht „unberuehrt",
+  sondern nur „meine Commits haben sie nicht angefasst"; die mtime entscheidet,
+  ob sie gerade geschrieben wird (liegen lassen) oder tot ist (reparieren).
+  **Ein Fehlschlag in der VOLLEN Suite ist auch dann kein eigener, wenn er
+  sichtbar beim eigenen Lauf auftritt.** Eigene Suite gruen (die Module dieser
+  Aenderung) und ein roter Nachbar in derselben Gesamtsuite sind zwei
+  Tatsachen; die zweite gehoert in den Bericht unter die fremden Befunde, nicht in
+  die Korrektur.
+  **Und: eine Hintergrundmessung, deren Ergebnis man nicht abgewartet hat, nicht
+  als abgebrochen melden.** Eine Logdatei, die eine Weile nicht waechst, sieht
+  wie ein stiller Prozess aus und wurde als solcher berichtet — tatsaechlich lief
+  der Lauf regulaer durch und lieferte exit 1 mit denselben Fehlschlaegen. Bevor
+  „abgebrochen" gesagt wird: Prozessliste und Fusszeilen des Logs pruefen. Ein
+  Hintergrundlauf, der nicht fertig ist, ist nicht tot.
  7. **Der Baum kann sich zwischen zwei Werkzeugaufrufen aendern.** Eine zweite
  Sitzung baut denselben Auftrag fertig, waehrend diese noch Kontext sammelt:
  Dateien, die eben noch `??` oder `M` waren, sind Minuten spaeter committet -
@@ -612,6 +649,17 @@ ungetrackten Dateien. Reihenfolge:
   weiteren Laufs ueber die Pfade der letzten eigenen Uebernahme-Commits
   (`git log -5 --author=fremd@local --name-only --format=`). Rezept:
   `references/fremdarbeit-routine.md`.
+- **`git hash-object -w` ohne `--stdin` liefert einen LEEREN SHA — und der Commit geht
+  trotzdem durch, nur eine Datei kuerzer.** Ohne `--stdin` erwartet der Aufruf
+  Dateiargumente; mit `input=` allein kommt nichts zurueck, `git update-index
+  --cacheinfo 100644,,<pfad>` bricht dann mit „option 'cacheinfo' expects
+  <mode>,<sha1>,<path>" ab, und der Commit im selben Aufruf danach laeuft trotzdem
+  durch und traegt die uebrigen Pfade. Der fehlende Eintrag faellt erst in
+  `git show --stat HEAD` auf (4 Dateien statt 5). Zwei Regeln: den Blob-Bau mit
+  `assert len(sha) == 40` pruefen, und nach dem Commit die DATEIZAHL im `--stat` gegen
+  die eigene Pfadliste halten. Nachziehen mit einem ZWEITEN Commit, der den Blob aus dem
+  NEUEN HEAD baut (dieselbe Kette, `git show HEAD:<datei>` als Basis) — nicht die
+  Historie umschreiben.
 - **Die Commit-Meldung als Datei braucht einen NATIVEN Pfad.** `git` ist ein
   Windows-Programm: eine Meldungsdatei unter `$TMPDIR` bzw. `/tmp` findet es nicht
   (`fatal: could not read log file '/tmp/commitmsg.txt'`) — der Commit unterbleibt, und
@@ -771,6 +819,42 @@ ungetrackten Dateien. Reihenfolge:
   reparieren ist als der urspruengliche Fehler. Genau das ist beim
   Wiederherstellen passiert: der erste Schritt suchte eine Abschnitts-
   Ueberschrift, die sein eigener Vorganger selbst geschrieben hatte.
+- **`git checkout -- <datei>` als „meine Aenderung zuruecknehmen" verwirft die
+  Fremdarbeit derselben Datei mit.** Wer eine eigene Achnung zurueckrechnen
+  will (Gegenprobe, Fehlersuche), nimmt die Datei auf HEAD — und HEAD kennt
+  die uncommittete Arbeit einer Parallelsitzung nicht. Sie ist danach weg,
+  ohne Fehlermeldung und ohne `git status`-Spur. Das ist der verlangte
+  Griff in Regel 6 (eine von einer Fremdsitzung geloeschte Datei) an der
+  FALSCHEN Stelle: dort rettet er eine Datei, die wirklich weg ist; hier
+  vernichtet er genau die Arbeit, die Regel 4 liegen lassen will.
+  **Vor jedem `git checkout --` auf eine Datei im Mehrbetrieb die mtime
+  lesen.** Frisch (Minuten) = eine Sitzung schreibt gerade: **nicht**
+  zuruecksetzen, sondern die eigene Aenderung REVERS im Arbeitsbaum
+  aufheben (den eigenen Hunk ueber Zeilenindizes ersetzen, nicht die ganze
+  Datei). Steht sie seit Stunden, ist der Griff erlaubt.
+  **Der Rueckweg ist die byte-genaue Kopie, die VOR dem ersten Schnitt
+  liegt** — und sie muss beide Fassungen tragen, nicht nur die eigene.
+  Nach dem Wiederherstellen drei Dinge belegen, statt „sieht wieder aus wie
+  vorher" zu behaupten: Bytezahl gegen die Sicherung, `grep`/AST-Assert fuer
+  BEIDE Aenderungen (eigene **und** fremde), und die betroffene Suite. Wer
+  keine Sicherung hatte, bekommt die Fremdarbeit aus dem fremden Sitzungs-
+  protokoll zurueck, nicht aus dem Baum.
+  **Und wenn es passiert ist, gehoert es in den Bericht** — als Fehler
+  benennen, den Griff und die Wiederherstellung nennen. Ein verschwiegener
+  Zwischenschritt, den niemand nachmessen kann, ist schlimmer als der
+  Fehler selbst.
+- **Zwei Aenderungen in EINER Datei koennen untrennbar sein — dann heisst das
+  nicht „mischen und schweigen".** Regel 3 (nur die eigene Aenderung in den
+  Index) setzt voraus, dass sich Hunks trennen lassen. Faellt der Fremdteil
+  in dieselbe Region wie der eigene (typisch: beide aendern dieselbe
+  Funktion), ist das Bauen eines eigenen Index-Eintrags eine Entscheidung,
+  keine Technik mehr — und sie gehoert in den Bericht: eigene Zeilen in
+  einem Commit, der fremde Anteil haengt inhaltlich drin. Die beiden
+  Argumente dafuer, beides zu sagen: die Arbeit ist im Baum, nicht verloren,
+  und die Historie bleibt lesbar. Gegen die Alternative (den Fremdteil
+  zuruecklassen und dem Verfasser spaeter zuzustellen) ist das nur dann
+  richtig, wenn die Fremdsitzung tatsaechlich noch lebt — nachweisen ueber
+  ihre Commits der letzten Minuten, nicht raten.
 - **Ein Zustands-Check mit dem falschen Muster erkennt sich selbst.** `if
   "self._flag" in datei` war wahr, weil die Methode die Flag las, nicht weil
   die Zuweisung existierte. Beim Wiederherstellen benutzt: `if
@@ -816,15 +900,26 @@ ungetrackten Dateien. Reihenfolge:
   `git show HEAD:<pfad>` LEER, ohne Fehlermeldung: Rueckgriff auf `git -C <unterrepo> show
   HEAD:<datei>` und den Commit auch dort machen. Leerer Treffer immer als Verdacht lesen,
   nicht als "Datei ist leer".
-- **Ein verschachteltes eigenes Repo wird EIGENSTAENDIG festgezogen (sauber UND
-  gepusht).** Eine Aenderung dort liegt sonst nur auf der Platte: das Eltern-Repo
-  klammert den Ordner aus, `git status` zeigt sie nicht, und ein `git add` mit Glob
-  ueber den Baum reisst deshalb ab (Regel 1). Der Handgriff ist derselbe wie bei einer
-  gemischten Datei, nur aus dem Unterordner heraus: `git status --porcelain` LESEN
-  (fremde Zeilen in derselben Datei sind der Normalfall), die eigene Fassung
-  herstellen und committen, danach die vollstaendige Fassung zurueckholen und den
-  FREMDEN Teil als ZWEITEN Commit mit `--author="Andere Sitzung <fremd@local>"`
-  sichern - in dieser Reihenfolge, sonst steht der fremde Teil im eigenen Commit.
+**Ein verschachteltes eigenes Repo wird EIGENSTAENDIG festgezogen (sauber UND
+gepusht).** Ein eigenes Rad in EINEM venv zu haben und es fuer einen zweiten
+Aufrufer zu DUPLIZIEREN, ist eine Entscheidung mit Folge: dieselbe Version
+liegt dann an zwei Orten, und jede Aktualisierung laeuft an einer Stelle
+vorbei. **Besser die Doppelinstallation als die Kindprozess-Umleitung** — ein
+schweres Importpaket ueber einen Kindprozess zu starten, kostet jeden Start
+und verliert den Traceback; die Doppelinstallation kostet einmalig Platten und
+traegt danach. Wer es trotzdem doppelt haelt, braucht einen Versionsvergleich
+im Code, der den Import laedt (sonst laeuft still die alte), und einen
+Task fuer den Abgleich — **die Doppelpflege ist kein Detail, sie gehoert als
+solche benannt.**
+
+Eine Aenderung dort liegt sonst nur auf der Platte: das Eltern-Repo
+klammert den Ordner aus, `git status` zeigt sie nicht, und ein `git add` mit Glob
+ueber den Baum reisst deshalb ab (Regel 1). Der Handgriff ist derselbe wie bei einer
+gemischten Datei, nur aus dem Unterordner heraus: `git status --porcelain` LESEN
+(fremde Zeilen in derselben Datei sind der Normalfall), die eigene Fassung
+herstellen und committen, danach die vollstaendige Fassung zurueckholen und den
+FREMDEN Teil als ZWEITEN Commit mit `--author="Andere Sitzung <fremd@local>"`
+sichern - in dieser Reihenfolge, sonst steht der fremde Teil im eigenen Commit.
   Reihenfolge-Vorlage: Datei vorher nach `cache/scratch/` kopieren (die vollstaendige
   Fassung), die eigene Aenderung aus dem Blob `HEAD:<datei>` rekonstruieren, committen,
   Kopie zurueckspielen, `git diff --numstat` muss je Commit nur den eigenen bzw. nur

@@ -183,6 +183,113 @@ def groessenfaktor(ruecklauf, w):
     return ratschen.groessenfaktor(ruecklauf, w)
 
 
+# --- Der Grund des Einstiegs ------------------------------------------------
+#
+# T-142/T-178 (gemsessen 29.09.2026, 18 Einstiegszeilen der Feed-Spuren): die
+# Spalte `grund` der Einstiegszeile trug den Satz "Der Grund, der im Journal
+# steht." - der Platzhalter stand auch im ECHTEN Journal vom 15.09.2026, kam
+# also aus `spur_buch` und nicht aus dem Backtest. Folge: wer ein Buch liest,
+# kann nicht sagen, welches Signal gegriffen hat; eine Auswertung, die den
+# Grund lesen will, liest Nichts.
+#
+# Die Reihenfolge ist eine Prioritaeten-Kette, kein_if-Fallback:
+#   1. `_grund` in der wachen - die Spur weiss mehr als der Kern. Die drei
+#      LLM-Spuren (moondev_whale/-liquidation/-sentiment) schreiben hier
+#      Aktion und Confidence des Modells hinein, IV-Waelle den Ausloeser.
+#   2. `begruendung(d, w, seite)` - eine Spur, die einen ausformulierten
+#      Grund liefert (Signal + gemessene Groesse in einem Satz).
+#   3. der gemessene Ersatz: Spurname, Richtung und die Groessen, an denen das
+#      Signal gehangen hat. Auch das ist eine Auskunft - im Gegensatz zum
+#      Platzhalter nennt es Zahlen, an denen man den Einstieg nachrechnen kann.
+#
+# Der Platzhalter-Satz selbst wird erkannt und NIEMALS geschrieben: ein
+# zukünftiger `_grund` in einer wachen darf die Angabe nicht wieder kippen.
+
+PLATZHALTER = ("der grund, der im journal steht", "platzhalter")
+
+# Die Felder, die ein Signal typischerweise ausloesen - in dieser Reihenfolge,
+# damit die wichtigste Groesse vorn steht. Alles Weitere wird danach
+# alphabetisch nachgezogen, damit auch eine unbekannte Spur eine Zahl liefert.
+MESSFELDER = ("aenderung_1h", "aenderung_24h", "btc_aenderung_24h", "breite",
+              "oi_aenderung_pct", "rate_usd_pro_stunde", "anteil_long",
+              "anzahl_schlagzeilen", "abstand_prozent", "alter_minuten",
+              "volumen_24h", "market_cap_usd", "marktkap")
+
+FELDNAME = {"aenderung_1h": "1h", "aenderung_24h": "24h",
+            "btc_aenderung_24h": "BTC 24h", "breite": "Breite",
+            "oi_aenderung_pct": "OI", "rate_usd_pro_stunde": "Liq USD/h",
+            "anteil_long": "Long-Anteil", "anzahl_schlagzeilen": "Schlagzeilen",
+            "abstand_prozent": "Abstand", "alter_minuten": "Alter",
+            "volumen_24h": "Vol 24h", "market_cap_usd": "MCap",
+            "marktkap": "MCap"}
+
+
+def _zahl_text(x):
+    """Eine Messgrösse als kurzer, lesbarer Text - ohne Rauschen."""
+    if isinstance(x, bool):
+        return None
+    if isinstance(x, (int, float)):
+        if x != x:                       # NaN
+            return None
+        if x == int(x) and abs(x) < 1e9:
+            return "%d" % int(x)
+        if abs(x) >= 1e6:
+            return "%.2f Mio" % (x / 1e6)
+        return ("%.2f" % x).rstrip("0").rstrip(".")
+    if isinstance(x, str) and 0 < len(x) <= 40:
+        return x
+    return None
+
+
+def messwerte(d, hoechstens=3):
+    """Die Groessen aus dem Daten-Dict, an denen das Signal gehangen hat.
+
+    `d` ist die INNERE Karte (`daten[inst]`) - `spur_buch` ruft
+    `signal(daten[inst], w)`. Kerzen, Wand-Dictionaries und Liquidationslisten
+    werden nicht ausgegeben (zu lang, kein Messwert), aber eine Liste mit
+    Laenge (z. B. die Zahl der Liquidierungen) schon - das ist eine Groesse,
+    die eine Regel belegt.
+    """
+    if not isinstance(d, dict):
+        return []
+    keys = [k for k in MESSFELDER if k in d]
+    keys += sorted(k for k in d if k not in MESSFELDER)
+    raus = []
+    for k in keys:
+        v = d.get(k)
+        if isinstance(v, (list, tuple)):
+            v = len(v)
+            k = k if k in FELDNAME else "%s n" % k
+        text = _zahl_text(v)
+        if text is None:
+            continue
+        raus.append("%s %s" % (FELDNAME.get(k, k), text))
+        if len(raus) >= hoechstens:
+            break
+    return raus
+
+
+def einstiegsgrund(w, d, seite, spur_name=None, begruendung=None):
+    """Der Grund fuer die Einstiegszeile - der wahre, nicht der Platzhalter."""
+    roh = str((w or {}).get("_grund") or "").strip()
+    klein = roh.lower()
+    if roh and not any(p in klein for p in PLATZHALTER):
+        return roh
+    if begruendung is not None:
+        try:
+            text = str(begruendung(d, w, seite) or "").strip()
+        except Exception as e:                              # noqa: BLE001
+            print("  Begruendung nicht rechenbar (%s)" % e, file=sys.stderr)
+            text = ""
+        if text:
+            return text
+    mess = messwerte(d)
+    name = spur_name or (w or {}).get("grund") or "spur"
+    if mess:
+        return "%s %s (%s)" % (name, seite, ", ".join(mess))
+    return "%s %s (signal)" % (name, seite)
+
+
 # --- Orderweg (Live) --------------------------------------------------------
 #
 # EINE Fassung fuer ALLE Buch-Spuren. Welche Boerse gilt, steht in der wachen

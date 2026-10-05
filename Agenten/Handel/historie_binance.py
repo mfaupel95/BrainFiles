@@ -27,6 +27,15 @@ ORDNER = os.path.join(HIER, "daten", "historie")
 
 TAKTE = {"5M": "5m", "15M": "15m", "30M": "30m", "1H": "1h", "4H": "4h", "1D": "1d"}
 
+
+class HistorieKaputt(Exception):
+    """Die Datei ist da, aber kein gueltiges JSON.
+
+    Getrennt von OSError/ValueError, weil beides etwas anderes bedeutet:
+    OSError = fehlt (dann ist [] richtig), HistorieKaputt = da, aber unlesbar
+    (dann ist [] eine Falschaussage und der Aufrufer muss es erfahren).
+    """
+
 # OKX- und Kraken-Namen der Spuren -> Binance-Symbol. EIN Ort, damit nicht
 # jede Spur ihr eigenes Mapping erfindet. Gemessen 2026-09-24: 19 von 20
 # geprueften Instrumenten haben ein Binance-USDT-Paar; MATIC fehlt (heute POL).
@@ -103,12 +112,33 @@ def datei(inst, takt):
 
 
 def lade(inst, takt):
-    """Gespeicherte Kerzen, aufsteigend. Fehlende Datei ist kein Fehler."""
+    """Gespeicherte Kerzen, aufsteigend. Fehlende Datei ist kein Fehler.
+
+    Eine UNVOLLSTAENDIGE Datei ist seit dem 05.10.2026 auch kein "keine
+    Daten" mehr: sie wird als [] gelesen und der Aufrufer rechnet mit leeren
+    Kerzen weiter, statt zu sehen, dass gerade geschrieben wird. Deshalb wird
+    hier nicht mehr geschluckt, was man nicht deuten kann - der Leser soll
+    wissen, was er vor sich hat (T-297: atomar schreiben, und wenn es
+    trotzdem passiert, benennen statt verdecken).
+    """
     try:
         with open(datei(inst, takt), encoding="utf-8") as f:
-            reihen = json.load(f)
-    except (OSError, ValueError):
+            roh = f.read()
+    except FileNotFoundError:
         return []
+    except OSError:
+        return []
+    if not roh.strip():
+        return []
+    try:
+        reihen = json.loads(roh)
+    except json.JSONDecodeError:
+        # Entweder eine laedende Datei (dann kommt der naechste Lauf) oder
+        # eine kaputte (dann ist eine Meldung Pflicht, kein []).
+        raise HistorieKaputt(
+            "%s ist keine gueltige JSON-Datei (%d Zeichen gelesen) - "
+            "entweder wird gerade geschrieben oder die Datei ist kaputt"
+            % (datei(inst, takt), len(roh)))
     return sorted(reihen, key=lambda r: r[0])
 
 
@@ -125,9 +155,22 @@ def speichere(inst, takt, reihen):
     for r in roh:
         bestand[r[0]] = r
     os.makedirs(ORDNER, exist_ok=True)
-    with open(datei(inst, takt), "w", encoding="utf-8") as f:
+    # ATOMAR (05.10.2026): vorher stand hier ein blosses open(..., "w").
+    # Ein Leser, der im Betrieb genau dann laed (spur_audit, ein Backtest,
+    # die Handelszentrale), sah eine HALBE Datei - json.load warf
+    # JSONDecodeError, `lade()` deutete den als ValueError und gab
+    # `[]` zurueck. Der Leser meldete daraufhin "keine Historie" und
+    # rechnete mit leeren Kerzen weiter, statt zu sagen "da wird gerade
+    # geschrieben". Das ist die Fehlerklasse aus T-297 (Datei atomar
+    # schreiben), hier an einer Stelle, die sie nie hatte.
+    ziel = datei(inst, takt)
+    tmp = ziel + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump([bestand[t] for t in sorted(bestand)], f)
-    return len(bestand)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, ziel)          # Windows: ersetzt atomar, auch wenn
+    return len(bestand)            # der Leser die alte Datei offen haelt
 
 
 # Naht fuer Tests: None -> echtes Netz.

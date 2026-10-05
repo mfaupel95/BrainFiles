@@ -78,6 +78,20 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
      eindeutig und man kennt ihn, weil man die Ausgabe ja gelesen hat.
      Beleg-Beispiel: ueber `availableMargin` kam der echte Kontostand zurueck, den der
      Platzhalter verschluckt hatte.
+   - **Dieselbe Suche beantwortet „welche Fassung lief?".** Eine Fehlermeldung
+     nennt eine Datei, die es im Baum nicht (mehr) gibt — dann ist nicht der Ort
+     die Frage, sondern die Version. Wegwerf-Adressen (`mkdtemp`,
+     `tempfile.gettempdir()`) sehen wie Systempfade aus und laden zum Raeum-Verdacht
+     ein; legt ein Test seine Eingabedateien selbst an, ist eine
+     `FileNotFoundError` darauf fast immer die **vorherige Fassung** der Datei.
+     Anker ist ein String aus der Meldung selbst (`spurbuch-gatter-<suffix>`,
+     `wachen.json`), nicht Sitzung oder Zeit — danach die Nachrichten **vor**
+     dem Treffer lesen, dort steht der `write_file`-/`patch`-Turn, der die
+     Fassung erzeugt hat, samt Diff.
+   - **Ein Fehler, der sich beim Wiederholen nicht einstellt, ist nicht weg.**
+     Dann gilt die gefundene Fassung als belegt-veraltet und der Befund ist der
+     **alte** Zustand — im Bericht so benennen, statt weiter am Objekt zu
+     suchen.
    - Die letzte Zeile einer abgebrochenen Sitzung ist oft ein Werkzeugergebnis ohne
      Nachsatz — der Assistent starb **vor** dem Bericht, nicht weil die Arbeit fehlte.
      Das ist die gute Nachricht: die Fakten sind schon da.
@@ -143,6 +157,26 @@ Ein `/bot <name> <auftrag>` oder ein Aufruf mit harter Frist endet mit
    abgeben; die Frist hochzusetzen verschiebt nur den Abbruch.
 6. **Kind- und Bot-Zusammenfassungen sind Selbstauskunft.** Beleg sind die
    Artefakte und die eigenen Laeufe, nie der Schlussabsatz des Kindes.
+
+## Wenn eine Fehlermeldung nicht zum Arbeitsbaum passt
+
+Bevor irgendein Objekt als defekt gilt: **stimmt die Fehlermeldung ueberhaupt
+ueber das, was da ist?** Ein `ModuleNotFoundError`/`ImportError` in roten Tests
+kommt in Traegerkraft aus dem falschen Interpreter (Dutzende Zeilen, kein
+einziger Defekt) — `welcher-python` gehoert dazu. Ein Pfad, den es nicht gibt,
+spricht ueber die Fassung, nicht ueber einen Raeumer.
+
+Beides mit einem **Gegenlauf** besorgen, nicht mit einer Deutung:
+
+```bash
+# 1) Attrappe im Fehlerzustand: MUSS mit derselben Meldung abbrechen.
+# 2) Attrappe im Sollzustand: MUSS durchlaufen.
+# 3) Gegenprobe-Datei danach loeschen - sie gehoert nicht in den Baum.
+```
+
+Damit ist die Ursache belegt statt geraten, und die Restfehler der Suite sind
+gegen den belegten Stand abzugrenzen (vorhanden und vorbestehend sind
+verschiedene Antworten).
 
 ## Regeln (Standing)
 

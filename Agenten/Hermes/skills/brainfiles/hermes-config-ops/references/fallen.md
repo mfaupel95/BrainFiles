@@ -140,6 +140,37 @@
   Zeilenenden oder verschwundener Doku-Block — in einer Summe ueber 25 Dateien faellt
   beides nicht auf. Zusaetzlich jede geaenderte `config.yaml` mit `yaml.safe_load` parsen
   und die Zielwerte asserten.
+- **Ein Kommentar als YAML-Schluessel erzeugt eine erfundene Einstellung.**
+  Wer einen Erklaerungstext in eine Config schreibt und dabei
+  `vergiss_this_note: >` benutzt, bekommt danach in jeder
+  Schluesselansicht, in jedem `config get` und in jedem Dashboard einen
+  Schalter, den es nicht gibt — und beim naechsten Lesen sieht er wie Absicht
+  aus, weil er plausibel benannt ist. Der Kommentar gehoert an die Zeile, die
+  er erklaert. Gegenprobe nach jedem Block-Einfuegen: `set(cfg)` gegen den
+  Vorzustand halten, nicht nur die Werte.
+- **Ein Block-Ersetzer braucht die Einrueckung DER ZIELDATEI, nicht die des
+  Hauses — und die Assertion muss VOR dem Schreiben greifen.** Gemessen:
+  Profil-Configs fuehren Skalarfelder mit ZWEI Leerzeichen unter einem
+  Top-Level-Schluessel (`delegation:` ist Top-Level, `provider:` darunter
+  eingerueckt), die Hauptkonfiguration mit vier. Ein aus dem Hauptprofil
+  kopierter Ersatzzblock parst dort nicht (`expected <block end>`), das
+  Schreiben gelingt trotzdem, und danach ist der Schluessel ein String und
+  alle folgenden Felder sind verschluckt. Drei Regeln daraus: den
+  Ersatzzblock ALLEIN stehend parsen (`yaml.safe_load("\n".join(block))`),
+  die Einrueckung aus der Zieldatei ableiten statt sie anzunehmen, und beim
+  Ersetzen einer Zeilenfolge die Einrueckungstiefe als Parameter fuehren.
+  Rollback dann byteweise aus `.bak-JJJJMMTT`; der Beleg ist
+  `git status --porcelain -- <pfade>` **leer**, nicht "die Assertion hat
+  gegriffen".
+- **Ein Suchlauf kann still nichts finden, weil die Zeilen ein
+  abschliessendes `\\r` tragen.** `text.split("\\n")` laesst bei CRLF-Dateien
+  `\\r` an jeder Zeile stehen; jedes Praefix ohne Toleranz matcht dann null
+  Mal. Der Trockenlauf meldet "keine Aenderung noetig" und das ist die
+  gefaehrlichste Ausgabe ueberhaupt - sie sieht wie ein Befund aus und
+  beweist nichts. Nach dem Split je Zeile auf `\\r` pruefen, dann neu messen.
+  Verwandt: ein Skript, das seine Daten relativ zum Skriptort sucht, muss
+  die Ebenenzahl pruefen - `cache/scratch/` liegt DREI Ebenen unter dem
+  Home, nicht zwei, und ein `assert os.path.isdir(...)` faengt es sofort.
 - **Ein kaputter Fallback ueberdeckt die echte Fehlermeldung.** Ist der Primaerpfad nicht
   angemeldet und die geerbte Kette zeigt auf ein lokales Modell unter der Mindestgroesse,
   endet der Lauf mit „context window ... below the minimum" — der Anmeldefehler ist dann

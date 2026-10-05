@@ -191,6 +191,42 @@ Ein Duplikat-Schluessel als Zusatzprobe: `assert "- provider: bonsai" not in tex
 faengt einen Rest, den eine Uebersicht ueber Objektnamen (statt ueber Zeilen)
 verpasst, weil der Kommentar das Wort noch nennt.
 
+### Drei Fehler, die derselbe Byte-Pfad ein zweites Mal produziert
+
+Alle drei entstehen **vor** dem Schreiben, werden aber erst danach teuer - und
+zwei davon schreiben trotzdem.
+
+1. **Ein Kommentar als YAML-Schluessel ist eine erfundene Einstellung.**
+   Wer eine Erklaerung anlegen will, schreibt leicht
+   `delegation_fallback_note: >` plus Text. YAML parst das anstandslos, der
+   Schluessel erscheint in jeder Config-Ansicht und in jedem Dashboard als
+   Einstellung, die es nicht gibt, und ein spaeterer Leser (oder der Nutzer in
+   den Einstellungen) sucht vergeblich nach ihrem Schalter. Erklaerungen gehoeren
+   an die Stelle, die sie erklaeren - als `#`-Kommentar INNERHALB des Blocks, den
+   sie erklaeren, nicht als eigener Schluessel daneben.
+
+2. **`ALT` ist ein Praefix von `NEU` - die Abwesenheitspruefung ist dann
+   widerspruechlich.** Nach `neu = text.replace(ALT, NEU)` mit
+   `assert ALT not in neu` schlaegt der Lauf fehl, obwohl die Ersetzung
+   funktioniert hat: `NEU` enthaelt `ALT` als Anfang. Richtig ist, auf das zu
+   pruefen, was die Ersetzung bewirkt hat: `assert neu.count("  telegram:") == 1`,
+   nicht `assert ALT not in neu`.
+
+3. **Die Zeilenend-Gegenprobe schlaegt auch fehl, wenn nur die ERSAETZUNGS-
+   Literale falsch sind.** `count(b"\r\n") == count(b"\n")` setzt voraus, dass
+   die eingefuegten Bloecke dieselbe Form haben wie die Datei. Ist die Datei LF
+   und kommt ein CRLF-Literal hinein, meldet die Probe "Zeilenenden gemischt" -
+   aber die Datei war vorher einwandfrei. Also **die Form aus der Datei ableiten
+   und die Literale daran anpassen** (`nl = "\r\n" if ... else "\n"`, jede
+   Zeile `rstrip("\r")` nach dem Split), statt die Probe am Ende zu haben. Wer
+   die Probe anstelle dieser Reihenfolge benutzt, sucht den Fehler in der
+   Datei, die er selbst gerade geschrieben hat.
+
+Faellt eine dieser Pruefungen an, ist die Frage immer: **ist die Datei kaputt
+oder mein Skript?** Nicht die Datei "reparieren", sondern das Skript richten und
+den Lauf wiederholen - sonst schreibt man eine zweite Korrektur in eine bereits
+kaputte Datei.
+
 ## Fallen
 
 - **Ein zu kleines `max_tokens` macht ein Denkmodell stumm - und den Pruefer blind.**

@@ -27,9 +27,51 @@ an Spuren.
    nach Runden: alles unter 30 Ausstiegen je Haelfte ist "nicht entschieden",
    und dort zu optimieren heisst, Zufall zu polieren. Nur Spuren mit
    echtem Backtest-Vorrat (Jahre, Hunderte Runden) sind ein Ziel. Reisst
-   keine die Schwelle, ist die Landkarte selbst das Ergebnis, und das
+   Reisst keine die Schwelle, ist die Landkarte selbst das Ergebnis, und das
    Verdikt lautet "derzeit kein optimierbarer Track" - ein Befund, keine
    Verweigerung.
+
+   ## Kandidatensweep: Fenster fixieren, Klone zusammenfassen, beide Fenster fordern
+
+   Ein Sweep ueber N Kandidaten (Strategie-Dateien, Parameter, Filter) hat drei
+   Fallen. Alle drei lassen die schoenste Zahl entstehen, ohne dass eine Aussage
+   dahintersteht - alle drei kommen VOR der Empfehlung, nicht danach.
+
+   1. **Ein Fenster hat Anfang UND Ende - eine Tageszahl allein ist keins.** Ohne
+      festen Endpunkt laeuft jeder Lauf bis "jetzt", und zwei Laeufe derselben
+      Tageszahl sind zwei verschiedene Marktstuecke (gemessen: gleiche Strategie,
+      gleiche Kerzenzahl, 3,25 h Versatz an beiden Enden, +117,04 gegen +187,47 -
+      dieselbe Regel auf anderen Kerzen, keine bessere Regel). Also beide Laeufe auf
+      denselben Endpunkt setzen (dann sind die Fenster ineinander enthalten) und die
+      **Zeitstempel** beider Laeufe gegenhalten, nicht die Tageszahl.
+   2. **Identische Zahlen heissen: ein Signal, N mal abgeschrieben.** Fuenf
+      Kandidaten eines 42-Dateien-Sweeps lieferten exakt gleiche Rundenzahl, Quote
+      und gleiches Ergebnis auf drei Nachkommastellen - dieselbe Regel unter
+      anderem Dateinamen. 42 Zeilen waren 31 Regeln, und die "besten" Kandidaten die
+      am staerksten geklonten. Nach jedem Sweep die Zahlen tupeln, Gruppen bilden
+      (`(pnl, runden, treffer)`) und je Gruppe EINEN Vertreter bewerten. Eine Quote
+      von 100 % bei 1-2 Runden traegt keine Information - die Rundenzahl daneben
+      ist die Aussage, und dieselben zwei Runden in zwei Fenstern bleiben dieselben
+      zwei.
+   3. **Das Auswahlkriterium ist das WACHSEN ueber die Fensterlaenge, nicht das
+      Vorzeichen in einem Fenster.** Eine Kante, die im langen Fenster schrumpft, war
+      ein Zeitraum, keine Regel (28 Tage +187 gegen 42 Tage -18,59 bei 29 Runden).
+      Nur eine Kante, die mit dem Fenster waechst, uebersteht beide (gemessen: +64
+      gegen +244 bei 71,4 % Treffer und dem niedrigsten Drawdown der Positivliste).
+      Also beide Fenster fahren und die **Differenz** ansehen - schrumpfend =
+      verworfen, wachsend = Kandidat. Und die Grenze mitnennen: 14 Runden sind kein
+      Beleg fuer Hebel, das Verdikt lautet dann "Kandidat", nicht "traegt".
+
+   **Reihenfolge der drei Schranken: Klone erst auszaehlen, dann die Rundenzahl
+   lesen, dann das Wachstum.** Wer mit der PnL-Spalte beginnt, landet bei der
+   Klongruppe. Nach dem Sweep die Zahlen tupeln und je Gruppe EINEN Vertreter
+   bewerten - dann erst ist die Rundenzahl dieses Vertreters aussagekraeftig.
+
+   **Die beiden Kandidaten mit dem hoechsten PnL sind meistens dieselbe Regel
+   unter anderem Dateinamen - und der Klon mit dem hoechsten PnL verliert im
+   langen Fenster am meisten.** Gemessen bei 42 Dateien: `rsi_30` fuehrte mit
+   +680,85 (2 Runden), dieselben 2 Runden aber -236,04 im langen Fenster. Ein
+   Vorzeichen auf 1-2 Runden ist ein Vorzeichen ueber 1-2 Runden.
 1. **Messen, nicht erinnern.** Vor jeder Aussage die vorhandene Auswertung
    fahren: `<spur>/auswertung.py`, sonst `auswertung_alle.py`. Immer getrennt
    ausweisen: nach Kosten UND vor Kosten, echte Handelsrunden getrennt von
@@ -121,6 +163,27 @@ an Spuren.
    werden koennen. Den Deckel auf den alten Wert setzen, den Test laufen lassen,
    die Fehlermeldung lesen, zuruecksetzen: ein Test, der nie rot wurde, belegt
    nichts.
+
+   **Der Test prueft die EIGENSCHAFT, nicht den Schalterstand.** Wird eine
+   Freigabe umgestellt (Papier/Live, `handel_erlaubt`, `freigabe.erfuellt`),
+   wird ein Test rot, der `assertTrue(w["handel_erlaubt"])` traegt - und das ist
+   kein Defekt, sondern der Schalter, der seine Arbeit tut. Ein solcher Test ist
+   eine ZWEITE Wahrheit ueber eine Zahl, die die Wache selbst traegt; bei jeder
+   Umstellung meldet er "geaendert", nicht "kaputt", und trainiert den Reflex,
+   rote Tests wegzuklicken. Umstellen heisst: **Form pruefen, nicht Stand**
+   (`assertIsInstance(w["handel_erlaubt"], bool)`), die inhaltlichen Regeln
+   daneben stehen lassen (Boerse, Hebel, Instrument, Grenzwerte) und im
+   Kommentar festhalten, WANN und WARUM umgestellt wurde - sonst liest die
+   naechste Sitzung den Kommentar als Hausregel und schliesst wieder auf.
+   Gegenprobe: Schalter testweise auf den anderen Wert setzen, der Test muss
+   gruen bleiben. Genau so ist belegt: 8/8 gruen in BEIDEN Schalterstellungen,
+   waehrend `assertTrue` bei der einen rot war.
+
+   **Der Applier fuer die wachen.json steht in `references/wachen-applier.md`** -
+   gezielter Feldersatz im Text, `json.loads` als Pruefung, `count == 1` je
+   Feldersatz, Komma an der Vorzeile, Erklaertext mitziehen. `json.dumps` als
+   Schreibweg normalisiert die ganze Datei und erzeugt einen Diff ueber hunderte
+   Zeilen fuer drei Felder.
 10. **Grenzen der Aenderung nennen — vorher pruefen, wohin sie reicht.** Ein
     reiner Eingangsfilter wirkt nur auf NEUE Positionen; offene laufen unter
     ihren gebuchten Stops aus. **Eine Ausstiegsgeometrie erreicht aber auch
@@ -141,7 +204,9 @@ an Spuren.
 ## Ausstiegsgeometrie: erst nachrechnen, dann ein zweites Buch
 
 **Reihenfolge.** Zuerst der Backtest - Rezept und Werkzeugfallen stehen im Skill
-`handel-spur-studie` unter `references/backtest-fundament.md`. Er beantwortet
+`handel-spur-studie` unter `references/backtest-fundament.md` (dort liegen auch
+`historie_binance.py`, `replay.py`, `optimieren.py` und der Zuschnitt fuer Spuren
+ohne Kerzenreihe). Er beantwortet
 Stop-Hoehe, Ziel-Vielfaches
 und Trailing ueber Monate bis Jahre in Minuten bis Stunden, mit Walk-Forward und
 ungesehenem Prueffenster. Das Schattenbuch ist danach fuer das zustaendig, was
@@ -369,8 +434,48 @@ Ein Optimierungsauftrag ist fertig, wenn (a) die Messung mit Stichprobenzahlen
 vorliegt, (b) jede vorgeschlagene Regel beide Haelften und die Gegenprobe
 ueberlebt hat oder ausdruecklich „nicht entschieden" lautet, (c) die
 Spezifikation freigegeben und committet ist, (d) die Aenderung eine Sicherung
-und einen sauberen Diff hat (`git diff --numstat`, gepusht), und (e) der
+und einen sauberen Diff hat (`git diff --numstat`, gepusht), und (e) die
 naechste echte Dauerlauf-Zyklus die Wirkung zeigt.
+
+## Pin auf einen Signalgeber: die Wette ist die Quelle, nicht der Schalter
+
+Eine Spur, die die POSITION eines fremden Laufs spiegelt (z.B. `omnitrade_futures`
+ueber `status/<datei>.json`), hat zwei Stellschrauben: welchen Lauf sie spiegelt
+(`statusdatei`) und ob sie ordert (`handel_erlaubt` / `freigabe.erfuellt`).
+Der Pin ist eine **Produktentscheidung und gehoert gemessen**, nicht gewaehlt -
+er wird nur dann umgestellt, wenn der Sweep eine bessere Quelle NAMTlich
+begründet. Fuenf Schritte, jeder mit Beleg:
+
+1. **Lauf starten, Quelle pruefen.** Ohne laufenden Lauf liefert die Quelle kein
+   Signal und die Spur sammelt null Runden - das sieht wie ein Fehler der Spur
+   aus und ist einer der Quelle (gemessen 04.10.: Pin zeigte ins Leere UND alle
+   Statusdateien standen auf `stopped`; ein Fix an der Naht allein liefert weiter
+   null Runden). Beide Ursachen getrennt beheben und die Reihenfolge benennen:
+   Naht zuerst, dann laufender Lauf.
+2. **Die Kette belegen, nicht nur den Prozess.** `quelle()` liefert ein TUPEL
+   `(daten, kurse, fehler)` - nicht das `daten`-Dict. `signal(daten[inst], w)`
+   bekommt die INNERE Map. Wer `daten.get('symbol')` sucht, rechnet nie und
+   sieht gesund aus.
+3. **`--vorschau` mit `MAXHIRN_ROUTINE=1`.** Nur so meldet die Sperrzeile, was der
+   Dauerlauf wirklich sieht. Die Zeile `'<spur> (live) ok'` im Log ist der MODUS
+   DES DAUERLAUFS, kein Orderbeleg.
+4. **Vor dem Umstellen den Sweep fahren** (siehe Kandidatensweep oben) und im
+   `_statusdatei_vermerk` festhalten, welche Zahlen den Pin gestuetzt und welche
+   ihn widerlegt haben. Der Vermerk ist das Argument, warum jemand in einem Jahr
+   nicht zurueckstellt.
+5. **Mit dem Pin auch die Groessengrenze pruefen.** Ein Wachen-Feld kann der
+   NOMINALwert fuer genau eine Boersen-Einheit sein und dabei groesser sein als
+   das gesamte Kontoguthaben (`max_pro_trade_usd: 90000` = genau 1 Kontrakt
+   PF_XBTUSD, waehrend 69,88 USD frei sind). Das ist kein Fehler, aber es heisst:
+   die Wache sagt dem Code „du darfst 90.000 einsetzen", und das Guthaben-Tor
+   greift erst beim Orderaufbau. Als Vermerk festhalten, BEVOR live geschaltet
+   wird - nicht danach.
+
+**Papier bleibt die Voreinstellung, auch wenn die Kante belegt ist.** Ein
+Backtest ist eine Messung ueber historische Kerzen; ein Live-Weg braucht zusaetzlich
+eigene Runden gegen dieselbe Quelle (T-347) und Guthaben (T-291). Beide fehlen ->
+die Spur bleibt Papier, und das ist ein Befund, kein Widerstand.
 
 Regelkatalog, Werkzeugaufruf und Paritaetsprobe: `references/filter-studie.md`.
 Kostenschaetzung gegen echte Tiefe messen: `references/kosten-slippage.md`.
+Wachen-Datei aendern ohne Fremdtext und Ganzdatei-Diff: `references/wachen-applier.md`.

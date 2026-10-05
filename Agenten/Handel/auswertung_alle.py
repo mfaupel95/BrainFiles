@@ -221,16 +221,85 @@ def kraken_buch_waehrung(z=None):
     return "EUR"
 
 
+def scanner_buch_quote(z=None):
+    """Die Quote, in der das Scanner-Buch steht - fuer die ANZEIGE.
+
+    T-311: das OKX-Konto (EEA) fuehrt kein USDT. Gemessen am 05.10.2026:
+    302,39 USDC frei, 0,00 USDT, 0,0003 EURC. Das Buch handelt USDC-Paare
+    (Scanner seit 02.10.2026, `universum.quotes`), und die Positionen tragen
+    seitdem ihr Instrument in dieser Form ("ETH-USDC"). Eine Anzeige "USD"
+    war eine BEHAUPTUNG: sie behauptete einen Kontostand in einer Waehrung,
+    die auf diesem Konto nicht existiert - dieselbe Klasse wie der
+    Kraken-BTC-Kurs aus der OKX-Tabelle am 23.09.2026.
+
+    Die Regel steht hier und NUR hier, wie bei `kraken_buch_waehrung()`:
+    Tagesbericht, Handelszentrale, Strategiekennzahlen und der
+    Guthabenabgleich lesen dieselbe Funktion, sonst laufen vier Anzeigen
+    auseinander.
+
+    GRENZE, die man kennen muss (T-311): das JOURNAL mischt zwei Buecher.
+    277 Zeilen tragen USDT-Paare (bis 01.10.2026, dem Tag vor der Umstellung),
+    80 USDC-Paare danach. Beide sind 1:1 zum Dollar, aber nur die USDC-Zeilen
+    sind Guthaben dieses Kontos. Diese Funktion sagt die WAHRHEIT UEBER HEUTE
+    (das gebundene Geld) - sie behauptet NICHT, dass die Historie in USDC
+    gebucht wurde. Die Umrechnung der Historie ist offen (T-311 bleibt
+    teilweise offen) und waere eine Buchwanderung, keine Anzeigekorrektur.
+    """
+    if z is None:
+        z = _lies_zustand("scanner")
+    for p in (z or {}).get("positionen") or []:
+        inst = str(p.get("inst") or "")
+        if "-" in inst:
+            return inst.rsplit("-", 1)[-1].upper()
+    # Keine Position, kein Instrument: die Quote der WACHEN ist die naechste
+    # belegbare Quelle, und ohne sie waere jede Antwort geraten.
+    return _scanner_wachen_quote()
+
+
+def _lies_zustand(spur):
+    """Der Zustand dieser Spur in der Risikostufe DIESER Auswertung.
+
+    Derselbe Weg wie `_zustand_pfad()` - dieselbe Stufe, dieselbe Datei. Eine
+    eigene Lesefunktion waere eine zweite Wahrheit: mit STUFE 'mittel' laesst
+    sie die .mittel-Datei lesen und der Tagesbericht spricht ueber die Basis.
+    Fehlt die Datei, ist das ein leeres Buch, nicht ein Fehler - deshalb `{}`
+    statt einer Exception, und der Aufrufer faellt auf die Wachen zurueck.
+    """
+    try:
+        with open(_zustand_pfad(spur), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _scanner_wachen_quote():
+    """`universum.quotes` aus der Scanner-Wache - die Handelswaehrung."""
+    ordner, datei = _ort("scanner", "wachen.json")
+    try:
+        with open(HIER / ordner / datei, encoding="utf-8") as f:
+            w = json.load(f)
+        quotes = (w.get("universum") or {}).get("quotes") or []
+        if quotes:
+            return str(quotes[0]).upper()
+    except (OSError, ValueError):
+        pass
+    return "USDC"       # laeferweise USDC (02.10.2026): Guthaben UND Markt
+
+
 def einheit_fuer(spur, z=None):
     """Die Waehrung, in der die Zahlen dieser Spur stehen.
 
-    Fuer kraken wird sie aus dem BUCH abgeleitet, nicht aus der Tabelle: steht
-    das Buch einmal in USDC, sind die Betraege richtig und ihre Einheit waere
-    in der Tabelle falsch - genau die Klasse Anzeigefehler, die am 23.09.2026
-    bei mosaic einen BTC-Kurs aus der falschen Boerse zeigte.
+    Fuer kraken und scanner wird sie aus dem BUCH abgeleitet, nicht aus der
+    Tabelle: steht das Buch einmal in USDC, sind die Betraege richtig und ihre
+    Einheit waere in der Tabelle falsch - genau die Klasse Anzeigefehler, die
+    am 23.09.2026 bei mosaic einen BTC-Kurs aus der falschen Boerse zeigte
+    und die am 05.10.2026 beim Guthabenabgleich 0,00 USDT statt 302,39 USDC
+    auswies (T-311).
     """
     if spur == "kraken":
         return kraken_buch_waehrung(z)
+    if spur == "scanner":
+        return scanner_buch_quote(z)
     return EINHEIT.get(spur, "USD")
 
 

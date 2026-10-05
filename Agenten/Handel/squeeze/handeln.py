@@ -213,7 +213,20 @@ def atr_abs(k, idx, n=14):
     return summ / n
 
 
-def signal(k, idx):
+# Indikatorschwellen (T-097, 05.10.2026). Sie lagen bis hierher als
+# Konstanten im Aufruf von squeeze_momentum() - damit konnte der Optimierer
+# sie nicht anfassen, jeder Kandidat waere derselbe Lauf gewesen. Die Zahl
+# im Default ist exakt der Wert, der vorher fest verdrahtet war: wer den
+# Schluessel nicht in der wachen.json aendert, bekommt exakt das alte
+# Verhalten (GEMESSEN ueber den Replay, siehe _indikator_vermerk in
+# squeeze/wachen.json).
+SQ_LAENGE = 20
+SQ_BB_MULT = 2.0
+SQ_KC_MULT = 1.5
+ATR_N = 14
+
+
+def signal(k, idx, w=None):
     """Squeeze-Signal an Kerze idx. Gibt 'long', 'short' oder None zurueck."""
     if idx < 1:
         return None
@@ -221,7 +234,13 @@ def signal(k, idx):
         import ti_indikatoren as ti
     except ImportError:
         return None
-    momentum, squeeze_an, _richtung = ti.squeeze_momentum(k)
+    w = w or {}
+    momentum, squeeze_an, _richtung = ti.squeeze_momentum(
+        k,
+        laenge=int(w.get("squeeze_laenge", SQ_LAENGE)),
+        bb_mult=float(w.get("squeeze_bb_mult", SQ_BB_MULT)),
+        kc_mult=float(w.get("squeeze_kc_mult", SQ_KC_MULT)),
+    )
     # Am Ende: Squeeze-Release pruefen
     if (squeeze_an[idx - 1] is True and squeeze_an[idx] is False
             and momentum[idx] is not None and momentum[idx - 1] is not None):
@@ -265,12 +284,12 @@ def pruefe_einstieg(inst, k, z, w, faktor):
         return
 
     idx = len(k) - 1
-    sig = signal(k, idx)
+    sig = signal(k, idx, w)
     if not sig:
         return
 
     einstieg = k[idx][4]  # Schluss als Einstieg (Paper)
-    atr = atr_abs(k, idx, 14)
+    atr = atr_abs(k, idx, int(w.get("atr_n", ATR_N)))
     if not atr or atr <= 0:
         return
 

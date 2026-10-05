@@ -77,6 +77,39 @@
   `scripts/zeilenenden-zuruecksetzen.py <pfad>`; wenn neue Zeilen keine
   HEAD-Vorlage haben, normalisiert `scripts/zeilenenden-auf-head-format.py` die
   GANZE Datei auf die Endung aus `git show HEAD:<pfad>`.
+- **Die Einrueckungstiefe ist ein Dateieigenschaft, keine Hauskonvention.**
+  Profil-Configs setzen Top-Level-Schluessel auf Spalte 0 und ihre Skalarfelder
+  mit ZWEI Leerzeichen darunter (`delegation:` / `  provider: nous`), waehrend
+  die Hauptkonfiguration Schluessel mit zwei und Felder mit vier Leerzeichen
+  fuehrt. Ein Ersatzzblock aus dem einen Haus im anderen sieht richtig aus und
+  parst nicht: YAML bricht mit `expected <block end>` ab, und weil die
+  Gegenprobe erst NACH dem Schreiben greift, ist der Schaden schon auf der
+  Platte - der Schluessel ist dann ein String statt eines Blocks, und alle
+  nachfolgenden Felder werden verschluckt. Deshalb **zwei Regeln**:
+  (a) die Tiefe vor dem Lauf an EINER Datei messen (`head -20`, Einrueckung der
+  Kinder zaehlen), sie als Parameter durch den Block-Detektor geben und nicht
+  als Konstante setzen; (b) den Ersatzzblock **allein stehend** parsen, bevor
+  irgendeine Datei angefasst wird - `yaml.safe_load("\\n".join(block + zu_behalten))`
+  und die erwarteten Felder asserten. Rollback ist byteweise aus den
+  `.bak-JJJJMMTT` (alle zurueckspielen), und der Beleg dafuer ist
+  `git status --porcelain -- <pfade>` **leer** - nicht die Tatsache, dass der
+  Assertion-Fehler kam.
+- **Ein Trockenlauf, der "keine Aenderung" meldet, obwohl Dutzende erwartet
+  sind, ist ein Fehlbefund des Suchers, keine Auskunft ueber die Datei.** Die
+  Ursache ist fast immer das abschliessende `\r`: `text.split("\\n")` laesst es
+  an JEDER Zeile stehen, und `line.startswith("  delegation:")` trifft dann
+  null mal, ohne Fehler zu werfen. Nach dem Split also jede Zeile auf ein
+  abschliessendes `\\r` pruefen, oder von Anfang an ruest-schnell ueber
+  `splitlines()` gehen. Ein leerer Trockenlauf bei erwartetem Befund ist das
+  Signal, die Erkennung zu pruefen, nicht die Absicht, "nichts zu tun".
+- **`HERMES_HOME` auf ein Profil zu setzen bricht die Profil-Werkzeuge.** Die
+  Profil-Wurzel ist am **Hermes-Root** verankert (`hermes_cli/profiles.py::
+  _get_profiles_root` -> `get_default_hermes_root()`, das aus `HERMES_HOME` den
+  Root bildet), nicht am jeweils gesetzten Home. Mit `HERMES_HOME=<root>
+  /profiles/<name>` meldet `hermes -p <name> ...` "Profile does not exist" und
+  richtet vorher noch eine Dependency-Installation im Profil aus. Fuer
+  profilbezogene Abfragen immer die Wurzel-Form `-p <name>` nehmen und
+  `HERMES_HOME` unveraendert lassen.
 - **Ein Bot auf `terminal.backend: docker` stirbt mit einer irrefuehrenden
   Meldung.** Ist der Docker-Daemon langsam, laeuft der 5-Sekunden-Probe
   (`docker version`) in `TimeoutExpired`, der Lauf bricht ab und der Client sagt

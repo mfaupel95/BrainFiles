@@ -72,6 +72,17 @@ PAARE = [
     "TIA-USDT", "PEPE-USDT", "ETC-USDT", "XLM-USDT", "ALGO-USDT",
 ]
 
+import os as _os
+import sys as _sys
+_HANDEL = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "Handel")
+if _HANDEL not in _sys.path:
+    _sys.path.append(_HANDEL)
+import okx_takt  # noqa: E402
+# Haus-Bremse gegen OKX-Drosselung (Agenten/Handel/okx_takt.py): sie ist
+# prozessuebergreifend, damit Wache, Zentrale und Dauerlauf-Stufen sich nicht
+# gegenseitig die IP-Zuteilung leeren (gemessen 05.10.2026: 6 Threads ->
+# 93x 50011, nacheinander 120 Abrufe -> 0 Fehler).
+
 BASEN = ("https://eea.okx.com", "https://www.okx.com")
 LAENGE = 200                                  # EMA-Laenge
 FENSTER = 600                                 # Kerzen je Messung (fest, s. Kopf)
@@ -94,6 +105,7 @@ def _seite(inst, basis, after=None):
            % (basis, inst, SEITE))
     if after:
         url += "&after=%s" % after            # aelter als dieser Zeitstempel
+    okx_takt.reserviere()
     with urllib.request.urlopen(_anfrage(url), timeout=20) as a:
         daten = json.loads(a.read().decode("utf-8"))
     if daten.get("code") != "0":
