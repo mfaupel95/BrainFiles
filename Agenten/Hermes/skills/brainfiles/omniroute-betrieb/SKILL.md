@@ -178,6 +178,30 @@ antwortet dort 401.
   ist** — das ist der gewollte Schutz der laufenden Instanz, kein Fehler.
   Niemals umgehen, auch nicht auf Ansage „starte das Skript“: erst pruefen, ob
   schon einer laeuft, und den Abbruch selbst als Befund melden.
+- **Autostart im Startup-Ordner wird durch UMBENENNEN NICHT deaktiviert.** Windows
+  fuehrt bei der Anmeldung **jede** Datei im
+  `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` aus. Eine Datei
+  `OmniRoute Server.lnk.disabled-20260909` ist damit kein deaktivierter Eintrag,
+  sondern ein ausgefuehrter Eintrag mit unbekannter Endung — Windows oeffnet sie
+  mit dem Standardprogramm, im Haus also mit **Notepad**. Der Router startet so
+  nicht, aber bei jeder Anmeldung poppt ein Notepad-Fenster auf
+  (Beleg 05.10.2026: `Notepad.exe "...Startup\OmniRoute Server.lnk.disabled-20260909"`,
+  Parent explorer.exe, 03:35 Uhr, ein Fenster mit genau diesem Titel).
+  Richtig deaktivieren: **in einen Unterordner verschieben** (hier
+  `.disabled-20260918`), nicht umbenennen. Umbenennen gilt nur fuer `HKCU\...\Run`
+  - dort ist der Wert ein Registry-Eintrag mit eigenem Namen. Auch der
+  StartupApproved-Schluessel `HKCU\...\Explorer\StartupApproved\StartupFolder`
+  bezieht sich auf den **Namen** und hilft bei der VBS/umbenannten Form nicht.
+  Der Zustand ist damit immer dreifach zu pruefen: Startup-ORDNER (inklusive
+  Unterordnern), StartupApproved, HKCU/HKLM\Run — und die Frage lautet nie
+  "ist die Datei da", sondern "wird sie von Windows ausgefuehrt".
+- **Die Quell-Produktion laeuft ueber die Aufgabe, nicht ueber den Startup-Ordner.**
+  `MaxHirn-OmniRoute` (Logon-Trigger, `Agenten/Routinen/omniroute-start.ps1`)
+  ist der einzige gueltige Startweg; der Listener auf 20128 gehoert dann
+  `node scripts/dev/run-next.mjs start` aus `Werkstatt/OmniRoute`. Ein
+  gestarteter globaler `omniroute serve --tray` (Prozesskommandozeile
+  `...node_modules\omniroute\bin\omniroute.mjs serve`) waere die FALSCHE
+  Variante - beide teilen sich `~/.omniroute/storage.sqlite`.
 - **Den Router nie ueber eine Pipe starten.** `Agenten/Routinen/omniroute-start.ps1`
   darf das Startskript nicht mit `& ... | Add-Content` aufrufen: das Startskript
   startet einen Dauerprozess, der diese Pipe offen haelt - der Aufrufer kehrt nie
