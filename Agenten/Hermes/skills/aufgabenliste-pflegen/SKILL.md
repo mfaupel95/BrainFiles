@@ -494,15 +494,21 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   Blockzahl, die niemand nachvollziehen konnte. Symptom ist eine ZAHL, die nicht
   stimmt; die Ursache ist Struktur. Nach jedem Umbau deshalb zaehlen und die
   Zaun-Zeilen einzeln ansehen, bevor Zahlen diskutiert werden.
-- **Der erste Treffer eines Abschnittsnamens ist nicht die Ueberschrift.**
-  `## Erledigt` kommt in dieser Datei ZWEIMAL vor: einmal als echte Ueberschrift,
-  einmal als Wort im Regeltext weiter oben. Ein Einfuege-Skript, das seine
-  offene Liste mit `text.split("## Erledigt")[0]` bildet, haelt damit den
-  REGELTEXT fuer die Liste, findet 0 offene Eintraege und laesst seine eigene
-  Gegenprobe scheitern (oder, schlimmer, sie geht durch und hat nichts
-  geprueft). Abschnittsgrenzen ueber die Zeilen suchen, die es wirklich gibt:
+- **Der erste Treffer eines Abschnittsnamens ist nicht die Ueberschrift — und
+  derselbe Abschnittsname kann DREIMAL vorkommen.** `## Erledigt` steht zweimal
+  (echte Ueberschrift plus eine Erwaehnung im Regeltext weiter oben);
+  `## Offen` kann ebenso zweimal vorkommen, und zwar als **Vorlage** ganz vorn
+  UND als echte Liste weiter unten. Ein Einfuege-Skript, das seine offene Liste
+  mit `text.split("## Erledigt")[0]` bildet, haelt damit den REGELTEXT fuer die
+  Liste, findet 0 offene Eintraege und laesst seine eigene Gegenprobe scheitern
+  (oder, schlimmer, sie geht durch und hat nichts geprueft). Ein Skript, das
+  `text.find("## Offen")` nimmt, landet in der VORLAGE: der Eintrag wird
+  geschrieben und niemand sieht ihn, weil die Liste unveraendert bleibt.
+  Abschnittsgrenzen ueber die Zeilen suchen, die es wirklich gibt:
   `text.find("\n## Offen")` fuer den Anfang, `text.rfind("\n## Erledigt")` fuer
-  das Ende.
+  das Ende — und **alle** Vorkommen zaehlen (`text.count(...)`), dann das
+  RICHTige nehmen: die Ueberschrift, unter der Eintraege stehen, nicht die
+  frueheste. Die Wahl ist damit begruendbar statt geraten.
   **Und die REIHENFOLGE der Abschnitte ist nicht stabil.** Eine parallele
   Sitzung kann `## Erledigt` UEBER `## Offen` ziehen (gemessen: Erledigt bei
   Position 508, Offen bei 3109). Ein Schnitt `text[offen:erledigt]` mit
