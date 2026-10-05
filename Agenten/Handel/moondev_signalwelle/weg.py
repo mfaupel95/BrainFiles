@@ -113,8 +113,23 @@ def boersenpaar(inst):
 
     Reihenfolge USDC vor USDT vor EUR: USDC ist die Quote, in der das
     Konto liegt (0,00 USDT auf dem EEA-Konto, gemessen 02.10.2026).
+
+    05.10.2026: `inst` kann ein PAAR sein, nicht nur ein Kurzzeichen. Der
+    signal-executor ruft zuerst `spur_buch.venue_inst()` und danach diesen
+    Weg - das liefert fuer "ADA" die Form "ADA-USDC". Diese Funktion haengte
+    die Quote noch einmal an und suchte "ADA-USDC-USDC", fand nichts und
+    meldete "ADA-USDC hat an der OKX keinen Spotmarkt". Das war eine
+    ERFUNDENE Tatsache: gemessen am 05.10.2026 fuehrt die OKX 1143
+    Spotpaare, darunter ADA-USDC. Genau diese Meldung stand 36 Stunden im
+    Merkfilei des Executors, waehrend sie der Grund war, warum die Spur
+    nicht handelt.
+
+    Ein bereits vollstaendiges Paar wird deshalb zuerst GEPRUEFT und nur
+    notfalls ergaenzt.
     """
     ma = _markt_geprueft()
+    if inst in ma:                       # schon ein Paar: "ADA-USDC"
+        return inst
     for q in _QUOTEN:
         kandidat = "%s-%s" % (inst, q)
         if kandidat in ma:
