@@ -122,7 +122,6 @@ Strg+C im Terminal, oder `taskkill /IM omnitrade-cli.exe /F`.
 - **Messlatte ist Buy-and-Hold**, nicht null. Auf Tageskerzen (BTC, feste Menge 0,1, Gebuehr 0,1 %, Slippage 5 bp) schlagen nur `adx_macd` (9958 gegen 5953) und `ema_cross_50_200` (10106) die volle Reihe; Mean-Reversion (Bollinger, Stochastik) verliert auf ungesehenen Daten.
 - **Walk-forward je Jahr, BTC 1d (PnL-Differenz je Jahr):** `adx_macd` ist in allen 10 Jahren positiv (Minimum +50), verliert aber in starken Bullenjahren gegen Buy-and-Hold (2017, 2020, 2023, 2024) und gewinnt in Baeren-/Seitwaertsjahren (2018, 2022, 2025, 2026). `ema_cross_50_200` schwankt stark (2021 -971, 2024 +5124). Grobe Rechnung (Differenz kumulierter Laeufe), keine Neuoptimierung je Fenster.
 - **MoonDev-Strategien:** die Zahlen dort sind Modellprosa, nachgemessen verlieren sie gegen Buy-and-Hold (siehe `Wiki/Werkzeuge/MoonDev-GUI-und-RBI.md`); nichts uebernommen.
-<<<<<<< HEAD
 
 ## Pine-Strategien aus Wiki/handel (30.09.2026)
 
@@ -146,5 +145,3 @@ Sechs TradingView-Skripte (`MaxHirn/Wiki/handel/*.pine`: SMA 20/50, EMA 12/26, M
 3. Eigener OKX-Live-Key, nur Handel, **keine Abhebung**, IP-Whitelist; Umgebungsvariablen `OKX_LIVE_API_KEY/_SECRET/_PASSPHRASE`, EU-Konto `OKX_REGION=eea`. Nie in Chat oder Datei.
 4. Limits: `RiskGuard::mainnet()` (omnitrade-risk/src/limits.rs) pruefen, Startkapital klein (z. B. 50-100 USD), ein Symbol, eine Strategie; Kill-Switch `omnitrade-cli kill` vorher testen.
 5. Code-Gate bewusst oeffnen (eigene Aenderung + Test), erst dann `--network mainnet`.
-=======
->>>>>>> claude/trading-stack-setup-40ef0d
