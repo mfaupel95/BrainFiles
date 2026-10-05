@@ -148,6 +148,35 @@ verschieben**, mit Datum. Nicht löschen —
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-355 — Omniquant: `signal_quelle` ist ein toter Schalter, `maerkte` steht noch auf USDT**
+      Kontext: Der Auftrag "dann auf kraken anbinden" (05.10.2026) hat drei
+      getrennte Baustellen. Schritt 1 ist erledigt (Commit 24208fb2): die
+      Basis-Abtelung loest BTC auf `PF_XBTUSD` und CT auf `PF_CTSIUSD` auf,
+      beide am 05.10. gegen /instruments gemessen, XMSTR und MAGIC bleiben
+      laut Papier. Damit ist die Umstellung der Signalquelle keine Sackgasse
+      mehr - aber sie ist noch nicht gemacht, und zwei Widersprueche
+      blockieren sie:
+        * `wachen.json` traegt `signal_quelle:
+          prognose_berichte/neuester.json`, waehrend `prognose_fassung: weit`
+          gesetzt ist und `handeln.bericht_pfad()` den WEITEN Bericht liest.
+          GEMESSEN 05.10.: kein Stueck Code liest `signal_quelle` - der
+          Schalter ist tot. Wäre er lebendig, läge die Spur seit dem 24.09.
+          auf dem falschen Bericht.
+        * `prognose.weit.json` und `prognose.json` tragen `maerkte:
+          ["USDT", "USDC"]`. Auf USDC allein schrumpft der Kandidatenbestand
+          von 49 auf 6 Paare (gemessen 05.10. über
+          `okx.alle_paare(min_volumen_usd=3 Mio)`), weil BTC und die meisten
+          anderen nur USDT-Paare haben. Nach Schritt 1 ist BTC wieder
+          handelbar - als `PF_XBTUSD` auf Futures, nicht auf OKX-Spot.
+      Naechster Schritt: entscheiden, ob `signal_quelle` tot bleibt oder die
+      Wache bereinigt wird (Toter Schalter = eine zweite, falsche Wahrheit
+      in jeder Auswertung), und dann `maerkte` je Fassung setzen - mit dem
+      gemessenen Kandidatenbestand als Vermerk in beiden Berichtsdateien.
+      Getrennt bleiben: die Auswertung nennt fuer omniquant fest "USD", das
+      ist die Währung der ORDER-Börse und richtig so.
+      Angelegt 05.10.2026 · Betrifft: Agenten/Handel/omniquant/wachen.json,
+      Agenten/Handel/omniquant/prognose.json, prognose.weit.json
+
 - [ ] **T-354 — Zwei Positionen ohne `modus`: Buch-Geist wie am 21.09.**
       Kontext: Bei der Pruefung von `moondev_signalwelle` und
       `moondev_marktlage` (Auftrag Max 05.10.2026) traegt GENIUS (signalwelle)
