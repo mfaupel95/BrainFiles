@@ -174,7 +174,36 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       gemessenen Kandidatenbestand als Vermerk in beiden Berichtsdateien.
       Getrennt bleiben: die Auswertung nennt fuer omniquant fest "USD", das
       ist die Währung der ORDER-Börse und richtig so.
-      Angelegt 05.10.2026 · Betrifft: Agenten/Handel/omniquant/wachen.json,
+      **ERLEDIGT 05.10.2026 (die maerkte-Frage):** der Quote-Filter ist
+      GELOEST und WIEDER ZURUECKGENOMMEN, mit Protokoll in beiden
+      `prognose*.json` unter `_maerkte` (Commit 11e977f4). Gemessen am 05.10.
+      ueber die echte OKX-Tickerliste: ohne Filter 62 Paare ueber 3 Mio USD,
+      mit USDT+USDC 50 - aber alle 12 Differenzen sind Fiat-Paare (TRY, BRL,
+      EUR) und scheitern am C/R-Tor (0,02 bis 0,62); ohne Fiat bleiben exakt
+      50. Der Filter kostete keinen Kandidaten. Zwei eigene Messfehler waren
+      die Ursache der Fehldeutung: `bewertung.bewertung` gibt es nicht (es
+      heisst `bewerten`), und das Feld heisst `rsi14`, nicht `rsi` - der
+      Fehlgriff lieferte `None` fuer alle Kandidaten und sah wie ein
+      Fiat-Problem aus. `werte` bleibt ungesetzt: bei 50 Kandidaten gibt es
+      nichts zu beschneiden. Bleibt offen: `signal_quelle` in wachen.json ist
+      weiter ein TOTER Schalter (kein Code liest ihn, waehrend
+      `prognose_fassung: weit` den echten Weg bestimmt) - ein toter Schalter
+      ist eine zweite, falsche Wahrheit und sollte bereinigt werden.
+      NEU DARAUS (05.10.): der Lauf liefert in der WEITEN Fassung 2
+      LONG-Treffer (NEAR-USDC C/R 1,24, NEAR-USDT C/R 1,21), die strenge
+      0. Beide Treffer sind am Zielmarkt handelbar (`PF_NEARUSD`, gegen
+      /instruments geprueft), werden aber vom Tor `live_pf_ableitung`
+      abgewiesen. Das ist der freigegebene, gepruefte Weg - aber es heisst:
+      die Spur hat Signal und keinen Weg, und NEAR waere der erste echte
+      Order-Kandidat seit dem 01.10. Die 0 Treffer der strengen Fassung
+      liegen am `mindest_cr` (1,5), weil der Markt ueberall nah am
+      60-Tage-Hoch steht - Marktlage, keine Konfiguration.
+      Naechster Schritt: entscheiden, ob `live_pf_ableitung` fuer NEAR
+      freigegeben wird (es ist derselbe Pfad wie HBAR/ONDO am 01.10., und
+      der Markt fuehrt PF_NEARUSD), und ob `signal_quelle` aus wachen.json
+      entfernt wird. Beides ist eine Freigabe-Entscheidung, keine Codefrage.
+      Angelegt 05.10.2026 · Zuletzt 05.10.2026 · Betrifft:
+      Agenten/Handel/prognose.json, prognose.weit.json, omniquant/wachen.json
       Agenten/Handel/omniquant/prognose.json, prognose.weit.json
 
 - [ ] **T-354 — Zwei Positionen ohne `modus`: Buch-Geist wie am 21.09.**
