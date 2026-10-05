@@ -352,8 +352,75 @@ def stop_setzen(inst, kontrakte, stop_preis):
 
 def offene_positionen(inst=None, fuer_ausstieg=True):
     """Was die BOERSE fuehrt. Umgeht das Einstiegs-Gate - Abgleich und
-    Rueckdrehung duerfen nie an einem Ausstieg-Gate scheitern (T-306)."""
+    Rueckdrehung duerfen nie an einem Ausstiegs-Gate scheitern (T-306)."""
     return _kf().offene_positionen(paar_fuer(inst, fuer_ausstieg) if inst else None)
+
+
+def offene_auftraege(inst=None, fuer_ausstieg=True):
+    """Offene Orders der BOERSE (Endpoint `/openorders`).
+
+    GEMESSEN 05.10.2026, 1:20 Uhr: der Schutz-Stop der ersten echten
+    NEAR-Position war an der Boerse vorhanden - `PF_NEARUSD sell 61
+    @ 4.2856, reduceOnly=true` - aber ueber `/editorder` NICHT lesbar.
+    `/editorder` ist der SPOT-Endpunkt und antwortet in jeder Variante
+    (ohne Parameter, mit `orderStatus`, mit `symbol`, als GET mit Query
+    und als POST mit Koerper) mit `requiredArgumentMissing`. Der
+    Futures-Dienst nennt den Weg `/openorders`, und
+    `kraken_futures.offene_orders()` kannte ihn die ganze Zeit - es
+    fehlte nur die Durchreiche an dieser Spur.
+
+    Deshalb steht der Unterschied hier, damit ihn niemand zum dritten
+    Mal sucht: **`/openorders`, nicht `/editorder`**.
+
+    Rueckgabe: die rohen Order-Dicts (`symbol`, `side`, `orderType`,
+    `unfilledSize`/`size`, `stopPrice`, `reduceOnly`, `order_id`).
+    """
+    return _kf().offene_orders(paar_fuer(inst, fuer_ausstieg) if inst else None)
+
+
+def schutzstop_vorhanden(inst, kontrakte=None, fuer_ausstieg=True):
+    """Deckt die offene Position eines Symbols ein SCHUTZ-Stop? (bool)
+
+    Ein Long braucht einen `sell`, ein Short einen `buy`, und es muss
+    `reduceOnly` sein - eine Order, die eroeffnen kann, schuetzt nicht.
+    Zusaetzlich zaehlt die MENGE: T-323 belegte, dass eine Position mit
+    145 Kontrakten und einem Stop ueber 126 Kontrakte an der Boerse
+    19 Kontrakte ungeschuetzt laesst, ohne dass irgendein Abruf das
+    anzeigt. Deshalb wird hier die MENGE verglichen und nicht nur
+    "irgendein Treffer" gezaehlt.
+
+    `kontrakte=None` vergleicht nur Seite und reduceOnly - das ist die
+    schwache Form und sie wird im Bericht als solche benannt.
+    """
+    symbol = paar_fuer(inst, fuer_ausstieg)
+    try:
+        pos = _kf().offene_positionen(symbol)
+    except Exception:                                         # noqa: BLE001
+        return False
+    seite_long = True
+    for p in (pos or []):
+        if str(p.get("side", "")).lower() == "short":
+            seite_long = False
+    gewuenschte_seite = "sell" if seite_long else "buy"
+    gedeckt = 0.0
+    try:
+        orders = _kf().offene_orders(symbol)
+    except Exception:                                         # noqa: BLE001
+        return False
+    for o in orders or []:
+        if str(o.get("side", "")).lower() != gewuenschte_seite:
+            continue
+        if o.get("reduceOnly") not in (True, "true", "True"):
+            continue
+        typ = str(o.get("orderType", "")).lower()
+        # Als Schutz zaehlt ein Stop oder ein TP mit Stoppreis. Ein
+        # reines Limit ohne Stoppreis schuetzt nicht.
+        if typ not in ("stop", "stp", "take_profit") and not o.get("stopPrice"):
+            continue
+        gedeckt += float(o.get("unfilledSize") or o.get("size") or 0)
+    if kontrakte is None:
+        return gedeckt > 0
+    return gedeckt + 1e-9 >= float(kontrakte)
 
 
 def gefuellte_menge(order_id):

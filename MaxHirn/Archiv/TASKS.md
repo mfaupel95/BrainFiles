@@ -279,6 +279,53 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       und entscheiden, (3) danach die Platz-Frage neu messen und ueber den
       NEAR-Einstieg entscheiden. Ohne (1) ist jeder Einstieg blockiert,
       unabhaengig von der Freigabe.
+      **ERLEDIGT 05.10.2026, auftrag Max 'buch bereinigen'.** Alle 9
+      Positionen waren GEISTER - 0 offene Positionen an Kraken Futures,
+      9x gemessen ueber openpositions je Symbol. Auch HBAR (die einzige
+      mit `modus: live` und Einsatz 50) stand nie an der Boerse. Sie
+      stammen alle aus `papier`-Einstiegen vom 28.09.-03.10.; am 01.10.
+      wurde `z["modus"]` auf `live` geschaltet, und die Positionen sind
+      mitgegangen. Diese Spur hat - anders als scanner, xperp, swap,
+      mosaic - keine `bueche_papier_altlasten_aus()`, sie kann ihre
+      Altlasten also nicht selbst ausbuchen.
+      Neutral ausgetragen mit `omniquant/buch_bereinigen.py`: 9 Zeilen mit
+      `grund=buchbereinigung` (der Grund, den `stoerungen.BUCHHALTUNG`
+      erkennt, damit die Zeile NICHT als Handelsrunde zaehlt), je 50 USD
+      Einsatz = 450 USD, gemessen neutral (wert_usd == einsatz_usd je
+      Zeile). Sicherungen `zustand.json.bak-20261005` und
+      `handelsjournal.csv.bak-20261005`. `verluste_usd` unveraendert
+      (15.6168) - es gab keinen Verkauf.
+      Zwei eigene Fehler, die der Trockenlauf verhindert hat: (1) das Feld
+      heisst `einstieg`, nicht `preis`, und der Betrag `nominal`, nicht
+      `einsatz_usd` - die erste Fassung haette 50 statt 450 USD gebucht;
+      (2) die eigene Gegenprobe meldete "Bilanz unveraendert: NEIN
+      (-450)", weil sie `Runden-Bestand` vorher mit demselben Wert
+      nachher verglich. Die Hausrechnung ist die richtige.
+      **Drei Minuten spaeter, 02:51:04 UTC: der erste echte NEAR-Kauf.**
+      `live eroeffnen NEAR-USDC @4.9556`, nominal 302.29, 61 Kontrakte,
+      Stop 4.2856, Ziel 5.592. Belege unabhaengig: offene Position bei
+      Kraken Futures = 1, freie Margin 88.21 -> 57.71 USD (30.50
+      gebunden = 10 % von 305 Nennwert, Marktplan EEA). Die Bereinigung
+      hat den Platz freigemacht, danach hat die Spur gehandelt. Damit ist
+      beantwortet, warum die 2 NEAR-Treffer seit dem 24.09. nicht
+      gehandelt haben: sie waren orderbar, sie scheiterten am belegten
+      Platz.
+      **Der Schutz-Stop ist GEFUNDEN, nicht offen (mein Fehler von eben).**
+      Ich hatte `/editorder` geraten und daraus eine offene Luecke
+      gemacht. Richtig ist `/openorders` - `/editorder` ist der
+      SPOT-Endpunkt und antwortet in allen vier Varianten mit
+      `requiredArgumentMissing`; `kraken_futures.offene_orders()` kannte
+      den Weg die ganze Zeit, es fehlte nur die Durchreiche an der Spur.
+      GEMESSEN an der Boerse: `PF_NEARUSD stop sell 61 @ 4.2856
+      reduceOnly=true` - der Stop deckt alle 61 Kontrakte. Neu in
+      `kraken_perp`: `offene_auftraege()` und `schutzstop_vorhanden(inst,
+      kontrakte)`, der die MENGE mitprueft (T-323: 145 Kontrakte, Stop
+      ueber 126, 19 ungeschuetzt - ein Treffer allein sagt nichts).
+      Werkzeug: `Agenten/Hermes/scripts/omniquant-stopdeckung.py`.
+      Naechster Schritt: NEAR laeuft. Zu beobachten ist der Ausstieg
+      (Stop 4.2856 / Ziel 5.592) und die Frage, ob die Spur nach dem
+      Ziel erneut einsteigt - `max_je_basiswert: 1` und der
+      Merkliste-Tor (Eintrag am selben Tag sperrt) begrenzen das.
 
 - [ ] **T-354 — Zwei Positionen ohne `modus`: Buch-Geist wie am 21.09.**
       Kontext: Bei der Pruefung von `moondev_signalwelle` und
