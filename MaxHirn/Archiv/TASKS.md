@@ -205,6 +205,40 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 05.10.2026 · Zuletzt 05.10.2026 · Betrifft:
       Agenten/Handel/prognose.json, prognose.weit.json, omniquant/wachen.json
       Agenten/Handel/omniquant/prognose.json, prognose.weit.json
+      **BEFUND 05.10.2026, auftrag Max 'NEAR freigeben' - die Freigabe
+      stand schon, der Blocker ist ein anderer.** `live_pf_ableitung` traegt
+      seit dem 01.10.2026 `true`; beide NEAR-Namen loesen gegen die echte
+      Kraken-Futures-Marktliste (204 tradeable Maerkte) auf `PF_NEARUSD` auf.
+      Es war nichts freizugeben. Warum trotzdem kein Einstieg - der echte
+      `--vorschau`-Lauf im ROUTINE-Modus sagt es in einer Zeile:
+      `2 Treffer; 2 gefiltert`, `Live waere gesperrt durch: nichts`.
+      * NEAR-USDT ist als GEIST im Buch (Position aus einem
+        `papier`-EINSTIEG vom 03.10. 16:43). `handeln.py` Zeile 314
+        filtert jeden Kandidaten, dessen `(inst, seite)` bereits offen ist -
+        deshalb der Treffer "filtert".
+      * NEAR-USDC zeigt auf dieselbe Basis. `max_je_basiswert: 1`, und die
+        Basis NEAR ist mit diesem einen Geist belegt.
+      **Der eigentliche Befund: das Buch fuehrt 9 Positionen im Modus
+      `live`, und AN DER BOERSE IST NULL davon** (gemessen 05.10. ueber
+      openpositions je Symbol: 9x "0 offene"). 8 davon ohne `modus`-Feld
+      und ohne `einsatz_usd`. Sie stammen alle aus `papier`-Einstiegen vom
+      28.09.-03.10.; `z["modus"]` wurde am 01.10. auf `live` geschaltet,
+      die Positionen sind mitgegangen. Diese Spur hat - anders als scanner,
+      xperp, swap, mosaic - KEINE `bueche_papier_altlasten_aus()` (kein
+      Treffer in handeln.py, live_perp.py, kraken_perp.py; auch
+      `Handel/spur_buch.py` hat sie nicht, dort ist es je Spur).
+      Deshalb kann sie ihre Altlasten nicht ausbuchen. Folge: `Offener
+      Bestand: 9 Positionen, 683.28 von 500 USD Einsatz` - der Deckel ist
+      rechnerisch gerissen, und die Positionen lassen sich nicht schliessen,
+      weil kein Stop und kein Kurs-Pfad dazugehoert.
+      Naechster Schritt: Buch bereinigen, BEVOR ueber NEAR entschieden wird.
+      Reihenfolge ist nicht frei: (1) die 8 Papier-Geiste neutral ausbuchen
+      (Werkzeug nach dem Muster `spiegel/buecher_aufloesen.py`, Wert =
+      Einsatz, damit die Bilanz neutral bleibt), (2) HBAR - die einzige
+      Position mit `modus: live` und Einsatz 50 - gegen die Boerse pruefen
+      und entscheiden, (3) danach die Platz-Frage neu messen und ueber den
+      NEAR-Einstieg entscheiden. Ohne (1) ist jeder Einstieg blockiert,
+      unabhaengig von der Freigabe.
 
 - [ ] **T-354 — Zwei Positionen ohne `modus`: Buch-Geist wie am 21.09.**
       Kontext: Bei der Pruefung von `moondev_signalwelle` und
