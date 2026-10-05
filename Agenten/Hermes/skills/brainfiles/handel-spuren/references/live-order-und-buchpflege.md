@@ -328,6 +328,21 @@ sagten. Dieselbe Blindstelle hatte T-278 gestreift (ein Trailing-Stop ohne
 - **Nachgesetzter Schutz ist KEIN Handel:** Vermerk in den ZUSTAND, keine
   Journalzeile. Eine `anpassen`- oder `schliessen`-Zeile erzeugt eine Runde,
   die nie stattfand.
+- **Die Deckung gehoert in JEDEN Live-Zyklus, nicht an die Eroeffnung.** Am
+  05.10.2026 hatte eine Spur an Kraken Futures einen Live-Zweig mit gesetztem
+  Schutz-Stop - und trotzdem fehlte der zweite Weg: `live_perp.stopdeckung_pruefen()`
+  laeuft jetzt VOR der Ausstiegsentscheidung ueber alle Positionen mit
+  `modus=live`. Ein Stop kann nach dem Kauf wegfallen (Storno, zu kleine Menge,
+  eine nie ausgefuellte Order), ohne dass das Buch etwas davon erhaelt. Muster:
+  `omniquant/live_perp.py`, `tests/test_stopdeckung_live.py`.
+- **Ein gesetzter Stop ist kein Beweis - er wird NACHKONTROLLIERT.** Nach dem
+  Nachsatz liest die Funktion die Deckung ein zweites Mal mit der Kontraktzahl.
+  Ein Nachsatz ohne Nachkontrolle meldet Erfolg, auch wenn die Boerse nur die
+  Haelfte nimmt (T-323).
+- **Ein Abruf-Fehler fasst NICHTS an.** Faellt die Deckungsabfrage aus, wird
+  nichts gesetzt und nichts gebucht, sondern eine Journalzeile `aktion=fehler`
+  geschrieben: ein Netzfehler darf keinen Stop doppelt setzen und keine
+  Position loeschen.
 - **Testform:** Filter entfernen -> rot; Preissperre entfernen -> rot. Der
   Gegenbeweis gehoert in den Aufbau, sonst prueft die Suite nur, dass der Code
   laeuft. Attrappen-Regel: die Auftrags-Attrappe muss ein **dict** sein, weil der

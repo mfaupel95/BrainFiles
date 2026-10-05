@@ -170,6 +170,13 @@ Ausloeser → Referenz:
   auf/ueber dem Kurs, Stop auf/unter `liqPx`). Werkzeug
   `xperp/stopdeckung.py` (Vorschau Standard, `--anwenden --stop <preis>` ohne
   Preisschalter stellt NICHTS), Referenz Abschnitt 5d derselben Datei.
+  **Und die Deckung wird in JEDEM Live-Zyklus gemessen, nicht nur beim Kauf:**
+  `live_perp.stopdeckung_pruefen()` fragt die Boerse ueber `/openorders` mit der
+  Kontraktzahl, setzt einen fehlenden Stop mit der vollen Menge nach,
+  kontrolliert den Nachsatz ein zweites Mal und fasst bei einem Abruf-Fehler
+  nichts an. Eine gesetzte Order ist kein Beweis - ein Weg, den man falsch
+  waehlt, liefert `requiredArgumentMissing` und wird als „nicht lesbar"
+  gemeldet, obwohl der Stop an der Boerse liegt.
 - **„weniger handeln", „Ein- und Ausstiege sollen indikatorindiziert und nicht
   zeitabhaengig laufen", „die Signale sollen ausloesen, nicht die Uhr",
   „die Spur handelt dieselbe Sache dutzende Male am Tag"**: ein Einstieg nur

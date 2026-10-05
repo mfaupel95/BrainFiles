@@ -1,4 +1,37 @@
 ## Offen
+- [ ] **T-362 — Stop-Deckung: nur omniquant misst sie im Live-Zyklus, die drei anderen Live-Spuren nicht**
+      Kontext: Nach dem Befund vom 05.10.2026 (Schutz-Stop "nicht lesbar" →
+      falsch geraten, `/openorders` statt `/editorder`) ist die Deckung in
+      `omniquant/live_perp.py` festgenagelt: `stopdeckung_pruefen()` laeuft
+      VOR jeder Ausstiegsentscheidung, fragt mit der Kontraktzahl, setzt
+      fehlenden Schutz mit der vollen Menge nach, kontrolliert den Nachsatz
+      ein zweites Mal und fasst bei einem Abruf-Fehler nichts an (Commit
+      f3caf4a5, 10 neue Tests, Gegenproben belegt).
+      Vier Live-Spuren haben einen echten Orderweg. Nur eine davon prueft die
+      Deckung von sich aus:
+        * `scanner` — gut, `boersenstops.pruefe(..., anwenden=True)` im
+          Live-Zyklus (handeln.py:1239). Die DECKUNG mit Mengenvergleich
+          fehlt dort aber weiterhin (Abschnitt 5d der Referenz).
+        * `omniquant` — jetzt erledigt.
+        * `xperp` — MELDET die Luecke nur: handeln.py:773 schreibt "fehlt -
+          Order setzt nur der Live-Lauf (Werkzeug stopdeckung.py)". Das
+          Werkzeug wird von Hand gefahren, nicht vom Zyklus.
+        * `mosaic` — `boersenabgleich` laeuft im Zyklus, prueft aber
+          Existenz, nicht Menge.
+        * `kraken` / `nautilus_kraken` / `omnitrade_futures` — Kraken Spot
+          bzw. Futures: `kraken/waisen_stops.py` und
+          `nautilus_kraken` haben Stops am Markt, aber keinen
+          Mengenvergleich im Zyklus.
+      Naechster Schritt: entscheiden, ob `xperp/stopdeckung.py` (Vorschau
+      Standard, `--anwenden` ohne Preisschalter stellt NICHTS) in den
+      Live-Zyklus gehaengt wird. Das ist eine Frage des Geldes: die Spur
+      hatte am 26.09. vier Stops, die an der Boerse weggestorner wurden
+      (rund 385 USD), ohne dass das Buch es merkte. Ein Aufruf je Zyklus
+      kostet eine Boersenabfrage, sonst nichts.
+      Angelegt: 05.10.2026 · Zuletzt: 05.10.2026 · Betrifft:
+      Agenten/Handel/xperp/handeln.py, xperp/stopdeckung.py,
+      Agenten/Handel/mosaic/boersenabgleich.py,
+      Agenten/Handel/scanner/boersenstops.py
 - [ ] **T-361 — `daten/historie/` war um 04:23 leer - und war vorher schon unvollstaendig**
       Kontext: Beim Nachtlauf des Replay-Tests (05.10.2026) kam
       `HistorieFehlt` fuer BTC-USDC, ETH-USDC und SOL-USDC mit 0 Kerzen –
