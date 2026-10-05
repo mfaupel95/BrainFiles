@@ -483,7 +483,15 @@ function Get-Python {
     return $null
 }
 
+# Restbudget des Moduls in ganzen Sekunden fuer den naechsten externen Aufruf (min. 1); 0 = erschoepft.
+function Get-RestBudget([System.Diagnostics.Stopwatch]$Uhr) {
+    $rest = $ModulLimitSek - $Uhr.Elapsed.TotalSeconds
+    if ($rest -le 0) { return 0 }
+    return [int][math]::Max(1, [math]::Floor($rest))
+}
+
 function Pruefe-GitRegeln {
+    $uhr = [System.Diagnostics.Stopwatch]::StartNew()
     if (-not (Test-Path -LiteralPath (Join-Path $Wurzel '.git'))) {
         Add-Befund -Id 'GIT-KEIN-REPO' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Wurzel ist kein Git-Repository' `
             -Beleg "Test-Path negativ: $(Join-Path $Wurzel '.git')" -Status 'gesichert' -Vorschlag 'Nur zur Kenntnis (Test-Fixture oder Export)'
@@ -496,10 +504,17 @@ function Pruefe-GitRegeln {
         return
     }
     $git = $gc.Source
+    # Alle git-Aufrufe mit --no-optional-locks: status darf den Index weder auffrischen noch sperren (rein lesend).
 
     # Zweige gegen die Zweigregel
-    $r = Invoke-Extern -Datei $git -Argumente @('-C', $Wurzel, 'for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes') -TimeoutSek $ModulLimitSek
-    if ($r.TimedOut -or $r.ExitCode -ne 0) {
+    $t = Get-RestBudget $uhr
+    if ($t -eq 0) {
+        Add-Befund -Id 'GIT-ZWEIGE-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
+            -Beleg "Modul-Limit $ModulLimitSek s verbraucht; for-each-ref nicht gestartet" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+    }
+    else { $r = Invoke-Extern -Datei $git -Argumente @('--no-optional-locks', '-C', $Wurzel, 'for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes') -TimeoutSek $t }
+    if ($t -eq 0) { }
+    elseif ($r.TimedOut -or $r.ExitCode -ne 0) {
         $e1 = (($r.Err -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
         Add-Befund -Id 'GIT-ZWEIGE-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Zweige nicht lesbar' `
             -Beleg "TimedOut=$($r.TimedOut) Exit=$($r.ExitCode) $e1" -Status 'gesichert' -Vorschlag 'git for-each-ref von Hand ausfuehren'
@@ -515,8 +530,14 @@ function Pruefe-GitRegeln {
     }
 
     # ruhende, uncommittete Dateien
-    $s = Invoke-Extern -Datei $git -Argumente @('-c', 'core.quotepath=false', '-C', $Wurzel, 'status', '--porcelain') -TimeoutSek $ModulLimitSek
-    if ($s.TimedOut -or $s.ExitCode -ne 0) {
+    $t = Get-RestBudget $uhr
+    if ($t -eq 0) {
+        Add-Befund -Id 'GIT-STATUS-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
+            -Beleg "Modul-Limit $ModulLimitSek s verbraucht; git status nicht gestartet" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+    }
+    else { $s = Invoke-Extern -Datei $git -Argumente @('--no-optional-locks', '-c', 'core.quotepath=false', '-C', $Wurzel, 'status', '--porcelain') -TimeoutSek $t }
+    if ($t -eq 0) { }
+    elseif ($s.TimedOut -or $s.ExitCode -ne 0) {
         Add-Befund -Id 'GIT-STATUS-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'git status nicht lesbar oder zu langsam' `
             -Beleg "TimedOut=$($s.TimedOut) Exit=$($s.ExitCode)" -Status 'gesichert' -Vorschlag 'git status von Hand ausfuehren; Index-Sperre oder sehr grosser Arbeitsbaum?'
     }
@@ -560,16 +581,27 @@ function Pruefe-GitRegeln {
             -Beleg 'Weder venv noch python/python3 im PATH gefunden' -Status 'gesichert' -Vorschlag 'Python bereitstellen'
         return
     }
+    $t = Get-RestBudget $uhr
+    if ($t -eq 0) {
+        Add-Befund -Id 'GIT-BESITZ-NICHT-PRUEFBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
+            -Beleg "Modul-Limit $ModulLimitSek s verbraucht; bereiche.py nicht gestartet" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+        return
+    }
     # stdin leer schliessen: bereiche.py liest sonst bei Nicht-TTY Pfade von stdin (blockiert/fremde Daten)
-    $b = Invoke-Extern -Datei $py -Argumente @($bpy, '--register') -TimeoutSek $ModulLimitSek -Arbeitsordner $Wurzel -StdinLeer
+    $b = Invoke-Extern -Datei $py -Argumente @($bpy, '--register') -TimeoutSek $t -Arbeitsordner $Wurzel -StdinLeer
     if ($b.TimedOut) {
         Add-Befund -Id 'GIT-BESITZ-NICHT-PRUEFBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Besitzpruefung im Zeitlimit nicht fertig' `
-            -Beleg "Abbruch nach $ModulLimitSek s" -Status 'gesichert' -Vorschlag 'bereiche.py --register von Hand ausfuehren'
+            -Beleg "Abbruch nach $t s" -Status 'gesichert' -Vorschlag 'bereiche.py --register von Hand ausfuehren'
     }
     elseif ($b.ExitCode -eq 1) {
-        $zl = @(($b.Out + "`n" + $b.Err) -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 5) -join ' / '
-        Add-Befund -Id 'GIT-BESITZ' -Modul 'git-regeln' -Schwere 'WARNUNG' -Titel 'Besitz-Verstoss gemeldet' -Beleg "bereiche.py --register Exit 1: $zl" `
-            -Status 'gesichert' -Vorschlag 'Als BEFUND melden (--aufrufer <bereich> --pfad <pfad>); nicht blockieren'
+        # --register ohne --aufrufer: Exit 1 heisst Register-Fehler (BEREICHE.json fehlt/ungueltig, Pfad fehlt, Doppeleintrag).
+        # ID GIT-BESITZ bleibt stabil; belegt werden die FEHLER-Zeilen.
+        $alle = @(($b.Out + "`n" + $b.Err) -split "`r?`n" | Where-Object { $_.Trim() })
+        $ab = -1
+        for ($i = 0; $i -lt $alle.Count; $i++) { if ($alle[$i] -match '^\s*FEHLER') { $ab = $i; break } }
+        if ($ab -ge 0) { $zl = @($alle | Select-Object -Skip $ab -First 6) } else { $zl = @($alle | Select-Object -First 5) }
+        Add-Befund -Id 'GIT-BESITZ' -Modul 'git-regeln' -Schwere 'WARNUNG' -Titel 'Bereichs-Register fehlerhaft (bereiche.py --register Exit 1)' `
+            -Beleg (($zl | ForEach-Object { $_.Trim() }) -join ' / ') -Status 'gesichert' -Vorschlag 'Agenten/BEREICHE.json pruefen'
     }
     elseif ($b.ExitCode -ne 0) {
         Add-Befund -Id 'GIT-BESITZ-NICHT-PRUEFBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Besitzpruefung lieferte unerwarteten Exit-Code' `

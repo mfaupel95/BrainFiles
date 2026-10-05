@@ -292,12 +292,20 @@ Pruefe 'ruhende Dateien (Leerzeichen, Umlaut, Umbenennung): WARNUNG' (($null -ne
 Pruefe 'umbenannte Datei wird unter neuem Namen gefunden' (($null -ne $ru) -and ($ru.beleg -match [regex]::Escape($umlaut)))
 Pruefe 'frische Datei zaehlt nicht als ruhend' (($null -ne $ru) -and ($ru.beleg -notmatch 'neu\.txt'))
 Pruefe 'ohne bereiche.py: UNKLAR' ((Schwere-Von $r 'GIT-BESITZ-NICHT-PRUEFBAR') -eq 'UNKLAR')
-if (Get-Command python -ErrorAction SilentlyContinue) {
-    Schreibe (Join-Path $fx 'Agenten/Werkzeuge/bereiche.py') "import sys`nprint('KONFLIKT: demo')`nsys.exit(1)`n"
+$pyc = @(Get-Command python, python3 -ErrorAction SilentlyContinue | Where-Object { $_.Source -notmatch 'WindowsApps' })
+if ($pyc.Count -gt 0) {
+    Schreibe (Join-Path $fx 'Agenten/Werkzeuge/bereiche.py') "import sys`nprint('Register: x')`nprint('')`nprint('FEHLER (1):')`nprint('  Pfad existiert nicht: Agenten/X')`nsys.exit(1)`n"
     $r = Lauf $fx @('git-regeln')
-    Pruefe 'Besitz-Konflikt (Exit 1): WARNUNG' ((Schwere-Von $r 'GIT-BESITZ') -eq 'WARNUNG')
+    $gb = $r | Where-Object { $_.id -eq 'GIT-BESITZ' }
+    Pruefe 'Register-Fehler (Exit 1): WARNUNG' (($null -ne $gb) -and ($gb.schwere -eq 'WARNUNG'))
+    Pruefe 'Register-Fehler: Titel und FEHLER-Zeilen im Beleg' (($null -ne $gb) -and ($gb.titel -match 'Bereichs-Register fehlerhaft') -and ($gb.beleg -match 'FEHLER') -and ($gb.beleg -match 'Agenten/X') -and ($gb.beleg -notmatch 'Register: x'))
+    Pruefe 'Register-Fehler: Vorschlag BEREICHE.json' (($null -ne $gb) -and ($gb.vorschlag -match 'BEREICHE\.json'))
 }
 else { Write-Host '  uebersprungen: Besitz-Test (kein python im PATH)' }
+$r = Lauf $fx @('git-regeln') @{ ModulLimitSek = 0 }
+Pruefe 'Zeitbudget erschoepft: kein git-Aufruf, UNKLAR' ((($r | Where-Object { $_.id -eq 'GIT-ZWEIGE-NICHT-LESBAR' }).titel -match 'Zeitbudget') -and (($r | Where-Object { $_.id -eq 'GIT-STATUS-NICHT-LESBAR' }).titel -match 'Zeitbudget') -and ((Schwere-Von $r 'GIT-STATUS-NICHT-LESBAR') -eq 'UNKLAR'))
+$gz = @(Get-Content -LiteralPath $Doktor | Where-Object { $_ -match '-Datei \$git ' })
+Pruefe 'alle git-Aufrufe mit --no-optional-locks zuerst' (($gz.Count -ge 2) -and (@($gz | Where-Object { $_ -notmatch "-Argumente @\('--no-optional-locks'," }).Count -eq 0)) "Zeilen=$($gz.Count)"
 
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
