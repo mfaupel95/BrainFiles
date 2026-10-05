@@ -49,9 +49,12 @@ KUERZEL = {
 }
 
 # Welcher Reiter im Takt aufgefrischt wird, haengt am Titel. Ueberwachen und
-# Backtests takten sich selbst (15 s bzw. 200 ms).
+# Backtests takten sich selbst (15 s bzw. 200 ms). Omniquant und Nautilus
+# lesen nur bei F5 neu - ohne Takt altert ihr Text, waehrend die Statusleiste
+# weiterlaeuft. Sie gehoeren in TAKT_SICHTBAR: nur der sichtbare Reiter taktet,
+# kein Netz im Hintergrund.
 TAKT_IMMER = {"Freigaben"}         # Titel "Freigaben (n)" und Blinken auch im Hintergrund
-TAKT_SICHTBAR = {"Markt"}
+TAKT_SICHTBAR = {"Markt", "Omniquant", "Nautilus"}
 
 
 class UeberwachenReiter(ttk.Frame):
