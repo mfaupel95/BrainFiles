@@ -319,6 +319,33 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
   Band war nie die Achse. Herleitung und vier Schranken (Trigger in R,
   nur schuetzende Richtung, nie ueber die Liquidationsmarke, Mindestabstand
   zum Kurs) in `references/trailing-stop-gehebelt.md`.
+- **Der Trailing-Stop muss die MENGEN-Deckung pruefen, nicht nur die
+  Kennung.** `references/trailing-stop-gehebelt.md` fordert in Abschnitt 5.1
+  als ERSTE Reihenfolge „Buch gegen Boerse, und zwar je MENGE - erst
+  zusammenfuehren, dann trailingen". Der Grund: eine Position, die an der
+  Boerse in MEHREREN Schutzauftraegen liegt (die Menge aufgeteilt, weil
+  nachtraeglich nachgesetzt wurde), ist nicht trailingbar - der engste
+  feuert zuerst, die anderen bleiben als Waisen zurueck.
+  **Ein Treffer genuegt nicht.** „Die Position hat einen `stop_id`" ist die
+  ZUSTANDSAussage; die Schutzfrage ist die MENGE. Messbar als
+  Deckungsgrad (gedeckte Kontrakte / Buchmenge), Bedingungen fuer „geschuetzt"
+  sind `reduceOnly` + Gegenrichtung + eine Ausloesung.
+  GEMESSEN 05.10.2026 an `trailing.py` (318 Zeilen, 19/19 Tests gruen): die
+  sechs anderen Regeln der Seite sind einzeln verdrahtet und einzeln getestet
+  (Trigger, Hochstand statt Kurs, Mindestabstand, Richtungszwang,
+  Liquidationsmarke) - aber `verdrahtung()` reicht fuenf Zahlen durch,
+  `menge` wird nur zum Bestellen benutzt, ein Deckungsgrad wird NICHT
+  geprueft, und kein Test fuehrt Mengen-Deckung. Auch in der Verdrahtung der
+  aufrufenden Spur (`xperp/handeln.py`, Funktion `_trailing_versuch`) steht
+  `stopdeckung` dreimal - **alle drei als Fehlertext, keines als Aufruf**.
+  Das ist kein Widerspruch zur Referenz, sondern ihre Reihenfolge:
+  Abschnitt 5 sagt „pruefe das, BEVOR du verdrahtest". Die Verdrahtung war
+  gebaut, die Vorpruefung fehlt.
+  Gegenprobe, die gehoert: eine Position mit GETEILTER Deckung muss
+  abgelehnt werden (Meldung: erst zusammenfuehren), dieselbe Position mit
+  voller Deckung darf durch. Ohne diese Gegenprobe ist ein Trailing-Code
+  gruen, der genau den Zustand erzeugt, den `xperp/stopdeckung.py` am
+  05.10.2026 mit 19 ungedeckten Kontrakten aufgedeckt hat.
 - **Nach einem Signaturumbruch JEDE Aufrufstelle pruefen, nicht die
   umgebaute.** Ein `return (wert, grund)` statt `return wert` macht jeden
   Aufrufer zum `TypeError`, und wenn der Aufrufer es abfaengt, tarnt das den
