@@ -1,9 +1,9 @@
 ## Offen
-- [ ] **T-361 — `daten/historie/` war um 04:23 leer: 348 von 406 Reihen weg**
+- [ ] **T-361 — `daten/historie/` war um 04:23 leer - und war vorher schon unvollstaendig**
       Kontext: Beim Nachtlauf des Replay-Tests (05.10.2026) kam
       `HistorieFehlt` fuer BTC-USDC, ETH-USDC und SOL-USDC mit 0 Kerzen –
       `daten/historie/` enthielt nur noch `backtest/`. Um 02:20 waren es
-      noch 406 Dateien mit je ~50.000 Kerzen. Weder die Routinen-Skripte
+      noch 54 Reihen im Stand-File mit je ~50.000 Kerzen. Weder die Routinen-Skripte
       noch ein Junction kommen als Ursache infrage; `daten/` ist kein
       Junction und der Ordner selbst wurde um 04:23:17 geaendert. Wer ihn
       geleert hat, ist NICHT ermittelt – das ist der offene Teil.
@@ -12,6 +12,12 @@
       ueber `historie_binance.py --auffuellen` neu geholt. Jetzt 57 Dateien,
       BTC/ETH/SOL-USDC je ~50.400 Kerzen. Replay-Fenster-, Historie- und
       Nichts-ausserhalb-Tests wieder gruen (15/15, 234 s).
+      KORREKTUR 05.10.2026, 05:11: die Zahl "348 von 406 fehlen" war falsch
+      gerechnet. 406 war die Zahl der DATEIEN (jede Reihe hat 1H/4H/1D), der
+      Stand nennt 54 REIHEN; geprueft gegen alle wachen.json der Spuren fehlt
+      jetzt NULL. Es waren keine 348 Reihen verloren, sondern nie alle geladen -
+      der Ordner war schon immer unvollstaendig. Die Wiederherstellung hat die
+      Luecke geschlossen, nicht wiederhergestellt.
       Naechster Schritt: 1) herausfinden, welcher Vorgang `daten/historie/`
       geleert hat – der Kandidat ist nicht das Haus, also Herkunft pruefen.
       2) Die Historie gehoert nicht in einen Ordner, den ein fremder
