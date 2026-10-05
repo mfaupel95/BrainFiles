@@ -47,6 +47,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Lektionen/Boersen-und-Schluessel.md](Lektionen/Boersen-und-Schluessel.md) | Zwei Werkzeuge auf einem Schluessel (Nonce-Einheit), zwei Namen fuer ein Programmpaar, eine Abweisung ohne Zeugen ist keine Messung |
 | [Lektionen/Memory-Verluste.md](Lektionen/Memory-Verluste.md) | Memory-Eintraege belegbar verloren/ersetzt: falscher `old_text` loescht fremde Eintraege, `replaced_entries` lesen, `memory-verlust.py`, Pending-Queue |
 | [Lektionen/Werkzeug-Fallen.md](Lektionen/Werkzeug-Fallen.md) | grep `{0,N}`-Quantor auf langer Zeile = katastrophales Backtracking (62,6 GB, 0xc000012d); jevgrep Exit 1 "stdin is not a tty" = MSYS-Rauschen, echter Grund ist der Anbieter (429/402) |
+| [Lektionen/Eigener-Testlauf.md](Lektionen/Eigener-Testlauf.md) | Zwei eigene PTY-Prozesse erzeugten das Bild eines haengenden Profils; Antwort war 14 s. `latency=` ist eine Messung, „haengt" eine Behauptung. Auth ist fast nie die Ursache |
 
 ### Betrieb
 
