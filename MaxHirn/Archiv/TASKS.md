@@ -232,7 +232,7 @@ auf live_adx_macd_BTCUSDC.json zeigen, dann zeigt der Stand den lebenden Lauf.
 Angelegt 05.10.2026 · Zuletzt 05.10.2026 · Betrifft: Agenten/Handel/omnitrade_bridge.py,
 omnitrade.cmd, Werkstatt/omnitrade/status/.
 
-- [ ] **T-349 — Aufweck-Rechte der Geraete am Rechner sind nie geprueft worden**
+- [ ] **T-357 — Aufweck-Rechte der Geraete am Rechner sind nie geprueft worden**
       Kontext: `powercfg -devicequery wake_armed` nennt auf diesem Rechner drei
       Maeuse (u. a. Logitech Unifying), fuenf Tastaturen, den Xbox Wireless
       Adapter und den Realtek USB-GbE-Controller. Beim Bildschirm-Standby sind
@@ -244,9 +244,10 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Naechster Schritt: Erst bei wiederkehrendem Verhalten eingrenzen - im
       Geraete-Manager je Geraet "Energieverwaltung > Geraet kann den Computer
       aktivieren" abwaehlen, eins nach dem anderen, dazwischen messen.
+      Vermerk 05.10.2026: umnummeriert von T-349 (Doppeltvergabe zweier Sitzungen).
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Energieoptionen, Geraete-Manager, Xbox Wireless Adapter
-- [ ] **T-350 — System-Standby steht im aktiven Plan auf "Nie" - Entscheidung von Max**
+- [ ] **T-358 — System-Standby steht im aktiven Plan auf "Nie" - Entscheidung von Max**
       Kontext: Der Bildschirm schaltet nach 180 s ab, der Rechner selbst schlaeft
       nie (SUB_SLEEP STANDBYIDLE Netzbetrieb = 0). Gemessen am 04.10.2026.
       Ruhezustand ist systemweit aus (Hypervisor/"ueberwachter Host"), S3 steht
@@ -254,9 +255,10 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       und Gateway anhalten - deshalb bewusst NICHT geaendert.
       Naechster Schritt: nur auf ausdrueckliche Anweisung setzen, z. B.
       `powercfg -change -standby-timeout-ac 30` (ACHTUNG: Minuten, nicht Sekunden).
+      Vermerk 05.10.2026: umnummeriert von T-350 (Doppeltvergabe zweier Sitzungen).
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Energieoptionen, Agenten/Handel/dauerlauf.py, Agenten/Bus
-- [ ] **T-351 — Dauergaeste im Autostart, die Eingaben/Verbindungen pollen**
+- [ ] **T-359 — Dauergaeste im Autostart, die Eingaben/Verbindungen pollen**
       Kontext: LogiOptions (zu Max' Logitech-Unifying-Maus), ROCCAT SWARM Monitor,
       cua-driver (Agenten-Cursor-Overlay, `AppData\Local\Programs\Cua`) und die
       PowerToys-Module laufen dauerhaft. In zwei Messungen am 04.10.2026 hat
@@ -266,6 +268,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Software-Verursacher ausweist.
       Naechster Schritt: nichts abschalten, solange das Verhalten nicht
       wiederkehrt; dann der Reihe nach beenden und je 5 Minuten messen.
+      Vermerk 05.10.2026: umnummeriert von T-351 (Doppeltvergabe zweier Sitzungen).
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: LogiOptions, ROCCAT SWARM, cua-driver, PowerToys
 - [ ] **T-346 — signal-executor laeuft seit 12 Laeufen rot: ModuleNotFoundError spur_buch**
