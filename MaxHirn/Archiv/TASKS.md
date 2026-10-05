@@ -217,6 +217,32 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Ursache ungeklaert**
+      Kontext: Die Windows-Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30,
+      Wrapper `Agenten/Routinen/ausserhaus-kopie.ps1`) war am 05.10. um 22:30
+      NICHT vorhanden, obwohl der Hermes-Cron `ausserhaus-aufgabe-sichern`
+      (195f6ee91ef0, taeglich 08:30) sie an DIESEM Morgen um 08:30:26 neu
+      angelegt hatte. Der Cron meldet das seit dem 30.09. JEDEN Tag
+      ("war nicht vorhanden und ist angelegt") - die Aufgabe ueberlebt also
+      keinen Tag. Belege: `Agenten/Hermes/cron/output/195f6ee91ef0/*.md`
+      (30.09., 01.10., 02.10., 05.10. je "nicht vorhanden und ist angelegt"),
+      `schtasks /query /tn MaxHirn-Ausserhaus-Kopie` = leer um 22:30.
+      NICHT die Ursache: kein Loescher im Haus - `Unregister-ScheduledTask`
+      steht nur in `fremdarbeit-einziehen-aufgabe.ps1` (und dort fuer die EIGENE
+      Aufgabe), `schtasks /Delete` nur in `hermes-agent/hermes_cli/
+      gateway_windows.py` (Hermes-eigene Tasks, nie MaxHirn-*). Das
+      TaskScheduler-Ereignisprotokoll ist AUS (`wevtutil gl ... = enabled:
+      false`), deshalb gibt es keine Spur. Folge: die Ausser-Haus-Kopie auf Q:
+      lief am 03.10. zum letzten Mal automatisch; am 05.10. von Hand
+      nachgezogen (`robocopy-Code 3`, 65.051 Dateien, 44,573 GB, "ENDE ok
+      nach 379 s").
+      Naechster Schritt: Protokoll einschalten
+      (`wevtutil sl Microsoft-Windows-TaskScheduler/Operational /e:true`),
+      dann ist beim naechsten Verschwinden der Loescher sichtbar; parallel
+      pruefen, ob `hermes update` oder ein Profil-Cleanup MaxHirn-* mitnimmt.
+      Angelegt: 2026-10-05 · Zuletzt: 2026-10-05
+      Betrifft: Agenten/Routinen/ausserhaus-kopie-aufgabe.ps1,
+      Agenten/Hermes/scripts/ausserhaus-aufgabe-sichern.py, Q:\MaxHirn-AusserHaus
 - [ ] **T-366 - mosaic-Trailing wartet auf einen Weg, der den Stop aendern kann**
   - Kontext: Trailing-Rechnung liegt in `Agenten/Handel/trailing.py` (19 Tests),
     xperp ist verdrahtet und scharf (`wachen.json trailing_aktiv: true`). Bei
