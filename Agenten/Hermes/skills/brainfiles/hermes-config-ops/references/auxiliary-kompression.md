@@ -112,7 +112,7 @@ Gemessen mit `get_model_context_length` (nicht aus dem Namen geraten):
 | Modell | Fenster |
 |---|---|
 | `deepseek/deepseek-v4-flash-0731` (nous) | 1.048.576 |
-| `stealth/space-bunny-alpha` (nous) | 1.000.000 |
+| `meituan/longcat-2.5-preview:free` (nous) | 1.000.000 |
 | `anthropic/claude-opus-5` (nous) | 1.000.000 |
 | `poolside/laguna-xs-2.1:free` (nous) | 262.144 |
 | `gemma-e4b-8k:latest` / `:cpu` (ollama-launch) | ueber `/api/show` messen, der Name traegt KEINE Fensterzahl |

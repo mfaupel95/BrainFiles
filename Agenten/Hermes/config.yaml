@@ -1,7 +1,8 @@
 model:
-  default: stealth/space-bunny-alpha
+  default: meituan/longcat-2.5-preview:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
+  api_mode: chat_completions
 providers:
   nous:
     models:
@@ -362,7 +363,6 @@ providers:
       sentence-transformers/all-mpnet-base-v2: {}
       sentence-transformers/multi-qa-mpnet-base-dot-v1: {}
       sentence-transformers/paraphrase-minilm-l6-v2: {}
-      stealth/space-bunny-alpha: {}
       stepfun/step-3.5-flash: {}
       stepfun/step-3.7-flash: {}
       stepfun/step-3.7-flash:free: {}
@@ -711,7 +711,7 @@ auxiliary:
     provider: nous
     model: 'qwen/qwen3-vl-235b-a22b-instruct'
   # Die folgenden Aufgaben sind Einzeiler. "auto" erbt das HAUPTmodell
-  # (space-bunny-alpha) und zahlt pro Session mit. Umgestellt auf
+  # (meituan/longcat-2.5-preview:free) und zahlt pro Session mit. Umgestellt auf
   # google/gemini-3.1-flash-lite (am 04.10.2026 am Nous-Endpoint gemessen: 1,4 s,
   # sauberer Inhalt). kanban_decomposer braucht echtes JSON-Graf und laeuft auf
   # inception/mercury-2.5 (1,7 s) - das ist der bestaetigte Triage-Schnellwert.
@@ -790,7 +790,7 @@ memory:
   nudge_interval: 10
   provider: ''
 delegation:
-  model: stealth/space-bunny-alpha
+  model: meituan/longcat-2.5-preview:free
   provider: nous
   # Ein gepinntes Kind erbt die Haupt-Fallback-Kette NICHT - ohne eigene Liste hat
   # ein Subagent keinen Rueckfall. Die alte Liste begann mit gemma-e4b-8k:cpu
@@ -836,11 +836,11 @@ moa:
           model: qwen/qwen3-30b-a3b
           enabled: true
       # Der Aggregator IST das handelnde Modell: er laeuft in jedem Werkzeugschritt
-      # und traegt fast die ganzen Kosten. Deshalb space-bunny-alpha (1.000.000) -
+      # und traegt fast die ganzen Kosten. Deshalb meituan/longcat-2.5-preview:free (1.000.000) -
       # nicht der guenstigste Berater.
       aggregator:
         provider: nous
-        model: stealth/space-bunny-alpha
+        model: meituan/longcat-2.5-preview:free
       degraded_reference_policy: loud
       fanout: user_turn
       enabled: true
@@ -881,7 +881,7 @@ moa:
           enabled: true
       aggregator:
         provider: nous
-        model: stealth/space-bunny-alpha
+        model: meituan/longcat-2.5-preview:free
       degraded_reference_policy: loud
       fanout: user_turn
     Vision:
@@ -904,12 +904,12 @@ moa:
           enabled: true
       aggregator:
         provider: nous
-        model: stealth/space-bunny-alpha
+        model: meituan/longcat-2.5-preview:free
       degraded_reference_policy: loud
       fanout: user_turn
   aggregator:
     provider: nous
-    model: stealth/space-bunny-alpha
+    model: meituan/longcat-2.5-preview:free
   degraded_reference_policy: loud
   enabled: true
   fanout: user_turn

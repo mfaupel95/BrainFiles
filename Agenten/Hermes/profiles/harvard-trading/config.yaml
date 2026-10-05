@@ -1,5 +1,5 @@
 model:
-  default: deepseek/deepseek-v4-flash-0731
+  default: meituan/longcat-2.5-preview:free
   provider: nous
   context_length: 600000
 providers:

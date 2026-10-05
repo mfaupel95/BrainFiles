@@ -1,5 +1,5 @@
 model:
-  default: poolside/laguna-xs-2.1:free
+  default: meituan/longcat-2.5-preview:free
   provider: nous
   api_mode: chat_completions
   base_url: https://inference-api.nousresearch.com/v1
@@ -37,7 +37,7 @@ fallback_providers:
   - provider: anthropic
     model: claude-sonnet-5
   - provider: nous
-    model: stealth/space-bunny-alpha
+    model: meituan/longcat-2.5-preview:free
 toolsets:
   - hermes-cli
 database:
