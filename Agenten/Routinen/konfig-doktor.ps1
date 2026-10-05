@@ -704,6 +704,104 @@ function Pruefe-Ballast {
     }
 }
 
+# ---------- Modul 6: laufzeit ----------
+# Rein lesend. plattenplatz-pruefen.ps1 -OhneOrdner liest nur (Get-PSDrive/CIM). Docker/WSL nur ohne -OhneExtern.
+function Pruefe-Laufzeit {
+    $uhr = [System.Diagnostics.Stopwatch]::StartNew()
+    if ($env:OS -ne 'Windows_NT') {
+        Add-Befund -Id 'LAUFZEIT-NICHT-WINDOWS' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'Laufzeitpruefung uebersprungen (kein Windows)' `
+            -Beleg 'Linux/Cloud-Checkout: Junctions, Laufwerke, Docker/WSL nicht vergleichbar' -Status 'gesichert' -Vorschlag 'Auf Max'' Rechner ausfuehren'
+        return
+    }
+    foreach ($n in 'Modelle', 'Werkstatt') {
+        $p = Join-Path $Wurzel $n
+        $item = Get-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
+        $link = 'kein Link'
+        if ($item -and $item.LinkType) { $link = "$($item.LinkType) -> $(@($item.Target) -join ',')" }
+        if (-not (Test-Path -LiteralPath $p)) {
+            Add-Befund -Id "LAUFZEIT-JUNCTION-$n" -Modul 'laufzeit' -Schwere 'KRITISCH' -Titel "$n/ fehlt oder das Junction-Ziel ist nicht erreichbar" `
+                -Beleg "Test-Path negativ fuer $p ($link)" -Status 'gesichert' -Vorschlag 'Laufwerk O: pruefen (angeschlossen?), danach Junction neu setzen - nach Freigabe'
+            continue
+        }
+        try { Get-ChildItem -LiteralPath $p -Force -ErrorAction Stop | Select-Object -First 1 | Out-Null }
+        catch {
+            Add-Befund -Id "LAUFZEIT-JUNCTION-$n" -Modul 'laufzeit' -Schwere 'KRITISCH' -Titel "$n/ ist nicht lesbar" `
+                -Beleg "Get-ChildItem scheitert fuer $p ($link)" -Status 'gesichert' -Vorschlag 'Berechtigungen und Laufwerk pruefen'
+        }
+    }
+    $pp = Join-Path $Wurzel 'Agenten/Routinen/plattenplatz-pruefen.ps1'
+    $t = Get-RestBudget $uhr
+    if (-not (Test-Path -LiteralPath $pp)) {
+        Add-Befund -Id 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'plattenplatz-pruefen.ps1 nicht vorhanden' `
+            -Beleg "Test-Path negativ: $pp" -Status 'gesichert' -Vorschlag 'Skript wiederherstellen (git)'
+    }
+    elseif ($t -eq 0) {
+        Add-Befund -Id 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
+            -Beleg "Modul-Limit $ModulLimitSek s verbraucht; plattenplatz-pruefen.ps1 nicht gestartet" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+    }
+    else {
+        $ps = (Get-Process -Id $PID).Path
+        $r = Invoke-Extern -Datei $ps -Argumente @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $pp, '-OhneOrdner') -TimeoutSek $t -StdinLeer
+        if ($r.TimedOut) {
+            Add-Befund -Id 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'plattenplatz-pruefen.ps1 antwortet nicht im Zeitlimit' `
+                -Beleg "Abbruch nach $t s" -Status 'gesichert' -Vorschlag 'Skript einzeln ausfuehren'
+        }
+        else {
+            $n = 0
+            foreach ($z in ($r.Out -split "`r?`n")) {
+                if ($z -notmatch '^\s*WARN\b') { continue }
+                $n++
+                $schwere = 'WARNUNG'
+                if ($z -match '(?i)commit') { $schwere = 'KRITISCH' }
+                Add-Befund -Id "LAUFZEIT-PLATZ-$n" -Modul 'laufzeit' -Schwere $schwere -Titel ('Platz/Commit: ' + $z.Trim()) `
+                    -Beleg "plattenplatz-pruefen.ps1 -OhneOrdner, Ausgabezeile: $($z.Trim())" -Status 'gesichert' `
+                    -Vorschlag 'Platz schaffen bzw. Commit-Reserve pruefen (Auslagerungsdatei, Docker/WSL-Speicher); Aufraeumen nur nach Freigabe'
+            }
+        }
+    }
+    if (-not $OhneExtern) {
+        $d = Get-Command docker -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($d) {
+            $t = [math]::Min(10, (Get-RestBudget $uhr))
+            if ($t -eq 0) {
+                Add-Befund -Id 'LAUFZEIT-DOCKER' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
+                    -Beleg "Modul-Limit $ModulLimitSek s verbraucht; docker info nicht gestartet" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+            }
+            else {
+                $r = Invoke-Extern -Datei $d.Source -Argumente @('info', '--format', '{{.ServerVersion}}') -TimeoutSek $t -StdinLeer
+                if ($r.TimedOut) {
+                    Add-Befund -Id 'LAUFZEIT-DOCKER' -Modul 'laufzeit' -Schwere 'WARNUNG' -Titel "Docker antwortet nicht binnen $t s" `
+                        -Beleg 'docker info: Zeitlimit; haengendes Docker startet MCP-Server im Kreis neu (Spawn-Sturm, siehe Wiki)' -Status 'gesichert' `
+                        -Vorschlag 'Docker Desktop neu starten ist Max'' Entscheidung; der Doktor startet nichts'
+                }
+                elseif ($r.ExitCode -ne 0) {
+                    Add-Befund -Id 'LAUFZEIT-DOCKER' -Modul 'laufzeit' -Schwere 'HINWEIS' -Titel 'Docker-Daemon laeuft nicht' `
+                        -Beleg "docker info Exit $($r.ExitCode)" -Status 'gesichert' -Vorschlag 'Nur relevant, wenn MCP_DOCKER gebraucht wird'
+                }
+            }
+        }
+        $w = Get-Command wsl.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($w) {
+            $t = [math]::Min(10, (Get-RestBudget $uhr))
+            if ($t -eq 0) {
+                Add-Befund -Id 'LAUFZEIT-WSL' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
+                    -Beleg "Modul-Limit $ModulLimitSek s verbraucht; wsl --status nicht gestartet" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+            }
+            else {
+                $r = Invoke-Extern -Datei $w.Source -Argumente @('--status') -TimeoutSek $t -StdinLeer
+                if ($r.TimedOut) {
+                    Add-Befund -Id 'LAUFZEIT-WSL' -Modul 'laufzeit' -Schwere 'WARNUNG' -Titel "WSL antwortet nicht binnen $t s" `
+                        -Beleg 'wsl --status: Zeitlimit' -Status 'gesichert' -Vorschlag 'Entscheidung ueber Neustart liegt bei Max'
+                }
+                elseif ($r.ExitCode -ne 0) {
+                    Add-Befund -Id 'LAUFZEIT-WSL' -Modul 'laufzeit' -Schwere 'HINWEIS' -Titel 'wsl --status meldet Fehler' `
+                        -Beleg "wsl --status Exit $($r.ExitCode)" -Status 'gesichert' -Vorschlag 'Nur relevant, wenn WSL gebraucht wird'
+                }
+            }
+        }
+    }
+}
+
 # === MODULE (neue Pruefe-*-Funktionen oberhalb dieser Zeile einfuegen) ===
 
 $ModulTabelle = [ordered]@{

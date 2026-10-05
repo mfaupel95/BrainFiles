@@ -367,6 +367,29 @@ $ak = $r | Where-Object { $_.id -eq 'BALLAST-ALTKOPIEN' }
 Pruefe 'mehr als 12 Altkopien: Beleg endet mit ...' (($null -ne $ak) -and ($ak.titel -match '^13 ') -and ($ak.beleg -match '; \.\.\.$') -and (@($ak.beleg -split '; ').Count -eq 13))
 Pruefe 'nur .bak: Altkopien gesichert' (($null -ne $ak) -and ($ak.status -eq 'gesichert'))
 
+Write-Host '--- Modul laufzeit ---'
+$fx = Neue-Wurzel
+Schreibe (Join-Path $fx 'Agenten/Routinen/plattenplatz-pruefen.ps1') ("param([switch]`$OhneOrdner)`nWrite-Output 'INFO alles gut'`nWrite-Output 'WARN Commit-Reserve 3 GB unter Schwelle'`nWrite-Output 'WARN Laufwerk G: nur 2 GB frei'`nexit 1`n")
+New-Item -ItemType Directory -Path (Join-Path $fx 'Werkstatt') | Out-Null
+$ziel = Neue-Wurzel
+New-Item -ItemType Junction -Path (Join-Path $fx 'Modelle') -Target $ziel | Out-Null
+$r = Lauf $fx @('laufzeit')
+Pruefe 'lebende Junction und normaler Ordner: kein Junction-Befund' (-not (Hat $r 'LAUFZEIT-JUNCTION-Modelle') -and -not (Hat $r 'LAUFZEIT-JUNCTION-Werkstatt'))
+$pl = @($r | Where-Object { $_.id -like 'LAUFZEIT-PLATZ-[0-9]*' })
+Pruefe 'Commit-Reserve unter Schwelle: KRITISCH' (@($pl | Where-Object { $_.schwere -eq 'KRITISCH' -and $_.beleg -match 'Commit' }).Count -eq 1)
+Pruefe 'Plattenplatz-Warnung: WARNUNG' (@($pl | Where-Object { $_.schwere -eq 'WARNUNG' -and $_.beleg -match 'Laufwerk G' }).Count -eq 1)
+Pruefe 'INFO-Zeilen werden nicht gemeldet' ($pl.Count -eq 2)
+Remove-Item -LiteralPath $ziel -Recurse -Force
+$r = Lauf $fx @('laufzeit')
+Pruefe 'tote Junction: KRITISCH' ((Hat $r 'LAUFZEIT-JUNCTION-Modelle') -and ((Schwere-Von $r 'LAUFZEIT-JUNCTION-Modelle') -eq 'KRITISCH'))
+[System.IO.Directory]::Delete((Join-Path $fx 'Modelle'))
+Remove-Item -LiteralPath (Join-Path $fx 'Werkstatt') -Force
+$r = Lauf $fx @('laufzeit')
+Pruefe 'fehlender Ordner: KRITISCH' ((Schwere-Von $r 'LAUFZEIT-JUNCTION-Werkstatt') -eq 'KRITISCH')
+Remove-Item -LiteralPath (Join-Path $fx 'Agenten/Routinen/plattenplatz-pruefen.ps1')
+$r = Lauf $fx @('laufzeit')
+Pruefe 'ohne plattenplatz-pruefen.ps1: UNKLAR' ((Schwere-Von $r 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR') -eq 'UNKLAR')
+
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 if ($script:Fehler -gt 0) { Write-Host "konfig-doktor FEHLGESCHLAGEN: $($script:Fehler) Pruefung(en)"; exit 1 }
