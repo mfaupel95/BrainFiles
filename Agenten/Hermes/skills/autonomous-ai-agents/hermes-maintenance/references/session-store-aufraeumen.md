@@ -100,8 +100,15 @@ nur die `page_count`. Bleibt sie gleich, hat der VACUUM nicht stattgefunden (Wri
 
 ## Fallen
 
-- **`--force` ist keine Loesung.** Der Wächter existiert, weil ein Rewrite unter aktivem
-  Schreiber in retired-WAL-Fehler für alle Agenten endet.
+- **`--force` ist keine Loesung — ausser fuer `prune` allein.** Der Wächter existiert, weil
+  ein Rewrite unter aktivem Schreiber in retired-WAL-Fehler für alle Agenten endet. Aber
+  `prune` loescht nur Zeilen in einer Transaktion und ueberspringt offene Sitzungen per
+  Turn-Lease (`exclude_active_write_guards=True`) — wenn man IN einer TUI/CLI-Sitzung sitzt
+  und die eigene Session nicht stoppen kann, ist `prune --force` der pragmatische Weg und
+  laeuft sauber (gemessen 05.10.2026: 240 Sessions, FTS danach konsistent). Das Risiko liegt
+  in `optimize`/VACUUM, das Exklusivzugriff braucht — das unter Last NICHT mit `--force`
+  fahren, sondern als eigenen Schritt, wenn die Writer weg sind, oder offen lassen (die
+  Freelist-Seiten werden wiederverwendet, die Datei schrumpft nur nicht).
 - **Nach dem Prune sofort optimieren.** Ohne VACUUM bleibt die Datei so gross wie vorher; wer
   nur die Zahl der Zeilen ansieht, meldet Erfolg ohne Wirkung.
 - **`sessions delete <id>` ist nicht von der Halter-Sperre betroffen** — fuer einen einzelnen

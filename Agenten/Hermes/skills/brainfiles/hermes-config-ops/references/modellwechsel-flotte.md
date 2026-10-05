@@ -61,6 +61,21 @@
   Text ist still kaputt). Nach jedem solchen Schreibvorgang die Steuerzeichen
   zaehlen: `[hex(ord(z)) for z in text if ord(z) < 32 and z not in "\r\n\t"]` muss
   leer sein.
+- **Beim Ersetzen eines Modellnamens ueberall: den KATALOG-Eintrag ZUERST entfernen,
+  sonst entsteht ein stilles Duplikat.** Ein Modell-Katalog (`providers.nous.models`)
+  fuehrt jede Modell-ID als `name: {}`. Ersetzt man den alten Namen per blanket-replace,
+  wird auch der Katalog-Eintrag umgeschrieben — und wenn das Zielmodell dort schon steht,
+  hat die Datei danach ZWEI Eintraege mit demselben Key. YAML gewinnt still den LETZTEN
+  Key, ein Duplikat faellt erst beim Lesen auf. Reihenfolge im Skript: Katalog-Eintrag
+  entfernen, DANN blanket-replace, DANN `yaml.safe_load` + `set(cfg) == vorher` gegenpruefen.
+- **Das Patch-Werkzeug kann eine Datei so zerschiessen, dass weiterpatchen sinnlos ist —
+  dann loeschen und frisch schreiben.** Bei einem mehrzeiligen Block-Ersatz verschob es die
+  Einrueckung (IndentationError) UND injizierte einen Tippfehler in den Ersatztext
+  (`Zn_alt` statt `ZIEL`), und `write_file` verweigerte danach das Ueberschreiben wegen
+  "partial view". Nach dem zweiten Fehlschlag nicht ein drittes Mal patchen: `rm` +
+  `write_file` mit dem vollstaendigen, korrekten Inhalt ist der Weg. Der Fuzzy-Match des
+  Patch-Werkzeugs wendet Tippfehler im old_string trotzdem an — bei Python-Code nach jedem
+  Patch `py_compile` laufen lassen, nicht nur auf den Diff schauen.
 - **`bot-modell-auf-nous.py --auch-lokale` greift auch lokale Provider.** Ohne den
   Schalter bleiben `llamacpp`/`docker`/`ollama` stehen (Grund: sie brauchen keine
   Anmeldung). Beim Umstellen MUSS das lokale `model.base_url` (z. B.

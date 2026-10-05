@@ -11,6 +11,7 @@
   "mindest_kerzen": 40,
   "ema_schnell": 10,
   "ema_langsam": 20,
+  "risiko_je_position_usd": 5.0,
   "stop_pct": 6.0,
   "_stop_vermerk": "6 % auf 1H-Kerzen. KEINE Datengrundlage - der Wert ist aus der ATR-Naehe gesetzt, nicht aus MAE gemessen. Erst wenn die Spur genug Runden hat, wird er aus deren MAE gesetzt; bis dahin ist jede Stop-Aussage ueber diese Spur unbelegt.",
   "ziel_r": 2.0,

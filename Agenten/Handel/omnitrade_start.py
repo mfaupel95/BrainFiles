@@ -105,7 +105,8 @@ def kommandozeilen():
             [ps, "-NoProfile", "-Command",
              "Get-CimInstance Win32_Process -Filter \"Name='omnitrade-cli.exe'\" "
              "| ForEach-Object { $_.CommandLine }"],
-            capture_output=True, timeout=60)
+            capture_output=True, timeout=60,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except Exception:
         return None
     return (aus.stdout or b"").decode("utf-8", "replace").splitlines()
