@@ -24,25 +24,38 @@ Kopf '1) Startup-Ordner (Nutzer) - jede Datei wird ausgefuehrt'
 
 $sc = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
 if (Test-Path -LiteralPath $sc) {
-  # -Recurse -Force: Unterordner sind zwar harmlos, ihre Inhalte sieht man
-  # flach sonst nicht - und genau dort landen verschobene Eintraege.
-  $eintraege = @(Get-ChildItem -LiteralPath $sc -Recurse -Force -ErrorAction SilentlyContinue)
-  if ($eintraege.Count -eq 0) {
-    '  (leer)'
-  }
-  foreach ($e in $eintraege) {
+  # WICHTIG: Ein Unterordner wird NICHT ausgefuehrt - sein Inhalt ist der
+  # sichere Ablageort fuer abgeschaltete Eintraege. Deshalb wird die Tiefe
+  # unterschieden: nur Dateien DIREKT im Startup-Ordner sind ein Befund.
+  # Ohne diese Unterscheidung meldet der Audit die korrekt abgelegten
+  # Dateien als gefaehrlich - der Audit darf sich nicht selbst widersprechen.
+  $ebene0 = @(Get-ChildItem -LiteralPath $sc -Force -ErrorAction SilentlyContinue)
+  if ($ebene0.Count -eq 0) { '  (leer)' }
+
+  foreach ($e in $ebene0) {
     if ($e.PSIsContainer) {
-      "  [Ordner  ] $($e.FullName)"
+      $drin = @(Get-ChildItem -LiteralPath $e.FullName -Force -ErrorAction SilentlyContinue)
+      if ($drin.Count -eq 0) {
+        "  [Ordner  ] $($e.Name)  (leer)"
+      } else {
+        "  [sicher  ] $($e.Name)\  <- Unterordner: $($drin.Count) Datei(en) hier abgelegt, wird NICHT ausgefuehrt"
+        foreach ($d in $drin) { "               - $($d.Name)" }
+      }
+      continue
+    }
+    $name = $e.Name
+    if ($name -eq 'desktop.ini') {
+      "  [egal    ] $name  (Systemdatei, fuehrt Windows nie aus)"
       continue
     }
     $ext = $e.Extension.ToLowerInvariant()
     $echt = @('.lnk', '.url', '.vbs', '.exe', '.bat', '.cmd', '.ps1', '.msc', '.scf')
     if ($echt -contains $ext) {
-      "  [startet ] $($e.Name)"
+      "  [startet ] $name"
     } else {
       # Unbekannte Endung: Windows oeffnet sie mit dem Standardprogramm
       # (im Haus: Notepad). Umbenennen hat sie nicht deaktiviert.
-      "  [!! Datei ] $($e.Name)  <- unbekannte Endung '$ext', wird OEFNEN statt starten"
+      "  [!! Datei ] $name  <- unbekannte Endung '$ext', wird OEFNEN statt starten"
     }
   }
 } else {

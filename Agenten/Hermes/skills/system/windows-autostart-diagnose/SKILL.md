@@ -81,9 +81,9 @@ Get-CimInstance Win32_Process -Filter "Name='Notepad.exe'" | Select-Object Proce
 1. **Die drei Beweisarten trennen, bevor man repariert.** Ein Fenster zur
    Anmeldung kann aus dem Startup-Ordner, aus `Run` oder aus einer geplanten
    Aufgabe kommen. Erst alle drei auflisten, dann urteilen — nie aus einem
-   Fund auf den anderen schliessen. Reihenfolge: Startup-Ordner (flach **und**
-   mit `-Recurse -Force`, Unterordner sind zwar sicher, aber man sieht sie nur so),
-   dann `Run`/`RunOnce` in HKCU **und** HKLM, dann Logon-Aufgaben.
+   Fund auf den anderen schliessen. Reihenfolge: Startup-Ordner (flach; die
+   Unterordner nur zur Anzeige, siehe Pitfalls), dann `Run`/`RunOnce` in HKCU
+   **und** HKLM, dann Logon-Aufgaben.
 2. **Den Prozess als Zeugen nehmen.** `Get-CimInstance Win32_Process` mit
    `CommandLine` nennt den **exakten Pfad**, der das Fenster geoeffnet hat, und
    `ParentProcessId` nennt den Urheber. Bei `Parent = explorer.exe` kam es aus
@@ -125,6 +125,13 @@ Get-CimInstance Win32_Process -Filter "Name='Notepad.exe'" | Select-Object Proce
   wurden bei jeder Anmeldung ausgefuehrt; die unbekannte Endung landete in
   Notepad, das VBS startete zusaetzlich eine zweite Router-Instanz auf derselben
   SQLite-Datei. Korrekt war: in einen Unterordner verschieben.
+- **Ordner im Startup-Ordner sind der sichere Ablageort, kein Befund.** Ein
+  Unterordner wie `.disabled-20260918` wird nie ausgefuehrt — genau deshalb ist
+  Verschieben die richtige Deaktivierung. Ein Audit, das mit `-Recurse` in die
+  Unterordner laeuft, meldet die korrekt abgelegten Dateien als "unbekannte
+  Endung" und widerspricht sich damit selbst: flach pruefen, Unterordner nur
+  anzeigen. `desktop.ini` wird von Windows nie ausgefuehrt und ist ebenfalls
+  kein Befund (belegt: der erste Audit-Lauf meldete beide als Fehler).
 - **`StartupApproved` ist kein Schutz.** Der Schluessel bezieht sich auf den
   **Namen** der Datei. Eine umbenannte Datei ist fuer Windows ein neuer Name;
   der alte Freigabewert gilt nicht mehr. Zusaetzlich: die Hex-Werte sind nicht
@@ -152,9 +159,9 @@ Get-CimInstance Win32_Process -Filter "Name='Notepad.exe'" | Select-Object Proce
   und die Pruefung ergibt "nichts gefunden" — der zweite Lauf startet dann
   doppelt. Immer `%SystemRoot%\System32\tasklist.exe` mit vollem Pfad; fuer
   Dateisuche `search_files` im `terminal`-Werkzeug, nicht ein Shell-`find`.
-- **Ordner im Startup-Ordner sind harmlos, aber unsichtbar.** `.disabled-*`
-  als Ordner wird nie ausgefuehrt; flaches `Get-ChildItem` ohne `-Recurse`
-  zeigt den Inhalt nicht und man glaubt, die Datei sei weg.
+- **Ordner im Startup-Ordner werden nicht ausgefuehrt, ihre Inhalte sieht man
+  aber flach nicht** — man glaubt, die verschobene Datei sei weg, und legt sie
+  beim naechsten Mal neu an.
 
 ## Verification
 
