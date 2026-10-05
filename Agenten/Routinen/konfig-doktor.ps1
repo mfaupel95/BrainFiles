@@ -752,10 +752,24 @@ function Pruefe-Laufzeit {
                 if ($z -notmatch '^\s*WARN\b') { continue }
                 $n++
                 $schwere = 'WARNUNG'
-                if ($z -match '(?i)commit') { $schwere = 'KRITISCH' }
+                if ($z -match '^\s*WARN\s+Commit\b') { $schwere = 'KRITISCH' }
                 Add-Befund -Id "LAUFZEIT-PLATZ-$n" -Modul 'laufzeit' -Schwere $schwere -Titel ('Platz/Commit: ' + $z.Trim()) `
                     -Beleg "plattenplatz-pruefen.ps1 -OhneOrdner, Ausgabezeile: $($z.Trim())" -Status 'gesichert' `
                     -Vorschlag 'Platz schaffen bzw. Commit-Reserve pruefen (Auslagerungsdatei, Docker/WSL-Speicher); Aufraeumen nur nach Freigabe'
+            }
+            # Kein stilles Gruen: Ausgabe muss vollstaendig sein und zum Exitcode passen.
+            $gruende = New-Object System.Collections.Generic.List[string]
+            if ($r.ExitCode -ne 0 -and $r.ExitCode -ne 1) { $gruende.Add("Exit $($r.ExitCode) (erwartet 0 oder 1)") }
+            elseif ($r.ExitCode -eq 1 -and $n -eq 0) { $gruende.Add('Exit 1 ohne WARN-Zeile') }
+            if ($r.Out -match '(?m)^\s*INFO\s+Commit:\s*nicht lesbar') { $gruende.Add('Commit-Reserve nicht lesbar (INFO Commit: nicht lesbar)') }
+            elseif ($r.Out -notmatch '(?m)^\s*(WARN|INFO)\s+Commit\b') { $gruende.Add('keine Commit-Zeile in der Ausgabe') }
+            if ($gruende.Count -gt 0) {
+                $err = (([string]$r.Err) -replace '\s+', ' ').Trim()
+                if ($err.Length -gt 200) { $err = $err.Substring(0, 200) + '...' }
+                if (-not $err) { $err = 'leer' }
+                Add-Befund -Id 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'Plattenplatz/Commit-Reserve nicht belegbar' `
+                    -Beleg ('plattenplatz-pruefen.ps1 -OhneOrdner: ' + ($gruende -join '; ') + "; Exit $($r.ExitCode); stderr: $err") -Status 'gesichert' `
+                    -Vorschlag 'plattenplatz-pruefen.ps1 einzeln ausfuehren; Commit-Reserve notfalls im Task-Manager (Leistung, Arbeitsspeicher, Zugesichert) ablesen'
             }
         }
     }
@@ -769,10 +783,14 @@ function Pruefe-Laufzeit {
             }
             else {
                 $r = Invoke-Extern -Datei $d.Source -Argumente @('info', '--format', '{{.ServerVersion}}') -TimeoutSek $t -StdinLeer
-                if ($r.TimedOut) {
+                if ($r.TimedOut -and $t -lt 10) {
+                    Add-Befund -Id 'LAUFZEIT-DOCKER' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
+                        -Beleg "docker info nach $t s (Restbudget, regulaer 10 s) abgebrochen" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+                }
+                elseif ($r.TimedOut) {
                     Add-Befund -Id 'LAUFZEIT-DOCKER' -Modul 'laufzeit' -Schwere 'WARNUNG' -Titel "Docker antwortet nicht binnen $t s" `
-                        -Beleg 'docker info: Zeitlimit; haengendes Docker startet MCP-Server im Kreis neu (Spawn-Sturm, siehe Wiki)' -Status 'gesichert' `
-                        -Vorschlag 'Docker Desktop neu starten ist Max'' Entscheidung; der Doktor startet nichts'
+                        -Beleg "docker info: Zeitlimit $t s ueberschritten" -Status 'gesichert' `
+                        -Vorschlag 'Ein haengendes Docker kann MCP-Server im Kreis neu starten lassen (Spawn-Sturm, siehe Wiki). Docker Desktop neu starten ist Max'' Entscheidung; der Doktor startet nichts'
                 }
                 elseif ($r.ExitCode -ne 0) {
                     Add-Befund -Id 'LAUFZEIT-DOCKER' -Modul 'laufzeit' -Schwere 'HINWEIS' -Titel 'Docker-Daemon laeuft nicht' `
@@ -789,7 +807,11 @@ function Pruefe-Laufzeit {
             }
             else {
                 $r = Invoke-Extern -Datei $w.Source -Argumente @('--status') -TimeoutSek $t -StdinLeer
-                if ($r.TimedOut) {
+                if ($r.TimedOut -and $t -lt 10) {
+                    Add-Befund -Id 'LAUFZEIT-WSL' -Modul 'laufzeit' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
+                        -Beleg "wsl --status nach $t s (Restbudget, regulaer 10 s) abgebrochen" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
+                }
+                elseif ($r.TimedOut) {
                     Add-Befund -Id 'LAUFZEIT-WSL' -Modul 'laufzeit' -Schwere 'WARNUNG' -Titel "WSL antwortet nicht binnen $t s" `
                         -Beleg 'wsl --status: Zeitlimit' -Status 'gesichert' -Vorschlag 'Entscheidung ueber Neustart liegt bei Max'
                 }

@@ -389,6 +389,33 @@ Pruefe 'fehlender Ordner: KRITISCH' ((Schwere-Von $r 'LAUFZEIT-JUNCTION-Werkstat
 Remove-Item -LiteralPath (Join-Path $fx 'Agenten/Routinen/plattenplatz-pruefen.ps1')
 $r = Lauf $fx @('laufzeit')
 Pruefe 'ohne plattenplatz-pruefen.ps1: UNKLAR' ((Schwere-Von $r 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR') -eq 'UNKLAR')
+$ppFx = Join-Path $fx 'Agenten/Routinen/plattenplatz-pruefen.ps1'
+function Platz-Fixture([string[]]$Zeilen, [int]$Code) {
+    $s = "param([switch]`$OhneOrdner)`n"
+    foreach ($z in $Zeilen) { $s += "Write-Output '$z'`n" }
+    Schreibe $ppFx ($s + "exit $Code`n")
+}
+function Platz-Unklar($Befunde) { return ((Schwere-Von $Befunde 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR') -eq 'UNKLAR') }
+Platz-Fixture @('INFO Commit: 20 GB frei von 100 GB.') 0
+$r = Lauf $fx @('laufzeit') @{ ModulLimitSek = 0 }
+Pruefe 'Budget 0: plattenplatz nicht gestartet, UNKLAR Zeitbudget erschoepft' ((Platz-Unklar $r) -and (@($r | Where-Object { $_.id -eq 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR' -and $_.titel -match 'Zeitbudget' }).Count -eq 1))
+$r = Lauf $fx @('laufzeit')
+Pruefe 'gesunde Ausgabe (Exit 0, Commit-Zeile): kein Platz-Befund' (-not (Hat-Praefix $r 'LAUFZEIT-PLATZ'))
+Platz-Fixture @() 3
+$r = Lauf $fx @('laufzeit')
+Pruefe 'Absturz (Exit 3, leere Ausgabe): UNKLAR mit Exitcode im Beleg' ((Platz-Unklar $r) -and (@($r | Where-Object { $_.id -eq 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR' -and $_.beleg -match 'Exit 3' }).Count -eq 1))
+Platz-Fixture @() 0
+$r = Lauf $fx @('laufzeit')
+Pruefe 'leere Ausgabe mit Exit 0: UNKLAR' (Platz-Unklar $r)
+Platz-Fixture @('INFO Laufwerk C: 80 GB frei.', 'INFO Commit: nicht lesbar.') 0
+$r = Lauf $fx @('laufzeit')
+Pruefe 'INFO Commit: nicht lesbar: UNKLAR' (Platz-Unklar $r)
+Platz-Fixture @('INFO Commit: 20 GB frei von 100 GB.') 1
+$r = Lauf $fx @('laufzeit')
+Pruefe 'Exit 1 ohne WARN-Zeile: UNKLAR' (Platz-Unklar $r)
+Platz-Fixture @('WARN Laufwerk C: nur 2 GB frei (Ordner commit-cache).', 'INFO Commit: 20 GB frei von 100 GB.') 1
+$r = Lauf $fx @('laufzeit')
+Pruefe 'commit nur im Text einer Laufwerkszeile: WARNUNG, nicht KRITISCH' (((Schwere-Von $r 'LAUFZEIT-PLATZ-1') -eq 'WARNUNG') -and -not (Hat $r 'LAUFZEIT-PLATZ-NICHT-PRUEFBAR'))
 
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
