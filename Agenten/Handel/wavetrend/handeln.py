@@ -182,22 +182,30 @@ def atr_abs(k, idx, n=14):
 
 
 def signal(k, idx):
-    """WaveTrend-Signal an Kerze idx. Gibt 'long', 'short' oder None."""
+    """WaveTrend-Signal an Kerze idx. Gibt 'long', 'short' oder None.
+
+    Die Einstiegsschwelle (T-097) steht in der Wachen als `wt_einstiegsschwelle`.
+    Sie war als Literal -40/+40 im Code, damit die Optimierung nur den Quelltext
+    aendern konnte. Der Default ist exakt der alte Wert, ein Lauf ohne das Feld
+    verhaelt sich also IDENTISCH.
+    """
     if idx < 1:
         return None
     try:
         import ti_indikatoren as ti
     except ImportError:
         return None
+    w = lade_wachen()
+    schwelle = float(w.get("wt_einstiegsschwelle", 40.0))
     wt1, wt2 = ti.wavetrend(k)
     # Alle Werte muessen gesetzt sein
     if None in (wt1[idx - 1], wt2[idx - 1], wt1[idx], wt2[idx]):
         return None
     # LONG: wt1 kreuzt wt2 von unten, im ueberverkauften Bereich
-    if wt1[idx - 1] <= wt2[idx - 1] and wt1[idx] > wt2[idx] and wt1[idx] < -40:
+    if wt1[idx - 1] <= wt2[idx - 1] and wt1[idx] > wt2[idx] and wt1[idx] < -schwelle:
         return "long"
     # SHORT: wt1 kreuzt wt2 von oben, im ueberkauften Bereich
-    if wt1[idx - 1] >= wt2[idx - 1] and wt1[idx] < wt2[idx] and wt1[idx] > 40:
+    if wt1[idx - 1] >= wt2[idx - 1] and wt1[idx] < wt2[idx] and wt1[idx] > schwelle:
         return "short"
     return None
 

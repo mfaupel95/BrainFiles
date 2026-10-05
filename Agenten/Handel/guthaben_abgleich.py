@@ -25,7 +25,29 @@ import zeitfenster
 HIER = os.path.dirname(os.path.abspath(__file__))
 
 LIVE = ("scanner", "kraken", "xperp")
-WAEHRUNG = {"scanner": "USD", "kraken": "EUR", "xperp": "USD"}
+# Nur noch die Spuren, deren Waehrung sich NICHT aus der Wachen lesen laesst.
+# Der Scanner stand hier mit "USD", obwohl er USDC handelt (T-311): die Anzeige
+# nannte eine Waehrung, die auf dem EEA-Konto gar nicht gefuehrt wird, der
+# Wochenbericht zeigte 0,00 und es sah wie eine Buchdifferenz aus. Wer die
+# Waehrung aus der Quelle liest, kann sie nicht mehr neben sich veralten
+# lassen - `_scanner_quote()` ist dieselbe Quelle wie das Guthaben-Tor.
+WAEHRUNG = {"kraken": "EUR", "xperp": "USD"}
+
+
+def handelswaehrung(spur):
+    """Die Waehrung, in der die Spur rechnet.
+
+    Eine eigene Liste je Spur ist eine ZWEITE Wahrheit und genau deshalb
+    veraltet sie: sie kann der Wache nicht folgen. Der Scanner liest sie aus
+    `universum.quotes`, denselben Schluessel, aus dem auch das Guthaben-Tor
+    gespeist wird.
+    """
+    if spur == "scanner":
+        return _scanner_quote()
+    wert = WAEHRUNG.get(spur)
+    if not wert:
+        raise KeyError("keine Handelswaehrung fuer Spur %r bekannt" % spur)
+    return wert
 
 
 def _scanner_quote():
@@ -131,7 +153,7 @@ def abgleich(spur, konto=None, bilanz=None, gebunden=None):
     rest = None if (fehler or unbekannt) else konto - bilanz - gebunden
     return {"spur": spur, "konto": konto, "bilanz": bilanz,
             "gebunden": gebunden, "rest": rest,
-            "waehrung": WAEHRUNG[spur], "fehler": fehler,
+            "waehrung": handelswaehrung(spur), "fehler": fehler,
             "konto_unbekannt": konto_unbekannt,
             "bilanz_unbekannt": bilanz_unbekannt}
 

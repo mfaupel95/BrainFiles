@@ -21,10 +21,15 @@ sys.modules["docker_wache"] = dw
 spec.loader.exec_module(dw)
 
 
-def fake_runner(von_an_alive=False, heilbar=False, prot=None):
+def fake_runner(von_an_alive=False, heilbar=False, prot=None, desktop_laeuft=False):
     """Zustandsbehangter Fake: docker info antwortet ab `von_an_alive` bzw.
-    NACH dem Heilgriff, wenn `heilbar`. `starten`-Zeuge laeuft ueber prot."""
-    state = {"alive": bool(von_an_alive)}
+    NACH dem Heilgriff, wenn `heilbar`. `starten`-Zeuge laeuft ueber prot.
+
+    `desktop_laeuft=True` bildet den T-306-Fall ab: die App laeuft, die Engine
+    antwortet trotzdem nicht. tasklist liefert dann eine Prozesszeile - ohne
+    sie wuerde der Test den zweiten Griff nie nehmen."""
+    state = {"alive": bool(von_an_alive), "desktop": bool(desktop_laeuft)}
+    nach_wsl = {"alive": None}       # None = App-start entscheidet
 
     def runner(cmd, frist):
         if prot is not None:
@@ -32,9 +37,31 @@ def fake_runner(von_an_alive=False, heilbar=False, prot=None):
         if cmd[0] == "docker":
             return (0, "27.x") if state["alive"] else (1, "Cannot connect to the Docker daemon")
         if cmd[0] == "wsl":
-            state["alive"] = bool(heilbar)   # nach Shutdown+Start ware die Engine wieder da
+            nach_wsl["alive"] = bool(heilbar)
+            if not state["desktop"]:
+                # Kein zweiter Griff noetig: der Desktop-Start genuegt, und die
+                # Engine ist danach da (das ist der alte, gemessene Weg).
+                state["alive"] = bool(heilbar)
             return (0, "")
+        if cmd[0] == "tasklist":
+            if state["desktop"]:
+                return (0, '"Docker Desktop.exe","1234","Konsolen","1","120.000 K"')
+            return (0, "INFO: Keine Aufgaben laufen, die den angegebenen Kriterien entsprechen.")
+        if cmd[0] == "taskkill":
+            if state["desktop"]:
+                # Der zweite Griff: erst das Beenden macht die Engine heilbar.
+                state["alive"] = bool(heilbar)
+                state["desktop"] = False
+            return (0, "ERFOLGREICH: Der Prozess mit PID %s wurde beendet."
+                    % cmd[-1])
         raise AssertionError("unerwartetes Programm: %s" % cmd[0])
+
+    # Der Desktop-Start setzt die Engine nur, wenn der zweite Griff sie nicht
+    # schon gesetzt hat.
+    def starten():
+        if nach_wsl["alive"] is not None:
+            state["alive"] = nach_wsl["alive"]
+    runner.starten = starten
     return runner
 
 
@@ -43,6 +70,57 @@ def starter(prot=None):
         if prot is not None:
             prot.append("desktop")
     return s
+
+
+class ZweiterGriffTest(unittest.TestCase):
+    """T-306: laeuft die Desktop-App und bleibt die Engine trotzdem weg, hilft
+    nur Beenden + Neustart.
+
+    Geprueft wird die EIGENSCHAFT (der zweite Griff wird genommen und
+    loest den Zustand), nicht ein Aufrufverzeichnis - ein Test gegen die
+    Prozessliste wuerde nur den Aufbau des Fakes messen.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.merk = os.path.join(self.tmp.name, "docker-wache.json")
+        self._alt = dw.MERKER
+        dw.MERKER = self.merk
+        self._alt_update = dw.update_laeuft
+        dw.update_laeuft = lambda **kw: False
+        self.schlafen = lambda s: None
+
+    def tearDown(self):
+        dw.MERKER = self._alt
+        dw.update_laeuft = self._alt_update
+        self.tmp.cleanup()
+
+    def test_leerer_prozessabruf_ist_kein_befund(self):
+        """`tasklist` ohne Treffer liefert eine Zeile, nicht leer - die
+        Zeile darf nicht als 'App laeuft' gelesen werden."""
+        leer = dw._desktop_prozesse(fake_runner(desktop_laeuft=False))
+        self.assertEqual(leer, [])
+        da = dw._desktop_prozesse(fake_runner(desktop_laeuft=True))
+        self.assertEqual(len(da), 1)
+
+    def test_laufende_app_wird_beendet_und_neu_gestartet(self):
+        prot = []
+        r = fake_runner(heilbar=True, prot=prot, desktop_laeuft=True)
+        ok, text = dw.heilen(runner=r, schlafen=self.schlafen,
+                             starten=lambda: (prot.append("desktop"), r.starten()))
+        self.assertTrue(ok, text)
+        self.assertIn("taskkill", prot, "der zweite Griff muss beenden")
+        self.assertIn("desktop", prot, "danach neu starten")
+        self.assertIn("stand noch", text)
+
+    def test_ohne_app_kein_taskkill(self):
+        """Ohne laufende App bleibt der alte Griff: beenden waere Blindflug."""
+        prot = []
+        r = fake_runner(heilbar=True, prot=prot, desktop_laeuft=False)
+        ok, _ = dw.heilen(runner=r, schlafen=self.schlafen,
+                          starten=lambda: (prot.append("desktop"), r.starten()))
+        self.assertTrue(ok)
+        self.assertNotIn("taskkill", prot)
 
 
 class WachenTest(unittest.TestCase):
