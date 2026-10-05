@@ -325,13 +325,47 @@ Pruefe 'Altkopien gefunden (bak, corrupt, vor-)' (($null -ne $ak) -and ($ak.bele
 Pruefe 'normale Datei ist keine Altkopie' (($null -ne $ak) -and ($ak.beleg -notmatch 'config\.yaml(?!\.)'))
 $dn = $r | Where-Object { $_.id -eq 'BALLAST-DOPPELNAMEN' }
 Pruefe 'aehnliche Skriptnamen gemeldet' (($null -ne $dn) -and ($dn.beleg -match 'sichern-aussenhaus\.ps1') -and ($dn.beleg -match 'sichern-ausser-haus\.ps1'))
-Pruefe 'kurze Namen a/b sind kein Doppelname' (($null -ne $dn) -and ($dn.beleg -notmatch 'a\.ps1'))
+Pruefe 'kurze Namen a/b sind kein Doppelname' (($null -ne $dn) -and ($dn.beleg -notmatch '(^|[/ ])[ab]\.ps1'))
 Pruefe 'txt-Zwilling einer Config gemeldet' ((Hat $r 'BALLAST-TXT-ZWILLINGE') -and (($r | Where-Object { $_.id -eq 'BALLAST-TXT-ZWILLINGE' }).beleg -match 'config\.yaml\.txt'))
 Pruefe 'Zusatzordner Agenten/Werkstatt gemeldet' ((Hat $r 'BALLAST-ZUSATZORDNER') -and (($r | Where-Object { $_.id -eq 'BALLAST-ZUSATZORDNER' }).beleg -match 'Werkstatt'))
 Pruefe 'alles nur HINWEIS' (@($r | Where-Object { $_.schwere -ne 'HINWEIS' -and $_.modul -eq 'ballast' }).Count -eq 0)
 $fx2 = Neue-Wurzel
 $r = Lauf $fx2 @('ballast')
 Pruefe 'leere Wurzel: kein Ballast, kein Absturz' (@($r | Where-Object { $_.modul -eq 'ballast' }).Count -eq 0)
+$fx3 = Neue-Wurzel
+Schreibe (Join-Path $fx3 'Agenten/Routinen/abcdefgh.ps1') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Routinen/abcdefxy.ps1') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Routinen/mnopqrst.ps1') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Routinen/mnopqxyz.ps1') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Routinen/werkzeugeins.ps1') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Routinen/werkzeugeins.py') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Hermes/state.json.orig') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Hermes/config.yaml.old') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Modelle/x.txt') 'a'
+Schreibe (Join-Path $fx3 'Agenten/MaxHirn/x.txt') 'a'
+Schreibe (Join-Path $fx3 'Agenten/Agenten/x.txt') 'a'
+$r = Lauf $fx3 @('ballast')
+$dn = $r | Where-Object { $_.id -eq 'BALLAST-DOPPELNAMEN' }
+Pruefe 'Levenshtein 2 wird gemeldet' (($null -ne $dn) -and ($dn.beleg -match 'abcdefgh\.ps1 ~ abcdefxy\.ps1'))
+Pruefe 'Levenshtein 3 wird nicht gemeldet' (($null -ne $dn) -and ($dn.beleg -notmatch 'mnopq'))
+Pruefe 'gleicher Name, andere Endung (ps1/py) ist kein Doppelname' (($null -ne $dn) -and ($dn.beleg -notmatch 'werkzeugeins'))
+Pruefe 'ohne Kappung keine Mindestangabe im Titel' (($null -ne $dn) -and ($dn.titel -notmatch 'mindestens'))
+$ak = $r | Where-Object { $_.id -eq 'BALLAST-ALTKOPIEN' }
+Pruefe 'Altkopien .orig und .old erkannt' (($null -ne $ak) -and ($ak.beleg -match 'state\.json\.orig') -and ($ak.beleg -match 'config\.yaml\.old'))
+Pruefe '.old-Treffer macht Altkopien zur Vermutung' (($null -ne $ak) -and ($ak.status -eq 'Vermutung'))
+Pruefe 'bis 12 Altkopien ohne Auslassungszeichen' (($null -ne $ak) -and ($ak.beleg -notmatch '\.\.\.'))
+$zo = $r | Where-Object { $_.id -eq 'BALLAST-ZUSATZORDNER' }
+Pruefe 'Zusatzordner Modelle, MaxHirn, Agenten gemeldet' (($null -ne $zo) -and ($zo.beleg -match 'Agenten/Modelle') -and ($zo.beleg -match 'Agenten/MaxHirn') -and ($zo.beleg -match 'Agenten/Agenten'))
+$fx4 = Neue-Wurzel
+for ($k = 10; $k -lt 35; $k++) { Schreibe (Join-Path $fx4 "Agenten/Routinen/sichernpaar$k.ps1") 'a' }
+for ($k = 10; $k -lt 23; $k++) { Schreibe (Join-Path $fx4 "Agenten/Hermes/datei$k.json.bak") 'a' }
+$r = Lauf $fx4 @('ballast')
+$dn = $r | Where-Object { $_.id -eq 'BALLAST-DOPPELNAMEN' }
+Pruefe 'Kappung bei 20 Paaren' (($null -ne $dn) -and (@($dn.beleg -split '; ').Count -eq 20))
+Pruefe 'Kappung: Titel sagt mindestens 20' (($null -ne $dn) -and ($dn.titel -match '^mindestens 20 '))
+$ak = $r | Where-Object { $_.id -eq 'BALLAST-ALTKOPIEN' }
+Pruefe 'mehr als 12 Altkopien: Beleg endet mit ...' (($null -ne $ak) -and ($ak.titel -match '^13 ') -and ($ak.beleg -match '; \.\.\.$') -and (@($ak.beleg -split '; ').Count -eq 13))
+Pruefe 'nur .bak: Altkopien gesichert' (($null -ne $ak) -and ($ak.status -eq 'gesichert'))
 
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }

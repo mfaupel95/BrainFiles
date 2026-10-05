@@ -634,6 +634,8 @@ function Pruefe-Ballast {
     $alt = New-Object System.Collections.ArrayList
     $doppel = New-Object System.Collections.ArrayList
     $zwillinge = New-Object System.Collections.ArrayList
+    $vermutAlt = 0
+    $voll = $false
     foreach ($rel in $ordner) {
         $d = $Wurzel
         $anzeige = '.'
@@ -641,21 +643,27 @@ function Pruefe-Ballast {
         if (-not (Test-Path -LiteralPath $d)) { continue }
         $dateien = @(Get-ChildItem -LiteralPath $d -File -Force -ErrorAction SilentlyContinue)
         foreach ($f in $dateien) {
-            if ($f.Name -match '(?i)\.(bak|orig|corrupt|old)($|[._-])|\.vor-') { [void]$alt.Add("$anzeige/$($f.Name)") }
+            if ($f.Name -match '(?i)\.(bak|orig|corrupt)($|[._-])') { [void]$alt.Add("$anzeige/$($f.Name)") }
+            elseif ($f.Name -match '(?i)\.old($|[._-])|\.vor-') { [void]$alt.Add("$anzeige/$($f.Name)"); $vermutAlt++ }
             if ($f.Name -match '(?i)\.txt$') {
                 $basis = $f.Name.Substring(0, $f.Name.Length - 4)
-                if ($basis -and (Test-Path -LiteralPath (Join-Path $d $basis))) { [void]$zwillinge.Add("$anzeige/$($f.Name)") }
+                if ($basis -and (Test-Path -LiteralPath (Join-Path $d $basis) -PathType Leaf)) { [void]$zwillinge.Add("$anzeige/$($f.Name)") }
             }
         }
+        if ($voll) { continue }
         $skripte = @($dateien | Where-Object { $_.Extension -match '(?i)^\.(ps1|py|cmd)$' })
-        for ($i = 0; $i -lt $skripte.Count; $i++) {
+        for ($i = 0; $i -lt $skripte.Count -and -not $voll; $i++) {
             for ($j = $i + 1; $j -lt $skripte.Count; $j++) {
                 if ($skripte[$i].Extension -ine $skripte[$j].Extension) { continue }
                 $na = ($skripte[$i].BaseName.ToLowerInvariant() -replace '[-_ ]', '')
                 $nb = ($skripte[$j].BaseName.ToLowerInvariant() -replace '[-_ ]', '')
                 if ($na.Length -lt 8 -or $nb.Length -lt 8) { continue }
-                if ($doppel.Count -ge 20) { continue }
-                if ((Get-Levenshtein $na $nb) -le 2) { [void]$doppel.Add("$anzeige/$($skripte[$i].Name) ~ $($skripte[$j].Name)") }
+                # Levenshtein >= Laengendifferenz: dieser Vorfilter aendert kein Ergebnis, spart aber fast alle Aufrufe
+                if ([Math]::Abs($na.Length - $nb.Length) -gt 2) { continue }
+                if ((Get-Levenshtein $na $nb) -le 2) {
+                    [void]$doppel.Add("$anzeige/$($skripte[$i].Name) ~ $($skripte[$j].Name)")
+                    if ($doppel.Count -ge 20) { $voll = $true; break }
+                }
             }
         }
     }
@@ -671,11 +679,19 @@ function Pruefe-Ballast {
         }
     }
     if ($alt.Count -gt 0) {
-        Add-Befund -Id 'BALLAST-ALTKOPIEN' -Modul 'ballast' -Schwere 'HINWEIS' -Titel "$($alt.Count) Altkopien (.bak/.orig/.corrupt/.vor-)" `
-            -Beleg (($alt | Select-Object -First 12) -join '; ') -Status 'gesichert' -Vorschlag 'Aufraeumen ist Teilprojekt B; vorher Inhalt gegen die aktuelle Datei pruefen'
+        # .bak/.orig/.corrupt sind eindeutige Sicherungsendungen (gesichert); .old/.vor- koennen auch
+        # gewollte Namen sein (z. B. Notiz "vor-umbau") - steckt ein solcher Treffer drin, nur Vermutung.
+        $altStatus = 'gesichert'
+        if ($vermutAlt -gt 0) { $altStatus = 'Vermutung' }
+        $altBeleg = ($alt | Select-Object -First 12) -join '; '
+        if ($alt.Count -gt 12) { $altBeleg += '; ...' }
+        Add-Befund -Id 'BALLAST-ALTKOPIEN' -Modul 'ballast' -Schwere 'HINWEIS' -Titel "$($alt.Count) Altkopien (.bak/.orig/.corrupt/.old/.vor-; davon $vermutAlt unsicher)" `
+            -Beleg $altBeleg -Status $altStatus -Vorschlag 'Aufraeumen ist Teilprojekt B; vorher Inhalt gegen die aktuelle Datei pruefen'
     }
     if ($doppel.Count -gt 0) {
-        Add-Befund -Id 'BALLAST-DOPPELNAMEN' -Modul 'ballast' -Schwere 'HINWEIS' -Titel "$($doppel.Count) Skriptpaar(e) mit fast gleichem Namen" `
+        $dnAnzahl = "$($doppel.Count)"
+        if ($voll) { $dnAnzahl = 'mindestens 20' }
+        Add-Befund -Id 'BALLAST-DOPPELNAMEN' -Modul 'ballast' -Schwere 'HINWEIS' -Titel "$dnAnzahl Skriptpaar(e) mit fast gleichem Namen" `
             -Beleg ($doppel -join '; ') -Status 'Vermutung' -Vorschlag 'Pruefen, welches aufgerufen wird (Aufrufer suchen), dann das andere in Teilprojekt B entfernen'
     }
     if ($zwillinge.Count -gt 0) {
