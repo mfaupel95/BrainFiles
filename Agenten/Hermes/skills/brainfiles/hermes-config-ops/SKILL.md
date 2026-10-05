@@ -38,6 +38,7 @@ weiterlaufen und die Änderung mit einem echten Lauf belegt ist.
   wirklich zu rufen (references/modellkette-messen.md); eine Tabelle aus
   Modellnamen ist kein Beleg, und ein `provider: auto` in einem
   `auxiliary`-Block erbt still das Hauptmodell
+- "das Terminal geht nicht mehr" / "Terminal environment unavailable" / jedes Kommando scheitert mit Exit 125 - dann den Windows-Host-Pfad in `terminal.cwd` und `docker_mount_cwd_to_workspace` pruefen (references/docker-sandbox.md)
 - "mach einen Bot / ein Profil fuer Telegram" / "der Bot antwortet nicht" /
   "passiert nichts" — dann zuerst die drei Tore messen, nicht die Config
   umbauen (references/profil-kanalzugangsdaten.md, Abschnitte *Ein NEUES
@@ -137,7 +138,7 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - references/soul-persona.md — laden, wenn der Agent dauerhaft anders antworten soll (SOUL.md statt Skill)
 - references/klartext-verweis.md — laden, wenn ein Klartext-Geheimnis in config.yaml auf einen ${NAME}-Verweis umgestellt wird
 - references/benutzervariablen.md — laden, wenn ein Zugangswert fuer einen Verbraucher ausserhalb von Hermes (MCP, Claude, Skript, curl) gesetzt oder geprueft wird
-- references/docker-sandbox.md — laden, wenn Tools im Docker-Backend Variablen nicht sehen (${env:NAME} leer)
+- references/docker-sandbox.md — laden, wenn Tools im Docker-Backend Variablen nicht sehen (${env:NAME} leer) ODER JEDES Terminal-Kommando mit "Terminal environment unavailable" scheitert (Exit 125, Windows-cwd im Docker-Backend)
 - references/mcp-server-anbinden.md — laden, wenn ein fremder MCP-Server (HTTP/OAuth) angebunden werden soll
 - references/config-gegenprobe.md — laden, wenn "optimier meine Config" / "warum greift die Einstellung nicht" / nach Update
 - references/einstellung-umstellen.md — laden, wenn eine einzelne Einstellung umgestellt wird (Wert setzen mit Beleg); darin auch der .env-Sonderfall (wirkt erst nach dem Neustart, zweiseitiger Gegentest, Schutzschalter-Kosten)

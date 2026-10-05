@@ -1146,3 +1146,24 @@ Sicherung: `Agenten/Hermes/config.yaml.bak-desktop-20261004` und
 Router lebt, 401 ohne Key ist das normale Bild) und `local_runtime.enabled: true`
 (bestaetigte Max-Entscheidung). Die 26 Bot-Profile unter `profiles/` haben eigene
 Configs und wurden nicht angefasst - sie stehen weiter auf nous/deepseek-v4-flash.
+## Docker-Terminal brach mit Exit 125 ab - Windows-cwd im Container (05.10.2026)
+
+**Symptom:** Jedes `terminal`-Kommando scheiterte plotzlich mit "Terminal environment unavailable"; im Traceback stand `docker: Error response from daemon: the working directory ` + "'C:\Users\faupe\documents\BrainFiles\Agenten\Hermes'" + ` is invalid, it needs to be an absolute path`, Rueckgabecode 125. Die Dateiwerkzeuge liefen zunaechst weiter - nur das Terminal war tot.
+
+**Ursache (gemessen, nicht geraten):** `terminal.cwd` steht auf einen Windows-Host-Pfad, `docker_mount_cwd_to_workspace` stand auf `false`. In `hermes-agent/tools/terminal_tool.py::_resolve_config_cwd()` setzt der Windows-Zweig (Zeilen 693-702) dann `cwd = candidate` - der Windows-Pfad geht roh in `docker run -w` und Docker weist ihn ab. Mit `true` (Zeilen 685-692) wird stattdessen gebunden und `cwd = "/workspace"` gesetzt.
+
+**Gegenprobe ohne Hermes:**
+
+    docker run -d --name probe -w 'C:\Users\...\Agenten\Hermes' nousresearch/hermes-sandbox:desktop sleep infinity  # Exit 125
+    docker run -d --name probe -w /workspace nousresearch/hermes-sandbox:desktop sleep infinity                     # Exit 0
+
+**Warum es lange unauffaellig blieb:** der Sandbox-Container wird beim ersten Kommando gebaut und danach wiederverwendet (`persist_across_processes` + `container_persistent: true`, `lifetime_seconds: 300`). Solange einer lief, ging alles; erst als keiner mehr lief (Idle-Reaper / Docker-Neustart), brach jedes Kommando auf. Kein Docker-Schaden, kein Platzproblem, kein Speicherdruck.
+
+**Aenderung:** `Agenten/Hermes/config.yaml` Zeile 654, `docker_mount_cwd_to_workspace: false` -> `true`. Byte-genau ersetzt (nicht per `hermes config set`, das schneidet den Kommentar-Schwanz ab und schreibt LF). Sicherung: `Agenten/Hermes/.sicherung/config.yaml.bak-20261005b`. Beleg: `Compare-Object` Sicherung <-> Datei = EIN Zeilenpaar; `yaml.safe_load` parst, `terminal` behaelt 12 Schluessel; CRLF 1377/1377 unveraendert. Die Zeile wirkt erst, wenn der Hermes-Prozess die Config neu liest - kein Live-Schalter.
+
+**Zwei Nebenbeobachtungen, die zur Verwechslung fuehren koennen:**
+
+- Der Prozessfilter `*gateway run*` findet den Gateway nicht (er laeuft per `runpy.run_module`); Identitaet immer aus `gateway_state.json` lesen.
+- Der Container `hermes` (Volume `hermesalt-20260916_hermes-data`, cwd `/opt/hermes`) ist ein ALTER Dienst und hat mit der Terminal-Sandbox nichts zu tun. Die Sandbox heisst `hermes-<8 hex>` und traegt das Label `hermes-agent=1`.
+
+**Offen:** Wirkung noch nicht live belegt - der laufende Hermes-Prozess haelt die alte Config. Der Beleg ist der naechste Terminal-Aufruf ohne Exit 125.
