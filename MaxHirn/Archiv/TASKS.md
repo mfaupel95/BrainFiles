@@ -23,38 +23,6 @@
       klaeren: sind es dieselben Vorschau-Aufrufe oder ein zweiter Weg?
       Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
       Betrifft: Agenten/Handel/{iv_wand,liq_wand,moondev_topmovers,prophet_signal,klassik_ema,robinhood_radar}/handelsjournal*.csv
-- [ ] **T-361 — `daten/historie/` war um 04:23 leer - und war vorher schon unvollstaendig**
-      Kontext: Beim Nachtlauf des Replay-Tests (05.10.2026) kam
-      `HistorieFehlt` fuer BTC-USDC, ETH-USDC und SOL-USDC mit 0 Kerzen –
-      `daten/historie/` enthielt nur noch `backtest/`. Um 02:20 waren es
-      noch 54 Reihen im Stand-File mit je ~50.000 Kerzen. Weder die Routinen-Skripte
-      noch ein Junction kommen als Ursache infrage; `daten/` ist kein
-      Junction und der Ordner selbst wurde um 04:23:17 geaendert. Wer ihn
-      geleert hat, ist NICHT ermittelt – das ist der offene Teil.
-      Zwischenstand wiederhergestellt: aus `G:/MaxHirn-Sicherung` (Stand
-      03.10., 58 Dateien, nur USDT-Reihen) und die fehlenden USDC-Reihen
-      ueber `historie_binance.py --auffuellen` neu geholt. Jetzt 57 Dateien,
-      BTC/ETH/SOL-USDC je ~50.400 Kerzen. Replay-Fenster-, Historie- und
-      Nichts-ausserhalb-Tests wieder gruen (15/15, 234 s).
-      BEWEIS 05.10.2026, 05:40: die komplette `tests/test_replay.py` in EINEM
-      Lauf, alle neun Klassen: 32/32 OK in 845 s, 0 Fehlschlaege. Der rote
-      Lauf, dessen Meldung nachlief, war der von 04:23 und damit vor der
-      Reparatur - Ausgabedatei 04:23, Historie-Datei 12:30.
-      KORREKTUR 05.10.2026, 05:11: die Zahl "348 von 406 fehlen" war falsch
-      gerechnet. 406 war die Zahl der DATEIEN (jede Reihe hat 1H/4H/1D), der
-      Stand nennt 54 REIHEN; geprueft gegen alle wachen.json der Spuren fehlt
-      jetzt NULL. Es waren keine 348 Reihen verloren, sondern nie alle geladen -
-      der Ordner war schon immer unvollstaendig. Die Wiederherstellung hat die
-      Luecke geschlossen, nicht wiederhergestellt.
-      Naechster Schritt: 1) herausfinden, welcher Vorgang `daten/historie/`
-      geleert hat – der Kandidat ist nicht das Haus, also Herkunft pruefen.
-      2) Die Historie gehoert nicht in einen Ordner, den ein fremder
-      Vorgang leeren kann: entweder nach `O:/` (Zweitkopie-Naehe) oder
-      mit einem Marker, der das Leeren protokolliert. 3) `daten/` ist nicht
-      versioniert und in keiner Sicherung vollstaendig – die G:-Kopie vom
-      03.10. hat keine USDC-Reihen.
-      Angelegt · 05.10.2026 · Betrifft: Agenten/Handel/daten/historie/,
-      Agenten/Handel/historie_binance.py, Agenten/Handel/replay.py
 - [ ] **T-360 — Repos-Zentrale: zwei Manifest-Eintraege zeigen auf den geloeschten Ordner `kopier1zu1`**
       Kontext: Die vollstaendige Suite der Zentrale (296 Tests) meldet seit dem
       05.10.2026 zwei rote Tests, BEIDE vorbestehend und beide mit derselben
@@ -217,6 +185,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-368 — Worktree-Test sieht eine leere Historie: 'Historie fehlt' statt still 0 Kerzen**
+      Kontext: T-361 (05.10.2026) war kein Loeschvorgang - der rote Replay-Lauf
+      (00:43) kam aus .worktrees/t_5609d126/Agenten/Handel/tests, und daten/ ist
+      nicht versioniert (git check-ignore belegt, git ls-files leer).
+      historie_binance.ORDNER = HIER/daten/historie ist RELATIV zur Modulposition:
+      eine Modulkopie ohne daten/ meldet belegt 0 Kerzen (Gegenprobe im Temp-Ordner
+      reproduziert: 'ordner existiert: False, lade BTC 1H -> 0'). Bei 47 Spuren und
+      1801 Tests ist das eine wiederkehrende Fehlquelle, keine Ausnahme.
+      Naechster Schritt: eine Naht, damit ein Replay-Test in einem Worktree
+      'Historie fehlt' sagt statt still 0 Kerzen zu rechnen - z.B. ein Marker,
+      der fehlt, wenn daten/ nicht existiert, und der Test schlaegt dann an.
+      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
+      Betrifft: Agenten/Handel/replay.py, Agenten/Handel/historie_binance.py,
+      Agenten/Handel/tests/test_replay.py
 - [ ] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Wache haelt sie jetzt, Ursache offen**
       Kontext: Die Windows-Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30,
       Wrapper `Agenten/Routinen/ausserhaus-kopie.ps1`) war am 05.10. um 22:30
@@ -3706,6 +3688,39 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-361 — `daten/historie/` war um 04:23 leer - und war vorher schon unvollstaendig**
+      Kontext: Beim Nachtlauf des Replay-Tests (05.10.2026) kam
+      `HistorieFehlt` fuer BTC-USDC, ETH-USDC und SOL-USDC mit 0 Kerzen –
+      `daten/historie/` enthielt nur noch `backtest/`. Um 02:20 waren es
+      noch 54 Reihen im Stand-File mit je ~50.000 Kerzen. Weder die Routinen-Skripte
+      noch ein Junction kommen als Ursache infrage; `daten/` ist kein
+      Junction und der Ordner selbst wurde um 04:23:17 geaendert. Wer ihn
+      geleert hat, ist NICHT ermittelt – das ist der offene Teil.
+      Zwischenstand wiederhergestellt: aus `G:/MaxHirn-Sicherung` (Stand
+      03.10., 58 Dateien, nur USDT-Reihen) und die fehlenden USDC-Reihen
+      ueber `historie_binance.py --auffuellen` neu geholt. Jetzt 57 Dateien,
+      BTC/ETH/SOL-USDC je ~50.400 Kerzen. Replay-Fenster-, Historie- und
+      Nichts-ausserhalb-Tests wieder gruen (15/15, 234 s).
+      BEWEIS 05.10.2026, 05:40: die komplette `tests/test_replay.py` in EINEM
+      Lauf, alle neun Klassen: 32/32 OK in 845 s, 0 Fehlschlaege. Der rote
+      Lauf, dessen Meldung nachlief, war der von 04:23 und damit vor der
+      Reparatur - Ausgabedatei 04:23, Historie-Datei 12:30.
+      KORREKTUR 05.10.2026, 05:11: die Zahl "348 von 406 fehlen" war falsch
+      gerechnet. 406 war die Zahl der DATEIEN (jede Reihe hat 1H/4H/1D), der
+      Stand nennt 54 REIHEN; geprueft gegen alle wachen.json der Spuren fehlt
+      jetzt NULL. Es waren keine 348 Reihen verloren, sondern nie alle geladen -
+      der Ordner war schon immer unvollstaendig. Die Wiederherstellung hat die
+      Luecke geschlossen, nicht wiederhergestellt.
+      Naechster Schritt: 1) herausfinden, welcher Vorgang `daten/historie/`
+      geleert hat – der Kandidat ist nicht das Haus, also Herkunft pruefen.
+      2) Die Historie gehoert nicht in einen Ordner, den ein fremder
+      Vorgang leeren kann: entweder nach `O:/` (Zweitkopie-Naehe) oder
+      mit einem Marker, der das Leeren protokolliert. 3) `daten/` ist nicht
+      versioniert und in keiner Sicherung vollstaendig – die G:-Kopie vom
+      03.10. hat keine USDC-Reihen.
+      Angelegt · 05.10.2026 · Betrifft: Agenten/Handel/daten/historie/,
+      Agenten/Handel/historie_binance.py, Agenten/Handel/replay.py
+      **Erledigt 05.10.2026.** Kein Loeschvorgang - der Ordner wurde nie geleert. Der rote Lauf (00:43) kam aus .worktrees/t_5609d126/Agenten/Handel/tests, und daten/ ist nicht versioniert (git check-ignore belegt, git ls-files leer); historie_binance.ORDNER = HIER/daten/historie ist relativ zur Modulposition, eine Modulkopie ohne daten/ meldet belegt 0 Kerzen (Gegenprobe im Temp-Ordner reproduziert). Die 54 Reihen liegen; 'USDC-Reihen' gab es nie (PAARE bildet USDC auf USDT-Symbole ab). Offen aus dem alten Text bleibt nur: Bestand war nie vollstaendig, und jeder Worktree-Test sieht eine leere Historie - Folgeaufgabe T-368.
 - [x] **T-362 — Stop-Deckung: nur omniquant misst sie im Live-Zyklus, die drei anderen Live-Spuren nicht**
       Kontext: Nach dem Befund vom 05.10.2026 (Schutz-Stop "nicht lesbar" →
       falsch geraten, `/openorders` statt `/editorder`) ist die Deckung in
