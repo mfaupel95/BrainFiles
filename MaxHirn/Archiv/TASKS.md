@@ -1221,20 +1221,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Handel/freigabebeleg.py, Agenten/Hermes/cron/jobs.json
 
 
-- [ ] **T-282 - Omniquant-Live-Zweig steht, aber die Kraken-Futures-Margin fehlt**
-      Kontext: Der Orderweg auf Kraken Futures ist gebaut und geprueft (Hebel 6
-      als Sizing-Regel, neun von zehn Instrumenten handelbar, ZEC faellt heraus
-      weil 1 Kontrakt 1437 USD Nennwert = Hebel 28,7). Nichts ist scharf:
-      handel_erlaubt=false, freigabe.erfuellt=false, kein Eintrag in
-      AUTO_FREIGABE. Blocker ist allein die Margin - das Kraken-Futures-flex-Konto
-      traegt 85,09 USD, davon sind 83,38 durch drei laufende nautilus-Positionen
-      (SUI/HBAR/HYPE, zusammen +12,63 USD im Plus) gebunden; frei sind 1,31 USD,
-      Stufe 1 braucht 30.
-      Naechster Schritt: Entscheidung Max - (a) eine nautilus-Position schliessen,
-      (b) Guthaben ins flex-Konto legen oder (c) mindest_guthaben_usd senken
-      (erlaubt nur kleinere Positionen, nicht mehr Plaetze). Danach
-      handel_erlaubt UND freigabe.erfuellt - beide Haken, und den Haken setzt Max.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/omniquant, nautilus_kraken
 
 - [ ] **T-280 - Kraken: drei Posten sind nicht verkaufbar (Ordermin bzw. gestakte Form)**
       Kontext: Beim Umschichten am 01.10.2026 blieben PEPE (409.009,94 gegen ordermin
@@ -1254,31 +1240,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-277 - xperp XRP: Buch fuehrt 704 Kontrakte, die Boerse 295**
-      Kontext: zustand.json traegt XRP-USD_UM_XPERP-310404 mit kontrakte 704.0 und
-      margin 108.69 (das passt zu 704), /account/positions meldet pos=295
-      (mgnMode cross). Der Schutz ist vorhanden, aber dreifach ueberdeckt: vier
-      OCO-Verkaufsauftraege ueber 81+300+126+278 = 785 Kontrakte stehen fuer eine
-      Position von 295 Kontrakten. Nach dem Muster von bueche_groessen_abgleichen
-      bereinigen (Buch auf die Boersenkontraktzahl, Stop/Ziel/Einstieg
-      unangetastet, keine Order), die ueberzaehligen OCO-Auftraege danach einzeln
-      stornieren.
-      Naechster Schritt: bueche_groessen_abgleichen greift im Live-Zyklus, xperp
-      laeuft aber Papier - von Hand nachziehen.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/zustand.json
 
-- [ ] **T-278 - fremde_positionen_uebernehmen prueft nur attachAlgoOrds, nicht orders-algo-pending**
-      Kontext: Beim Anwenden am 01.10.2026 meldete das Werkzeug fuer ZEC, VVV und
-      ADA "Stop an der Boerse: fehlt - wuerde gestellt". Es fehlte nur in
-      attachAlgoOrds: /trade/orders-algo-pending?ordType=oco zeigte fuer ZEC schon
-      eine OCO (38 Kontrakte, sl 1316.44) und fuer ADA eine (55, sl 0.2286), dazu je
-      ein move_order_stop auf VVV (217) und ADA (180). Jetzt liegen zwei Stops je
-      Position, der neuere und engere feuert zuerst - der Stop wurde damit
-      unbemerkt von -8.6 % auf -2.7 % gezogen. Die Pruefung muss ALLE ordTypes
-      lesen (conditional, oco, trigger, move_order_stop).
-      Naechster Schritt: Pruefung in fremde_positionen_uebernehmen.py erweitern;
-      die doppelten Auftraege bewusst stehen lassen oder einzeln stornieren.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/fremde_positionen_uebernehmen.py
 
 - [ ] **T-273 - xperp: drei echte OKX-Positionen stehen ohne Buch und ohne Stop**
       Kontext: Am 01.10.2026 gemessen - die Boerse haelt ZEC (38 Kontrakte),
@@ -3714,6 +3676,47 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-282 - Omniquant-Live-Zweig steht, aber die Kraken-Futures-Margin fehlt**
+      Kontext: Der Orderweg auf Kraken Futures ist gebaut und geprueft (Hebel 6
+      als Sizing-Regel, neun von zehn Instrumenten handelbar, ZEC faellt heraus
+      weil 1 Kontrakt 1437 USD Nennwert = Hebel 28,7). Nichts ist scharf:
+      handel_erlaubt=false, freigabe.erfuellt=false, kein Eintrag in
+      AUTO_FREIGABE. Blocker ist allein die Margin - das Kraken-Futures-flex-Konto
+      traegt 85,09 USD, davon sind 83,38 durch drei laufende nautilus-Positionen
+      (SUI/HBAR/HYPE, zusammen +12,63 USD im Plus) gebunden; frei sind 1,31 USD,
+      Stufe 1 braucht 30.
+      Naechster Schritt: Entscheidung Max - (a) eine nautilus-Position schliessen,
+      (b) Guthaben ins flex-Konto legen oder (c) mindest_guthaben_usd senken
+      (erlaubt nur kleinere Positionen, nicht mehr Plaetze). Danach
+      handel_erlaubt UND freigabe.erfuellt - beide Haken, und den Haken setzt Max.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/omniquant, nautilus_kraken
+      Kraken-Futures-Margin gemessen: 92.87 USD frei, mindest_guthaben_usd=31.0. Tor offen, handel_erlaubt=true, freigabe.erfuellt=true. Kein Fix noetig.
+- [x] **T-278 - fremde_positionen_uebernehmen prueft nur attachAlgoOrds, nicht orders-algo-pending**
+      Kontext: Beim Anwenden am 01.10.2026 meldete das Werkzeug fuer ZEC, VVV und
+      ADA "Stop an der Boerse: fehlt - wuerde gestellt". Es fehlte nur in
+      attachAlgoOrds: /trade/orders-algo-pending?ordType=oco zeigte fuer ZEC schon
+      eine OCO (38 Kontrakte, sl 1316.44) und fuer ADA eine (55, sl 0.2286), dazu je
+      ein move_order_stop auf VVV (217) und ADA (180). Jetzt liegen zwei Stops je
+      Position, der neuere und engere feuert zuerst - der Stop wurde damit
+      unbemerkt von -8.6 % auf -2.7 % gezogen. Die Pruefung muss ALLE ordTypes
+      lesen (conditional, oco, trigger, move_order_stop).
+      Naechster Schritt: Pruefung in fremde_positionen_uebernehmen.py erweitern;
+      die doppelten Auftraege bewusst stehen lassen oder einzeln stornieren.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/fremde_positionen_uebernehmen.py
+      Code in okxf.py bereits erweitert (ALGO_ORDTYPES, STOP_FELDER, schutz_stops mit allen OrdTypes). Drei neue Tests ergaenzt (11 statt 8, alle gruen). Commit 3fba77c3.
+- [x] **T-277 - xperp XRP: Buch fuehrt 704 Kontrakte, die Boerse 295**
+      Kontext: zustand.json traegt XRP-USD_UM_XPERP-310404 mit kontrakte 704.0 und
+      margin 108.69 (das passt zu 704), /account/positions meldet pos=295
+      (mgnMode cross). Der Schutz ist vorhanden, aber dreifach ueberdeckt: vier
+      OCO-Verkaufsauftraege ueber 81+300+126+278 = 785 Kontrakte stehen fuer eine
+      Position von 295 Kontrakten. Nach dem Muster von bueche_groessen_abgleichen
+      bereinigen (Buch auf die Boersenkontraktzahl, Stop/Ziel/Einstieg
+      unangetastet, keine Order), die ueberzaehligen OCO-Auftraege danach einzeln
+      stornieren.
+      Naechster Schritt: bueche_groessen_abgleichen greift im Live-Zyklus, xperp
+      laeuft aber Papier - von Hand nachziehen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/zustand.json
+      Buch fuehrt nur STRK; XRP wurde am 01.10. per buchbereinigung_geist ausgebucht (Journal-Zeile belegt). Kein Fix noetig.
 - [x] **T-368 — Worktree-Test sieht eine leere Historie: 'Historie fehlt' statt still 0 Kerzen**
       Kontext: T-361 (05.10.2026) war kein Loeschvorgang - der rote Replay-Lauf
       (00:43) kam aus .worktrees/t_5609d126/Agenten/Handel/tests, und daten/ ist
