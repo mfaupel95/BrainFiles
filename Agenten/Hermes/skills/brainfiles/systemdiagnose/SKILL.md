@@ -248,6 +248,30 @@ der erste Mal heute bei MEHREREN Jobs? = gemeinsame aussenstehende Ursache wie S
   und erst dann Ressourcen parallel zum Tatzeitpunkt messen. Erst nachdem Commit-Luft da ist,
   erkennen, dass der Radar selbst gesund war und nur Kollateralschaden unter Druck erlit.
 
+- **„RAM freigeben“ heisst meist „CPU messen“.** Ein Rechner mit 21 GB freiem RAM
+  und `LoadPercentage` 100 wird als RAM-Problem gemeldet, obwohl ein einzelnes
+  seit Stunden **idle** geladenes CPU-Modell (`:cpu` → `size_vram: 0`) auf allen
+  Kernen rechnet: 47,6 Kerne gemessen, dabei null offene Verbindungen und ein
+  Log, das seit Stunden nicht gewachsen ist. Erst Differenzmessung der Last
+  (zweimal `CPU` ablesen, nicht `Sort-Object CPU`), dann freigeben. Die
+  Umkehrung gilt auch: **Memory Compression mit 9 GB ist kein Leak** bei 23 GB
+  freiem RAM — das ist eine Container-Laufzeit, die Commit haelt. Vollstaendige
+  Messfolge und die Belegbefehle: `references/ram-und-cpu-freigeben.md`.
+- **Eine bestehende Waechter ist blind, wenn sie den falschen Prozessnamen
+  zaehlt.** Ein MCP-Kreislauf mit 84 `node`-Knoten blieb unentdeckt, weil die
+  Zombie-Wache nur `python`/`pythonw` filterte. Vor jeder Ueberzahl-Bereinigung
+  die Waechter-Definition lesen: **welche Interpreter zaehlt sie ueberhaupt?**
+  Sonst raeumt man von Hand, was die Wache nicht sieht, und der Kreislauf kommt
+  zurueck.
+- **Eine PowerShell-Fehlerblende, die sich hundertfach wiederholt, ist fast nie
+  ein Datenproblem.** Bei einer CIM-Gruppierung lieferte
+  `$grp = if (...) {...} else { @() }; $grp += $p` den Fehler
+  „CimInstance enthaelt keine Methode op_Addition“ — der `if`-Ausdruck lieferte
+  ein Objekt statt eines Arrays. Die Regel: gleiche Meldung mehrfach = Muster
+  lesen, nicht weiterlaufen. Richtig ist `New-Object System.Collections.ArrayList`
+  plus `[void]$h[$k].Add($p)`. Der Fehler hat sich als „0 Waisen gefunden“
+  getarnt, also auch die Belegpflicht: **eine Vorschau, die 0 beenden meldet,
+  ist erst nach diesem Ausschluss eine belegte Null.**
 - **Ein traeger Rechner hat selten einen CPU-Fresser.** Gemessene 18 % CPU,
   25 GB freier RAM und leere Disk-Queue passen zu einer Kiste, die sich
   trotzdem kriechend anfuehlt — dann zuerst nach **Vielfachheit** (Duplikate
@@ -306,6 +330,11 @@ der erste Mal heute bei MEHREREN Jobs? = gemeinsame aussenstehende Ursache wie S
 ## Ereignis-IDs
 Welche ID was bedeutet (Kernel-Power 41, Volsnap 36, disk 11/153, Service
 Control Manager 7000/7023/7031/7034/7043): `references/ereignis-ids.md`.
+
+## Speicher und Last freigeben
+Auftrag „RAM freigeben“ / „System beschleunigen“: Reihenfolge, idle-CPU-Modell,
+MCP-Knoten-Generationen, Memory Compression als Symptom, PowerShell-Falle beim
+Gruppieren: `references/ram-und-cpu-freigeben.md`.
 
 ## Bericht
 - Ergebnis zuerst, dann Belege. Tabellen fuer Zustandswerte, keine Prosa.
