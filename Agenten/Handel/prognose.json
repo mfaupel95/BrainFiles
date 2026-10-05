@@ -1,7 +1,7 @@
 {
   "_zweck": "Tore der Prognose. Dieselbe Trennung wie bei wachen.json: die Zahlen stehen hier, nicht im Code. prognose.py liest die Datei und schreibt sie nie.",
   "_stufe": "Stufe 1 nach Wissen/Schutzregeln.md: aendern heisst sichern, echter Lauf, Commit. prognose.py stellt selbst keine Order, aber mit denselben Schwellen waehlt der Marktscanner seine Kaeufe aus - ein gelockertes Tor ist deshalb eine Entscheidung ueber Geld.",
-  "_maerkte": "05.10.2026, Auftrag Max 'ja aber maerkte und werte erhoehen'. Der Quote-Filter ist GELOEST (Schluessel fehlt in der Konfiguration) - gemessen am 05.10.2026 ueber die echte OKX-Tickerliste: ohne Quotefilter 62 Paare ueber 3 Mio USD Umsatz, mit USDT+USDC 50. Der Filter hat also 12 echte Kandidaten ausgeschlossen, ohne einen tauglichen zu retten: BTC-EUR, BTC-BRL, CT-TRY und PI-TRY sind Fiat-Paare, die OKX-Spot fuehrt und Kraken Futures nicht. Der Umsatzfilter (3 Mio USD) bleibt die eigentliche Bremse und ist eine Sinngrenze. `werte` wird nicht gesetzt: bei 62 Kandidaten waere jede Zahl eine Verkleinerung dieser Liste, es gibt nichts zu beschneiden. Wichtig fuer die Lesart: USDC ALLEIN waere die enge Loesung (5 Paare, ohne BTC/ETH/SOL) - das ist die Verschlimmbesserung, vor der die alte Fassung warnte. Die Order-Quote faellt mit der Laenge, nicht mit der Quote: kumulativ 90 % bis Platz 20, 83 % bis 30, 82 % bis 62. Zwölf Kandidaten haben keinen PF_-Markt (ATH, LIT, OKB, PROS, XDP, XMSTR ohne Basis; die vier Fiat-Paare siehe oben). Messskript: Agenten/Hermes/scripts/werte-grenze-messen.py",
+  "_maerkte": "05.10.2026. ZUERST GELOEST, DANN ZURUECKGENOMMEN - mit Protokoll, weil der Fehler in die Zahl ging und nicht nur in einen Kommentar. Auftrag Max: 'ja aber maerkte und werte erhoehen'. Erster Versuch: Quote-Filter geloest (62 Paare statt 50 ueber 3 Mio USD Umsatz). Gegenprobe am selben Tag ueber die echte Boerse: von den 12 neuen sind ALLE 12 Fiat-Paare (TRY, BRL, EUR), ohne Fiat bleiben exakt 50 - dieselbe Liste wie mit USDT+USDC. Die 12 scheitern am C/R-Tor (USDC-EUR 0,02, BTC-EUR 0,05, BTC-BRL 0,09 bis TRX-TRY 0,62; PI-TRY und USDT-TRY am Score 23,8/53,9; CT-TRY und XDP-TRY an 6 bzw. 8 Kerzen Historie). Ursache ist strukturell: der Euro/Rand/Lire-Preis steht per Wechselkurs nah am 60-Tage-Hoch, das Ziel ist kleiner als der Stop. Diese Paare sind als Signal wertlos - und 0 von 12 haben einen PF_-Markt auf Kraken Futures. Ein breiterer Filter sieht hier auf dieselbe leere Stelle. ZWEITER, WICHTIGERER BEFUND: die 0 Treffer vom 05.10. (62 geprueft, 56 mit Historie) haben NICHTS mit diesem Filter zu tun - sie liegen am mindest_cr, weil der Markt ueberall nah am 60-Tage-Hoch steht. Das ist Marktlage, keine Konfiguration. Der Filter bleibt USDT+USDC (gemessen 05.09., die breite Basis). `werte` bleibt ungesetzt: bei 50 Kandidaten gibt es nichts zu beschneiden. Lehre fuer mich: eine Breitenmessung, die nur ZAEHLT und nicht die Tore prueft, verkauft Kandidaten statt Signale.",
   "min_volumen_24h_usd": 3000000,
   "pause_s": 0.12,
   "_tore": "Was ein 'sehr guenstiger Einstieg' ist - je Richtung. Die gemeinsamen Werte gelten fuer beide; hoechst_rsi/ruecksetzer_* gelten fuer LONG, mindest_rsi/erholung_* sind ihr SHORT-Gegenstueck. Alle Tore gleichzeitig - ein Treffer ist die Ausnahme, nicht die Regel. Was hier nicht steht, wird nicht gemeldet. Am 11.09.2026 an den echten Zahlen des ganzen Marktes kalibriert (41 Maerkte): mit den ersten, aus dem Bauch gesetzten Werten fand sich nie etwas. Wo es die Grenze schon gibt, steht hier derselbe Wert wie in scanner/wachen.json - eine zweite Wahrheit waere eine zweite Meinung zum selben Geld.",
@@ -34,5 +34,9 @@
   },
   "melden": {
     "hoechstens": 5
-  }
+  },
+  "maerkte": [
+    "USDT",
+    "USDC"
+  ]
 }

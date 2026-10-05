@@ -294,12 +294,25 @@ def lauf(kurz=False, alle=False, melden=True, werte=None):
     # Der Markt: alle Paare der konfigurierten Quote-Waehrungen ueber einem
     # Mindestumsatz, absteigend nach Umsatz. Zuerst der Umsatz, dann die
     # Kerzen - sonst zieht der Lauf an den toten Paaren die meiste Zeit.
-    paare = okx.alle_paare(quote=k["maerkte"],
+    #
+    # `maerkte` darf seit dem 05.10.2026 FEHLEN (Auftrag Max: "maerkte und
+    # werte erhoehen"), deshalb der Zugriff mit .get() statt k["maerkte"]:
+    # ein fehlender Schluessel ist "kein Quotefilter", ein KeyError waere ein
+    # Abbruch des Laufs. `okx.alle_paare(quote=None)` heisst "alle Quotes".
+    #
+    # BEFUND vom 05.10.2026, der die Erweiterung wieder zuruecknahm: ohne
+    # Filter liegen 62 Paare ueber 3 Mio USD da, mit USDT+USDC 50 - aber die
+    # 12 Differenzen sind ALLE Fiat-Paare (TRY, BRL, EUR) und fallen am
+    # C/R-Tor durch (0,02 bis 0,62). Ohne Fiat bleiben exakt 50. Der Filter
+    # kostete also keinen Kandidaten; die Erweiterung haette nur zusaetzlich
+    # Krypto-Markt gegen ueberhitzte Wechselkurs-Paare gestellt. Begruendung
+    # und Ruecknahme stehen in prognose.json unter "_maerkte".
+    paare = okx.alle_paare(quote=k.get("maerkte"),
                            min_volumen_usd=k["min_volumen_24h_usd"])
     if werte:
         paare = paare[:werte]
     print("=== Prognose %s | %d Maerkte ueber %s (Umsatz >= %g USD, 24 h) ==="
-          % (heute, len(paare), ", ".join(k["maerkte"]),
+          % (heute, len(paare), ", ".join(k.get("maerkte") or ["alle Quotes"]),
              k["min_volumen_24h_usd"]))
 
     zeilen = []
