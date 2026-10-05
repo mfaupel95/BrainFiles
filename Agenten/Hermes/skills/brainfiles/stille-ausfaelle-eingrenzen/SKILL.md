@@ -8,7 +8,7 @@ platforms: [windows]
 metadata:
   hermes:
     tags: [Diagnose, Windows, Launcher, Startweg, Belege, BrainFiles]
-    related_skills: [wirkung-nachweisen, trugschluesse, systemdiagnose, hermes-maintenance]
+    related_skills: [wirkung-nachweisen, trugschluesse, systemdiagnose, hermes-maintenance, hermes-profil-antwortet-nicht]
 ---
 
 # Stille Ausfaelle eingrenzen — die Marke statt der Rueckgabe

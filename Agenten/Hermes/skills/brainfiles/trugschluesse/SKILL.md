@@ -7,7 +7,7 @@ platforms: [windows]
 metadata:
   hermes:
     tags: [Belege, Verifikation, Zustand, Betrieb, BrainFiles]
-    related_skills: [systemdiagnose, arbeitsbaum-git-hygiene, handel-spuren, sammelauftrag]
+    related_skills: [systemdiagnose, arbeitsbaum-git-hygiene, handel-spuren, sammelauftrag, hermes-profil-antwortet-nicht]
 ---
 
 # Trugschluesse — jede Zustandsaussage an der Quelle belegen
