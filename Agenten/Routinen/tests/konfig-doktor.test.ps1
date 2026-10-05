@@ -485,6 +485,18 @@ $r = Lauf $fx3 @('ballast')
 $ak = @($r | Where-Object { $_.id -eq 'BALLAST-ALTKOPIEN' }) | Select-Object -First 1
 Pruefe 'mit .old: Titel nennt "davon 1 unsicher"' (($null -ne $ak) -and ($ak.titel -match 'davon 1 unsicher')) "titel=$($ak.titel)"
 
+Write-Host '--- echte Wurzel (Gegenprobe) ---'
+$echteWurzel = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
+$vorher = (& git -C $echteWurzel status --porcelain 2>$null) -join "`n"
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$k = Lauf-Kind @('-Kurz')
+$sw.Stop()
+$nachher = (& git -C $echteWurzel status --porcelain 2>$null) -join "`n"
+Pruefe 'echter Lauf endet mit Exit 0 oder 1 (nicht 2)' (($k.Exit -eq 0) -or ($k.Exit -eq 1)) "Exit=$($k.Exit) $($k.Out)"
+Pruefe 'echter Lauf liefert die Zaehlzeile' ($k.Out -match 'konfig-doktor: KRITISCH \d+ \| WARNUNG \d+ \| HINWEIS \d+ \| UNKLAR \d+')
+Pruefe 'echter Lauf dauert unter 60 s' ($sw.Elapsed.TotalSeconds -lt 60) ("{0:N1} s" -f $sw.Elapsed.TotalSeconds)
+Pruefe 'git status vorher = nachher (nichts veraendert)' ($vorher -ceq $nachher) '(andere Sitzungen koennen waehrenddessen schreiben: Test wiederholen)'
+
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 if ($script:Fehler -gt 0) { Write-Host "konfig-doktor FEHLGESCHLAGEN: $($script:Fehler) Pruefung(en)"; exit 1 }
