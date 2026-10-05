@@ -1,4 +1,26 @@
 ## Offen
+- [ ] **T-361 — `daten/historie/` war um 04:23 leer: 348 von 406 Reihen weg**
+      Kontext: Beim Nachtlauf des Replay-Tests (05.10.2026) kam
+      `HistorieFehlt` fuer BTC-USDC, ETH-USDC und SOL-USDC mit 0 Kerzen –
+      `daten/historie/` enthielt nur noch `backtest/`. Um 02:20 waren es
+      noch 406 Dateien mit je ~50.000 Kerzen. Weder die Routinen-Skripte
+      noch ein Junction kommen als Ursache infrage; `daten/` ist kein
+      Junction und der Ordner selbst wurde um 04:23:17 geaendert. Wer ihn
+      geleert hat, ist NICHT ermittelt – das ist der offene Teil.
+      Zwischenstand wiederhergestellt: aus `G:/MaxHirn-Sicherung` (Stand
+      03.10., 58 Dateien, nur USDT-Reihen) und die fehlenden USDC-Reihen
+      ueber `historie_binance.py --auffuellen` neu geholt. Jetzt 57 Dateien,
+      BTC/ETH/SOL-USDC je ~50.400 Kerzen. Replay-Fenster-, Historie- und
+      Nichts-ausserhalb-Tests wieder gruen (15/15, 234 s).
+      Naechster Schritt: 1) herausfinden, welcher Vorgang `daten/historie/`
+      geleert hat – der Kandidat ist nicht das Haus, also Herkunft pruefen.
+      2) Die Historie gehoert nicht in einen Ordner, den ein fremder
+      Vorgang leeren kann: entweder nach `O:/` (Zweitkopie-Naehe) oder
+      mit einem Marker, der das Leeren protokolliert. 3) `daten/` ist nicht
+      versioniert und in keiner Sicherung vollstaendig – die G:-Kopie vom
+      03.10. hat keine USDC-Reihen.
+      Angelegt · 05.10.2026 · Betrifft: Agenten/Handel/daten/historie/,
+      Agenten/Handel/historie_binance.py, Agenten/Handel/replay.py
 - [ ] **T-360 — Repos-Zentrale: zwei Manifest-Eintraege zeigen auf den geloeschten Ordner `kopier1zu1`**
       Kontext: Die vollstaendige Suite der Zentrale (296 Tests) meldet seit dem
       05.10.2026 zwei rote Tests, BEIDE vorbestehend und beide mit derselben
