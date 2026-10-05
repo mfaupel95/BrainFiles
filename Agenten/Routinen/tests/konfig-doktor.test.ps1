@@ -97,6 +97,55 @@ Schreibe (Join-Path $fx2 'Agenten/MCP-Manifest.json') '{ kaputt'
 $r = Lauf $fx2 @('mcp-pfade')
 Pruefe 'Manifest kaputt: KRITISCH ohne Absturz' ((Hat $r 'MCP-MANIFEST-DEFEKT') -and (-not (Hat $r 'PRUEFUNG-FEHLGESCHLAGEN-mcp-pfade')))
 
+Write-Host '--- mcp-pfade: Fix-Runde 1 ---'
+function Status-Von($Befunde, [string]$Id) { return (@($Befunde | Where-Object { $_.id -eq $Id }) | Select-Object -First 1).status }
+function Hat-Praefix($Befunde, [string]$Praefix) { return (@($Befunde | Where-Object { $_.id.StartsWith($Praefix) }).Count -gt 0) }
+$fx = Neue-Wurzel
+New-Item -ItemType Directory -Path (Join-Path $fx 'Agenten/sub') -Force | Out-Null
+Schreibe (Join-Path $fx 'x/y.js') '//'
+$man = @{ servers = @(
+        @{ name = 'flagwert'; enabled = $true; command = 'powershell'; args = @('--config', 'cfg/fehlt.toml', '--log=logs/a.log') },
+        @{ name = 'skript-fehlt'; enabled = $true; command = 'powershell'; args = @('fehlt.py') },
+        @{ name = 'kurzflag'; enabled = $true; command = 'powershell'; args = @('-u', 'srv.py') },
+        @{ name = 'nurwurzel'; enabled = $true; command = 'powershell'; args = @('x/y.js'); cwd = 'Agenten/sub' },
+        @{ name = 'paket'; enabled = $true; command = 'npx'; args = @('-y', 'github:user/repo', 'user/repo') }
+    )
+}
+Schreibe (Join-Path $fx 'Agenten/MCP-Manifest.json') ($man | ConvertTo-Json -Depth 6)
+$r = Lauf $fx @('mcp-pfade')
+Pruefe '(1) Pfad hinter --flag fehlt: WARNUNG/Vermutung, nicht KRITISCH' ((-not (Hat $r 'MCP-PFAD-FEHLT-flagwert')) -and ((Schwere-Von $r 'MCP-PFAD-OPTIONAL-FEHLT-flagwert') -eq 'WARNUNG') -and ((Status-Von $r 'MCP-PFAD-OPTIONAL-FEHLT-flagwert') -eq 'Vermutung'))
+$b = @($r | Where-Object { $_.id -eq 'MCP-PFAD-OPTIONAL-FEHLT-flagwert' }) | Select-Object -First 1
+Pruefe '(1) --x=wert wird als Flag-Wert erkannt' (($null -ne $b) -and ($b.beleg -match 'logs/a\.log') -and ($b.beleg -match 'cfg/fehlt\.toml'))
+Pruefe '(1) positionales Skript fehlt: KRITISCH' ((Schwere-Von $r 'MCP-PFAD-FEHLT-skript-fehlt') -eq 'KRITISCH')
+Pruefe '(1) Skript nach Kurz-Flag bleibt KRITISCH' ((Schwere-Von $r 'MCP-PFAD-FEHLT-kurzflag') -eq 'KRITISCH')
+Pruefe '(2) Pfad nur gegen Wurzel: WARNUNG NUR-WURZEL' (((Schwere-Von $r 'MCP-PFAD-NUR-WURZEL-nurwurzel') -eq 'WARNUNG') -and (-not (Hat $r 'MCP-PFAD-FEHLT-nurwurzel')))
+Pruefe '(c) Paketbezeichner bei npx sind keine Pfade' ((-not (Hat-Praefix $r 'MCP-PFAD-FEHLT-paket')) -and (-not (Hat-Praefix $r 'MCP-PFAD-OPTIONAL-FEHLT-paket')) -and (-not (Hat-Praefix $r 'MCP-PFAD-NUR-WURZEL-paket')))
+
+$fx = Neue-Wurzel
+$geschwister = $fx + '2'
+[void]$script:Aufraeumen.Add($geschwister)
+Schreibe (Join-Path $geschwister 'srv.js') '//'
+$man = @{ servers = @(@{ name = 'geschwister'; enabled = $true; command = 'powershell'; args = @((Join-Path $geschwister 'srv.js')) }) }
+Schreibe (Join-Path $fx 'Agenten/MCP-Manifest.json') ($man | ConvertTo-Json -Depth 6)
+$r = Lauf $fx @('mcp-pfade')
+Pruefe '(a) Geschwisterordner mit gleichem Praefix gilt als ausserhalb' (Hat $r 'MCP-AUSSERHALB-WURZEL')
+
+$fx = Neue-Wurzel
+Schreibe (Join-Path $fx 'Agenten/MCP-Manifest.json') '{ "servers": [] }'
+$stub = Join-Path $fx 'Agenten/mcp-sync-check.ps1'
+Schreibe $stub "Write-Output 'Kopf 1'`nWrite-Output 'Kopf 2'`nWrite-Output 'Kopf 3'`nWrite-Output '  FEHLER server x fehlt'`nexit 1`n"
+$r = Lauf $fx @('mcp-pfade') @{ OhneExtern = $false }
+$b = @($r | Where-Object { $_.id -eq 'MCP-SYNC-ABWEICHUNG' }) | Select-Object -First 1
+Pruefe '(3) Abweichungs-Beleg zeigt FEHLER-Zeile statt Kopf' (($null -ne $b) -and ($b.beleg -match 'FEHLER server x') -and ($b.beleg -notmatch 'Kopf 1')) "beleg=$($b.beleg)"
+Schreibe $stub "Write-Output 'Kopf 1'`nWrite-Output 'Kopf 2'`nexit 1`n"
+$r = Lauf $fx @('mcp-pfade') @{ OhneExtern = $false }
+$b = @($r | Where-Object { $_.id -eq 'MCP-SYNC-ABWEICHUNG' }) | Select-Object -First 1
+Pruefe '(3) ohne FEHLER/WARN: erste Zeilen als Beleg' (($null -ne $b) -and ($b.beleg -match 'Kopf 1')) "beleg=$($b.beleg)"
+Schreibe $stub "Start-Sleep -Seconds 7`nexit 0`n"
+$r = Lauf $fx @('mcp-pfade') @{ OhneExtern = $false; ModulLimitSek = 8 }
+$b = @($r | Where-Object { $_.id -eq 'MCP-SYNC-ZEITLIMIT' }) | Select-Object -First 1
+Pruefe '(b) Sync-Zeitlimit liegt unter dem Modul-Limit (5 s)' (($null -ne $b) -and ($b.beleg -match 'nach 5 s') -and (-not (Hat $r 'ZEITLIMIT-mcp-pfade'))) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
+
 # === ENDE (neue Testabschnitte oberhalb dieser Zeile einfuegen) ===
 foreach ($p in $script:Aufraeumen) { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 if ($script:Fehler -gt 0) { Write-Host "konfig-doktor FEHLGESCHLAGEN: $($script:Fehler) Pruefung(en)"; exit 1 }

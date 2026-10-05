@@ -97,20 +97,29 @@ function Pruefe-SelbsttestKritisch {
 }
 
 # ---------- Modul 1: mcp-pfade ----------
-function Test-PfadAufgeloest([string]$Pfad, [string]$Cwd) {
+# Loest $Pfad gegen genau EINE Basis auf (absolute Pfade ohne Basis). Rueckgabe: Pfad oder $null.
+function Test-PfadAufgeloest([string]$Pfad, [string]$Basis) {
     if ([System.IO.Path]::IsPathRooted($Pfad)) {
         if (Test-Path -LiteralPath $Pfad) { return $Pfad } else { return $null }
     }
-    foreach ($basis in @($Cwd, $Wurzel)) {
-        $k = Join-Path $basis $Pfad
-        if (Test-Path -LiteralPath $k) { return $k }
-    }
+    $k = Join-Path $Basis $Pfad
+    if (Test-Path -LiteralPath $k) { return $k }
     return $null
 }
 
-function Ist-PfadArg([string]$a) {
+$script:SkriptEndung = '\.(js|mjs|cjs|py|ps1|cmd|bat|exe)$'
+
+function Ist-PfadArg([string]$a, [string]$Cmd = '') {
     if (-not $a) { return $false }
     if ($a -match '^[-@]' -or $a -match '://') { return $false }
+    # Paketbezeichner: github:user/repo, npm:x, git+ssh:... (mind. 2 Zeichen vor ':', also kein Laufwerk C:)
+    if ($a -match '^[A-Za-z][A-Za-z0-9+.\-]+:') { return $false }
+    # user/repo bzw. user/repo@1.2 bei Paketstartern (npx, uvx, ...) ist ein Paket, kein Pfad
+    $leaf = ''
+    if ($Cmd) { $leaf = [System.IO.Path]::GetFileNameWithoutExtension(($Cmd -split '[\\/]')[-1]).ToLowerInvariant() }
+    if (@('npx', 'uvx', 'pnpx', 'bunx', 'pipx') -contains $leaf) {
+        if ($a -match '^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+(@[^\\/]*)?$' -and $a -notmatch $script:SkriptEndung -and $a -notmatch '^\.') { return $false }
+    }
     return ($a -match '[\\/]' -or $a -match '\.(js|mjs|cjs|py|ps1|cmd|bat|exe|json)$')
 }
 
@@ -135,7 +144,7 @@ function Pruefe-McpPfade {
         return
     }
     $ausserhalb = New-Object System.Collections.ArrayList
-    $wl = $Wurzel.ToLowerInvariant()
+    $wl = [System.IO.Path]::GetFullPath($Wurzel).TrimEnd('\', '/').ToLowerInvariant()
     foreach ($s in @($man.servers)) {
         if ($null -eq $s) { continue }
         $name = [string](Get-Eig $s 'name')
@@ -152,37 +161,62 @@ function Pruefe-McpPfade {
         }
         $cmd = [string](Get-Eig $s 'command')
         $fehlend = New-Object System.Collections.ArrayList
+        $optional = New-Object System.Collections.ArrayList
+        $nurWurzel = New-Object System.Collections.ArrayList
         $aufgeloest = New-Object System.Collections.ArrayList
-        if ($cmd) {
-            if ($cmd -match '[\\/]') {
-                $r = Test-PfadAufgeloest $cmd $cwd
-                if ($r) { [void]$aufgeloest.Add($r) } else { [void]$fehlend.Add("command: $cmd") }
+        # Kandidaten: Pfad, Herkunft, kritisch (command / positionales Skript) oder vermutlich optional
+        $kand = New-Object System.Collections.ArrayList
+        if ($cmd -and $cmd -match '[\\/]') { [void]$kand.Add([pscustomobject]@{ p = $cmd; her = 'command'; krit = $true }) }
+        $argListe = @(@(Get-Eig $s 'args') | ForEach-Object { [string]$_ })
+        for ($i = 0; $i -lt $argListe.Count; $i++) {
+            $as = $argListe[$i]
+            $nachFlag = ($i -gt 0 -and $argListe[$i - 1] -match '^--[A-Za-z]' -and $argListe[$i - 1] -notmatch '=')
+            if ($as -match '^--[A-Za-z][^=]*=(.+)$') { $as = $Matches[1]; $nachFlag = $true }
+            if (-not (Ist-PfadArg $as $cmd)) { continue }
+            $krit = ((-not $nachFlag) -and ($as -match $script:SkriptEndung))
+            [void]$kand.Add([pscustomobject]@{ p = $as; her = 'args'; krit = $krit })
+        }
+        foreach ($c in $kand) {
+            $r = Test-PfadAufgeloest $c.p $cwd
+            if ($r) { [void]$aufgeloest.Add($r); continue }
+            if ($cwdRoh) {
+                $rw = Test-PfadAufgeloest $c.p $Wurzel
+                if ($rw) { [void]$aufgeloest.Add($rw); [void]$nurWurzel.Add("$($c.her): $($c.p)"); continue }
             }
-            elseif (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
+            if ($c.krit) { [void]$fehlend.Add("$($c.her): $($c.p)") } else { [void]$optional.Add("$($c.her): $($c.p)") }
+        }
+        if ($cmd -and $cmd -notmatch '[\\/]') {
+            if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
                 Add-Befund -Id "MCP-COMMAND-NICHT-IM-PFAD-$name" -Modul 'mcp-pfade' -Schwere 'WARNUNG' -Titel "Command '$cmd' von '$name' nicht im PATH" `
                     -Beleg "Get-Command $cmd liefert nichts (in dieser Shell; Server-Start kann anderen PATH haben)" -Status 'Vermutung' `
                     -Vorschlag 'Programm installieren oder vollen Pfad ins Manifest schreiben'
             }
         }
-        foreach ($a in @(Get-Eig $s 'args')) {
-            $as = [string]$a
-            if (-not (Ist-PfadArg $as)) { continue }
-            $r = Test-PfadAufgeloest $as $cwd
-            if ($r) { [void]$aufgeloest.Add($r) } else { [void]$fehlend.Add("args: $as") }
-        }
+        $geprueft = "cwd $cwd"
+        if ($cwdRoh) { $geprueft = "cwd $cwd und Wurzel $Wurzel" }
         if ($fehlend.Count -gt 0) {
             Add-Befund -Id "MCP-PFAD-FEHLT-$name" -Modul 'mcp-pfade' -Schwere 'KRITISCH' -Titel "Server '$name': Pfad fehlt" `
-                -Beleg ("Fehlend: " + ($fehlend -join '; ') + ". Geprueft gegen cwd $cwd und Wurzel $Wurzel; Test-Path negativ") -Status 'gesichert' `
+                -Beleg ("Fehlend: " + ($fehlend -join '; ') + ". Geprueft gegen $geprueft; Test-Path negativ") -Status 'gesichert' `
                 -Vorschlag 'Datei bauen/wiederherstellen oder Manifest-Eintrag korrigieren (Reparatur nur nach Freigabe)'
         }
-        $voll = (@($cmd) + @(@(Get-Eig $s 'args') | ForEach-Object { [string]$_ })) -join ' '
+        if ($optional.Count -gt 0) {
+            Add-Befund -Id "MCP-PFAD-OPTIONAL-FEHLT-$name" -Modul 'mcp-pfade' -Schwere 'WARNUNG' -Titel "Server '$name': Datei hinter Flag oder Nicht-Skript-Argument fehlt" `
+                -Beleg ("Fehlend: " + ($optional -join '; ') + ". Geprueft gegen $geprueft; Test-Path negativ") -Status 'Vermutung' `
+                -Vorschlag 'Pruefen, ob die Datei optional ist oder vom Server selbst erzeugt wird; sonst Manifest korrigieren'
+        }
+        if ($nurWurzel.Count -gt 0) {
+            Add-Befund -Id "MCP-PFAD-NUR-WURZEL-$name" -Modul 'mcp-pfade' -Schwere 'WARNUNG' -Titel "Server '$name': Pfad loest nur gegen die Wurzel auf, nicht gegen cwd" `
+                -Beleg ("Betroffen: " + ($nurWurzel -join '; ') + ". Test-Path negativ unter cwd $cwd, positiv unter Wurzel $Wurzel") -Status 'gesichert' `
+                -Vorschlag 'Der Server startet in cwd; Pfad im Manifest relativ zu cwd schreiben oder absolut machen'
+        }
+        $voll = (@($cmd) + $argListe) -join ' '
         if ($voll -match '(?i)(curl|wget|iwr|invoke-webrequest)[^|]*\|\s*(sh|bash|zsh|iex|invoke-expression)\b') {
             Add-Befund -Id "MCP-STARTER-AUFFAELLIG-$name" -Modul 'mcp-pfade' -Schwere 'WARNUNG' -Titel "Starter von '$name' holt Code aus dem Netz und fuehrt ihn aus" `
                 -Beleg 'command/args enthalten Download-Pipe in eine Shell oder iex' -Status 'gesichert' -Vorschlag 'Skript lokal ablegen und pruefen; Entscheidung liegt bei Max'
         }
         foreach ($p in $aufgeloest) {
             $voll2 = [System.IO.Path]::GetFullPath($p).ToLowerInvariant()
-            if (-not $voll2.StartsWith($wl)) { [void]$ausserhalb.Add("$name -> $p"); break }
+            if (-not ($voll2 -eq $wl -or $voll2.StartsWith($wl + '\'))) { [void]$ausserhalb.Add("$name -> $p"); break }
         }
     }
     if ($ausserhalb.Count -gt 0) {
@@ -192,13 +226,18 @@ function Pruefe-McpPfade {
     $sc = Join-Path $Wurzel 'Agenten/mcp-sync-check.ps1'
     if ((Test-Path -LiteralPath $sc) -and -not $OhneExtern) {
         $ps = (Get-Process -Id $PID).Path
-        $r = Invoke-Extern -Datei $ps -Argumente @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $sc) -TimeoutSek $ModulLimitSek
+        # Eigenes Limit unter dem Modul-Limit, damit der Befund noch vor dem Modul-Abbruch entsteht
+        $to = [Math]::Max(5, $ModulLimitSek - 5)
+        $r = Invoke-Extern -Datei $ps -Argumente @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $sc) -TimeoutSek $to
         if ($r.TimedOut) {
             Add-Befund -Id 'MCP-SYNC-ZEITLIMIT' -Modul 'mcp-pfade' -Schwere 'UNKLAR' -Titel 'mcp-sync-check.ps1 antwortet nicht im Zeitlimit' `
-                -Beleg "Abbruch nach $ModulLimitSek s" -Status 'gesichert' -Vorschlag 'Skript einzeln ausfuehren'
+                -Beleg "Abbruch nach $to s" -Status 'gesichert' -Vorschlag 'Skript einzeln ausfuehren'
         }
         elseif ($r.ExitCode -ne 0) {
-            $zl = @(($r.Out + "`n" + $r.Err) -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 3) -join ' / '
+            $zeilen = @(([string]$r.Out + "`n" + [string]$r.Err) -split "`r?`n" | Where-Object { $_.Trim() })
+            $tr = @($zeilen | Where-Object { $_ -match '^\s*(FEHLER|WARN)\b' } | Select-Object -First 3)
+            if ($tr.Count -eq 0) { $tr = @($zeilen | Select-Object -First 3) }
+            $zl = (@($tr | ForEach-Object { $_.Trim() }) -join ' / ')
             Add-Befund -Id 'MCP-SYNC-ABWEICHUNG' -Modul 'mcp-pfade' -Schwere 'HINWEIS' -Titel 'mcp-sync-check.ps1 meldet Abweichung' `
                 -Beleg "Exit $($r.ExitCode): $zl" -Status 'gesichert' -Vorschlag 'Ausgabe des Skripts lesen; Abgleich Manifest und Client-Configs'
         }
