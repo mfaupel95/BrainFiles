@@ -192,3 +192,38 @@ Indiz für System-Commit-Erschöpfung, wenn zeitgleich mehrere unabhängige
 Prozesse denselben Code melden — genau danach lohnt sich beim nächsten Mal
 zuerst zu suchen (`Get-WinEvent -FilterHashtable @{LogName='Application';
 Id=1000}`), bevor eine Ursache im einzelnen Skript vermutet wird.
+
+## 11. Nachtrag 05.10.2026 — erst CPU messen, dann RAM freigeben
+
+**Regel: der Auftrag „RAM freigeben" ist haeufig ein CPU-Befund.** Der Rechner
+kann 21 GB frei haben, `LoadPercentage` 100 anzeigen und sich trotzdem tot
+anfuehlen. **Vor** jeder Speicher-Aktion eine Momentanlast messen — als
+Differenz zweier Ablesungen, weil `Sort-Object CPU` Lebenszeit zeigt, nicht
+Last:
+
+```powershell
+$a=@{}; Get-Process | ForEach-Object { $a[$_.Id]=$_.CPU }
+Start-Sleep -Seconds 8
+Get-Process | ForEach-Object {
+  if ($a.ContainsKey($_.Id) -and $null -ne $_.CPU) {
+    $d=[double]($_.CPU-$a[$_.Id]); if ($d -gt 0.4) { '{0} {1} {2:N2} Kerne' -f $_.Name,$_.Id,($d/8) }
+  }
+} | Sort-Object { $d } -Descending
+```
+
+`Win32_Processor.LoadPercentage` taugt als Alarmschwelle, nicht als Beweis — es
+kann dauerhaft 100 zeigen, obwohl die Last woanders liegt.
+
+**Der stille Vollgas-Fresser: ein lokales Modell auf `:cpu`.** Gemessen 47,6 von
+28 Kernen ueber 8 Sekunden bei 5,2 GB RAM, bei **null** offenen Verbindungen und
+einem Logeintrag von Stunden her. Drei Zeugen, bevor ein Prozess als Fresser
+gilt: die Differenzmessung oben, `Get-NetTCPConnection -RemotePort 11434 -State
+Established` (gibt es die Verbindung noch?), und der Zeitstempel von
+`%LOCALAPPDATA%\Ollama\server.log`. `/api/ps` mit `size_vram: 0` ist das
+eindeutige Kennzeichen der CPU-Variante; `expires_at` in der Vergangenheit plus
+unveraendertes Log heisst „abgelaufen, nur nicht freigegeben". Entladen ohne
+Neustart ueber `/api/generate` mit `keep_alive: 0`.
+
+**Merksatz: ein leerer Log bedeutet fuer einen Dauerprozess „er rechnet
+nicht", nicht „er ist weg".** Die Stille eines Idle-Modells und die Stille eines
+abgestuerzten Dienstes sehen gleich aus — der Unterschied ist der offene Port.

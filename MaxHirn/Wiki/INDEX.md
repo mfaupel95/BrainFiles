@@ -40,7 +40,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 
 | Seite | Zweck |
 |---|---|
-| [Lektionen/Git-und-Textdateien.md](Lektionen/Git-und-Textdateien.md) | Zeilenenden, .gitignore-Whitelist, index.lock, Fremdarbeit im Baum, Zugangsdaten im Arbeitsbaum |
+| [Lektionen/Git-und-Textdateien.md](Lektionen/Git-und-Textdateien.md) | Zeilenenden, .gitignore-Whitelist, index.lock, Fremdarbeit im Baum, Zugangsdaten im Arbeitsbaum; Worktree-Aufraeumen nach dem KANBAN-Dispatcher (Entscheidung am Zweig, nie am Ordneralter) |
 | [Lektionen/Tests.md](Lektionen/Tests.md) | Tests, die in echte Datenordner schreiben; Modulwaechter; sys.path-Reihenfolge; Attrappenbau (ein Zeitanker, Regelmenge statt Zahl); freie Zahlen im Code |
 | [Lektionen/Windows-Umgebung.md](Lektionen/Windows-Umgebung.md) | PYTHONHOME, Pfadaufloesung, Umgebungsvariablen, Auslagerungsdatei/Commit-Limit |
 | [Lektionen/Wahrheit-pruefen.md](Lektionen/Wahrheit-pruefen.md) | Buch gegen Boerse, Zaehler gegen Ursache, „laeuft" gegen „laeuft richtig", deklariert gegen real |
@@ -48,6 +48,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Lektionen/Memory-Verluste.md](Lektionen/Memory-Verluste.md) | Memory-Eintraege belegbar verloren/ersetzt: falscher `old_text` loescht fremde Eintraege, `replaced_entries` lesen, `memory-verlust.py`, Pending-Queue |
 | [Lektionen/Werkzeug-Fallen.md](Lektionen/Werkzeug-Fallen.md) | grep `{0,N}`-Quantor auf langer Zeile = katastrophales Backtracking (62,6 GB, 0xc000012d); jevgrep Exit 1 "stdin is not a tty" = MSYS-Rauschen, echter Grund ist der Anbieter (429/402) |
 | [Lektionen/Eigener-Testlauf.md](Lektionen/Eigener-Testlauf.md) | Zwei eigene PTY-Prozesse erzeugten das Bild eines haengenden Profils; Antwort war 14 s. `latency=` ist eine Messung, „haengt" eine Behauptung. Auth ist fast nie die Ursache |
+| [Lektionen/Fremd-API-Drosselung.md](Lektionen/Fremd-API-Drosselung.md) | Drosselung entsteht durch Nebenlaeufigkeit, nicht Menge (OKX 50011: 120 nacheinander 0 Fehler, 6 Threads 93); `okx_takt.py` als ein Fensterspiegel, 429 ist die einzige wartbare Fehlerart |
 
 ### Betrieb
 
@@ -59,7 +60,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Betrieb/Kanban-Boards.md](Betrieb/Kanban-Boards.md) | Die Boards des Hauses, der Board-Satz, `ready` wird sofort ausgefuehrt, gemessener Stand 30.09.2026 |
 | [Betrieb/Sicherung-und-Laufwerke.md](Betrieb/Sicherung-und-Laufwerke.md) | C:/O:/G:/Q:, Junctions, Was versioniert und was gesichert wird |
 | [Betrieb/Docker-und-Sandbox.md](Betrieb/Docker-und-Sandbox.md) | Docker-Terminal, windows-mcp als Rueckfallweg, weitergeleitete Variablen |
-| [Betrieb/Systemleistung-2026-09-29.md](Betrieb/Systemleistung-2026-09-29.md) | Commit-Erschoepfung und MCP-Spawn-Sturm: Befund, Kur, zwei Lehren (30.09.2026 nachgetragen) |
+| [Betrieb/Systemleistung-2026-09-29.md](Betrieb/Systemleistung-2026-09-29.md) | Commit-Erschoepfung und MCP-Spawn-Sturm: Befund, Kur, zwei Lehren (30.09.2026 nachgetragen); vor jeder RAM-Aktion erst CPU messen (Idle-Ollama auf CPU) |
 | [Betrieb/Arbeitsverzeichnis.md](Betrieb/Arbeitsverzeichnis.md) | Hermes startet in `Agenten/Hermes` - `terminal.cwd` fuer Gateway/Cron, ein `hermes`-Wrapper im PowerShell-Profil fuer CLI und TUI; Pfade bleiben relativ zur Wurzel (Anker `cd "$HERMES_HOME/../.."`), die gemessene Falle und was unberuehrt bleibt |
 | [Betrieb/Desktop-Verknuepfungen.md](Betrieb/Desktop-Verknuepfungen.md) | Vier UI-Verknuepfungen, erzeugt per Skript: Handelszentrale, Werkzeug-Zentrale, Freqtrade-Bots, MoonDev-GUI - und warum das Arbeitsverzeichnis das Entscheidende ist |
 | [Betrieb/Fremd-Material.md](Betrieb/Fremd-Material.md) | Die Grenze zwischen eigenem Code und Fremd-Material: eine Quelle (`Agenten/FREMD-Liste.json`), der Leser `fremd.py`, 831 Dateien / 173.481 Zeilen eigener Code gegen 4,2 Mio. mit Fremdem |
@@ -74,7 +75,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Handel/Gates-und-Freigabe.md](Handel/Gates-und-Freigabe.md) | Sperrenkette, Freigabefenster, AUTO_FREIGABE, Arming |
 | [Handel/Kosten-und-Bedingungen.md](Handel/Kosten-und-Bedingungen.md) | Gebuehren, Bedingungen 1-5, f_max-Merksatz |
 | [Handel/Boersen-und-Schluessel.md](Handel/Boersen-und-Schluessel.md) | OKX EEA/Kraken, Margin-Waehrung, welche Variable welche Spur liest |
-| [Handel/Lektionen.md](Handel/Lektionen.md) | Buch war Fiktion, Stoerung vs. Runde, Papier im Live-Buch, Netzfehler im Zyklus |
+| [Handel/Lektionen.md](Handel/Lektionen.md) | Buch war Fiktion, Stoerung vs. Runde, Papier im Live-Buch, Netzfehler im Zyklus; Stop-DECKUNG als vierte Abgleichsstufe und die Paar-Falle (zwei Schreibweisen, 0 Treffer) |
 | [Handel/Backtest-Fundament.md](Handel/Backtest-Fundament.md) | Historische Daten 2021-2026, die ersten Zahlen je Spur, vier Fallen des Replays |
 | [Handel/Strategie-Kennzahlen.md](Handel/Strategie-Kennzahlen.md) | Formelblatt von Max: t-Statistik der Expectancy, Stop aus der MAE, was zeitbasiert NICHT geht |
 | [Handel/Freqtrade-Bots.md](Handel/Freqtrade-Bots.md) | Die drei Moon-Dev-Bots: was laeuft, der erste Backtest (alle negativ, Verlust = Gebuehr), die Loopback-Falle |
@@ -111,4 +112,4 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/Paperclip.md](Werkzeuge/Paperclip.md) | Paperclip-CLI (`paperclipai`, Node): der verwaltete Install-Weg scheitert unter Windows an Doppelpunkten im Sperr-Dateinamen, deshalb npm in eigenem Prefix plus zwei PATH-Weiterleitungen in `~/.local/bin`; kein `update`/`uninstall`, aktualisiert wird per npm |
 | [Offen/Entscheidungen.md](Offen/Entscheidungen.md) | Was auf eine Entscheidung von Max wartet |
 | [Roadmap.md](Roadmap.md) | Zielkarte: gemessene Luecken nach Wirkung sortiert (Zuverlaessigkeit, Schlankheit, Personalisierung, Autonomie) |
-| [[Hermes-Wartung]] | `hermes update` fahren: Ablauf, EXIT 1, Gateway-Task, blockierte Werkzeuge | Werkzeuge |
+| [[Hermes-Wartung]] | `hermes update` fahren: Ablauf, EXIT 1, Gateway-Task, blockierte Werkzeuge; `state.db` aufraeumen (archiviert ist weich ausblenden) | Werkzeuge |

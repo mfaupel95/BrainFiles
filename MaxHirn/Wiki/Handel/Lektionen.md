@@ -3,7 +3,7 @@ id: 20260921-handel-lektionen
 title: 'Handel — Lektionen'
 tags: [handel, lektion]
 created: 2026-09-21
-updated: 2026-09-25
+updated: 2026-10-05
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Lektionen/Wahrheit-pruefen]]']
 summary: 'Die teuren Lehren aus dem Handelsteil: Buch und Boerse liefen auseinander, Papier mischte sich in Live-Buecher, Stoerungen sahen wie Runden aus, Preisregeln fehlten beim Notausstieg, ein Netzabbruch riss den ganzen Zyklus mit.'
 ---
@@ -1014,3 +1014,68 @@ Design-Entscheidung, keine Reparatur.
 
 **Nebenbei gefunden:** `orb` fehlte in der Auswertung ganz (nur `orbk` stand in
 `SPUREN`); 18 von 41 Spuren haben noch keine Gebuehr (T-264).
+
+## Eine vierte Abgleichsstufe: die Deckung, nicht die Existenz (05.10.2026)
+
+**Regel: „ein Stop liegt an der Boerse" ist keine Aussage ueber die MENGE.**
+Bis zum 05.10.2026 pruefte der Abgleich drei Dinge: gibt es die Position, stimmt
+die Kontraktzahl, ist die gemerkte Stop-Kennung an der Boerse wirksam. Die
+vierte Frage — **wie viel** ist gedeckt — fehlte, und genau dort lag der Befund.
+
+Gemessen am echten Konto (xperp zuerst, danach mosaic): BTC-USDC Buch
+0,00065270, Stop an der Boerse 0,00064984. Die Luecke 2,86e-06 (rund 0,20 EUR
+bei 70.047 EUR/Stueck) laeuft bis zur Liquidation: der Stop war wirksam, die
+Position nicht. ETH-USDC 3,9e-07, SOL-USDC gedeckt.
+
+**Die Paarauflosung fand nichts (der zweite, zuerst unsichtbare Befund).**
+Kraken fuehrt dasselbe Paar in zwei Schreibweisen: `AssetPairs` nennt
+`XXBTZEUR`, `OpenOrders` nennt `XBTEUR`. Ein Lookup auf den Paarnamen liefert
+`base=None` und damit NULL Treffer — was sich wie „kein Stop an der Boerse"
+liest. Vor der Korrektur zeigten BTC und ETH je **0 Stops**, obwohl je einer
+lag.
+
+Merksatz: **wenn eine Abfrage ALLES leer liefert, ist die Abfrage der Befund,
+nicht der Bestand.** Die Aufloesung gehoert an EINE Stelle
+(`spot_stops.muenze_aus_paar()`), eine eigene Regel im Abgleich waere die
+dritte Fassung derselben Wahrheit. Und sie ist nicht vollstaendig: `_PRAEFIX`
+fuehrt `XXBT, XBT, XETH, XXLM, XXRP, XZEC, XDG` — `XADA` bleibt `XADA`, wer die
+Kurzform fuer die richtige Form haelt, bekommt bei jeder zweiten Muenze einen
+leeren Befund.
+
+**Drei Regeln, die dazugehoeren:**
+
+1. **Die Stufe muss auch im gesunden Zweig haengen.** Die Deckungsmessung stand
+   zuerst hinter `if wirksam: continue` — also genau in dem Zweig nicht, den der
+   Betrieb nimmt. Eine Regel gehoert an *jeden* Weg, der dieselbe Sache
+   entscheidet.
+2. **Fremde Auftraege zaehlen zur Deckung und werden nie angefasst.** An Kraken
+   lagen fuenf Stops auf SOL (zusammen 9,539 gegen 0,481 im Buch), vier davon
+   von Nachbarspuren. Die Position gilt als gedeckt; die vier bleiben
+   unberuehrt, das ist Sache von `waisen_stops`. Ein Abgleich, der fremde Stops
+   anfasst, ist ein Aufraeumer mit Boersenzugriff.
+3. **Ein geratener Notausstieg ist teurer als eine gemeldete Luecke.** Die
+   Zyklus-Stufe liest und meldet; `stops_nachziehen.py` **stellt nichts** ohne
+   `--stop`, denn ein Notausstieg ist eine Order und ein geratener Schutzpreis
+   eine, die niemand bestellt hat.
+
+**Nachweis.** Suite mosaic 158 Tests (14 neue). Gegenproben: Aufruf im gesunden
+Zweig entfernt -> 2 Tests rot; Mengenvergleich vereinfacht -> 3 rot. Echter
+Abgleich in der Vorschau: 3 geprueft, 3 ok, 2 ungeschuetzt, 0 unklar —
+BTC 2,86e-06, ETH 3,9e-07. `spiegelstand.py` meldet `gleich`, Journal und
+Zustand byte-gleich.
+
+## Eine Erweiterung zurueckgenommen, mit Protokoll (05.10.2026)
+
+**Regel: wenn ein Auftrag eine Zahl erhoehen soll, gehoert die Gegenprobe an
+die Boerse, nicht an die Konfiguration.** Auftrag Max: „maerkte und werte
+erhoehen". Erster Versuch: den Quote-Filter geloest (62 Paare statt 50 ueber
+3 Mio USD Umsatz). Die 12 neuen Paare waren **alle** Fiat (TRY, BRL, EUR) und
+fallen am C/R-Tor durch (0,02 bis 0,62) — ohne Fiat bleiben exakt 50. Der
+Filter kostete also keinen Kandidaten; die Erweiterung haette nur Krypto-Markt
+gegen ueberhitzte Wechselkurs-Paare gestellt.
+
+Zurueckgenommen mit Protokoll in `prognose.json` unter `_maerkte` und als
+Datensatz in `prognose.py` — **nicht** nur als Kommentar, weil der Fehler in die
+Zahl ging. Merksatz: eine zurueckgenommene Aenderung gehoert an die Stelle, an
+der die Zahl steht; wer sie nur im Kommentar begruendet, liest sie beim
+naechsten Mal nur am Kommentar vorbei.

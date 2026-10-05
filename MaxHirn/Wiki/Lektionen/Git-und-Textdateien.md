@@ -3,7 +3,7 @@ id: 20260921-git-und-textdateien
 title: 'Lektionen — Git und Textdateien'
 tags: [lektion, git]
 created: 2026-09-21
-updated: 2026-09-30
+updated: 2026-10-05
 related: ['[[Lektionen/Tests]]', '[[Wissen/Schutzregeln]]']
 summary: 'Zeilenenden, Whitelist-Falle, index.lock, Fremdarbeit im Arbeitsbaum — die vier Fallen, die am haeufigsten zugeschlagen haben.'
 ---
@@ -237,3 +237,48 @@ Werkzeug fuer den Scan (liest `*.env`, `.env.example/.template/.sample` in Wurze
 und `Werkstatt/Repos`, meldet Pfad + Schluesselname + Laenge, nie den Wert):
 `Agenten/Hermes/cache/scratch/keys_bereinigen.py`. Ausgenommen bleiben
 `Wissen/Zugaenge.md` (Stufe 0) und die per `.gitignore` gesperrten `.env`-Dateien.
+
+## 7. Ein Dispatcher, der je Karte einen Worktree anlegt, sammelt sie fuer immer (05.10.2026)
+
+**Regel: die Entscheidung „Arbeit oder Wegwerf" faellt am ZWEIG, nie am Alter
+des Ordners.** `git worktree list` zeigte nach einem Tag **31** Eintraege (28 in
+`.worktrees/`, 3 in `.claude/worktrees/`), weil jede abgeschlossene Karte einen
+Worktree mit Zweig `wt/<karte>` hinterlaesst. Zielzahl ist genau EINE Zeile — die
+Wurzel.
+
+```bash
+git worktree list --porcelain | grep '^worktree ' | sed 's/^worktree //'
+# je Zeile (Pfad kann Leerzeichen tragen):
+git -C "$w" log --oneline master..HEAD      # eigene Commits
+git -C "$w" status --porcelain              # uncommittet
+git rev-list --count master..<zweig>        # DIE Entscheidung: 0 = Wegwerf
+```
+
+Beide Sorten liegen im selben Ordner: acht Zweige hatten echte Commits, 33
+nicht. Ein alter Worktree mit sauberem Status kann auf einem Zweig mit drei
+Commits sitzen — umgekehrt liegt die Leistung manchmal nur als uncommittete
+Datei im Ordner. Wer nach „alt" sortiert, entscheidet nach einem Kriterium, das
+beim naechsten Mal anders belegt ist.
+
+Ablauf in dieser Reihenfolge: (1) Zweige mit Arbeit **zuerst** auf origin
+sichern, (2) uncommittete Dateien in einen Rueckgabe-Ordner kopieren (mit
+Worktree-Namenspraefix, mehrere Worktrees teilen sich Dateinamen wie
+`TASKS.md`), (3) `git worktree remove --force` + `git worktree prune`,
+(4) `git branch -D` nur bei `rev-list --count == 0`, (5) verwaiste Zweige auf
+origin ebenfalls loeschen.
+
+Zwei Fallen, beide gemessen:
+
+- **`worktree remove` scheitert an Resten mit echten Junctions** (`Werkstatt`
+  -> `O:\Werkstatt`, Klonen mit `.venv`). Die drei Ordner bleiben als
+  Verzeichnis-Baum stehen und man loescht sie per `shutil.rmtree`. Junctions
+  darf man **nicht** verfolgen, sonst hasht man 6.329 Dateien aus dem echten
+  Werkstatt-Baum — zweimal passiert, Laufzeit ueber fuenf Minuten.
+- **Ein 0-Byte-`.git` im uv-Cache ist kein Repo**, sondern ein Artefakt
+  (`invalid gitfile format`). Nur die Datei loeschen, nicht den Ordner.
+
+Werkzeug: `scripts/worktree-inventur.py` im Skill `git-remote-backup`.
+Beim Push vorher `env -u GITHUB_TOKEN -u GH_TOKEN` (siehe Abschnitt 3/4) — eine
+Benutzervariable mit schmalerem Scope wird von git dem Credential-Manager
+vorgezogen und der Push endet mit `403 Write access not granted`, waehrend
+derselbe Push von Hand durchgeht.

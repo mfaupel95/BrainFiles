@@ -1,8 +1,8 @@
 ---
 titel: Hermes-Wartung
 bereich: Werkzeuge
-stand: 2026-09-30
-tags: [hermes, update, gateway, wartung]
+stand: 2026-10-05
+tags: [hermes, update, gateway, wartung, sessions]
 ---
 
 # Hermes-Wartung (`hermes update`)
@@ -109,3 +109,29 @@ zwei Minuten erfolglos "Neustart ausgeloest" protokollierte.
 pruefen, und die Import-Probe des `tools`-Python. Ein Gateway, der laeuft,
 meldet sich in `Agenten/Hermes/gateway_state.json` mit `gateway_state:
 running` und allen vier Plattformen `connected`.
+
+## Sitzungsspeicher aufraeumen (05.10.2026)
+
+**Regel: `hermes sessions archive` ist weich ausblenden, nicht loeschen.** Es
+setzt nur `sessions.archived = 1` — die Sitzung ist aus den Listen weg, aber
+voll rueckrufbar. Wer `archived` zaehlt, glaubt, es sei schon weg. Gemessen:
+`state.db` 856 MB am 05.10.2026.
+
+Vor dem Lauf ueber `file:…?mode=ro` messen (nie mit Schreibzugriff, waehrend
+Agenten darauf laufen): Sessions gesamt/archiviert, Nachrichten in
+archivierten, und die beiden Ausnahmen, die einen Prune **nicht** ueberleben:
+
+- `hidden = 1` (Bot-Chat-Zeilen) — der Prune sieht nur `archived`
+- `pinned = 1` — der Pin ist der dauerhafte Keep-Haken
+
+Also **vorher** beide mit `hermes sessions pin <id>` sichern (der Pin gilt dann
+auch fuer die automatische Archiv-Umlaufregel). `--include-pinned` wuerde sie
+mitloeschen — das ist eine Entscheidung von Max, keine Voreinstelle des
+Werkzeugs.
+
+Sicherung ueber die **SQLite-Backup-API**, nicht `shutil.copy`: die Datei ist
+offen (WAL), und ein Kopieren waehrend des Checkpoints liefert Zufallsdaten.
+
+Merksatz: `sessions/request_dump_*.json` ist eine **andere** Sache (Debug-Dumps,
+Groessenordnung zig MB) und wird von keinem Prune beruehrt — wer die Zahl an
+`du -sh sessions` misst, misst die Dumps.
