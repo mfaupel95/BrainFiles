@@ -217,6 +217,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-366 - mosaic-Trailing wartet auf einen Weg, der den Stop aendern kann**
+  - Kontext: Trailing-Rechnung liegt in `Agenten/Handel/trailing.py` (19 Tests),
+    xperp ist verdrahtet und scharf (`wachen.json trailing_aktiv: true`). Bei
+    mosaic steht die Spur auf Kraken - und dort gibt es kein Amend.
+  - Gemessen am 05.10.2026 am echten Konto: `EditStopLoss` antwortet HTTP 404
+    (gibt es nicht), `EditOrder` existiert, ist aber KEIN Amend - der Aufruf mit
+    `txid`+`pair`+`price` hat den alten Stop `canceled` und eine NEUE Kennung
+    erzeugt (O6W6K6-P2F4A-RT7HXT statt OK4D3W-AP2XC-4DG45H), bei gleicher Menge
+    und gleichem Preis. Das ist stornieren-und-neu-setzen mit Schutzsprung.
+  - Naechster Schritt: `trailing.nachziehen()` verweigert einen Weg ohne
+    `stop_nachziehen` ausdruecklich - deshalb ist NICHTS verdrahtet. Die
+    Verdrahtung ist eine Bindezeile, sobald mosaic auf OKX-Futures handelt
+    (`okx_perp.gehebelter Weg` kann amend-algos). Alternative: Kraken-Round-Trip
+    nur manuell, nie im Zyklus.
+  - Angelegt 05.10.2026, gemessen 05.10.2026 - Zuletzt 05.10.2026.
+    Betrifft: Agenten/Handel/trailing.py, mosaic/handeln.py, kraken/kraken.py.
+
 
 - [ ] **T-365 — `trailing.py` verdrahtet den Stop, ohne vorher die Mengen-Deckung zu pruefen**
       Kontext: Die Referenz `handel-spur-optimization/references/
