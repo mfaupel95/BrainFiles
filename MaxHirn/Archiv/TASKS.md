@@ -285,6 +285,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Queue, die beim ersten Lauf alle auf einmal durchgehen.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Hermes/scripts/signal-executor.py, Agenten/Handel/spur_buch.py
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 - [ ] **T-347 — omnitrade_futures: echte Papierrunden abwarten, dann Live-Freigabe neu bewerten**
       Kontext: Am 04.10.2026 gestartet: adx_macd auf BTCUSDC/15m im OKX-DEMO
       (PID 61280, Log logs/live-adx_macd-BTCUSDC-20261004-2211.log). Erste
@@ -304,7 +305,8 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       kaufbares Guthaben gelesen werden.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/omnitrade_futures/, Werkstatt/omnitrade/
-- [ ] **T-348 — Vier Tests rot, alle vier von fremder Hand (04.10.2026)**
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - der Signal-Gatter-Fix liegt in master (12 Tests gruen, t_df4b5161), aber dieser Punkt verlangt echte Papierrunden gegen den 28-Tage-Backtest - bleibt offen.**
+- [x] **T-348 — Vier Tests rot, alle vier von fremder Hand (04.10.2026)**
       Kontext: Die volle Handel-Suite (1781 Tests, 1177 s) meldet vier
       Fehlschlaege. Keiner gehoert zu den Leitstand-Schritten; per
       `git diff --name-only` gegen jeden meiner vier Commits belegt, dass
@@ -329,6 +331,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/tests/test_einheit_kraken.py,
       Agenten/Handel/tests/test_spur_wache.py, Agenten/Handel/replay.py,
       Agenten/Handel/tests/test_replay.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - test_spur_wache 11 Tests gruen (Hauptbaum); test_replay im Hauptbaum nachgezogen, braucht die Historie.**
 - [ ] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
       Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
       Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
@@ -434,7 +437,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/replay.py, Agenten/Handel/spur_buch.py
 
-- [ ]   **T-337 — `moondev_historie.basis_von` las einen Cache, der Tests lahmlegte**
+- [x]   **T-337 — `moondev_historie.basis_von` las einen Cache, der Tests lahmlegte**
       Kontext: `_basis` war ein reiner Modul-Cache, gefuellt nur wenn er LEER war. Ein
       Test, der einmal das echte 300er-Universum geladen hatte, hinterliess diese Liste fuer
       den ganzen Prozess. `test_replay_feed.LaufFeedEchtTest` legt seine Attrappen in einen
@@ -448,6 +451,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       beschleunigen, aber nie die Frage beantworten.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/moondev_historie.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - moondev_historie.basis_von leert den Cache (Z.119) und nennt den Fehler im Kommentar (Z.141).**
 
 - [ ]   **T-335 - Bereichs-Besitz steht, die Werkzeuge rufen ihn noch nicht auf**
       Kontext: Drei Bereiche mit je einem Besitzer (`Agenten/BEREICHE.json`,
@@ -477,7 +481,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
       --push` fuer die belegten Faelle.
       Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
-- [ ]   **T-331 — `satz_pct_fuer` las den Börsensatz aus den Notizfeldern**
+- [x]   **T-331 — `satz_pct_fuer` las den Börsensatz aus den Notizfeldern**
       Kontext: Die Ableitung 'boerse=okx, ist das ein Perp?' suchte das Wort "perp" in
       `json.dumps(w).lower()` - also im GANZEN Wachen-JSON. Die Notizfelder tragen es
       haeufig im Nebensatz (`_trigger_vermerk: ... Signal-Wechsel-Gatter als Perp`,
@@ -494,9 +498,10 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       entscheiden.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/gebuehren_setzen.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - gebuehren_setzen.satz_pct_fuer liest markttyp/produkt/instrument_typ statt json.dumps (Z.123-131).**
 
 
-- [ ]   **T-327 — `anbindung_pruefen.py` las die Wachen aus Agenten/ statt Agenten/Handel/**
+- [x]   **T-327 — `anbindung_pruefen.py` las die Wachen aus Agenten/ statt Agenten/Handel/**
       Kontext: `HANDEL = os.path.dirname(HIER)` in einem Werkzeug, das IN `Agenten/Handel`
       liegt - eine Ebene zu hoch. `lade_wachen()` bekam fuer jede Spur `{}` (es gibt kein
       `Agenten/scanner/wachen.json`), `handel_erlaubt` las sich als False, und der Lauf meldete
@@ -511,8 +516,9 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       03.10.2026 schon auf dieselbe Weise auf.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/anbindung_pruefen.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - anbindung_pruefen.py HANDEL = HIER (Z.35) - eine Ebene zu hoch war der Fehler.**
 
-- [ ]   **T-328 — Zwei Schattenarme liefen, ohne dass das Haus ihre Q:-Kopie je pruefte**
+- [x]   **T-328 — Zwei Schattenarme liefen, ohne dass das Haus ihre Q:-Kopie je pruefte**
       Kontext: `spiegelstand` fuehrte die Arm-Namen hart: nur `wachen.knapp.json` und
       `wachen.weit.json`. `squeeze_eth` (Ordner squeeze, Wachen `wachen.eth.json`) und
       `nautilus_kraken_futures` (Ordner nautilus_kraken, Wachen `wachen.futures.json`) stehen
@@ -529,8 +535,9 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       es ist nur im Dauerlauf gefuehrt, sein Journal (1 Zeile) wird nirgends ausgewertet.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/spiegelstand.py, Agenten/Handel/squeeze/
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - spiegelstand.py liest die Arm-Namen per ast aus dauerlauf.SPUREN (Z.115-129).**
 
-- [ ]   **T-329 — mosaics Gebuehr stand auf dem Kraken-Satz, obwohl die Spur auf OKX handelt**
+- [x]   **T-329 — mosaics Gebuehr stand auf dem Kraken-Satz, obwohl die Spur auf OKX handelt**
       Kontext: Am 30.09.2026 (Commit `e6f2715c`, Auftrag Max "nur noch omnitrade auf kraken
       handel erlaubt") kam Kraken aus `mosaic/wachen.json` `boersen` heraus - es blieb
       `["okx"]` -, die Kraken-Spurole `gebuehr_taker 0.006` blieb aber stehen. Eine Runde wurde
@@ -543,8 +550,9 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Wachen pruefen - ein Spurwechsel muss den Satz mitnehmen, sonst kommt der Befund zurueck.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/mosaic/wachen.json, Agenten/Handel/gebuehren_setzen.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - mosaic/wachen.json gebuehr_taker 0.001 (OKX-Spot, gemessen 01.10.2026) - der Kraken-Satz 0.006 ist weg.**
 
-- [ ]   **T-330 — Kein Werkzeug prueft, ob die Gebuehr zur aktiven Boerse passt**
+- [x]   **T-330 — Kein Werkzeug prueft, ob die Gebuehr zur aktiven Boerse passt**
       Kontext: T-329 war die manuelle Fahrt. Es gibt 24 Wachen mit `boerse` oder `boersen` und
       `gebuehr_taker`, und keine Regel, die die beiden vergleicht. Eine Spur kann ihre Boerse
       wechseln - das geschah zweimal (Kraken raus aus mosaic am 30.09.2026, omniquant auf
@@ -557,6 +565,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Schreiben nur mit `--anwenden`. Tests mit Gegenprobe.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/gebuehren_setzen.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - gebuehr_boerse_abgleich.py vorhanden; tests/test_gebuehr_boerse_abgleich.py 16 Tests gruen.**
 
 - [ ]   **T-326 — Offene squeeze-Positionen tragen die alte Geometrie noch**
       Kontext: Nach dem Wechsel auf 3,0 % / 1,5R (04.10.2026, Commits 18168ee8/111a0e6d) wurde angenommen, offene Positionen laeufen unter ihrem alten Stand aus. `skalieren.skaliere()` rechnet Stop und Ziel aber bei JEDER Vergroesserung neu aus dem aktuellen `stop_pct`/`r` — offene Positionen werden bei ihrer naechsten Skalierung mitgezogen. BTC-USDC ist belegt nachgezogen (04.10. 10:04 UTC: `stop_pct` 5,00 → 3,00, Stop 80720,09 → 82462,00, Ziel 93465,36 → 88837,93).
@@ -564,10 +573,11 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/skalieren.py, squeeze, wavetrend, macd_mtf, supertrend
 
-- [ ]   **T-325 — Drei Spuren liefen, ohne dass das Haus ihre Zahlen kannte**
+- [x]   **T-325 — Drei Spuren liefen, ohne dass das Haus ihre Zahlen kannte**
       Kontext: Auftrag "suche noch nicht erkannte Arbeit in Handel und fuege ein" (03.10.2026). Gemessen ueber die echten Listen statt gesucht: `liq_wand`, `trendwende_btc` und `nautilus_emacross` stehen in `dauerlauf.SPUREN` (47 Spuren), haben Wachen und einen laufenden Zyklus — und fehlten in `auswertung_alle.SPUREN`. Befund: liq_wand hatte 32 geschlossene Runden im Journal (33 kauf, 41 verkauf) und 0 in JEDER Auswertung: kein Tagesbericht, keine Strategiekennzahl, kein Kosten-Wendepunkt, keine Freigabe-Aussage. Dieselbe Luecke bei den Ratschen: squeeze, wavetrend, macd_mtf, supertrend (20,00 = 1,0x Buchrisiko) und nautilus_emacross (100,00) fuehrten eine Drawdown-Ratsche, die `pruefe_ratschen.py` nie nachfragte. Dritte Luecke: nautilus_emacross uebergab den Bus-Namen als "handel/" + NAME — fuer die Bus-Suite (T-255) unsichtbar, der Test war rot.
       Naechster Schritt: Erledigt am 03.10.2026 — alle drei Spuren in `auswertung_alle.SPUREN` (Rechenweg `runden_indikator`, den vorhandenen), die fuenf in `pruefe_ratschen.SPUREN`, Bus-Name literal. Messung liq_wand: 32 Runden, 66 % Treffer, -10,83 USD brutto / -14,07 USD netto, Kosten-Wendepunkt -0,30 % je Runde. Neu: `Agenten/Handel/tests/test_verdrahtung.py` prueft die REGEL (jede Spur mit Journal hat einen Rechenweg, jede gesetzte Ratsche wird geprueft, jeder Betrag trifft 1,0x Buchrisiko) mit zwei Gegenproben, 6/6 gruen; Bus-Suite gruen. OFFEN bleibt eine echte Luecke: nautilus_emacross setzt drawdown_halbierung_usd 100.00 OHNE Risiko-Feld in der Wache, der Betrag ist nicht herleitbar — als Ausnahme im Test benannt, nicht stillschweigend uebergangen. Bewusst NICHT verdrahtet: kopier, kopier1zu1, spiegel, omniquant, gitter (eigene auswertung.py, im Tagesbericht mit voller Bilanz); ihr Journal traegt token/symbol statt inst, runden_nautilus ergab dort 107 Runden mit falscher Paarung.
       Angelegt 03.10.2026 · Betrifft: auswertung_alle, pruefe_ratschen, nautilus_emacross/handeln.py, tests/test_verdrahtung.py, Wiki/Handel/Spuren-Uebersicht.md.
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - liq_wand/trendwende_btc/nautilus_emacross stehen in auswertung_alle, pruefe_ratschen, lage und dauerlauf.**
 
 - [ ]   **T-324 — Spur-Audit: Edge und Echtheit fuer ALLE Spuren in einem Durchgang messen**
       Kontext: Nach T-322 (Scanner: Einstieg aus dem Vortagesbericht, +17,49 % und t=15,3 waren ein Rechenfehler) gab es im Haus kein Werkzeug, das diese Fehlerklasse von selbst findet. Es gab `auswertung_alle.py` (rechnet die Zahlen) und Einzelfallbefunde. Folge: eine neue Spur hatte keine Messung, an der ihre Runden vor der Freigabe haette vorbeiliegen koennen. Gebaut: `Agenten/Handel/spur_audit.py` beantwortet fuer alle Spuren zwei Fragen - IST DIE STATISTIK ECHT (Haltedauer im Aufrufertakt, ein Instrument traegt die Mehrheit, Einstiegspreis je (Instrument, Tag) identisch) und HAT DIE SPUR EDGE (Excess gegen BUY & HOLD aus den gespeicherten Kerzen, nicht Trefferquote). Spurliste aus `dauerlauf.SPUREN`, Zuordnung aus `journalpaarung`, Aufrufertakt aus `dauerlauf.TAKT_MAX_MINUTEN` - keine eigenen Zahlen. 33 Tests, acht Gegenproben greifen. Befund am laufenden System: die 475 Runden aller Spuren haben zu 100 % eine Basislinie, nach dem Nachladen von 14 auf 45 Kerzenreihen (Binance, ohne Schluessel).
@@ -704,6 +714,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       `Agenten/Handel/tests` gegenlaufen lassen (der Wochenbericht haengt daran).
       Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/guthaben_abgleich.py,
       Agenten/Handel/scanner/okx.py
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 
 
@@ -726,6 +737,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       `Agenten/Hermes/cache/scratch/docker_neustart.log`,
       Wiki `Werkzeuge/RLTrader-in-Docker.md`.
       Angelegt 02.10.2026 - Betrifft Agenten/Hermes/scripts/docker-wache.py
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 - [ ] **T-307 - RLTrader: update-static-data ist nie gefahren**
       Kontext: T-272 hat optimize und Report belegt; der dritte Pfad
@@ -850,7 +862,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       in die Liste und mit dem gemessenen Kraken-Satz 0,60 %/Seite fahren.
       Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, mosaic
 
-- [ ] **T-293 — omniquant: welcher Markt gilt fuer die Gebuehr?**
+- [x] **T-293 — omniquant: welcher Markt gilt fuer die Gebuehr?**
       Kontext: Beim Festziehen der Gebuehren (01.10.2026) steht in
       `omniquant/wachen.json` `boerse: kraken_futures`, die Instrumente der Spur
       werden aber ueber `okx.letzter_kurs` bewertet - also OKX-Paare. Der
@@ -862,6 +874,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       richtigstellen ODER Instrumente auf Kraken-Paare umstellen), dann den Satz
       nachziehen. Betrifft auch `omniquant/wachen.weit.json`.
       Angelegt 01.10.2026 · Betrifft Agenten/Handel/omniquant
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - omniquant/wachen.json und wachen.weit.json tragen boerse=kraken_futures UND gebuehr_taker 0.0005.**
 
 - [ ] **T-291 — Kraken-Futures-Guthaben: 1,28 USD frei, Tor zu (Entscheidung Max)**
   Kontext: mindest_guthaben 25 USD in omnitrade_futures/wachen.json; 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei 7x. Ohne Nachschub haelt die Hebel-Spur das Tor dauerhaft zu.
@@ -1154,7 +1167,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
       `Agenten/Werkzeuge/fenster_design.py`, `messprobe.py`
       Angelegt: 2026-09-30
-- [ ] **T-242 - Fremd-Grenze: die zwei restlichen Verbraucher anschliessen**
+- [x] **T-242 - Fremd-Grenze: die zwei restlichen Verbraucher anschliessen**
       Kontext: `Agenten/FREMD-Liste.json` (37 Eintraege) ist die eine Quelle,
       `Agenten/Werkzeuge/fremd.py` der Leser; angeschlossen sind die Zentrale
       (Rolle + Hinweis + Kopfzeile "63 fremd") und `bestand.py`. Offen aus dem
@@ -1170,6 +1183,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Bloecke ergaenzen (`fremd.py --pruefen` aufrufen, Ergebnis melden).
       Angelegt: 2026-09-30
       Betrifft: Agenten/Werkzeuge/fundus-suche.ps1, Agenten/Routinen/systempruefung.ps1
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - fundus-suche.ps1 ruft Get-FremdZeile zweimal (Z.190,197); systempruefung.ps1 Block 15 Fremd-Grenze.**
 
 
 
@@ -1218,7 +1232,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-230 - Zahlen gemischt handelnder Spuren neu lesen (Richtung fehlte im Paarer)**
+- [x] **T-230 - Zahlen gemischt handelnder Spuren neu lesen (Richtung fehlte im Paarer)**
       Kontext: `kosten_wendepunkt._paarung_form_b` rechnete das Rundenergebnis
       als `preis/einstieg - 1` OHNE die Handelsrichtung. Bei einem SHORT war das
       Vorzeichen damit verkehrt: eine Short-Runde, die im Ziel schloss, stand als
@@ -1237,6 +1251,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt: 2026-09-30
       Betrifft: Agenten/Handel/kosten_wendepunkt.py, auswertung_alle.py,
       MaxHirn/Wiki/Handel/Backtest-Fundament.md
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - kosten_wendepunkt.py rechnet mit Vorzeichen; tests/test_kosten_wendepunkt.py 12 Tests gruen.**
 
 - [ ] **T-229 — Rueckschau liest nur Claude-Transkripte**
       Kontext: Die Sitzungs-Rueckschau (Skill `rueckschau`,
@@ -1249,6 +1264,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       haengen (Tabelle `messages`/`tool_calls`, dieselben Auswertungen: Themen,
       Fehlersignaturen je Sitzung und Tag) oder ein eigenes Werkzeug daneben.
       Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Hermes/state.db
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 - [ ] **T-228 — Regex-Amoklauf in Hermes-Werkzeug (grep mit `{0,4000}`)**
       Am 30.09.2026 hielt ein `grep -o -E (de|ger):\{[^}]{0,4000}` auf einer
       minifizierten JS-Datei 62,6 GB Commit und legte node.exe und den Explorer
@@ -1306,7 +1322,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Routinen/handel-dauerlauf.ps1
 
-- [ ] **T-222 — Wache deckt nur status/live.json ab, drei weitere Laeufe ohne Wache**
+- [x] **T-222 — Wache deckt nur status/live.json ab, drei weitere Laeufe ohne Wache**
       Kontext: Die Wache `Agenten/Hermes/scripts/omnitrade-lauf-wache.py` (T-211, Job
       804473084f4e) prueft GENAU `status/live.json`. Am 30.09.2026 um 13:00 laufen aber
       VIER omnitrade-Laeufe gleichzeitig, jeder mit eigener Statusdatei: PID 59620
@@ -1319,6 +1335,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       wachen-Konfiguration eine Liste fuehren; vorher mit Max klaeren, ob vier Laeufe
       ueberhaupt gewollt sind (jeder handelt auf demselben Demo-Konto).
       Angelegt · Zuletzt: 30.09.2026
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - omnitrade-lauf-wache.py deckt ALLE status/live*.json ab (Z.5,72,82).**
 - [ ] **T-224 — Kompressionsschwelle nach dem Wechsel auf das Hauptmodell pruefen**
       Kontext: auxiliary.compression ist in allen 22 Profilen und im Hauptprofil entfernt
       (30.09.2026) - die Kompression laeuft damit auf dem HAUPTMODELL (bei nous 786k Kontext)
@@ -1341,6 +1358,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Agenten/MCP-Manifest.json nachtragen und committen, sonst aus der config entfernen.
       Angelegt · Zuletzt: 30.09.2026
       Betrifft: Agenten/Hermes/config.yaml, Agenten/MCP-Manifest.json
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - deepwiki steht in config.yaml, Agenten/MCP-Manifest.json fehlt an dem Pfad; der Drift braucht eine Entscheidung - bleibt offen.**
 
 - [ ] **T-221 — Erhoehten Wrapper einmal echt fahren (UAC)**
       Kontext: Agenten/Hermes/skills/system/erhoehte-windows-aktion/scripts/erhoeht-starten.ps1
@@ -1400,7 +1418,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-194 — Dateischwund-Wache auf weitere Ordner ausweiten?**
+- [x] **T-194 — Dateischwund-Wache auf weitere Ordner ausweiten?**
       Kontext: Die Wache vom 30.09.2026 (`Agenten/Hermes/scripts/dateischwund-wache.py`,
       Cron `dateischwund-wache`) bewacht NUR `Agenten/Hermes/scripts/` - dort sind die
       sechs verschwundenen Testdateien beobachtet worden. Dasselbe Muster kann jeden
@@ -1411,6 +1429,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Merkliste); Kosten sind nur groessere Merkdateien, keine Laufzeit.
       Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Hermes/scripts/dateischwund-wache.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - dateischwund-wache.py und dateischwund-wache-handel.py vorhanden.**
 
 
 
@@ -1680,6 +1699,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       liest, dann die toten Zeilen entfernen - erst nach Ruecksprache, weil sie Max' Presets dokumentieren.
       Angelegt 29.09.2026 · Zuletzt 29.09.2026
       Betrifft: Agenten/Hermes/config.yaml
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - die moa:-Schluessel stehen weiter in config.yaml; ob sie Hermes' Presets dokumentieren, ist eine Entscheidung - bleibt offen.**
 
 - [ ] **T-159 — affinity-SSE-Adresse localhost:6767 antwortet nicht**
       Kontext: In 18 Configs steht `SSE_URL: http://localhost:6767/sse`; der Port ist zu (gemessen mit
@@ -1714,9 +1734,10 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       gegen die Server-Starts pruefen, Kreis schliessen, Wache auf dauerhaft 0 Meldungen stellen.
       Angelegt: 2026-09-29
       Betrifft: Agenten/MCP-Manifest.json, claude_desktop_config.json, Agenten/Hermes/config.yaml
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - nur die Wache mcp-zombie-wache.py vorhanden; die Ursache der Spawn-Kette ist offen - bleibt offen.**
 
 
-- [ ] **T-146 — Der Gateway-Waechter braucht eine Gegenprobe fuer beide Startformen**
+- [x] **T-146 — Der Gateway-Waechter braucht eine Gegenprobe fuer beide Startformen**
       Kontext: Am 29.09.2026 startete `Routinen/gateway-waechter.ps1` den Gateway 148-mal neu,
       weil sein Suchmuster nur die Launcher-Kommandozeile traf, nicht die `runpy`-Form des
       Update-Wegs. Behoben (Identitaet aus `gateway_state.json` zuerst, Kommandozeile als
@@ -1727,6 +1748,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Zustand als "Neustart" erwartet.
       Angelegt: 2026-09-29
       Betrifft: Agenten/Routinen/gateway-waechter.ps1
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - tests/test_gateway_identitaet_wache.py 12 Tests gruen (beide Startformen).**
 
 
 
@@ -1907,6 +1929,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Journalen fuellen; danach den Stop-Vorschlag je Spur gegen den gefahrenen
       Stop stellen.
       Angelegt 29.09.2026. Betrifft Agenten/Handel/<spur>/handeln.py, Journale.
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 
 - [ ] **T-115 - Kraken-USDC: Umstellung vorbereitet, es fehlt das USDC-Guthaben**
@@ -2123,7 +2146,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Handel/optimieren.py, Agenten/Handel/breite.py, Wiki/Handel/Backtest-Fundament.md
 
 
-- [ ] **T-100 — Ungeklaerte Loeschung: sechs Testdateien verschwanden aus Agenten/Hermes/scripts/**
+- [x] **T-100 — Ungeklaerte Loeschung: sechs Testdateien verschwanden aus Agenten/Hermes/scripts/**
       Kontext: Am 25.09.2026 verschwand `test_breite_wache.py` zweimal aus dem
       Arbeitsbaum (`ad081ef` angelegt, `c49111f` nahm die Loeschung mit, `a257c62`
       holte sie zurueck). Am 30.09.2026 nachgezaehlt: es sind SECHS Dateien, nicht
@@ -2160,6 +2183,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       `Agenten/Hermes/cache/`), um den Loescher zu fassen.
       Angelegt: 2026-09-25 · Zuletzt: 2026-09-30
       Betrifft: Agenten/Hermes/scripts/, Agenten/Routinen/fremdarbeit-einziehen.ps1
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - dateischwund-wache.py und test_dateischwund_wache.py vorhanden.**
 
 - [ ] **T-099 — Breite-Wache justieren: sind 10 Punkte Rueckgang richtig?**
       Kontext: Die Wache meldet seit 25.09.2026 einen Rueckgang erst ab **10
@@ -2200,6 +2224,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       aufnehmen.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/{squeeze,wavetrend,macd_mtf,supertrend}/handeln.py und wachen.json, spur_opt.json
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 
 - [x] **T-096 — Backtest ueber die volle Historie fuer die uebrigen Spuren**
@@ -2247,6 +2272,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       und die netto-positiv-Bedingung; sie sind Messung, keine Live-Erfahrung."
       Angelegt: 2026-09-25
       Betrifft: MaxHirn/Wissen/Handelsregeln.md
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 
 - [ ] **T-092 — xperps Tageszweig ist nachrechenbar, aber noch nicht angeschlossen**
@@ -2468,6 +2494,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       traegt und der naechste Papierzweig sie NICHT verkauft.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/swap/
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - im swap-Journal stehen 3 live-Zeilen, aber alle sind funding - keine live-eroeffnen-Zeile; bleibt offen.**
 
 
 - [ ] **T-076 — Der OKX-Bot-Waechter kennt die GESCHLOSSENEN Grids nicht**
