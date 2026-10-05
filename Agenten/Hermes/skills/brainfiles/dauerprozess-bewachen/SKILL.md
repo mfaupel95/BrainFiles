@@ -45,6 +45,26 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
    Die Wache gibt **nichts** aus, wenn alles laeuft (leere Ausgabe sendet nichts),
    und beschreibt nur den Befund, wenn sie eingreift. Nicht-0-Exit oder Timeout
    loest die Fehlermeldung aus.
+   **Achtung: „leer heisst gesund“ ist doppeldeutig, sobald die Wache selbst
+   etwas aufruft.** Leer heisst dann ebenso „nichts zu melden“ wie „die
+   Pruefung lief nie“ — und die zweite Form faellt nie auf, weil nichts
+   auffaellt. Eine Wache, die ein Werkzeug per `subprocess` startet, MUSS den
+   Werkzeugpfad selbst pruefen, denn ein **fehlender Pfad ist kein Fehler,
+   sondern leere Ausgabe**:
+   - Pfad ueber den ORDNER bauen, nicht ueber die Datei. `HIER =
+     Path(__file__).resolve()` ist die **Datei**; `HIER / "waechter.py"` zeigt
+     dann auf ein Verzeichnis mit py-Namen darin. Korrekt: `HIER =
+     ...resolve().parent` oder `SCRIPTS = HIER.parent`.
+   - `Path(...).is_file()` VOR dem Aufruf, Fehlpfad als Ausnahme werfen.
+   - `returncode != 0` des Kindes ist eine Ausnahme, kein leeres Ergebnis.
+   - Im Aufrufer darf ein Fehler der Pruefung **nie** in den stillen Zweig
+     fuehren, sondern zu einem gemeldeten Exitcode (2 = Befund, nicht 0).
+   Gegenprobe: den Fehlpfad zurueckbauen, die Tests muessen dann rot werden.
+   Geprueft mit `Agenten/Hermes/scripts/audit-werkzeugpfad.py` (Exit 1 =
+   Befund); es liest mit `ast` die **Form** — baut die Datei mit `/` einen
+   Dateinamen — und meldet ausdruecklich NICHT den Zustand: es kann nicht
+   wissen, ob ein Werkzeug fehlt, ohne jeden Pfad zu pruefen, und ein Befund
+   ohne Beleg waere das Gegenteil der Hausregel.
 5. **Gegenproben in beide Richtungen, vor dem Bericht:**
    (a) Prozess laeuft -> Wache gibt 0 Zeichen aus, Exit 0;
    (b) `Stop-Process -Id <pid> -Force` -> Wache meldet „PID ... laeuft nicht“,

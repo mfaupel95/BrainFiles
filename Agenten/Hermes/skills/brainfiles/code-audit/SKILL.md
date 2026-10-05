@@ -228,6 +228,24 @@ Fixture, die ihnen zustimmt.** Drei Formen, alle im Haus gemessen:
   ueberschrieben: es kam EIN Eintrag heraus statt zwei, ohne Fehlermeldung.
   **Blockstrukturen als Bloecke lesen.**
 
+  **Und dieselbe Regel gilt fuer die Breite des Pruefers selbst: der ERSTE
+  Befund geht von Hand an den Quelltext, bevor die Liste gemeldet wird — und
+  ein falscher erster Befund heisst „Pruefer verengen", nicht „Liste mit
+  Einschraenkung melden".** Zwei Auditor-Fassungen an einem Tag, beide
+  verworfen: eine nannte elf Dateien mit „Rufumfang ohne Fehlercode, Ausgabe
+  nicht geprueft", von Hand nachgefuehrt faengten die beiden ersten den Fehler
+  aktiv ab (`except` mit Klartext, danach ein zurueckgegebener Leerwert mit
+  dokumentierter Bedeutung) — der Befund war falsch. Die breitere Fassung
+  nannte 63 Dateien ohne jede Fehlermeldung: das ist der Normalbau der
+  ganzen Familie, kein Befund. **Ein Pruefer, der elf Mal falsch alarmiert,
+  ist schlimmer als keiner** — er kostet die Aufmerksamkeit, die ein echter
+  Befund braucht. Die Reihenfolge ist deshalb **Breite zuerst messen, dann
+  verengen, NIE umgekehrt**; und was ein Pruefer nicht beweisen kann, meldet
+  er nicht: meldet eine Form statt eines Zustands („baut die Datei mit `/`
+  einen Dateinamen“), nicht „dieses Werkzeug fehlt“ — das waere eine
+  Behauptung ohne Beleg. Auf die leere Liste folgt kein zweiter Versuch mit
+  derselben Annahme, sondern eine engere Regel oder das Eingeständnis, dass
+  die Frage nicht mechanisch entscheidbar ist.
   **Und dieselbe Regel fuer Testattrappen: eine Attrappe traegt die ANNAHMEN des
   Pruefers, nicht die Regel.** Fuenf Baufehler einer Attrappenklasse, alle an
   einem Tag gemessen, mit 7 / 4 / 9 Fehlschlaegen aus drei davon:
