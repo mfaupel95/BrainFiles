@@ -357,7 +357,34 @@ python -c "import okxf;print([(o['instId'],o['side'],o['slTriggerPx']) for o in 
   Ausstieg in einen Boersenfehler laufen. Vor jeder Aussage „die Spur haelt N
   Positionen" die Boerse fragen und die Live-Zeilen im Journal zaehlen.
 
-### OKX WebSocket: die Kerzenkanäle liegen auf dem BUSINESS-Feed
+### Fuellungen sind der Zeuge fuer JEDEN ausgefuehrten Verkauf
+
+`positions-history` beantwortet „welches Ergebnis hatte diese Position",
+**nicht** „zu welchem Kurs wurde verkauft" — dort steht `avgPx: None`. Der
+Ausfuehrungspreis steht nur in `/api/v5/trade/fills`:
+
+```python
+fills = okxf._roh("/api/v5/trade/fills", signiert=True)   # Liste, kein data-Mantel
+# je Zeile: instId, side (sell = Verkauf einer Long), fillSz, fillPx, ts, fillPnl
+```
+
+Ohne Zeitfilter liefert der Endpunkt die letzten 100 Fuellungen des Kontos ueber
+ALLE Instrumente — darum erst je `instId` gruppieren, dann Zeitfenster und Seite
+filtern. Fuer den Verkauf einer Long-Position ist `side == "sell"` die gesuchte
+Zeile (ein `buy` schliesst eine Short). **Bei Verkauf in mehreren Wellen ist
+der mengengewichtete Kurs aller Fuellungen die richtige Zahl**, nicht der letzte
+Fill. Felder: `fillSz`, `fillPx`, `fillMarkPx`, `fillPnl`, `fee`, `side`,
+`posSide`, `ts`, `ordId`, `tradeId` — **nicht** `sz` und nicht `fillSz` unter
+beiden Namen verwechseln; ein Zugriff auf den falschen Namen trifft den
+`KeyError`.
+
+Ein Abgleich, der eine Position an der Boerse nicht mehr findet, hat mit diesem
+Endpunkt die Wahl zwischen „Geist" (kein Verkauf bezeugt → neutral) und
+„Verkauf" (bezeugt → echter Kurs). Ohne ihn bleiben beide Verkaeufe beim
+Neutral-Buchen, und der Erloes fehlt in der Kapitalkurve. Befund und Rueckweg
+stehen in `references/handgriffe-von-hand.md`.
+
+### OKX WebSocket: die Kerzenkanaele liegen auf dem BUSINESS-Feed
 
 Livestream statt Polling (Event-Trigger, Fuehrpreis-Vergleich). Die Reihenfolge
 vor dem Bauen: erst eine 15-Sekunden-Sonde (connect + subscribe + erste Frames

@@ -45,6 +45,17 @@ d  derselben Position risikiert einen Doppelverkauf.
 Ursache: von Hand geschlossen, Liquidationsrest, oder die Order ist nie gefuellt
 worden.
 
+- **Drei Zustaende, nicht zwei — und die Reihenfolge der Stufen entscheidet.**
+  Ein Abgleich, der nur „da oder weg" kennt, faellt durch, sobald der Mensch
+  ueber Nacht TEILWEISE verkauft hat (Menge sinkt) oder ganz verkauft hat
+  (Menge 0). Der dritte Zustand braucht einen **Zeugen**: verkauft wurde es,
+  wenn `/trade/fills` eine Verkaufsfuellung in Hoehe der Differenz fuehrt — das
+  ist der Ort des Ausfuehrungspreises (`positions-history` liefert `avgPx:
+  None`). Buchung: echter Kurs, Vermerk `verkauf_von_hand`; ohne Zeugen neutral
+  **und als neutral benannt**. Reihenfolge: jede Stufe, die eine Position aus
+  dem Buch entfernt, gehoert **vor** jeder Stufe, die sie anpassen wuerde — sonst
+  ist die Position schon weg, bevor die zweite sie sehen kann. Ausfuehrung und
+  Falltrias in `references/handgriffe-von-hand.md`.
 - **Neutral austragen, nie als Totalverlust.** Die Schliessen-Zeile liest die
   Drawdown-Kurve als EROES; wer `margin_usd=0.00` bucht, erzeugt einen
   Phantomverlust in Hoehe des Einsatzes und zieht die Notbremse nach. Massgeblich

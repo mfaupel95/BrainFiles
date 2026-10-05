@@ -59,6 +59,53 @@ Regel: die Fuellung zaehlt nur in einem Grace-Fenster nach dem Eroeffnen
 konservativ (nicht ausbuchen) - eine echte Position ohne Buch liefe
 unbewacht, das wiegt schwerer als eine Karteileiche.
 
+## 3a. Die Geisterpruefung kennt nur ZWEI Zustaende - ein Verkauf ist der DRITTE
+
+Der teuerste Befund dieser Klasse entsteht, wenn ein Mensch ueber Nacht **verkauft**
+(Stops setzen und liegen lassen, dann weg), statt eine Position zu schliessen.
+Gemessen: vier echte Live-Positionen wurden zwischen 19:37 und 06:04 von Hand
+verkauft. Die Boerse fuehrte die Ergebnisse die ganze Zeit (`STRK realizedPnl
++70,76 USD`, `SOL +0,96`, `QUANT -18,47`) - aber das Buch buchte jede Position
+als `grund="buchbereinigung_geist"` mit **Erloes 0.00**.
+
+Die Mechanik dahinter: `bueche_geister_aus` liest `if groesse is not None and
+abs(groesse) >= 1e-9` - **da oder weg**. Der Zustand "die war da und ist kleiner
+geworden, weil verkauft wurde" faellt durch. Dazu kommt die **Reihenfolge** in
+`buche_abgleich`: die Geisterpruefung loescht zuerst, und `bueche_groessen_abgleichen`
+zieht erst DANACH das Buch auf die Boersengroesse. Bei einer auf null gelaufenen
+Position war die Groesse schon weg - die zweite Stufe konnte nichts mehr
+angleichen.
+
+**Der Verkauf braucht einen KURS, und der steht nicht dort, wo man ihn sucht.**
+`/account/positions-history` liefert `avgPx: None`, weshalb der Ergebniszugriff
+(`_geist_erloes`) ins Leere laeuft und neutral bucht. Der Ausfuehrungspreis steht
+ausschliesslich in `/api/v5/trade/fills` (`fillPx`, `fillSz`, `side`, `ts`). Die
+Faelle aus einer Nacht lagen in **mehreren Wellen** (STRK ueber 122.484 Stueck in
+drei Fenstern) - der mengengewichtete Kurs aller Fuellungen ist die richtige
+Zahl, der letzte Fill allein waere geraten.
+
+**Die Reihenfolge ist der Fix, nicht die Existenz der Funktion.** Ein Abgleich,
+der nach der Geisterpruefung laeuft, kann den Verlust nicht mehr heilen. Jede
+Buchhaltungsstufe, die eine Position aus dem Buch entfernt, gehoert **vor** jede
+Stufe, die sie anpassen wuerde - und beide duerfen nie dieselbe Frage stellen.
+
+Drei Faelle, die vorher keiner konnte:
+
+| Buch | Boerse | Verkauf bezeugt | Buchung |
+|---|---|---|---|
+| 8.033 | 0 | ja | **verkauf** zum echten Kurs, Position raus |
+| 8.033 | 5.000 | ja | **verkauf** 3.033, Rest bleibt im Buch |
+| 334 | 0 | nein | Geist - neutral, **als neutral benannt** |
+
+- **Ein Verkauf braucht den Kurs; ohne Zeugen wird nichts behauptet.** Die
+  Alternative zum Neutral-Buchen ist nicht "ungefaehr", sondern geraten.
+- **Ein Grund `handanpassung` ist kein Verkauf.** Er zieht die MENGE nach und
+  laesst die Kapitalkurve unveraendert - der Erloes fehlt dort fuer immer. Wer
+  eine Preisfrage mit einer Mengenfrage beantwortet, verliert das Ergebnis.
+- **Die Nettokurve darf den Verlust nicht schoenen, aber auch nicht erfinden:**
+  eine Korrektur an den ALTEN Geist-Zeilen bleibt eine eigene, benannte
+  Arbeit - die Funktion repariert den Pfad, nicht die Vergangenheit.
+
 ## 4. Ein reparierter Schreibpfad repariert die ALTEN Zeilen nicht
 
 Der Code ist die halbe Miete. Was er bisher falsch geschrieben hat, steht
@@ -119,3 +166,32 @@ Nachweis, den ein solcher Nachzieher liefern muss:
 4. Die Drawdown-Kurve VOR und NACH vergleichen. Der Beweis ist die Zahl:
    71,14 -> 81,95 statt 168,22.
 5. `spiegelstand.py` laufen lassen (Bedingung 4).
+
+## Was der Test mitbringen muss, wenn Buchhaltung geaendert wird
+
+Drei Punkte, die sich beim Bauen einer Verkaufsbuchung als Kosten zeigten - sie
+sind allgemein, nicht nur fuer diese Funktion:
+
+- **Der Testfall ist der echte Schadensfall, nicht der Normalfall.** Ein Test
+  gegen die echten Zahlen einer verlorenen Nacht (Buchmenge, Boersenrest,
+  Fuellungskurs) deckt die Einstufung ab, die eine frisch gebaute Fassung
+  zuerst falsch hatte: eine GANGZ verkaufte Position hat an der Boerse `0`, und
+  ein Test der auf den Restbestand stellt (`boerse > 0` heisst Teilverkauf) -
+  genau das fehlt bei `0`. Ohne Fuellungen bleibt sie Geist, obwohl die Boerse
+  den Verkauf bezeugt hat. **Die Einstufung entscheidet sich am ZEUGEN, nicht
+  am Restbestand.**
+- **Ein Test, der den Boersenzugang braucht, prueft den Buchpfad nicht.** Die
+  Attrappe muss am MODUL gesetzt werden, das der Aufrufer importiert - und
+  funktioniert das nur, wenn der Aufrufer den Namen im Funktionsrumpf bindet
+  (`import x as y` dort, nicht auf Modulebene). Sonst antwortet die echte
+  Boerse, der Test vergleicht gegen seine eigene Attrappe und meldet eine
+  fremde Zahl (gemessen 0,0567 statt 0,0537).
+- **Ein Netzausfall darf nicht als leerer Plan durchgehen.** `plan()` ohne
+  `try` wirft durch; mit leerer Liste meldet der Aufrufer "alles stimmt". Der
+  Rückgabewert "Boerse nicht erreichbar" muss **ausdruecklich** vom leeren Plan
+  unterscheidbar sein, sonst liest der Aufrufer den Ausfall als Bestaetigung.
+
+Und die Gegenprobe wie immer: den Kernfix zuruecknehmen und schauen, **genau
+welcher** Test rot wird. Ein Test, der bei zurueckgenommenem Fix gruen bleibt,
+prueft nichts.
+
