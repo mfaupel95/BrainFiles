@@ -155,14 +155,6 @@ class OmniquantGui:
 
     # ---------- Aufbau ----------
     def _baue(self):
-        # Der Anzeigefaktor gehoert HIER und nicht in `main()`: als Reiter im
-        # Leitstand (OmniquantReiter, Zeile 28/79) kommt `main()` nie vorbei,
-        # und dasselbe Fenster zeigte dann im Alleinstart und im Reiter
-        # verschiedene Schriftgroessen und Zeilenhoehen fuer dieselben Daten.
-        try:
-            self.root.tk.call("tk", "scaling", 1.1)
-        except Exception:                                        # noqa: BLE001
-            pass
         st = ttk.Style()
         try:
             st.theme_use("clam")
@@ -673,8 +665,21 @@ class OmniquantReiter(ttk.Frame):
 
 
 def main():
+    # `dpi_bewusst()` statt `tk scaling 1.1` (Auftrag Max, 05.10.2026).
+    # Gemessen: der Monitor ist 120 dpi, ein dpi-unawares Fenster sieht
+    # 3072x1728 statt 3840x2160 - 36 % weniger Bildschirm, und Windows
+    # stretcht das fertige Bitmap, wodurch jede Schrift weich wird.
+    #
+    # Der Aufruf muss VOR dem ersten `Tk()` laufen. `tk scaling` entfaellt:
+    # es war ein Ersatz fuer genau das, was der Windows-Aufruf macht, und
+    # beides zusammen ergibt 1.666 statt 1.25 (gemessen).
+    #
+    # Als Reiter im Leitstand kommt `main()` nicht vorbei - dort hat der
+    # Leitstand den Aufruf schon gemacht (leitstand.py, Zeile 319), und
+    # DPI-Awareness gilt prozessweit.
+    design.dpi_bewusst()
     root = tk.Tk()
-    OmniquantGui(root)     # das Scaling setzt `_baue()` - fuer beide Wege
+    OmniquantGui(root)
     root.mainloop()
 
 

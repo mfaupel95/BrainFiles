@@ -316,11 +316,13 @@ class Leitstand:
 
 
 def main():
+    # `dpi_bewusst()` statt `tk scaling 1.1` (Auftrag Max, 05.10.2026).
+    # Gemessen: der Monitor ist 120 dpi, ein dpi-unawares Fenster sieht
+    # 36 % weniger Bildschirm und Windows stretcht das fertige Bitmap.
+    # Der Aufruf muss VOR dem ersten `Tk()` laufen; `tk scaling`
+    # entfaellt (zusammen mit dpi_bewusst ergibt es 1.666 statt 1.25).
+    hz.design.dpi_bewusst()
     root = tk.Tk()
-    try:
-        root.tk.call("tk", "scaling", 1.1)
-    except tk.TclError:
-        pass
     Leitstand(root)
     hz.nach_vorn(root)
     root.mainloop()

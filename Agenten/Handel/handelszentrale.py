@@ -2626,11 +2626,17 @@ def main():
         for zeile in pruefe():
             print(zeile)
         return
+    # `dpi_bewusst()` statt `tk scaling 1.1` (Auftrag Max, 05.10.2026).
+    # Gemessen: der Monitor ist 120 dpi, ein dpi-unawares Fenster sieht
+    # 3072x1728 statt 3840x2160 - 36 % weniger Bildschirm, und Windows
+    # stretcht das fertige Bitmap, wodurch jede Schrift weich wird.
+    #
+    # Wichtig: der Aufruf muss VOR dem ersten `Tk()` laufen, und `tk
+    # scaling` entfaellt. Beides zusammen ergibt 1.666 statt 1.25
+    # (gemessen) - der alte Aufruf war ein Ersatz fuer genau das, was der
+    # Windows-Aufruf jetzt macht.
+    design.dpi_bewusst()
     root = tk.Tk()
-    try:
-        root.tk.call("tk", "scaling", 1.1)
-    except Exception:                                        # noqa: BLE001
-        pass
     Handelszentrale(root)
     nach_vorn(root)
     root.mainloop()
