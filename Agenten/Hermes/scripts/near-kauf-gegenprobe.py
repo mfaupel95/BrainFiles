@@ -69,6 +69,12 @@ print("  freie Margin jetzt: %.2f USD" % frei)
 print("  (vor der Bereinigung und vor diesem Kauf waren es 88.21 USD)")
 
 print("\n=== 4. Schutzauftrag - die groesste offene Luecke ===")
+# `/openorders` ist der Weg des Futures-Dienstes, NICHT `/editorder` - das
+# ist der SPOT-Endpunkt und antwortet in jeder Variante mit
+# `requiredArgumentMissing` (05.10.2026, gemessen an PF_NEARUSD). Mit ihm
+# meldete dieses Werkzeug "Auftraege nicht lesbar" fuer einen Stop, der
+# an der Boerse lag. Wer hier eine Aenderung braucht, muss die Zeile unten
+# lesen und nicht den Endpunkt raten.
 for p in pos:
     inst = p.get("inst")
     stop = p.get("stop")
@@ -76,19 +82,27 @@ for p in pos:
         print("  %-12s OHNE Stop im Buch" % inst)
         continue
     try:
-        algo = kp._kf()._roh("/editorder")   # nur lesend
-        treffer = [a for a in (algo if isinstance(algo, list) else [])
-                   if str(a.get("symbol", "")).upper().startswith("PF_")]
-        print("  %-12s Stop %.6g | offene Algo-Auftraege an der Boerse: %d"
-              % (inst, float(stop), len(treffer)))
-        for a in treffer[:6]:
-            print("       %-12s %s %s @ %s (size %s)"
-                  % (a.get("symbol"), a.get("orderType", "?"),
-                     a.get("side", "?"), a.get("stopPrice") or a.get("limitPrice"),
-                     a.get("size")))
+        orders = kp.offene_auftraege(inst)
     except Exception as e:                                   # noqa: BLE001
         print("  %-12s Stop %.6g | Auftraege nicht lesbar: %s"
               % (inst, float(stop), str(e)[:70]))
+        continue
+    treffer = [o for o in (orders or []) if o.get("stopPrice")
+               and str(o.get("side", "")).lower()
+               == ("sell" if str(p.get("seite", "long")).lower() != "short"
+                   else "buy")]
+    print("  %-12s Stop %.6g | offene Auftraege an der Boerse: %d"
+          % (inst, float(stop), len(orders or [])))
+    for o in (orders or [])[:6]:
+        print("       %-12s %-11s %-5s size=%-7s stop=%-10s reduceOnly=%s"
+              % (o.get("symbol"), o.get("orderType"), o.get("side"),
+                 o.get("unfilledSize") or o.get("size"), o.get("stopPrice"),
+                 o.get("reduceOnly")))
+    if not treffer:
+        print("       -> KEIN Schutz-Stop an der Boerse fuer diese Seite.")
+    elif not kp.schutzstop_vorhanden(inst, kontrakte=p.get("kontrakte")):
+        print("       -> Stop liegt an, deckt aber NICHT die ganze Position "
+              "(T-323).")
 
 print("\n=== 5. Fazit ===")
 alle_offen = []

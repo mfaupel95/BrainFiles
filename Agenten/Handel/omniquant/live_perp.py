@@ -364,11 +364,77 @@ def kaufe(handeln, w, z, kand):
     return p
 
 
+def stopdeckung_pruefen(handeln, p):
+    """Hat die offene Live-Position ihren Notausstieg noch - und wenn nicht,
+    wird er nachgesetzt.
+
+    Zwei Voraussetzungen, beide am 05.10.2026 gemessen:
+
+    * Der Weg ist `/openorders`, NICHT `/editorder` - das ist der
+      SPOT-Endpunkt und antwortet in jeder Variante mit
+      `requiredArgumentMissing`. Wer ihn benutzt, meldet "nicht lesbar"
+      und haelt eine Position ohne erkannten Schutz fuer ungeschuetzt
+      (dieselbe Fehlerklasse wie xperp 21.09. und ZRO 02.10.).
+    * "Ein Treffer" ist kein Beweis. T-323 belegte eine Position mit 145
+      Kontrakten und einem Stop ueber 126 - 19 Kontrakte liefen ungeschuetzt,
+      ohne dass ein Abruf das anzeigt. Deshalb wird die MENGE verglichen.
+
+    Rueckgabe: True, wenn die Position am Ende gedeckt ist. Ein fehlgeschlagener
+    Nachsatz ist KEIN stiller Fehler - die Journalzeile benennt die Luecke, weil
+    eine Position ohne Notausstieg die groesste offene Luecke im Haus ist.
+    """
+    inst = p.get("inst")
+    try:
+        gedeckt = kraken_perp.schutzstop_vorhanden(
+            inst, kontrakte=p.get("kontrakte"), fuer_ausstieg=True)
+    except Exception as e:                               # noqa: BLE001
+        _fehler(handeln, inst,
+                "Stop-Deckung nicht pruefbar (%s: %s) - Position bleibt, "
+                "Einmalkontrolle von Hand noetig" % (type(e).__name__, e))
+        return False
+    if gedeckt:
+        return True
+    stop = p.get("stop")
+    if not stop:
+        _fehler(handeln, inst, "KEIN Stop im Buch - die Position ist an der "
+                "Boerse ungeschuetzt")
+        return False
+    try:
+        antwort = kraken_perp.stop_setzen(inst, int(p.get("kontrakte") or 0),
+                                          float(stop))
+        algo = (antwort or {}).get("sendStatus", {}).get("order_id") \
+            if isinstance(antwort, dict) else None
+    except Exception as e:                               # noqa: BLE001
+        _fehler(handeln, inst, "SICHERHEITSLÜCKE: Stop fehlte an der Boerse "
+                "und liess sich nicht nachsetzen (%s)" % e)
+        return False
+    p["stop_algo_id"] = algo
+    print("  Schutz-Stop nachgesetzt: %s %.6g / %s Kontrakte (orderId %s)"
+          % (inst, float(stop), p.get("kontrakte"), algo))
+    try:
+        if not kraken_perp.schutzstop_vorhanden(inst, kontrakte=p.get("kontrakte"),
+                                                fuer_ausstieg=True):
+            _fehler(handeln, inst,
+                    "Stop wurde gesetzt, deckt aber die ganze Position nicht")
+            return False
+    except Exception as e:                               # noqa: BLE001
+        _fehler(handeln, inst, "Nachkontrolle der Stop-Deckung nicht lesbar "
+                "(%s: %s)" % (type(e).__name__, e))
+        return False
+    return True
+
+
 def pruefe_ausstiege(handeln, w, z):
     """Live-Ausstiege: Stop, Ziel, Frist. Nur Positionen mit modus=live."""
     offen = [p for p in z.get("positionen", []) if p.get("modus") == "live"]
     if not offen:
         return
+    # VOR jeder Ausstiegsentscheidung: steht die Position noch unter Schutz?
+    # Ein Ausstieg am Stop, den die Boerse nicht mehr fuehrt, ist ein
+    # Market-Verkauf ohne Notausstieg - der Zustand wird sonst als getaetigt
+    # gemeldet, waehrend das Risiko ungedeckt bleibt (T-323).
+    for p in list(offen):
+        stopdeckung_pruefen(handeln, p)
     # Die Marktliste wird auf BEIDEN Wegen gebraucht. Sie war nur im
     # Einstiegszweig geladen - dadurch blieb jede offene Position unauflösbar,
     # selbst nachdem das Gate sie nicht mehr blockierte (T-306).
