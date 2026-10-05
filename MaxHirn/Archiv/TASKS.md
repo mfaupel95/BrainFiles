@@ -217,32 +217,40 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Ursache ungeklaert**
+- [ ] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Wache haelt sie jetzt, Ursache offen**
       Kontext: Die Windows-Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30,
       Wrapper `Agenten/Routinen/ausserhaus-kopie.ps1`) war am 05.10. um 22:30
-      NICHT vorhanden, obwohl der Hermes-Cron `ausserhaus-aufgabe-sichern`
+      NICHT vorhanden, obwohl der Cron `ausserhaus-aufgabe-sichern`
       (195f6ee91ef0, taeglich 08:30) sie an DIESEM Morgen um 08:30:26 neu
       angelegt hatte. Der Cron meldet das seit dem 30.09. JEDEN Tag
       ("war nicht vorhanden und ist angelegt") - die Aufgabe ueberlebt also
       keinen Tag. Belege: `Agenten/Hermes/cron/output/195f6ee91ef0/*.md`
-      (30.09., 01.10., 02.10., 05.10. je "nicht vorhanden und ist angelegt"),
-      `schtasks /query /tn MaxHirn-Ausserhaus-Kopie` = leer um 22:30.
+      (30.09., 01.10., 02.10., 05.10. je "nicht vorhanden und ist angelegt").
+      NACHGEMESSEN 05.10. 22:30-22:55: Aufgabe um 22:34 angelegt, um 22:45 und
+      22:52 WIEDER weg, um 22:55 nach erneutem Anlegen da - die Ueberlebenszeit
+      liegt also im Bereich von MINUTEN bis Stunden, nicht bei einem Tag.
       NICHT die Ursache: kein Loescher im Haus - `Unregister-ScheduledTask`
       steht nur in `fremdarbeit-einziehen-aufgabe.ps1` (und dort fuer die EIGENE
       Aufgabe), `schtasks /Delete` nur in `hermes-agent/hermes_cli/
-      gateway_windows.py` (Hermes-eigene Tasks, nie MaxHirn-*). Das
-      TaskScheduler-Ereignisprotokoll ist AUS (`wevtutil gl ... = enabled:
-      false`), deshalb gibt es keine Spur. Folge: die Ausser-Haus-Kopie auf Q:
-      lief am 03.10. zum letzten Mal automatisch; am 05.10. von Hand
-      nachgezogen (`robocopy-Code 3`, 65.051 Dateien, 44,573 GB, "ENDE ok
-      nach 379 s").
-      Naechster Schritt: Protokoll einschalten
-      (`wevtutil sl Microsoft-Windows-TaskScheduler/Operational /e:true`),
-      dann ist beim naechsten Verschwinden der Loescher sichtbar; parallel
-      pruefen, ob `hermes update` oder ein Profil-Cleanup MaxHirn-* mitnimmt.
+      gateway_windows.py` (Hermes-eigene Tasks, nie MaxHirn-*). Von den 28
+      MaxHirn-Aufgaben ist NUR die Ausserhaus-Kopie betroffen.
+      Ereignisprotokoll: war AUS, seit 05.10. 22:51 AN
+      (`wevtutil sl Microsoft-Windows-TaskScheduler/Operational /e:true`,
+      brauchte Admin). Es hat bisher KEIN Loesch-Event (Id 141/142) - die
+      bisherigen Faelle liegen vor der Einschaltung und sind damit spurlos.
+      MASSNAHME: Wache `Agenten/Hermes/scripts/ausserhaus-aufgabe-wache.py`
+      (Hermes-Cron da9824bc3e28, alle 10 min, no_agent, Telegram, leere Ausgabe
+      = nichts senden) legt die Aufgabe neu an und schreibt Anlege-/Weg-Zeit in
+      `Agenten/Hermes/cache/ausserhaus-aufgabe-wache.json` - damit ist die
+      Ueberlebenszeit ab jetzt MESSBAR statt geraten.
+      Naechster Schritt: nach dem naechsten Verschwinden die 141-Zeile im
+      Ereignisprotokoll lesen (sie nennt den ausloesenden Benutzer/Prozess);
+      parallel pruefen, ob `hermes update` oder ein Profil-Cleanup MaxHirn-*
+      mitnimmt.
       Angelegt: 2026-10-05 · Zuletzt: 2026-10-05
       Betrifft: Agenten/Routinen/ausserhaus-kopie-aufgabe.ps1,
-      Agenten/Hermes/scripts/ausserhaus-aufgabe-sichern.py, Q:\MaxHirn-AusserHaus
+      Agenten/Hermes/scripts/ausserhaus-aufgabe-sichern.py,
+      Agenten/Hermes/scripts/ausserhaus-aufgabe-wache.py, Q:\MaxHirn-AusserHaus
 - [ ] **T-366 - mosaic-Trailing wartet auf einen Weg, der den Stop aendern kann**
   - Kontext: Trailing-Rechnung liegt in `Agenten/Handel/trailing.py` (19 Tests),
     xperp ist verdrahtet und scharf (`wachen.json trailing_aktiv: true`). Bei
