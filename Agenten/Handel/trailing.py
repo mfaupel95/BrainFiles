@@ -228,14 +228,21 @@ def kandidat(p, kurs, w, liq=None, jetzt=None):
 
 
 def erst_hoch(p, kurs):
-    """Den Hochstand einer Position pflegen. Rein, kein Netz."""
+    """Den Hochstand einer Position pflegen. Rein, kein Netz.
+
+    Schreibt das Feld IMMER - auch wenn sich der Wert nicht aendert. Ein
+    Aufrufer, der den Hochstand nur als Fuehlgroesse liest, wuerde sonst
+    bei der ersten Position ohne das Feld eine KeyError bekommen (im
+    Verdrahtungstest vom 05.10.2026 so aufgefallen).
+    """
     vz = 1.0 if str(p.get("seite") or "long").lower() == "long" else -1.0
     alt = p.get("hoechstkurs")
-    if vz > 0:
-        hoch = max(float(alt or kurs), kurs)
-    else:
-        hoch = min(float(alt or kurs), kurs)
-    if alt is None or hoch != float(alt):
+    if alt in (None, ""):
+        p["hoechstkurs"] = float(kurs)
+        return True
+    alt = float(alt)
+    hoch = max(alt, float(kurs)) if vz > 0 else min(alt, float(kurs))
+    if hoch != alt:
         p["hoechstkurs"] = hoch
         return True
     return False
@@ -261,9 +268,25 @@ def nachziehen(p, kurs, weg, w, liq=None, jetzt=None, tick=None, trocken=False):
                       "(kein stop_nachziehen) - Storno und Neuaufbau liesse "
                       "ein Fenster OHNE Schutz")
     inst = p.get("venue_inst") or p.get("inst")
-    menge = float(p.get("menge") or 0.0)
+    kennung_arg = p.get("stop_id") or p.get("stop_txid") or p.get("stop_algo_id")
+    # DIE MENGE HEISST JE SPUR ANDERS. xperp fuehrt Kontrakte unter
+    # `kontrakte`, die Buch-Spuren unter `menge`, Kraken unter `menge`.
+    # Nur `menge` zu lesen hiesse: bei xperp griffe der Trailing nie, und
+    # es faelle nicht auf - der Weg sagt "keine Menge in der Position" und
+    # die Spur laeuft weiter. Gefunden am 05.10.2026 im Verdrahtungstest.
+    menge = 0.0
+    for feld in ("menge", "kontrakte", "groesse", "size"):
+        roh = p.get(feld)
+        try:
+            menge = float(roh or 0.0)
+        except (TypeError, ValueError):
+            menge = 0.0
+        if menge > 0:
+            break
     if menge <= 0:
-        return None, "keine Menge in der Position"
+        return None, ("keine Menge in der Position (Felder: %s)"
+                      % ", ".join(f for f in ("menge", "kontrakte", "groesse")
+                                  if p.get(f)) or "keine")
     ziel = _round_tick(k["stop"], tick, "auf")
     if ziel <= 0:
         return None, "Tickgroesse nicht lesbar"
@@ -272,8 +295,16 @@ def nachziehen(p, kurs, weg, w, liq=None, jetzt=None, tick=None, trocken=False):
                    "Hub %.2fR)" % (float(p.get("stop") or 0), ziel,
                                    k["hoechstkurs"], k["hoch_r"],
                                    k["hub_r"]))
+    # DIE MENGE GEHOERT NICHT IN DEN AUFTRAG. Sie steckt schon im
+    # Algo-Auftrag an der Boerse - amend-algos aendert nur den
+    # Ausloesepreis. Die Wege im Haus nehmen deshalb drei Parameter:
+    #   okxf.stop_nachziehen(algo_id, inst, preis)
+    #   moondev_signalwelle/weg.py: stop_nachziehen(order_id, inst, preis)
+    # Ein Weg, der eine MENGE zusaetzlich will (die Kraken-Futures-
+    # Variante), gehoert hier nicht hin: dort traegt der Auftrag die Menge
+    # ebenfalls.
     try:
-        kennung = gr(p.get("stop_id") or p.get("stop_txid"), inst, menge, ziel)
+        kennung = gr(kennung_arg, inst, ziel)
     except Exception as e:                                         # noqa: BLE001
         return None, ("Nachziehen fehlgeschlagen (%s) - der alte Stop %.6f "
                       "bleibt stehen" % (e, float(p.get("stop") or 0)))

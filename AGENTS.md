@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # BrainFiles — vier Ordner, vier Aufgaben
 
 Wurzel von Max' KI-Betriebssystem. Seit dem **30.08.2026** ist sie in vier
@@ -45,7 +49,7 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **Bots je Repo:** Hermes-Profile unter `Agenten/Hermes/profiles/<bot>/`, Start-Verzeichnis `Werkstatt/Repos/<repo>`; chat `hermes -p <bot> chat` (oder Bots-Tab im Desktop).
 - **Bus-Suite:** `cd Agenten/Bus && python tests/test_ende_zu_ende.py` - Ausgabe endet mit "Ende-zu-Ende bestanden".
 - **MCP-Abgleich:** `Agenten/mcp-sync-check.ps1` (eingebunden in systempruefung.ps1).
-- **Einzelner Test:** Bus-Tests sind direkt ausfuehrbare Skripte (`cd Agenten/Bus && python tests/test_journal.py`, kein unittest/pytest). Handel-Tests nutzen unittest, z. B. `cd Agenten/Handel && scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_handelszentrale*.py"`. Handel-Tests laufen ueber `Agenten/Routinen/handel-tests.ps1`; Unterordner (`gitter/`, `kopier/`, `scanner/`, ...) haben eigene `tests/`.
+- **Einzelner Test:** Bus-Tests sind direkt ausfuehrbare Skripte (`cd Agenten/Bus && python tests/test_journal.py`, kein unittest/pytest). Handel-Tests nutzen unittest, z. B. `cd Agenten/Handel && scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_handelszentrale*.py"`. Handel-Tests laufen ueber `Agenten/Routinen/handel-tests.ps1`; Unterordner (`gitter/`, `kopier/`, `scanner/`, `xperp/`, ...) haben eigene `tests/`.
 - **Handel (Wurzel-Wrapper):** `omnitrade.cmd` (Stand; `start` = Live-Lauf im OKX-DEMO, nur einer zur Zeit; `ui` = Fenster) und `omnitrade-auswertung.cmd` (rein lesend). Detailwissen: `Agenten/Handel/README.md`, `MaxHirn/Wissen/Omnitrade.md`.
 - **Regeldatei-Paare:** `CLAUDE.md`=`AGENTS.md` in der Wurzel, in `MaxHirn/` und in `Werkstatt/` muessen identisch bleiben - wer eine aendert, aendert beide. Maschinell geprueft werden nur die Paare in `MaxHirn/` (`Agenten/Routinen/wissen-index-pruefen.ps1`); das Wurzel-Paar war am 03.10.2026 auseinandergelaufen (Zweig-Abschnitt in `AGENTS.md` noch Stand 16.09.2026) und wurde angeglichen.
 - **Bereichs-Besitz (seit 04.10.2026):** Drei Sitzungen teilen sich denselben

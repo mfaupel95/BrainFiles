@@ -175,8 +175,8 @@ class WegTest(unittest.TestCase):
             self.wirft = wirft
             self.rufe = []
 
-        def stop_nachziehen(self, kennung, inst, menge, preis):
-            self.rufe.append((kennung, inst, menge, preis))
+        def stop_nachziehen(self, kennung, inst, preis):
+            self.rufe.append((kennung, inst, preis))
             if self.wirft:
                 raise self.wirft
             return self.antwort
@@ -190,8 +190,8 @@ class WegTest(unittest.TestCase):
         self.assertIsNotNone(k, g)
         self.assertEqual(weg.rufe[0][0], "algo-1")
         self.assertEqual(weg.rufe[0][1], "BTC-USD_UM_XPERP-310404")
-        self.assertEqual(weg.rufe[0][2], 10.0)
-        self.assertAlmostEqual(weg.rufe[0][3], k["stop"], places=3)
+        self.assertAlmostEqual(weg.rufe[0][2], k["stop"], places=3,
+                               msg="der Weg bekam einen anderen Preis als im Buch")
 
     def test_ohne_weg_passiert_nichts(self):
         class OhneWeg:

@@ -318,6 +318,21 @@ def kerzen_lang(inst, bar="1H", seiten=5):
     return alle
 
 
+def _instrument_tick(inst):
+    """Tick-Groesse eines Kontrakts (float). 0.0 = nicht lesbar.
+
+    Ein Preis, der kein Vielfaches des tickSz ist, wird von OKX abgelehnt
+    ("Order price must be a multiple of the tick size") - das trifft jeden
+    aus einer Rechnung berechneten Stop und ist am 22.09.2026 zuerst an
+    Kraken aufgefallen (SOL/EUR price can only be specified up to 2
+    decimals), wo es den Notausstieg ausgefallen hat.
+    """
+    try:
+        return float(instrument(inst).get("tickSz") or 0.0)
+    except Exception:                                              # noqa: BLE001
+        return 0.0
+
+
 def letzter_kurs(inst):
     d = _mit_wiederholung("/api/v5/market/ticker?instId=" + inst)
     return float(d[0]["last"])
@@ -640,6 +655,25 @@ def gefuellte_kontrakte(inst, ord_id):
 def algo_stornieren(inst, algo_id):
     body = {"instId": inst, "algoId": algo_id}
     return _roh("/api/v5/trade/cancel-algos", "POST", body, signiert=True)
+
+
+def order_stornieren(inst, ord_id):
+    """Eine gewoehnliche Order (kein Algo-Auftrag) abbestellen.
+
+    Zwei Arten von Auftraegen, zwei Wege: algo_stornieren() nimmt eine
+    algoId aus order-algo, dieser hier eine ordId aus order. Beim Weglassen
+    der einen Art storniert man das Falsche - OKX antwortet dann mit
+    'has been filled, canceled or does not exist' (51400), was wie ein
+    Erfolg aussieht und die Sorge ausloest.
+
+    Die Funktion war am 05.10.2026 zwischenzeitlich aus dieser Datei
+    entfernt (Fremdarbeit-Commit f51d548d), wodurch 19 Tests in
+    test_abgleich_papier.py mit 'does not have the attribute
+    order_stornieren' abbrachen. Sie gehoert hierher: sie ist der Weg fuer
+    eine Limit-Order, kein Schutz-Stop.
+    """
+    body = {"instId": inst, "ordId": ord_id}
+    return _roh("/api/v5/trade/cancel-order", "POST", body, signiert=True)
 
 
 def stop_nachziehen(algo_id, inst, preis):
