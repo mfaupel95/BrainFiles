@@ -167,6 +167,11 @@
       "art": "python",
       "bot": "fomo-radar",
       "notiz": "Robinhood Chain beobachten (Chain 4663) - schluesselfrei lauffaehig, speist die Papierspur robinhood_radar",
+      "start": [
+        ".venv\\Scripts\\fomo-radar.exe",
+        "--help"
+      ],
+      "venv_pflicht": true,
       "anleitung": "Sammelt Wallets und Fuellungen von fomo.family ueber die Kette und bewertet sie. Schluesselfrei nutzbar: init, discover --trenches, track --show, report. Die Sammlung laeuft schon als Cron (radar-sammeln, 20 min) und schreibt fomo_agent.db; die Haus-Spur robinhood_radar liest NUR aus dieser Datei. Bewertung mit einem Sprachmodell laeuft NICHT ueber die API (dafuer fehlt Guthaben), sondern ueber --export/--import aufs lokale Ollama. Windows: PYTHONIOENCODING=utf-8 setzen.",
       "befehle": [
         {
@@ -355,6 +360,10 @@
       "rolle": "Werkzeug",
       "art": "rust",
       "notiz": "Offizielles Kraken-Terminal (Rust), hier selbst gebaut - es gibt keine Windows-Binaries",
+      "start": [
+        "target\\release\\kraken.exe",
+        "--help"
+      ],
       "anleitung": "Eine Binary, keine Laufzeitabhaengigkeiten. Oeffentliche Marktdaten brauchen KEINEN Schluessel; Konto und Order lesen KRAKEN_API_KEY/KRAKEN_API_SECRET. Die Haus-Schluessel liegen als KRAKEN_SPOT_API_KEY/_SECRET in den Windows-Benutzervariablen - der Wrapper Agenten/Werkzeuge/kraken.ps1 setzt sie auf die Namen, die die CLI erwartet. Ohne den Wrapper meldet sie 'Invalid key'. Der Wrapper liegt unter Agenten/Werkzeuge/kraken.ps1 und wird aus dem BrainFiles-Ordner aufgerufen, nicht von hier. Papiermodus mit Livekursen: 'workspace create sandbox --capital 10000 --mode paper'.",
       "befehle": [
         {
@@ -409,6 +418,12 @@
       "rolle": "Modell",
       "art": "python",
       "notiz": "Sprachmodell fuer typisierte Fragen (Zustand + Frage -> Antwort mit Wahrscheinlichkeit); gemessen 22.09.2026: zero-shot unbrauchbar fuer feine Urteile",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "verify\\laya_smoke_test.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
       "anleitung": "laya ist KEIN Generator: es bekommt einen Zustand und typisierte Fragen (choice/score/noul) und gibt in EINEM Vorwaertsdurchlauf Antworten mit Wahrscheinlichkeit zurueck. Gemessen: Laden 60 s einmalig, danach 57 ms je Frage auf der CPU. WARNUNG: die noul-Felder lagen daneben (Kuendigungsdrohung -> churn_risk 0,00) - nur als Basis zum Nachtrainieren brauchbar. HF_HOME=O:\\Modelle mitgeben, sonst wird das Modell neu geladen. Die Sonde (Agenten/Hermes/cache/laya_probe.py) ist ein Wegwerfskript im Hermes-Cache und wird dort nach 24 h Ruhe geloescht - fuer dauerhafte Nutzung ein eigenes Skript ins Repo legen.",
       "befehle": []
     },
@@ -831,7 +846,11 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "rust",
-      "notiz": "Rust-Workspace (Klon jackby03/omnitrade, AGPL-3.0): backtest, validate, live, kill - privat gesichert als mfaupel95/omnitrade"
+      "notiz": "Rust-Workspace (Klon jackby03/omnitrade, AGPL-3.0): backtest, validate, live, kill - privat gesichert als mfaupel95/omnitrade",
+      "start": [
+        "target\\release\\omnitrade-cli.exe",
+        "--help"
+      ]
     },
     {
       "ordner": "Protokolle",
@@ -1013,7 +1032,12 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "5m-Historie fuer mosaic nachladen (Binance, oeffentlich, kein Schluessel)."
+      "notiz": "5m-Historie fuer mosaic nachladen (Binance, oeffentlich, kein Schluessel).",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "5m_historie_holen.py",
+        "--help"
+      ]
     },
     {
       "ordner": "abgleich.py",
@@ -1421,7 +1445,12 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Was macht `tk scaling 1.1` gegenueber `dpi_bewusst()` - und was ist besser?"
+      "notiz": "Was macht `tk scaling 1.1` gegenueber `dpi_bewusst()` - und was ist besser?",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "dpi_fall.py",
+        "--help"
+      ]
     },
     {
       "ordner": "einsatz_nachziehen.py",
@@ -1581,14 +1610,24 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Gebuehr gegen die AKTIVE Boerse - der Abgleich, den es vorher nicht gab (T-330)."
+      "notiz": "Gebuehr gegen die AKTIVE Boerse - der Abgleich, den es vorher nicht gab (T-330).",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "gebuehr_boerse_abgleich.py",
+        "--help"
+      ]
     },
     {
       "ordner": "gebuehren_setzen.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Die Handelsgebuehren der Spuren auf den GEMESSENEN Satz ziehen."
+      "notiz": "Die Handelsgebuehren der Spuren auf den GEMESSENEN Satz ziehen.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "gebuehren_setzen.py",
+        "--help"
+      ]
     },
     {
       "ordner": "geist_zurueckbuchen.py",
@@ -1972,7 +2011,12 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Messprobe fuer den Leitstand - dasselbe Prinzip wie `messprobe.py`."
+      "notiz": "Messprobe fuer den Leitstand - dasselbe Prinzip wie `messprobe.py`.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "leitstand_messprobe.py",
+        "--help"
+      ]
     },
     {
       "ordner": "liq_wand",
@@ -2026,14 +2070,24 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Messprobe: passen Spalten und Ueberschriften in das Fenster?"
+      "notiz": "Messprobe: passen Spalten und Ueberschriften in das Fenster?",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "messprobe.py",
+        "--help"
+      ]
     },
     {
       "ordner": "modus_nachtragen.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "T-354: Das Feld `modus` in alten Buch-Positionen nachtragen."
+      "notiz": "T-354: Das Feld `modus` in alten Buch-Positionen nachtragen.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "modus_nachtragen.py",
+        "--help"
+      ]
     },
     {
       "ordner": "moondev_basis.py",
@@ -2286,14 +2340,24 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "OKX-Positionen LIVE lesen und je Position auswerten."
+      "notiz": "OKX-Positionen LIVE lesen und je Position auswerten.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "okx_positionen_live.py",
+        "--help"
+      ]
     },
     {
       "ordner": "okx_tp_stufen.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Take-Profit in Stufen und Schutz-Stop fuer EINE OKX-Position."
+      "notiz": "Take-Profit in Stufen und Schutz-Stop fuer EINE OKX-Position.",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "okx_tp_stufen.py",
+        "--help"
+      ]
     },
     {
       "ordner": "okx_waisen.py",
@@ -2703,7 +2767,12 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Spur-Audit: hat eine Spur Edge, und ist ihre Statistik ueberhaupt echt?"
+      "notiz": "Spur-Audit: hat eine Spur Edge, und ist ihre Statistik ueberhaupt echt?",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "spur_audit.py",
+        "--help"
+      ]
     },
     {
       "ordner": "spuren_stand.py",
@@ -2773,7 +2842,12 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Gestapelte Positionen zusammenfassen (Auftrag Max 03.10.2026)."
+      "notiz": "Gestapelte Positionen zusammenfassen (Auftrag Max 03.10.2026).",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "stapel_raeumen.py",
+        "--help"
+      ]
     },
     {
       "ordner": "stille_spuren.py",
@@ -2897,7 +2971,12 @@
       "wurzel": "handel",
       "rolle": "Werkzeug",
       "art": "werkzeug",
-      "notiz": "Wie gross ist das Universum, mit dem eine Feed-Spur im Ruecklauf rechnet?"
+      "notiz": "Wie gross ist das Universum, mit dem eine Feed-Spur im Ruecklauf rechnet?",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "universum_messen.py",
+        "--help"
+      ]
     },
     {
       "ordner": "verbesserer",

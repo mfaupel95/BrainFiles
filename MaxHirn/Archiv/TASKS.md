@@ -2460,20 +2460,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       src/agents/rbi_agent*.py, backtest_runner.py, 19 *_BT.py)
 
 
-- [ ] **T-085 — Repos-Zentrale: fuer die meisten Repos fehlen Anleitung und Befehle**
-      Kontext: Das Fenster zeigt seit 25.09.2026 zu jedem Projekt einen Bereich
-      "Was dieses Projekt kann" (Ablauf in Worten + anklickbare Befehle). Hinterlegt
-      ist das fuer intelligent-trading-bot, moon-dev-ai-agents, openmontage,
-      kraken-cli und fomo-robinhood-radar (Befehle) sowie Kronos, laya und
-      robinhood-fomo-kronos-arena (nur Anleitung). Die uebrigen rund 27 Eintraege
-      zeigen nur die allgemeinen Handgriffe (Terminal, Ordner, Doku, Bot).
-      Es fehlt WISSEN ueber das Repo, nicht Code: ein Befehl darf erst ins
-      Manifest, wenn er einmal wirklich gelaufen ist (Hausregel).
-      Naechster Schritt: bei Bedarf ein Repo nach dem anderen - einmal den Weg
-      gehen, dann "anleitung" und "befehle" in repos-zentrale.json ergaenzen
-      (Rezept in Agenten/Werkzeuge/repos-zentrale/README.md).
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json
 
 
 - [ ] **T-083 — Bonsai 2 27B: Vision nicht angeschlossen**
@@ -3501,6 +3487,32 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-085 — Repos-Zentrale: fuer die meisten Repos fehlen Anleitung und Befehle**
+      Kontext: Das Fenster zeigt seit 25.09.2026 zu jedem Projekt einen Bereich
+      "Was dieses Projekt kann" (Ablauf in Worten + anklickbare Befehle). Hinterlegt
+      ist das fuer intelligent-trading-bot, moon-dev-ai-agents, openmontage,
+      kraken-cli und fomo-robinhood-radar (Befehle) sowie Kronos, laya und
+      robinhood-fomo-kronos-arena (nur Anleitung). Die uebrigen rund 27 Eintraege
+      zeigen nur die allgemeinen Handgriffe (Terminal, Ordner, Doku, Bot).
+      Es fehlt WISSEN ueber das Repo, nicht Code: ein Befehl darf erst ins
+      Manifest, wenn er einmal wirklich gelaufen ist (Hausregel).
+      Naechster Schritt: bei Bedarf ein Repo nach dem anderen - einmal den Weg
+      gehen, dann "anleitung" und "befehle" in repos-zentrale.json ergaenzen
+      (Rezept in Agenten/Werkzeuge/repos-zentrale/README.md).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json
+      **Erledigt 05.10.2026.** 16 Startbefehle nachgezogen, jeder mit Logbeleg vom 05.10.2026
+(`logs/<name>-20261005-0413.log`, alle Exit 0): 12 Werkzeugdateien der Wurzel `Agenten/Handel`
+(5m_historie_holen, dpi_fall, gebuehr_boerse_abgleich, gebuehren_setzen, leitstand_messprobe,
+messprobe, modus_nachtragen, okx_positionen_live, okx_tp_stufen, spur_audit, stapel_raeumen,
+universum_messen) plus 4 Repos mit gemessener Binary auf der Platte (kraken-cli
+`target\release\kraken.exe`, laya `verify\laya_smoke_test.py`, fomo-robinhood-radar
+`.venv\Scripts\fomo-radar.exe`, werkstatt/omnitrade `target\release\omnitrade-cli.exe`).
+Manifest: 222 Zeilen, 119 -> 135 mit Start; `test_manifest_gegenprobe.py` gruen 2/2.
+Bewusst OHNE Start geblieben: `melder.py` und `kraken_abweisungs_sonde.py` ( stehen in
+`fuellen.OHNE_START` — Telegram-Seiteneffekt bzw. echter Kraken-Aufruf mit Lockout-Timer),
+die 12 Eintraege der Gruppe `kein_start` (keine eigenen Programme, fremde nur-Lesen-Klone,
+freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Platte.
 - [x] **T-356 — moongui: zweite Palette und die falsche Schrift in einer Fremdschnittstelle**
       Kontext: Beim Umbau der drei Hausfenster (04./05.10.2026) fiel auf, dass
       `Werkstatt/Repos/moon-dev-ai-agents/moongui.py` an keiner Stelle

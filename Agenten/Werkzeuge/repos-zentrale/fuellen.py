@@ -67,12 +67,8 @@ KURATIERT: dict[tuple[str, str], dict] = {
             ("winget-cli", "Doku"), ("ziplime", "Backtest"),
         )
     },
-    # ---------------------------------------------------------- WERKSTATT
-    ("werkstatt", "omnitrade"): {
-        "rolle": "Projekt",
-        "notiz": "Rust-Workspace (Klon jackby03/omnitrade, AGPL-3.0): backtest, validate, "
-                 "live, kill - privat gesichert als mfaupel95/omnitrade",
-    },
+    # ------------------------------------------------------------- WERKSTATT
+    # ("werkstatt", "omnitrade") steht weiter unten bei den gemessenen Starts.
     ("werkstatt", "OmniRoute"): {
         "rolle": "Projekt",
         "notiz": "Lokaler Modell-Router (Next.js) auf Port 20128 - traegt Subagenten und "
@@ -108,6 +104,30 @@ KURATIERT: dict[tuple[str, str], dict] = {
         # hier, die Herkunft dort.
         "warnungen": ["Junction auf Werkstatt/intelligent-trading-bot - eine physische "
                       "Ablage, kein zweites Exemplar (nicht als Duplikat wegraeumen)"],
+    },
+    # Repos mit einer GEMESSEN laufenden Binary auf der Platte (05.10.2026).
+    # `start` traegt hier die Gebrauchsanweisung, nicht das Angebot zu laufen:
+    # `--help` beendet sich, legt nichts an und braucht keinen Schluessel. Erst
+    # mit dem Beleg in logs/ darf so ein Befehl im Manifest stehen (T-085).
+    ("repos", "kraken-cli"): {
+        "start": ["target\\release\\kraken.exe", "--help"],
+        "pfad_pflicht": "target\\release\\kraken.exe",
+    },
+    ("repos", "fomo-robinhood-radar"): {
+        "start": [".venv\\Scripts\\fomo-radar.exe", "--help"],
+    },
+    ("repos", "laya"): {
+        "start": [".venv\\Scripts\\python.exe", "verify\\laya_smoke_test.py", "--help"],
+    },
+    ("werkstatt", "omnitrade"): {
+        "rolle": "Projekt",
+        "notiz": "Rust-Workspace (Klon jackby03/omnitrade, AGPL-3.0): backtest, validate, "
+                 "live, kill - privat gesichert als mfaupel95/omnitrade",
+        # 05.10.2026 gemessen: `target\\release\\omnitrade-cli.exe --help` laeuft
+        # und endet mit Exit 0. `pfad_pflicht` macht die Zeile zum EINRICHTEN,
+        # sobald der Ordner ohne Bau dasteht - dann fehlt genau diese Datei.
+        "start": ["target\\release\\omnitrade-cli.exe", "--help"],
+        "pfad_pflicht": "target\\release\\omnitrade-cli.exe",
     },
     ("werkstatt", "CryptoPredictions"): {
         "rolle": "Projekt",
@@ -344,6 +364,15 @@ HILFE_VERIFIZIERT = (
     "gitter/backtest_gitter.py", "xperp/historie.py",
     "gitter/auswertung.py", "kopier/auswertung.py", "kopier1zu1/auswertung.py",
     "omniquant/auswertung.py", "spiegel/auswertung.py",
+    # Werkzeuge der Wurzel, 05.10.2026 - jeder Eintrag unten ist am 05.10.2026
+    # mit `.venv\\Scripts\\python.exe <datei> --help` ECHT gelaufen (Exit 0),
+    # die Belegdatei steht in logs/. `melder.py` und `kraken_abweisungs_sonde.py`
+    # fehlen hier ABSICHTLICH: sie stehen in OHNE_START (Telegram-Seiteneffekt
+    # bzw. echter Kraken-Aufruf) und duerfen nicht ueber den Startknopf laufen.
+    "5m_historie_holen.py", "dpi_fall.py", "gebuehr_boerse_abgleich.py",
+    "gebuehren_setzen.py", "leitstand_messprobe.py", "messprobe.py",
+    "modus_nachtragen.py", "okx_positionen_live.py", "okx_tp_stufen.py",
+    "spur_audit.py", "stapel_raeumen.py", "universum_messen.py",
 )
 
 # Zweite Runde der Kuratierung: die Spuren, deren README mit einem Halbsatz

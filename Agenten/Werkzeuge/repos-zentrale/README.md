@@ -39,7 +39,11 @@ Bot, Port) und schreibt den Bericht nach `logs/` — derselbe Lauf wie der Knopf
 | **WERKSTATT** | `Werkstatt` + `Werkstatt/Projekte` | jeder Ordner (auch Datenfelder und Ablagen) |
 | **HANDEL** | `Agenten/Handel` | jeder Ordner, jede Werkzeugdatei der Wurzel mit eigenem Einstieg **und** die ausdruecklich genannten Werkzeuge in Unterordnern |
 
-Stand 30.09.2026: **192 Zeilen** — 46 REPOS, 30 WERKSTATT, 116 HANDEL.
+Stand 05.10.2026: **222 Zeilen** — 47 REPOS, 22 WERKSTATT, 9 PROJEKTE,
+144 HANDEL, davon **135 mit belegtem Startbefehl** (vorher 119; die 16 neuen
+tragen einen Lauf vom 05.10.2026 in `logs/`). Ein Startbefehl kommt erst ins
+Manifest, wenn er einmal echt gelaufen ist — `fuellen.py --belege` erzeugt den
+Beleg, der Pflicht ist.
 
 Die Wurzeln stehen in `quellen.py` (Pfade relativ zur BrainFiles-Wurzel, keine
 absoluten Pfade). Gesperrt sind in **jeder** Wurzel Interpreter, Caches und
