@@ -195,6 +195,12 @@ antwortet dort 401.
   Der Zustand ist damit immer dreifach zu pruefen: Startup-ORDNER (inklusive
   Unterordnern), StartupApproved, HKCU/HKLM\Run — und die Frage lautet nie
   "ist die Datei da", sondern "wird sie von Windows ausgefuehrt".
+- **Den Windows-Autostart gehoert der Skill `windows-autostart-diagnose`** (fuenf
+  Startwege, Audit-Skript `scripts/startup-audit.ps1`, lesend). Bei „der Router
+  startet doppelt" oder „da poppt etwas beim Anmelden auf" erst dort pruefen,
+  welcher Startweg aktiv ist — bevor hier Provider oder Netz diagnostiziert
+  werden. Das Umbenennen in `.disabled-*` ist KEINE Deaktivierung: Windows
+  fuehrt jede Datei im Startup-Ordner aus.
 - **Die Quell-Produktion laeuft ueber die Aufgabe, nicht ueber den Startup-Ordner.**
   `MaxHirn-OmniRoute` (Logon-Trigger, `Agenten/Routinen/omniroute-start.ps1`)
   ist der einzige gueltige Startweg; der Listener auf 20128 gehoert dann
