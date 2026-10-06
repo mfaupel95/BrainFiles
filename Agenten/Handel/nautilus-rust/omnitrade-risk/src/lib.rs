@@ -61,8 +61,14 @@ mod tests {
 
     #[test]
     fn rejects_order_over_max_units() {
-        let limits = RiskLimits { max_units_per_name: 3, ..Default::default() };
-        let req = OrderRequest { units: 4, ..Default::default() };
+        let limits = RiskLimits {
+            max_units_per_name: 3,
+            ..Default::default()
+        };
+        let req = OrderRequest {
+            units: 4,
+            ..Default::default()
+        };
         assert!(limits.check(&req).is_err());
     }
 
@@ -75,8 +81,14 @@ mod tests {
 
     #[test]
     fn admits_order_within_limits() {
-        let limits = RiskLimits { max_units_per_name: 3, ..Default::default() };
-        let req = OrderRequest { units: 2, ..Default::default() };
+        let limits = RiskLimits {
+            max_units_per_name: 3,
+            ..Default::default()
+        };
+        let req = OrderRequest {
+            units: 2,
+            ..Default::default()
+        };
         assert!(limits.check(&req).is_ok());
     }
 }

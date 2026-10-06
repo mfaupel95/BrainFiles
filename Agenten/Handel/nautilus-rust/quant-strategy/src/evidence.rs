@@ -29,7 +29,11 @@ impl EvidenceGate {
                 reason: format!("{} fold(s), need {}", ev.folds, MIN_EVIDENCE_FOLDS),
             };
         }
-        let t = if ev.se_bps <= 0.0 { 0.0 } else { ev.net_bps / ev.se_bps };
+        let t = if ev.se_bps <= 0.0 {
+            0.0
+        } else {
+            ev.net_bps / ev.se_bps
+        };
         if t < MIN_EVIDENCE_T {
             return Verdict::Refuse {
                 reason: format!("t = {:.2} below {:.1} floor", t, MIN_EVIDENCE_T),
@@ -46,21 +50,39 @@ mod tests {
 
     #[test]
     fn refuses_book_below_t_floor() {
-        let ev = BookEvidence { net_bps: 3.477, n: 84, se_bps: 7.0, folds: 3, positive_folds: 2 };
+        let ev = BookEvidence {
+            net_bps: 3.477,
+            n: 84,
+            se_bps: 7.0,
+            folds: 3,
+            positive_folds: 2,
+        };
         // t = 3.477 / 7.0 = 0.497 < 2.0
         assert!(matches!(EvidenceGate::decide(&ev), Verdict::Refuse { .. }));
     }
 
     #[test]
     fn admits_book_above_t_floor() {
-        let ev = BookEvidence { net_bps: 9.945, n: 84, se_bps: 3.0, folds: 3, positive_folds: 2 };
+        let ev = BookEvidence {
+            net_bps: 9.945,
+            n: 84,
+            se_bps: 3.0,
+            folds: 3,
+            positive_folds: 2,
+        };
         // t = 3.315 > 2.0
         assert!(matches!(EvidenceGate::decide(&ev), Verdict::Admit));
     }
 
     #[test]
     fn refuses_single_fold() {
-        let ev = BookEvidence { net_bps: 9.945, n: 84, se_bps: 3.0, folds: 1, positive_folds: 1 };
+        let ev = BookEvidence {
+            net_bps: 9.945,
+            n: 84,
+            se_bps: 3.0,
+            folds: 1,
+            positive_folds: 1,
+        };
         assert!(matches!(EvidenceGate::decide(&ev), Verdict::Refuse { .. }));
     }
 }

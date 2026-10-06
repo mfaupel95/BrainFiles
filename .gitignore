@@ -884,6 +884,7 @@ Agenten/Handel/nautilus/
 !Agenten/Handel/nautilus-rust/Cargo.toml
 !Agenten/Handel/nautilus-rust/Cargo.lock
 !Agenten/Handel/nautilus-rust/*.md
+!Agenten/Handel/nautilus-rust/*.ps1
 !Agenten/Handel/nautilus-rust/*/Cargo.toml
 !Agenten/Handel/nautilus-rust/*/src/*.rs
 !Agenten/Handel/docs/
