@@ -1434,7 +1434,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       uebertragen (eigener Modulname, sonst zieht der Import einen Namensvetter).
       Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Handel/nautilus*
 
-- [ ] **T-226 — pos_id in den restlichen Journal-Schreibern (17 von 94 Journalen)**
+- [x] **T-226 — pos_id in den restlichen Journal-Schreibern (17 von 94 Journalen)**
       Kontext: Mit T-095 traegt jede Einstiegszeile eine Kennung `pos_id`, die
       die Ausstiegszeile uebernimmt; 77 von 94 Journalen sind mit
       `journal_pos_id_nachziehen.py` nachgezogen. Offen sind 17 Dateien in fuenf
@@ -1444,11 +1444,19 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       `spiegel` (drei Arme) ist seit 21.09.2026 aus dem Dauerlauf genommen und
       dient als Vergleichsbuch, und `nautilus`/`nautilus_kraken` liegen in einem
       EIGENEN Git-Repo mit eigener Buchhaltung.
-      Naechster Schritt: entscheiden, ob die fuenf eine Kennung ueberhaupt
-      brauchen (bei orb/orbk und gitter strukturell nein) - sonst `kopier` und
-      `spiegel` anschliessen wie die uebrigen Spuren und die Kennung nachziehen.
-      Angelegt: 2026-09-30
-      Zuletzt: 2026-09-30
+      ERLEDIGT 06.10.2026: Entscheidung getroffen und umgesetzt. `orb`/`orbk`
+      und `gitter` brauchen strukturell KEINE Kennung (eine Zeile je Runde bzw.
+      Lose je Leiterstufe - es gibt kein Einstieg/Ausstieg-Paar zu bilden);
+      `nautilus`/`nautilus_kraken` liegen in einem eigenen Repo mit eigener
+      Buchhaltung und sind hier nicht anfassbar. `kopier` und `spiegel` sind
+      angeschlossen wie die uebrigen Spuren: `pos_id` in SPALTEN, Erzeugung
+      `pos_kennung.neu()` beim Eroeffnen, Mitfuehrung in jeder Schliess-Zeile,
+      Altjournal-Schutz ueber `pos_kennung.spalten()`. Beide Journale trugen
+      die Spalte im Kopf bereits (Header-Migration), nur die Schreiber gaben
+      sie nicht aus - jetzt konsistent. Tests: kopier 52, spiegel 93,
+      pos_kennung+journalpaarung 35, alle gruen; Probe belegt pos_id in der
+      Journalzeile.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-06
       Betrifft: Agenten/Handel/{kopier,spiegel,nautilus,orb,orbk,gitter}/handeln.py,
       Agenten/Handel/journal_pos_id_nachziehen.py
 

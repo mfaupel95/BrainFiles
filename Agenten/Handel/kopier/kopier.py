@@ -61,6 +61,16 @@ for p in (HIER, BUS):
 import ereignis                                               # noqa: E402
 import lesen                                                  # noqa: E402
 
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(HIER)  # Agenten/Handel/, nicht der Spurenordner
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung                                              # noqa: E402
+
+
 
 def _spiegelquelle():
     """scanner/wachen_pruefung.py per Dateipfad laden.
@@ -100,7 +110,7 @@ ABLEHNUNGEN = risikostufe.datei(os.path.join(HIER, "ablehnungen.csv"))
 
 SPALTEN = ["zeit", "modus", "aktion", "kette", "wallet", "token", "symbol",
            "preis", "menge", "einsatz_usd", "wert_usd", "marktkap_usd",
-           "slippage_pct", "gebuehr_pct", "grund"]
+           "slippage_pct", "gebuehr_pct", "grund", "pos_id"]
 
 # Das Ablehnungsprotokoll ist eine EIGENE Datei, nicht das Journal (die
 # Leser des Journals zaehlen Zeilen als Buchungen). Schema wie bei spiegel:
@@ -166,11 +176,15 @@ def journal(**felder):
     if not SCHREIBEN:
         return
     neu = not os.path.exists(JOURNAL)
+    # Altjournal ohne `pos_id` behaelt seine Spalten, die Kennung wird dann
+    # nicht geschrieben (pos_kennung.spalten), sonst wuerde jede Zeile die
+    # Spalten verschieben (siehe pos_kennung.spalten).
+    spalten = SPALTEN if neu else pos_kennung.spalten(JOURNAL, SPALTEN)
     with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
-        s = csv.DictWriter(f, fieldnames=SPALTEN, extrasaction="ignore")
+        s = csv.DictWriter(f, fieldnames=spalten, extrasaction="ignore")
         if neu:
             s.writeheader()
-        s.writerow({k: felder.get(k, "") for k in SPALTEN})
+        s.writerow({k: felder.get(k, "") for k in spalten})
 
 
 # --- Ablehnungsprotokoll ----------------------------------------------------
@@ -504,6 +518,7 @@ def _kopie(sig, w, z):
         "frist": _plus_stunden(w["haltedauer_stunden"]),
         "letzter_kurs": sig["preis"],
         "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
+        "pos_id": pos_kennung.neu(_jetzt()),
     }, None
 
 
@@ -544,7 +559,7 @@ def eroeffne(z, sig, w):
             menge="%.6f" % p["menge"], einsatz_usd="%.2f" % p["einsatz_usd"],
             marktkap_usd="%.0f" % p["marktkap_usd"],
             slippage_pct=w["slippage_pct"], gebuehr_pct=w["gebuehr_pct"],
-            grund="kopie")
+            grund="kopie", pos_id=p["pos_id"])
     return None
 
 
@@ -579,7 +594,8 @@ def pruefe_vorbild_ausstiege(z, sicht, w):
                     symbol=p["symbol"], preis="%.10g" % kurs,
                     menge="%.6f" % p["menge"],
                     einsatz_usd="%.2f" % p["einsatz_usd"],
-                    wert_usd="%.2f" % erloes, grund="vorbild_ausstieg")
+                    wert_usd="%.2f" % erloes, grund="vorbild_ausstieg",
+                    pos_id=p.get("pos_id", ""))
             continue
         behalten.append(p)
     z["positionen"] = behalten
@@ -645,7 +661,8 @@ def pruefe_ausstiege(z, w):
                 kette=p["kette"], wallet=p["wallet"], token=p["token"],
                 symbol=p["symbol"], preis="%.10g" % kurs,
                 menge="%.6f" % p["menge"], einsatz_usd="%.2f" % p["einsatz_usd"],
-                wert_usd="%.2f" % erloes, grund=grund)
+                wert_usd="%.2f" % erloes, grund=grund,
+                pos_id=p.get("pos_id", ""))
     z["positionen"] = behalten
 
 
@@ -679,7 +696,8 @@ def flach_stellen(z, w, grund):
                 kette=p["kette"], wallet=p["wallet"], token=p["token"],
                 symbol=p["symbol"], preis="" if not kurs else "%.10g" % kurs,
                 menge="%.6f" % p["menge"], einsatz_usd="%.2f" % p["einsatz_usd"],
-                wert_usd="%.2f" % erloes, grund=grund)
+                wert_usd="%.2f" % erloes, grund=grund,
+                pos_id=p.get("pos_id", ""))
     z["positionen"] = []
 
 

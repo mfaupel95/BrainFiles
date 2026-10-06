@@ -586,6 +586,10 @@ fallback_providers:
     base_url: http://127.0.0.1:20128/v1
   - provider: nous
     model: google/gemini-3.1-flash-lite
+  - provider: openrouter
+    model: thinkingmachines/inkling:free
+  - provider: nous
+    model: inclusionai/ling-3.0-flash-sante:free
 toolsets:
   - hermes-cli
 database:
@@ -771,7 +775,7 @@ dashboard:
   theme: midnight
   font: ibm-plex-mono
 tts:
-  provider: gemini
+  provider: piper
   edge:
     voice: en-US-AriaNeural
   gemini:
@@ -791,7 +795,7 @@ voice:
     instructions: german
     voice: cinder
   auto_tts: true
-  voice_chat_mode: gpt-live
+  voice_chat_mode: chained
 context:
   engine: compressor
 memory:
