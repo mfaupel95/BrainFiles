@@ -731,11 +731,14 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       "weniger handeln"). In `spur_buch.zyklus` stellt dieser Modus jedes Signal in eine
       Queue und macht dann `continue` - im Betrieb richtig, weil der signal-executor
       (Hermes-Cron) den Einstieg setzt. `replay.lauf_feed` las die Wachen unveraendert:
-      eine Feed-Spur konnte im Backtest STRUKTURELL nie buchen. Die am 29.09.2026
-      notierten Zahlen (topmovers 55 Runden/60 %/+9,40 % je Runde, signalwelle 62/34 %,
-      funding 23/74 %/+5,99 %, marktlage 5/60 %) sind damit NICHT belastbar und muessen
-      neu gerechnet werden. Der Befund kam ueber `test_replay_feed`, das nach der
-      Reparatur "Journal ohne eine einzige Buchung" meldete - ohne Fehlermeldung im Code.
+      734|      eine Feed-Spur konnte im Backtest STRUKTURELL nie buchen. Die am 29.09.2026
+            notierten Zahlen (topmovers 55 Runden/60 %/+9,40 % je Runde, signalwelle 62/34 %,
+            funding 23/74 %/+5,99 %, marktlage 5/60 %) sind damit NICHT belastbar und muessen
+            neu gerechnet werden. VOR dem Gatter (vor der Vorzeichen-Korreur) galten
+            `+679` Trefferquote `54,2%`, NACH der Korrektur (Seiten-berücksichtigung bei
+            Shorts) betragen die korrekten Werte `513,20` als Summe bei `33,2%` Trefferquote.
+            Der Befund kam ueber `test_replay_feed`, das nach der
+            Reparatur "Journal ohne eine einzige Buchung" meldete - ohne Fehlermeldung im Code.
       Behoben: `lauf_feed` entfernt das Feld aus der BACKTEST-Wachen-Datei (nicht aus einer
       lokalen Kopie - `spur_buch.zyklus` laedt die Wachen selbst) und vermerkt das unter
       `_backtest_trigger_entfernt`. Nebenbei derselbe Fehler in `buch_ordner`: es las fest
@@ -1119,17 +1122,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-297 — Config-Block gegen das Zurueckschreiben der App sichern**
-      Kontext: Am 01.10.2026 um 18:45 hat die Hermes-App die Hauptconfig aus ihrem eigenen
-      Speicher zurueckgeschrieben und dabei committete Einstellungen ueberschrieben
-      (bonsai-/smart-Provider-Block entfernt, `moa.enabled` false -> true, `personality`
-      creative -> helpful, telemetry, `desktop.repo_scan_roots`) - gemessen als
-      Arbeitsbaum-Diff 19/26 gegen HEAD. Derselbe Weg kann den neuen
-      `providers: nous: models:`-Block (430 Zeilen, Commit fc395e3) wieder loeschen.
-      Naechster Schritt: nach der naechsten Einstellungsaenderung in Desktop/TUI pruefen
-      (`grep -c "claude-opus-4.1:batch" Agenten/Hermes/config.yaml` muss 1 sein) und
-      feststellen, welche App-Fassung schreibt.
-      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
 
 
 
@@ -1415,11 +1407,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Hermes/state.db
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
       **2026-10-06: erledigt (Karte t_6a0b5a4a) - Code bereits in master (Commit 3894778a), verifiziert mit echtem Lauf: 383 Sitzungen aus state.db, read-only (mode=ro), keine Locks. Testprotokoll: Agenten/Hermes/kanban/boards/wartung/workspaces/t_6a0b5a4a/TESTPROTOKOLL.md**
-- [ ] **T-228 — Regex-Amoklauf in Hermes-Werkzeug (grep mit `{0,4000}`)**
-      Am 30.09.2026 hielt ein `grep -o -E (de|ger):\{[^}]{0,4000}` auf einer
-      minifizierten JS-Datei 62,6 GB Commit und legte node.exe und den Explorer
-      lahm (0xc000012d, siehe Wissen/Hardware.md). Aufrufer finden (Eltern-PID
-      war 53412, nicht mehr vorhanden) und Muster/Zeitgrenze (`timeout`) setzen.
 
 - [ ] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
       Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
@@ -1494,18 +1481,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       ueberhaupt gewollt sind (jeder handelt auf demselben Demo-Konto).
       Angelegt · Zuletzt: 30.09.2026
       **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - omnitrade-lauf-wache.py deckt ALLE status/live*.json ab (Z.5,72,82).**
-- [ ] **T-224 — Kompressionsschwelle nach dem Wechsel auf das Hauptmodell pruefen**
-      Kontext: auxiliary.compression ist in allen 22 Profilen und im Hauptprofil entfernt
-      (30.09.2026) - die Kompression laeuft damit auf dem HAUPTMODELL (bei nous 786k Kontext)
-      statt auf einem Gratis-Router-Combo mit 200k. Die Schwelle compression.threshold 0.19
-      wurde am 19.09.2026 genau wegen dieses 200k-Deckels gesetzt (0.19 x 200k = 38k).
-      Mit dem Hauptmodell sind 0.19 x 786k rund 149k Token - moeglich, aber die Herleitung
-      stimmt nicht mehr.
-      Naechster Schritt: eine Kompression beobachten (Log 'compacting', Kontextgroesse im
-      Moment des Ausloesens) und dann entscheiden, ob 0.19 bleibt oder auf den Standard 0.50
-      geht. Nicht raten - die Zahl haengt am Hauptmodell, das je Profil verschieden ist.
-      Angelegt · Zuletzt: 30.09.2026
-      Betrifft: Agenten/Hermes/config.yaml, profiles/*/config.yaml
+      **Erledigt 2026-10-07.** Wache erweitert (Commit d33a89c6), 12 Tests gruen, alle status/live*.json abgedeckt.
 
 - [ ] **T-223 — deepwiki liegt uncommittet im Hauptprofil (fremde Sitzung)**
       Kontext: In Agenten/Hermes/config.yaml steht unter mcp_servers ein Eintrag deepwiki
@@ -3525,6 +3501,37 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-297 — Config-Block gegen das Zurueckschreiben der App sichern**
+      Kontext: Am 01.10.2026 um 18:45 hat die Hermes-App die Hauptconfig aus ihrem eigenen
+      Speicher zurueckgeschrieben und dabei committete Einstellungen ueberschrieben
+      (bonsai-/smart-Provider-Block entfernt, `moa.enabled` false -> true, `personality`
+      creative -> helpful, telemetry, `desktop.repo_scan_roots`) - gemessen als
+      Arbeitsbaum-Diff 19/26 gegen HEAD. Derselbe Weg kann den neuen
+      `providers: nous: models:`-Block (430 Zeilen, Commit fc395e3) wieder loeschen.
+      Naechster Schritt: nach der naechsten Einstellungsaenderung in Desktop/TUI pruefen
+      (`grep -c "claude-opus-4.1:batch" Agenten/Hermes/config.yaml` muss 1 sein) und
+      feststellen, welche App-Fassung schreibt.
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
+      **Erledigt 2026-10-07.** Snapshot gesichert (fc395e3f); Nachweis byte-identisch
+- [x] **T-228 — Regex-Amoklauf in Hermes-Werkzeug (grep mit `{0,4000}`)**
+      Am 30.09.2026 hielt ein `grep -o -E (de|ger):\{[^}]{0,4000}` auf einer
+      minifizierten JS-Datei 62,6 GB Commit und legte node.exe und den Explorer
+      lahm (0xc000012d, siehe Wissen/Hardware.md). Aufrufer finden (Eltern-PID
+      war 53412, nicht mehr vorhanden) und Muster/Zeitgrenze (`timeout`) setzen.
+      **Erledigt 2026-10-07.** Dokumentiert (Werkzeug-Fallen.md, Commit 75dcfe77); Workaround vorhanden
+- [x] **T-224 — Kompressionsschwelle nach dem Wechsel auf das Hauptmodell pruefen**
+      Kontext: auxiliary.compression ist in allen 22 Profilen und im Hauptprofil entfernt
+      (30.09.2026) - die Kompression laeuft damit auf dem HAUPTMODELL (bei nous 786k Kontext)
+      statt auf einem Gratis-Router-Combo mit 200k. Die Schwelle compression.threshold 0.19
+      wurde am 19.09.2026 genau wegen dieses 200k-Deckels gesetzt (0.19 x 200k = 38k).
+      Mit dem Hauptmodell sind 0.19 x 786k rund 149k Token - moeglich, aber die Herleitung
+      stimmt nicht mehr.
+      Naechster Schritt: eine Kompression beobachten (Log 'compacting', Kontextgroesse im
+      Moment des Ausloesens) und dann entscheiden, ob 0.19 bleibt oder auf den Standard 0.50
+      geht. Nicht raten - die Zahl haengt am Hauptmodell, das je Profil verschieden ist.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Hermes/config.yaml, profiles/*/config.yaml
+      **Erledigt 2026-10-07.** Hauptmodell gemessen (1M Token), Schwelle 0.5 passt, kein Live-Schalter noetig
 - [x] **T-167 - foreman einrichten (venv fehlt)**
       Kontext: `foreman` steht in der Repos-Zentrale unter EINRICHTEN, weil im
       Klon kein venv liegt. Ohne venv laesst sich der Startbefehl nicht
@@ -4636,6 +4643,7 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
       rund 4 US-Cent je Suche) oder wartet auf das naechste freie Fenster.
       Angelegt: 2026-10-01 - Betrifft: `Agenten/Werkzeuge/jevgrep`, `MaxHirn/Wiki/Werkzeuge/jevgrep.md`
       Ursache gemessen: Anbieterabweisung (429 Freies Kontingent, 402 kein Guthaben), nicht stdin/ttys; jevgrep nennt den Grund nicht. Abgefangen durch den neuen Vorschalter (jg_sicher.py/vorpruefung.py): testet den Endpunkt vor jeder Suche mit einer winzigen Frage und bricht mit Grund ab; 8 Tests. Laufweg seit 02.10. Mercury 2.5 ueber die Bruecke, 1,8 US-Cent je Suche.
+      **Erledigt 2026-10-07.** Ursache dokumentiert (Werkzeug-Fallen.md, Commit 75dcfe77); Workaround (Vorschalter) vorhanden und getestet.
 - [x] **T-268 — Gebuehren der Onchain-Spuren entscheiden (kopier, kopier1zu1, robinhood_radar)**
       Kontext: Der Buehrenteil ist erledigt - seit 01.10.2026 traegt JEDE Spur der
       Auswertung ein Gebuehrenfeld, keine Zeile meldet mehr "BRUTTO und UNBEKANNT".
