@@ -94,6 +94,29 @@ def _audit(eintrag):
             os.fsync(f.fileno())
     except Exception:                                       # noqa: BLE001
         pass
+    try:
+        import sys as _sys                                  # noqa: PLC0415
+        _handel = str(HIER)
+        if _handel not in _sys.path:
+            _sys.path.insert(0, _handel)
+        import tracking as _tracking                        # noqa: PLC0415
+        _ergebnis = eintrag.get("ergebnis", "")
+        if _ergebnis == "bestaetigt":
+            _entscheidung = "freigegeben"
+        elif eintrag.get("grund") == "Zeitlimit":
+            _entscheidung = "zeitlimit"
+        else:
+            _entscheidung = "abgelehnt"
+        _tracking.track_freigabe_entschieden(
+            spur_name=eintrag.get("spur", "unbekannt"),
+            instrument=str(eintrag.get("inst") or "?"),
+            entscheidung=_entscheidung,
+            modus=eintrag.get("modus", "papier"),
+            ablehnungsgrund=(eintrag.get("grund")
+                             if _ergebnis == "abgelehnt" else None),
+        )
+    except Exception:                                       # noqa: BLE001
+        pass
 
 
 def audit(eintrag):
