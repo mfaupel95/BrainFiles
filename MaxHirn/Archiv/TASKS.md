@@ -2072,7 +2072,19 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       moondev_marktlage, kraken, nautilus_kraken.
 
 
-- [ ] **T-102 — Kraken kauft denselben Wert mehrfach: "Kauf ohne Fuellung" ist eine Fehlmeldung**
+- [x] **T-102 — Kraken kauft denselben Wert mehrfach: "Kauf ohne Fuellung" ist eine Fehlmeldung**
+      **ERLEDIGT 06.10.2026 (Karte t_544acc58).** Alle drei Kriterien der Worklist:
+      (1) fuellung_abwarten nach AddOrder und "bestellte Menge buchen, Fuellung
+      offen" - schon in master (fb69b840, Spur- und Hand-Weg). (2) Duplikats-
+      Gatter in beleg_hand.py: ANDERER offener Beleg, offene Buch-Position oder
+      offene KAUF-Order an der Boerse fuer dasselbe Paar => Ablehnung; Boerse
+      nicht abrufbar = kein Kauf (fail-closed); der EIGENE Beleg blockiert sich
+      nicht (Selbstblock-Fix: lauf() fuehrt den Beleg aus, waehrend er noch in
+      offene() steht). verbrauche() erst nach allen Gates. (3) Buchpositionen
+      mit preis/einsatz/stop/ziel gefuellt - schon in master (T-208). Tests:
+      8 neu (Gegenprobe: alte Fassung faellt 3-mal, darunter der Selbstblock),
+      kraken-Suite 198 OK, beleg/freigabe-Suiten 23 OK. Kompletter Befund im
+      Commit 6d6d54e9 (Tests: Agenten/Handel/tests/test_beleg_hand_duplikat.py).
       Kontext: Der Tagesbericht 28.09.2026 22:05 fuehrte fuer Kraken vier Positionen,
       davon DOTEUR/ATOMEUR/FILEUR mit "1 EUR"/"2 EUR" statt ~50 EUR. An der Boerse
       nachgemessen: **FILEUR wurde am 28.09. VIER mal gekauft** (15:33 53,48 @0,935 ·
@@ -2249,7 +2261,24 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: splits (noch nicht vorhanden)
 
 
-- [ ] **T-101 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
+- [x] **T-101 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
+      **ERLEDIGT 06.10.2026 (Karte t_544acc58), Befund im Worktree-Commit
+      8fbc7bc7.** replay.py + optimieren.py-Fundament wie gefordert: alle vier
+      Prognose-Spuren (squeeze/wavetrend/macd_mtf/supertrend) mit dem heutigen
+      Stand ueber 2021-2026 gefahren (1964/1870/752/857 Runden, Haus-Paarung
+      gegenprobe identisch). An jedem Einstieg: Trend gegen SMA200, ATR14-
+      Volatilitaet (Median aus dem Suchfenster), Marktbreite (29-Reihen-
+      Universum). Suchfenster 60 % -> ungesehenes Prueffenster 40 %.
+      BEFUND: 13 von 16 Filtern trennen nicht konsistent; die drei konsistenten
+      (macd_mtf bei hoher Volatilitaet -1,51/-0,44 gegen -3,27/-3,47 je Runde,
+      macd_mtf Trend+Breite, supertrend Trend+Breite +0,14/+0,08 gegen
+      -0,16/-0,29) lassen die gute Seite negativ bzw. um Null. Marktbreite
+      allein trennt in KEINER Spur. "Kein Filter haelt" ist das vollwertige
+      Ergebnis - der Hebel liegt nicht im Regime. KEIN Code an den Spuren
+      geaendert (macd_mtf bleibt strukturell negativ, -2,2 % je Runde in jedem
+      Fenster). Nebenbefund: wavetrends Vorzeichen folgt dem Zeitfenster ohne
+      Regime-Ankuendigung (T-349-Klasse). Werkzeug:
+      Agenten/Handel/regime_studie.py + BEFUND-regimefilter-20261006.md.
       Kontext: Die erste Parametersuche ueber 24 Monate und vier Halbjahres-Fenster
       (2026-09-25) zeigt: KEIN Kandidat gewinnt alle vier Fenster, weil in jeder
       Spur ein Halbjahr fuer JEDEN Parameter negativ ist (supertrend F1/F3,
