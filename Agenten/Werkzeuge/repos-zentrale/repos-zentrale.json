@@ -1139,20 +1139,6 @@
     {
       "ordner": "auswertung.py",
       "wurzel": "handel",
-      "pfad": "kopier1zu1/auswertung.py",
-      "rolle": "Werkzeug",
-      "art": "werkzeug",
-      "notiz": "Wertet das kopier1zu1-Papierbuch aus",
-      "start": [
-        ".venv\\Scripts\\python.exe",
-        "kopier1zu1\\auswertung.py",
-        "--help"
-      ],
-      "venv_pflicht": true
-    },
-    {
-      "ordner": "auswertung.py",
-      "wurzel": "handel",
       "pfad": "omniquant/auswertung.py",
       "rolle": "Werkzeug",
       "art": "werkzeug",
@@ -1942,18 +1928,6 @@
       "start": [
         "..\\scanner\\.venv\\Scripts\\python.exe",
         "kopier.py",
-        "--vorschau"
-      ]
-    },
-    {
-      "ordner": "kopier1zu1",
-      "wurzel": "handel",
-      "rolle": "Spur",
-      "art": "spur",
-      "notiz": "1:1-Copy-Trade auf Trade-Ereignissen statt auf einem Portfolio-Diff (Papierbuch); am 24.09.2026 stillgelegt",
-      "start": [
-        "..\\scanner\\.venv\\Scripts\\python.exe",
-        "handeln.py",
         "--vorschau"
       ]
     },

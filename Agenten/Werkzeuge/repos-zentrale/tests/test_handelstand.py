@@ -63,8 +63,7 @@ class LaufplanTest(unittest.TestCase):
         """spiegel/spiegel_knapp/omniquant_weit stehen als Kommentar in dauerlauf.SPUREN."""
         for tot in ("spiegel", "spiegel_knapp", "omniquant_weit"):
             self.assertNotIn(tot, self.plan, f"{tot} ist auskommentiert, darf nicht im Plan sein")
-        for lebt in ("xperp", "scanner", "mosaic", "klassik_sma",
-                     "kopier", "kopier1zu1"):
+        for lebt in ("xperp", "scanner", "mosaic", "klassik_sma", "kopier"):
             self.assertIn(lebt, self.plan)
 
     def test_jede_spur_hat_ordner_und_skript_und_der_ordner_existiert(self):

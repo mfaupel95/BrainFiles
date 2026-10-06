@@ -1,4 +1,20 @@
 ## Offen
+- [ ] **T-371 — OmniRoute-Log fehlt: Gegenprobe-Test bleibt rot bis zum naechsten Zentrale-Lauf**
+      Kontext: T-234 (05.10.2026) hat OmniRoute einmal ueber die Zentrale gestartet und
+      das Log erzeugt. Das Log ist seitdem verschwunden (wahrscheinlich beim Junction-
+      Verlust oder einer nicht versionierten Bereinigung). Jetzt zeigt
+      `test_manifest_gegenprobe.test_jeder_startbefehl_hat_einen_beleg_im_log` einen
+      Fehler: OmniRoute traegt `start`, hat aber kein `OmniRoute-*.log` in
+      `repos-zentrale/logs/`.
+      NICHT behebbar ohne OmniRoute zu starten - das Skript selbst sagt
+      'Nur auf ausdrueckliche Anweisung'. 
+      Naechster Schritt: OmniRoute einmal ueber die Zentrale starten (Skript
+      `Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1`, Port 20128,
+      bestehende Instanz vorher stoppen), danach entsteht ein Log und der Test
+      wird gruen.
+      Angelegt: 06-10-2026 · Betrifft: Agenten/Werkzeuge/repos-zentrale/logs/,
+      Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1
+
 - [ ] **T-369 — Junction-Verlust der Wurzel: Ursache unbewiesen, Wache gebaut**
       Kontext: Am 05.10.2026 um 22:12:52 war `BrainFiles/Werkstatt` kein Verweis mehr
       auf `O:/Werkstatt`, sondern ein echter, fast leerer Ordner (nur die zwei
@@ -63,7 +79,7 @@
       klaeren: sind es dieselben Vorschau-Aufrufe oder ein zweiter Weg?
       Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
       Betrifft: Agenten/Handel/{iv_wand,liq_wand,moondev_topmovers,prophet_signal,klassik_ema,robinhood_radar}/handelsjournal*.csv
-- [ ] **T-360 — Repos-Zentrale: zwei Manifest-Eintraege zeigen auf den geloeschten Ordner `kopier1zu1`**
+- [x] **T-360 — Repos-Zentrale: zwei Manifest-Eintraege zeigen auf den geloeschten Ordner `kopier1zu1`**
       Kontext: Die vollstaendige Suite der Zentrale (296 Tests) meldet seit dem
       05.10.2026 zwei rote Tests, BEIDE vorbestehend und beide mit derselben
       Ursache: die Fremdarbeit-Uebernahme 607d9b51 vom 05.10. 00:20 hat den Ordner
