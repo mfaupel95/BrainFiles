@@ -1898,15 +1898,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-150 — 18 Commits Rueckstand im Hermes-Checkout, Update nicht wiederholt**
-      Kontext: Der Lauf am 29.09.2026 18:46 endete `partial` (Gateway-Restart) und ist 3,5 h
-      spaeter; `origin/main` ist inzwischen 18 Commits weiter (HEAD `ca705dbf7e`, 0.21.5).
-      Arbeitsbaum sauber, leerer Autostash verworfen, `pm_sync_outcome: ok`.
-      Naechster Schritt: `hermes update` erneut fahren, DETACHED (Start-Process ueber eine
-      cmd-Datei, PYTHONHOME/PYTHONPATH darin leeren) - als Kind der Agenten-Shell stirbt der
-      Lauf beim Gateway-Stopp. Danach Dashboard-Start und `hermes doctor` pruefen.
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Hermes/hermes-agent, Agenten/Hermes/logs/update_receipts/
 
 - [ ] **T-142 — Der Grund im Journal der Feed-Spuren ist ein Platzhalter**
       Kontext: Bei jedem Einstieg steht "Der Grund, der im Journal steht." in
@@ -3536,6 +3527,16 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-150 — 18 Commits Rueckstand im Hermes-Checkout, Update nicht wiederholt**
+      Kontext: Der Lauf am 29.09.2026 18:46 endete `partial` (Gateway-Restart) und ist 3,5 h
+      spaeter; `origin/main` ist inzwischen 18 Commits weiter (HEAD `ca705dbf7e`, 0.21.5).
+      Arbeitsbaum sauber, leerer Autostash verworfen, `pm_sync_outcome: ok`.
+      Naechster Schritt: `hermes update` erneut fahren, DETACHED (Start-Process ueber eine
+      cmd-Datei, PYTHONHOME/PYTHONPATH darin leeren) - als Kind der Agenten-Shell stirbt der
+      Lauf beim Gateway-Stopp. Danach Dashboard-Start und `hermes doctor` pruefen.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Hermes/hermes-agent, Agenten/Hermes/logs/update_receipts/
+      **Erledigt 2026-10-06.** Hermes-Update detached durchgefuehrt (149 Commits gepullt, HEAD 0c77988889309c510f1072bc2a818ab16e046e22, 'hermes --version' = Up to date). Gateway laeuft gesund (PID 71704, alle Plattformen connected), Dashboard HTTP 200. Beleg: logs/update-20261006-detached.log.
 - [x] **T-054 — Fremde SKILL.md-Aenderungen unter skills/brainfiles sichern**
       Kontext: Seit dem 24.09.2026 stehen mehrere SKILL.md geaendert im
       Arbeitsbaum, die nicht aus meiner Sitzung stammen (u.a.
