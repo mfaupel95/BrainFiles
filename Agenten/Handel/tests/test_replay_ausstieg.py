@@ -50,6 +50,8 @@ FLACH = [(100, 100, 100, 100)] * 23
 class HistorieStub:
     """Ersatz fuer `historie_binance`: feste Kerzen, kein Dateizugriff."""
 
+    ORDNER = os.getcwd()   # muss ein existierendes Verzeichnis sein
+
     def __init__(self, reihen):
         self.reihen = reihen
 
