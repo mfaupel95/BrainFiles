@@ -91,6 +91,13 @@ from datetime import datetime, timezone
 HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
 
+def _setze_ordner(pfad):
+    """Setzt HIER (und HANDEL) auf einen anderen Spur-Ordner um.
+    Nur fuer Aufrufe mit --ordner, die Standardlage bleibt unveraendert."""
+    global HIER, HANDEL
+    HIER = os.path.abspath(pfad)
+    HANDEL = os.path.dirname(HIER)
+
 STUFEN = ("basis", "mittel", "hoch")
 VERWORFEN = "handelsjournal.verworfen-%s.csv"
 AKTION_SPALTE = 2          # zeit,modus,aktion,...
@@ -287,7 +294,11 @@ def main(argv=None):
     ap.add_argument("--anwenden", action="store_true", help="wirklich schreiben")
     ap.add_argument("--stufe", choices=STUFEN, default=None,
                     help="nur diese Risikostufe (Vorgabe: alle drei)")
+    ap.add_argument("--ordner", default=None,
+                    help="Spur-Ordner (Vorgabe: Verzeichnis des Skripts)")
     a = ap.parse_args(argv)
+    if a.ordner:
+        _setze_ordner(a.ordner)
     rc = 0
     for s in ((a.stufe,) if a.stufe else STUFEN):
         rc |= lauf(s, anwenden=a.anwenden)

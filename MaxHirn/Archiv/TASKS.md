@@ -55,7 +55,7 @@
       nur in MEINEM eigenen Testaufbau (zwei -v auf denselben Punkt), nicht im Hermes-Weg.
       Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
       Betrifft: Agenten/Hermes/config.yaml (terminal.docker_mount_cwd_to_workspace), Gateway
-- [ ] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
+- [x] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
       Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
       habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
       DictReader, Spalten NACH DEM NAME - eine feste Spaltennummer hatte zuerst
