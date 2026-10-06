@@ -414,6 +414,59 @@ Zusammenfuehren zweier Sitzungen in einer Datei nach doppelten Definitionen
 suchen (`search_files` nach `^class ` und die Namen vergleichen) und jeder
 Pruefung ihren eigenen Namen geben. Gilt genauso fuer Funktionsnamen.
 
+## Die Fahrbarkeits-Landkarte: eine Liste ist kein Weg
+
+Bevor irgendein Lauf gestartet wird, muss jede Spur in GENAU EINER von zwei
+Listen stehen - fahrbar oder mit Grund vermerkt. Ein dritter Zustand existiert
+nicht und ist der gefaehrlichste: eine Spur in keiner der beiden Listen sieht
+wie eine fahrbare aus und scheitert erst beim Lauf.
+
+Die Landkarte programmatisch vergleichen, nie die Dateien lesen - die Listen
+liegen als Konstanten vor und laufen sonst auseinander:
+
+```python
+import dauerlauf, replay, auswertung_alle as aa
+fahrbar = (set(replay.SPUREN_TEIL_A) | set(replay.SPUREN_TEIL_B)
+           | set(replay.SPUREN_TEIL_C) | set(replay.MEHRZEITRAHMEN)
+           | set(replay.EIGENE_RECHNUNG))
+luecke = [s for s in dauerlauf.SPUREN
+          if s not in fahrbar and s not in replay.NICHT_NACHRECHENBAR]
+fehlt_auswertung = [s for s in dauerlauf.SPUREN if s not in set(aa.SPUREN)]
+```
+
+Jede Luecke ist ein Befund: entweder fehlt der Fahrweg oder der Grund. Dieselbe
+Rechnung gegen `auswertung_alle.SPUREN` findet die zweite Haelfte - eine Spur,
+die laeuft, aber in keiner Auswertung auftaucht, hat ein Buch und keine Zahl.
+
+Drei Fallen, jede gemessen:
+
+1. **Eine Fahrweise in der Tabelle ohne Route aus `main()` ist toter Code.**
+   `SPUREN_TEIL_B` listet die spur_buch-Spuren, `lauf_b()` ist gebaut und
+   getestet - und `main()` ruft es NIE auf. Der Aufruf faellt in den generischen
+   Kerzen-Weg (Familie A) und meldet dort "die Spur nennt kein Instrument".
+   **Die Zahl der gelisteten Spuren sagt nichts ueber die Zahl der fahrbaren.**
+   Diagnose in einem Griff: nach dem AUFRUFER des Wegs suchen
+   (`search_files` auf `lauf_b\(`), nicht nach seiner Definition.
+2. **Eine Verweigerungsliste, die nur EINEN Eingang bewacht, gibt auf den
+   anderen den falschen Grund.** `NICHT_NACHRECHENBAR` wird in `lauf_b`,
+   `lauf_feed` und `lauf_c` geprueft - nicht in `lauf_a`. Eine dort vermerkte
+   Kern-Spur (xperp, scanner, swap, kraken) laeuft deshalb in die generische
+   Meldung "kein Instrument" statt in den ehrlichen Satz "keine Kerzen-Naht".
+   Beide Saetze verweigern, aber nur einer nennt die Ursache - und der Leser
+   folgt dem falschen Hinweis, sucht ein Instrument, das nie das Problem war.
+   **Der Grund gehoert an den Eingang, den der Aufruf wirklich nimmt.**
+3. **Ein Vermerk ohne Satz daneben ist nur ein Name.** Ein Eintrag in
+   `NICHT_NACHRECHENBAR` ohne Grund ist von einer vergessenen Spur nicht zu
+   unterscheiden - der Grund ist der halbe Wert des Eintrags.
+
+**Der stehende Auftrag dahinter: jede Spur muss auswertbar und nachverfolgbar
+sein, und das regelmaessig.** Eine Spur ohne Fahrweg und ohne Grund ist deshalb
+kein Randfall, sondern eine offene Aufgabe. Ist eine Spur heute nicht
+nachrechenbar, gehoert der GRUND in die Liste UND der Punkt in
+`MaxHirn/Archiv/TASKS.md` - nicht die stille Luecke. Und wer eine Luecke
+schliesst, prueft danach die Landkarte erneut: die gefundene Luecke war meist
+nicht die einzige.
+
 ## Nicht nachrechenbar (mit Grund vermerken, nie schaetzen)
 
 Die Datenquelle entscheidet, nicht die Naht. Ohne frei abrufbare Historie bleibt

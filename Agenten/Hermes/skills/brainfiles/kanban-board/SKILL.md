@@ -230,6 +230,14 @@ Datenbankstand.
   `hermes kanban create` parst alle Argumente vor dem Anlegen; ein einzelner
   unbekannter Schalter (z. B. `-skill` statt `--skill`) bricht mit
   `unrecognized arguments` ab. Vor dem ersten Aufruf `--help` gegenlesen.
+- **Eine Karte ist kein Ersatz fuer die Arbeit, die schon vor einem liegt.**
+  Steht der Gegenstand bereits im Baum und ist der naechste Schritt gemessen,
+  wird er in der SITZUNG erledigt - die Karte kostet dann einen zweiten
+  Prozess, einen zweiten Kontext und eine Wartezeit. Karten sind fuer Arbeit,
+  die PARALLEL oder spaeter laufen soll. Und ein Worker, der mit
+  `worker crashed (pid gone)` endet, wird zwar neu dispatcht, aber darauf zu
+  warten ist kein Fortschritt: die Messung von Hand wiederholen, den Befund
+  behalten und die Karte danach schliessen oder korrigieren.
 - **Viele Karten = viele Worker-Prozesse.** Der Dispatcher startet je ready-
   Karte einen eigenen Python-Prozess. Darum buendeln und `--triage` nutzen,
   bis Freigabe erfolgt.

@@ -599,9 +599,9 @@ agent:
   reasoning_effort: high
   verbose: false
 terminal:
-  backend: docker
+  backend: local
   cwd: C:\Users\faupe\documents\BrainFiles\Agenten\Hermes
-  font_family: 'FiraCode Nerd Font'
+  font_family: 'SauceCodePro Nerd Font'
   timeout: 180
   home_mode: auto
   docker_forward_env:
@@ -665,7 +665,7 @@ browser:
 checkpoints:
   enabled: true
   max_snapshots: 30
-file_read_max_chars: 1000000
+file_read_max_chars: 512000
 tool_output:
   max_bytes: 300000
   max_lines: 1000

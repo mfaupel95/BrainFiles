@@ -142,6 +142,25 @@ python historie_probe.py --okx                    # zweite Boerse als Gegenprobe
 Feed-Spuren (Marktquerschnitt) fahren mit `--feed` bzw. `--familie-c`, siehe
 `references/backtest-fundament.md`.
 
+**Vor jedem Lauf die Fahrbarkeits-Landkarte pruefen, nicht einzelne Spuren.**
+Jede Spur muss in GENAU EINER von zwei Listen stehen: fahrbar oder mit Grund
+vermerkt (`replay.NICHT_NACHRECHENBAR`). Eine Spur in keiner der beiden Listen
+sieht fahrbar aus und scheitert erst beim Lauf - und eine Fahrweise in der
+Tabelle ohne Route aus `main()` ist toter Code (gemessen: `SPUREN_TEIL_B` listet
+rund zwanzig spur_buch-Spuren, `lauf_b()` ist gebaut, aber `main()` ruft es nie
+auf; alle zwanzig laufen in den falschen Weg und melden "die Spur nennt kein
+Instrument"). Die Landkarte programmatisch gegen `dauerlauf.SPUREN` UND
+`auswertung_alle.SPUREN` vergleichen - Rezept, drei Fallen und der stehende
+Auftrag dahinter unter `references/backtest-fundament.md`, Abschnitt
+"Die Fahrbarkeits-Landkarte".
+
+**Eine Messung ueber N Spuren und T Kerzen in EINEM Vordergrundaufruf reisst das
+Werkzeug-Timeout, nicht die Rechnung.** Gemessen: sechs Spuren x 1200 Kerzen in
+einem Aufruf liefen in den Timeout, ohne dass eine einzige Zahl zurueckkam. In
+Haeppchen fahren (eine bis zwei Spuren je Aufruf), den Zwischenstand in eine
+JSON-Datei schreiben und am Ende zusammensetzen - so ueberlebt das Ergebnis
+einen Abbruch. Fuer den vollen Walk ohnehin Hintergrund + `persist_on_release`.
+
 Fuenf Regeln, ohne die jede Zahl wertlos ist (Einzelheiten, Werkzeugfallen und
 die Nachweisprozedur: `references/backtest-fundament.md`):
 
