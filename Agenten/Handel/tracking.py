@@ -233,6 +233,109 @@ def track_spur_konfiguriert(
 
 
 # ---------------------------------------------------------------------------
+# KB-Metriken-Export (nach snapshot_sync aufrufen)
+# ---------------------------------------------------------------------------
+
+def kb_snapshot_json(ziel_pfad: Path | None = None) -> None:
+    """
+    Liest spur_tagesstand + Events und schreibt MaxHirn/Wissen/KB/data/spur-metriken.json.
+    Enthaelt alle Metriken, die der Cloud-Agent fuer die KB-Note braucht.
+    Fehlerschluckend.
+    """
+    if ziel_pfad is None:
+        ziel_pfad = Path(__file__).parent.parent.parent / "MaxHirn" / "Wissen" / "KB" / "data" / "spur-metriken.json"
+    try:
+        with _verbinden() as con:
+            spuren = [r[0] for r in con.execute(
+                "SELECT DISTINCT spur_name FROM spur_tagesstand ORDER BY spur_name"
+            ).fetchall()]
+
+            def _profit_faktor(spur: str, tage: int) -> float | None:
+                rows = con.execute("""
+                    SELECT json_extract(properties,'$.ergebnis_eur') FROM events
+                    WHERE event = ? AND json_extract(properties,'$.spur_name') = ?
+                      AND ts >= datetime('now',?)
+                """, (Events.ZYKLUS_ABGESCHLOSSEN, spur, f"-{tage} days")).fetchall()
+                werte = [r[0] for r in rows if r[0] is not None]
+                gewinne = sum(v for v in werte if v > 0)
+                verluste = abs(sum(v for v in werte if v < 0))
+                if verluste == 0:
+                    return None
+                return round(gewinne / verluste, 2)
+
+            def _max_drawdown(spur: str, tage: int) -> float | None:
+                rows = con.execute("""
+                    SELECT json_extract(properties,'$.ergebnis_eur') FROM events
+                    WHERE event = ? AND json_extract(properties,'$.spur_name') = ?
+                      AND ts >= datetime('now',?) ORDER BY ts
+                """, (Events.ZYKLUS_ABGESCHLOSSEN, spur, f"-{tage} days")).fetchall()
+                werte = [r[0] for r in rows if r[0] is not None]
+                if not werte:
+                    return None
+                peak = 0.0
+                balance = 0.0
+                max_dd = 0.0
+                for v in werte:
+                    balance += v
+                    if balance > peak:
+                        peak = balance
+                    dd = (peak - balance) / abs(peak) * 100 if peak > 0 else 0.0
+                    if dd > max_dd:
+                        max_dd = dd
+                return round(max_dd, 1)
+
+            def _stop_quote(spur: str, tage: int) -> float | None:
+                rows = con.execute("""
+                    SELECT json_extract(properties,'$.ausstiegsgrund') FROM events
+                    WHERE event = ? AND json_extract(properties,'$.spur_name') = ?
+                      AND ts >= datetime('now',?)
+                """, (Events.ZYKLUS_ABGESCHLOSSEN, spur, f"-{tage} days")).fetchall()
+                gesamt = len(rows)
+                if gesamt == 0:
+                    return None
+                verluste_mit_stop = sum(
+                    1 for r in rows
+                    if r[0] == "stop"
+                )
+                verluste_gesamt_rows = con.execute("""
+                    SELECT COUNT(*) FROM events
+                    WHERE event = ? AND json_extract(properties,'$.spur_name') = ?
+                      AND json_extract(properties,'$.ergebnis_pct') < 0
+                      AND ts >= datetime('now',?)
+                """, (Events.ZYKLUS_ABGESCHLOSSEN, spur, f"-{tage} days")).fetchone()
+                verluste_gesamt = verluste_gesamt_rows[0] if verluste_gesamt_rows else 0
+                if verluste_gesamt == 0:
+                    return None
+                return round(verluste_mit_stop / verluste_gesamt * 100, 1)
+
+            export: dict = {
+                "generiert_at": datetime.now(timezone.utc).isoformat(),
+                "spuren": {},
+            }
+            for spur in spuren:
+                row = con.execute(
+                    "SELECT * FROM spur_tagesstand WHERE spur_name = ? ORDER BY datum DESC LIMIT 1",
+                    (spur,)
+                ).fetchone()
+                if not row:
+                    continue
+                cols = [d[0] for d in con.execute("PRAGMA table_info(spur_tagesstand)").fetchall()]
+                basis = dict(zip(cols, row))
+                export["spuren"][spur] = {
+                    **basis,
+                    "profit_faktor_30d": _profit_faktor(spur, 30),
+                    "max_drawdown_30d_pct": _max_drawdown(spur, 30),
+                    "stop_ausloesung_rate_30d_pct": _stop_quote(spur, 30),
+                }
+
+        ziel_pfad.parent.mkdir(parents=True, exist_ok=True)
+        import json as _json
+        ziel_pfad.write_text(_json.dumps(export, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        _LOG.exception("tracking: kb_snapshot_json fehlgeschlagen")
+
+
+# ---------------------------------------------------------------------------
 # Snapshot-Sync (taeglich aufrufen, z. B. aus wochenbericht.py)
 # ---------------------------------------------------------------------------
 

@@ -35,7 +35,7 @@ Umgebungsvariable `ARCHIV_ROOT` (siehe [Wissen/Ordnerstruktur.md](Wissen/Ordners
 | **Skills** | `.claude/skills/` | eigene, wiederverwendbare Fähigkeiten |
 | **Verbindungen** | `Wissen/Verbindungen.md` | MCP-Server und ihr Anmeldestatus |
 | **Zugänge** | `Wissen/Zugaenge.md` | API-Schlüssel und Tokens — **einzige** Ablage |
-| **Schutzregeln** | `Wissen/Schutzregeln.md` | was nicht angefasst werden darf — **vor jedem Schreibzugriff lesen** |
+| **Schutzregeln** | `Wissen/Schutzregeln.md` | was nicht angefasst werden darf — **vor jedem Schreibzugriff lesen**. Seit 06.10.2026 gibt es eine `permissions.deny`-Liste in `.claude/settings.local.json`, die `rm`, `mv`, `Remove-Item`, `git reset --hard`, `git clean`, `robocopy /MIR` und `rsync --delete` blockiert — sowie `Edit`/`Write` in `Archiv/`, `Wissen/`, `Claude/`, `Bilder/`, `Videos/`, `Musik/`, `Dokumente/`, `.obsidian/` und `Read` auf `Zugaenge.md`, `.env`, `.pfx`, `.p12`, `.kdbx`, `id_rsa`, `id_ed25519`, `private.pem`. |
 | **Struktur** | `Wissen/Ordnerstruktur.md` | die vier Ordner und die Fallen beim Umzug |
 | **Referenz** | `Referenz/` | Fremdmaterial: Anleitungen, Beispiele, Installationspakete |
 
