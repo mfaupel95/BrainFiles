@@ -3,8 +3,8 @@ id: 20261006-llm-als-signal
 title: LLM als Signalgeber
 tags: [handel, llm, strategie]
 created: 2026-10-06
-updated: 2026-10-06
-related: [20261006-verbesserer-architektur, 20261006-signal-kombinationen]
+updated: 2026-10-07
+related: [20261006-verbesserer-architektur, 20261006-signal-kombinationen, 20261007-prompt-design-ohlcv]
 summary: Konzept: wie ein LLM Kursdaten interpretiert und daraus Handelssignale erzeugt.
 ---
 
@@ -37,3 +37,4 @@ Klassische regelbasierte Signale (Moving Average, RSI, Breakout) lassen sich dur
 ## Related
 - [Verbesserer-Architektur](../selbstverbessernde-spuren/verbesserer-architektur.md) — Anwendung: LLM im Vorschlags-Schritt des Verbesserers.
 - [Signalkombinationen](../kombinationen/signal-kombinationen.md) — Weiterführend: LLM-Signal mit regelbasierten Signalen kombinieren.
+- [Prompt-Design für OHLCV-Input](prompt-design-ohlcv.md) — Details: wie Kursdaten serialisiert und eingerahmt werden.

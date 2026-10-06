@@ -20,6 +20,7 @@
 
 ### llm-signalgeber
 - `20261006-llm-als-signal` — **LLM als Signalgeber** — `topics/llm-signalgeber/llm-als-signal.md` — Konzept: wie ein LLM Kursdaten interpretiert und daraus Handelssignale erzeugt.
+- `20261007-prompt-design-ohlcv` — **Prompt-Design für OHLCV-Input** — `topics/llm-signalgeber/prompt-design-ohlcv.md` — Wie OHLCV-Kerzen in einen LLM-Prompt überführt werden und welche Strukturen zuverlässige Signale liefern.
 
 ### strategien-implementierung
 - `20261006-spur-typen` — **Spurtypen und Implementierung** — `topics/strategien-implementierung/spur-typen.md` — Überblick der aktiven Spuren (Spur 1 Kraken, Spur 2 OKX-Perpetuals) und ihrer Code-Strukturen.
