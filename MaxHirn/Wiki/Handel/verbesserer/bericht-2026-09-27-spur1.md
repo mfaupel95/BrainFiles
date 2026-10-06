@@ -1,0 +1,22 @@
+# Kein Vorschlag - spur1
+
+## Priorisierte Empfehlungen (LLM)
+
+LLM nicht erreichbar: HTTP Error 404: Not Found
+
+Datum: 2026-09-27
+
+Grund: nur 3 von 7 Fenstern besser (Mehrheit noetig: > 3, mindestens 3)
+
+## Baseline-Kennzahlen
+
+| Fenster | netto_gv_je_runde | n | max_drawdown |
+|---|---|---|---|
+| 120-150 | 0.0000 | 0 | 0.0000 |
+| 150-180 | -6.3569 | 3 | 19.0708 |
+| 180-210 | 0.0000 | 0 | 0.0000 |
+| 210-240 | -0.4798 | 3 | 8.1560 |
+| 240-270 | 17.3900 | 1 | 0.0000 |
+| 270-300 | -7.4763 | 3 | 22.4290 |
+| 300-330 | 7.1164 | 6 | 16.5518 |
+| Aggregat | 1.0718 | 16 | 27.2268 |
