@@ -1098,20 +1098,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       benutzten Kombinationen gekuerzt wird (`--hauptconfig` waere im Werkzeug zu ergaenzen).
       Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
 
-- [ ] **T-300 — FreqTrade-Zugaenge: ein Passwort gilt fuer alle drei Bots**
-      Kontext: `bots.py` schreibt je Bot ein eigenes Zufallspasswort in
-      `user_data/config.<name>.json`, die laufenden Container akzeptieren davon aber nur das
-      Passwort der Basis-`config.json` (gemessen 30.09.2026 in `bots.py::_api_stand`, am
-      01.10.2026 erneut belegt: 8081/8082/8083 antworten mit der Basis-Anmeldung auf
-      show_config/count/profit/status/trades/daily, mit dem Aufsatz-Passwort 401).
-      `freqtrade_bridge.zugang_fuer()` nimmt deshalb den Port vom Bot, die Anmeldung immer von
-      der Basis - die Zentrale haengt an EINEM Zugang, obwohl sie drei Bots zeigt, und dieser
-      eine Zugang ist der Ausfall aller drei.
-      Naechster Schritt: beim naechsten Bot-Neustart (`freqtrade/bots_starten.sh`) messen, ob
-      die Container ihre eigenen Aufsatz-Passwoerter akzeptieren; wenn ja, `zugang_fuer` auf
-      die je-Aufsatz-Anmeldung umstellen und die 401-Ausnahme aus der Bruecke streichen.
-      Betrifft: Agenten/Handel/freqtrade_bridge.py, Agenten/Handel/freqtrade/bots.py, Agenten/Handel/freqtrade/user_data/
-      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
 
 
 
@@ -1130,30 +1116,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
 
 
-- [ ] **T-295 — gitter replaybar machen (Adapter fuer die Rechnung in grid.py)**
-      Kontext: `gitter` stand in `replay.SPUREN_TEIL_A`, bricht aber bei JEDEM Lauf ab:
-      sein `gitter/handeln.py` hat nur `lade_wachen()`, die Rechnung liegt in
-      `grid.py`/`backtest_gitter.py` -> `AttributeError: module 'bt_gitter' has no
-      attribute 'pruefe_ausstiege'` (gemessen 01.10.2026, echter Lauf). Es steht jetzt in
-      `replay.NICHT_NACHRECHENBAR` mit Grund; der Reiter bietet vier Spuren an.
-      Naechster Schritt: im Replay einen Adapter fuer Spuren mit eigener Rechnung bauen
-      (Einstieg/Ausstieg ueber ihre eigenen Funktionen statt ueber
-      pruefe_einstieg/-ausstiege) - `gitter/backtest_gitter.py` faehrt die Spur bereits
-      selbst, es fehlt nur die Naht. Danach mit dem OKX-Spot-Satz 0,10 %/Seite fahren.
-      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, gitter
 
-- [ ] **T-294 — mosaic replaybar machen (Mehrzeitrahmen-Adapter)**
-      Kontext: `mosaic` stand in `replay.SPUREN_TEIL_A`, brach aber bei JEDEM Lauf
-      beim ersten Einstieg ab: sein `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)`
-      braucht DREI Kerzenreihen (4H/30M/5M), der Replay ruft fuenf Argumente
-      (`TypeError: missing 2 required positional arguments`, gemessen 01.10.2026).
-      Es steht deshalb in `replay.NICHT_NACHRECHENBAR` mit Grund; der Reiter bietet
-      fuenf Spuren an (squeeze, wavetrend, macd_mtf, supertrend, gitter).
-      Naechster Schritt: im Replay eine Naht fuer Spuren mit mehreren Zeitrahmen
-      bauen (drei Reihen je Instrument aus derselben Historie ableiten: 4H direkt,
-      30M/5M aus 5M-Reihen, die die Historie noch nicht holt) - dann mosaic wieder
-      in die Liste und mit dem gemessenen Kraken-Satz 0,60 %/Seite fahren.
-      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, mosaic
 
 - [x] **T-293 — omniquant: welcher Markt gilt fuer die Gebuehr?**
       Kontext: Beim Festziehen der Gebuehren (01.10.2026) steht in
@@ -1169,39 +1132,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt 01.10.2026 · Betrifft Agenten/Handel/omniquant
       **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - omniquant/wachen.json und wachen.weit.json tragen boerse=kraken_futures UND gebuehr_taker 0.0005.**
 
-- [ ] **T-291 — Kraken-Futures-Guthaben: 1,28 USD frei, Tor zu (Entscheidung Max)**
-  Kontext: mindest_guthaben 25 USD in omnitrade_futures/wachen.json; 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei 7x. Ohne Nachschub haelt die Hebel-Spur das Tor dauerhaft zu.
-  Naechster Schritt: Max entscheidet ueber Nachschub; die Spur sammelt bis dahin Papierrunden.
-  Angelegt 2026-10-01 · Betrifft: omnitrade_futures/wachen.json
-- [ ] **T-292 — Backtest-Drawdown 72-90 % ist unplausibel, Auswertung nachziehen**
-  Kontext: GEFUNDEN (01.10.2026) - es ist ein Buchungsartefakt, kein Risiko: omnitrade-engine/src/account.rs apply_buy_fill zieht Nominal+Gebuehr VOLL vom Cash ab, total_equity = balance + unrealized_pnl zaehlt den Positionswert NICHT zurueck; waehrend einer offenen Long-Position ist das Equity also ~16 % vom Hoechststand, und max_dd sieht sofort die grosse Kurve. PnL/Runden/Trefferquote sind unberuehrt korrekt (die Equity holt sich beim Schliessen zurueck).
-  Naechster Schritt: total_equity um den Positionswert ergaenzen (Long: qty x entry + unrealized) im Fork Werkstatt/omnitrade - erst danach ist max_dd eine Zahl, an der man Grenzen ablesen kann; bis dahin DD-Spalte der Messung ignorieren.
-  Angelegt 2026-10-01 · Betrifft: Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
-- [ ] **T-284 - omnitrade_futures: Kraken-Futures-Guthaben fehlt (1,28 USD)**
-      Kontext: Die Hebel-Spur (debc983) ist verdrahtet, das Tor `mindest_guthaben 25`
-      ist aber dauerhaft zu: das flex-Konto traegt nur 1,28 USD frei (25.09.2026 waren
-      es 141,59). 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei Hebel 7.
-      Naechster Schritt: Geld ins Futures-Konto (flex) umschichten oder Spur bewusst
-      im Papier lassen; danach zeigt `handeln.py --vorschau` genau einen Grund.
-      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/omnitrade_futures/wachen.json
-- [ ] **T-285 - omnitrade_futures: leverage-Parameter an Kraken belegen**
-      Kontext: Hebel 7 geht als leverage-Feld in JEDE /sendorder-Order (weg.py,
-      kraken_futures.markt_kauf), aber gemessen ist nur der Einschussplan EEA retail
-      10 % = 10x. Ohne Beleg weiss niemand, ob Kraken den Parameter annimmt oder
-      still den Maximalhebel setzt. Probe = 1 Kontrakt kaufen + schliessen
-      (~0,12 USD Gebuehr), verfuegbar: /openpositions + availableMargin vorher/nachher.
-      Naechster Schritt: nach T-284 (Guthaben) einen 1-Kontrakt-Test OHNE VPN fahren
-      (mit NordLynx weist Futures ab - authenticationError).
-      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/nautilus_kraken/kraken_futures.py
-- [ ] **T-287 - omnitrade-Backtest: Drawdown-Anzeige unplausibel, nachziehen**
-      Kontext: intervalle_messen.py meldete 60-Tage-Runs mit max_drawdown 72-90 % auf
-      Long-only-BTC in einer Phase ohne 60-%-Kurzeinbruch - die Zahl kann nicht
-      stimmen (Veraecht: equity-Rechnung in backtest.rs/AccountState oder
-      update_unrealized_pnl auf beiden Seiten je Kerze). Runden/Trefferquote sind
-      belastbar, der Drawdown nicht.
-      Naechster Schritt: AccountState.total_equity lesen und mit einer Handrechnung
-      gegenprobe machen, bevor irgendeine Grenze aus dem Drawdown abgeleitet wird.
-      Angelegt · 01.10.2026 · Betrifft Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
 
 - [x] **T-283 — kraken stellt mehrere Belege in einem Zyklus aus, nur einer wird ausgefuehrt**
       Kontext: Am 01.10.2026 um 13:25:51 stellte die Spur DREI Belege aus (XLTCZEUR,
@@ -1222,65 +1152,13 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-280 - Kraken: drei Posten sind nicht verkaufbar (Ordermin bzw. gestakte Form)**
-      Kontext: Beim Umschichten am 01.10.2026 blieben PEPE (409.009,94 gegen ordermin
-      1.500.000 = 1,58 EUR), ONDO (10,74331 gegen ordermin 15 = 4,84 EUR) und ADA.S liegen.
-      ADA.S ist gestakte Cardano — Kraken fuehrt kein Paar mit `base=ADA.S` (AssetPairs
-      liefert eine leere Liste), der Weg ist Unstaking, nicht eine Order. Gleiches Muster:
-      ATOM21.S, HYPE.B, XPEV.EQ.
-      Naechster Schritt: PEPE/ONDO sammeln, bis sie ueber dem Ordermin liegen; fuer ADA.S/
-      ATOM21.S/HYPE.B entscheiden, ob unstaked wird.
-      Angelegt 2026-10-01 · Zuletzt 2026-10-01
-      Nachtrag 01.10.2026 (OKX): Dasselbe Muster auf der anderen Boerse — BETH-USDT
-      (160,77 USD) und OKSOL-USDT (20,00 USD) sind gestakte Formen und antworten mit
-      `OKX 51155: You can't trade this pair ... due to local compliance restrictions`.
-      OKX fuehrt sie auf dem EEA-Konto nur gegen USDT, und der Fehler kommt VOR jeder
-      Mengenpruefung — an `/public/instruments` ist die Sperre nicht zu sehen.
-      Betrifft: Kraken-Konto, OKX-Konto
 
 
 
 
 
-- [ ] **T-273 - xperp: drei echte OKX-Positionen stehen ohne Buch und ohne Stop**
-      Kontext: Am 01.10.2026 gemessen - die Boerse haelt ZEC (38 Kontrakte),
-      VVV (217) und ADA (235) als XPERP-Positionen, zusammen rund 226 USD
-      Margin; das xperp-Buch kennt nur XRP. attachAlgoOrds ist bei ALLEN vier
-      Positionen leer und /trade/orders-algo-pending liefert fuer SWAP und
-      FUTURES nichts - kein Schutzauftrag. xperp laeuft Papier, deshalb hat
-      bueche_fremde_positionen_uebernehmen nie gegriffen (es laeuft nur im
-      Live-Zyklus). Die Vorschau des Hauswerkzeugs zeigt: alle drei wuerden
-      uebernommen und bekaemen einen Stop (ADA 0.2432, VVV 27.221, ZEC
-      1401.06) - rund 2 % unter dem Boersenschnitt, ein Stop dort realisiert
-      den Buchverlust von zusammen -34.85 USD.
-      Naechster Schritt: Entscheidung Max - uebernehmen (dann greift der Stop)
-      oder die Positionen schliessen; ohne Entscheidung bleibt Margin ohne
-      Schutz stehen.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp
 
-- [ ] **T-274 - xperp-Kill-Switch sperrt die scharfe Spur (Ruecklauf 279.85 >= 250)**
-      Kontext: lage meldet kill=true - die realisierte Kurve stand auf 497.42
-      USD und liegt bei 217.57, der Ruecklauf also 279.85 gegen
-      kill_switch_gesamt_usd 250.0. handel_erlaubt steht deshalb auf false.
-      ACHTUNG, FALLE: der Kill-Switch steht NICHT im --vorschau-Text. Wer nur
-      handel_erlaubt auf true setzt, laesst genau EINEN Sperrgrund uebrig
-      ('kein offenes Freigabefenster'), dauerlauf.nur_fenster_fehlt greift und
-      die AUTO_FREIGABE oeffnet das Fenster von selbst - der naechste Live-Lauf
-      stellt dann flach und verkauft die vier echten Positionen aus T-273.
-      Reihenfolge also: erst Deckel bzw. Kurve entscheiden, dann armieren.
-      Naechster Schritt: Entscheidung Max - Deckel heben (21.09. von 40 auf 100,
-      27.09. auf 250) oder die Kurve pruefen.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/wachen.json
 
-- [ ] **T-275 - vier scharfe Spuren laufen live und koennen nicht handeln (Guthaben)**
-      Kontext: scanner, mosaic, moondev_listingarb und moondev_topmovers fahren
-      live (dauerlauf.log 01.10. 02:43-02:46), stehen aber alle vor einem
-      Guthaben-Tor: OKX-Spot-USDC frei 0.00 bei 530.67 eq - die ganze Margin
-      steckt in den vier XPERP-Positionen aus T-273 - und Kraken 53.81 EUR
-      sowie 25.08 USDC gegen die Tore 60 (mosaic) und 70 (moondev_marktlage).
-      Naechster Schritt: Entscheidung Max - Geld umschichten oder Tor senken;
-      ohne eines von beiden bleibt der Live-Schalter wirkungslos.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/scanner, mosaic, moondev_listingarb, moondev_topmovers
 
 
 - [x] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
@@ -3676,6 +3554,140 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-300 — FreqTrade-Zugaenge: ein Passwort gilt fuer alle drei Bots**
+      Kontext: `bots.py` schreibt je Bot ein eigenes Zufallspasswort in
+      `user_data/config.<name>.json`, die laufenden Container akzeptieren davon aber nur das
+      Passwort der Basis-`config.json` (gemessen 30.09.2026 in `bots.py::_api_stand`, am
+      01.10.2026 erneut belegt: 8081/8082/8083 antworten mit der Basis-Anmeldung auf
+      show_config/count/profit/status/trades/daily, mit dem Aufsatz-Passwort 401).
+      `freqtrade_bridge.zugang_fuer()` nimmt deshalb den Port vom Bot, die Anmeldung immer von
+      der Basis - die Zentrale haengt an EINEM Zugang, obwohl sie drei Bots zeigt, und dieser
+      eine Zugang ist der Ausfall aller drei.
+      Naechster Schritt: beim naechsten Bot-Neustart (`freqtrade/bots_starten.sh`) messen, ob
+      die Container ihre eigenen Aufsatz-Passwoerter akzeptieren; wenn ja, `zugang_fuer` auf
+      die je-Aufsatz-Anmeldung umstellen und die 401-Ausnahme aus der Bruecke streichen.
+      Betrifft: Agenten/Handel/freqtrade_bridge.py, Agenten/Handel/freqtrade/bots.py, Agenten/Handel/freqtrade/user_data/
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01
+      alle drei FreqTrade-Container akzeptieren eigenes Aufsatz-Passwort (Basis 401); 401-Ausnahme in Bridge gestrichen, _api_stand auf je-Aufsatz-Zugang umgestellt. Tests 22+28 gruen (t_8549ded9)
+- [x] **T-295 — gitter replaybar machen (Adapter fuer die Rechnung in grid.py)**
+      Kontext: `gitter` stand in `replay.SPUREN_TEIL_A`, bricht aber bei JEDEM Lauf ab:
+      sein `gitter/handeln.py` hat nur `lade_wachen()`, die Rechnung liegt in
+      `grid.py`/`backtest_gitter.py` -> `AttributeError: module 'bt_gitter' has no
+      attribute 'pruefe_ausstiege'` (gemessen 01.10.2026, echter Lauf). Es steht jetzt in
+      `replay.NICHT_NACHRECHENBAR` mit Grund; der Reiter bietet vier Spuren an.
+      Naechster Schritt: im Replay einen Adapter fuer Spuren mit eigener Rechnung bauen
+      (Einstieg/Ausstieg ueber ihre eigenen Funktionen statt ueber
+      pruefe_einstieg/-ausstiege) - `gitter/backtest_gitter.py` faehrt die Spur bereits
+      selbst, es fehlt nur die Naht. Danach mit dem OKX-Spot-Satz 0,10 %/Seite fahren.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, gitter
+      gitter replaybar: eigenes walk() je Kerze mit gesetzter Uhr. Determinismus: gitter_sha256 = 85fc5b59... (t_b1b98d97)
+- [x] **T-294 — mosaic replaybar machen (Mehrzeitrahmen-Adapter)**
+      Kontext: `mosaic` stand in `replay.SPUREN_TEIL_A`, brach aber bei JEDEM Lauf
+      beim ersten Einstieg ab: sein `pruefe_einstieg(inst, k4, k30, k5, z, w, faktor)`
+      braucht DREI Kerzenreihen (4H/30M/5M), der Replay ruft fuenf Argumente
+      (`TypeError: missing 2 required positional arguments`, gemessen 01.10.2026).
+      Es steht deshalb in `replay.NICHT_NACHRECHENBAR` mit Grund; der Reiter bietet
+      fuenf Spuren an (squeeze, wavetrend, macd_mtf, supertrend, gitter).
+      Naechster Schritt: im Replay eine Naht fuer Spuren mit mehreren Zeitrahmen
+      bauen (drei Reihen je Instrument aus derselben Historie ableiten: 4H direkt,
+      30M/5M aus 5M-Reihen, die die Historie noch nicht holt) - dann mosaic wieder
+      in die Liste und mit dem gemessenen Kraken-Satz 0,60 %/Seite fahren.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/replay.py, mosaic
+      mosaic replaybar: drei Reihen aus EINER 5m-Basis verdichtet (5m_historie_holen.py --tage 120, 3x34560 Kerzen), groebere Kerze zaehlt erst wenn ABGESCHLOSSEN. Determinismus: mosaic_sha256 = a5c41f95... (t_b1b98d97)
+- [x] **T-292 — Backtest-Drawdown 72-90 % ist unplausibel, Auswertung nachziehen**
+  Kontext: GEFUNDEN (01.10.2026) - es ist ein Buchungsartefakt, kein Risiko: omnitrade-engine/src/account.rs apply_buy_fill zieht Nominal+Gebuehr VOLL vom Cash ab, total_equity = balance + unrealized_pnl zaehlt den Positionswert NICHT zurueck; waehrend einer offenen Long-Position ist das Equity also ~16 % vom Hoechststand, und max_dd sieht sofort die grosse Kurve. PnL/Runden/Trefferquote sind unberuehrt korrekt (die Equity holt sich beim Schliessen zurueck).
+  Naechster Schritt: total_equity um den Positionswert ergaenzen (Long: qty x entry + unrealized) im Fork Werkstatt/omnitrade - erst danach ist max_dd eine Zahl, an der man Grenzen ablesen kann; bis dahin DD-Spalte der Messung ignorieren.
+  Angelegt 2026-10-01 · Betrifft: Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
+      siehe T-287: total_equity-Artefakt behoben, Max Drawdown 75,18 % -> 8,15 % (t_b1b98d97)
+- [x] **T-291 — Kraken-Futures-Guthaben: 1,28 USD frei, Tor zu (Entscheidung Max)**
+  Kontext: mindest_guthaben 25 USD in omnitrade_futures/wachen.json; 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei 7x. Ohne Nachschub haelt die Hebel-Spur das Tor dauerhaft zu.
+  Naechster Schritt: Max entscheidet ueber Nachschub; die Spur sammelt bis dahin Papierrunden.
+  Angelegt 2026-10-01 · Betrifft: omnitrade_futures/wachen.json
+      Kraken-Futures frei 83.35 USD (nicht 1.28) - Guthaben-Tor offen, Vorschau nennt es nicht mehr. Empfehlung: erst T-285 (Hebel 1-Kontrakt-Test) belegen, dann armieren (t_52f14f21)
+- [x] **T-287 - omnitrade-Backtest: Drawdown-Anzeige unplausibel, nachziehen**
+      Kontext: intervalle_messen.py meldete 60-Tage-Runs mit max_drawdown 72-90 % auf
+      Long-only-BTC in einer Phase ohne 60-%-Kurzeinbruch - die Zahl kann nicht
+      stimmen (Veraecht: equity-Rechnung in backtest.rs/AccountState oder
+      update_unrealized_pnl auf beiden Seiten je Kerze). Runden/Trefferquote sind
+      belastbar, der Drawdown nicht.
+      Naechster Schritt: AccountState.total_equity lesen und mit einer Handrechnung
+      gegenprobe machen, bevor irgendeine Grenze aus dem Drawdown abgeleitet wird.
+      Angelegt · 01.10.2026 · Betrifft Werkstatt/omnitrade/omnitrade-cli/src/backtest.rs
+      total_equity = balance + unrealized_pnl; apply_buy_fill zieht Nennwert voll vom Guthaben ab. Fix: Position::market_value() + total_equity summiert Marktwert. Max Drawdown 75,18 % -> 8,15 % bei unveraendertem PnL (t_b1b98d97)
+- [x] **T-285 - omnitrade_futures: leverage-Parameter an Kraken belegen**
+      Kontext: Hebel 7 geht als leverage-Feld in JEDE /sendorder-Order (weg.py,
+      kraken_futures.markt_kauf), aber gemessen ist nur der Einschussplan EEA retail
+      10 % = 10x. Ohne Beleg weiss niemand, ob Kraken den Parameter annimmt oder
+      still den Maximalhebel setzt. Probe = 1 Kontrakt kaufen + schliessen
+      (~0,12 USD Gebuehr), verfuegbar: /openpositions + availableMargin vorher/nachher.
+      Naechster Schritt: nach T-284 (Guthaben) einen 1-Kontrakt-Test OHNE VPN fahren
+      (mit NordLynx weist Futures ab - authenticationError).
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/nautilus_kraken/kraken_futures.py
+      kraken_futures.einschuss() nimmt max(Plan, 1/hebel); neue hebel_je_kontrakt() mit 60-s-Cache. root_cause: leverage-Parameter von /sendorder wird ignoriert; Hebel steht JE KONTRAKT in /leveragepreferences. vorher_defekt: 11,80 statt 16,86 USD (t_e476fce2)
+- [x] **T-284 - omnitrade_futures: Kraken-Futures-Guthaben fehlt (1,28 USD)**
+      Kontext: Die Hebel-Spur (debc983) ist verdrahtet, das Tor `mindest_guthaben 25`
+      ist aber dauerhaft zu: das flex-Konto traegt nur 1,28 USD frei (25.09.2026 waren
+      es 141,59). 1 Kontrakt PF_SOLUSD braucht ~17 USD Margin bei Hebel 7.
+      Naechster Schritt: Geld ins Futures-Konto (flex) umschichten oder Spur bewusst
+      im Papier lassen; danach zeigt `handeln.py --vorschau` genau einen Grund.
+      Angelegt · 01.10.2026 · Betrifft Agenten/Handel/omnitrade_futures/wachen.json
+      Tor offen (mindest_guthaben 25 < 83,37); Vorschau nennt keinen Guthaben-Grund mehr. root_cause: Zahl vom Vormittag; cash.balances bleibt 0,00 (Geld im flex-Konto) (t_e476fce2)
+- [x] **T-280 - Kraken: drei Posten sind nicht verkaufbar (Ordermin bzw. gestakte Form)**
+      Kontext: Beim Umschichten am 01.10.2026 blieben PEPE (409.009,94 gegen ordermin
+      1.500.000 = 1,58 EUR), ONDO (10,74331 gegen ordermin 15 = 4,84 EUR) und ADA.S liegen.
+      ADA.S ist gestakte Cardano — Kraken fuehrt kein Paar mit `base=ADA.S` (AssetPairs
+      liefert eine leere Liste), der Weg ist Unstaking, nicht eine Order. Gleiches Muster:
+      ATOM21.S, HYPE.B, XPEV.EQ.
+      Naechster Schritt: PEPE/ONDO sammeln, bis sie ueber dem Ordermin liegen; fuer ADA.S/
+      ATOM21.S/HYPE.B entscheiden, ob unstaked wird.
+      Angelegt 2026-10-01 · Zuletzt 2026-10-01
+      Nachtrag 01.10.2026 (OKX): Dasselbe Muster auf der anderen Boerse — BETH-USDT
+      (160,77 USD) und OKSOL-USDT (20,00 USD) sind gestakte Formen und antworten mit
+      `OKX 51155: You can't trade this pair ... due to local compliance restrictions`.
+      OKX fuehrt sie auf dem EEA-Konto nur gegen USDT, und der Fehler kommt VOR jeder
+      Mengenpruefung — an `/public/instruments` ist die Sperre nicht zu sehen.
+      Betrifft: Kraken-Konto, OKX-Konto
+      kraken/lagerbestand.py (neu, lesend) + README-Abschnitt + Wiki. kein_paar: ADA.S, ATOM21.S, HYPE.B, XPEV.EQ. unter_ordermin: ONDO 10,74331/15, PEPE 409009,94/1500000 (t_e476fce2)
+- [x] **T-275 - vier scharfe Spuren laufen live und koennen nicht handeln (Guthaben)**
+      Kontext: scanner, mosaic, moondev_listingarb und moondev_topmovers fahren
+      live (dauerlauf.log 01.10. 02:43-02:46), stehen aber alle vor einem
+      Guthaben-Tor: OKX-Spot-USDC frei 0.00 bei 530.67 eq - die ganze Margin
+      steckt in den vier XPERP-Positionen aus T-273 - und Kraken 53.81 EUR
+      sowie 25.08 USDC gegen die Tore 60 (mosaic) und 70 (moondev_marktlage).
+      Naechster Schritt: Entscheidung Max - Geld umschichten oder Tor senken;
+      ohne eines von beiden bleibt der Live-Schalter wirkungslos.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/scanner, mosaic, moondev_listingarb, moondev_topmovers
+      OKX frei 1.76 USDC (nicht 0.00), Kraken frei 82.24 EUR/99.05 USDC (ueber beiden Toren), scanner hat gar kein Guthaben-Tor. Tore unangetastet, USDC ueber T-273 freimachen (t_52f14f21)
+- [x] **T-274 - xperp-Kill-Switch sperrt die scharfe Spur (Ruecklauf 279.85 >= 250)**
+      Kontext: lage meldet kill=true - die realisierte Kurve stand auf 497.42
+      USD und liegt bei 217.57, der Ruecklauf also 279.85 gegen
+      kill_switch_gesamt_usd 250.0. handel_erlaubt steht deshalb auf false.
+      ACHTUNG, FALLE: der Kill-Switch steht NICHT im --vorschau-Text. Wer nur
+      handel_erlaubt auf true setzt, laesst genau EINEN Sperrgrund uebrig
+      ('kein offenes Freigabefenster'), dauerlauf.nur_fenster_fehlt greift und
+      die AUTO_FREIGABE oeffnet das Fenster von selbst - der naechste Live-Lauf
+      stellt dann flach und verkauft die vier echten Positionen aus T-273.
+      Reihenfolge also: erst Deckel bzw. Kurve entscheiden, dann armieren.
+      Naechster Schritt: Entscheidung Max - Deckel heben (21.09. von 40 auf 100,
+      27.09. auf 250) oder die Kurve pruefen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp/wachen.json
+      Kill NICHT ausgeloest (Ruecklauf 91.11 < 250); Sperre ist handel_erlaubt=false. Deckel 250 unveraendert lassen, xperp bleibt Papier bis T-273 bereinigt (t_52f14f21)
+- [x] **T-273 - xperp: drei echte OKX-Positionen stehen ohne Buch und ohne Stop**
+      Kontext: Am 01.10.2026 gemessen - die Boerse haelt ZEC (38 Kontrakte),
+      VVV (217) und ADA (235) als XPERP-Positionen, zusammen rund 226 USD
+      Margin; das xperp-Buch kennt nur XRP. attachAlgoOrds ist bei ALLEN vier
+      Positionen leer und /trade/orders-algo-pending liefert fuer SWAP und
+      FUTURES nichts - kein Schutzauftrag. xperp laeuft Papier, deshalb hat
+      bueche_fremde_positionen_uebernehmen nie gegriffen (es laeuft nur im
+      Live-Zyklus). Die Vorschau des Hauswerkzeugs zeigt: alle drei wuerden
+      uebernommen und bekaemen einen Stop (ADA 0.2432, VVV 27.221, ZEC
+      1401.06) - rund 2 % unter dem Boersenschnitt, ein Stop dort realisiert
+      den Buchverlust von zusammen -34.85 USD.
+      Naechster Schritt: Entscheidung Max - uebernehmen (dann greift der Stop)
+      oder die Positionen schliessen; ohne Entscheidung bleibt Margin ohne
+      Schutz stehen.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Agenten/Handel/xperp
+      Buch auf die Boerse ziehen: Boerse haelt 1 Position (ZEC 145), Buch 4 (XRP 704, ADA 235, VVV 217, ZEC 38) - drei Geister, Groesse 38 statt 145, 19 Kontrakte ohne Stop (t_52f14f21)
 - [x] **T-282 - Omniquant-Live-Zweig steht, aber die Kraken-Futures-Margin fehlt**
       Kontext: Der Orderweg auf Kraken Futures ist gebaut und geprueft (Hebel 6
       als Sizing-Regel, neun von zehn Instrumenten handelbar, ZEC faellt heraus
