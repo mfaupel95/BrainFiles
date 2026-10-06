@@ -188,3 +188,39 @@ haben eine eigene `auswertung.py` und erscheinen im Tagesbericht mit voller Bila
 ein Weg in `auswertung_alle` ergab **107 Runden mit falscher Paarung** (Einsteig PATE,
 Ausstieg leeres Symbol) — gemessen, nicht vermutet. `gitter` führt `max_verlust_usd`
 (Kill) statt einer Drawdown-Ratsche und hat keine `lage()`.
+
+## Pläne und Befunde (verschoben 2026-10-06)
+
+Alle Pläne liegen in `MaxHirn/Wiki/Handel/plans/`:
+
+- [[2026-09-18-spiegel-kopier-filter-design]]
+- [[2026-09-19-quant-migration-design]]
+- [[2026-09-24-backtest-fundament-design]]
+- [[2026-09-26-moondev-backtest-design]]
+- [[2026-09-29-leitstand-design]]
+- [[2026-10-01-prognose-merkmale-design]]
+- [[2026-09-18-filter-studie]]
+- [[2026-09-18-v1-ausstiegsgeometrie]]
+- [[2026-09-19-daten-auffrischen]]
+- [[2026-09-19-python-zu-rust-migration]]
+- [[2026-09-19-quant-migration-plan]]
+- [[2026-09-24-backtest-fundament]]
+- [[2026-09-26-moondev-backtest]]
+- [[2026-09-29-leitstand-plan]]
+- [[2026-10-01-omniquant-kraken-live-plan]]
+- [[PLAN-auswertung-datengrundlage-2026-09-17]]
+- [[PLAN-berichtsschicht-2026-09-18]]
+
+Befunde in `MaxHirn/Wiki/Handel/Befunde/`:
+- [[BEFUND-hygiene-2026-09-17]]
+- [[CODE_REVIEW_AND_FIXES_INDEX]]
+- [[CODE_REVIEW_FIXES]]
+- [[ENTWURF-auswertung-berichte-2026-09-17]]
+- [[FIXES_APPLIED_SUMMARY]]
+- [[HANDOFF_FOR_NEXT_DEVELOPER]]
+- [[VALIDATION_REPORT]]
+
+Spur-Pläne in `MaxHirn/Wiki/Handel/Spuren/`:
+- [[MOSAIC-LIVE-PLAN-OKX]] (mosaic)
+- [[KRAKEN-LIVE-PLAN]] (moondev_marktlage)
+- [[NOTIZ]] (iv_waelle)

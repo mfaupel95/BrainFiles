@@ -6340,3 +6340,27 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
       Vor dem Auftrag `bot.py` **frisch** laufen lassen, die Zahlen oben sind
       vom 09.09.2026.
 
+
+## T-89 — Wiki-Verschiebung: Pläne + Befunde aus Agenten/Handel
+
+- [ ] **T-89 — Wiki-Verschiebung: Pläne + Befunde aus Agenten/Handel**
+  - Kontext: 31 .md-Dateien (15 docs/design + docs/plans, 11 Befunde/Notizen, 5 Spur-Pläne) waren in Agenten/Handel versteckt. Verschoben nach MaxHirn/Wiki/Handel/ (plans/, Befunde/, Spuren/, verbesserer/). Kein Code referenziert alte Pfade (rg geprueft). leitstand_backtests.json Pfad korrigiert.
+  - Naechster Schritt: git status zeigt 30 D + 31 ??; rg zeigt keine Code-Referenzen; leitstand_backtests.json zeigt neuen Pfad
+  - Angelegt: 2026-10-06
+  - Betrifft: MaxHirn/Wiki/Handel/, Agenten/Handel/
+
+## T-90 — TASKS-Eintraege fuer Wiki-Verschiebung
+
+- [ ] **T-90 — TASKS-Eintraege fuer Wiki-Verschiebung**
+  - Kontext: Drei Eintraege in MaxHirn/Archiv/TASKS.md: T-89 (Verschiebung), T-90 (dieser Eintrag), T-91 (Wissen einbauen).
+  - Naechster Schritt: doppelte_nummern.py gruen; T-89/90/91 vorhanden
+  - Angelegt: 2026-10-06
+  - Betrifft: MaxHirn/Wiki/Handel/, Agenten/Handel/
+
+## T-91 — Wissen einbauen: Spuren-Uebersicht + Plaene verlinken
+
+- [ ] **T-91 — Wissen einbauen: Spuren-Uebersicht + Plaene verlinken**
+  - Kontext: MaxHirn/Wiki/Handel/Spuren-Uebersicht.md erstellen mit Verweisen auf verschobene Plaene und Befunde. Wiki/Handel/INDEX.md aktualisieren.
+  - Naechster Schritt: Spuren-Uebersicht.md existiert; INDEX.md zeigt Verweise
+  - Angelegt: 2026-10-06
+  - Betrifft: MaxHirn/Wiki/Handel/, Agenten/Handel/
