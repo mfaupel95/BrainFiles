@@ -6380,3 +6380,19 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
   - Naechster Schritt: Spuren-Uebersicht.md existiert; INDEX.md zeigt Verweise
   - Angelegt: 2026-10-06
   - Betrifft: MaxHirn/Wiki/Handel/, Agenten/Handel/
+
+## T-92 — Verbesserer Stufe 1.5: Umsetzungsplan schreiben
+
+- [ ] **T-92 — Verbesserer Stufe 1.5: Umsetzungsplan schreiben**
+  - Kontext: Spec Werkstatt/spec-verbesserer-stufe-1-5-2026-10-04.md ist abgenommen (F7 Kerzen-Ausrichtung, F4 Holdout, nur Spur 1). Plan fehlt, Code erst nach Plan-Review. Uebergabe: Werkstatt/uebergabe-verbesserer-stufe-1-5-2026-10-06.md
+  - Naechster Schritt: writing-plans nach Werkstatt/plan-verbesserer-stufe-1-5-2026-10-04.md; Max waehlt Ausfuehrungsart
+  - Angelegt: 2026-10-06
+  - Betrifft: Agenten/Handel/verbesserer/
+
+## T-93 — Verbesserer Ausbaustufe 2 (Spur 2/3)
+
+- [ ] **T-93 — Verbesserer Ausbaustufe 2 (Spur 2/3)**
+  - Kontext: XPERP (Margin, Funding, Liquidation) und Kraken-EUR (0,80 % je Runde); erst nach Stufe 1.5, eigenes Brainstorming mit eigener Spec.
+  - Naechster Schritt: nach T-92 Brainstorming starten
+  - Angelegt: 2026-10-06
+  - Betrifft: Agenten/Handel/verbesserer/, Agenten/Handel/xperp/
