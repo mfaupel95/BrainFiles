@@ -84,16 +84,53 @@ def fuehre_aus(eintrag: dict, anwenden: bool) -> dict:
         return {"spur": spur, "kennung": kennung, "ergebnis": "wuerde kaufen",
                 "paar": eintrag["paar"], "menge": menge, "stop": stop, "ziel": ziel}
 
-    # Einloesen VOR der Order: der Beleg ist einmalig. Bliebe er liegen,
-    # koennte eine zweite Hand dieselbe Order ein zweites Mal ausfuehren.
-    beleg.verbrauche(spur, kennung, ergebnis="beleg_hand")
-
     w = handeln.scan.wachen()
     z = handeln.lade_zustand()
     if len(z.get("positionen", [])) >= w["max_offene_positionen"]:
         return {"spur": spur, "kennung": kennung,
                 "ergebnis": "abgelehnt: Buch voll (%d/%d)"
                             % (len(z["positionen"]), w["max_offene_positionen"])}
+
+    # Duplikats-Gatter (T-102): schon ein Beleg, eine Position oder eine
+    # offene Kauf-Order fuer dasselbe Instrument? Ein zweiter Kauf wuerde
+    # denselben Wert doppelt besitzen - genau das war der FILEUR-Fehler am
+    # 28.09.2026 (vier Kaeufe fuer EIN Signal, ~200 EUR). Drei Zeugen:
+    #   1. die BELEGE (ein ANDERER, noch gueltiger Beleg fuer dasselbe Paar),
+    #   2. das BUCH   (eine offene Position - schnell, immer da),
+    #   3. die BOERSE (eine offene Kauf-Order fuer dasselbe Paar).
+    # Der EIGENE Beleg (kennung) ist kein Duplikat - er ist die Erlaubnis,
+    # die wir gerade ausfuehren. Ohne diese Ausnahme wuerde sich jede Hand
+    # selbst ablehnen: `offene()` fuehrt den eigenen Beleg bis `verbrauche()`.
+    beleg_offen = [e for e in beleg.offene()
+                   if e.get("kennung") != kennung
+                   and ((e.get("zusatz") or {}).get("inst") == inst
+                        or e.get("paar") == inst)]
+    if beleg_offen:
+        return {"spur": spur, "kennung": kennung,
+                "ergebnis": "abgelehnt: Beleg offen fuer %s" % inst}
+    positionen = [p for p in z.get("positionen", []) if p.get("paar") == inst]
+    if positionen:
+        return {"spur": spur, "kennung": kennung,
+                "ergebnis": "abgelehnt: Position offen fuer %s" % inst}
+    # Die Boerse ist der dritte Zeuge. Fail-closed: kann die Hand sie nicht
+    # fragen, kauft sie nicht - eine offene Kauf-Order, die niemand gesehen
+    # hat, waere derselbe Doppelkauf, nur eine Stufe spaeter. Eine offene
+    # VERKAUF-Order (der Schutz-Stop einer Position) blockiert nicht.
+    try:
+        offene_orders = handeln.kraken.offene_orders()
+    except Exception as e:                                     # noqa: BLE001
+        return {"spur": spur, "kennung": kennung,
+                "ergebnis": "abgelehnt: offene Orders nicht abrufbar (%s)" % e}
+    kaeufe_offen = [o for o in offene_orders.values()
+                    if o.get("paar") == inst and o.get("seite") == "buy"]
+    if kaeufe_offen:
+        return {"spur": spur, "kennung": kennung,
+                "ergebnis": "abgelehnt: offene Kauf-Order an der Boerse "
+                           "fuer %s" % inst}
+
+    # Einloesen NACH allen Gates: der Beleg ist einmalig. Bliebe er liegen,
+    # koennte eine zweite Hand dieselbe Order ein zweites Mal ausfuehren.
+    beleg.verbrauche(spur, kennung, ergebnis="beleg_hand")
 
     try:
         txid = handeln.kraken.markt_kauf(inst, menge, echt=True)
@@ -157,7 +194,8 @@ def fuehre_aus(eintrag: dict, anwenden: bool) -> dict:
     handeln.schreibe_zustand(z)
     handeln.journal(_jetzt(), "live", "kauf", inst, "%.8g" % (kurs or 0.0),
                     "%.2f" % (eur + kosten), "%.8f" % gefuellt,
-                    "%.8g" % (stop or 0.0), "%.8g" % (ziel or 0.0),
+                    "%.8g" % (float(stop) if stop else 0.0),
+                    "%.8g" % (float(ziel) if ziel else 0.0),
                     "beleg %s ueber die Hand" % kennung)
     try:
         handeln._spiegeln(w, z)                      # Bedingung 4
