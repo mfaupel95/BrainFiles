@@ -161,6 +161,71 @@ def instrumente_fuer(w):
     return sorted(aus)
 
 
+# -- Instrument-Metadaten ----------------------------------------------------
+#
+# Die Kerzen tragen KEINE Kontraktgroessen (ctVal/lotSz/tickSz) - die braucht
+# bot.groesse() fuer die Positionsgroesse (kontrakte_aus_nominal) und auf_tick.
+# Ohne sie bricht der Replay mit KeyError ab. Die Metadaten werden beim
+# --auffuellen einmal mitgeschrieben (je instId das rohe OKX-Instrument-Dict)
+# und liegen unter `_instrumente.json` - Netzfreiheit fuer den Replay-Ordner.
+
+def _lade_instrumente():
+    try:
+        with open(os.path.join(ORDNER, "_instrumente.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def alle_instrumente():
+    """{instId: rohes OKX-Instrument-Dict} aus der Metadaten-Datei.
+
+    Oeffentliche Lesung von `_lade_instrumente`: der Replay (Familie E)
+    loest seine Instrumentenliste netzfrei daraus auf - dieselbe Kontrakt-
+    liste, die das --auffuellen einmal mitgeschrieben hat. Fehlende Datei
+    ist kein Fehler, sondern ein leeres Dict (der Aufrufer nennt dann den
+    Nachlade-Befehl).
+    """
+    return _lade_instrumente()
+
+
+def _speichere_instrumente(insts):
+    """Roh-Dicts ergaenzen und atomar ablegen."""
+    d = _lade_instrumente()
+    for x in insts or []:
+        if x and x.get("instId"):
+            d[x["instId"]] = x
+    os.makedirs(ORDNER, exist_ok=True)
+    ziel = os.path.join(ORDNER, "_instrumente.json")
+    tmp = ziel + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(d, f, indent=2, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, ziel)
+    return d
+
+
+def instrument_meta(iid):
+    """Das rohe OKX-Instrument-Dict zu einem instId - oder KeyError mit Rat.
+
+    Ohne ctVal/lotSz/minSz/tickSz kann der Replay weder Positionsgroessen
+    noch Preise runden. Fehlt der Eintrag, ist die Aktion das Nachladen des
+    KONKRETEN Instruments - kein stiller Rueckfall auf Attrappenwerte.
+    """
+    d = _lade_instrumente()
+    eintrag = d.get(iid)
+    if not eintrag:
+        basis = (iid or "").split("-")[0]
+        raise KeyError(
+            "keine Instrument-Metadaten zu %s - erst "
+            "'python historie_okx.py --auffuellen --instrumente %s' "
+            "(schreibt ctVal/lotSz/tickSz nach _instrumente.json)"
+            % (iid, basis or iid))
+    return eintrag
+
+
 # -- Speicher ---------------------------------------------------------------
 
 def datei(inst, takt):
@@ -266,13 +331,23 @@ def auffuellen(insts, takte, von_ms=None, bis_ms=None):
     von_ms = von_ms or int(time.mktime(time.strptime("2021-01-01", "%Y-%m-%d"))) * 1000
     bis_ms = bis_ms or int(time.time() * 1000)
     bericht = {}
+    metas = []
     for inst in insts:
         iid = instid(inst)
+        # Instrument-Metadaten einmal mitschreiben (ctVal/lotSz/tickSz fuer
+        # den Replay). Fehlt der Abruf, laeuft das Auffuellen trotzdem -
+        # nur der Replay beklaegt sich spaeter mit einem klaren KeyError.
+        try:
+            metas.append(_okxf().instrument(iid))
+        except Exception as e:                                    # noqa: BLE001
+            print("  Instrument-Metadaten %s nicht abrufbar (%s) - Replay "
+                  "braucht sie fuer ctVal/lotSz" % (iid, e))
         for takt in takte:
             neu = von_okx(iid, takt, von_ms, bis_ms)
             gesamt = speichere(iid, takt, neu)
             bericht.setdefault(inst, {})[takt] = {
                 "instId": iid, "neu": len(neu), "kerzen": gesamt}
+    _speichere_instrumente(metas)
     _schreibe_stand()
     return bericht
 

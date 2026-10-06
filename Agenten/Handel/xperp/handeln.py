@@ -72,6 +72,7 @@ if _handel_ordner not in sys.path:
 from signal_wechsel import ERLAEUT, zugelassen  # noqa: E402
 import mae
 import pos_kennung                                          # noqa: E402
+import tracking as _tracking
 
 import auswahl
 import bot
@@ -1330,6 +1331,26 @@ def pruefe_ausstiege(z, live, w):
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
                 margin_usd="%.2f" % erloes, hebel=p["hebel"], grund=grund)
+        _halte_h = 0.0
+        try:
+            _dt_start = datetime.fromisoformat(p["eroeffnet_zeit"])
+            _halte_h = round((datetime.now(timezone.utc) - _dt_start).total_seconds() / 3600, 1)
+        except Exception:  # noqa: BLE001
+            pass
+        _tracking.track_zyklus_abgeschlossen(
+            spur_name="xperp",
+            instrument=p["inst"],
+            richtung=p["seite"],
+            einstieg_kurs=p["einstieg"],
+            ausstieg_kurs=kurs,
+            ergebnis_pct=round(gv / p["margin"] * 100, 4) if p.get("margin") else 0.0,
+            ergebnis_eur=round(gv, 2),
+            haltedauer_stunden=_halte_h,
+            ausstiegsgrund=grund.lower(),
+            is_paper=not live,
+            risikostufe=risikostufe.stufe(),
+            hebel=p.get("hebel"),
+        )
         if grund in ("stop", "LIQUIDATION"):
             z["letzte_stops"][p["basis"]] = _heute()
     z["positionen"] = behalten
@@ -1686,6 +1707,18 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                 quote_noetig="%.4f" % p["quote_noetig"],
                 quote_beob="%.4f" % p["quote_beobachtet"],
                 grund="punkte %.1f, %s" % (a["punkte"], a["grund"]))
+        _tracking.track_position_eroeffnet(
+            spur_name="xperp",
+            instrument=a["inst"],
+            richtung=a["seite"],
+            einstieg_kurs=a["einstieg"],
+            stop_kurs=a["stop"],
+            ziel_kurs=a["ziel"],
+            nominal_eur=g["nominal"],
+            is_paper=not live,
+            risikostufe=risikostufe.stufe(),
+            hebel=g.get("hebel"),
+        )
 
 
 # --- Wachen -----------------------------------------------------------------
