@@ -88,6 +88,34 @@ def _marktbild_prompt(a, kerzen=None, indikatoren=None, position=None):
     return "\n".join(zeilen)
 
 
+def urteile_kandidat(kandidat, lage, k, w, position=None):
+    """LLM-Urteil fuer einen einzelnen Kandidaten.
+
+    `kandidat` ist das Ergebnis von `kandidaten()` (basis, seite, punkte, ...).
+    `lage` ist das Ergebnis von `indikatoren.lage()` (signal, rsi, macd, ...).
+    `k` ist eine Liste von Kerzen [ts, o, h, l, c, v] (wie okxf.kerzen()).
+    `position` ist die aktuelle Position (falls vorhanden).
+
+    Rueckgabe: (seite, info)
+    - seite: 'long', 'short' oder None (None = kein Trade)
+    - info: Dict mit Confidence, Aktion, Begruendung oder Fehler
+    """
+    if not w.get("llm_aktiv"):
+        return None, {"fehler": "llm_aktiv false"}
+
+    prompt = _marktbild_prompt(kandidat, kerzen=k, indikatoren=lage, position=position)
+    seite, info = _llm_entscheide(prompt, w)
+
+    if seite is None:
+        return None, info
+
+    # Richtung muss zum Kandidaten passen
+    if seite != kandidat.get("seite"):
+        return None, {"fehler": "Richtung passt nicht", "llm_seite": seite}
+
+    return seite, info
+
+
 def filter_kandidaten(kandidaten, w, kerzen=None, indikatoren=None, position=None):
     """Filtert eine Liste von Kandidaten durch das LLM.
 

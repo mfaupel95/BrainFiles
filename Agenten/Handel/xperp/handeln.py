@@ -88,6 +88,7 @@ import trailing as trailing_modul
 # `handeln` in `stopdeckung` ist deshalb auf `main()` verschoben (siehe dort
 # `_lade()`); hier wird nur das Werkzeug geladen, und das braucht nur `okxf`.
 import stopdeckung
+import llm_filter
 
 # Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
 # und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
