@@ -652,6 +652,8 @@ terminal:
   container_disk: 51200
   container_persistent: true
   docker_mount_cwd_to_workspace: true
+  docker_volumes:
+    - 'C:\Users\faupe\Documents\BrainFiles:/brainfiles'
   lifetime_seconds: 300
 web:
   backend: nous
