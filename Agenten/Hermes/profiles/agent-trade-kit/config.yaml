@@ -391,7 +391,7 @@ mcp_servers:
     command: node
     env:
       MCP_DXT: 'true'
-      NODE_ENV: production
+      NODE_ENV: development
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
   kraken:
     args:

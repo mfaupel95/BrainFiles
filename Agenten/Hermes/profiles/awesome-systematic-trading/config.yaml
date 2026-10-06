@@ -379,7 +379,7 @@ mcp_servers:
     command: node
     env:
       MCP_DXT: 'true'
-      NODE_ENV: production
+      NODE_ENV: development
   kraken:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\kraken_mcp.py

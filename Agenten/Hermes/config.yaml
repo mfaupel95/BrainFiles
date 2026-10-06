@@ -1176,6 +1176,8 @@ mcp_servers:
     env:
       SSE_URL: http://localhost:6767/sse
     enabled: false
+    # T-159: Server deaktiviert, Port 6767 nicht aktiv. Eintrag bleibt als
+    # Referenz, wird aber nicht gestartet. Entfernen wenn nicht mehr benoetigt.
   archiv:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\archiv_mcp.py
@@ -1193,7 +1195,7 @@ mcp_servers:
     command: node
     env:
       MCP_DXT: "true"
-      NODE_ENV: production
+      NODE_ENV: development
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
   kraken:
     args:
