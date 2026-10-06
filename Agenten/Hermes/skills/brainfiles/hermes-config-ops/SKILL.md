@@ -65,7 +65,7 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
    `Agenten/Hermes/.sicherung/<datei>.bak-JJJJMMTT`.
 5. **Genau eine Zeile, wo eine Zeile gemeint ist.** Belegen mit `Compare-Object`
    Sicherung gegen Datei — genau ein Zeilenpaar.
-6. **Kodierung erhalten.** BOM und LF/CRLF vorher bestimmen, danach gegenprüfen.
+6. **Kodierung erhalten - und bei GEMISCHTEN Dateien nach der MEHRHEIT gehen.** BOM und LF/CRLF vorher bestimmen, danach gegenprüfen. Die Regel „wenn CRLF vorkommt, nimm CRLF“ ist bei einer gemischten Datei FALSCH: `Wissen/Hermes.md` führt 375 CRLF gegen 773 nackte LF, ein in CRLF gehaltener Anhang ergab dort einen Zuwachs von 0 statt 29 nackten LF. Richtig ist `nl = "\r\n" if crlf > bare else "\n"`. Gegenprobe danach über den ZUWACHS, nicht über den Bestand: `(neu.count(b"\n") - neu.count(b"\r\n")) - (alt.count(b"\n") - alt.count(b"\r\n"))` muss der Zahl der Zeilen im Anhang entsprechen.
 7. **Vault-Notiz nachziehen** (`Wissen/Hermes.md`, Stufe 1 → vorher
    `.bak-JJJJMMTT`), dann `git -C <BrainFiles> commit --author="Hermes
    <hermes@local>" -- <pfad>` — nur benannte Pfade, nie `-A`. Vor dem Schreiben
