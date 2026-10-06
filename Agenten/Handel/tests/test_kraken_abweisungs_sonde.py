@@ -34,6 +34,7 @@ import os
 import sys
 import tempfile
 import threading
+import time
 import unittest
 
 TESTS = os.path.dirname(os.path.abspath(__file__))
@@ -267,6 +268,37 @@ class SondenTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("Kraken weist ab", text)
         self.assertIn("Kraken-Portal", text)
+
+    # --- Nonce-Einheit: Nanosekunden (Haus-Standard) ------------------------
+    def test_roh_futures_nutzt_gemeinsamen_pool_nanosekunden(self):
+        """_roh_futures muss den gemeinsamen Pool (Nanosekunden) nutzen,
+        nicht futures._nonce() (Millisekunden). Die Einheit muss mindestens
+        so gross sein, die groesste, die ein Werkzeug auf denselben Schluessel
+        sendet - sonst ist jeder Wert darunter ungueltig (EAPI:Invalid nonce).
+        """
+        kraken, futures, pool = self._module()
+
+        class MockPool:
+            def monotone_nonce(self):
+                return 1_700_000_000_000_000_000  # ~2023-11-14 in Nanosekunden
+
+        aufgerufen = {}
+        original = sonde._roh_aufruf
+
+        def mock_roh_aufruf(url, kopf, daten):
+            aufgerufen["kopf"] = kopf
+            return {"status": 200, "kopf": {}, "anfang": "{}"}
+
+        sonde._roh_aufruf = mock_roh_aufruf
+        try:
+            sonde._roh_futures(futures, MockPool())
+        finally:
+            sonde._roh_aufruf = original
+
+        nonce = aufgerufen["kopf"]["Nonce"]
+        # Nanosekunden seit 1970: > 1e18 (Millisekunden wären ~1e12)
+        self.assertGreater(int(nonce), 10**18,
+                           "Nonce muss im Nanosekundenbereich liegen")
 
 
 if __name__ == "__main__":

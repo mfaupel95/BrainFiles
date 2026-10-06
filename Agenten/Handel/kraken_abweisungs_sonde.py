@@ -221,12 +221,18 @@ def _roh_spot(kraken, pool):
     return _roh_aufruf(kraken.BASIS + pfad, kopf, formular.encode())
 
 
-def _roh_futures(futures):
-    """Signierter GET /accounts mit vollstaendiger Erfassung."""
+def _roh_futures(futures, pool):
+    """Signierter GET /accounts mit vollstaendiger Erfassung.
+
+    Nutzt den gemeinsamen nonce-Pool (Nanosekunden, Haus-Standard seit
+    22.09.2026) statt futures._nonce() (Millisekunden). Die Einheit muss
+    mindestens so gross sein, die groesste, die ein Werkzeug auf denselben
+    Schluessel sendet - sonst ist jeder Wert darunter ungueltig.
+    """
     if not futures.schluessel_vorhanden():
         return {"fehler": "kein FUTURES-Schluessel gesetzt"}
     pfad = "/accounts"
-    nonce = futures._nonce()
+    nonce = str(pool.monotone_nonce())
     kopf = {"User-Agent": UA, "APIKey": futures._env(futures.KEY_NAME),
             "Nonce": nonce, "Authent": futures._signatur(pfad, "", nonce)}
     return _roh_aufruf(futures.BASIS + pfad, kopf, None)
@@ -337,7 +343,7 @@ def lauf(melden=True, module=None):
         if not wege["privat_spot"].get("ok"):
             zeile["zeuge"]["roh_spot"] = _roh_spot(kraken, pool)
         if not wege["privat_futures"].get("ok"):
-            zeile["zeuge"]["roh_futures"] = _roh_futures(futures)
+            zeile["zeuge"]["roh_futures"] = _roh_futures(futures, pool)
         zeile["wege_voll"] = wege
         war_stoerung = bool(stand.get("stoerung_seit"))
         stand["stoerung_seit"] = stand.get("stoerung_seit") or zeile["zeit"]
