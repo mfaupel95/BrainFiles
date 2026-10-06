@@ -1386,11 +1386,11 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       MaxHirn/Wiki/Handel/Backtest-Fundament.md
       **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - kosten_wendepunkt.py rechnet mit Vorzeichen; tests/test_kosten_wendepunkt.py 12 Tests gruen.**
 
-- [ ] **T-229 — Rueckschau liest nur Claude-Transkripte**
+- [x] **T-229 — Rueckschau liest nur Claude-Transkripte**
       Kontext: Die Sitzungs-Rueckschau (Skill `rueckschau`,
       `Agenten/Hermes/skills/claude-code-imports/rueckschau/`) liest
       `~/.claude/projects/**/*.jsonl` (390 Dateien, 341 MB, Ende 30.09.2026).
-      Die Hermes-Sitzungen liegen in `Agenten/Hermes/state.db` und kommen darin
+      The Hermes-Sitzungen liegen in `Agenten/Hermes/state.db` und kommen darin
       nicht vor; seit 21.09.2026 ist Hermes der Hauptagent, der Blick also blind
       fuer die Gegenwart (54 Cron-Jobs am 30.09.2026).
       Naechster Schritt: `state.db` als zweite Quelle an `sitzungen_auswerten.py`
@@ -1398,6 +1398,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Fehlersignaturen je Sitzung und Tag) oder ein eigenes Werkzeug daneben.
       Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Hermes/state.db
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
+      **2026-10-06: erledigt (Karte t_6a0b5a4a) - Code bereits in master (Commit 3894778a), verifiziert mit echtem Lauf: 383 Sitzungen aus state.db, read-only (mode=ro), keine Locks. Testprotokoll: Agenten/Hermes/kanban/boards/wartung/workspaces/t_6a0b5a4a/TESTPROTOKOLL.md**
 - [ ] **T-228 — Regex-Amoklauf in Hermes-Werkzeug (grep mit `{0,4000}`)**
       Am 30.09.2026 hielt ein `grep -o -E (de|ger):\{[^}]{0,4000}` auf einer
       minifizierten JS-Datei 62,6 GB Commit und legte node.exe und den Explorer
@@ -3822,7 +3823,7 @@ Echtes Konto: HYPE short 67/67 und MON long 1996/1996 gedeckt, 0 Befunde;
 Gegenprobe MON auf 2100 gesetzt -> UNGESCHUETZT 104.0, keine Order.
 Zwei eigene Fehler dabei gefunden und behoben: ein Import-Zirkel
 (`stopdeckung` <-> `handeln`, jetzt ueber `_lade()`) und eine falsche
-sys.path-Reihenfolge, die `scanner/handeln.py` statt `xperp/handeln.py` lud -
+sys.path-Reihenfolge, die `scanner/handeln.py` statt `xperp/handeln.py` lad -
 der Guard zeigte es mit AssertionError statt still. Ein Skript mit
 `open(p,'w')` hat `stopdeckung.py` zwischendurch auf 0 Byte gekuerzt; aus HEAD
 wiederhergestellt und mit `patch` weitergebaut (Hausfalle, siehe Gedaechtnis).
