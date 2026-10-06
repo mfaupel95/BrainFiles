@@ -146,10 +146,8 @@ fuer jede Backend-Diagnose: der Traceback ist die Vorlage, nicht das Gedaechtnis
 ### Was der Fix kostet: der Container sieht nur noch `terminal.cwd`
 
 `docker_mount_cwd_to_workspace: true` repariert das Terminal, aendert aber den
-Sichtbereich. Gebunden wird **genau der `cwd`** (`_mount_args`), und ein zweiter
-Mount entsteht nur, wenn `docker_volumes` **denselben Host-Pfad** noch einmal
-nennt (`_existing_host_mount` vergleicht ueber `_host_path_key`). Ohne einen
-solchen Eintrag faellt der Zusatz-Mount weg.
+Sichtbereich: gebunden wird **genau der `cwd`** (Mechanik und die drei Zustaende
+stehen unten in der Tabelle *Die drei Zustaende von `cwd` x `mount_cwd`*).
 
 Gemessen mit `cwd: …\Agenten\Hermes`: der Container hat `/workspace` =
 `Agenten\Hermes` (WorkingDir `/workspace`), und **die BrainFiles-Wurzel ist
@@ -202,25 +200,28 @@ Dazu drei Fallen, die in dieser Lage Zeit gekostet haben:
 - **`docker rm -f` fuer Probe-Container nachziehen.** Die Proben (`probeA`,
   `probeB`, `probeC`) bleiben sonst liegen und tauchen spaeter in jeder
   Container-Liste als Raetsel auf.
-### Gesetzt am 06.10.2026
 
-    terminal:
-      docker_volumes:
-        - 'C:\Users\faupe\Documents\BrainFiles:/brainfiles'
+### Die drei Zustaende von `cwd` x `mount_cwd` - und welcher die Wurzel zeigt
 
-Beleg: `git diff --numstat` **2/0** (zwei Insertions, keine Loeschung); der
-Block wurde ALLEIN STEHEND geparst, bevor die Datei angefasst wurde; die
-Top-Level-Schluesselmenge blieb unveraendert; `terminal` 12 -> 13 Schluessel
-(genau `docker_volumes` dazu); CRLF 1377 -> 1379, bareLF bleibt 0;
-`yaml.safe_load` liest den Wert zurueck. Sicherung
-`Agenten/Hermes/.sicherung/config.yaml.bak-20261006-vol`. Commit `16e7fddf`.
+`terminal.cwd` auf einem Windows-Host ist ein HOST-Pfad. Ob das gutgeht,
+entscheidet `docker_mount_cwd_to_workspace` - und der Sichtbereich haengt
+daran:
 
-**Der Eintrag ist Vorsorge, nicht Reparatur:** eine parallele Sitzung hat
-`terminal.backend` inzwischen auf `local` gestellt (Commit `3d310c22`) - das
-Terminal laeuft seither am Host und sieht die Wurzel ohnehin. Der Eintrag wirkt,
-sobald der Docker-Backend wieder eingeschaltet wird.
+| `cwd` | `docker_mount_cwd_to_workspace` | Terminal | Wurzel sichtbar |
+|---|---|---|---|
+| Container-Pfad (`/workspace`) | beliebig | laeuft | nein (nur der Mount) |
+| Windows-Pfad | `false` | **Exit 125**, jedes Kommando | - |
+| Windows-Pfad | `true` | laeuft | nur mit `docker_volumes` |
 
-**Noch offen (der ehrliche Rest):** der Docker-Daemon antwortete in dieser
-Sitzung nicht mehr (`docker ps` lief 90 s ohne Ausgabe in den Timeout). Der
-Volume-Spec ist deshalb NICHT am echten Container nachgemessen. Nachzuweisen
-bleibt: `docker exec <container> ls /brainfiles` zeigt `MaxHirn` und `Agenten`.
+`terminal.backend: local` ist die vierte, einfachste Antwort: das Terminal
+laeuft dann am Host und sieht die ganze Wurzel, ohne `mount_cwd` und ohne
+`docker_volumes`. Der Docker-Backend ist die Wahl, wenn Kommandos **isoliert**
+laufen sollen - dann braucht es beide Eintraege.
+
+Einen `docker_volumes`-Eintrag erkennt man an zwei Regeln: er ist ein
+**roher `-v`-Spec** und braucht deshalb den **Doppelpunkt** (ohne ihn: `Docker
+volume '...' missing colon, skipping`), und ein Nicht-String wird ebenso
+verworfen. Der gebundene Pfad ist der einzige Weg an den `cwd` heran -
+`_existing_host_mount()` vergleicht ueber `_host_path_key` und findet einen
+Mount nur, wenn **derselbe Host-Pfad** dort noch einmal steht.
+

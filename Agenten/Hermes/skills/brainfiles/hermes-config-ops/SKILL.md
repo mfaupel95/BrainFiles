@@ -95,6 +95,12 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
    ist der Schlüssel bereits ein String und alle folgenden Felder sind
    verschluckt. Rollback dann byteweise aus `.bak-JJJJMMTT`, Beleg ist
    `git status --porcelain -- <pfade>` **leer** (references/modellwechsel-flotte.md).
+   **Den Block mit einem Interpreter parsen, der PyYAML traegt** — das venv des
+   Hermes-Checkouts (`hermes-agent/venv/Scripts/python.exe`) fuehrt die
+   Projektabhaengigkeiten, ein Spuren-venv wie `scanner/.venv` oft nicht
+   (`ModuleNotFoundError: No module named 'yaml'`). Ein beliebiger Interpreter
+   aus dem Baum ist keine Zusage, dass er parsen kann; im Zweifel vorher
+   `-c "import yaml"` messen.
 11. **Ein Trockenlauf ohne Treffer bei erwartetem Befund ist ein Fehler des
    Suchers.** `text.split("\n")` lässt das abschließende `\r` an jeder Zeile
    stehen, wodurch jedes Präfix still null Treffer hat. Nach dem Split jede

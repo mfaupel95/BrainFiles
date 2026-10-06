@@ -35,6 +35,9 @@ Position ohne Stop ist der ganze Einsatz, der Basis-Deckel ist eine TABELLE
 und bindet nur neue Einstiege, Aliase muessen vorbereinheitlicht sein, sonst
 umgeht man den Deckel mit einem anderen Namen.
 
+**Depotbestand gegen Spuren-Bücher abgleichen (OKX + Kraken):**
+`references/depotbestand-buch-abgleich.md` — drei Werkzeuge (Kraken abgleich, OKX positionen live, OKX waisen), die Reihenfolge, die Freigabe-Regel (Haken kommt NUR von Max), die Boerzen-Trennung (OKX EEA in USDC, Kraken in EUR/USDC) und die Sperrgruende.
+
 **Botsenseitig lesen, wenn die Frage "was ist offen" lautet:**
 `Agenten/Handel/okx_positionen_live.py` (rein lesend, ohne Bot-Blick) zeigt
 Kontostand je Waehrung, offene Positionen mit Einstieg/Liquidation und die
