@@ -1,5 +1,5 @@
 model:
-  default: meituan/longcat-2.5-preview:free
+  default: inclusionai/ling-3.0-flash-fin:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -839,7 +839,7 @@ moa:
       #   qwen/qwen3-30b-a3b                   der guenstige fuenfte gegen die vier Grossen
       reference_models:
         - provider: nous
-          model: nvidia/nemotron-3-ultra-550b-a55b
+          model: inclusionai/ling-3.0-flash-fin:free
           enabled: true
         - provider: nous
           model: qwen/qwen3-235b-a22b-thinking-2507
@@ -956,7 +956,7 @@ moa:
   fanout: user_turn
   reference_models:
     - provider: nous
-      model: nvidia/nemotron-3-ultra-550b-a55b
+      model: inclusionai/ling-3.0-flash-fin:free
       enabled: true
     - provider: nous
       model: qwen/qwen3-235b-a22b-thinking-2507
