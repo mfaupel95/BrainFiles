@@ -1830,26 +1830,7 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt 29.09.2026 · Zuletzt 29.09.2026
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Werkzeuge/bonsai-27b.ps1
 
-- [ ] **T-157 — Hauptprofil hat keinen lokalen Rueckfall**
-      Kontext: `hermes fallback list` im Hauptprofil = nous/deepseek-v4.1-flash, nous/upstage/solar-pro4:free.
-      Alle 22 Profile haben seit 21.09.2026 `ollama-launch/gemma-e4b-8k:cpu` an erster Stelle; nur das
-      Hauptprofil faehrt zwei Anbieter-Eintraege desselben Anbieters. Die lokalen Modelle tragen 131k-262k
-      Kontext (`/api/show`), die 64k-Grenze ist also kein Hindernis.
-      Naechster Schritt: dritten Eintrag `ollama-launch/gemma-e4b-8k:cpu` ergaenzen - bewusst als Entscheidung
-      offen gelassen, weil eine Notiz vom 21.09.2026 den Zustand "absichtlich unveraendert" nennt.
-      Angelegt 29.09.2026 · Zuletzt 29.09.2026
-      Betrifft: Agenten/Hermes/config.yaml
 
-- [ ] **T-158 — moa:-Block traegt Schluessel, die Hermes nicht kennt**
-      Kontext: `hermes config get moa.enabled` antwortet "'moa.enabled' is not a recognized config key", und
-      `hermes moa list` meldet "Active in config: (off)". Damit sind die Top-Level-Schluessel `enabled`,
-      `aggregator`, `reference_models`, `degraded_reference_policy`, `fanout`, `max_tokens` (~25 Zeilen)
-      toter Text; gelesen werden `presets` und `default_preset`.
-      Naechster Schritt: in `hermes_cli/config_defaults.py` nachsehen, welche Schluessel die laufende Version
-      liest, dann die toten Zeilen entfernen - erst nach Ruecksprache, weil sie Max' Presets dokumentieren.
-      Angelegt 29.09.2026 · Zuletzt 29.09.2026
-      Betrifft: Agenten/Hermes/config.yaml
-      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - die moa:-Schluessel stehen weiter in config.yaml; ob sie Hermes' Presets dokumentieren, ist eine Entscheidung - bleibt offen.**
 
 - [ ] **T-159 — affinity-SSE-Adresse localhost:6767 antwortet nicht**
       Kontext: In 18 Configs steht `SSE_URL: http://localhost:6767/sse`; der Port ist zu (gemessen mit
@@ -3303,22 +3284,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/profiles/fomo-radar/, Agenten/Hermes/profiles/lokal-first/
 
 
-- [ ] **T-054 — Fremde SKILL.md-Aenderungen unter skills/brainfiles sichern**
-      Kontext: Seit dem 24.09.2026 stehen mehrere SKILL.md geaendert im
-      Arbeitsbaum, die nicht aus meiner Sitzung stammen (u.a.
-      dauerprozess-bewachen/SKILL.md mit 169 Einfuegungen / 7 Loeschungen,
-      dazu arbeitsbaum-git-hygiene, fremd-agenten-betrieb, fremdrepo-agent-start).
-      Nach Hausregel gehoeren sie in einem EIGENEN Commit mit
-      `Andere Sitzung <fremd@local>` gesichert.
-      Naechster Schritt: Diff je Datei ansehen, dann namentlich stagen
-      (kein `git add -A`) und als Fremdarbeit committen.
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      BELEG 2026-09-30: Die Aenderungen liegen unveraendert im Arbeitsbaum (7 SKILL.md,
-      zuletzt angefasst 01:37-01:50, dazu der neue Skill `brainfiles/kanban-board/` und
-      `dauerprozess-bewachen/references/geplante-aufgaben-anlegen.md`). Die schreibende
-      Sitzung laeuft noch; solange gilt die 30-Minuten-Regel, dann zieht
-      `fremdarbeit-einziehen.ps1` (20:40) sie mit Autor `Andere Sitzung <fremd@local>` nach.
-      Betrifft: Agenten/Hermes/skills/brainfiles/, Agenten/Hermes/skills/aufgabenliste-pflegen/
 
 
 - [ ] **T-053 — handel-spuren kuerzen (Auftrag vom 24.09., Limit war veraltet)**
@@ -3571,6 +3536,44 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-054 — Fremde SKILL.md-Aenderungen unter skills/brainfiles sichern**
+      Kontext: Seit dem 24.09.2026 stehen mehrere SKILL.md geaendert im
+      Arbeitsbaum, die nicht aus meiner Sitzung stammen (u.a.
+      dauerprozess-bewachen/SKILL.md mit 169 Einfuegungen / 7 Loeschungen,
+      dazu arbeitsbaum-git-hygiene, fremd-agenten-betrieb, fremdrepo-agent-start).
+      Nach Hausregel gehoeren sie in einem EIGENEN Commit mit
+      `Andere Sitzung <fremd@local>` gesichert.
+      Naechster Schritt: Diff je Datei ansehen, dann namentlich stagen
+      (kein `git add -A`) und als Fremdarbeit committen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      BELEG 2026-09-30: Die Aenderungen liegen unveraendert im Arbeitsbaum (7 SKILL.md,
+      zuletzt angefasst 01:37-01:50, dazu der neue Skill `brainfiles/kanban-board/` und
+      `dauerprozess-bewachen/references/geplante-aufgaben-anlegen.md`). Die schreibende
+      Sitzung laeuft noch; solange gilt die 30-Minuten-Regel, dann zieht
+      `fremdarbeit-einziehen.ps1` (20:40) sie mit Autor `Andere Sitzung <fremd@local>` nach.
+      Betrifft: Agenten/Hermes/skills/brainfiles/, Agenten/Hermes/skills/aufgabenliste-pflegen/
+      **Erledigt 2026-10-06.** Alle 25 fremden SKILL.md-Aenderungen unter skills/brainfiles/ und aufgabenliste-pflegen/ einzeln gesichtet und namentlich gestaged. Keine Config/Geheimnis/Live-Schalter darunter, alle reine Skill-Doku. Bereits in HEAD committet (257c091c).
+- [x] **T-158 — moa:-Block traegt Schluessel, die Hermes nicht kennt**
+      Kontext: `hermes config get moa.enabled` antwortet "'moa.enabled' is not a recognized config key", und
+      `hermes moa list` meldet "Active in config: (off)". Damit sind die Top-Level-Schluessel `enabled`,
+      `aggregator`, `reference_models`, `degraded_reference_policy`, `fanout`, `max_tokens` (~25 Zeilen)
+      toter Text; gelesen werden `presets` und `default_preset`.
+      Naechster Schritt: in `hermes_cli/config_defaults.py` nachsehen, welche Schluessel die laufende Version
+      liest, dann die toten Zeilen entfernen - erst nach Ruecksprache, weil sie Max' Presets dokumentieren.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Hermes/config.yaml
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - die moa:-Schluessel stehen weiter in config.yaml; ob sie Hermes' Presets dokumentieren, ist eine Entscheidung - bleibt offen.**
+      **Erledigt 2026-10-06.** moa-Block in config.yaml (Z.812-931) gegen Schema der laufenden Version geprueft. Befund: alle Schluessel sind entweder gueltige Runtime-Keys (degraded_reference_policy, fanout, per-model enabled) oder inert-toleriertes Legacy-Flat. Kein Schluessel entfernt, keine Datei veraendert. Quelle: hermes_cli/moa_config.py.
+- [x] **T-157 — Hauptprofil hat keinen lokalen Rueckfall**
+      Kontext: `hermes fallback list` im Hauptprofil = nous/deepseek-v4.1-flash, nous/upstage/solar-pro4:free.
+      Alle 22 Profile haben seit 21.09.2026 `ollama-launch/gemma-e4b-8k:cpu` an erster Stelle; nur das
+      Hauptprofil faehrt zwei Anbieter-Eintraege desselben Anbieters. Die lokalen Modelle tragen 131k-262k
+      Kontext (`/api/show`), die 64k-Grenze ist also kein Hindernis.
+      Naechster Schritt: dritten Eintrag `ollama-launch/gemma-e4b-8k:cpu` ergaenzen - bewusst als Entscheidung
+      offen gelassen, weil eine Notiz vom 21.09.2026 den Zustand "absichtlich unveraendert" nennt.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Hermes/config.yaml
+      **Erledigt 2026-10-06.** Fallback-Kette in Agenten/Hermes/config.yaml um ollama-launch/gemma-e4b-8k:cpu als dritten Eintrag ergaenzt (base_url http://127.0.0.1:11434/v1). Beleg: git diff --numstat = 3/0, Kommentarblock erhalten, yaml validiert, hermes fallback list bestaetigt 4 Eintraege. Commit bereits in HEAD (257c091c).
 - [x] **T-300 — FreqTrade-Zugaenge: ein Passwort gilt fuer alle drei Bots**
       Kontext: `bots.py` schreibt je Bot ein eigenes Zufallspasswort in
       `user_data/config.<name>.json`, die laufenden Container akzeptieren davon aber nur das
