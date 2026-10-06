@@ -820,12 +820,17 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
 # --- Das Lauf-Geruest ------------------------------------------------------
 
 def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
-           zusatz_ausstieg=None, datenlage=None):
+           zusatz_ausstieg=None, datenlage=None, preis_fuer=None):
     """Ein Zyklus einer Spur. `quelle(w)`, `signal(daten, w)` kommen von ihr.
 
-    `ziel(daten, w)` ist optional und liefert ein ZIEL ALS MARKTPUNKT (die
+    `ziel(daten, w)` ist optional und liefert ein Ziel ALS MARKTPUNKT (die
     IV-Wand) - dann steht im Buch nicht das R-Vielfache, sondern diese Linie.
     Ohne `ziel` bleibt es beim Vielfachen aus den Wachen.
+
+    `preis_fuer(inst)` ist optional und liefert den Kurs EINES Symbols. Er
+    wird nach `quelle(w)` fuer jede offene Position aufgerufen, die keinen
+    Kurs mehr hat (T-160: Symbolwechsel im Feed). Die Spur liefert die
+    Preisquelle (CoinGecko, OKX, Pump, Robinhood-DB).
 
     Reihenfolge: erst die Ratsche (Buch-Ruecklauf), dann Ausstiege, dann
     Einstiege. Bei `--vorschau` wird gerechnet und nichts geschrieben. `--live`
@@ -839,7 +844,8 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
 
     def _lauf():
         w = lade_wachen(wachen_pfad)
-        z = lade_zustand(zustand_pfad)
+        z = lade_zustand(zustand_pfad) or {"positionen": [], "modus": "papier",
+                                           "letzter_lauf": None, "verlust_usd": 0.0}
         z.setdefault("positionen", [])
         # Das Journal existiert ab dem ersten Zyklus, nicht erst ab dem ersten
         # Kauf (Auftrag Max 02.10.2026). Der Vorschau-Pfad kehrt weiter unten
@@ -881,17 +887,75 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
 
         # Die Vorschau ist der lesende Blick: sie darf auch einen Kill-Stand
         # nicht flachlegen - alles, was hier steht, SCHREIBT (T-356).
+        #
+        # T-176 (29.09.2026): der Kill war ein DAUERSPERRER. Er leerte die
+        # Positionen, aber die Kapitalkurve erholt sich nur durch neue
+        # Trades - genau die sperrt der Kill. Circulus vitiosus: der Kill
+        # verhindert die einzige Handlung, die ihn aufheben wuerde.
+        #
+        # Der Kill ist jetzt ein Zwangsschluss mit Frist: Positionen werden
+        # flachgesetzt, aber nach `kill_frist_stunden` (Standard 7 Tage = 168 h)
+        # geht der Kill von selbst wieder auf. Die Frist steht im Zustand
+        # (`kill_seit`), damit sie einen Neustart uebersteht.
         if modus != "vorschau" and s.get("kill"):
-            print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach."
-                  % ruecklauf)
-            z["positionen"] = []
-            schreibe_zustand(zustand_pfad, z)
-            spiegeln(zustand_pfad, journal_pfad, z, w)
-            return 0
+            kill_seit = z.get("kill_seit")
+            frist_h = float(w.get("kill_frist_stunden", 168))
+            if kill_seit:
+                # Kill bereits aktiv: pruefen, ob die Frist abgelaufen ist
+                try:
+                    from datetime import datetime as _dt
+                    seit = _dt.fromisoformat(kill_seit)
+                    verstrichen = (datetime.now(timezone.utc) - seit).total_seconds() / 3600.0
+                    if verstrichen < frist_h:
+                        print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). "
+                              "Frist noch %.0f von %.0f h - Alles flach."
+                              % (ruecklauf, verstrichen, frist_h))
+                        z["positionen"] = []
+                        schreibe_zustand(zustand_pfad, z)
+                        spiegeln(zustand_pfad, journal_pfad, z, w)
+                        return 0
+                    # Frist abgelaufen: Kill aufheben, weiterlaufen
+                    print("- Kill-Frist abgelaufen (%.0f h) - Kill aufgehoben."
+                          % verstrichen)
+                    z.pop("kill_seit", None)
+                except (ValueError, TypeError):
+                    # Unlesbarer Zeitstempel: Kill behandeln wie neu
+                    pass
+            else:
+                # Neuer Kill: Positionen flachsetzen, Frist starten
+                print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). "
+                      "Alles flach. Frist: %.0f h." % (ruecklauf, frist_h))
+                z["positionen"] = []
+                z["kill_seit"] = jetzt()
+                schreibe_zustand(zustand_pfad, z)
+                spiegeln(zustand_pfad, journal_pfad, z, w)
+                return 0
 
         daten, kurse, fehler = quelle(w)
         for f in fehler:
             print("Uebersprungen (%s)" % f, file=sys.stderr)
+        # T-160: Kursverlust bei Symbolwechsel. `quelle()` baut `kurse` aus
+        # den heutigen Kandidaten - faellt ein Symbol aus dem Feed, bekommt
+        # seine offene Position keinen Kurs mehr. `pruefe_ausstiege` behaelt
+        # sie dann (seit 29.09.2026 mit Meldung auf stderr) - sie wird nie
+        # geschlossen, belegt einen Platz und das Journal friert ein.
+        #
+        # `preis_fuer(inst)` liefert den Kurs EINES Symbols aus der Spur
+        # (CoinGecko, OKX, Pump, Robinhood-DB). Er wird NUR fuer offene
+        # Positionen aufgerufen, die keinen Kurs haben - die Spur entscheidet,
+        # welche Preisquelle gilt. Fehler werden gemeldet, nicht geworfen.
+        if preis_fuer:
+            for p in z.get("positionen", []):
+                inst = p.get("inst")
+                if not inst or inst in kurse:
+                    continue
+                try:
+                    preis = preis_fuer(inst)
+                except Exception as e:                             # noqa: BLE001
+                    fehler.append("Preis %s: %s" % (str(inst)[:8], str(e)[:80]))
+                    continue
+                if preis and preis > 0:
+                    kurse[inst] = preis
         if not daten:
             grund = "; ".join(fehler)[:200] if fehler else "keine Instrumente"
             print("Keine Daten - Zyklus ohne Buchung beendet (%s)" % grund)
@@ -955,7 +1019,7 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                 _signal_queue(ordner, inst, seite, kurse.get(inst))
                 continue
             p = einstieg(z, inst, seite, kurse.get(inst), w, faktor,
-                         w.get("grund", "moondev_bot"),
+                         None,
                          ziel_preis=(ziel(daten[inst], w) if ziel else None),
                          journal_pfad=journal_pfad, live=live, weg=weg)
             if p:
@@ -963,6 +1027,13 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                       "Nominal %.2f USD"
                       % (seite.upper(), inst, p["einstieg"], p["stop_pct"],
                          p["ziel"], p["nominal"]))
+                # T-178: der echte Einstiegsgrund aus der Datenkarte, nicht
+                # der Platzhalter. `einstiegsgrund` liest `_grund` aus der
+                # Wache (LLM-Spuren schreiben Aktion+Confidence hinein),
+                # dann `begruendung(d, w, seite)` der Spur, dann die
+                # Messwerte aus dem Signal. Der Platzhalter-Satz wird
+                # erkannt und nie geschrieben.
+                grund = einstiegsgrund(w, daten[inst], seite, spur_name)
                 buche(z, zustand_pfad, journal_pfad, zeit=jetzt(),
                         modus="live" if live else "papier",
                         aktion="kauf", inst=inst, seite=seite,
@@ -973,14 +1044,7 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                         einsatz_usd="%.2f" % p["nominal"],
                         stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
                         stop_pct="%.2f" % p["stop_pct"],
-                        # Der Grund stand hier fest auf "moondev_bot", obwohl
-                        # jede Spur in ihrer wachen.json einen eigenen Namen
-                        # fuehrt. Ein Feld, das immer dasselbe sagt, ist keine
-                        # Auskunft. `_grund` setzt eine Spur, die etwas
-                        # Genaueres weiss (die LLM-Spuren schreiben Aktion und
-                        # Confidence hinein).
-                        grund=(w.get("_grund") or w.get("grund")
-                               or "moondev_bot"))
+                        grund=grund)
 
         z["datenlage"] = {"keine_daten": False, "kandidaten": len(daten),
                           "hinweis": datenlage() if datenlage else None}
