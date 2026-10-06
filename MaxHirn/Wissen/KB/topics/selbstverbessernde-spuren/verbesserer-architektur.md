@@ -3,8 +3,8 @@ id: 20261006-verbesserer-architektur
 title: Verbesserer-Architektur
 tags: [handel, verbesserer, architektur]
 created: 2026-10-06
-updated: 2026-10-06
-related: [20261006-spur-typen, 20261006-llm-als-signal]
+updated: 2026-10-07
+related: [20261006-spur-typen, 20261006-llm-als-signal, 20261007-spur-bewertung, 20261007-verbesserer-ausloeser, 20261007-papier-experiment-zyklus]
 summary: Aufbau und Ablauf des Verbesserer-Moduls: wöchentliche Vorschlags-Schleife, Bewertung, Übernahme.
 ---
 
@@ -31,3 +31,6 @@ Das Modul `Agenten/Handel/verbesserer/` automatisiert die Weiterentwicklung der 
 ## Related
 - [Spurtypen und Implementierung](../strategien-implementierung/spur-typen.md) — Kontext: welche Spuren verbessert werden.
 - [LLM als Signalgeber](../llm-signalgeber/llm-als-signal.md) — Erweiterung: LLM kann Vorschlags-Schritt übernehmen.
+- [Spur-Bewertung](spur-bewertung.md) — Details: Metriken und Schwellwerte für die Bewertungs-Phase.
+- [Verbesserer-Auslöser](verbesserer-ausloeser.md) — Details: wann der Zyklus startet.
+- [Papier-Experiment-Zyklus](papier-experiment-zyklus.md) — Details: wie Vorschläge getestet und übernommen werden.
