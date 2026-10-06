@@ -68,6 +68,56 @@ def maerkte(vs="usd", anzahl=100, seiten=1, sortierung="market_cap_desc",
     return hole_json("%s/coins/markets?%s" % (COINGECKO, urllib.parse.urlencode(felder)))
 
 
+def maerkte_binance(vs="usd", anzahl=100, sortierung="market_cap_desc"):
+    """Binance /ticker/24hr + /klines - ersetzt CoinGecko.
+
+    Rueckgabe: Liste von Dicts mit den gleichen Feldern wie maerkte():
+    symbol, name, current_price, price_change_percentage_1h_in_currency,
+    price_change_percentage_24h, total_volume
+
+    Binance ist oeffentlich, ohne API-Key, mit 1200 req/min (vs. CoinGecko
+    10-30/min). 1h-Aenderung wird aus 2 Kerzen berechnet.
+    """
+    # 1. Alle Ticker 24h (1 Aufruf)
+    ticker = hole_json("%s/ticker/24hr" % BINANCE)
+
+    # 2. Nur USDT-Paare, dann nach Volumen (in USD) sortieren
+    usdt = [t for t in ticker if t.get("symbol", "").endswith("USDT")]
+    for t in usdt:
+        t["_vol_usd"] = float(t.get("volume", 0)) * float(t.get("lastPrice", 0))
+    usdt.sort(key=lambda x: x["_vol_usd"], reverse=True)
+
+    # 3. Top-N auswaehlen
+    aus = []
+    for t in usdt[:anzahl]:
+        symbol = t.get("symbol", "")
+        base = symbol[:-4]  # USDT-Endung entfernen
+
+        # 1h-Aenderung aus Ticker (open24h vs lastPrice) - 1 Aufruf statt 50
+        try:
+            open_24h = float(t.get("openPrice", 0))
+            last = float(t.get("lastPrice", 0))
+            change_1h = ((last - open_24h) / open_24h * 100) if open_24h > 0 else 0.0
+        except Exception:
+            change_1h = 0.0
+
+        aus.append(
+            {
+                "symbol": base,
+                "name": base,
+                "current_price": float(t.get("lastPrice", 0)),
+                "price_change_percentage_1h_in_currency": change_1h,
+                "price_change_percentage_24h": float(
+                    t.get("priceChangePercent", 0)
+                ),
+                "total_volume": float(t.get("volume", 0))
+                * float(t.get("lastPrice", 0)),
+            }
+        )
+
+    return aus
+
+
 def binance_paare():
     """Alle handelbaren Spot-Paare von Binance als Menge von Basiswerten.
 

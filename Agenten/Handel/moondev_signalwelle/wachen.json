@@ -26,7 +26,7 @@
   "mindest_plus_1h_pct": 3.0,
   "hoechst_plus_1h_pct": 15.0,
   "mindest_volumen_usd": 20000000.0,
-  "anzahl_coins": 250,
+  "anzahl_coins": 50,
   "_risikovorfilter": "Vorfilter nach den Regeln des Moon-Dev risk_agent (12-h-Fenster, +/-25 USD bzw. +/-5 %): kein NEUER Einstieg nach gerissener Verlustgrenze oder erreichtem Gewinnziel. Schliesst keine Position.",
   "risikovorfilter": true,
   "risiko_fenster_stunden": 12.0,

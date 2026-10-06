@@ -68,12 +68,17 @@ def signal(d, w):
 def quelle(w):
     fehler = []
     aus = {}
+    # Binance als Hauptquelle (1200 req/min, kein API-Key), CoinGecko als Fallback
     try:
-        maerkte = daten.maerkte(anzahl=int(w.get("anzahl_coins", 250)),
-                                sortierung="market_cap_desc",
-                                prozentfelder="1h,24h")
+        maerkte = daten.maerkte_binance(anzahl=int(w.get("anzahl_coins", 250)))
     except Exception as e:                                     # noqa: BLE001
-        return {}, {}, ["CoinGecko: %s" % str(e)[:120]]
+        fehler.append("Binance: %s" % str(e)[:120])
+        try:
+            maerkte = daten.maerkte(anzahl=int(w.get("anzahl_coins", 250)),
+                                    sortierung="market_cap_desc",
+                                    prozentfelder="1h,24h")
+        except Exception as e2:                                 # noqa: BLE001
+            return {}, {}, fehler + ["CoinGecko: %s" % str(e2)[:120]]
     for m in maerkte:
         symbol = (m.get("symbol") or "").upper()
         if not symbol:
