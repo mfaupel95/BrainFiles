@@ -36,7 +36,7 @@
       Betrifft: Agenten/Hermes/scripts/konfig-doktor-wache.py, Werkstatt (Junction), Modelle (Junction)
 - [ ] **T-370 — Docker-Terminal: Fix auf der Platte, Gateway hat ihn noch nicht gelesen**
       Kontext: Am 05.10.2026 fielen waehrend einer Sitzung ALLE Docker-gestuetzten
-      Werkzeuge aus (`terminal`, `write_file`, `read_file`, `patch`, `execute_code`).
+      Werkzeuge aus (`terminal`, `write_file`, `read_file`, `patch`, `execute_code`)
       URSACHE BEWIESEN (nicht geraten), zwei Zeugen ohne Hermes:
         `docker run -w 'C:\Users\...\Agenten\Hermes'` -> Exit 125,
         'the working directory ... is invalid, it needs to be an absolute path'
@@ -1394,19 +1394,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       MaxHirn/Wiki/Handel/Backtest-Fundament.md
       **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - kosten_wendepunkt.py rechnet mit Vorzeichen; tests/test_kosten_wendepunkt.py 12 Tests gruen.**
 
-- [x] **T-229 — Rueckschau liest nur Claude-Transkripte**
-      Kontext: Die Sitzungs-Rueckschau (Skill `rueckschau`,
-      `Agenten/Hermes/skills/claude-code-imports/rueckschau/`) liest
-      `~/.claude/projects/**/*.jsonl` (390 Dateien, 341 MB, Ende 30.09.2026).
-      The Hermes-Sitzungen liegen in `Agenten/Hermes/state.db` und kommen darin
-      nicht vor; seit 21.09.2026 ist Hermes der Hauptagent, der Blick also blind
-      fuer die Gegenwart (54 Cron-Jobs am 30.09.2026).
-      Naechster Schritt: `state.db` als zweite Quelle an `sitzungen_auswerten.py`
-      haengen (Tabelle `messages`/`tool_calls`, dieselben Auswertungen: Themen,
-      Fehlersignaturen je Sitzung und Tag) oder ein eigenes Werkzeug daneben.
-      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Hermes/state.db
-      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
-      **2026-10-06: erledigt (Karte t_6a0b5a4a) - Code bereits in master (Commit 3894778a), verifiziert mit echtem Lauf: 383 Sitzungen aus state.db, read-only (mode=ro), keine Locks. Testprotokoll: Agenten/Hermes/kanban/boards/wartung/workspaces/t_6a0b5a4a/TESTPROTOKOLL.md**
 
 - [ ] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
       Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
@@ -1467,21 +1454,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Zuletzt: 2026-09-30
       Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Routinen/handel-dauerlauf.ps1
 
-- [x] **T-222 — Wache deckt nur status/live.json ab, drei weitere Laeufe ohne Wache**
-      Kontext: Die Wache `Agenten/Hermes/scripts/omnitrade-lauf-wache.py` (T-211, Job
-      804473084f4e) prueft GENAU `status/live.json`. Am 30.09.2026 um 13:00 laufen aber
-      VIER omnitrade-Laeufe gleichzeitig, jeder mit eigener Statusdatei: PID 59620
-      (`status/live.json`, BTCUSDC/adx_macd), 29676 (`live_rsi30_stop5_BTCUSDC.json`),
-      51868 (`live_rsi30_stop5_ETHUSDC.json`), 46796 (`live_adx_macd_ETHUSDC.json`) — alle
-      `--interval 1h`. Stirbt einer der drei anderen, merkt es niemand; die Wache sieht
-      weiter einen gesunden Lauf und schweigt.
-      Naechster Schritt: die Wache auf ALLE `status/*.json` erweitern (je Datei ein Urteil
-      ueber `omnitrade_lauf.beurteile`, Meldung mit Dateinamen und Script) — oder in der
-      wachen-Konfiguration eine Liste fuehren; vorher mit Max klaeren, ob vier Laeufe
-      ueberhaupt gewollt sind (jeder handelt auf demselben Demo-Konto).
-      Angelegt · Zuletzt: 30.09.2026
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - omnitrade-lauf-wache.py deckt ALLE status/live*.json ab (Z.5,72,82).**
-      **Erledigt 2026-10-07.** Wache erweitert (Commit d33a89c6), 12 Tests gruen, alle status/live*.json abgedeckt.
 
 - [ ] **T-223 — deepwiki liegt uncommittet im Hauptprofil (fremde Sitzung)**
       Kontext: In Agenten/Hermes/config.yaml steht unter mcp_servers ein Eintrag deepwiki
@@ -1494,17 +1466,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/MCP-Manifest.json
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - deepwiki steht in config.yaml, Agenten/MCP-Manifest.json fehlt an dem Pfad; der Drift braucht eine Entscheidung - bleibt offen.**
 
-- [ ] **T-221 — Erhoehten Wrapper einmal echt fahren (UAC)**
-      Kontext: Agenten/Hermes/skills/system/erhoehte-windows-aktion/scripts/erhoeht-starten.ps1
-      generalisiert den Wrapper, mit dem am 30.09.2026 die Auslagerung gesetzt wurde. Sein
-      Selbsttest (pruefe-erhoeht-starten.ps1) laeuft ohne UAC und ist gruen: Syntax unter
-      PowerShell 5.1, verbotene Aufrufe, Log-Mechanik samt Exitcode. Die eine Zeile, die
-      dabei NICHT geprueft wird, ist der Start selbst (Start-Process -Verb RunAs -Wait).
-      Naechster Schritt: beim naechsten echten Admin-Vorgang den Wrapper statt eines
-      Einzel-Wrappers benutzen (z. B. eine harmlose Aufgabe: geplante Aufgabe neu
-      registrieren) und den Log-Schwanz lesen - danach die Zeile im Wiki bestaetigen.
-      Angelegt · Zuletzt: 30.09.2026
-      Betrifft: Agenten/Hermes/skills/system/erhoehte-windows-aktion/
 
 
 
@@ -3501,6 +3462,46 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-229 — Rueckschau liest nur Claude-Transkripte**
+      Kontext: Die Sitzungs-Rueckschau (Skill `rueckschau`,
+      `Agenten/Hermes/skills/claude-code-imports/rueckschau/`) liest
+      `~/.claude/projects/**/*.jsonl` (390 Dateien, 341 MB, Ende 30.09.2026).
+      The Hermes-Sitzungen liegen in `Agenten/Hermes/state.db` und kommen darin
+      nicht vor; seit 21.09.2026 ist Hermes der Hauptagent, der Blick also blind
+      fuer die Gegenwart (54 Cron-Jobs am 30.09.2026).
+      Naechster Schritt: `state.db` als zweite Quelle an `sitzungen_auswerten.py`
+      haengen (Tabelle `messages`/`tool_calls`, dieselben Auswertungen: Themen,
+      Fehlersignaturen je Sitzung und Tag) oder ein eigenes Werkzeug daneben.
+      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Hermes/state.db
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
+      **2026-10-06: erledigt (Karte t_6a0b5a4a) - Code bereits in master (Commit 3894778a), verifiziert mit echtem Lauf: 383 Sitzungen aus state.db, read-only (mode=ro), keine Locks. Testprotokoll: Agenten/Hermes/kanban/boards/wartung/workspaces/t_6a0b5a4a/TESTPROTOKOLL.md**
+- [x] **T-222 — Wache deckt nur status/live.json ab, drei weitere Laeufe ohne Wache**
+      Kontext: Die Wache `Agenten/Hermes/scripts/omnitrade-lauf-wache.py` (T-211, Job
+      804473084f4e) prueft GENAU `status/live.json`. Am 30.09.2026 um 13:00 laufen aber
+      VIER omnitrade-Laeufe gleichzeitig, jeder mit eigener Statusdatei: PID 59620
+      (`status/live.json`, BTCUSDC/adx_macd), 29676 (`live_rsi30_stop5_BTCUSDC.json`),
+      51868 (`live_rsi30_stop5_ETHUSDC.json`), 46796 (`live_adx_macd_ETHUSDC.json`) — alle
+      `--interval 1h`. Stirbt einer der drei anderen, merkt es niemand; die Wache sieht
+      weiter einen gesunden Lauf und schweigt.
+      Naechster Schritt: die Wache auf ALLE `status/*.json` erweitern (je Datei ein Urteil
+      ueber `omnitrade_lauf.beurteile`, Meldung mit Dateinamen und Script) — oder in der
+      wachen-Konfiguration eine Liste fuehren; vorher mit Max klaeren, ob vier Laeufe
+      ueberhaupt gewollt sind (jeder handelt auf demselben Demo-Konto).
+      Angelegt · Zuletzt: 30.09.2026
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - omnitrade-lauf-wache.py deckt ALLE status/live*.json ab (Z.5,72,82).**
+      **Erledigt 2026-10-07.** Wache erweitert (Commit d33a89c6), 12 Tests gruen, alle status/live*.json abgedeckt.
+- [x] **T-221 — Erhoehten Wrapper einmal echt fahren (UAC)**
+      Kontext: Agenten/Hermes/skills/system/erhoehte-windows-aktion/scripts/erhoeht-starten.ps1
+      generalisiert den Wrapper, mit dem am 30.09.2026 die Auslagerung gesetzt wurde. Sein
+      Selbsttest (pruefe-erhoeht-starten.ps1) laeuft ohne UAC und ist gruen: Syntax unter
+      PowerShell 5.1, verbotene Aufrufe, Log-Mechanik samt Exitcode. Die eine Zeile, die
+      dabei NICHT geprueft wird, ist der Start selbst (Start-Process -Verb RunAs -Wait).
+      Naechster Schritt: beim naechsten echten Admin-Vorgang den Wrapper statt eines
+      Einzel-Wrappers benutzen (z. B. eine harmlose Aufgabe: geplante Aufgabe neu
+      registrieren) und den Log-Schwanz lesen - danach die Zeile im Wiki bestaetigen.
+      Angelegt · Zuletzt: 30.09.2026
+      Betrifft: Agenten/Hermes/skills/system/erhoehte-windows-aktion/
+      **Erledigt 2026-10-07.** Erhoehter Wrapper real gefahren (Karte t_4aa83567): UAC-Dialog von Max bestaetigt, Wrapper-Exit 0, Ziel-Exit 0, Log Admin=True; Protokoll Agenten/Hermes/kanban/boards/wartung/attachments/t_02601aee/protokoll-abschluss-t_02601aee.md
 - [x] **T-297 — Config-Block gegen das Zurueckschreiben der App sichern**
       Kontext: Am 01.10.2026 um 18:45 hat die Hermes-App die Hauptconfig aus ihrem eigenen
       Speicher zurueckgeschrieben und dabei committete Einstellungen ueberschrieben
