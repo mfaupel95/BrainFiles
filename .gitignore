@@ -35,6 +35,9 @@
 !/*.md
 !MaxHirn/*.md
 !MaxHirn/Wissen/**/*.md
+# KB-Datenpipeline: Metriken-JSON (geschrieben von kb-metriken-sync.ps1,
+# gelesen vom Cloud-Agenten taeglich). Bewusst JSON, kein Markdown.
+!MaxHirn/Wissen/KB/data/*.json
 !MaxHirn/Wiki/**/*.md
 !MaxHirn/.claude/skills/**
 !MaxHirn/.claude/agents/**
