@@ -30,7 +30,7 @@ import pathlib
 
 init_tracking()
 # Alle bekannten Spuren
-for spur in ['spur1', 'spur2']:
+for spur in ['scanner', 'xperp']:
     snapshot_sync(spur)
 kb_snapshot_json(pathlib.Path(r'$ZIEL_JSON'))
 print('ok')
