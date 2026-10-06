@@ -6419,3 +6419,28 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
   - Naechster Schritt: nach T-92 Brainstorming starten
   - Angelegt: 2026-10-06
   - Betrifft: Agenten/Handel/verbesserer/, Agenten/Handel/xperp/
+
+## T-372 — Verbesserer: strukturiertes Event-Log in lauf.py
+
+- [ ] **T-372 — Verbesserer: strukturiertes Event-Log in lauf.py**
+  - Kontext: Growth-Engineering-Analyse (07.10.2026) hat ergeben, dass lauf.py kein
+    maschinenlesbares Ergebnis-Log schreibt. Ohne das sind A/B-Experimente (Holdout-Gate,
+    F7-Wirkung) und Re-Engagement-Trigger nicht auswertbar. lauf.py soll nach jedem Lauf
+    `verbesserer/lauf_ergebnis.json` schreiben mit den Feldern: lauf_ts, instrumente_eingang,
+    instrumente_nach_ausrichten, kandidat_gefunden (bool), holdout_bestanden (bool/null),
+    fast_kandidat (str/null), vorschlag_erzeugt (bool), grund (str/null).
+  - Naechster Schritt: nach Stufe-1.5-Merge als eigener Commit (abwaertskompatibel)
+  - Angelegt: 2026-10-07
+  - Betrifft: Agenten/Handel/verbesserer/lauf.py
+
+## T-373 — Verbesserer: Anwendungslog in anwenden.py
+
+- [ ] **T-373 — Verbesserer: Anwendungslog in anwenden.py**
+  - Kontext: Growth-Engineering-Analyse (07.10.2026): der Funnel ist nach dem Digest-Schritt
+    blind. anwenden.py weiss, ob ein Vorschlag angewendet wurde, schreibt das aber nicht
+    zurueck. Loessung: bei jedem Aufruf einen Eintrag in `verbesserer/anwendungslog.json`
+    anhaengen (Append-JSON-Lines) mit: lauf_ts (aus dem Vorschlag), anwendung_ts, kandidat_hash,
+    entscheidung ("angewendet"), grund_optional (freier Text, Standard leer).
+  - Naechster Schritt: nach Stufe-1.5-Merge als eigener Commit
+  - Angelegt: 2026-10-07
+  - Betrifft: Agenten/Handel/verbesserer/anwenden.py
