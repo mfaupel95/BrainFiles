@@ -109,7 +109,7 @@ def _lade(pfad, name):
 # --- kleine Helfer ----------------------------------------------------------
 
 def _jetzt():
-    return datetime.now().astimezone().replace(microsecond=0).isoformat()
+    return datetime.now().astimezone().isoformat()
 
 
 def _header_auswahl(kopf):

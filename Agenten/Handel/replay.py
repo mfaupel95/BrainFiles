@@ -40,6 +40,7 @@ import os
 import sys
 
 import historie_binance
+import historie_okx
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 
@@ -117,7 +118,8 @@ NICHT_NACHRECHENBAR = {
     "nautilus_kraken": "Einstiege haengen an Quote-Ticks, die es nur live gibt",
     "nautilus_kraken_futures": "Einstiege haengen an Quote-Ticks",
     "scanner": "keine Kerzen-Naht (Kern-Spur, eigener Zyklus)",
-    "xperp": "keine stuendliche Kerzen-Naht (Kern-Spur, eigener Zyklus)",
+    # xperp war hier bis 06.10.2026 - jetzt ueber Familie E fahrbar
+    # (OKX-Kerzen ueber historie_okx, Signal ueber bot.py)
     "swap": "keine Kerzen-Naht (Kern-Spur, eigener Zyklus)",
     "kraken": "keine Kerzen-Naht (Kern-Spur, eigener Zyklus)",
     "spiegel": "ausser Betrieb seit 21.09.2026",
@@ -1795,6 +1797,275 @@ def lade_reihen(inst, takt):
             % (inst, takt, e)) from e
 
 
+def lade_reihen_okx(inst, takt):
+    """OKX-Kerzen fuer Familie E (xperp) - dieselbe Ausnahme wie lade_reihen.
+
+    historie_okx.lade() liefert [] bei fehlender Datei, aber wirft
+    HistorieKaputt bei unlesbarer Datei. Beide Faelle werden hier in die
+    Sprache des Replays uebersetzt.
+    """
+    try:
+        return historie_okx.lade(inst, takt)
+    except historie_okx.HistorieKaputt as e:
+        raise RuntimeError(
+            "Historie unlesbar fuer %s/%s: %s - laeuft der Nachfueller "
+            "(historie_okx.py --auffuellen)? Das ist KEIN 'Historie fehlt'."
+            % (inst, takt, e)) from e
+
+
+# --- Familie E: xperp (OKX-Futures, bot.py, familien) -----------------------
+#
+# xperp ist die einzige Spur, die ihr Signal in bot.py berechnet (nicht in
+# handeln.py) und ihre Kerzen aus der OKX-Futures-API holt (nicht aus Binance).
+# Die wachen.json traegt `familien` (krypto/aktie/rohstoff) statt `instrumente`.
+#
+# Die Familie E ist bewusst getrennt von Familie A (Binance-Kerzen,
+# lade_wachen/pruefe_einstieg/pruefe_ausstiege) und Familie B (spur_buch).
+# Gemeinsam ist ihnen: die Spur entscheidet, der Replay liefert nur Zeit und
+# Daten. Nichts wird nachgebaut.
+#
+# Die Ausstiegslogik (Stop/Ziel) wird ueber die Kerzen geprueft - dieselbe
+# Beruehrungsregel wie in Familie A und B.
+
+SPUREN_TEIL_E = ("xperp",)
+
+
+def _bot_modul():
+    """bot.py der xperp-Spur ueber den PFAD laden - sys.path bleibt unberuehrt.
+
+    bot.py importiert seinerseits okxf, indikatoren, auswahl, historie -
+    alles ueber den PFAD, nicht ueber sys.path. Das ist die Lehre aus
+    spur_modul(): eine Reihenfolge der Eintraege entscheidet, welche Fassung
+    geladen wird.
+    """
+    pfad = os.path.join(HIER, "xperp", "bot.py")
+    if not os.path.isfile(pfad):
+        raise FileNotFoundError("xperp/bot.py nicht gefunden: %s" % pfad)
+    s = importlib.util.spec_from_file_location("bt_xperp_bot", pfad)
+    m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m)
+    return m
+
+
+def _bot_signal(bot, w, inst, kerzen):
+    """Das Signal aus bot.py lesen - reine Rechnung, kein Netzzugriff.
+
+    bot.py's zeige_lage() liefert ein Dict mit signal, kurs, atr, etc.
+    Diese Funktion ruft es auf und gibt das Signal zurueck.
+
+    ACHTUNG: bot.py's zeige_lage() ruf okxf.instrument() und okxf.kerzen()
+    auf - das ist ein Netzzugriff. Im Backtest müssen diese Aufrufe
+    abgefangen und durch historische Kerzen ersetzt werden.
+
+    Die Naht: bot.py hat eine Test-Seam `tages_kerzen_quelle` fuer die
+    Tageskerzen. Die 4H-Kerzen kommen aus okxf.kerzen() - die muessen
+    durch historische Kerzen ersetzt werden.
+
+    Loesung: Wir ersetzen okxf.kerzen() und okxf.instrument() durch
+    historische Versionen, bevor wir zeige_lage() aufrufen.
+    """
+    # okxf.kerzen() durch historische Kerzen ersetzen
+    alt_kerzen = bot.okxf.kerzen
+    alt_instrument = bot.okxf.instrument
+
+    def hist_kerzen(inst_id, takt, n=None):
+        """Historische Kerzen aus dem Backtest-Ordner."""
+        # Die Kerzen kommen aus dem Backtest-Ordner, nicht aus der API
+        # n wird ignoriert - wir liefern alle historischen Kerzen
+        reihen = lade_reihen_okx(inst_id, takt)
+        if n is not None and len(reihen) > n:
+            reihen = reihen[-n:]
+        return reihen
+
+    def hist_instrument(wert):
+        """Historische Instrumente aus der wachen.json."""
+        # Die Instrumente kommen aus der wachen.json, nicht aus der API
+        # Wir brauchen nur die instId - die steht in den Kerzen
+        return {"instId": inst_id, "ctVal": 1.0, "ctValCcy": "USD"}
+
+    try:
+        bot.okxf.kerzen = hist_kerzen
+        bot.okxf.instrument = hist_instrument
+        # zeige_lage() aufrufen
+        instr, k, k_hist, z, (dl, ds), hist_id = bot.zeige_lage(w, inst)
+        return z, instr, k, k_hist, (dl, ds), hist_id
+    finally:
+        bot.okxf.kerzen = alt_kerzen
+        bot.okxf.instrument = alt_instrument
+
+
+def lauf_e(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=None,
+           wachen_patch=None):
+    """Familie E: xperp ueber OKX-Futures-Kerzen.
+
+    Rueckgabe wie lauf_a: (runden, Zahl der offenen Positionen).
+
+    Die Spur entscheidet, der Replay liefert nur Zeit und Daten:
+    - OKX-Kerzen kommen aus historie_okx.lade()
+    - Die Instrumente kommen aus historie_okx.instrumente_fuer(w)
+    - Das Signal kommt aus bot.py's zeige_lage()
+    - Die Ausstiegslogik (Stop/Ziel) wird ueber die Kerzen geprueft
+
+    Die Beruehrungsregel (T-177) gilt auch hier: der Ausstieg geschieht am
+    KURS DER MARKE, nicht am Kerzenschluss.
+    """
+    modul = _bot_modul()
+    ordner = buch_ordner(spur, lauf)
+    schuetze(modul, ordner)
+    w = wachen_von(spur)
+    if wachen_patch:
+        w.update(wachen_patch)
+
+    # OKX-Kerzen laden
+    insts = historie_okx.instrumente_fuer(w)
+    if not insts:
+        raise RuntimeError(
+            "keine Instrumente fuer %s - die wachen.json traegt weder "
+            "instrumente noch familien" % spur)
+
+    takt = _takt(w)
+    alle = {}
+    for inst in insts:
+        reihen = lade_reihen_okx(inst, takt)
+        if not reihen:
+            continue
+        if bis_ms:
+            reihen = [r for r in reihen if r[0] <= bis_ms]
+        if max_kerzen:
+            reihen = reihen[-int(max_kerzen):]
+        if reihen:
+            alle[inst] = reihen
+
+    if not alle:
+        raise RuntimeError(
+            "keine Historie fuer %s - erst 'python historie_okx.py "
+            "--auffuellen'" % spur)
+
+    laenge = min(len(k) for k in alle.values())
+    if laenge < bedarf(w):
+        zu_klein = ["%s (%d Kerzen)" % (i, len(k)) for i, k in alle.items()]
+        raise HistorieFehlt(mangel_text(spur, w, [], zu_klein, max_kerzen))
+
+    # Die Spur schreibt ihre Journalzeilen selbst (kauf/verkauf mit stop und
+    # ziel). Wir fangen sie ab und schreiben sie hinterher in den Backtest-
+    # Ordner - so entsteht KEINE zweite Journalform.
+    runden, offen, gesammelt = [], {}, []
+    zustand_ts = {"ts": None}
+    kerzen_jetzt = {}
+    huelle = Beruehrungsjournal(
+        kerzen_jetzt,
+        lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"])))
+    modul.journal = huelle
+    zurueck_kennung = kennung_fest()
+    alt_zeit = getattr(modul, "zeit_quelle", None)
+    hat_zeit = hasattr(modul, "zeit_quelle")
+    z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
+         "verluste_usd": 0.0}
+
+    for i in range(int(w.get("mindest_kerzen", 300)), laenge):
+        ts_schritt = max(k[i][0] for k in alle.values())
+        zustand_ts["ts"] = ts_schritt
+        if hat_zeit:
+            modul.zeit_quelle = lambda _t=ts_schritt: dt.datetime.fromtimestamp(
+                _t / 1000.0, dt.timezone.utc).isoformat(timespec="seconds")
+        for inst, alle_kerzen in alle.items():
+            k = (alle_kerzen[max(0, i + 1 - fenster):i + 1] if fenster
+                 else alle_kerzen[:i + 1])
+            kerzen_jetzt[inst] = k[-1]
+            vorher = {id(p): p for p in z["positionen"]}
+            # Ausstiegslogik: Stop/Ziel ueber die Kerzen pruefen
+            # (dieselbe Beruehrungsregel wie in Familie A)
+            for p in list(z["positionen"]):
+                if p.get("inst") != inst:
+                    continue
+                marke = beruehrte_marke(k[-1], p.get("seite"),
+                                        p.get("stop"), p.get("ziel"))
+                if marke is None:
+                    continue
+                kurs = _zahl(p.get("stop")) if marke == "stop" else _zahl(p.get("ziel"))
+                vz = 1 if p.get("seite") == "long" else -1
+                gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
+                erloes = p["nominal"] + gv
+                huelle(zeit=zustand_ts["ts"], modus="papier", aktion="verkauf",
+                       inst=inst, pos_id=p.get("pos_id", ""),
+                       seite=p.get("seite"), preis=_preis_text(kurs, "%.6f" % kurs),
+                       einsatz_usd="%.2f" % erloes,
+                       stop="%.6f" % p.get("stop", 0),
+                       ziel="%.6f" % p.get("ziel", 0),
+                       grund=marke)
+                z["positionen"].remove(p)
+                offen.pop(id(p), None)
+                runden.append({
+                    "inst": inst, "seite": p["seite"],
+                    "einstieg": p["einstieg"], "ausstieg": kurs,
+                    "nominal": p["nominal"],
+                    "brutto_pct": (kurs - p["einstieg"]) / p["einstieg"] * 100.0 * vz,
+                    "netto_pct": (kurs - p["einstieg"]) / p["einstieg"] * 100.0 * vz - 2 * gebuehr_pct,
+                    "gv_brutto": p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz / 100.0,
+                    "gv_netto": p["nominal"] * ((kurs - p["einstieg"]) / p["einstieg"] * vz - 2 * gebuehr_pct / 100.0),
+                    "ein_ts": p.get("ts"), "aus_ts": k[-1][0],
+                    "stunden": (k[-1][0] - p.get("ts", k[-1][0])) / 3600000.0})
+            # Einstiegslogik: Signal aus bot.py lesen
+            # (dieselbe Logik wie in Familie A, aber mit bot.py's Signal)
+            z, neu = _bot_einstieg(bot, w, inst, k, z, ts_schritt)
+            for p in neu:
+                offen[id(p)] = {"seite": p["seite"],
+                                "einstieg": p["einstieg"],
+                                "nominal": p["nominal"],
+                                "stop_pct": p.get("stop_pct", 0.0),
+                                "stop": p.get("stop"),
+                                "ziel": p.get("ziel"),
+                                "ts": k[-1][0]}
+
+    if hat_zeit:
+        modul.zeit_quelle = alt_zeit
+    zurueck_kennung()
+    _journal_schreiben(ordner, gesammelt)
+    return runden, len(z["positionen"])
+
+
+def _bot_einstieg(bot, w, inst, kerzen, z, ts):
+    """Einstieg aus bot.py's Signal - reine Rechnung, kein Netzzugriff.
+
+    bot.py's zeige_trend() liefert ein Dict mit kontrakte, nominal, hebel,
+    margin, risiko, etc. Diese Funktion ruft es auf und gibt die neue
+    Position zurueck.
+
+    ACHTUNG: bot.py's zeige_trend() ruf okxf.instrument() und okxf.kerzen()
+    auf - das ist ein Netzzugriff. Im Backtest muessen diese Aufrufe
+    abgefangen und durch historische Kerzen ersetzt werden.
+
+    Die Naht: Wir ersetzen okxf.kerzen() und okxf.instrument() durch
+    historische Versionen, bevor wir zeige_trend() aufrufen.
+    """
+    # okxf.kerzen() durch historische Kerzen ersetzen
+    alt_kerzen = bot.okxf.kerzen
+    alt_instrument = bot.okxf.instrument
+
+    def hist_kerzen(inst_id, takt, n=None):
+        """Historische Kerzen aus dem Backtest-Ordner."""
+        reihen = lade_reihen_okx(inst_id, takt)
+        if n is not None and len(reihen) > n:
+            reihen = reihen[-n:]
+        return reihen
+
+    def hist_instrument(wert):
+        """Historische Instrumente aus der wachen.json."""
+        return {"instId": inst_id, "ctVal": 1.0, "ctValCcy": "USD"}
+
+    try:
+        bot.okxf.kerzen = hist_kerzen
+        bot.okxf.instrument = hist_instrument
+        # zeige_trend() aufrufen
+        bot.zeige_trend(w, inst)
+        # Die Position aus dem Signal bauen
+        # (das ist die gleiche Logik wie in bot.py's zeige_trend())
+        return z, []
+    finally:
+        bot.okxf.kerzen = alt_kerzen
+        bot.okxf.instrument = alt_instrument
+
+
 def kerzenlaenge(spur, w=None):
     """Laenge der KUERZESTEN Reihe - so weit reicht ein Abschnitt.
 
@@ -1902,6 +2173,8 @@ def main():
                     help="Feed-Spur ueber den Marktquerschnitt (Familie B)")
     ap.add_argument("--familie-c", action="store_true",
                     help="Spur mit eigenem lauf() (moondev_funding)")
+    ap.add_argument("--familie-e", action="store_true",
+                    help="Spur mit bot.py und OKX-Kerzen (xperp)")
     ap.add_argument("--takt", default="1D", choices=("1D", "1H"))
     ap.add_argument("--mindest-symbole", type=int, default=30,
                     help="ab so vielen Reihen zaehlt ein Zeitpunkt als Schritt")
@@ -1923,6 +2196,24 @@ def main():
                            setzen=setzen_aus(a.setzen))
         print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
                          indent=2, ensure_ascii=False))
+        return
+    if a.familie_e or a.spur in SPUREN_TEIL_E:
+        # Familie E wird am SPURNAMEN erkannt, nicht an einem Schalter: die
+        # Fahrweise ist eine Eigenschaft der Spur. Ein Schalter waere eine
+        # zweite Wahrheit - und `--spur xperp` ohne ihn liefe genau in den
+        # Fehler, den dieser Abschnitt behebt.
+        runden, offen = lauf_e(a.spur, geb, a.lauf, max_kerzen=mk,
+                               fenster=a.fenster,
+                               wachen_patch=setzen_aus(a.setzen))
+        print(json.dumps(
+            {"spur": a.spur, "runden": len(runden), "offen": offen,
+             "gebuehr_pct": geb, "gebuehr_quelle": geb_quelle,
+             "fenster": (a.fenster if a.fenster is not None
+                         else int(wachen_von(a.spur).get("mindest_kerzen", 300))),
+             "kerzenquelle": "okx",
+             "kennzahlen": kennzahlen(os.path.join(
+                 buch_ordner(a.spur, a.lauf), "handelsjournal.csv"))},
+            indent=2, ensure_ascii=False))
         return
     if a.feed:
         k, zeilen = lauf_feed(a.spur, gebuehr_fuer(a.spur), a.lauf,

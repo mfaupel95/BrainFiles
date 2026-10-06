@@ -169,6 +169,14 @@ class LaufTest(unittest.TestCase):
         self.assertFalse(e["ok"])
         self.assertIn("veraltet", e["fehler"])
 
+    def test_haengende_datei_mit_lebender_pid_zaehlt_nicht(self):
+        # PID lebt, aber die Datei ist zu alt - der Lauf haengt.
+        # Genau dieser Fall wurde durch die Alterspruefung in beurteile() abgedeckt.
+        e = l.lauf(self._datei(alter_ms=2 * 3600 * 1000))  # 2h alt bei 1h-Intervall
+        self.assertTrue(e["ok"])
+        self.assertFalse(e["laeuft"])
+        self.assertIn("haengt", e["fehler"])
+
     def test_fehlende_datei_wirft_nicht(self):
         e = l.lauf(os.path.join(self.tmp, "gibtsnicht.json"))
         self.assertFalse(e["ok"])
