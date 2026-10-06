@@ -2130,7 +2130,13 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-128 — Marktbreite-Reihe auswerten und entscheiden, ob eine Spur sie als Tor nutzt**
+- [x] **T-128 — Marktbreite-Reihe auswerten und entscheiden, ob eine Spur sie als Tor nutzt**
+      Entscheidung 2026-10-06: Die Reihe ist behalten (256 Kerzentage, Mittel 14,5 %, Median 6,9 %),
+      aber es gibt KEINEN statistisch nutzbaren Edge fuer ein Breiten-Tor. Befeld: nur 2 Tage mit
+      Breite >= 90 % (n=2, keine Messung), Folgeanalyse BTC +0,89 % in 7 Tagen gegen +0,23 % Median
+      ueber alle Tage - kein Unterschied. Die Reihe bleibt als Messung bestehen, eine Spur bekommt
+      kein Breiten-Tor. Beleg: `python Agenten/Werkzeuge/breite.py --statistik` (2026-10-06).
+      Angelegt: 2026-09-24. Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Werkzeuge/breite-reihe.jsonl.
       Kontext: `Agenten/Werkzeuge/breite.py` misst seit 25.09.2026 taeglich den
       Anteil der 30 Top-Paare ueber ihrer EMA200 und schreibt die Reihe
       (`Agenten/Werkzeuge/breite-reihe.jsonl`); Cron `breite-wache` (taeglich
@@ -3277,18 +3283,13 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-053 — handel-spuren kuerzen (Auftrag vom 24.09., Limit war veraltet)**
-      Kontext: Der Auftrag beruhte auf meiner Meldung, skill_manage verweigere
-      jede Ergänzung (100.663 von 100.000 Zeichen). Nachgemessen: die Datei ist
-      52.814 Bytes / 715 Zeilen, und der Einfuegevorgang wurde angenommen - die
-      alte Meldung stimmte nicht mehr. Der Kontohandgriff ist deshalb direkt
-      eingefuegt (neuer Abschnitt + references/boersen-aufrufe.md).
-      Naechster Schritt: nur wenn Max die Struktur trotzdem teilen will - dann
-      die fuenf grossen Bloecke (Wann 7,6 kB, Pitfalls 8,0 kB, Handelszentrale
-      6,8 kB, Werkzeugfallen 7,5 kB, Prozedur 6,7 kB) nach references/ auslagern
-      und im SKILL.md nur den Ausloeser lassen.
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Agenten/Hermes/skills/brainfiles/handel-spuren/SKILL.md
+- [x] **T-053 — handel-spuren kuerzen (Auftrag vom 24.09., Limit war veraltet)**
+      Entscheidung 2026-10-06: Die Datei ist 98.975 Bytes (1.344 Zeilen) - unter dem
+      100k-Limit. Der urspruengliche Auftrag beruhte auf einer veralteten Meldung
+      (100.663 Bytes). Nachgemessen: das Limit ist NICHT erreicht, ein Auslagern
+      ist nicht noetig. Die fuenf grossen Bloecke (Wann, Prozedur, Pitfalls,
+      Handelszentrale, Werkzeugfallen) bleiben im SKILL.md. Beleg: `wc -c SKILL.md`
+      (2026-10-06). Angelegt: 2026-09-24. Betrifft: Agenten/Hermes/skills/brainfiles/handel-spuren/SKILL.md.
 
 
 - [ ] **T-052 — OKX-DCA-Parameter der laufenden Bots anpassen**
