@@ -202,3 +202,25 @@ Dazu drei Fallen, die in dieser Lage Zeit gekostet haben:
 - **`docker rm -f` fuer Probe-Container nachziehen.** Die Proben (`probeA`,
   `probeB`, `probeC`) bleiben sonst liegen und tauchen spaeter in jeder
   Container-Liste als Raetsel auf.
+### Gesetzt am 06.10.2026
+
+    terminal:
+      docker_volumes:
+        - 'C:\Users\faupe\Documents\BrainFiles:/brainfiles'
+
+Beleg: `git diff --numstat` **2/0** (zwei Insertions, keine Loeschung); der
+Block wurde ALLEIN STEHEND geparst, bevor die Datei angefasst wurde; die
+Top-Level-Schluesselmenge blieb unveraendert; `terminal` 12 -> 13 Schluessel
+(genau `docker_volumes` dazu); CRLF 1377 -> 1379, bareLF bleibt 0;
+`yaml.safe_load` liest den Wert zurueck. Sicherung
+`Agenten/Hermes/.sicherung/config.yaml.bak-20261006-vol`. Commit `16e7fddf`.
+
+**Der Eintrag ist Vorsorge, nicht Reparatur:** eine parallele Sitzung hat
+`terminal.backend` inzwischen auf `local` gestellt (Commit `3d310c22`) - das
+Terminal laeuft seither am Host und sieht die Wurzel ohnehin. Der Eintrag wirkt,
+sobald der Docker-Backend wieder eingeschaltet wird.
+
+**Noch offen (der ehrliche Rest):** der Docker-Daemon antwortete in dieser
+Sitzung nicht mehr (`docker ps` lief 90 s ohne Ausgabe in den Timeout). Der
+Volume-Spec ist deshalb NICHT am echten Container nachgemessen. Nachzuweisen
+bleibt: `docker exec <container> ls /brainfiles` zeigt `MaxHirn` und `Agenten`.

@@ -1167,3 +1167,32 @@ Configs und wurden nicht angefasst - sie stehen weiter auf nous/deepseek-v4-flas
 - Der Container `hermes` (Volume `hermesalt-20260916_hermes-data`, cwd `/opt/hermes`) ist ein ALTER Dienst und hat mit der Terminal-Sandbox nichts zu tun. Die Sandbox heisst `hermes-<8 hex>` und traegt das Label `hermes-agent=1`.
 
 **Offen:** Wirkung noch nicht live belegt - der laufende Hermes-Prozess haelt die alte Config. Der Beleg ist der naechste Terminal-Aufruf ohne Exit 125.
+### Nachtrag 06.10.2026: die Wurzel in den Container holen
+
+Der Fix vom 05.10. (`docker_mount_cwd_to_workspace: true`) macht das Terminal
+wieder lauffaehig, bindet aber **nur `Agenten/Hermes`** als `/workspace`. Die
+BrainFiles-Wurzel (`MaxHirn/`, `Agenten/Handel/`, das `.git`) ist darin nicht
+sichtbar: `_mount_args` bindet genau den `cwd`, und `_existing_host_mount()`
+findet einen zweiten Mount nur ueber einen `docker_volumes`-Eintrag mit
+demselben Host-Pfad.
+
+Gesetzt wurde:
+
+    terminal:
+      docker_volumes:
+        - 'C:\Users\faupe\Documents\BrainFiles:/brainfiles'
+
+Beleg: `git diff --numstat` 2/0; Block allein stehend geparst, bevor die Datei
+angefasst wurde; Top-Level-Schluesselmenge unveraendert; `terminal` 12 -> 13
+Schluessel (genau `docker_volumes`); CRLF 1377 -> 1379, bareLF 0. Sicherung
+`.sicherung/config.yaml.bak-20261006-vol`. Commit `16e7fddf`.
+
+**Vorsorge, nicht Reparatur:** eine parallele Sitzung hat `terminal.backend`
+auf `local` gestellt (Commit `3d310c22`) - das Terminal laeuft seither am Host
+und sieht die Wurzel ohnehin. Der Eintrag wirkt, sobald der Docker-Backend
+wieder eingeschaltet wird.
+
+**Offen:** der Docker-Daemon antwortete in dieser Sitzung nicht mehr
+(`docker ps` lief 90 s ohne Ausgabe in den Timeout) - deshalb ist der
+Volume-Spec am echten Container NICHT nachgemessen. Nachzuweisen bleibt:
+`docker exec <container> ls /brainfiles` zeigt `MaxHirn` und `Agenten`.
