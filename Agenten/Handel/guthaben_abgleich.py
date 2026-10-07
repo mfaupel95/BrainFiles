@@ -47,8 +47,8 @@ def _waehrung(spur):
     eine zweite Aussage ueber dieselbe Spur.
     """
     try:
-        return str(auswertung_alle.einheit_fuer(spur) or "USD")
-    except Exception:                                        # noqa: BLE001
+        return auswertung_alle.einheit_fuer(spur)
+    except Exception:                                    # noqa: BLE001
         # Berichtsweg nicht lesbar: Zahl zeigen, nicht scheitern - wie in
         # handelszentrale.waehrung_fuer().
         return "USD"

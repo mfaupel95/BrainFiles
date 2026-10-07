@@ -384,162 +384,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Toleranz als ZWEITE Zahl (Liquiditaet) fuehren statt als eine fuer alle.
       Angelegt: 05.10.2026 - Zuletzt: 05.10.2026
       Betrifft: Agenten/Handel/tests/test_replay_feed.py, Agenten/Handel/daten/historie/coingecko_probe.json
-- [ ] **T-355 — Omniquant: `signal_quelle` ist ein toter Schalter, `maerkte` steht noch auf USDT**
-      Kontext: Der Auftrag "dann auf kraken anbinden" (05.10.2026) hat drei
-      getrennte Baustellen. Schritt 1 ist erledigt (Commit 24208fb2): die
-      Basis-Abtelung loest BTC auf `PF_XBTUSD` und CT auf `PF_CTSIUSD` auf,
-      beide am 05.10. gegen /instruments gemessen, XMSTR und MAGIC bleiben
-      laut Papier. Damit ist die Umstellung der Signalquelle keine Sackgasse
-      mehr - aber sie ist noch nicht gemacht, und zwei Widersprueche
-      blockieren sie:
-        * `wachen.json` traegt `signal_quelle:
-          prognose_berichte/neuester.json`, waehrend `prognose_fassung: weit`
-          gesetzt ist und `handeln.bericht_pfad()` den WEITEN Bericht liest.
-          GEMESSEN 05.10.: kein Stueck Code liest `signal_quelle` - der
-          Schalter ist tot. Wäre er lebendig, läge die Spur seit dem 24.09.
-          auf dem falschen Bericht.
-        * `prognose.weit.json` und `prognose.json` tragen `maerkte:
-          ["USDT", "USDC"]`. Auf USDC allein schrumpft der Kandidatenbestand
-          von 49 auf 6 Paare (gemessen 05.10. über
-          `okx.alle_paare(min_volumen_usd=3 Mio)`), weil BTC und die meisten
-          anderen nur USDT-Paare haben. Nach Schritt 1 ist BTC wieder
-          handelbar - als `PF_XBTUSD` auf Futures, nicht auf OKX-Spot.
-      Naechster Schritt: entscheiden, ob `signal_quelle` tot bleibt oder die
-      Wache bereinigt wird (Toter Schalter = eine zweite, falsche Wahrheit
-      in jeder Auswertung), und dann `maerkte` je Fassung setzen - mit dem
-      gemessenen Kandidatenbestand als Vermerk in beiden Berichtsdateien.
-      Getrennt bleiben: die Auswertung nennt fuer omniquant fest "USD", das
-      ist die Währung der ORDER-Börse und richtig so.
-      **ERLEDIGT 05.10.2026 (die maerkte-Frage):** der Quote-Filter ist
-      GELOEST und WIEDER ZURUECKGENOMMEN, mit Protokoll in beiden
-      `prognose*.json` unter `_maerkte` (Commit 11e977f4). Gemessen am 05.10.
-      ueber die echte OKX-Tickerliste: ohne Filter 62 Paare ueber 3 Mio USD,
-      mit USDT+USDC 50 - aber alle 12 Differenzen sind Fiat-Paare (TRY, BRL,
-      EUR) und scheitern am C/R-Tor (0,02 bis 0,62); ohne Fiat bleiben exakt
-      50. Der Filter kostete keinen Kandidaten. Zwei eigene Messfehler waren
-      die Ursache der Fehldeutung: `bewertung.bewertung` gibt es nicht (es
-      heisst `bewerten`), und das Feld heisst `rsi14`, nicht `rsi` - der
-      Fehlgriff lieferte `None` fuer alle Kandidaten und sah wie ein
-      Fiat-Problem aus. `werte` bleibt ungesetzt: bei 50 Kandidaten gibt es
-      nichts zu beschneiden. Bleibt offen: `signal_quelle` in wachen.json ist
-      weiter ein TOTER Schalter (kein Code liest ihn, waehrend
-      `prognose_fassung: weit` den echten Weg bestimmt) - ein toter Schalter
-      ist eine zweite, falsche Wahrheit und sollte bereinigt werden.
-      NEU DARAUS (05.10.): der Lauf liefert in der WEITEN Fassung 2
-      LONG-Treffer (NEAR-USDC C/R 1,24, NEAR-USDT C/R 1,21), die strenge
-      0. Beide Treffer sind am Zielmarkt handelbar (`PF_NEARUSD`, gegen
-      /instruments geprueft), werden aber vom Tor `live_pf_ableitung`
-      abgewiesen. Das ist der freigegebene, gepruefte Weg - aber es heisst:
-      die Spur hat Signal und keinen Weg, und NEAR waere der erste echte
-      Order-Kandidat seit dem 01.10. Die 0 Treffer der strengen Fassung
-      liegen am `mindest_cr` (1,5), weil der Markt ueberall nah am
-      60-Tage-Hoch steht - Marktlage, keine Konfiguration.
-      Naechster Schritt: entscheiden, ob `live_pf_ableitung` fuer NEAR
-      freigegeben wird (es ist derselbe Pfad wie HBAR/ONDO am 01.10., und
-      der Markt fuehrt PF_NEARUSD), und ob `signal_quelle` aus wachen.json
-      entfernt wird. Beides ist eine Freigabe-Entscheidung, keine Codefrage.
-      Angelegt 05.10.2026 · Zuletzt 05.10.2026 · Betrifft:
-      Agenten/Handel/prognose.json, prognose.weit.json, omniquant/wachen.json
-      Agenten/Handel/omniquant/prognose.json, prognose.weit.json
-      **BEFUND 05.10.2026, auftrag Max 'NEAR freigeben' - die Freigabe
-      stand schon, der Blocker ist ein anderer.** `live_pf_ableitung` traegt
-      seit dem 01.10.2026 `true`; beide NEAR-Namen loesen gegen die echte
-      Kraken-Futures-Marktliste (204 tradeable Maerkte) auf `PF_NEARUSD` auf.
-      Es war nichts freizugeben. Warum trotzdem kein Einstieg - der echte
-      `--vorschau`-Lauf im ROUTINE-Modus sagt es in einer Zeile:
-      `2 Treffer; 2 gefiltert`, `Live waere gesperrt durch: nichts`.
-      * NEAR-USDT ist als GEIST im Buch (Position aus einem
-        `papier`-EINSTIEG vom 03.10. 16:43). `handeln.py` Zeile 314
-        filtert jeden Kandidaten, dessen `(inst, seite)` bereits offen ist -
-        deshalb der Treffer "filtert".
-      * NEAR-USDC zeigt auf dieselbe Basis. `max_je_basiswert: 1`, und die
-        Basis NEAR ist mit diesem einen Geist belegt.
-      **Der eigentliche Befund: das Buch fuehrt 9 Positionen im Modus
-      `live`, und AN DER BOERSE IST NULL davon** (gemessen 05.10. ueber
-      openpositions je Symbol: 9x "0 offene"). 8 davon ohne `modus`-Feld
-      und ohne `einsatz_usd`. Sie stammen alle aus `papier`-Einstiegen vom
-      28.09.-03.10.; `z["modus"]` wurde am 01.10. auf `live` geschaltet,
-      die Positionen sind mitgegangen. Diese Spur hat - anders als scanner,
-      xperp, swap, mosaic - KEINE `bueche_papier_altlasten_aus()` (kein
-      Treffer in handeln.py, live_perp.py, kraken_perp.py; auch
-      `Handel/spur_buch.py` hat sie nicht, dort ist es je Spur).
-      Deshalb kann sie ihre Altlasten nicht ausbuchen. Folge: `Offener
-      Bestand: 9 Positionen, 683.28 von 500 USD Einsatz` - der Deckel ist
-      rechnerisch gerissen, und die Positionen lassen sich nicht schliessen,
-      weil kein Stop und kein Kurs-Pfad dazugehoert.
-      Naechster Schritt: Buch bereinigen, BEVOR ueber NEAR entschieden wird.
-      Reihenfolge ist nicht frei: (1) die 8 Papier-Geiste neutral ausbuchen
-      (Werkzeug nach dem Muster `spiegel/buecher_aufloesen.py`, Wert =
-      Einsatz, damit die Bilanz neutral bleibt), (2) HBAR - die einzige
-      Position mit `modus: live` und Einsatz 50 - gegen die Boerse pruefen
-      und entscheiden, (3) danach die Platz-Frage neu messen und ueber den
-      NEAR-Einstieg entscheiden. Ohne (1) ist jeder Einstieg blockiert,
-      unabhaengig von der Freigabe.
-      **ERLEDIGT 05.10.2026, auftrag Max 'buch bereinigen'.** Alle 9
-      Positionen waren GEISTER - 0 offene Positionen an Kraken Futures,
-      9x gemessen ueber openpositions je Symbol. Auch HBAR (die einzige
-      mit `modus: live` und Einsatz 50) stand nie an der Boerse. Sie
-      stammen alle aus `papier`-Einstiegen vom 28.09.-03.10.; am 01.10.
-      wurde `z["modus"]` auf `live` geschaltet, und die Positionen sind
-      mitgegangen. Diese Spur hat - anders als scanner, xperp, swap,
-      mosaic - keine `bueche_papier_altlasten_aus()`, sie kann ihre
-      Altlasten also nicht selbst ausbuchen.
-      Neutral ausgetragen mit `omniquant/buch_bereinigen.py`: 9 Zeilen mit
-      `grund=buchbereinigung` (der Grund, den `stoerungen.BUCHHALTUNG`
-      erkennt, damit die Zeile NICHT als Handelsrunde zaehlt), je 50 USD
-      Einsatz = 450 USD, gemessen neutral (wert_usd == einsatz_usd je
-      Zeile). Sicherungen `zustand.json.bak-20261005` und
-      `handelsjournal.csv.bak-20261005`. `verluste_usd` unveraendert
-      (15.6168) - es gab keinen Verkauf.
-      Zwei eigene Fehler, die der Trockenlauf verhindert hat: (1) das Feld
-      heisst `einstieg`, nicht `preis`, und der Betrag `nominal`, nicht
-      `einsatz_usd` - die erste Fassung haette 50 statt 450 USD gebucht;
-      (2) die eigene Gegenprobe meldete "Bilanz unveraendert: NEIN
-      (-450)", weil sie `Runden-Bestand` vorher mit demselben Wert
-      nachher verglich. Die Hausrechnung ist die richtige.
-      **Drei Minuten spaeter, 02:51:04 UTC: der erste echte NEAR-Kauf.**
-      `live eroeffnen NEAR-USDC @4.9556`, nominal 302.29, 61 Kontrakte,
-      Stop 4.2856, Ziel 5.592. Belege unabhaengig: offene Position bei
-      Kraken Futures = 1, freie Margin 88.21 -> 57.71 USD (30.50
-      gebunden = 10 % von 305 Nennwert, Marktplan EEA). Die Bereinigung
-      hat den Platz freigemacht, danach hat die Spur gehandelt. Damit ist
-      beantwortet, warum die 2 NEAR-Treffer seit dem 24.09. nicht
-      gehandelt haben: sie waren orderbar, sie scheiterten am belegten
-      Platz.
-      **Der Schutz-Stop ist GEFUNDEN, nicht offen (mein Fehler von eben).**
-      Ich hatte `/editorder` geraten und daraus eine offene Luecke
-      gemacht. Richtig ist `/openorders` - `/editorder` ist der
-      SPOT-Endpunkt und antwortet in allen vier Varianten mit
-      `requiredArgumentMissing`; `kraken_futures.offene_orders()` kannte
-      den Weg die ganze Zeit, es fehlte nur die Durchreiche an der Spur.
-      GEMESSEN an der Boerse: `PF_NEARUSD stop sell 61 @ 4.2856
-      reduceOnly=true` - der Stop deckt alle 61 Kontrakte. Neu in
-      `kraken_perp`: `offene_auftraege()` und `schutzstop_vorhanden(inst,
-      kontrakte)`, der die MENGE mitprueft (T-323: 145 Kontrakte, Stop
-      ueber 126, 19 ungeschuetzt - ein Treffer allein sagt nichts).
-      Werkzeug: `Agenten/Hermes/scripts/omniquant-stopdeckung.py`.
-      Naechster Schritt: NEAR laeuft. Zu beobachten ist der Ausstieg
-      (Stop 4.2856 / Ziel 5.592) und die Frage, ob die Spur nach dem
-      Ziel erneut einsteigt - `max_je_basiswert: 1` und der
-      Merkliste-Tor (Eintrag am selben Tag sperrt) begrenzen das.
 
-- [ ] **T-354 — Zwei Positionen ohne `modus`: Buch-Geist wie am 21.09.**
-      Kontext: Bei der Pruefung von `moondev_signalwelle` und
-      `moondev_marktlage` (Auftrag Max 05.10.2026) traegt GENIUS (signalwelle)
-      und BTC (marktlage) kein `modus`-Feld, die beiden anderen Positionen
-      tragen `papier`. Das ist die Klasse aus meinem Gedaechtnis: eine
-      Position ohne Modus ist nicht als Papier erkennbar, also
-      `bueche_papier_altlasten_aus()` kann sie nicht ausbuchen. Sie ist
-      Papier (das Journal zeigt nur papier-Zeilen), aber das Buch weiss es
-      nicht. Beide Positionen sind vom 19./20.09. - Altbestand aus der Zeit
-      vor dem Modus-Feld.
-      Naechster Schritt: beide Positionen einmal als Papier buchen (Journal
-      'buchbereinigung', Einstiegskurs als Preis) oder das Feld per Zustand
-      nachtragen. Vorher pruefen, ob an der Boerse etwas offen steht - beide
-      Spuren sind `trigger_modus: signal` und handeln ueber den Executor,
-      nie live direkt.
-      Angelegt · 05.10.2026 · Betrifft: Agenten/Handel/moondev_signalwelle/zustand.json,
-      Agenten/Handel/moondev_marktlage/zustand.json
 - [ ] **T-353 — Der signal-executor brach seit dem 03.10. bei jedem Lauf ab**
       Kontext: Gefunden bei derselben Pruefung (05.10.2026). In
       `Agenten/Hermes/scripts/signal-executor.py` stand
@@ -1051,22 +896,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft nautilus_kraken
 
 
-- [ ] **T-311 — Scanner-USDC-Umstellung: USDT-Buch im Journal, Guthaben-Abgleich liest USDT**
-      Kontext: 02.10.2026, Auftrag Max "Scanner auf USDC stellen, USDT funktioniert nicht".
-      Drei Restpunkte, die die Umstellung (Commit 2a480edd) nicht mit erledigt:
-      (1) `Agenten/Handel/guthaben_abgleich.py` ruft weiter `okx.guthaben_usdt()` und
-      meldet `WAEHRUNG = {"scanner": "USD"}` - der Wochenbericht zeigt damit 0,00 fuer
-      ein Konto mit 438 USDC. Auf `okx.guthaben("USDC")` und Waehrung USDC umstellen.
-      (2) Die Positionen ETH/SOL/BTC/SUI-USDC im Buch tragen keine Angabe, in welcher
-      Quote ihr Einsatz gebunden ist - bei einer spaeteren Quote-Mischung ist der
-      Einsatz nicht mehr je Waehrung teilbar.
-      (3) `okx.markt_kauf(inst, usdt)` heisst der Parameter noch `usdt`, ist aber ein
-      Nominal in der Quote des Paares (tgtCcy quote_ccy).
-      Naechster Schritt: Punkt 1 zuerst - eine Zeile in `guthaben_abgleich.py`, danach
-      `Agenten/Handel/tests` gegenlaufen lassen (der Wochenbericht haengt daran).
-      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/guthaben_abgleich.py,
-      Agenten/Handel/scanner/okx.py
-      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 
 
@@ -1822,20 +1651,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-142 — Der Grund im Journal der Feed-Spuren ist ein Platzhalter**
-      Kontext: Bei jedem Einstieg steht "Der Grund, der im Journal steht." in
-      der Spalte `grund`. Der Text kommt aus dem Dummy-Schluessel `_grund` der
-      wachen (moondev_topmovers/-marktlage/-signalwelle, iv_wand, moondev_whale,
-      -liquidation, -sentiment). Gemessen am 29.09.2026: auch das ECHTE Journal
-      vom 15.09.2026 traegt ihn, es ist also kein Fehler der Rueckrechnung,
-      sondern Bestand. Folge: jede Auswertung, die den Grund lesen will, liest
-      Nichts - bei 55 Runden im Ruecklauf ist nicht zu sagen, welches Signal
-      gegriffen hat.
-      Naechster Schritt: `spur_buch` schreibt den echten Grund (Signal/Regel)
-      statt `_grund`. Wirkt auf ALLE Spuren dieser Familie, daher eigene Aufgabe
-      mit Gegenprobe. Entscheidung Max.
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Handel/spur_buch.py, wachen.json der Feed-Spuren
 
 
 - [ ] **T-143 — Der Funding-Ruecklauf endet an der eigenen Ratsche**
@@ -1851,16 +1666,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Handel/replay.py (lauf_c), moondev_historie.py
 
 
-- [ ] **T-144 — Die Signalwelle rechnet im Ruecklauf auf kleinerem Universum**
-      Kontext: 41 Symbole mit 1H-Kerzen gegen 250 Coins im Betrieb; der Lauf
-      liefert 62 Runden. Gehandelt wurden 37 einzigartige Instrumente in 111
-      Transaktionen (51 Kaeufe, 60 Verkaeufe; gezaehlt 2026-10-07). Die Zahl
-      ist mit dem Betrieb nicht vergleichbar, weil das Tor (Aenderung 1h,
-      Volumen 24h) auf einem kleineren Feld greift.
-      Naechster Schritt: entweder das Universum aufziehen (1H-Kerzen fuer 250
-      Symbole, ~1,5 GB) oder in jeder Aussage dazuschreiben. Entscheidung Max.
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Handel/daten/historie/feed, Wiki/Handel/Backtest-Fundament.md
 
 
 - [ ] **T-145 — CoinGecko antwortet von diesem Rechner mit HTTP 403**
@@ -3453,6 +3258,206 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-355 — Omniquant: `signal_quelle` ist ein toter Schalter, `maerkte` steht noch auf USDT**
+      Kontext: Der Auftrag "dann auf kraken anbinden" (05.10.2026) hat drei
+      getrennte Baustellen. Schritt 1 ist erledigt (Commit 24208fb2): die
+      Basis-Abtelung loest BTC auf `PF_XBTUSD` und CT auf `PF_CTSIUSD` auf,
+      beide am 05.10. gegen /instruments gemessen, XMSTR und MAGIC bleiben
+      laut Papier. Damit ist die Umstellung der Signalquelle keine Sackgasse
+      mehr - aber sie ist noch nicht gemacht, und zwei Widersprueche
+      blockieren sie:
+        * `wachen.json` traegt `signal_quelle:
+          prognose_berichte/neuester.json`, waehrend `prognose_fassung: weit`
+          gesetzt ist und `handeln.bericht_pfad()` den WEITEN Bericht liest.
+          GEMESSEN 05.10.: kein Stueck Code liest `signal_quelle` - der
+          Schalter ist tot. Wäre er lebendig, läge die Spur seit dem 24.09.
+          auf dem falschen Bericht.
+        * `prognose.weit.json` und `prognose.json` tragen `maerkte:
+          ["USDT", "USDC"]`. Auf USDC allein schrumpft der Kandidatenbestand
+          von 49 auf 6 Paare (gemessen 05.10. über
+          `okx.alle_paare(min_volumen_usd=3 Mio)`), weil BTC und die meisten
+          anderen nur USDT-Paare haben. Nach Schritt 1 ist BTC wieder
+          handelbar - als `PF_XBTUSD` auf Futures, nicht auf OKX-Spot.
+      Naechster Schritt: entscheiden, ob `signal_quelle` tot bleibt oder die
+      Wache bereinigt wird (Toter Schalter = eine zweite, falsche Wahrheit
+      in jeder Auswertung), und dann `maerkte` je Fassung setzen - mit dem
+      gemessenen Kandidatenbestand als Vermerk in beiden Berichtsdateien.
+      Getrennt bleiben: die Auswertung nennt fuer omniquant fest "USD", das
+      ist die Währung der ORDER-Börse und richtig so.
+      **ERLEDIGT 05.10.2026 (die maerkte-Frage):** der Quote-Filter ist
+      GELOEST und WIEDER ZURUECKGENOMMEN, mit Protokoll in beiden
+      `prognose*.json` unter `_maerkte` (Commit 11e977f4). Gemessen am 05.10.
+      ueber die echte OKX-Tickerliste: ohne Filter 62 Paare ueber 3 Mio USD,
+      mit USDT+USDC 50 - aber alle 12 Differenzen sind Fiat-Paare (TRY, BRL,
+      EUR) und scheitern am C/R-Tor (0,02 bis 0,62); ohne Fiat bleiben exakt
+      50. Der Filter kostete keinen Kandidaten. Zwei eigene Messfehler waren
+      die Ursache der Fehldeutung: `bewertung.bewertung` gibt es nicht (es
+      heisst `bewerten`), und das Feld heisst `rsi14`, nicht `rsi` - der
+      Fehlgriff lieferte `None` fuer alle Kandidaten und sah wie ein
+      Fiat-Problem aus. `werte` bleibt ungesetzt: bei 50 Kandidaten gibt es
+      nichts zu beschneiden. Bleibt offen: `signal_quelle` in wachen.json ist
+      weiter ein TOTER Schalter (kein Code liest ihn, waehrend
+      `prognose_fassung: weit` den echten Weg bestimmt) - ein toter Schalter
+      ist eine zweite, falsche Wahrheit und sollte bereinigt werden.
+      NEU DARAUS (05.10.): der Lauf liefert in der WEITEN Fassung 2
+      LONG-Treffer (NEAR-USDC C/R 1,24, NEAR-USDT C/R 1,21), die strenge
+      0. Beide Treffer sind am Zielmarkt handelbar (`PF_NEARUSD`, gegen
+      /instruments geprueft), werden aber vom Tor `live_pf_ableitung`
+      abgewiesen. Das ist der freigegebene, gepruefte Weg - aber es heisst:
+      die Spur hat Signal und keinen Weg, und NEAR waere der erste echte
+      Order-Kandidat seit dem 01.10. Die 0 Treffer der strengen Fassung
+      liegen am `mindest_cr` (1,5), weil der Markt ueberall nah am
+      60-Tage-Hoch steht - Marktlage, keine Konfiguration.
+      Naechster Schritt: entscheiden, ob `live_pf_ableitung` fuer NEAR
+      freigegeben wird (es ist derselbe Pfad wie HBAR/ONDO am 01.10., und
+      der Markt fuehrt PF_NEARUSD), und ob `signal_quelle` aus wachen.json
+      entfernt wird. Beides ist eine Freigabe-Entscheidung, keine Codefrage.
+      Angelegt 05.10.2026 · Zuletzt 05.10.2026 · Betrifft:
+      Agenten/Handel/prognose.json, prognose.weit.json, omniquant/wachen.json
+      Agenten/Handel/omniquant/prognose.json, prognose.weit.json
+      **BEFUND 05.10.2026, auftrag Max 'NEAR freigeben' - die Freigabe
+      stand schon, der Blocker ist ein anderer.** `live_pf_ableitung` traegt
+      seit dem 01.10.2026 `true`; beide NEAR-Namen loesen gegen die echte
+      Kraken-Futures-Marktliste (204 tradeable Maerkte) auf `PF_NEARUSD` auf.
+      Es war nichts freizugeben. Warum trotzdem kein Einstieg - der echte
+      `--vorschau`-Lauf im ROUTINE-Modus sagt es in einer Zeile:
+      `2 Treffer; 2 gefiltert`, `Live waere gesperrt durch: nichts`.
+      * NEAR-USDT ist als GEIST im Buch (Position aus einem
+        `papier`-EINSTIEG vom 03.10. 16:43). `handeln.py` Zeile 314
+        filtert jeden Kandidaten, dessen `(inst, seite)` bereits offen ist -
+        deshalb der Treffer "filtert".
+      * NEAR-USDC zeigt auf dieselbe Basis. `max_je_basiswert: 1`, und die
+        Basis NEAR ist mit diesem einen Geist belegt.
+      **Der eigentliche Befund: das Buch fuehrt 9 Positionen im Modus
+      `live`, und AN DER BOERSE IST NULL davon** (gemessen 05.10. ueber
+      openpositions je Symbol: 9x "0 offene"). 8 davon ohne `modus`-Feld
+      und ohne `einsatz_usd`. Sie stammen alle aus `papier`-Einstiegen vom
+      28.09.-03.10.; `z["modus"]` wurde am 01.10. auf `live` geschaltet,
+      die Positionen sind mitgegangen. Diese Spur hat - anders als scanner,
+      xperp, swap, mosaic - KEINE `bueche_papier_altlasten_aus()` (kein
+      Treffer in handeln.py, live_perp.py, kraken_perp.py; auch
+      `Handel/spur_buch.py` hat sie nicht, dort ist es je Spur).
+      Deshalb kann sie ihre Altlasten nicht ausbuchen. Folge: `Offener
+      Bestand: 9 Positionen, 683.28 von 500 USD Einsatz` - der Deckel ist
+      rechnerisch gerissen, und die Positionen lassen sich nicht schliessen,
+      weil kein Stop und kein Kurs-Pfad dazugehoert.
+      Naechster Schritt: Buch bereinigen, BEVOR ueber NEAR entschieden wird.
+      Reihenfolge ist nicht frei: (1) die 8 Papier-Geiste neutral ausbuchen
+      (Werkzeug nach dem Muster `spiegel/buecher_aufloesen.py`, Wert =
+      Einsatz, damit die Bilanz neutral bleibt), (2) HBAR - die einzige
+      Position mit `modus: live` und Einsatz 50 - gegen die Boerse pruefen
+      und entscheiden, (3) danach die Platz-Frage neu messen und ueber den
+      NEAR-Einstieg entscheiden. Ohne (1) ist jeder Einstieg blockiert,
+      unabhaengig von der Freigabe.
+      **ERLEDIGT 05.10.2026, auftrag Max 'buch bereinigen'.** Alle 9
+      Positionen waren GEISTER - 0 offene Positionen an Kraken Futures,
+      9x gemessen ueber openpositions je Symbol. Auch HBAR (die einzige
+      mit `modus: live` und Einsatz 50) stand nie an der Boerse. Sie
+      stammen alle aus `papier`-Einstiegen vom 28.09.-03.10.; am 01.10.
+      wurde `z["modus"]` auf `live` geschaltet, und die Positionen sind
+      mitgegangen. Diese Spur hat - anders als scanner, xperp, swap,
+      mosaic - keine `bueche_papier_altlasten_aus()`, sie kann ihre
+      Altlasten also nicht selbst ausbuchen.
+      Neutral ausgetragen mit `omniquant/buch_bereinigen.py`: 9 Zeilen mit
+      `grund=buchbereinigung` (der Grund, den `stoerungen.BUCHHALTUNG`
+      erkennt, damit die Zeile NICHT als Handelsrunde zaehlt), je 50 USD
+      Einsatz = 450 USD, gemessen neutral (wert_usd == einsatz_usd je
+      Zeile). Sicherungen `zustand.json.bak-20261005` und
+      `handelsjournal.csv.bak-20261005`. `verluste_usd` unveraendert
+      (15.6168) - es gab keinen Verkauf.
+      Zwei eigene Fehler, die der Trockenlauf verhindert hat: (1) das Feld
+      heisst `einstieg`, nicht `preis`, und der Betrag `nominal`, nicht
+      `einsatz_usd` - die erste Fassung haette 50 statt 450 USD gebucht;
+      (2) die eigene Gegenprobe meldete "Bilanz unveraendert: NEIN
+      (-450)", weil sie `Runden-Bestand` vorher mit demselben Wert
+      nachher verglich. Die Hausrechnung ist die richtige.
+      **Drei Minuten spaeter, 02:51:04 UTC: der erste echte NEAR-Kauf.**
+      `live eroeffnen NEAR-USDC @4.9556`, nominal 302.29, 61 Kontrakte,
+      Stop 4.2856, Ziel 5.592. Belege unabhaengig: offene Position bei
+      Kraken Futures = 1, freie Margin 88.21 -> 57.71 USD (30.50
+      gebunden = 10 % von 305 Nennwert, Marktplan EEA). Die Bereinigung
+      hat den Platz freigemacht, danach hat die Spur gehandelt. Damit ist
+      beantwortet, warum die 2 NEAR-Treffer seit dem 24.09. nicht
+      gehandelt haben: sie waren orderbar, sie scheiterten am belegten
+      Platz.
+      **Der Schutz-Stop ist GEFUNDEN, nicht offen (mein Fehler von eben).**
+      Ich hatte `/editorder` geraten und daraus eine offene Luecke
+      gemacht. Richtig ist `/openorders` - `/editorder` ist der
+      SPOT-Endpunkt und antwortet in allen vier Varianten mit
+      `requiredArgumentMissing`; `kraken_futures.offene_orders()` kannte
+      den Weg die ganze Zeit, es fehlte nur die Durchreiche an der Spur.
+      GEMESSEN an der Boerse: `PF_NEARUSD stop sell 61 @ 4.2856
+      reduceOnly=true` - der Stop deckt alle 61 Kontrakte. Neu in
+      `kraken_perp`: `offene_auftraege()` und `schutzstop_vorhanden(inst,
+      kontrakte)`, der die MENGE mitprueft (T-323: 145 Kontrakte, Stop
+      ueber 126, 19 ungeschuetzt - ein Treffer allein sagt nichts).
+      Werkzeug: `Agenten/Hermes/scripts/omniquant-stopdeckung.py`.
+      Naechster Schritt: NEAR laeuft. Zu beobachten ist der Ausstieg
+      (Stop 4.2856 / Ziel 5.592) und die Frage, ob die Spur nach dem
+      Ziel erneut einsteigt - `max_je_basiswert: 1` und der
+      Merkliste-Tor (Eintrag am selben Tag sperrt) begrenzen das.
+      Karte t_685d8ec3: signal_quelle toter Schalter formal markiert, Arm aus Dauerlauf entfernt, Hauptarm liest weite Fassung
+- [x] **T-354 — Zwei Positionen ohne `modus`: Buch-Geist wie am 21.09.**
+      Kontext: Bei der Pruefung von `moondev_signalwelle` und
+      `moondev_marktlage` (Auftrag Max 05.10.2026) traegt GENIUS (signalwelle)
+      und BTC (marktlage) kein `modus`-Feld, die beiden anderen Positionen
+      tragen `papier`. Das ist die Klasse aus meinem Gedaechtnis: eine
+      Position ohne Modus ist nicht als Papier erkennbar, also
+      `bueche_papier_altlasten_aus()` kann sie nicht ausbuchen. Sie ist
+      Papier (das Journal zeigt nur papier-Zeilen), aber das Buch weiss es
+      nicht. Beide Positionen sind vom 19./20.09. - Altbestand aus der Zeit
+      vor dem Modus-Feld.
+      Naechster Schritt: beide Positionen einmal als Papier buchen (Journal
+      'buchbereinigung', Einstiegskurs als Preis) oder das Feld per Zustand
+      nachtragen. Vorher pruefen, ob an der Boerse etwas offen steht - beide
+      Spuren sind `trigger_modus: signal` und handeln ueber den Executor,
+      nie live direkt.
+      Angelegt · 05.10.2026 · Betrifft: Agenten/Handel/moondev_signalwelle/zustand.json,
+      Agenten/Handel/moondev_marktlage/zustand.json
+      Karte t_1ca18a5e: 22 pos_id-Positionen an OKX verifiziert (0 aktiv), als Papier mit grund 'nicht an der Boerse gefunden' gebucht, Commit 4b08cccf
+- [x] **T-311 — Scanner-USDC-Umstellung: USDT-Buch im Journal, Guthaben-Abgleich liest USDT**
+      Kontext: 02.10.2026, Auftrag Max "Scanner auf USDC stellen, USDT funktioniert nicht".
+      Drei Restpunkte, die die Umstellung (Commit 2a480edd) nicht mit erledigt:
+      (1) `Agenten/Handel/guthaben_abgleich.py` ruft weiter `okx.guthaben_usdt()` und
+      meldet `WAEHRUNG = {"scanner": "USD"}` - der Wochenbericht zeigt damit 0,00 fuer
+      ein Konto mit 438 USDC. Auf `okx.guthaben("USDC")` und Waehrung USDC umstellen.
+      (2) Die Positionen ETH/SOL/BTC/SUI-USDC im Buch tragen keine Angabe, in welcher
+      Quote ihr Einsatz gebunden ist - bei einer spaeteren Quote-Mischung ist der
+      Einsatz nicht mehr je Waehrung teilbar.
+      (3) `okx.markt_kauf(inst, usdt)` heisst der Parameter noch `usdt`, ist aber ein
+      Nominal in der Quote des Paares (tgtCcy quote_ccy).
+      Naechster Schritt: Punkt 1 zuerst - eine Zeile in `guthaben_abgleich.py`, danach
+      `Agenten/Handel/tests` gegenlaufen lassen (der Wochenbericht haengt daran).
+      Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/guthaben_abgleich.py,
+      Agenten/Handel/scanner/okx.py
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
+      Karte t_5bb6bd51: guthaben_abgleich._waehrung liest einheit_fuer (Scanner USDC statt USD); Abnahme reparierte den zerschossenen Edit (Indentation/noqa)
+- [x] **T-144 — Die Signalwelle rechnet im Ruecklauf auf kleinerem Universum**
+      Kontext: 41 Symbole mit 1H-Kerzen gegen 250 Coins im Betrieb; der Lauf
+      liefert 62 Runden. Gehandelt wurden 37 einzigartige Instrumente in 111
+      Transaktionen (51 Kaeufe, 60 Verkaeufe; gezaehlt 2026-10-07). Die Zahl
+      ist mit dem Betrieb nicht vergleichbar, weil das Tor (Aenderung 1h,
+      Volumen 24h) auf einem kleineren Feld greift.
+      Naechster Schritt: entweder das Universum aufziehen (1H-Kerzen fuer 250
+      Symbole, ~1,5 GB) oder in jeder Aussage dazuschreiben. Entscheidung Max.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/daten/historie/feed, Wiki/Handel/Backtest-Fundament.md
+      Karte t_513b444b: Signalwelle-Ruecklauf Universum gezaehlt (37 Instrumente, 111 Transaktionen), Commit 57d43e9d
+- [x] **T-142 — Der Grund im Journal der Feed-Spuren ist ein Platzhalter**
+      Kontext: Bei jedem Einstieg steht "Der Grund, der im Journal steht." in
+      der Spalte `grund`. Der Text kommt aus dem Dummy-Schluessel `_grund` der
+      wachen (moondev_topmovers/-marktlage/-signalwelle, iv_wand, moondev_whale,
+      -liquidation, -sentiment). Gemessen am 29.09.2026: auch das ECHTE Journal
+      vom 15.09.2026 traegt ihn, es ist also kein Fehler der Rueckrechnung,
+      sondern Bestand. Folge: jede Auswertung, die den Grund lesen will, liest
+      Nichts - bei 55 Runden im Ruecklauf ist nicht zu sagen, welches Signal
+      gegriffen hat.
+      Naechster Schritt: `spur_buch` schreibt den echten Grund (Signal/Regel)
+      statt `_grund`. Wirkt auf ALLE Spuren dieser Familie, daher eigene Aufgabe
+      mit Gegenprobe. Entscheidung Max.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/spur_buch.py, wachen.json der Feed-Spuren
+      Karte t_a26f2369: Regressionstest fuer einstiegsgrund gruen (8/8), Commit 6797c346
 - [x] **T-178 - Einstiegsgrund im Journal der Buch-Spuren ist ein Platzhalter**
       Kontext: Jede Einstiegszeile der Feed-Spuren traegt als `grund` den Satz
       "Der Grund, der im Journal steht." - der Platzhalter steht auch in den
