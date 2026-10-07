@@ -138,6 +138,14 @@ ist kein Beweis fuer einen funktionierenden Orderweg.
   GEBUEHRENSUMME gegen das Ergebnis stellen: liegt sie in derselben
   Groessenordnung, ist der "Verlust" die Gebuehr, und kein Strategieparameter
   aendert das. Die Jahreslast in Prozent ist `Trades/Tag x 0,2`.
+  GEMESSEN am 05./07.10.2026 (BtcRegimeKurz, BTC 1h, gleiche Strategie):
+  Spot (0,1 %/Seite) H1 −25,9 % / H2 −22,7 %; Futures (0,05 %/Seite,
+  `trading_mode: futures`, gleiche Regeln) H1 +0,04 % / H2 −4,2 % — die
+  Differenz von ~20–26 pp je Halbjahr ist exakt die Gebuehreneinsparung.
+  Die Kante vor Gebuehr war in 12+4 Laeufen stabil +0,09 bis +0,14 % je
+  Umsatz; Futures hebt das Verhaeltnis Kante:Gebuehr von 0,6:1 auf
+  1,2:1 — aber auch dort bleibt ein Halbjahr negativ, die Kante ist real,
+  nur zu duenn (kein lebender Profit, nur kein sicherer Verlust).
 - **Ein `Fatal exception` im Backtest ist nicht automatisch ein Strategiefehler.**
   Erst denselben Lauf wiederholen und den Zeitpunkt gegen den Zustand der
   Docker-Maschine halten — ein sterbender Daemon bricht mitten im Lauf ab.
