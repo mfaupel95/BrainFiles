@@ -41,7 +41,10 @@ Generelles hierher (diese Datei gewinnt bei Stil und Betriebsregeln).
   Fork, `upstream` = Original (nur lesen, nie pushen). Shallow-Klon: ein Push scheitert
   mit "did not receive expected object" - vorher `git fetch --unshallow upstream`.
 - Vor jedem Commit nur die eigenen Pfade stagen (`git add <pfad>`), nie `git add -A`:
-  es laeuft zeitweise eine zweite Hermes-Sitzung auf demselben Baum.
+  es laeuft zeitweise eine zweite Hermes-Sitzung auf demselben Baum. Nie `git stash`
+  dort - er friert Arbeit ein und der Pop konfligiert mit Zwischencommits (Fall
+  08.10.2026: 7 Konflikte). Sofort committen statt stashen; Pop doch noetig: OURS
+  ist der Repo-Stand, THEIRS der aeltere Stash, Seiten per Datum entscheiden.
 - Keine Schluessel/.env-Inhalte ins Repo: `.env_example` nennt nur Namen, echte
   Zugaenge stehen nur in `MaxHirn\Wissen\Zugaenge.md` (nie ausgeben).
 - Python-venv heisst `.venv` (Hausstandard, auch wenn die Repo-Anleitung "venv" sagt).
@@ -73,29 +76,25 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
   (diese Datei). Alte Fassung: `profiles\.sicherung\`.
 - Git-Freigabe dieser Datei: `!Agenten/Hermes/profiles/*.md` in `.gitignore` (sonst
   gewinnt `Agenten/Hermes/**`). Pruefen: `git check-ignore -v`.
-- 18.09.2026: 27 Repo-Bots; ohne `nous` (kein Repo) und `awesome-systematic-trading`
-  (eigene Regeldatei `rule_maXtrade.md`).
-- 18.09.2026 PowerShell 5.1: `Get-FileHash` fehlt und liefert stumm nichts (eine
-  Pruefung darauf meldet falsch "alle gleich" - MD5 ueber .NET auf die Bytes), und
-  MEHRERE Here-Strings in EINEM Befehl kommen verstuemmelt an (0-Byte-Datei, keine
-  Meldung) - eine Datei je Aufruf, Groesse pruefen.
+- 18.09.2026: 27 Repo-Bots; ohne `nous` und `awesome-systematic-trading` (eigene Regeldatei).
+- 18.09.2026 PowerShell 5.1: `Get-FileHash` fehlt (stumm nichts, eine Pruefung
+  meldet falsch "alle gleich" - MD5 ueber .NET auf die Bytes); MEHRERE Here-Strings
+  in EINEM Befehl kommen verstuemmelt an - eine Datei je Aufruf, Groesse pruefen.
 - 20.09.2026 Headless (Kanban/Cron): `execute_code` und gefaehrliche Shell-Befehle
   werden abgewiesen, `write_file` laeuft in den Timeout; auch der INHALT zaehlt -
   Risikomuster aus Teilen bauen.
-- 20.09.2026 Schreiben nach `O:\Werkstatt` scheitert (Junction, ausserhalb
-  HERMES_WRITE_SAFE_ROOT). Arbeitsergebnisse unter `C:\...\BrainFiles` ablegen.
-- 20.09.2026 Tool-Ausgabe ist LOSSY (Gleichheitszeichen, Pfeile, doppelte Leerzeichen
-  fallen weg): Quelltext nie per Augenschein pruefen - Leerzeichen sichtbar machen oder
-  inspect.signature lesen, sonst diagnostiziert man Fehler, die gar nicht dastehen.
+- 20.09.2026 Schreiben nach `O:\Werkstatt` scheitert (Junction): Arbeitsergebnisse
+  unter `C:\...\BrainFiles` ablegen.
+- 20.09.2026 Tool-Ausgabe ist LOSSY (Gleichheitszeichen, Pfeile, Doppel-Leerzeichen
+  fallen weg): Quelltext nie per Augenschein pruefen - Leerzeichen sichtbar machen
+  oder inspect.signature lesen, sonst diagnostiziert man Fehler, die nicht dastehen.
 - 20.09.2026 Zwei getrennt gebaute Komponenten sind nicht integriert, nur weil beide
-  Testreihen gruen sind: die Naht ist das Vokabular - eine Uebersetzungstabelle braucht
-  einen Test PRO WORT der Gegenseite. Ein Probe-Modus darf keine Marke fortschreiben.
+  Testreihen gruen sind: die Naht ist das Vokabular - ein Test PRO Wort der Gegenseite;
+  ein Probe-Modus darf keine Marke fortschreiben.
 
-- 22.09.2026 Windows Defender zieht Doku-Repos ein: vier `SKILL.md` in `claude-red`
-  (SQLi/RCE/File-Upload/Shellcode) wurden geloescht, danach blieb der LESEZUGRIFF
-  gesperrt ("Datei enthaelt einen Virus"). `ls` beweist nichts - die Probe ist ein
-  echter Lesevorgang, der Fundort `Get-MpThreatDetection`.
-- 22.09.2026 Symlink fuer `auth.json`: `pwsh` 7 legt ihn ohne Erhoehung an,
-  `powershell.exe` 5.1 verweigert mit "Administratorrechte erforderlich".
+- 22.09.2026 Windows Defender loescht Doku-Skills und sperrt den LESEZUGRIFF
+  ("enthaelt einen Virus"); `ls` beweist nichts - Probe ist echter Lesevorgang,
+  Fundort `Get-MpThreatDetection`.
+- 22.09.2026 Symlink `auth.json`: `pwsh` 7 legt ihn an, `powershell.exe` 5.1 verweigert (Admin noetig).
 
-Verdichtet 2026-09-22: 5990 -> 5991 Zeichen
+Verdichtet 2026-10-08: 6122 -> 5921 Zeichen (Stash-Regel eingepreist)
