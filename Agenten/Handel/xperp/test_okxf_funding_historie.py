@@ -28,6 +28,14 @@ class TestFundingHistorie(unittest.TestCase):
             out = okxf.funding_historie("BTC-USD_UM_XPERP-310620", seiten=2)
         self.assertEqual([r[0] for r in out], [1000, 2000, 3000, 4000])
 
+    def test_folgeanfrage_blaettert_mit_after_ab_dem_aeltesten_stempel(self):
+        antworten = [_seite([4000, 3000]), _seite([2000, 1000])]
+        with mock.patch.object(okxf, "_mit_wiederholung",
+                               side_effect=antworten) as m:
+            okxf.funding_historie("BTC-USD_UM_XPERP-310620", seiten=2)
+        self.assertIn("after=3000", m.call_args_list[1].args[0])
+        self.assertNotIn("before=3000", m.call_args_list[1].args[0])
+
     def test_leere_antwort_beendet_das_blaettern(self):
         with mock.patch.object(okxf, "_mit_wiederholung",
                               side_effect=[_seite([1000]), []]):
