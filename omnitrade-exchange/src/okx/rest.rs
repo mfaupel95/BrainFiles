@@ -58,6 +58,14 @@ impl OkxRestClient {
         })
     }
 
+    /// Uses another official OKX API domain, e.g. `https://eea.okx.com` (EEA accounts) or
+    /// `https://us.okx.com`. Keys exist only on the domain of their account region.
+    #[must_use]
+    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = base_url.into().trim_end_matches('/').to_string();
+        self
+    }
+
     fn is_demo(&self) -> bool {
         self.credentials.network == Network::Testnet
     }
@@ -344,6 +352,14 @@ mod tests {
             "p".into(),
         );
         assert!(matches!(no_key, Err(ExchangeError::InvalidCredentials(_))));
+    }
+
+    #[test]
+    fn base_url_can_be_switched_and_is_normalized() {
+        let c = client(Network::Mainnet)
+            .expect("client")
+            .with_base_url("https://eea.okx.com/");
+        assert_eq!(c.base_url, "https://eea.okx.com");
     }
 
     #[test]
