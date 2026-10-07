@@ -308,3 +308,19 @@ def walk_forward(kerzen_je_inst, kandidat, konfig):
         "gesamt": kennzahlen(alle_runden),
         "fenster_anzahl": len(fenster),
     }
+
+
+def holdout(kerzen_je_inst, kandidat, holdout_tage):
+    """Ein einzelner OOS-Block ueber die letzten ``holdout_tage`` Tage.
+
+    Erwartet bereits ausgerichtete Reihen (alle gleich lang; ``suche`` richtet
+    einmal aus). Rechnet ``simuliere()`` ueber ``[L - holdout_tage, L)`` mit
+    ``L = min(len(k))`` und gibt ``kennzahlen()`` zurueck. ``kennzahlen([])``
+    ist sicher (n = 0), ein leerer Block scheitert also sauber an der
+    ``holdout_min_runden``-Pruefung in ``suche``.
+    """
+    laenge = min((len(k) for k in kerzen_je_inst.values()), default=0)
+    matrix = merkmals_matrix(kerzen_je_inst)
+    runden = simuliere(matrix, kerzen_je_inst, kandidat,
+                       laenge - holdout_tage, laenge)
+    return kennzahlen(runden)
