@@ -176,34 +176,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
-- [ ] **T-375 — Mail-Triage ist blind fuer Post mit altem Date-Header**
-      Kontext: `Agenten/Hermes/scripts/mail-inbox-triage.py` sucht mit
-      `SEARCH (SINCE ...)` - das arbeitet auf dem ANKUNFTSDATUM
-      (INTERNALDATE) -, verwirft die Treffer danach aber in Zeile 260 am
-      `Date`-KOPF (`if datum and datum <= bis: continue`). Eine Mail, die
-      frisch in die INBOX kommt, aber ein altes Date-Header traegt, faellt
-      damit durch und wird NIE geprueft.
-      Gemessen 07.10.2026: Nachricht 1905 steht an der juengsten
-      Sequenzposition der INBOX (CoinTracking, "Confirm your email to
-      activate your CoinTracking account"), traegt aber Date 07.09.2026 und
-      erscheint nicht einmal in `SEARCH SINCE 04-Oct-2026` - ihr
-      INTERNALDATE liegt ebenfalls im September, waehrend ihre UID neu ist
-      (typisch fuer eine Mail, die Gmail nachtraeglich in die INBOX legt).
-      Kein Schaden in diesem Fall: der Inhalt ist eine Automatik-
-      Bestaetigung und gehoert nach der Skill-Regel ohnehin nicht gemeldet.
-      Zweiter, kleinerer Punkt: `--stunden` greift laut Zeile 222 NUR, wenn
-      keine Merkdatei vorliegt - ein `--stunden 96` zum Gegenlesen ist bei
-      vorhandener Merkdatei wirkungslos und sieht wie "nichts gefunden" aus.
-      Naechster Schritt: entweder zusaetzlich INTERNALDATE abfragen
-      (`FETCH (INTERNALDATE ...)`) und das JUENGERE der beiden Daten gegen
-      `bis` halten, oder den Fortschritt ueber UID statt ueber Datum fuehren
-      (`UID SEARCH UID <letzte+1>:*`) - das ist die eigentlich richtige
-      Groesse fuer "seit dem letzten Lauf". Dazu `--stunden` zu
-      `--fenster-erzwingen` ergaenzen, damit ein Gegenlesen moeglich ist.
-      Angelegt: 2026-10-07 · Zuletzt: 2026-10-07
-      Betrifft: Agenten/Hermes/scripts/mail-inbox-triage.py,
-      Agenten/Hermes/skills/productivity/email-inbox-triage/SKILL.md,
-      Agenten/Hermes/cache/mail-inbox-triage.json
 - [ ] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Wache haelt sie jetzt, Ursache offen**
       Kontext: Die Windows-Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30,
       Wrapper `Agenten/Routinen/ausserhaus-kopie.ps1`) war am 05.10. um 22:30
@@ -3111,6 +3083,35 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-375 — Mail-Triage ist blind fuer Post mit altem Date-Header**
+      Kontext: `Agenten/Hermes/scripts/mail-inbox-triage.py` sucht mit
+      `SEARCH (SINCE ...)` - das arbeitet auf dem ANKUNFTSDATUM
+      (INTERNALDATE) -, verwirft die Treffer danach aber in Zeile 260 am
+      `Date`-KOPF (`if datum and datum <= bis: continue`). Eine Mail, die
+      frisch in die INBOX kommt, aber ein altes Date-Header traegt, faellt
+      damit durch und wird NIE geprueft.
+      Gemessen 07.10.2026: Nachricht 1905 steht an der juengsten
+      Sequenzposition der INBOX (CoinTracking, "Confirm your email to
+      activate your CoinTracking account"), traegt aber Date 07.09.2026 und
+      erscheint nicht einmal in `SEARCH SINCE 04-Oct-2026` - ihr
+      INTERNALDATE liegt ebenfalls im September, waehrend ihre UID neu ist
+      (typisch fuer eine Mail, die Gmail nachtraeglich in die INBOX legt).
+      Kein Schaden in diesem Fall: der Inhalt ist eine Automatik-
+      Bestaetigung und gehoert nach der Skill-Regel ohnehin nicht gemeldet.
+      Zweiter, kleinerer Punkt: `--stunden` greift laut Zeile 222 NUR, wenn
+      keine Merkdatei vorliegt - ein `--stunden 96` zum Gegenlesen ist bei
+      vorhandener Merkdatei wirkungslos und sieht wie "nichts gefunden" aus.
+      Naechster Schritt: entweder zusaetzlich INTERNALDATE abfragen
+      (`FETCH (INTERNALDATE ...)`) und das JUENGERE der beiden Daten gegen
+      `bis` halten, oder den Fortschritt ueber UID statt ueber Datum fuehren
+      (`UID SEARCH UID <letzte+1>:*`) - das ist die eigentlich richtige
+      Groesse fuer "seit dem letzten Lauf". Dazu `--stunden` zu
+      `--fenster-erzwingen` ergaenzen, damit ein Gegenlesen moeglich ist.
+      Angelegt: 2026-10-07 · Zuletzt: 2026-10-07
+      Betrifft: Agenten/Hermes/scripts/mail-inbox-triage.py,
+      Agenten/Hermes/skills/productivity/email-inbox-triage/SKILL.md,
+      Agenten/Hermes/cache/mail-inbox-triage.json
+      **Erledigt 07.10.2026.** Fortschritt laeuft jetzt ueber die UID statt ueber Datum: UID SEARCH UID <letzte>:* findet auch Mails, deren Date-Header/INTERNALDATE alt ist (Gmail legt nachtraeglich in die INBOX). Gemessen: CoinTracking-Ultimatum (Date 07.09.) wurde vorher still uebersprungen, jetzt gelesen und geprueft; UID-Anker 13350->13354. --fenster-erzwingen erlaubt Gegenlesen auch mit Merkdatei. Commit fb36bb1c, echter Lauf gegen das echte Konto.
 - [x] **T-353 — Der signal-executor brach seit dem 03.10. bei jedem Lauf ab**
       Kontext: Gefunden bei derselben Pruefung (05.10.2026). In
       `Agenten/Hermes/scripts/signal-executor.py` stand
