@@ -283,6 +283,7 @@ Agenten/Bus/skillsbot.ziel.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
+!Agenten/MCP-Server/okx/**
 
 # --- 6) Konfiguration, die Verhalten steuert --------------------------------
 !MaxHirn/.mcp.json
