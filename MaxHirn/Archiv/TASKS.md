@@ -1840,7 +1840,11 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       der Futures-Spur an einer echten Fuellung pruefen.
       Naechster Schritt: Futures-Gebuehr an einer echten (oder Demo-)Order
       messen, in wachen.futures.json eintragen.
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      ERLEDIGT 08.10.2026: onchainos wird von keinem moondev-Agenten mehr
+      gespawnt (0 Treffer im Quellcode, 0 in Logs, kein Prozess); Copilot 0
+      Prozesse; docker nur als MCP-Gateway, npx/uvx 0. CREATE_NO_WINDOW steht
+      an allen Treiber-Spawns.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-10-08
       Betrifft: Agenten/Handel/nautilus_kraken/wachen.futures.json
 
       BELEG 25.09.2026 (echte Fuellung, 1 Kontrakt PF_NEARUSD): Kosten der Runde
@@ -1921,7 +1925,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-059 — Rest-Konsolenblitze: Agenten->onchainos, copilot, docker/npx**
+- [x] **T-059 — Rest-Konsolenblitze: Agenten->onchainos, copilot, docker/npx**
       Kontext: Nach dem Fix der Haus-Prozesse bleiben ~6 kurze Konsolenfenster je
       Minute: (a) die moondev-Agenten (Fremd-Repo new_or_top/kraken) spawnen
       onchainos.exe weiter ohne CREATE_NO_WINDOW; (b) GitHub Copilot (copilot.EXE
