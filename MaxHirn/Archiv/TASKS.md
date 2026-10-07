@@ -1,4 +1,15 @@
 ## Offen
+- [ ] **T-378 — BtcRegimeKurz abgelegt: Kante 1,2:1, nicht lebensfaehig**
+      Kontext: Auftrag Max 05.10.2026 (BTC-Strategie fuer Seitwaerts-/Aufwaerts-Phasen,
+      Haltung max 48 h, moeglichst kurz, hohe Fluktuation). Gebaut und gemessen:
+      12 Spot-Laeufe (4 Stops 0,8-3,0 % x 2 Halbjahre + Gegenversuch ohne Gewinnvorabnahme)
+      + 2 Futures-Laeufe. Kante VOR Gebuehr stabil +0,09 bis +0,14 % je Umsatz (Mittel 0,119 %),
+      Gebuehr 0,20 % je Runde (Spot) -> Kante traegt nicht (0,6:1). Futures (0,05 %/Seite):
+      H1 +0,04 % (break-even), H2 -4,2 % -> Verhaeltnis 1,2:1, aber kein Halbjahr positiv.
+      Beleg: Strategie committet 6a02d231, Skill-Lehre d42da77d, Logs btc_fut_H1/H2.log in cache/scratch.
+      Naechster Schritt: keine - bewusst abgelegt (Entscheidung Max 08.10.2026).
+      Angelegt: 2026-10-08 · Zuletzt: 2026-10-08
+      Betrifft: Agenten/Handel/freqtrade/user_data/strategies/BtcRegimeKurz.py
 - [x] **T-377 - carry.py Wache fertig gestellt**
       Kontext: 07.10.2026. carry.py fertig: Cross-Venue-Carry-Scanner, rein lesend,
       OKX+Kraken, 5 Basen negativ (netto bp -34,1…-37,0), 16/16 Tests gruen.
