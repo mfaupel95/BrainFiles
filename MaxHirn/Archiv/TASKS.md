@@ -1498,21 +1498,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 
 
-- [ ] **T-166 - Zehn neue Repos haben kein Bot-Profil**
-      Kontext: Am 29.09.2026 sind neun Repos ins Manifest der Repos-Zentrale
-      aufgenommen worden (osiris, jev-trader, deepseek-harness,
-      tradememory-protocol, ziplime, foreman, awesome-dsh-plugin,
-      awesome-deepseek-harness-plugins, fast-jev-compaction, jev-chat-jarvis, OpenTerminalUI).
-      Ihre Eintraege tragen bewusst KEIN `bot`-Feld - sonst zeigt die Zeile
-      sofort "Bot-Profil fehlt". Das Hausmuster ist ein Profil je Repo
-      (26 Repo-Bots, Wiki/Werkzeuge/Repo-Bots.md).
-      Naechster Schritt: entscheiden, ob fuer die sechs STARTBAREN (osiris,
-      jev-trader, deepseek-harness, tradememory-protocol, ziplime, OpenTerminalUI) Profile
-      angelegt werden - `hermes profile create <name>` OHNE --clone, dann
-      providers-/model-Block, terminal.cwd auf den Klon, auth.json als Symlink
-      (braucht Admin: Agenten/Hermes/scripts/auth-verknuepfen.ps1).
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Hermes/profiles/, Agenten/Werkzeuge/repos-zentrale/
 
 
 - [ ] **T-168 - deepseek-harness: Klon ungebaut, UI laeuft nur ueber npx**
@@ -3258,6 +3243,22 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-166 - Zehn neue Repos haben kein Bot-Profil**
+      Kontext: Am 29.09.2026 sind neun Repos ins Manifest der Repos-Zentrale
+      aufgenommen worden (osiris, jev-trader, deepseek-harness,
+      tradememory-protocol, ziplime, foreman, awesome-dsh-plugin,
+      awesome-deepseek-harness-plugins, fast-jev-compaction, jev-chat-jarvis, OpenTerminalUI).
+      Ihre Eintraege tragen bewusst KEIN `bot`-Feld - sonst zeigt die Zeile
+      sofort "Bot-Profil fehlt". Das Hausmuster ist ein Profil je Repo
+      (26 Repo-Bots, Wiki/Werkzeuge/Repo-Bots.md).
+      Naechster Schritt: entscheiden, ob fuer die sechs STARTBAREN (osiris,
+      jev-trader, deepseek-harness, tradememory-protocol, ziplime, OpenTerminalUI) Profile
+      angelegt werden - `hermes profile create <name>` OHNE --clone, dann
+      providers-/model-Block, terminal.cwd auf den Klon, auth.json als Symlink
+      (braucht Admin: Agenten/Hermes/scripts/auth-verknuepfen.ps1).
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Hermes/profiles/, Agenten/Werkzeuge/repos-zentrale/
+      **Erledigt 2026-10-07.** Profile fuer die sechs STARTBAREN-Repos (osiris, jev-trader, deepseek-harness, tradememory-protocol, ziplime, OpenTerminalUI) sind konfiguriert und laden: hermes profile list zeigt alle sechs ohne Warnzeilen, je ein echter Lauf (chat -q, pwd) bestaetigt Modell (nous/meituan-longcat-2.5-preview:free) und Arbeitsverzeichnis (Werkstatt/Repos/<repo>). terminal.cwd (4 Profile), Beschreibung profile.yaml (4) und auth.json-Symlink auf den Root-Store (5) ergaenzt. Roster: repos-zentrale.json traegt je Eintrag das bot-Feld, der Manifest-Leser meldet fuer alle sechs bot_da=True.
 - [x] **T-355 — Omniquant: `signal_quelle` ist ein toter Schalter, `maerkte` steht noch auf USDT**
       Kontext: Der Auftrag "dann auf kraken anbinden" (05.10.2026) hat drei
       getrennte Baustellen. Schritt 1 ist erledigt (Commit 24208fb2): die

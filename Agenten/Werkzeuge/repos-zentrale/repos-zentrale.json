@@ -319,6 +319,7 @@
       "ordner": "jev-trader",
       "rolle": "Bot",
       "art": "node",
+      "bot": "jev-trader",
       "notiz": "Monad-Marktmacher auf Kuru (MON-USDC): eine Entscheidung je Block, Bun-Server mit Snapshot und SSE",
       "start": [
         "bun",
@@ -540,6 +541,7 @@
       "ordner": "OpenTerminalUI",
       "rolle": "Terminal",
       "art": "python",
+      "bot": "openterminalui",
       "notiz": "Finanz-Terminal in einer Oberflaeche: Charting, Paper-Trading, OMS, Modell-Labor und Agenten-Konsole (FastAPI + React, MIT)",
       "start": [
         ".venv\\Scripts\\python.exe",
@@ -579,6 +581,7 @@
       "ordner": "osiris",
       "rolle": "Dashboard",
       "art": "node",
+      "bot": "osiris",
       "notiz": "OSINT-Lagedashboard (Next.js 16, MapLibre): Luftfahrt, Seefahrt, Satelliten, Braende, Erdbeben, News, CVEs - laeuft ohne Schluessel",
       "start": [
         "npm",
@@ -674,6 +677,7 @@
       "ordner": "tradememory-protocol",
       "rolle": "MCP-Server",
       "art": "python",
+      "bot": "tradememory-protocol",
       "notiz": "Handelsgedaechtnis als MCP-Server mit REST-API und Dashboard (Port 8000)",
       "start": [
         ".venv\\Scripts\\tradememory-api.exe"
@@ -733,6 +737,7 @@
       "ordner": "ziplime",
       "rolle": "Backtest",
       "art": "python",
+      "bot": "ziplime",
       "notiz": "Backtesting-Framework (Polars) mit interaktivem KI-Assistenten im Terminal",
       "start": [
         ".venv\\Scripts\\python.exe",
