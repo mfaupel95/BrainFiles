@@ -581,23 +581,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 02.10.2026 · Zuletzt 02.10.2026 · Betrifft Agenten/Handel/freqtrade
 
 
-- [ ] **T-312 - futures_probe laesst eine Position OHNE Stop offen, wenn /fills ablehnt**
-      Kontext: Der T-285-Roundtrip am 01.10.2026 (PF_STRKUSD, 1 Kontrakt,
-      VPN getrennt) hat einen echten Fehler im Hauswerkzeug
-      Agenten/Handel/nautilus_kraken/futures_probe.py gezeigt: der KAUF
-      wurde angenommen und gefuellt, das anschliessende Fill-Polling auf
-      /fills scheiterte an `authenticationError`, worauf das Skript abbrach -
-      der Notausstieg im except-Zweig liess die Position OHNE Schutz-Stop
-      offen. Von Hand geschlossen, zurueck auf die drei vorherigen
-      Positionen (PF_SUIUSD, PF_HBARUSD, PF_HYPEUSD). Die Landmine daneben
-      ist behoben (die Probe rechnete 1 Kontrakt = 1 USD Nominal und haette
-      bei der Hausvorgabe 676.816 USD gekauft; jetzt bricht sie mit der
-      echten Zahl ab). OFFEN: warum /fills authenticationError sagt, waehrend
-      /accounts und /openpositions antworten - und der Notausstieg muss
-      unabhaengig vom Fill-Polling laufen.
-      Naechster Schritt: /fills getrennt aufrufen und die Antwort
-      protokollieren; der Verkauf darf nicht vom Fill-Polling abhaengen.
-      Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft nautilus_kraken
 
 
 
@@ -2248,6 +2231,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-312 - futures_probe laesst eine Position OHNE Stop offen, wenn /fills ablehnt**
+      Kontext: Der T-285-Roundtrip am 01.10.2026 (PF_STRKUSD, 1 Kontrakt,
+      VPN getrennt) hat einen echten Fehler im Hauswerkzeug
+      Agenten/Handel/nautilus_kraken/futures_probe.py gezeigt: der KAUF
+      wurde angenommen und gefuellt, das anschliessende Fill-Polling auf
+      /fills scheiterte an `authenticationError`, worauf das Skript abbrach -
+      der Notausstieg im except-Zweig liess die Position OHNE Schutz-Stop
+      offen. Von Hand geschlossen, zurueck auf die drei vorherigen
+      Positionen (PF_SUIUSD, PF_HBARUSD, PF_HYPEUSD). Die Landmine daneben
+      ist behoben (die Probe rechnete 1 Kontrakt = 1 USD Nominal und haette
+      bei der Hausvorgabe 676.816 USD gekauft; jetzt bricht sie mit der
+      echten Zahl ab). OFFEN: warum /fills authenticationError sagt, waehrend
+      /accounts und /openpositions antworten - und der Notausstieg muss
+      unabhaengig vom Fill-Polling laufen.
+      Naechster Schritt: /fills getrennt aufrufen und die Antwort
+      protokollieren; der Verkauf darf nicht vom Fill-Polling abhaengen.
+      Angelegt 01.10.2026 · Zuletzt 02.10.2026 · Betrifft nautilus_kraken
+      
 - [x] **T-340 — Bus-Anbindungen gefixt: squeeze_eth.py und plattenplatz-pruefen**
       **Erledigt 04.10.2026, Commit adac9bc9.** Zwei verschiedene Ursachen,
       zwei verschiedene Loesungen - beide mit Gegenprobe.
