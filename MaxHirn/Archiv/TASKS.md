@@ -263,37 +263,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
     Betrifft: Agenten/Handel/trailing.py, mosaic/handeln.py, kraken/kraken.py.
 
 
-- [ ] **T-365 — `trailing.py` verdrahtet den Stop, ohne vorher die Mengen-Deckung zu pruefen**
-      Kontext: Die Referenz `handel-spur-optimization/references/
-      trailing-stop-gehebelt.md` fordert in Abschnitt 5.1 als ERSTE
-      Reihenfolge: Buch gegen Boerse, und zwar je MENGE - "erst
-      zusammenfuehren, dann trailingen". Grund: eine Position, die an der
-      Boerse in mehreren Schutzauftraegen liegt (die Menge aufgeteilt),
-      ist nicht trailingbar - der engste feuert zuerst, die anderen
-      bleiben als Waisen zurueck. Messbar als Stop-Deckungsgrad
-      (gedeckte Kontrakte / Buchmenge); "ein Treffer genuegt nicht".
-      Gemessen 05.10.2026, 16:30 am Stand `trailing.py` (318 Zeilen, noch
-      nicht committet, Sitzung arbeitet): `verdrahtung()` reicht fuenf Zahlen
-      durch (halten_pct, trigger_r, floor_pct, min_hub_r, max_halten_pct),
-      `menge` wird nur zum Bestellen benutzt, ein Deckungsgrad wird NICHT
-      geprueft, und `tests/test_trailing.py` (19 Tests, alle gruen) fuehrt
-      keine Mengen-Deckung. Die sechs anderen Regeln der Seite sind einzeln
-      verdrahtet und einzeln getestet (Trigger 176, Hochstand 182,
-      Mindestabstand 196, Richtungszwang 204, Liquidationsmarke 214) - es
-      fehlt genau die eine, die die Seite als Reihenfolge VOR dem Verdrahten
-      fordert.
-      Folgewirkung, wenn es so bleibt: eine aufgeteilte Position wird
-      getrailed, der engste Stop feuert, die uebrigen bleiben ungedeckt
-      zurueck - derselbe Zustand, den `xperp/stopdeckung.py` am
-      05.10.2026 mit 19 ungedeckten Kontrakten aufgedeckt hat.
-      Naechster Schritt: WARTEN, bis die Sitzung `trailing.py` committet
-      hat. Dann die Vorpruefung als erste Bedingung in `trailing.nachziehen()`
-      einziehen (Aufruf von `stopdeckung.deckung()`, Abbruch bei Unterdeckung
-      mit Meldung) und mit einer Gegenprobe belegen: eine Position mit
-      geteilter Deckung muss ABGELEHNT werden, dieselbe Position mit
-      voller Deckung darf durch.
-      Angelegt: 05.10.2026 - Zuletzt: 05.10.2026
-      Betrifft: Agenten/Handel/trailing.py, Agenten/Handel/tests/test_trailing.py, Agenten/Hermes/skills/brainfiles/handel-spur-optimierung/references/trailing-stop-gehebelt.md
 - [ ] **T-363 — Die Binance-Gegenprobe des Feed-Backtests ist an einer 25-%-Toleranz zu eng fuer Meme-Coins**
       Kontext: Nach dem Nachladen der Historie (30 x 1D, Cron `historie-wache`,
       05.10.2026) arbeitet `test_replay_feed.GegenprobeBoerseTest` zum ersten Mal
@@ -2231,6 +2200,38 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-365 — `trailing.py` verdrahtet den Stop, ohne vorher die Mengen-Deckung zu pruefen**
+      Kontext: Die Referenz `handel-spur-optimization/references/
+      trailing-stop-gehebelt.md` fordert in Abschnitt 5.1 als ERSTE
+      Reihenfolge: Buch gegen Boerse, und zwar je MENGE - "erst
+      zusammenfuehren, dann trailingen". Grund: eine Position, die an der
+      Boerse in mehreren Schutzauftraegen liegt (die Menge aufgeteilt),
+      ist nicht trailingbar - der engste feuert zuerst, die anderen
+      bleiben als Waisen zurueck. Messbar als Stop-Deckungsgrad
+      (gedeckte Kontrakte / Buchmenge); "ein Treffer genuegt nicht".
+      Gemessen 05.10.2026, 16:30 am Stand `trailing.py` (318 Zeilen, noch
+      nicht committet, Sitzung arbeitet): `verdrahtung()` reicht fuenf Zahlen
+      durch (halten_pct, trigger_r, floor_pct, min_hub_r, max_halten_pct),
+      `menge` wird nur zum Bestellen benutzt, ein Deckungsgrad wird NICHT
+      geprueft, und `tests/test_trailing.py` (19 Tests, alle gruen) fuehrt
+      keine Mengen-Deckung. Die sechs anderen Regeln der Seite sind einzeln
+      verdrahtet und einzeln getestet (Trigger 176, Hochstand 182,
+      Mindestabstand 196, Richtungszwang 204, Liquidationsmarke 214) - es
+      fehlt genau die eine, die die Seite als Reihenfolge VOR dem Verdrahten
+      fordert.
+      Folgewirkung, wenn es so bleibt: eine aufgeteilte Position wird
+      getrailed, der engste Stop feuert, die uebrigen bleiben ungedeckt
+      zurueck - derselbe Zustand, den `xperp/stopdeckung.py` am
+      05.10.2026 mit 19 ungedeckten Kontrakten aufgedeckt hat.
+      Naechster Schritt: WARTEN, bis die Sitzung `trailing.py` committet
+      hat. Dann die Vorpruefung als erste Bedingung in `trailing.nachziehen()`
+      einziehen (Aufruf von `stopdeckung.deckung()`, Abbruch bei Unterdeckung
+      mit Meldung) und mit einer Gegenprobe belegen: eine Position mit
+      geteilter Deckung muss ABGELEHNT werden, dieselbe Position mit
+      voller Deckung darf durch.
+      Angelegt: 05.10.2026 - Zuletzt: 05.10.2026
+      Betrifft: Agenten/Handel/trailing.py, Agenten/Handel/tests/test_trailing.py, Agenten/Hermes/skills/brainfiles/handel-spur-optimierung/references/trailing-stop-gehebelt.md
+      
 - [x] **T-312 - futures_probe laesst eine Position OHNE Stop offen, wenn /fills ablehnt**
       Kontext: Der T-285-Roundtrip am 01.10.2026 (PF_STRKUSD, 1 Kontrakt,
       VPN getrennt) hat einen echten Fehler im Hauswerkzeug
