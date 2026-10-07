@@ -308,43 +308,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 05.10.2026 - Zuletzt: 05.10.2026
       Betrifft: Agenten/Handel/tests/test_replay_feed.py, Agenten/Handel/daten/historie/coingecko_probe.json
 
-- [ ] **T-353 — Der signal-executor brach seit dem 03.10. bei jedem Lauf ab**
-      Kontext: Gefunden bei derselben Pruefung (05.10.2026). In
-      `Agenten/Hermes/scripts/signal-executor.py` stand
-      `from spur_buch import orderweg, venue_inst` VOR jedem `sys.path.insert`.
-      `spur_buch` ist eine flache Datei im Handel-Ordner und kein Paket -
-      der Import warf `ModuleNotFoundError`, der Cron meldete 'Script exited
-      with code 1', und KEINE Spur mit `trigger_modus: signal` kam je zu einem
-      Einstieg. Die drei Tore weiter unten (Freigabefenster, Gebuehren-Tor,
-      Basis-Deckel) machten den sys.path-Eintrag richtig; nur der erste Import
-      stand falsch. Behoben und nachgemessen: der Executor laeuft jetzt
-      durch. Die Queues von signalwelle und marktlage waren allerdings leer,
-      deshalb half die Reparatur heute noch niemandem - sie verhindert nur
-      den naechsten Fall.
-      Naechster Schritt: pruefen, ob die uebrigen signal-Spuren
-      (topmovers, sniper, funding) Queues haben, die liegen bleiben. Der
-      Executor verarbeitet nur EINEN Eintrag je Spur und Lauf - bei vollen
-      Queues braucht es entsprechend viele Takte.
-      Angelegt · 05.10.2026 · Betrifft:
-      Agenten/Hermes/scripts/signal-executor.py, Agenten/Hermes/cron/jobs.json
-- [ ] **T-352 — omnitrade.cmd Stand zeigt 'veraltet': der ema_cross-Lauf (live.json) ist tot, adx_macd laeuft**
-Kontext: omnitrade_bridge (Standard-Anker live.json) meldet am 05.10.2026 00:02
-"veraltet: seit 116 min kein Lebenszeichen (Grenze 300 s)" - PID 55888 existiert
-nicht mehr in der Prozessliste. Das ist die bekannte Falle: die Statusdatei
-bleibt nach hartem Ende auf state=running mit toter PID stehen (omnitrade_lauf.py
-dokumentiert das). Der LEBENDE Lauf ist live_adx_macd_BTCUSDC.json (PID 61280,
-205 s alt, 1 Order gefuellt, netto 0.00585 BTC) - er laeuft seit ~04.10. 22:51
-und wird von der omnitrade-Spur korrekt gespiegelt (lesen.py liest ALLE
-Statusdateien, prozess_pruefen verlangt PID+Datei). Die Anzeige "veraltet" ist
-also ehrlich, kein Fehler.
-
-Naechster Schritt: entscheiden, ob der ema_cross-Lauf (omnitrade.cmd start) wieder
-gestartet werden soll oder ob der Betrieb dauerhaft ueber omnitrade_start.py
-(adx_macd) laeuft. Solange nur die Anzeige betroffen ist: OMNITRADE_STATUS kann
-auf live_adx_macd_BTCUSDC.json zeigen, dann zeigt der Stand den lebenden Lauf.
-
-Angelegt 05.10.2026 · Zuletzt 05.10.2026 · Betrifft: Agenten/Handel/omnitrade_bridge.py,
-omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 - [ ] **T-357 — Aufweck-Rechte der Geraete am Rechner sind nie geprueft worden**
       Kontext: `powercfg -devicequery wake_armed` nennt auf diesem Rechner drei
@@ -385,24 +348,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Vermerk 05.10.2026: umnummeriert von T-351 (Doppeltvergabe zweier Sitzungen).
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: LogiOptions, ROCCAT SWARM, cua-driver, PowerToys
-- [ ] **T-346 — signal-executor laeuft seit 12 Laeufen rot: ModuleNotFoundError spur_buch**
-      Kontext: Hermes-Cron 50921798e27a 'signal-executor' (jede Minute, no_agent,
-      Agenten/Hermes/scripts/signal-executor.py). last_status=error,
-      failure_streak=12, letzter Lauf 04.10. 22:24:43. Der Absturz ist in Zeile 153:
-      `from spur_buch import orderweg, venue_inst` -> ModuleNotFoundError. Der
-      Cron laeuft aus dem Hermes-Skriptordner, nicht aus Agenten/Handel/, und
-      spur_buch liegt dort nicht. Damit ist der AUSFUEHRUNGSWEG fuer
-      trigger_modus=signal-Spuren seit Stunden tot: die Spur legt einen Auftrag
-      in die Queue, aber niemand setzt ihn um. Genau die Trennung, die am
-      03.10. die Ueberhandelung verhindert hat (max. 96 gleiche Einstiege/Tag).
-      Naechster Schritt: sys.path auf Agenten/Handel ergaenzen (mit Pruefung
-      gegen __file__, wie es die Hausregel fuer Spuren-Imports verlangt), dann
-      `cronjob action='run'` und eine Ausgabe pruefen. Wichtig: signal-executor
-      darf erst mit lebendem spur_buch laufen - sonst stehen Orders in der
-      Queue, die beim ersten Lauf alle auf einmal durchgehen.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Hermes/scripts/signal-executor.py, Agenten/Handel/spur_buch.py
-      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 - [ ] **T-347 — omnitrade_futures: echte Papierrunden abwarten, dann Live-Freigabe neu bewerten**
       Kontext: Am 04.10.2026 gestartet: adx_macd auf BTCUSDC/15m im OKX-DEMO
       (PID 61280, Log logs/live-adx_macd-BTCUSDC-20261004-2211.log). Erste
@@ -3166,6 +3111,64 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-353 — Der signal-executor brach seit dem 03.10. bei jedem Lauf ab**
+      Kontext: Gefunden bei derselben Pruefung (05.10.2026). In
+      `Agenten/Hermes/scripts/signal-executor.py` stand
+      `from spur_buch import orderweg, venue_inst` VOR jedem `sys.path.insert`.
+      `spur_buch` ist eine flache Datei im Handel-Ordner und kein Paket -
+      der Import warf `ModuleNotFoundError`, der Cron meldete 'Script exited
+      with code 1', und KEINE Spur mit `trigger_modus: signal` kam je zu einem
+      Einstieg. Die drei Tore weiter unten (Freigabefenster, Gebuehren-Tor,
+      Basis-Deckel) machten den sys.path-Eintrag richtig; nur der erste Import
+      stand falsch. Behoben und nachgemessen: der Executor laeuft jetzt
+      durch. Die Queues von signalwelle und marktlage waren allerdings leer,
+      deshalb half die Reparatur heute noch niemandem - sie verhindert nur
+      den naechsten Fall.
+      Naechster Schritt: pruefen, ob die uebrigen signal-Spuren
+      (topmovers, sniper, funding) Queues haben, die liegen bleiben. Der
+      Executor verarbeitet nur EINEN Eintrag je Spur und Lauf - bei vollen
+      Queues braucht es entsprechend viele Takte.
+      Angelegt · 05.10.2026 · Betrifft:
+      Agenten/Hermes/scripts/signal-executor.py, Agenten/Hermes/cron/jobs.json
+      **Erledigt 07.10.2026.** Derselbe Fix wie T-346 (ModuleNotFoundError spur_buch durch sys.path vor dem Import, Merge 7ad189e9). Zusaetzlich T-351 (b22f7b4e): Executor leert Queues nicht-live Spuren sofort, alle Queues leer, Cron status=ok.
+- [x] **T-346 — signal-executor laeuft seit 12 Laeufen rot: ModuleNotFoundError spur_buch**
+      Kontext: Hermes-Cron 50921798e27a 'signal-executor' (jede Minute, no_agent,
+      Agenten/Hermes/scripts/signal-executor.py). last_status=error,
+      failure_streak=12, letzter Lauf 04.10. 22:24:43. Der Absturz ist in Zeile 153:
+      `from spur_buch import orderweg, venue_inst` -> ModuleNotFoundError. Der
+      Cron laeuft aus dem Hermes-Skriptordner, nicht aus Agenten/Handel/, und
+      spur_buch liegt dort nicht. Damit ist der AUSFUEHRUNGSWEG fuer
+      trigger_modus=signal-Spuren seit Stunden tot: die Spur legt einen Auftrag
+      in die Queue, aber niemand setzt ihn um. Genau die Trennung, die am
+      03.10. die Ueberhandelung verhindert hat (max. 96 gleiche Einstiege/Tag).
+      Naechster Schritt: sys.path auf Agenten/Handel ergaenzen (mit Pruefung
+      gegen __file__, wie es die Hausregel fuer Spuren-Imports verlangt), dann
+      `cronjob action='run'` und eine Ausgabe pruefen. Wichtig: signal-executor
+      darf erst mit lebendem spur_buch laufen - sonst stehen Orders in der
+      Queue, die beim ersten Lauf alle auf einmal durchgehen.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Hermes/scripts/signal-executor.py, Agenten/Handel/spur_buch.py
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
+      **Erledigt 07.10.2026.** Fix in master (Merge 7ad189e9, wt/t_5609d126): sys.path-Eintrag auf Agenten/Handel VOR dem spur_buch-Import, mit __file__-Pruefung (signal-executor.py:163-174). Verifiziert: Cron signal-executor last_status=ok, alle signal_queue*.json leer (0 Eintraege), Executor laeuft durch.
+- [x] **T-352 — omnitrade.cmd Stand zeigt 'veraltet': der ema_cross-Lauf (live.json) ist tot, adx_macd laeuft**
+Kontext: omnitrade_bridge (Standard-Anker live.json) meldet am 05.10.2026 00:02
+"veraltet: seit 116 min kein Lebenszeichen (Grenze 300 s)" - PID 55888 existiert
+nicht mehr in der Prozessliste. Das ist die bekannte Falle: die Statusdatei
+bleibt nach hartem Ende auf state=running mit toter PID stehen (omnitrade_lauf.py
+dokumentiert das). Der LEBENDE Lauf ist live_adx_macd_BTCUSDC.json (PID 61280,
+205 s alt, 1 Order gefuellt, netto 0.00585 BTC) - er laeuft seit ~04.10. 22:51
+und wird von der omnitrade-Spur korrekt gespiegelt (lesen.py liest ALLE
+Statusdateien, prozess_pruefen verlangt PID+Datei). Die Anzeige "veraltet" ist
+also ehrlich, kein Fehler.
+
+Naechster Schritt: entscheiden, ob der ema_cross-Lauf (omnitrade.cmd start) wieder
+gestartet werden soll oder ob der Betrieb dauerhaft ueber omnitrade_start.py
+(adx_macd) laeuft. Solange nur die Anzeige betroffen ist: OMNITRADE_STATUS kann
+auf live_adx_macd_BTCUSDC.json zeigen, dann zeigt der Stand den lebenden Lauf.
+
+Angelegt 05.10.2026 · Zuletzt 05.10.2026 · Betrifft: Agenten/Handel/omnitrade_bridge.py,
+omnitrade.cmd, Werkstatt/omnitrade/status/.
+      **Erledigt 07.10.2026.** Behoben durch Commit ccb34f77 (parallele Sitzung): ema_cross_20_50 als benannter Lauf in LAEUFE aufgenommen - der Waechter (omnitrade-wache.py --anwenden) startet tote Laeufe jetzt automatisch wieder, live.json wird wieder frisch geschrieben. Verifiziert: omnitrade_start.py liste zeigt ema_cross_btc LAEUFT, omnitrade_bridge meldet ok=True (PID 79256).
 - [x] **T-371 — OmniRoute-Log fehlt: Gegenprobe-Test bleibt rot bis zum naechsten Zentrale-Lauf**
       Kontext: T-234 (05.10.2026) hat OmniRoute einmal ueber die Zentrale gestartet und
       das Log erzeugt. Das Log ist seitdem verschwunden (wahrscheinlich beim Junction-
