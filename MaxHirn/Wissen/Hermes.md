@@ -1427,3 +1427,46 @@ Sicherung: `konfig-doktor-wache.py.bak-20261007`.
 Empfehlung offen: der Cron-Text (`konfig-doktor-wache`, 1beb6d64a8c8) beschreibt
 noch den alten Umfang ("prueft die Wurzel-Verweise") - er liegt in der
 Haupt-Cron des Default-Profils und wurde deshalb nicht angefasst.
+
+## Schreibzugriff auf alle Repo-Bot-Profile nachgezogen (08.10.2026)
+
+**Auftrag Max:** die Empfehlung aus T-369 umsetzen - die Profile nachziehen, die
+den Werkstatt-Pfad in `HERMES_WRITE_SAFE_ROOT` nicht trugen.
+
+**Befund vorher (von der erweiterten Wache gemeldet):** 16 von 18 Repo-Bot-`.env`
+ohne Werkstatt-Pfad. Nur `claude-code` und die Haupt-`.env` waren vollstaendig -
+diese Bots konnten nicht in die Repos schreiben.
+
+**Nachgezogen, 16 Dateien:**
+
+- **13 erweitert** (Zeile vorhanden, Wert ergaenzt): basic-memory, caveman,
+  claudian, deepseek-harness, easycliproxyapi, everything-claude-code, gbrain,
+  harvard-trading, moon-dev-agents, obsidian-skills, one-skill-to-rule-them-all,
+  openmontage, openterminal
+- **3 neu angelegt** (kein Eintrag vorhanden): lotse, markt-recherche, nerd -
+  jeweils Leerzeile + Kommentarzeile + Wert am Dateiende
+- **1 uebersprungen:** claude-code (war schon ok)
+
+Neuer Wert ueberall: `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`
+
+**Belege:** Je Datei genau eine geaenderte Zeile (`diff` gegen die Sicherung) -
+bei den drei Anlege-Faellen genau die drei neuen Zeilen, sonst nichts. CRLF/LF und
+BOM-Status je Datei erhalten (13x CRLF, `markt-recherche` LF). 16 Sicherungen unter
+`Agenten/Hermes/.sicherung/profil-env-20261007/`.
+
+**Nachweis, dass es wirkt:** `env_lage()` meldet jetzt GESUND statt 16 Befunde.
+**Gegenprobe auf einer echten Datei** (nicht nur im Test): `caveman/.env`
+absichtlich zurueckgedreht -> Wache meldet sofort "1 von 18 (ohne Werkstatt)";
+wiederhergestellt -> GESUND. Die 12 Tests der Wache bleiben gruen.
+
+**WICHTIGER SICHERHEITSBEFUND (offen, Entscheidung Max):** Die Profil-`.env`-Dateien
+enthalten **echte Zugangsdaten im Klartext** - gemessen an den Laengen keine
+Platzhalter (u.a. ein 108-Zeichen-`ANTHROPIC_TOKEN`, ein 93-Zeichen-`GITHUB_TOKEN`,
+ein 73-Zeichen-`OPENROUTER_API_KEY`, dazu `HF_TOKEN`, `MNEMOVERSE_API_KEY`,
+`OLLAMA_API_KEY`, `A2A_PEER_TOKENS`). Werte wurden **nicht gelesen, nicht ausgegeben,
+nicht protokolliert** - nur Laengen geprueft. Diese Dateien werden von `sichern.ps1`
+mitkopiert (nach G: und O:), liegen also auf zwei weiteren Datentraegern im Klartext.
+Empfehlung: `Zugaenge.md` und die `.env`-Dateien aus der Sicherung ausschliessen
+(`/XD`), oder die Secrets in den Hermes-Credential-Pool ueberfuehren.
+
+Sicherungen: `Agenten/Hermes/.sicherung/profil-env-20261007/<profil>.env` (16).
