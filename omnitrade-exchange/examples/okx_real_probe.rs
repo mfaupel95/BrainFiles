@@ -65,6 +65,79 @@ async fn wait_until_filled(
     Err(format!("{what}: nach 10 s nicht gefüllt (id {id})"))
 }
 
+/// Limit buy far below the market (cannot fill), verify it via `get_open_orders` and
+/// `get_order`, cancel exactly that order, verify again. Other orders on the account are
+/// only counted, never touched. Notional stays a few USD, far below the cap.
+async fn cancel_test(client: &OkxRestClient, symbol: &str, price: f64, confirmed: bool) {
+    const QTY: f64 = 0.0001;
+    if !confirmed {
+        println!("Abbruch: ohne --confirm-real-money wird keine Order angelegt.");
+        std::process::exit(2);
+    }
+    let open_before = client.get_open_orders().await.unwrap_or_else(|e| {
+        println!("get_open_orders fehlgeschlagen: {e}");
+        std::process::exit(1);
+    });
+    println!("Offene Orders im Konto vorher: {}", open_before.len());
+
+    let limit_price = floor_to(price * 0.5, 1);
+    let notional = QTY * limit_price;
+    if notional > MAX_NOTIONAL_USDT {
+        println!("Abbruch: Notional {notional:.2} über dem Deckel.");
+        std::process::exit(2);
+    }
+    let order = match client
+        .place_order(&OrderRequest::limit(
+            symbol.into(),
+            Side::Buy,
+            QTY,
+            limit_price,
+        ))
+        .await
+    {
+        Ok(o) => o,
+        Err(e) => {
+            println!("Limit-Order abgelehnt: {e} (nichts angelegt)");
+            std::process::exit(1);
+        }
+    };
+    println!(
+        "Limit-Buy angelegt: id={} Menge {QTY} @ {limit_price} (~{notional:.2}, Markt {price:.1})",
+        order.id
+    );
+
+    let id = order.id.to_string();
+    let listed = client
+        .get_open_orders()
+        .await
+        .map(|o| o.iter().any(|x| x.id == order.id));
+    println!("In get_open_orders enthalten: {listed:?}");
+    let status = client
+        .get_order(&id, symbol)
+        .await
+        .map(|o| o.map(|o| o.status));
+    println!("get_order vor Storno: {status:?}");
+
+    let cancelled = client.cancel_order(&id, symbol).await;
+    println!("cancel_order: {cancelled:?}");
+    if cancelled.is_err() {
+        println!("ACHTUNG: Storno fehlgeschlagen, Order {id} bitte manuell stornieren!");
+        std::process::exit(1);
+    }
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    let status = client
+        .get_order(&id, symbol)
+        .await
+        .map(|o| o.map(|o| o.status));
+    println!("get_order nach Storno: {status:?}");
+    let open_after = client.get_open_orders().await.unwrap_or_default();
+    println!(
+        "Offene Orders nachher: {} (neue Order noch enthalten: {})",
+        open_after.len(),
+        open_after.iter().any(|x| x.id == order.id)
+    );
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -127,6 +200,10 @@ async fn main() {
         qty * price
     );
 
+    if mode == "cancel-test" {
+        cancel_test(&client, symbol, price, confirmed).await;
+        return;
+    }
     if mode != "run" {
         println!("Nur Prüfung (check): keine Order abgesetzt.");
         return;
