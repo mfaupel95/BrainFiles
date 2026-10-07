@@ -46,5 +46,8 @@
   "grund": "moondev_liquidation",
   "llm_weg": "bonsai",
   "_gebuehr_quelle": "GEMESSEN 01.10.2026 am eigenen OKX-Konto (EEA): Tarif Lv1 FUTURES taker 0,05 %/Seite, gegengeprueft an echten Fuellungen (ZEC-USD_UM_XPERP, ADA-USD_UM_XPERP je 0,0500 %).",
-  "gebuehr_taker": 0.0005
+  "gebuehr_taker": 0.0005,
+  "moeglich": [
+    "perp"
+  ]
 }

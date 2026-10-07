@@ -144,11 +144,15 @@ def ausfuehren(spur, eintrag):
             w = json.load(fh)
     except (OSError, ValueError):
         return False, "wachen.json nicht lesbar (%s)" % spur
-    # Pruefen, ob die Spur ueberhaupt live freigegeben ist
+    # Pruefen, ob die Spur ueberhaupt live freigegeben ist.
+    # T-351 (07.10.2026): eine Spur, die NICHT live ist, leert ihre Queue
+    # sofort. Vorher sammelten sich Eintraege bis zum 30-Minuten-Verfall -
+    # eine Spur, die von live auf papier zurueckgeschaltet wurde, legte
+    # weiter Signale ab, die niemand abholt.
     if not w.get("handel_erlaubt"):
-        return False, "%s: handel_erlaubt=false, Auftrag bleibt in Queue" % spur
+        return False, "%s: handel_erlaubt=false, Queue abgeraeumt" % spur
     if not (w.get("freigabe") or {}).get("erfuellt"):
-        return False, "%s: freigabe nicht erteilt, Auftrag bleibt" % spur
+        return False, "%s: freigabe nicht erteilt, Queue abgeraeumt" % spur
     # Orderweg laden
     #
     # T-346 (04./05.10.2026): dieser Import stand VOR dem sys.path-Eintrag. Der
@@ -311,6 +315,15 @@ def main():
                     json.dump([], fh)
             continue
         ok, meldung = ausfuehren(spur, eintraege[0])
+        if not ok and "Queue abgeraeumt" in meldung:
+            # T-351: Spur nicht live -> Queue leeren, nicht warten.
+            shutil.copy2(pfad, pfad + ".bak-" +
+                         datetime.now().strftime("%Y%m%d%H%M%S"))
+            with open(pfad, "w", encoding="utf-8") as fh:
+                json.dump([], fh, ensure_ascii=False, indent=1)
+            if spur not in je_spur:
+                je_spur[spur] = {"stufen": 1, "meldung": meldung, "ok": False}
+            continue
         if not ok and "bleibt" in meldung:
             if spur not in je_spur:
                 je_spur[spur] = {"stufen": 0, "meldung": meldung, "ok": False}

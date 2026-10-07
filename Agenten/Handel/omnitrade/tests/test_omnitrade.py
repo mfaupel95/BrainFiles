@@ -26,8 +26,9 @@ HANDEL = os.path.dirname(SPUR)
 # Reihenfolge: zuletzt eingefuegt = vorne. SPUR MUSS vorne stehen, sonst
 # gewinnt scanner/handeln.py gegen das handeln.py dieser Spur.
 for p in (os.path.join(HANDEL, "scanner"), HANDEL, SPUR):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+    while p in sys.path:
+        sys.path.remove(p)
+    sys.path.insert(0, p)
 
 import handeln as h      # noqa: E402
 import lesen as l        # noqa: E402

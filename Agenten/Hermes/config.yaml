@@ -862,7 +862,7 @@ moa:
       # nicht der guenstigste Berater.
       aggregator:
         provider: nous
-        model: google/gemma-4-26b-a4b-it
+        model: inclusionai/ling-3.0-flash-fin:free
       degraded_reference_policy: loud
       fanout: user_turn
       enabled: true
@@ -954,7 +954,7 @@ moa:
       fanout: user_turn
   aggregator:
     provider: nous
-    model: google/gemma-4-26b-a4b-it
+    model: inclusionai/ling-3.0-flash-fin:free
   degraded_reference_policy: loud
   enabled: true
   fanout: user_turn

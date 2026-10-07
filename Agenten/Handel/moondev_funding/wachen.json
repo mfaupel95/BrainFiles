@@ -46,5 +46,8 @@
   "drawdown_halbierung_usd": 15.0,
   "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "_gebuehr_quelle": "GEMESSEN 01.10.2026 am eigenen OKX-Konto (EEA): Tarif Lv1 FUTURES taker 0,05 %/Seite, gegengeprueft an echten Fuellungen (ZEC-USD_UM_XPERP, ADA-USD_UM_XPERP je 0,0500 %).",
-  "gebuehr_taker": 0.0005
+  "gebuehr_taker": 0.0005,
+  "moeglich": [
+    "perp"
+  ]
 }
