@@ -101,6 +101,17 @@ def daten_holen(w):
     return quelle(w)
 
 
+def preis_fuer(inst):
+    """Der Kurs EINES Symbols - fuer Positionen, die aus dem Feed gefallen sind.
+
+    T-160: die Binance-Top-Mover wechseln staendig; eine offene Position darf
+    ihren Kurs nicht daran verlieren. Ueber `daten.binance_symbol_kurs` bleibt
+    der Kurs ueber den Symbolwechsel hinweg erhalten - `spur_buch.zyklus` ruft
+    das nur fuer verwaiste Positionen auf.
+    """
+    return daten.binance_symbol_kurs(inst)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -122,7 +133,7 @@ def main():
     # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur
     # die Meldung gehoert, entscheidet diese Datei.
     return buch.zyklus(HIER, daten_holen, signal, a.modus,
-                       "handel/moondev_signalwelle")
+                       "handel/moondev_signalwelle", preis_fuer=preis_fuer)
 
 
 if __name__ == "__main__":
