@@ -67,6 +67,14 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
   still und die Regel wuerde umgangen. Wer in einen fremden Bereich schreibt, meldet
   das als BEFUND (`--aufrufer <bereich> --pfad <pfad>`, Exitcode 1 bei Konflikt), es
   wird nicht blockiert.
+- **Kein `git stash` im geteilten Arbeitsbaum (seit 08.10.2026).** Der Stash
+  friert Arbeit ein, während andere Sitzungen weiter committen; ein späteres
+  `stash pop` konfligiert gegen Zwischencommits (Fall „Vault-Schutzschicht":
+  7 Konflikte gegen 14 Zwischencommits). Eigenes sofort committen statt
+  stashen. Pop doch nötig: bei Konflikt ist OURS der aktuelle Repo-Stand,
+  THEIRS der ältere Stash - Seiten per Datum vergleichen (Stash-Datum gegen
+  die Commits, die die Datei seither berührt haben), nur übernehmen, was im
+  Repo noch fehlt; Stash erst nach Verifikation droppen.
 
 ## Zweige (Stand 29.09.2026)
 
