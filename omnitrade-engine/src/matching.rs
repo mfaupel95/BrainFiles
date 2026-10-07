@@ -53,13 +53,34 @@ impl MatchingEngine {
                     reason: "limit order price must be positive and non-NaN",
                 });
             }
-            OrderType::StopMarket | OrderType::StopLoss { .. } | OrderType::TakeProfit { .. }
-                if order.stop_price <= 0.0 || order.stop_price.is_nan() =>
-            {
+            OrderType::StopMarket if order.stop_price <= 0.0 || order.stop_price.is_nan() => {
                 return Err(EngineError::InvalidOrderSize {
                     size: order.stop_price,
                     reason: "stop price must be positive and non-NaN",
                 });
+            }
+            OrderType::StopLoss {
+                trigger_price,
+                limit_price,
+            }
+            | OrderType::TakeProfit {
+                trigger_price,
+                limit_price,
+            } => {
+                if *trigger_price <= 0.0 || trigger_price.is_nan() {
+                    return Err(EngineError::InvalidOrderSize {
+                        size: *trigger_price,
+                        reason: "trigger price must be positive and non-NaN",
+                    });
+                }
+                if let Some(limit) = limit_price {
+                    if *limit <= 0.0 || limit.is_nan() {
+                        return Err(EngineError::InvalidOrderSize {
+                            size: *limit,
+                            reason: "limit price must be positive and non-NaN",
+                        });
+                    }
+                }
             }
             OrderType::TrailingStop { percent } if *percent <= 0.0 || percent.is_nan() => {
                 return Err(EngineError::InvalidOrderSize {
@@ -234,8 +255,12 @@ impl MatchingEngine {
                 trigger_price,
                 limit_price,
             } => {
-                // StopLoss triggers when candle low <= trigger_price
-                if candle.low <= *trigger_price {
+                // Sell-SL schützt ein Long (fällt auf Trigger), Buy-SL schützt ein Short (steigt).
+                let hit = match order.side {
+                    Side::Sell => candle.low <= *trigger_price,
+                    Side::Buy => candle.high >= *trigger_price,
+                };
+                if hit {
                     let fill_price = limit_price.unwrap_or(*trigger_price);
                     (true, fill_price, true, FillType::StopLoss)
                 } else {
@@ -246,8 +271,12 @@ impl MatchingEngine {
                 trigger_price,
                 limit_price,
             } => {
-                // TakeProfit triggers when candle high >= trigger_price
-                if candle.high >= *trigger_price {
+                // Sell-TP schließt ein Long im Plus (steigt), Buy-TP ein Short im Plus (fällt).
+                let hit = match order.side {
+                    Side::Sell => candle.high >= *trigger_price,
+                    Side::Buy => candle.low <= *trigger_price,
+                };
+                if hit {
                     let fill_price = limit_price.unwrap_or(*trigger_price);
                     (true, fill_price, true, FillType::TakeProfit)
                 } else {
@@ -255,18 +284,33 @@ impl MatchingEngine {
                 }
             }
             OrderType::TrailingStop { percent } => {
-                // Initialize highest price on first candle if not set; track the running high
-                let current_high = candle.high;
-                let highest = order.trailing_highest_price.unwrap_or(current_high);
-                let updated_highest = highest.max(current_high);
-                order.trailing_highest_price = Some(updated_highest);
-
-                // Check if current price falls below threshold
-                let threshold = updated_highest * (1.0 - percent);
-                if candle.low <= threshold {
-                    (true, threshold, true, FillType::TrailingStop)
-                } else {
-                    (false, 0.0, false, FillType::Regular)
+                // `trailing_highest_price` hält das laufende Extrem: Hoch bei Sell (Long-Schutz),
+                // Tief bei Buy (Short-Schutz).
+                match order.side {
+                    Side::Sell => {
+                        let extreme = order
+                            .trailing_highest_price
+                            .map_or(candle.high, |h| h.max(candle.high));
+                        order.trailing_highest_price = Some(extreme);
+                        let threshold = extreme * (1.0 - percent);
+                        if candle.low <= threshold {
+                            (true, threshold, true, FillType::TrailingStop)
+                        } else {
+                            (false, 0.0, false, FillType::Regular)
+                        }
+                    }
+                    Side::Buy => {
+                        let extreme = order
+                            .trailing_highest_price
+                            .map_or(candle.low, |l| l.min(candle.low));
+                        order.trailing_highest_price = Some(extreme);
+                        let threshold = extreme * (1.0 + percent);
+                        if candle.high >= threshold {
+                            (true, threshold, true, FillType::TrailingStop)
+                        } else {
+                            (false, 0.0, false, FillType::Regular)
+                        }
+                    }
                 }
             }
             _ => (false, 0.0, false, FillType::Regular),
@@ -380,7 +424,7 @@ mod tests {
         let mut engine = setup_engine();
         let order = create_test_order(
             1,
-            Side::Buy,
+            Side::Sell,
             OrderType::TrailingStop { percent: 0.05 },
             0.0,
             1.0,
@@ -400,7 +444,7 @@ mod tests {
         let mut engine = setup_engine();
         let order = create_test_order(
             1,
-            Side::Buy,
+            Side::Sell,
             OrderType::TrailingStop { percent: 0.05 },
             0.0,
             1.0,
@@ -467,5 +511,107 @@ mod tests {
         let engine = setup_engine();
         let zero_qty = create_test_order(1, Side::Buy, OrderType::Market, 0.0, 0.0);
         assert!(engine.submit_order(&zero_qty).is_err());
+    }
+
+    #[test]
+    fn submit_accepts_stop_loss_with_trigger_price_and_zero_stop_price() {
+        let engine = setup_engine();
+        let order = create_test_order(
+            1,
+            Side::Sell,
+            OrderType::StopLoss {
+                trigger_price: 49_000.0,
+                limit_price: None,
+            },
+            0.0,
+            1.0,
+        );
+        assert!(engine.submit_order(&order).is_ok());
+    }
+
+    #[test]
+    fn submit_rejects_non_positive_or_nan_trigger_price() {
+        let engine = setup_engine();
+        for trigger in [0.0, -1.0, f64::NAN] {
+            let sl = create_test_order(
+                1,
+                Side::Sell,
+                OrderType::StopLoss {
+                    trigger_price: trigger,
+                    limit_price: None,
+                },
+                0.0,
+                1.0,
+            );
+            let tp = create_test_order(
+                2,
+                Side::Sell,
+                OrderType::TakeProfit {
+                    trigger_price: trigger,
+                    limit_price: None,
+                },
+                0.0,
+                1.0,
+            );
+            assert!(engine.submit_order(&sl).is_err());
+            assert!(engine.submit_order(&tp).is_err());
+        }
+    }
+
+    #[test]
+    fn buy_trailing_stop_tracks_low_and_triggers_on_rise() {
+        let mut engine = setup_engine();
+        let order = create_test_order(
+            1,
+            Side::Buy,
+            OrderType::TrailingStop { percent: 0.05 },
+            0.0,
+            1.0,
+        );
+        let mut pending = vec![order];
+
+        // Erste Kerze: Tief 100, Hoch 103 -> Schwelle 105, kein Auslöser.
+        let c1 = Candle::new(1000, 102.0, 103.0, 100.0, 101.0, 10.0);
+        assert!(engine.process_candle(&c1, &mut pending).is_empty());
+        // Zweite Kerze: neues Tief 90 -> Schwelle 94,5; Hoch 94 reicht nicht.
+        let c2 = Candle::new(2000, 95.0, 94.0, 90.0, 92.0, 10.0);
+        assert!(engine.process_candle(&c2, &mut pending).is_empty());
+        // Dritte Kerze: Hoch 95 >= 94,5 -> löst aus.
+        let c3 = Candle::new(3000, 92.0, 95.0, 91.0, 94.0, 10.0);
+        let fills = engine.process_candle(&c3, &mut pending);
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].fill_type, FillType::TrailingStop);
+    }
+
+    #[test]
+    fn buy_side_stop_loss_and_take_profit_mirror_sell_side() {
+        let mut engine = setup_engine();
+        let sl = create_test_order(
+            1,
+            Side::Buy,
+            OrderType::StopLoss {
+                trigger_price: 105.0,
+                limit_price: None,
+            },
+            0.0,
+            1.0,
+        );
+        let tp = create_test_order(
+            2,
+            Side::Buy,
+            OrderType::TakeProfit {
+                trigger_price: 90.0,
+                limit_price: None,
+            },
+            0.0,
+            1.0,
+        );
+        let mut pending = vec![sl, tp];
+
+        // Hoch 106 löst nur den Buy-SL aus, Tief 95 nicht den Buy-TP.
+        let c1 = Candle::new(1000, 100.0, 106.0, 95.0, 100.0, 10.0);
+        let fills = engine.process_candle(&c1, &mut pending);
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].fill_type, FillType::StopLoss);
     }
 }
