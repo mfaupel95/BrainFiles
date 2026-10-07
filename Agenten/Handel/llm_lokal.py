@@ -71,8 +71,8 @@ BONSAI_MAX_TOKENS = 512
 # genommen ist damit das schnellste Modell, das den Vertrag VOLLSTAENDIG haelt.
 # Die Richtungen stimmen ueber alle Modelle ueberein (BUY / SELL / SELL), das
 # grosse Modell ist also nicht noetig - wer ein zweites Urteil will, traegt in
-# der wachen.json der Spur `llm_modell` auf qwen36-35b-a3b:8k um.
-MODELL_STANDARD = "qwen35-8k:latest"
+# der wachen.json der Spur `llm_modell` auf qwen3.5:9b um.
+MODELL_STANDARD = "deepseek-chat:latest"
 ZEITGRENZE = 120
 NUM_PREDICT = 200
 SEED = 42
