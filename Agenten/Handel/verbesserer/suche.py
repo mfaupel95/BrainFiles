@@ -121,7 +121,7 @@ def _renormiert(gruppe):
     return {name: wert / summe for name, wert in gruppe.items()}
 
 
-def nachbarn(kandidat, grenzen):
+def nachbarn(kandidat, grenzen, gewichte_durchsuchbar=True):
     """Deterministische bounded Nachbarschaft von ``kandidat``.
 
     * Je durchsuchbarem Gate ein Nachbar mit ``+Schritt`` und einer mit
@@ -164,7 +164,10 @@ def nachbarn(kandidat, grenzen):
     # kann ein ohnehin hohes Gewicht knapp ueber 0,5 heben - solche Nachbarn
     # liegen nicht mehr im Rahmen und werden verworfen, damit jeder von
     # nachbarn() gelieferte Kandidat im_rahmen() erfuellt.
-    for gruppe in ("chance", "risiko"):
+    #
+    # gewichte_durchsuchbar=False (Spur 3): bewertung.py ist mit Spur 1
+    # geteilt, ein Kraken-Befund darf dessen Live-Scoring nicht mitaendern.
+    for gruppe in ("chance", "risiko") if gewichte_durchsuchbar else ():
         namen = list(kandidat["gewichte"][gruppe])
         for name in namen:
             for richtung in (_GEWICHT_SCHRITT, -_GEWICHT_SCHRITT):
