@@ -250,7 +250,8 @@ def erst_hoch(p, kurs):
 
 # --- Der Weg zur Boerse -----------------------------------------------------
 
-def nachziehen(p, kurs, weg, w, liq=None, jetzt=None, tick=None, trocken=False):
+def nachziehen(p, kurs, weg, w, liq=None, jetzt=None, tick=None, trocken=False,
+              deckung_pruefen=None):
     """Den Stop an der BOERSE aendern. Gibt (neu, grund) zurueck.
 
     `weg` ist das Boersen-Modul der Spur. Es braucht ZWEI Faehigkeiten, die
@@ -258,7 +259,28 @@ def nachziehen(p, kurs, weg, w, liq=None, jetzt=None, tick=None, trocken=False):
     marke, falls der Weg gehebelt handelt. Fehlt `stop_nachziehen`, sagt
     dieser Weg das laut, statt einen Stop zu stornieren und neu zu setzen -
     das Fenster OHNE Schutz dazwischen ist der Grund.
+
+    `deckung_pruefen` (optional) ist eine Funktion (p) -> dict mit
+    gedeckt/soll/fehlt. Sie wird als ERSTE Bedingung abgefragt (Referenz
+    trailing-stop-gehebelt.md Abschnitt 5.1: 'erst zusammenfuehren, dann
+    trailingen'). Eine Position, deren Schutz-Menge an der Boerse die
+    Buchmenge nicht deckt, ist nicht trailingbar: der engste Stop feuert
+    zuerst, die uebrigen bleiben als Waisen zurueck. Bei Unterdeckung bricht
+    dieser Weg ab, statt einen aufgeteilten Stop weiter zu verschieben.
     """
+    if deckung_pruefen is not None:
+        try:
+            d = deckung_pruefen(p)
+        except Exception as e:                                   # noqa: BLE001
+            return None, ("Deckungspruefung fehlgeschlagen (%s) - der alte "
+                          "Stop %.6f bleibt stehen" % (e, float(p.get("stop") or 0)))
+        fehlt = float((d or {}).get("fehlt") or 0.0)
+        if fehlt > 1e-6:
+            return None, ("Position nicht voll gedeckt (geschuetzt %.2f von "
+                          "%.2f, fehlt %.2f) - erst mit stopdeckung.py "
+                          "zusammenfuehren, dann trailingen"
+                          % (float(d.get("gedeckt") or 0.0),
+                             float(d.get("soll") or 0.0), fehlt))
     k, grund = kandidat(p, kurs, w, liq=liq, jetzt=jetzt)
     if k is None:
         return None, grund

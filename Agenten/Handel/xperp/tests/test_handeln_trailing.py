@@ -55,6 +55,16 @@ class AttrappeOkxf:
         self.aufrufe.append((algo_id, inst, float(preis)))
         return str(algo_id)
 
+    # T-365: die Mengen-Deckung ist die ERSTE Bedingung. Die Attrappe
+    # simuliert eine VOLL gedeckte Position (10 Kontrakte, 10 geschuetzt),
+    # damit der Trailing durchlaufen darf.
+    def positionen(self):
+        return [{"instId": "TEST-USD_UM_XPERP-310404", "pos": 10.0}]
+
+    def schutz_stops(self, inst):
+        return [{"reduceOnly": "true", "side": "sell",
+                 "slTriggerPx": 95.0, "sz": "10"}]
+
 
 def position(**kwargs):
     p = {"inst": "TEST-USD_UM_XPERP-310404", "basis": "TEST",

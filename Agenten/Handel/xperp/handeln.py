@@ -1262,9 +1262,23 @@ def _trailing_versuch(p, kurs, w):
         return False
     p["stop_id"] = kennung
     tick = _tick_fuer(p.get("inst"))
+    # T-365: die Mengen-Deckung ist die ERSTE Bedingung (Referenz
+    # trailing-stop-gehebelt.md 5.1: 'erst zusammenfuehren, dann trailingen').
+    # Eine Position, deren Schutz-Menge an der Boerse die Buchmenge nicht
+    # deckt, ist nicht trailingbar - der engste Stop feuert zuerst, die
+    # uebrigen bleiben als Waisen zurueck. stopdeckung.deckung() misst das.
+    def _deckung_pruefen(pos):
+        try:
+            roh = {x["instId"]: x for x in okxf.positionen()}
+        except Exception as e:                              # noqa: BLE001
+            raise RuntimeError("Boersenfrage fehlgeschlagen (%s)" % e)
+        # stopdeckung.okxf auf das okxf DIESER Spur setzen - sonst laedt
+        # deckung() das echte okxf (Netzaufruf) statt der Testattrappe.
+        stopdeckung.okxf = okxf
+        return stopdeckung.deckung(pos, roh)
     ergebnis, grund = trailing_modul.nachziehen(
         p, kurs, okxf, w, liq=float(p.get("liq") or 0.0) or None,
-        tick=tick)
+        tick=tick, deckung_pruefen=_deckung_pruefen)
     if ergebnis is None:
         # Kein Trailing ist der NORMALFALL (vor dem Trigger, Hub zu klein,
         # Stop zu nah am Kurs). Das ist kein Fehler und gehoert NICHT ins

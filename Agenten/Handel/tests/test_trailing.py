@@ -289,5 +289,74 @@ class EinProzentDreiRTest(unittest.TestCase):
         self.assertIsNone(k2, g2)
 
 
+class DeckungsTest(unittest.TestCase):
+    """T-365: die Mengen-Deckung ist die ERSTE Bedingung (Referenz 5.1).
+
+    Eine Position, deren Schutz-Menge an der Boerse die Buchmenge nicht
+    deckt, ist nicht trailingbar: der engste Stop feuert zuerst, die
+    uebrigen bleiben als Waisen zurueck. Erst zusammenfuehren, dann
+    trailingen.
+    """
+
+    class Weg:
+        def __init__(self):
+            self.rufe = []
+
+        def stop_nachziehen(self, kennung, inst, preis):
+            self.rufe.append((kennung, inst, preis))
+            return "algo-2"
+
+    def test_geteilte_deckung_wird_abgelehnt(self):
+        p = long_position()          # menge 10.0
+        w = tr.neu()
+        weg = self.Weg()
+
+        def deckung(pos):
+            return {"gedeckt": 6.0, "soll": 10.0, "fehlt": 4.0}
+
+        k, g = tr.nachziehen(p, 110.0, weg, w, tick=0.1,
+                             deckung_pruefen=deckung)
+        self.assertIsNone(k, "geteilte Deckung darf nicht trailingen")
+        self.assertIn("nicht voll gedeckt", g)
+        self.assertEqual(weg.rufe, [], "der Weg wurde trotz Unterdeckung gerufen")
+
+    def test_volle_deckung_darf_durch(self):
+        p = long_position()
+        w = tr.neu()
+        weg = self.Weg()
+
+        def deckung(pos):
+            return {"gedeckt": 10.0, "soll": 10.0, "fehlt": 0.0}
+
+        k, g = tr.nachziehen(p, 110.0, weg, w, tick=0.1,
+                             deckung_pruefen=deckung)
+        self.assertIsNotNone(k, "volle Deckung muss trailingen duerfen: %s" % g)
+        self.assertEqual(len(weg.rufe), 1)
+
+    def test_ohne_deckungspruefung_unveraendert(self):
+        """Ohne deckung_pruefen aendert sich nichts - Rueckwaertskompatibilitaet."""
+        p = long_position()
+        w = tr.neu()
+        weg = self.Weg()
+        k, g = tr.nachziehen(p, 110.0, weg, w, tick=0.1)
+        self.assertIsNotNone(k, g)
+        self.assertEqual(len(weg.rufe), 1)
+
+    def test_deckungspruefung_fehler_laesst_alten_stop_stehen(self):
+        p = long_position()
+        w = tr.neu()
+        weg = self.Weg()
+        alt = float(p["stop"])
+
+        def deckung(pos):
+            raise RuntimeError("Boersenfrage fehlgeschlagen")
+
+        k, g = tr.nachziehen(p, 110.0, weg, w, tick=0.1,
+                             deckung_pruefen=deckung)
+        self.assertIsNone(k)
+        self.assertEqual(float(p["stop"]), alt, "der Stop wurde trotzdem bewegt")
+        self.assertIn("Deckungspruefung fehlgeschlagen", g)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
