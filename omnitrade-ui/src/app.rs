@@ -2,7 +2,9 @@
 
 use std::sync::{Arc, RwLock};
 
-use omnitrade_core::Position;
+use std::path::PathBuf;
+
+use omnitrade_core::{Order, Position};
 use omnitrade_engine::L2OrderBook;
 
 use crate::state::UIState;
@@ -46,6 +48,10 @@ pub struct OmniTradeAppBehavior<'a> {
     pub positions: &'a [Position],
     /// Snapshot of the console log lines (oldest first).
     pub log: &'a [String],
+    /// Account balances `(asset, free, locked)`.
+    pub balances: &'a [(String, f64, f64)],
+    /// Open orders reported by the exchange.
+    pub orders: &'a [Order],
 }
 
 impl<'a> egui_tiles::Behavior<PanelKind> for OmniTradeAppBehavior<'a> {
@@ -66,40 +72,91 @@ impl<'a> egui_tiles::Behavior<PanelKind> for OmniTradeAppBehavior<'a> {
             PanelKind::OrderBook => {
                 self.depth.show(ui, self.orderbook);
             }
-            PanelKind::Positions => show_positions(ui, self.positions),
+            PanelKind::Positions => show_positions(ui, self.positions, self.balances, self.orders),
             PanelKind::Console => show_console(ui, self.log),
         }
         egui_tiles::UiResponse::None
     }
 }
 
-fn show_positions(ui: &mut egui::Ui, positions: &[Position]) {
-    if positions.is_empty() {
-        ui.label("Keine offenen Positionen");
-        return;
-    }
-    egui::Grid::new("positions_grid")
-        .striped(true)
+fn show_positions(
+    ui: &mut egui::Ui,
+    positions: &[Position],
+    balances: &[(String, f64, f64)],
+    orders: &[Order],
+) {
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
         .show(ui, |ui| {
-            for header in [
-                "Symbol",
-                "Seite",
-                "Menge",
-                "Einstand",
-                "Unrealisiert",
-                "Realisiert",
-            ] {
-                ui.strong(header);
+            ui.strong("Positionen");
+            if positions.is_empty() {
+                ui.label("Keine offenen Positionen");
+            } else {
+                egui::Grid::new("positions_grid")
+                    .striped(true)
+                    .show(ui, |ui| {
+                        for h in [
+                            "Symbol",
+                            "Seite",
+                            "Menge",
+                            "Einstand",
+                            "Unrealisiert",
+                            "Realisiert",
+                        ] {
+                            ui.strong(h);
+                        }
+                        ui.end_row();
+                        for p in positions {
+                            ui.label(&p.symbol);
+                            ui.label(format!("{:?}", p.side));
+                            ui.label(format!("{:.6}", p.quantity));
+                            ui.label(format!("{:.2}", p.entry_price));
+                            ui.label(format!("{:+.2}", p.unrealized_pnl));
+                            ui.label(format!("{:+.2}", p.realized_pnl));
+                            ui.end_row();
+                        }
+                    });
             }
-            ui.end_row();
-            for p in positions {
-                ui.label(&p.symbol);
-                ui.label(format!("{:?}", p.side));
-                ui.label(format!("{:.6}", p.quantity));
-                ui.label(format!("{:.2}", p.entry_price));
-                ui.label(format!("{:+.2}", p.unrealized_pnl));
-                ui.label(format!("{:+.2}", p.realized_pnl));
-                ui.end_row();
+            ui.separator();
+            ui.strong("Offene Orders");
+            if orders.is_empty() {
+                ui.label("Keine offenen Orders");
+            } else {
+                egui::Grid::new("orders_grid").striped(true).show(ui, |ui| {
+                    for h in ["Symbol", "Seite", "Typ", "Preis", "Menge", "Gefüllt"] {
+                        ui.strong(h);
+                    }
+                    ui.end_row();
+                    for o in orders {
+                        ui.label(&o.symbol);
+                        ui.label(format!("{:?}", o.side));
+                        ui.label(format!("{:?}", o.order_type));
+                        ui.label(format!("{:.2}", o.price));
+                        ui.label(format!("{:.6}", o.quantity));
+                        ui.label(format!("{:.6}", o.filled_quantity));
+                        ui.end_row();
+                    }
+                });
+            }
+            ui.separator();
+            ui.strong("Bestände");
+            if balances.is_empty() {
+                ui.label("Keine Kontodaten (Zugänge fehlen oder noch nicht geladen)");
+            } else {
+                egui::Grid::new("balances_grid")
+                    .striped(true)
+                    .show(ui, |ui| {
+                        for h in ["Asset", "Frei", "Gesperrt"] {
+                            ui.strong(h);
+                        }
+                        ui.end_row();
+                        for (asset, free, locked) in balances {
+                            ui.label(asset);
+                            ui.label(format!("{free:.8}"));
+                            ui.label(format!("{locked:.8}"));
+                            ui.end_row();
+                        }
+                    });
             }
         });
 }
@@ -127,6 +184,8 @@ pub struct OmniTradeApp {
     pub depth: DepthWidget,
     /// Symbol shown in the chart and order book panels.
     pub symbol: String,
+    /// Path of the kill-switch flag file shared with `omnitrade-cli kill`.
+    pub kill_path: PathBuf,
 }
 
 impl OmniTradeApp {
@@ -155,13 +214,48 @@ impl OmniTradeApp {
             chart: CandleChartWidget::new(Vec::new()),
             depth: DepthWidget::new(15),
             symbol: symbol.into(),
+            kill_path: crate::kill::default_path(),
         }
+    }
+}
+
+impl OmniTradeApp {
+    /// Kill-switch button (sets the shared flag file) and, once set, a reset button.
+    ///
+    /// The running live loop notices the flag, cancels the symbol's open orders and
+    /// stops; it does not sell holdings.
+    fn kill_controls(&mut self, ui: &mut egui::Ui) {
+        if crate::kill::is_engaged(&self.kill_path) {
+            ui.colored_label(egui::Color32::LIGHT_RED, "NOT-AUS GESETZT");
+            if ui.button("Zurücksetzen").clicked() {
+                self.report_kill(crate::kill::clear(&self.kill_path), "Not-Aus aufgehoben");
+            }
+        } else if ui
+            .add(egui::Button::new("NOT-AUS").fill(egui::Color32::DARK_RED))
+            .clicked()
+        {
+            self.report_kill(
+                crate::kill::engage(&self.kill_path),
+                "Not-Aus gesetzt: Live-Schleifen stornieren offene Orders und stoppen",
+            );
+        }
+    }
+
+    fn report_kill(&self, result: std::io::Result<()>, ok_message: &str) {
+        let line = match result {
+            Ok(()) => ok_message.to_string(),
+            Err(e) => format!("Not-Aus-Datei nicht schreibbar: {e}"),
+        };
+        self.state
+            .write()
+            .unwrap_or_else(|p| p.into_inner())
+            .push_log(line);
     }
 }
 
 impl eframe::App for OmniTradeApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let (current_orderbook, mut positions, log, connected, balance, pnl) = {
+        let (current_orderbook, mut positions, log, connected, balance, pnl, balances, orders) = {
             let guard = self
                 .state
                 .read()
@@ -175,6 +269,8 @@ impl eframe::App for OmniTradeApp {
                 guard.is_connected(),
                 guard.account_balance,
                 guard.total_pnl,
+                guard.balances.clone(),
+                guard.open_orders.clone(),
             )
         };
         positions.sort_by(|a, b| a.symbol.cmp(&b.symbol));
@@ -191,6 +287,8 @@ impl eframe::App for OmniTradeApp {
                 ui.separator();
                 ui.label(format!("Guthaben {balance:.2}"));
                 ui.label(format!("PnL {pnl:+.2}"));
+                ui.separator();
+                self.kill_controls(ui);
             });
         });
 
@@ -200,6 +298,8 @@ impl eframe::App for OmniTradeApp {
             orderbook: current_orderbook.as_ref(),
             positions: &positions,
             log: &log,
+            balances: &balances,
+            orders: &orders,
         };
 
         egui::CentralPanel::default().show(ctx, |ui| {

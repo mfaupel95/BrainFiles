@@ -1,11 +1,13 @@
 //! Main application entry point for `omnitrade-ui`.
 //!
 //! Usage: `omnitrade-ui [SYMBOL] [testnet|mainnet]` (defaults: `BTCUSDT`, `testnet`).
-//! The GUI only consumes public market data; it never places orders.
+//! Market data is public; with credentials the account panel is filled read-only.
+//! The GUI never places orders; its only action is the kill-switch flag file.
 
 use std::sync::{Arc, RwLock};
 
 use omnitrade_exchange::Network;
+use omnitrade_ui::account_feed::spawn_account_feed;
 use omnitrade_ui::feed::spawn_feed;
 use omnitrade_ui::{OmniTradeApp, UIState};
 
@@ -35,6 +37,9 @@ fn main() -> eframe::Result<()> {
     if let Err(e) = spawn_feed(Arc::clone(&state), symbol.clone(), network) {
         eprintln!("Feed konnte nicht gestartet werden: {e}");
         std::process::exit(1);
+    }
+    if let Err(e) = spawn_account_feed(Arc::clone(&state), network) {
+        eprintln!("Konto-Feed konnte nicht gestartet werden: {e}");
     }
     let app = OmniTradeApp::with_symbol(state, symbol);
 

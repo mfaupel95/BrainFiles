@@ -6,6 +6,7 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use omnitrade_exchange::Network;
+use omnitrade_ui::account_feed::spawn_account_feed;
 use omnitrade_ui::feed::spawn_feed;
 use omnitrade_ui::UIState;
 
@@ -22,6 +23,9 @@ fn main() {
         eprintln!("Feed-Start fehlgeschlagen: {e}");
         std::process::exit(1);
     }
+    if let Err(e) = spawn_account_feed(Arc::clone(&state), Network::Testnet) {
+        eprintln!("Konto-Feed-Start fehlgeschlagen: {e}");
+    }
     std::thread::sleep(Duration::from_secs(secs));
 
     let s = state.read().unwrap_or_else(|p| p.into_inner());
@@ -36,6 +40,9 @@ fn main() {
     } else {
         println!("kein Orderbuch");
     }
+    println!("Bestände: {}", s.balances.len());
+    println!("USDT-Guthaben: {}", s.account_balance);
+    println!("offene Orders: {}", s.open_orders.len());
     for line in &s.log {
         println!("log: {line}");
     }

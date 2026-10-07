@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use omnitrade_core::{Candle, Position};
+use omnitrade_core::{Candle, Order, Position};
 use omnitrade_engine::L2OrderBook;
 
 /// Thread-safe state container storing passive UI snapshots of engine data.
@@ -20,6 +20,10 @@ pub struct UIState {
     pub total_pnl: f64,
     /// Connection status indicator.
     pub connected: bool,
+    /// Account balances `(asset, free, locked)`, sorted by asset (non-zero only).
+    pub balances: Vec<(String, f64, f64)>,
+    /// Open orders reported by the exchange.
+    pub open_orders: Vec<Order>,
     /// Recent log lines for the console panel (oldest first).
     pub log: VecDeque<String>,
 }
@@ -37,6 +41,8 @@ impl UIState {
             account_balance: 0.0,
             total_pnl: 0.0,
             connected: false,
+            balances: Vec::new(),
+            open_orders: Vec::new(),
             log: VecDeque::new(),
         }
     }
@@ -49,6 +55,16 @@ impl UIState {
             Some(last) if last.timestamp_ms == candle.timestamp_ms => *last = candle,
             _ => series.push(candle),
         }
+    }
+
+    /// Stores a fresh account snapshot; `account_balance` becomes the USDT total.
+    pub fn set_account_snapshot(&mut self, balances: Vec<(String, f64, f64)>, orders: Vec<Order>) {
+        self.account_balance = balances
+            .iter()
+            .find(|(asset, _, _)| asset == "USDT")
+            .map_or(0.0, |(_, free, locked)| free + locked);
+        self.balances = balances;
+        self.open_orders = orders;
     }
 
     /// Replaces the whole candle series of a symbol (e.g. after loading history).
@@ -276,5 +292,21 @@ mod tests {
         let candles = state.latest_candles("BTCUSDT", 10);
         assert_eq!(candles.len(), 2);
         assert_eq!(candles[0].timestamp_ms, 2000);
+    }
+
+    #[test]
+    fn test_set_account_snapshot_derives_usdt_balance() {
+        // Arrange
+        let mut state = UIState::new();
+
+        // Act
+        state.set_account_snapshot(
+            vec![("BTC".into(), 1.0, 0.0), ("USDT".into(), 90.0, 10.0)],
+            Vec::new(),
+        );
+
+        // Assert
+        assert_eq!(state.account_balance, 100.0);
+        assert_eq!(state.balances.len(), 2);
     }
 }
