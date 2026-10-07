@@ -31,13 +31,16 @@ fn get_test_credentials() -> ApiCredentials {
         }
     }
 
-    // Fallback to environment variables for CI/CD
-    let key =
-        std::env::var("BINANCE_TESTNET_KEY").unwrap_or_else(|_| "TEST_KEY_PLACEHOLDER".to_string());
-    let secret = std::env::var("BINANCE_TESTNET_SECRET")
-        .unwrap_or_else(|_| "TEST_SECRET_PLACEHOLDER".to_string());
-
-    ApiCredentials::new(key, secret, Network::Testnet)
+    // Fallback: Umgebungsvariablen (CI/CD). Ohne Zugänge brechen die Tests mit
+    // klarer Meldung ab, statt mit Platzhaltern gegen die Börse zu laufen.
+    let key = std::env::var("BINANCE_TESTNET_KEY");
+    let secret = std::env::var("BINANCE_TESTNET_SECRET");
+    match (key, secret) {
+        (Ok(key), Ok(secret)) => ApiCredentials::new(key, secret, Network::Testnet),
+        _ => panic!(
+            "Keine Testnet-Zugänge: weder Keystore-Eintrag omnitrade/binance/testnet              noch BINANCE_TESTNET_KEY/BINANCE_TESTNET_SECRET"
+        ),
+    }
 }
 
 #[tokio::test]

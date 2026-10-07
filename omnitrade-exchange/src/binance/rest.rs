@@ -9,9 +9,13 @@ use omnitrade_core::{Order, OrderStatus, OrderType, Side, TimeInForce};
 use reqwest::{Client, Method};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::time::Duration;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Toleranz der Börse für den Zeitstempel (ms). Fängt kleine Uhrabweichungen ab.
+const RECV_WINDOW_MS: u64 = 5000;
 
 /// Binance liefert Zahlen als JSON-Strings ("0.00100000"); akzeptiert beides.
 fn de_f64<'de, D>(d: D) -> Result<f64, D::Error>
@@ -30,6 +34,14 @@ where
     }
 }
 
+/// Lokale Uhr in Millisekunden seit der Unix-Epoche.
+fn local_millis() -> Option<i64> {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_millis() as i64)
+}
+
 /// Binance REST API base URLs.
 const TESTNET_REST_URL: &str = "https://testnet.binance.vision";
 const MAINNET_REST_URL: &str = "https://api.binance.com";
@@ -39,6 +51,16 @@ pub struct BinanceRestClient {
     http_client: Client,
     base_url: String,
     credentials: ApiCredentials,
+    /// Abweichung Serverzeit minus lokale Uhr (ms), einmalig abgeglichen.
+    time_offset_ms: AtomicI64,
+    time_synced: AtomicBool,
+}
+
+/// Antwort von `GET /api/v3/time`.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ServerTime {
+    server_time: i64,
 }
 
 impl BinanceRestClient {
@@ -64,7 +86,27 @@ impl BinanceRestClient {
             http_client,
             base_url,
             credentials,
+            time_offset_ms: AtomicI64::new(0),
+            time_synced: AtomicBool::new(false),
         })
+    }
+
+    /// Gleicht die lokale Uhr einmalig mit der Serverzeit ab. Schlägt der Abruf
+    /// fehl, bleibt der Offset 0 und `recvWindow` fängt kleine Abweichungen ab.
+    async fn sync_time(&self) {
+        let url = format!("{}/api/v3/time", self.base_url);
+        let local = local_millis().unwrap_or(0);
+        let server = match self.http_client.get(&url).send().await {
+            Ok(resp) => resp.json::<ServerTime>().await.ok(),
+            Err(_) => None,
+        };
+        if let Some(server) = server {
+            let now = local_millis().unwrap_or(local);
+            // Mittelwert aus Anfangs- und Endzeit gleicht die Laufzeit des Aufrufs aus.
+            self.time_offset_ms
+                .store(server.server_time - (local + now) / 2, Ordering::Relaxed);
+        }
+        self.time_synced.store(true, Ordering::Relaxed);
     }
 
     /// Send a signed request to the Binance API.
@@ -74,19 +116,22 @@ impl BinanceRestClient {
         endpoint: &str,
         params: Option<&HashMap<String, String>>,
     ) -> Result<reqwest::Response, ExchangeError> {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|_| ExchangeError::InvalidRequest("System time error".to_string()))?
-            .as_millis() as i64;
-
-        let mut query = String::new();
-        if let Some(p) = params {
-            let pairs: Vec<String> = p
-                .iter()
-                .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
-                .collect();
-            query = pairs.join("&");
+        if !self.time_synced.load(Ordering::Relaxed) {
+            self.sync_time().await;
         }
+        let timestamp = local_millis()
+            .ok_or_else(|| ExchangeError::InvalidRequest("System time error".to_string()))?
+            + self.time_offset_ms.load(Ordering::Relaxed);
+
+        let mut pairs: Vec<String> = params
+            .map(|p| {
+                p.iter()
+                    .map(|(k, v)| format!("{}={}", k, urlencoding::encode(v)))
+                    .collect()
+            })
+            .unwrap_or_default();
+        pairs.push(format!("recvWindow={RECV_WINDOW_MS}"));
+        let query = pairs.join("&");
 
         let signed_query =
             BinanceSigner::sign_request(&query, &self.credentials.secret, timestamp)?;
@@ -374,6 +419,13 @@ struct BinanceBalance {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn server_time_response_parses() {
+        let t: ServerTime = serde_json::from_str(r#"{"serverTime":1499827319559}"#)
+            .expect("serverTime should parse");
+        assert_eq!(t.server_time, 1_499_827_319_559);
+    }
+
     use super::*;
 
     #[test]
