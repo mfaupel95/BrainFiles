@@ -353,32 +353,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/omnitrade_futures/, Werkstatt/omnitrade/
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - der Signal-Gatter-Fix liegt in master (12 Tests gruen, t_df4b5161), aber dieser Punkt verlangt echte Papierrunden gegen den 28-Tage-Backtest - bleibt offen.**
-- [x] **T-348 — Vier Tests rot, alle vier von fremder Hand (04.10.2026)**
-      Kontext: Die volle Handel-Suite (1781 Tests, 1177 s) meldet vier
-      Fehlschlaege. Keiner gehoert zu den Leitstand-Schritten; per
-      `git diff --name-only` gegen jeden meiner vier Commits belegt, dass
-      keine der vier Dateien angefasst wurde. Die Ursachen sind je
-      verschieden und alle von aussen gekommen:
-      * `test_einheit_kraken.QuelleTest.test_kein_zweiter_leser_der_tabelle`
-        sah `cache/replay/*.py` als 'zweiten Leser der Einheitentabelle' -
-        sechs Wegwerf-Kopien vom 14.10. (Testartefakte, nie committet).
-        Nach dem Wegraeumen nach `Agenten/Hermes/cache/replay-alt-20261004`
-        gruen. Der Test prueft `os.walk` ueber den Handel-Ordner und
-        uebersieht, dass `cache/` Wegwerf ist.
-      * `test_spur_wache.test_wache_kennt_vier_spuren`: `omnitrade_futures`
-        traegt `trigger_modus: signal` (Commit bd6cdb28) und damit eine
-        Warteschlange ohne Wache. Dieselbe Klasse wie T-328.
-      * beide `test_replay`-Tests: `replay.py` wurde am 04.10. 21:32 von einer
-        anderen Hermes-Sitzung umgebaut (Commit 0919b566, T-310, Autor
-        'Hermes'); die Tests gingen dabei mit.
-      Naechster Schritt: die drei Punkte getrennt beheben - erst den Test
-      (`cache/` von `os.walk` ausnehmen), dann `omnitrade_futures` eine
-      Wache geben, dann `replay.py` mit den Tests zusammen nachziehen. Nicht
-      in einem Commit, weil drei verschiedene Ursachen.
-      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/tests/test_einheit_kraken.py,
-      Agenten/Handel/tests/test_spur_wache.py, Agenten/Handel/replay.py,
-      Agenten/Handel/tests/test_replay.py
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - test_spur_wache 11 Tests gruen (Hauptbaum); test_replay im Hauptbaum nachgezogen, braucht die Historie.**
 - [ ] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
       Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
       Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
@@ -487,21 +461,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/replay.py, Agenten/Handel/spur_buch.py
 
-- [x]   **T-337 — `moondev_historie.basis_von` las einen Cache, der Tests lahmlegte**
-      Kontext: `_basis` war ein reiner Modul-Cache, gefuellt nur wenn er LEER war. Ein
-      Test, der einmal das echte 300er-Universum geladen hatte, hinterliess diese Liste fuer
-      den ganzen Prozess. `test_replay_feed.LaufFeedEchtTest` legt seine Attrappen in einen
-      Temp-Ordner - `basis_von` fand seine Symbole im alten Cache nicht, `rng` lieferte
-      nichts, die Spur buchte 0 Positionen und der Test meldete "Journal ohne eine
-      Buchung". Der Test war nicht schuld, er war das Opfer eines Caches ohne
-      Zuruecksetzung. Jetzt fragt `basis_von` die Platte des aktuellen ORDNER ab, statt
-      einen stehengebliebenen Zustand zu uebernehmen.
-      Dieselbe Frage bei allen anderen Modul-Caches der Spuren (grep nach
-      `_xxx = []` und `if not _xxx:` auf Modulebene). Ein Cache darf eine Antwort
-      beschleunigen, aber nie die Frage beantworten.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Handel/moondev_historie.py
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - moondev_historie.basis_von leert den Cache (Z.119) und nennt den Fehler im Kommentar (Z.141).**
 
 - [ ]   **T-335 - Bereichs-Besitz steht, die Werkzeuge rufen ihn noch nicht auf**
       Kontext: Drei Bereiche mit je einem Besitzer (`Agenten/BEREICHE.json`,
@@ -531,91 +490,11 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
       --push` fuer die belegten Faelle.
       Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
-- [x]   **T-331 — `satz_pct_fuer` las den Börsensatz aus den Notizfeldern**
-      Kontext: Die Ableitung 'boerse=okx, ist das ein Perp?' suchte das Wort "perp" in
-      `json.dumps(w).lower()` - also im GANZEN Wachen-JSON. Die Notizfelder tragen es
-      haeufig im Nebensatz (`_trigger_vermerk: ... Signal-Wechsel-Gatter als Perp`,
-      `_handel_erlaubt_vermerk: ... Perp`). Damit wurde jede OKX-Spot-Wache als Perp
-      gelesen: der Abgleich verlangte 0,05 % von moondev_topmovers und moondev_listingarb,
-      die gemessen 0,10 % tragen (ihre eigenen Notizen sagen das sogar). Der Satz wird
-      jetzt aus dem MARKTTYP abgeleitet (`instrumente`, `instrumente_aktiv`, `instrument`,
-      `moeglich`, `markttyp`/`produkt`/`instrument_typ`) - nicht aus dem Kommentar darueber.
-      Nebenbefund dabei: `trendwende_btc` fuehrt sein Instrument im SINGULAR-Feld
-      `instrument` (BTC-USDT-SWAP), nicht in `instrumente` - das alte Muster las es nicht
-      und wertete die echte Perp-Spur als Spot.
-      Dieselbe Frage bei jedem anderen Werkzeug stellen, das eine Wachen nach einem
-      Schluesselwort durchsucht statt nach einem Feld: eine Notiz soll nie eine Zahl
-      entscheiden.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Handel/gebuehren_setzen.py
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - gebuehren_setzen.satz_pct_fuer liest markttyp/produkt/instrument_typ statt json.dumps (Z.123-131).**
 
 
-- [x]   **T-327 — `anbindung_pruefen.py` las die Wachen aus Agenten/ statt Agenten/Handel/**
-      Kontext: `HANDEL = os.path.dirname(HIER)` in einem Werkzeug, das IN `Agenten/Handel`
-      liegt - eine Ebene zu hoch. `lade_wachen()` bekam fuer jede Spur `{}` (es gibt kein
-      `Agenten/scanner/wachen.json`), `handel_erlaubt` las sich als False, und der Lauf meldete
-      12 von 12 Spuren "bereit, aber gesperrt" - wo 10 scharf sind. Der Befund sah harmlos aus
-      ("alles gesperrt") und war die Umkehrung der Wahrheit: wer nach dem Lauf handelte, haette
-      die falsche Liste gehabt. Behoben (`HANDEL = HIER` mit Begruendung im Modulkopf), Nachweis:
-      der Lauf meldet jetzt 12 bereit / 2 gesperrt (xperp und swap tragen `handel_erlaubt=false`
-      wirklich). Test `tests/test_arm_wirksamkeit.py::WerkzeugLiegtImHandelOrdnerTest` mit
-      Gegenprobe.
-      Die Regel auf alle Werkzeuge direkt in Agenten/Handel ausweiten (eine Pruefung
-      ueber die ganze Wurzel dieses Ordners). `freigabe_tor.py` und `risiko_beitrag.py` fielen am
-      03.10.2026 schon auf dieselbe Weise auf.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Handel/anbindung_pruefen.py
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - anbindung_pruefen.py HANDEL = HIER (Z.35) - eine Ebene zu hoch war der Fehler.**
 
-- [x]   **T-328 — Zwei Schattenarme liefen, ohne dass das Haus ihre Q:-Kopie je pruefte**
-      Kontext: `spiegelstand` fuehrte die Arm-Namen hart: nur `wachen.knapp.json` und
-      `wachen.weit.json`. `squeeze_eth` (Ordner squeeze, Wachen `wachen.eth.json`) und
-      `nautilus_kraken_futures` (Ordner nautilus_kraken, Wachen `wachen.futures.json`) stehen
-      in `dauerlauf.SPUREN`, spiegelten nach Q: - und wurden von der Pruefung nie gesehen.
-      Bedingung 4 dieser zwei Spuren war ungeprueft (2 von 48). Derselbe Ort riet das Suffix mit
-      `spur.split("_", 1)[1]`: aus `nautilus_kraken_futures` wird `kraken_futures`, die Datei
-      gibt es nicht, also wurde still die Haupt-Wachen des Ordners gelesen - der SPOT-Arm -,
-      und Zeilenzahl und Herzschlagalter liefen ueberhaupt ohne Suffix. Behoben: Arm-Dateinamen
-      gesammelt, Suffix von rechts kuerzen bis die Datei da ist, Suffix an JEDE Buchdatei (auch
-      Zaehler und Alter). Nachweis: 48 von 48 byte-gleich, futures 1378 Zeilen gegen 1286 im
-      Spot-Arm. Test `tests/test_arm_wirksamkeit.py`, zwei Gegenproben.
-      Die vier uebrigen Hand-listen auf dieselbe Art pruefen: `squeeze_eth` fehlt in
-      `auswertung_alle.SPUREN`, `lage.HOLER`, `befehle.FAMILIE` und `pruefe_ratschen.SPUREN` -
-      es ist nur im Dauerlauf gefuehrt, sein Journal (1 Zeile) wird nirgends ausgewertet.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Handel/spiegelstand.py, Agenten/Handel/squeeze/
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - spiegelstand.py liest die Arm-Namen per ast aus dauerlauf.SPUREN (Z.115-129).**
 
-- [x]   **T-329 — mosaics Gebuehr stand auf dem Kraken-Satz, obwohl die Spur auf OKX handelt**
-      Kontext: Am 30.09.2026 (Commit `e6f2715c`, Auftrag Max "nur noch omnitrade auf kraken
-      handel erlaubt") kam Kraken aus `mosaic/wachen.json` `boersen` heraus - es blieb
-      `["okx"]` -, die Kraken-Spurole `gebuehr_taker 0.006` blieb aber stehen. Eine Runde wurde
-      mit 1,2 % statt der gemessenen 0,2 % gerechnet (6-fach zu teuer). Der Satz gehoert zur
-      ORDER-BOERSE, nicht zur Historie der Spur: ihre Instrumente sind BTC/ETH/SOL-USDC, das ist
-      OKX Spot (Messung 01.10.2026). Behoben ueber `gebuehren_setzen.py --anwenden` (Sicherung
-      `mosaic/wachen.json.bak-20261004`), `gebuehr_taker 0.006 -> 0.001`. Ein Kraken-Satz an einer
-      OKX-Spur ist das Merkmal fuer T-330.
-      Die AENDERUNGEN-Tabelle in `gebuehren_setzen.py` gegen die aktive Boerse JEDER
-      Wachen pruefen - ein Spurwechsel muss den Satz mitnehmen, sonst kommt der Befund zurueck.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Handel/mosaic/wachen.json, Agenten/Handel/gebuehren_setzen.py
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - mosaic/wachen.json gebuehr_taker 0.001 (OKX-Spot, gemessen 01.10.2026) - der Kraken-Satz 0.006 ist weg.**
 
-- [x]   **T-330 — Kein Werkzeug prueft, ob die Gebuehr zur aktiven Boerse passt**
-      Kontext: T-329 war die manuelle Fahrt. Es gibt 24 Wachen mit `boerse` oder `boersen` und
-      `gebuehr_taker`, und keine Regel, die die beiden vergleicht. Eine Spur kann ihre Boerse
-      wechseln - das geschah zweimal (Kraken raus aus mosaic am 30.09.2026, omniquant auf
-      kraken_futures am 01.10.2026) - und den Satz behalten. `test_gebuehren_setzen.py` prueft
-      die EINSTHEIT (Bruch statt Prozent), nicht den Satz der Boerse. Genau darin liegt die
-      Luecke: beide Pruefungen koennen gruen sein, waehrend eine Runde sechsfach zu teuer gerechnet
-      wird.
-      Werkzeug `gebuhr_boerse_abgleich.py`: je Wachen die aktive Boerse (Vorragliste
-      `boersen[0]`, sonst `boerse`), der gemessene Satz und der Wert - Abweichung melden,
-      Schreiben nur mit `--anwenden`. Tests mit Gegenprobe.
-      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
-      Betrifft: Agenten/Handel/gebuehren_setzen.py
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - gebuehr_boerse_abgleich.py vorhanden; tests/test_gebuehr_boerse_abgleich.py 16 Tests gruen.**
 
 - [ ]   **T-326 — Offene squeeze-Positionen tragen die alte Geometrie noch**
       Kontext: Nach dem Wechsel auf 3,0 % / 1,5R (04.10.2026, Commits 18168ee8/111a0e6d) wurde angenommen, offene Positionen laeufen unter ihrem alten Stand aus. `skalieren.skaliere()` rechnet Stop und Ziel aber bei JEDER Vergroesserung neu aus dem aktuellen `stop_pct`/`r` — offene Positionen werden bei ihrer naechsten Skalierung mitgezogen. BTC-USDC ist belegt nachgezogen (04.10. 10:04 UTC: `stop_pct` 5,00 → 3,00, Stop 80720,09 → 82462,00, Ziel 93465,36 → 88837,93).
@@ -623,11 +502,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/skalieren.py, squeeze, wavetrend, macd_mtf, supertrend
 
-- [x]   **T-325 — Drei Spuren liefen, ohne dass das Haus ihre Zahlen kannte**
-      Kontext: Auftrag "suche noch nicht erkannte Arbeit in Handel und fuege ein" (03.10.2026). Gemessen ueber die echten Listen statt gesucht: `liq_wand`, `trendwende_btc` und `nautilus_emacross` stehen in `dauerlauf.SPUREN` (47 Spuren), haben Wachen und einen laufenden Zyklus — und fehlten in `auswertung_alle.SPUREN`. Befund: liq_wand hatte 32 geschlossene Runden im Journal (33 kauf, 41 verkauf) und 0 in JEDER Auswertung: kein Tagesbericht, keine Strategiekennzahl, kein Kosten-Wendepunkt, keine Freigabe-Aussage. Dieselbe Luecke bei den Ratschen: squeeze, wavetrend, macd_mtf, supertrend (20,00 = 1,0x Buchrisiko) und nautilus_emacross (100,00) fuehrten eine Drawdown-Ratsche, die `pruefe_ratschen.py` nie nachfragte. Dritte Luecke: nautilus_emacross uebergab den Bus-Namen als "handel/" + NAME — fuer die Bus-Suite (T-255) unsichtbar, der Test war rot.
-      Naechster Schritt: Erledigt am 03.10.2026 — alle drei Spuren in `auswertung_alle.SPUREN` (Rechenweg `runden_indikator`, den vorhandenen), die fuenf in `pruefe_ratschen.SPUREN`, Bus-Name literal. Messung liq_wand: 32 Runden, 66 % Treffer, -10,83 USD brutto / -14,07 USD netto, Kosten-Wendepunkt -0,30 % je Runde. Neu: `Agenten/Handel/tests/test_verdrahtung.py` prueft die REGEL (jede Spur mit Journal hat einen Rechenweg, jede gesetzte Ratsche wird geprueft, jeder Betrag trifft 1,0x Buchrisiko) mit zwei Gegenproben, 6/6 gruen; Bus-Suite gruen. OFFEN bleibt eine echte Luecke: nautilus_emacross setzt drawdown_halbierung_usd 100.00 OHNE Risiko-Feld in der Wache, der Betrag ist nicht herleitbar — als Ausnahme im Test benannt, nicht stillschweigend uebergangen. Bewusst NICHT verdrahtet: kopier, kopier1zu1, spiegel, omniquant, gitter (eigene auswertung.py, im Tagesbericht mit voller Bilanz); ihr Journal traegt token/symbol statt inst, runden_nautilus ergab dort 107 Runden mit falscher Paarung.
-      Angelegt 03.10.2026 · Betrifft: auswertung_alle, pruefe_ratschen, nautilus_emacross/handeln.py, tests/test_verdrahtung.py, Wiki/Handel/Spuren-Uebersicht.md.
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - liq_wand/trendwende_btc/nautilus_emacross stehen in auswertung_alle, pruefe_ratschen, lage und dauerlauf.**
 
 - [ ]   **T-324 — Spur-Audit: Edge und Echtheit fuer ALLE Spuren in einem Durchgang messen**
       Kontext: Nach T-322 (Scanner: Einstieg aus dem Vortagesbericht, +17,49 % und t=15,3 waren ein Rechenfehler) gab es im Haus kein Werkzeug, das diese Fehlerklasse von selbst findet. Es gab `auswertung_alle.py` (rechnet die Zahlen) und Einzelfallbefunde. Folge: eine neue Spur hatte keine Messung, an der ihre Runden vor der Freigabe haette vorbeiliegen koennen. Gebaut: `Agenten/Handel/spur_audit.py` beantwortet fuer alle Spuren zwei Fragen - IST DIE STATISTIK ECHT (Haltedauer im Aufrufertakt, ein Instrument traegt die Mehrheit, Einstiegspreis je (Instrument, Tag) identisch) und HAT DIE SPUR EDGE (Excess gegen BUY & HOLD aus den gespeicherten Kerzen, nicht Trefferquote). Spurliste aus `dauerlauf.SPUREN`, Zuordnung aus `journalpaarung`, Aufrufertakt aus `dauerlauf.TAKT_MAX_MINUTEN` - keine eigenen Zahlen. 33 Tests, acht Gegenproben greifen. Befund am laufenden System: die 475 Runden aller Spuren haben zu 100 % eine Basislinie, nach dem Nachladen von 14 auf 45 Kerzenreihen (Binance, ohne Schluessel).
@@ -820,11 +694,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt 01.10.2026 · Zuletzt 01.10.2026 · Betrifft Werkstatt/RLTrader, Agenten/MCP-Server
 
 
-- [x] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
-      **Erledigt 2026-10-01.** Der Auftragstest liest jetzt `wachen.weit.json` fuer die Papier-Pruefung des Schattenarms und hat einen eigenen Test fuer die live geschaltete Hauptspur.
-      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01 (erledigt)
-      Betrifft: Agenten/Handel/tests/test_omniquant_fassung.py, Agenten/Handel/omniquant/wachen.json, Agenten/Handel/omniquant/wachen.weit.json
-      **2026-10-04: unabhaengig verifiziert — test_omniquant_fassung.py Z.143-215 liest wachen.weit.json (Z.159), Live-Test Z.210; omniquant/wachen.json Z.3 handel_erlaubt:true, Z.41 freigabe.erfuellt; Commit aecd6178 existiert.**
 
 
 - [ ] **T-302 — Hauptconfig-Modellliste entscheiden (1739 omniroute + 428 nous)**
@@ -848,37 +717,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [x] **T-293 — omniquant: welcher Markt gilt fuer die Gebuehr?**
-      Kontext: Beim Festziehen der Gebuehren (01.10.2026) steht in
-      `omniquant/wachen.json` `boerse: kraken_futures`, die Instrumente der Spur
-      werden aber ueber `okx.letzter_kurs` bewertet - also OKX-Paare. Der
-      Gebuehrensatz ist damit widerspruechlich: Kraken-Futures waeren 0,04-0,05 %
-      je Seite (gemessen 25.09.2026), OKX-Spot 0,10 % (gemessen 01.10.2026).
-      Gesetzt ist der TEURERE (0.1) und der Widerspruch steht als
-      `_gebuehr_quelle` in der Datei - der freundlichere Satz waere geraten.
-      Naechster Schritt: entscheiden, wo omniquant wirklich buchen soll (`boerse`
-      richtigstellen ODER Instrumente auf Kraken-Paare umstellen), dann den Satz
-      nachziehen. Betrifft auch `omniquant/wachen.weit.json`.
-      Angelegt 01.10.2026 · Betrifft Agenten/Handel/omniquant
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - omniquant/wachen.json und wachen.weit.json tragen boerse=kraken_futures UND gebuehr_taker 0.0005.**
-
-
-- [x] **T-283 — kraken stellt mehrere Belege in einem Zyklus aus, nur einer wird ausgefuehrt**
-      Kontext: Am 01.10.2026 um 13:25:51 stellte die Spur DREI Belege aus (XLTCZEUR,
-      ADAEUR, SOLEUR, je 50 EUR). Ausgefuehrt wurde um 13:27:22 nur SOLEUR; die anderen
-      zwei verfielen mit der 180-s-Frist (freigabebeleg.GUELTIG_SEKUNDEN). Der Ausfuehrer
-      `beleg-hand` laeuft als Cron alle 5 MINUTEN - ein Beleg, der direkt nach einem Lauf
-      entsteht, wartet bis zu 5 min und ist damit immer abgelaufen. beleg_hand.lauf()
-      iteriert zwar ueber ALLE offenen Belege, aber die Frist ist kuerzer als der Takt.
-      Schaden bisher: keiner (ein verfallener Beleg kauft nicht). Zu klaeren ist, warum
-      drei Belege entstanden, obwohl `pruefe_einstiege` den Platz VOR dem Beleg prueft
-      (max_offene_positionen 4) - moeglicherweise war das Buch zu dem Zeitpunkt anders
-      besetzt als angenommen.
-      Naechster Schritt: Frist und Takt aufeinander abstimmen (Frist > Takt, z. B. 600 s
-      bei 5-Minuten-Takt) ODER den Beleg-Hand-Takt auf 2 min senken; danach den
-      Platz-Grund je verfallenem Beleg im Journal sichtbar machen.
-      Angelegt 2026-10-01 · Zuletzt 2026-10-01
-      Betrifft: Agenten/Handel/freigabebeleg.py, Agenten/Hermes/cron/jobs.json
 
 
 
@@ -891,10 +729,8 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [x] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
-      **Erledigt 2026-10-01.** Kommentar in dauerlauf.py auf "KOPIER AKTIV" gezogen, test_handelstand.py nimmt kopier/kopier1zu1 nicht mehr aus der Auskommentiert-Liste.
-      Angelegt 01.10.2026 · Zuletzt 01.10.2026 (erledigt) · Betrifft Agenten/Handel/dauerlauf.py, Agenten/Werkzeuge/repos-zentrale/tests/test_handelstand.py
-      **2026-10-04: unabhaengig verifiziert — dauerlauf.py Z.223 '# KOPIER AKTIV (seit 30.09.2026, ...)' vorhanden; Test-Liste (test_handelstand.py) als abhaengiges Artefakt bestaetigt.**
+
+
 
 
 
@@ -1030,23 +866,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
       `Agenten/Werkzeuge/fenster_design.py`, `messprobe.py`
       Angelegt: 2026-09-30
-- [x] **T-242 - Fremd-Grenze: die zwei restlichen Verbraucher anschliessen**
-      Kontext: `Agenten/FREMD-Liste.json` (37 Eintraege) ist die eine Quelle,
-      `Agenten/Werkzeuge/fremd.py` der Leser; angeschlossen sind die Zentrale
-      (Rolle + Hinweis + Kopfzeile "63 fremd") und `bestand.py`. Offen aus dem
-      Design (docs/design/2026-09-30-grenze-und-popouts-design.md): (a)
-      `Agenten/Werkzeuge/fundus-suche.ps1` soll fremde Baeume getrennt melden
-      statt sie nach eigenem Wissen zu durchsuchen (`ConvertFrom-Json` liest die
-      Liste), (b) ein Block "Grenze" in `Agenten/Routinen/systempruefung.ps1`
-      (Liste lesbar, Eintraege vorhanden, keine Ueberschneidung mit eigenen
-      Wurzeln). Der Block wurde bewusst NICHT gebaut, weil systempruefung.ps1
-      parallel von einer anderen Sitzung geaendert wurde.
-      Naechster Schritt: (a) in fundus-suche.ps1 die Liste lesen und eine Zeile
-      "fremd" je Baum ausgeben, (b) den Block nach dem Muster der anderen
-      Bloecke ergaenzen (`fremd.py --pruefen` aufrufen, Ergebnis melden).
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Werkzeuge/fundus-suche.ps1, Agenten/Routinen/systempruefung.ps1
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - fundus-suche.ps1 ruft Get-FremdZeile zweimal (Z.190,197); systempruefung.ps1 Block 15 Fremd-Grenze.**
 
 
 
@@ -1095,26 +914,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [x] **T-230 - Zahlen gemischt handelnder Spuren neu lesen (Richtung fehlte im Paarer)**
-      Kontext: `kosten_wendepunkt._paarung_form_b` rechnete das Rundenergebnis
-      als `preis/einstieg - 1` OHNE die Handelsrichtung. Bei einem SHORT war das
-      Vorzeichen damit verkehrt: eine Short-Runde, die im Ziel schloss, stand als
-      Verlust im Buch. Behoben am 30.09.2026 (`seite` aus der Einstiegszeile,
-      `vorz = -1` bei short; Test `tests/test_kosten_wendepunkt.RichtungTest`).
-      Gemessen an wavetrend ueber 5,7 Jahre: Trefferquote 54 % -> 33 %, Summe
-      +679 -> -513. Betroffen ist jede gemischt handelnde Spur - squeeze,
-      macd_mtf, supertrend und wavetrend haben rund 50 % Shorts je Buch - und
-      jede Auswertung, die auf diesem Modul aufsetzt.
-      Naechster Schritt: die veroeffentlichten Zahlen dieser Spuren mit dem
-      korrigierten Paarer neu fahren und ersetzen (Backtest-Tabellen in
-      `auswertung_alle.py`, die Kosten-Wendepunkt-Tabelle, die Vorher/Nachher-
-      Tabelle der Beruehrungsregel in Wiki/Handel/Backtest-Fundament.md). Bis
-      dahin gilt: Zahlen dieser Spuren aus der Zeit VOR dem 30.09.2026 sind
-      nach dem Vorzeichen zu pruefen, nicht zu zitieren.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/kosten_wendepunkt.py, auswertung_alle.py,
-      MaxHirn/Wiki/Handel/Backtest-Fundament.md
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - kosten_wendepunkt.py rechnet mit Vorzeichen; tests/test_kosten_wendepunkt.py 12 Tests gruen.**
 
 
 - [ ] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
@@ -1130,31 +929,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       uebertragen (eigener Modulname, sonst zieht der Import einen Namensvetter).
       Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Handel/nautilus*
 
-- [x] **T-226 — pos_id in den restlichen Journal-Schreibern (17 von 94 Journalen)**
-      Kontext: Mit T-095 traegt jede Einstiegszeile eine Kennung `pos_id`, die
-      die Ausstiegszeile uebernimmt; 77 von 94 Journalen sind mit
-      `journal_pos_id_nachziehen.py` nachgezogen. Offen sind 17 Dateien in fuenf
-      Ordnern, und zwar aus verschiedenen Gruenden: `orb`/`orbk` schreiben EINE
-      Zeile je Runde (es gibt kein Paar zu bilden), `gitter` fuehrt Lose je
-      Leiterstufe statt Positionen, `kopier` hat einen eigenen Schreiber,
-      `spiegel` (drei Arme) ist seit 21.09.2026 aus dem Dauerlauf genommen und
-      dient als Vergleichsbuch, und `nautilus`/`nautilus_kraken` liegen in einem
-      EIGENEN Git-Repo mit eigener Buchhaltung.
-      ERLEDIGT 06.10.2026: Entscheidung getroffen und umgesetzt. `orb`/`orbk`
-      und `gitter` brauchen strukturell KEINE Kennung (eine Zeile je Runde bzw.
-      Lose je Leiterstufe - es gibt kein Einstieg/Ausstieg-Paar zu bilden);
-      `nautilus`/`nautilus_kraken` liegen in einem eigenen Repo mit eigener
-      Buchhaltung und sind hier nicht anfassbar. `kopier` und `spiegel` sind
-      angeschlossen wie die uebrigen Spuren: `pos_id` in SPALTEN, Erzeugung
-      `pos_kennung.neu()` beim Eroeffnen, Mitfuehrung in jeder Schliess-Zeile,
-      Altjournal-Schutz ueber `pos_kennung.spalten()`. Beide Journale trugen
-      die Spalte im Kopf bereits (Header-Migration), nur die Schreiber gaben
-      sie nicht aus - jetzt konsistent. Tests: kopier 52, spiegel 93,
-      pos_kennung+journalpaarung 35, alle gruen; Probe belegt pos_id in der
-      Journalzeile.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-10-06
-      Betrifft: Agenten/Handel/{kopier,spiegel,nautilus,orb,orbk,gitter}/handeln.py,
-      Agenten/Handel/journal_pos_id_nachziehen.py
 
 - [ ] **T-225 — Handstart des Dauerlaufs nimmt die echte Sperre und das echte Protokoll**
       Kontext: Am 30.09.2026 sind zwei Dauerlauf-Instanzen an **Rueckgabe 143**
@@ -1235,18 +1009,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [x] **T-194 — Dateischwund-Wache auf weitere Ordner ausweiten?**
-      Kontext: Die Wache vom 30.09.2026 (`Agenten/Hermes/scripts/dateischwund-wache.py`,
-      Cron `dateischwund-wache`) bewacht NUR `Agenten/Hermes/scripts/` - dort sind die
-      sechs verschwundenen Testdateien beobachtet worden. Dasselbe Muster kann jeden
-      Ordner treffen, in dem kurzlebige Dateien entstehen: `Agenten/Handel/*`
-      (Spur-Tests), `Agenten/Bus/`, `Agenten/Routinen/`.
-      Naechster Schritt: Entscheidung von Max, welche Ordner dazukommen. Technisch ist
-      es ein weiterer Eintrag in der Ordnerliste (je Ordner Git-Soll + eigene
-      Merkliste); Kosten sind nur groessere Merkdateien, keine Laufzeit.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Hermes/scripts/dateischwund-wache.py
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - dateischwund-wache.py und dateischwund-wache-handel.py vorhanden.**
 
 
 
@@ -1399,26 +1161,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [x] **T-156 — Bonsai aus, aber zwei MoA-Presets haengen daran**
-      Kontext: `hermes moa list` zeigt fuer die Presets "Max 2" und "Vision" den Aggregator `bonsai` - dort
-      laeuft die ganze Werkzeugschleife, nicht nur eine Beratung. `delegation.fallback_providers` hat bonsai
-      an Stelle 2 (vor ollama-launch gesetzt, s. u.). Der Dienst antwortet nicht: Port 8081 zu, gemessen mit
-      `scripts/config-gegenprobe.py`. Config und Starter nennen inzwischen denselben Port (8081).
-      **Erledigt 29.09.2026 - umgestellt, nicht Bonsai gestartet.** Aggregator der Presets `Max 2` und
-      `Vision` ist jetzt `ollama-launch/gemma-e4b-8k:latest`; die drei toten `bonsai`-Referenzen (Preset
-      `default`, Preset `Max 2`, Top-Level-Block) stehen auf `enabled: false`. Werkzeug
-      `cache/scratch/moa-umstellen.py`: zaehlt die Vorkommen, prueft `yaml.safe_load` VOR dem Schreiben,
-      Sicherung `config.yaml.bak-moa-20260929_234442`.
-      Warum gemma: `/api/show` meldet 131072 Kontext bei 7,52 B Parametern (der Name traegt "8k", der
-      Kontext ist es nicht) und ueber den OpenAI-Weg kommt sauberer `content` ohne Denkanteil - 19 s fuer
-      einen echten Aggregationsauftrag.
-      Nachweis: `hermes moa list` nennt fuer beide Presets `ollama-launch:gemma-e4b-8k:latest`,
-      `hermes config check` exit 0, `git diff --numstat` 7/7 (CR == LF).
-      Offen: `delegation.fallback_providers` fuehrt `bonsai` weiter an Stelle 2 - ein Eintrag, der
-      durchfaellt und wieder greift, sobald der Dienst laeuft. Bonsai bleibt aus (entlaedt sonst die
-      Ollama-Modelle aus dem VRAM, die die Sprachmodell-Spuren brauchen).
-      Angelegt 29.09.2026 · Zuletzt 29.09.2026
-      Betrifft: Agenten/Hermes/config.yaml, Agenten/Werkzeuge/bonsai-27b.ps1
 
 
 
@@ -1458,18 +1200,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - nur die Wache mcp-zombie-wache.py vorhanden; die Ursache der Spawn-Kette ist offen - bleibt offen.**
 
 
-- [x] **T-146 — Der Gateway-Waechter braucht eine Gegenprobe fuer beide Startformen**
-      Kontext: Am 29.09.2026 startete `Routinen/gateway-waechter.ps1` den Gateway 148-mal neu,
-      weil sein Suchmuster nur die Launcher-Kommandozeile traf, nicht die `runpy`-Form des
-      Update-Wegs. Behoben (Identitaet aus `gateway_state.json` zuerst, Kommandozeile als
-      Rueckfall mit beiden Formen) und belegt: 19:15:13 und 19:15:59 "Gateway laeuft ..., kein
-      Start". Es gibt aber keinen Test, der den Rueckfall prueft.
-      Naechster Schritt: kleine Pruefung (PowerShell oder Python-Test), die beide
-      Kommandozeilenformen gegen die Waechter-Muster haelt, plus eine, die einen falschen
-      Zustand als "Neustart" erwartet.
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Routinen/gateway-waechter.ps1
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - tests/test_gateway_identitaet_wache.py 12 Tests gruen (beide Startformen).**
 
 
 
@@ -1698,35 +1428,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [x] **T-128 — Marktbreite-Reihe auswerten und entscheiden, ob eine Spur sie als Tor nutzt**
-      Entscheidung 2026-10-06: Die Reihe ist behalten (256 Kerzentage, Mittel 14,5 %, Median 6,9 %),
-      aber es gibt KEINEN statistisch nutzbaren Edge fuer ein Breiten-Tor. Befeld: nur 2 Tage mit
-      Breite >= 90 % (n=2, keine Messung), Folgeanalyse BTC +0,89 % in 7 Tagen gegen +0,23 % Median
-      ueber alle Tage - kein Unterschied. Die Reihe bleibt als Messung bestehen, eine Spur bekommt
-      kein Breiten-Tor. Beleg: `python Agenten/Werkzeuge/breite.py --statistik` (2026-10-06).
-      Angelegt: 2026-09-24. Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Werkzeuge/breite-reihe.jsonl.
-      Kontext: `Agenten/Werkzeuge/breite.py` misst seit 25.09.2026 taeglich den
-      Anteil der 30 Top-Paare ueber ihrer EMA200 und schreibt die Reihe
-      (`Agenten/Werkzeuge/breite-reihe.jsonl`); Cron `breite-wache` (taeglich
-      19:00, no_agent) meldet nur Aenderungen. Die erste Messung war 29 von 29 =
-      100 % - aus EINEM Punkt folgt keine Richtung, "die Breite schrumpft" ist
-      erst mit einer Reihe belegbar. Offen ist ausserdem, ob eine Handelsspur die
-      EMA200-Breite als Tor nutzen soll: bisher rechnet nur
-      `moondev_marktlage` eine Breite, und das ist eine ANDERE Groesse (Anteil
-      mit positivem 24-h-Vorzeichen, aus CoinGecko).
-      Naechster Schritt: in etwa zwei Wochen `python Agenten/Werkzeuge/breite.py
-      --reihe` ansehen und entscheiden (a) Reihe behalten oder verwerfen,
-      (b) ob eine Spur ein Breiten-Tor bekommt.
-      NACHTRAG 25.09.2026: Die Reihe fuehrte zuerst eine Zeile je MESSUNG - sechs
-      Laeufe am ersten Tag ergaben sechs Zeilen fuer DENSELBEN Kerzentag, also
-      genau den einen Messpunkt, den sie aufloesen soll. Jetzt ersetzt eine
-      Messung derselben Kerze ihre Zeile (Tageskerze wechselt 16:00 UTC), und
-      `--reihe` rechnet den Verlauf in Punkten je Tag. Fuer die Auswertung
-      zaehlen daher KERZENTAGE, nicht Zeilen; der erste echte zweite Punkt kommt
-      aus dem Cron am 26.09.2026 um 19:00.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Hermes/scripts/breite-wache.py,
-      Agenten/Handel/moondev_marktlage
 
 
 - [ ] **T-127 — Kein freies Guthaben fuer neue Live-Einstiege (Kraken 0,71 EUR / OKX 0,15 USDC)**
@@ -1842,44 +1543,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/optimieren.py, Agenten/Handel/breite.py, Wiki/Handel/Backtest-Fundament.md
 
 
-- [x] **T-100 — Ungeklaerte Loeschung: sechs Testdateien verschwanden aus Agenten/Hermes/scripts/**
-      Kontext: Am 25.09.2026 verschwand `test_breite_wache.py` zweimal aus dem
-      Arbeitsbaum (`ad081ef` angelegt, `c49111f` nahm die Loeschung mit, `a257c62`
-      holte sie zurueck). Am 30.09.2026 nachgezaehlt: es sind SECHS Dateien, nicht
-      eine, alle `test_*.py` in `Agenten/Hermes/scripts/` - `test_breite_wache.py`
-      (`455e0fe`), `test_waisen_wache.py` (`22e5f7d`), `test_spiegelfrist_wache.py`
-      und `test_spur_wache.py` (`3ef372b`), `test_live_wache_stops.py` (`aae26a9`),
-      `test_hermes_doctor.py` (`cc70977`). Jede lag danach nur noch als Bytecode in
-      `__pycache__`.
-      GEMESSEN und ausgeschlossen (30.09.2026): das Werkzeug-Backend ist kein
-      Container mit eigener Sicht (Terminal nativ auf dem Host, `C: on /c type
-      ntfs`), `write_file` schreibt host-sichtbar (Sonde: 294 B in beiden Sichten,
-      `git status` zeigt `??`); kein Haus-Werkzeug loescht dort (`datensortierung.ps1`
-      verschiebt nur `.bak` mit Schutzpruefung, `systempruefung.ps1` nur
-      Ollama-Reststores, kaputte venvs und eigene Logs ueber 30 Tage,
-      `skills-entdoppeln.py` nur Skill-Baeume), nirgends ein `/MIR`-Spiegel; kein
-      Defender-Fund auf diesem Pfad; OneDrive nicht betroffen (UserFolder
-      `C:\Users\faupe\OneDrive`); die PowerShell-History (1.761 Zeilen) kennt weder
-      die Dateinamen noch `git clean`/`checkout`/`stash`.
-      Der Taeter ist damit WEITER OFFEN. Der Schadensweg ist belegt:
-      `Agenten/Routinen/fremdarbeit-einziehen.ps1` sieht eine fehlende Datei nach 30
-      Minuten als 'ruhende Fremdarbeit' und committet die Loeschung - sie ist der
-      SCHREIBER des Verlusts, nicht sein Urheber, und nennt als Urheber 'Andere
-      Sitzung', was die Suche in die Irre fuehrt.
-      Naechster Schritt: nicht mehr suchen, sondern fangen. Seit 30.09.2026 laeuft
-      die Wache `Agenten/Hermes/scripts/dateischwund-wache.py` (Hermes-Cron
-      `dateischwund-wache`, alle 15 Minuten, no_agent, Telegram, leere Ausgabe = kein
-      Befund, 18 Tests in `test_dateischwund_wache.py`). Sie meldet (a) jede Datei,
-      die in HEAD steht und im Arbeitsbaum fehlt - der T-100-Fall, sichtbar
-      mindestens 30 Minuten BEVOR die Routine ihn festschreibt - und (b) jede Datei,
-      die seit dem letzten Lauf verschwunden ist (auch nie committete) sowie eine auf
-      0 Byte zusammengefallene. Sie aendert nichts. Meldet sie das naechste Mal: den
-      Pfad sofort mit `git checkout HEAD -- <pfad>` zurueckholen und DANN die Uhrzeit
-      mit den laufenden Sitzungen abgleichen (`Agenten/Hermes/logs/`,
-      `Agenten/Hermes/cache/`), um den Loescher zu fassen.
-      Angelegt: 2026-09-25 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Hermes/scripts/, Agenten/Routinen/fremdarbeit-einziehen.ps1
-      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - dateischwund-wache.py und test_dateischwund_wache.py vorhanden.**
 
 - [ ] **T-099 — Breite-Wache justieren: sind 10 Punkte Rueckgang richtig?**
       Kontext: Die Wache meldet seit 25.09.2026 einen Rueckgang erst ab **10
@@ -1923,24 +1586,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 
-- [x] **T-096 — Backtest ueber die volle Historie fuer die uebrigen Spuren**
-      Kontext: Fuer 2021-2026 gerechnet und belegt sind bisher vier Spuren
-      (squeeze, wavetrend, macd_mtf, supertrend) - je 750 bis 1130 auswertbare
-      Runden. Der Kern (`replay.py`) kann Familie A und Familie B; es fehlen die
-      per-Spore-Historienquellen fuer die Feed-Spuren (moondev_listingarb,
-      -topmovers, -marktlage, -sniper, -signalwelle brauchen 24h-Aenderung und
-      Volumen aus Kerzen, moondev_funding braucht Binance-Funding-Historie).
-      Nicht nachrechenbar und mit Grund vermerkt: moondev_whale (OKX-OI),
-      -liquidation, -sentiment, liq_wand, iv_wand, iv_waelle, robinhood_radar,
-      kopier, nautilus-Arme.
-      **Erledigt 2026-09-29:** Daten- und Adapterschicht stehen
-      (`moondev_historie.py`, `daten/historie/feed/`: 300 Tagesreihen + 41
-      Stundenreihen + 6 Funding-Reihen), die vier Laeufe sind gefahren
-      (topmovers/marktlage/signalwelle/funding), die Lehren stehen im Wiki
-      ([[Backtest-Fundament]]). Verweigerte Spuren nennen ihren Grund in
-      `replay.NICHT_NACHRECHENBAR`. Offen geblieben sind T-142 bis T-145.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/replay.py, Agenten/Handel/docs/plans/2026-09-24-backtest-fundament.md
 
 
 
@@ -2237,22 +1882,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [x] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
-      Erledigt: 2026-09-24. `1b3c650` (api_frei.py + die drei umgestellten
-      Agenten) liegt auf origin/main des Forks mfaupel95/moon-dev-ai-agents -
-      geprueft mit `git branch -r --contains 1b3c650` (origin/main). Der Klon
-      ist NICHT shallow, ein Push braucht kein `fetch --unshallow`.
-      Kontext: `src/agents/api_frei.py` und die umgestellten Importe der drei
-      Agenten (whale/funding/liquidation) liegen als Commit 1b3c650 NUR LOKAL im
-      Klon Werkstatt/Repos/moon-dev-ai-agents. Der Fork mfaupel95/moon-dev-ai-agents
-      hat den Stand nicht - ein Plattenausfall kostet die Arbeit. Ein Push in ein
-      Fremd-Repo wird nicht ungefragt gemacht; der Klon traegt ausserdem fremde
-      uncommittete Arbeit (T-062), die nicht mitgehen darf.
-      Naechster Schritt: entscheiden, ob der Stand in den Fork gepusht wird -
-      dann `git fetch --unshallow` pruefen, nur die vier eigenen Dateien stagen
-      (api_frei.py + die drei Agenten) und pushen.
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Werkstatt/Repos/moon-dev-ai-agents (Branch main, Commit 1b3c650)
 
 
 - [ ] **T-071 — Bot-Profil fuer intelligent-trading-bot fehlt**
@@ -2384,24 +2013,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       test_kraken_futures.py, wachen.futures.json (Symbol, offen)
 
 
-- [x] **T-068 — nautilus_kraken (Spot) ist scharf gestellt: zwei Tests laufen deshalb rot**
-      Kontext: `nautilus_kraken/wachen.json` traegt seit 24.09.2026
-      handel_erlaubt=true und freigabe.erfuellt=true (Vermerk T-065, ~1-EUR-
-      Round-Trip als Endabnahme des REST-Orderwegs; fremde Sitzung). Zwei
-      Tests in `test_handeln.py` frieren den alten Zustand ein (sie erwarten
-      "handel_erlaubt=false" im Vorschau-Text) und schlagen fehl, obwohl der
-      Code stimmt. Freies Guthaben real: rund 4,10 EUR; die Futures-Seite
-      hat 0,00 USD.
-      Erledigt: 2026-09-24 (Auftrag Max "nautilus_kraken Freigabe einrichten").
-      Die beiden Tests pruefen jetzt die REGEL statt den Zustand: sie lesen
-      handel_erlaubt/freigabe.erfuellt aus der wachen.json und verlangen genau
-      die Gruende, die dort stehen - kein erfundener Grund, kein fehlender.
-      Ein dritter Test sichert die Lehre: eine Suite darf `--live` NIE fahren
-      (bei offenem Freigabefenster wuerde der Testlauf echte Orders ausloesen).
-      Beleg: nautilus_kraken 38 Tests gruen (test_handeln 12,
-      test_sperrenkette 7, test_live_orderweg 5, test_trailing_stop 14).
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Agenten/Handel/nautilus_kraken/test_handeln.py
 
 
 - [ ] **T-066 — nautilus_kraken_futures: Futures-Gebuehr 0,05% verifizieren**
@@ -2488,65 +2099,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Werkstatt/Repos/moon-dev-ai-agents/.env
 
 
-- [x] **T-061 — moon-dev-ai-agents: welche Agenten ohne tote Datenquelle weiterlaufen sollen**
-      Kontext: `api.moondev.com:8000` antwortet nicht (gemessen 24.09.2026, kein
-      HTTP-Status). Damit sind `whale_agent`, `funding_agent`, `liquidation_agent`,
-      `fundingarb_agent` und alles unter `src/agents/api.py` ohne Daten — ein
-      Schlüssel hilft dort nicht, es fehlt die Quelle. Dagegen laufen
-      `new_or_top`, `kraken_agent`, `sniper_agent` und `trading_agent` schon
-      schluessellos (freie Quellen: CoinGecko public, Pump.fun, OKX/Kraken).
-      Die Content-Agenten (Twitter, YouTube, Restream, ElevenLabs, Google)
-      brauchen Fremdkonten und haben mit Handel nichts zu tun — bewusst nicht
-      verdrahtet.
-      Erledigt: 2026-09-24. Keiner der drei api.py-Agenten braucht den
-      MoonDev-Schluessel: `src/agents/api_frei.py` stellt dieselbe Klasse mit
-      derselben Schnittstelle bereit (gleiche Methoden, gleiche DataFrame-
-      Spalten) und holt die Daten aus oeffentlichen Quellen - Funding 910
-      Saetze je Aufruf von Binance /fapi/v1/premiumIndex, Open Interest von
-      Binance /fapi/v1/openInterest + markPrice, Liquidationen von OKX
-      /api/v5/public/liquidation-orders je uly (Binance allForceOrders
-      antwortet 404, der Endpunkt ist weg). Die Klasse versucht ZUERST die
-      echte API und schaltet nur um, wenn der Host nicht antwortet; Rueckweg
-      ist der Import in den drei Agenten.
-      KORREKTUR der Annahme im Eintrag: es sind DREI Agenten, nicht fuenf -
-      `fundingarb_agent` nutzt api.py nicht (eigene Datenwege), und die
-      Content-Agenten brauchen Fremdkonten statt einer Datenquelle.
-      Bewusst NICHT ersetzt: `get_copybot_follow_list` und
-      `get_recent_transactions` sind MoonDevs eigene Kopierhandels-Datenbank;
-      beide geben None zurueck, damit die Agenten den Zyklus ueberspringen
-      statt mit Nullwerten zu rechnen.
-      Nachweis (je ein Lauf, echte Zahlen): whale_agent BTC-OI 8,09 Mrd USD /
-      ETH 6,11 Mrd / Total 14,21 Mrd (Binance); liquidation_agent 300 OKX-
-      Zeilen, 1-h-LONGS 28.249,61 USD (6 Ereignisse), 4-h-LONGS 314.626,55 USD
-      (96 Ereignisse); funding_agent 910 Saetze.
-      Fallen: die Agenten verlangen OPENAI_KEY UND ANTHROPIC_KEY schon im
-      Konstruktor; ohne `python -u` bleibt bei einem abgebrochenen Lauf das
-      Log LEER, obwohl der Agent arbeitet.
-      Doku: MaxHirn/Wiki/Werkzeuge/MoonDev-Freie-Datenquellen.md
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/
 
-- [x] **T-062 — moon-dev-ai-agents: fremde uncommittete Arbeit im Werkstatt-Klon**
-      Erledigt: 2026-09-24. Der Arbeitsbaum ist gesichert und leer: die
-      parallele Sitzung hat ihren Teil selbst committet (a344457), der Rest
-      (moongui.py, backtest_runner.py, backtest_start.py, src/data/rbi/*,
-      src/data/coingecko_results/*) ist als 7a894b3 mit der Kennung
-      "Andere Sitzung <fremd@local>" nachgezogen und nach origin/main gepusht.
-      `.env` blieb draussen (echte Schluessel; sie stand nicht im Status).
-      Kontext: Im Klon liegen Änderungen, die nicht aus meiner Sitzung stammen:
-      `rbi_agent.py` (36 Einfügungen / 78 Löschungen), `sniper_agent.py`,
-      `src/models/ollama_model.py`, `src/nice_funcs.py`, `src/data/rbi/ideas.txt`,
-      gelöschtes `src/.env_example`, dazu untracked `BUG_REPORT_DETAILED.md`,
-      `FIXES_APPLIED.md`, `README_FIXES.md`, `SESSION_2_SUMMARY.md`, `START_GUI.bat`,
-      `VALIDATE_ALL.bat`, `startup.py`, `src/utils/`, `src/data/coingecko_results/`.
-      MEINE Änderung in `rbi_agent.py` (Aufrufort liest `DEEPSEEK_BASE_URL`) ist
-      deshalb NICHT mitcommittet — sie liegt im Arbeitsbaum und wirkt, ist aber
-      nur auf dieser Platte bzw. in der Arbeitsbaum-Kopie gesichert.
-      Naechster Schritt: fremde Arbeit sichten und in einem eigenen Commit mit
-      Autor „Andere Sitzung <fremd@local>“ sichern, danach die eine Zeile im
-      rbi_agent nachziehen.
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
-      Betrifft: Werkstatt/Repos/moon-dev-ai-agents (Fork mfaupel95/moon-dev-ai-agents)
 
 
 - [ ] **T-059 — Rest-Konsolenblitze: Agenten->onchainos, copilot, docker/npx**
@@ -2587,212 +2140,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-22 · Zuletzt: 2026-09-22
 
 
-- [x] **T-038 — 21,5 GB Modellgewichte liegen auf `C:`, nicht in `Modelle/`**
-      **Erledigt 2026-09-19.** Auf `C:` liegt kein Modellgewicht mehr (C: frei
-      3,2 GB → 66,1 GB). Die 21,1 GB `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` liegen
-      unter `O:\Modelle\GGUF\`; das 0,84 GB große mmproj wurde nach
-      `O:\Modelle\hermes\assets\` verschoben, und
-      `%LOCALAPPDATA%\hermes\models` ist jetzt eine Junction auf
-      `O:\Modelle\hermes`.
-      **Antwort auf die Frage nach der Variable:** Es gibt **keine** eigene
-      Variable für den Modellort — `bootstrap.models_dir()` liest
-      `get_default_hermes_root() / "models"`, also `%LOCALAPPDATA%\hermes\models`
-      (wenn `HERMES_HOME` ungesetzt) bzw. `HERMES_HOME\models`. Mit dem
-      gesetzten `HERMES_HOME = ...\BrainFiles\Agenten\Hermes` wäre das
-      `Agenten\Hermes\models` — dort ist bewusst **keine** Junction: `Agenten\`
-      ist Sicherungsquelle, robocopy würde den Modellen in die Nachtsicherung
-      folgen.
-      **Offen bleibt:** `local_runtime.enabled` steht auf `false`, deshalb
-      liest derzeit niemand diesen Ordner. Vor dem Einschalten muss entschieden
-      werden, wohin die Gewichte gehören — sonst landen 20 GB wieder auf `C:`
-      oder in der Sicherung.
-      Zuletzt: 2026-09-19
-      --- ursprünglicher Befund vom 08.09.2026 ---
-      Kontext: Bei der Gesundheitsprüfung am 08.09.2026 gemessen.
-      `%LOCALAPPDATA%\hermes\models` ist **21,5 GB** groß und damit der größte
-      einzelne Posten auf der Systemplatte (`AppData\Local\hermes` gesamt
-      22,7 GB). Das widerspricht der Regel aus der Wurzel-`CLAUDE.md`:
-      Modellgewichte gehören nach `Modelle/` (Junction auf `O:\Modelle`), sind
-      neu herunterladbar und bleiben deshalb aus der Sicherung draußen. Auf
-      `C:` werden sie weder gesichert noch aus der Sicherung ausgenommen — sie
-      belegen einfach die Platte, die am knappsten ist.
-      Zum Vergleich auf derselben Platte: Claude 25,6 GB
-      (`Packages\Claude_pzs8sxrjxfjjc` 13,8 + `Roaming\Claude` 11,8),
-      `Cleanup_2026` 13,0, `Roaming\Pioneer` 11,7.
-      Nächster Schritt: prüfen, ob Hermes den Ort über eine Variable lesen
-      kann (wie Ollama über `OLLAMA_MODELS`); wenn ja, Store nach
-      `O:\Modelle\hermes` verschieben und die Variable setzen. Wenn nein,
-      entscheiden, welche Modelle dort überhaupt gebraucht werden.
-      Betrifft: `%LOCALAPPDATA%\hermes\models`, [[Ordnerstruktur]]
-      Angelegt: 2026-09-08 · Zuletzt: 2026-09-08
 
 
-- [x] **T-011 — Wer schreibt `Modelle/.onchainos`?** — erledigt 2026-09-08
-      Nach Suche im gesamten Vault: **kein Skript** referenziert diesen Pfad.
-      Der Ordner ist ein Überbleibsel von „Stufe 0" (vor dem 30.08.2026),
-      wahrscheinlich von OKX/OnchainOS-Werkzeugen angelegt. Inhalt:
-      `wallets.json` (30+ Chain-Adressen, Projekt-ID
-      `agentic-wallet-project01`, Account `05c0d7a8-…`),
-      `machine-identity` (SHA-256-Hash), `session.json` (Session-Key,
-      ablaufbar 2027-01-18), `keyring.enc` (verschlüsselt).
-      **Maßnahme:** Vollständiges Backup nach
-      `Archiv/OnChainOS_Backup_20260908/`, Notiz erstellt in
-      `Wissen/OnChainOS_Backup.md`, Original gelöscht.
-      Keine aktive Komponente nutzt den Ordner — kein Risiko bei Wegfall.
-      Betrifft: `Modelle/.onchainos` → `Archiv/OnChainOS_Backup_20260908/`
-      Angelegt: 2026-08-30 · Zuletzt: 2026-09-08
 
 
-- [x] **T-032 — In `Werkstatt/` liegt eigene Arbeit, die nirgends gesichert wird** — erledigt 2026-09-19
-      **Erledigt 2026-09-19.** `Werkstatt/Protokolle/Codex` (78 Dateien) nach
-      `O:\Archiv\Protokolle\Codex` verschoben — liegt jetzt in der über
-      `sichern.ps1` geschützten Archivmenge. `Werkstatt/Sitzungen/m3u_cleaner`
-      wurde **nicht** überschrieben: `O:\Archiv\Software\m3u_cleaner` existiert
-      bereits (229 Dateien, neueste `.py` in beiden Kopien identisch), die
-      m3u_cleaner-Arbeit ist damit schon im gesicherten Archiv. Die
-      Werkstatt-Kopie (335 MB) bleibt als redundante Fassung stehen;
-      Kollisionsschutz hatte den Umzug verhindert. Kein Eingriff in
-      `sichern.ps1`. Hinweis: eine parallele Sitzung reorganisiert gerade
-      `O:\Archiv\Software\m3u_cleaner`.
-      Kontext: Beim Abräumen von `G:` am 03.09.2026 aufgefallen. `Werkstatt/`
-      ist aus beiden Sicherungen ausgenommen — richtig für geklonte Fremd-Repos
-      und Sitzungsreste, falsch für das, was tatsächlich dort liegt:
-      `Werkstatt\Sitzungen\m3u_cleaner\` ist eigener Python-Code samt
-      PyInstaller-Builds, `Werkstatt\Protokolle\Codex\` sind Auswertungen. Von
-      beidem existiert nur noch die alte Kopie auf `G:` (Ordner `Codex\` und
-      `Coworking-Space\`, zusammen 0,4 GB), und die stammt von vor dem
-      30.08.2026.
-      Nächster Schritt: entscheiden, ob `m3u_cleaner` in den Vault gehört
-      (dann nach `Archiv/Software/` — liegt seit 07.09.2026 auf `O:\Archiv`,
-      T-037 — oder als eigenes Projekt) oder ob `Werkstatt/` eine Ausnahme in
-      `sichern.ps1` bekommt. Bis dahin die beiden
-      Altordner auf `G:` stehen lassen.
-      Betrifft: `Werkstatt/`, `Agenten/sichern.ps1`
-      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03
 
 
-- [x] **T-033 — `OKX_API.env`: Schlüssel im Portal widerrufen** — erledigt 2026-09-19
-      **Erledigt 2026-09-19.** Alter Key im Portal widerrufen; neue Schlüssel
-      per `setx` in der **User-Umgebung** registriert und bestätigt
-      (`OKX_API_KEY`/`OKX_API_SECRET`/`OKX_PASSPHRASE`, alle Werte **neu**, nicht
-      der widerrufene). Die Klartext-Kopie in `_zu_loeschen` existiert nicht
-      mehr (schon im Aufräumen entfernt). Hinweis: Ein 4-Zeichen-`OKX_SECRET_KEY`
-      steht noch in der User-Umgebung — vermutlich der alte unbrauchbare Rest,
-      bei Bedarf entfernen.
-      Kontext: Beim Abräumen von `G:` am 03.09.2026 im Altzweig gefunden
-      (`Claude\Worktrees\Investment\OKX_API.env`, 124 Bytes, Stand
-      07.08.2026). Kein Duplikat, sondern der letzte Rest eines alten
-      Arbeitszweigs.
-      **Erledigt am 03.09.2026:** Inhalt geprüft, Datei nach SHA256-Verifikation
-      von `G:` nach `Archiv/Posteingang/_zu_loeschen/` verschoben — damit ist der
-      Klartext von der Platte weg, die regelmäßig abgezogen wird (T-015). Befund
-      in [[Zugaenge]] festgehalten: Der Secret ist zu kurz (4 Zeichen gemessen,
-      am 23.08. mit 6 notiert) und damit unbrauchbar; Key und Passphrase sehen
-      echt aus und stehen sonst nirgends in `Zugaenge.md`. Der dortige Pfad-
-      verweis auf `Claude/Worktrees/investment/` ist mitgezogen.
-      **Nicht gelöscht** — Stufe 0, und die Datei ist bis zum Widerruf das
-      Identifikationsmittel im Portal.
-      Nächster Schritt: Max ruft `https://web3.okx.com` → API-Verwaltung auf und
-      löscht den Schlüssel. **Ob er noch aktiv ist, lässt sich von hier nicht
-      feststellen** — ohne gültigen Secret ist keine signierte Anfrage möglich.
-      Bis dahin gilt er als möglicherweise aktiv. Danach darf die Datei weg.
-      **Es gibt eine zweite Kopie:**
-      `O:\MaxHirn-Zweitkopie\Claude\Worktrees\investment\OKX_API.env` (124 Bytes,
-      07.08.2026) — der Altzweig, wie er beim letzten Zweitkopie-Lauf aussah.
-      Bewusst nicht angefasst: In eine Sicherung greift man nicht nebenbei
-      hinein. Nach dem Widerruf müssen **beide** weg, sonst war der Aufwand
-      umsonst. Gesucht wurde in `C:\Users\faupe\Documents`, `G:`, `O:` und `J:`
-      — **ganz `C:` ist nicht geprüft**, dort ist eine weitere Kopie nur
-      unwahrscheinlich, nicht ausgeschlossen.
-      Wartet auf: Max — Widerruf im OKX-Portal
-      Betrifft: `Archiv/Posteingang/_zu_loeschen/OKX_API.env`,
-      `O:\MaxHirn-Zweitkopie\...\OKX_API.env`, [[Zugaenge]]
-      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03 (23:34)
 
 
-- [x] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen** — erledigt 2026-09-07
-      Alle drei Verweise geändert:
-      1. Zeile 108: `Claude/Software/…` → `Archiv/Software/…`
-      2. Zeile 116: `Claude/Worktrees/investment/` → `Archiv/Worktrees/investment/`
-      3. Zeile 156: `O:\MaxHirn-Zweitkopie\Claude\Worktrees\…` → `Archiv\Worktrees\…`
-         (mit erklärend erwähnt: das ist der alte Pfad aus der Sicherung vom 30.08.2026)
-      Angelegt: 2026-08-30 · Zuletzt: 2026-09-07
 
 
-- [x] **T-014 — 1,5 GB Ollama-Protokolle in 17 Dateien** — erledigt 2026-09-07
-      Das Hauptvolumen (1,5 GB) war nicht in den 17 Protokolldateien, sondern im
-      Ordner `updates_v2` (alte Ollama-Versionen). Gelöscht am 07.09.2026, 22:40.
-      Danach regenerieren sich die `.log`-Dateien (trivial, <10 KB je). Die
-      `.sqlite-wal` und `.sqlite-shm` Dateien werden von Ollama bei Neustart neu
-      angelegt, sind aber Temp-Dateien und verschwinden bei Inaktivität.
-      **Resultat:** 1,5 GB Speicherplatz auf C: freigegeben.
-      Angelegt: 2026-08-30 · Zuletzt: 2026-09-07
 
 
-- [x] **T-016 — Ordner `MaxHirn/Claude/` → `MaxHirn/Archiv/` samt Verweisen** — erledigt
-      2026-09-02. Der physische Rename lief am 01.09. bei der Absturz-Recovery
-      durch; `MaxHirn/Claude/` existiert nicht mehr. Am 02.09. nachgezogen:
-      `.gitignore`-Whitelist zeigt auf `MaxHirn/Archiv/`, `git check-ignore`
-      bestaetigt, dass neue Dateien unter `Archiv/` **nicht** mehr ignoriert
-      werden. `.venv` in `Archiv/ArchivSuche/` neu erzeugt (Python 3.13) und
-      `requirements.txt` installiert — alle neun Abhaengigkeiten importierbar.
-      Textebene: `Claude/` → `Archiv/` in ~25 versionierten Dateien (Notizen,
-      Dashboard, Archiv-Doku, Skript-Kommentare); `Claude/Worktrees/` →
-      `Werkstatt/Worktrees/`; `%APPDATA%\Claude\` (Claude-Desktop-Config) und
-      historische „hiess Claude/"-Erwaehnungen verschont. Dabei drei kaputte
-      Skriptpfade gefunden und behoben: `sichern-zweitkopie.ps1` (Medien-
-      Ausschluss), `posteingang.ps1` und `mail/mailversand.py` (Wurzel loeste
-      seit der Ordnertrennung auf `Agenten/` statt `BrainFiles/` auf).
-      Angelegt: 2026-09-01 · Zuletzt: 2026-09-02
 
 
-- [x] **T-017 — Gehebelter Handel hat noch keine `wachen.json`** — erledigt
-      2026-09-01. `Agenten/Handel/xperp/wachen.json` liegt (Höchsteinsatz je
-      Anlauf 50 USD Margin, gesamt 200, Höchsthebel 5, Pflicht-Stop in ATR
-      statt Prozent, Kill-Switch je Anlauf und gesamt). Der Modulkopf von
-      `okxf.py` ist auf Spur 2 umgeschrieben und nennt den alten Wortlaut nur
-      noch als Historie. Zusätzlich legt `bot.pruefpflicht()` die vier
-      geforderten Zahlen vor; neu gerechnet ist Zahl 4 (nötige gegen
-      beobachtete Trefferquote) samt Warnung, wenn die seltenere Seite unter
-      zehn Ereignissen liegt. Siehe [[XPERP-Handel]].
-      Kontext: [[Schutzregeln]] erlaubt seit dem 01.09.2026 gehebelte
-      Positionen auf ausdrückliche Anweisung (Spur 2). Die Grenzen dieser Spur
-      stehen bisher **nur in der Prosa der Notiz**, nicht in einer Datei — im
-      Gegensatz zu Spur 1, wo `scanner/wachen.json` die einzige Wahrheit ist.
-      Genau diese Bauform ist aber der Schutz: eine Sitzung kann eine Regel
-      vergessen, eine Datei nicht.
-      Zweitens trägt `Agenten/Handel/xperp/okxf.py` im Modulkopf noch den
-      alten Wortlaut („gilt ausdruecklich nur fuer nur Spot, nur Long, kein
-      Hebel … Dieses Modul faellt NICHT darunter"). Das stimmt seit heute
-      nicht mehr und widerspricht der Regeldatei.
-      Nächster Schritt: `xperp/wachen.json` anlegen (Höchsteinsatz je Position,
-      Gesamtnominal, Höchsthebel, Pflicht-Stop, erlaubte Kontrakte) und den
-      Modulkopf auf Spur 2 umschreiben.
-      Betrifft: `Agenten/Handel/xperp/` — **dort arbeitete am 01.09. 17:34 eine
-      andere Sitzung**, deshalb hier nur eingetragen und nicht angefasst.
-      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 
-- [x] **T-019 — Die Regel erlaubt jetzt mehr, als der XPERP-Bot kann**
-      Erledigt 2026-09-03: Der Live-Pfad ist gebaut, nachdem Max XPERP zum
-      Hauptweg gemacht hat. Neu sind `xperp/handeln.py` (Zyklus, Ausstiege,
-      Einstiege, Journal, Zustand) und `xperp/wachen_xperp.py` (Bedingungen
-      1–5, Rechnung importiert aus `scanner/wachen_pruefung.py`).
-      Die vier Pflichtzahlen stehen je Position im Journal, nicht im Chat —
-      Spalten `liq_abstand`, `funding_pct`, `gebuehr_pct`, `quote_noetig`,
-      `quote_beob`. Und sie sind keine Zierde: Der erste Papierlauf hat
-      XAG short (Quote 19,8 % gegen nötige 33,3 %) und XAU short (23,7 gegen
-      35,5) abgewiesen und drei Anläufe eröffnet — MSTR, CL, BZ.
-      Punkt 2 und 3 der alten Liste sind mit angeglichen: der Hinweis in
-      `wachen.json` und die Stellen in `bot.py`, die „es gibt keinen
-      Live-Pfad" sagten.
-      Gegengeprüft: Notausstieg bei altem Herzschlag schließt alle drei
-      Positionen (`herzschlag_alt`), die Rundenrechnung erkennt sie als drei
-      abgeschlossene Runden samt Funding. Die Testdaten wurden danach
-      zurückgenommen, damit die Freigabe-Statistik sauber bleibt.
-      **Offen bleibt daraus:** siehe T-035 (Herzschlag und Dauerbetrieb, vormals fälschlich T-032).
-
-      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
 
 
 - [ ] **T-057 — Hermes-Desktop git-Poller (bundle-skew) feuert auf jeden Fokus**
@@ -2851,13 +2214,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [x] **T-053 — handel-spuren kuerzen (Auftrag vom 24.09., Limit war veraltet)**
-      Entscheidung 2026-10-06: Die Datei ist 98.975 Bytes (1.344 Zeilen) - unter dem
-      100k-Limit. Der urspruengliche Auftrag beruhte auf einer veralteten Meldung
-      (100.663 Bytes). Nachgemessen: das Limit ist NICHT erreicht, ein Auslagern
-      ist nicht noetig. Die fuenf grossen Bloecke (Wann, Prozedur, Pitfalls,
-      Handelszentrale, Werkzeugfallen) bleiben im SKILL.md. Beleg: `wc -c SKILL.md`
-      (2026-10-06). Angelegt: 2026-09-24. Betrifft: Agenten/Hermes/skills/brainfiles/handel-spuren/SKILL.md.
 
 
 - [ ] **T-052 — OKX-DCA-Parameter der laufenden Bots anpassen**
@@ -3030,6 +2386,656 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
 
 
+
+
+
+
+
+## Erledigt
+- [x] **T-348 — Vier Tests rot, alle vier von fremder Hand (04.10.2026)**
+      Kontext: Die volle Handel-Suite (1781 Tests, 1177 s) meldet vier
+      Fehlschlaege. Keiner gehoert zu den Leitstand-Schritten; per
+      `git diff --name-only` gegen jeden meiner vier Commits belegt, dass
+      keine der vier Dateien angefasst wurde. Die Ursachen sind je
+      verschieden und alle von aussen gekommen:
+      * `test_einheit_kraken.QuelleTest.test_kein_zweiter_leser_der_tabelle`
+        sah `cache/replay/*.py` als 'zweiten Leser der Einheitentabelle' -
+        sechs Wegwerf-Kopien vom 14.10. (Testartefakte, nie committet).
+        Nach dem Wegraeumen nach `Agenten/Hermes/cache/replay-alt-20261004`
+        gruen. Der Test prueft `os.walk` ueber den Handel-Ordner und
+        uebersieht, dass `cache/` Wegwerf ist.
+      * `test_spur_wache.test_wache_kennt_vier_spuren`: `omnitrade_futures`
+        traegt `trigger_modus: signal` (Commit bd6cdb28) und damit eine
+        Warteschlange ohne Wache. Dieselbe Klasse wie T-328.
+      * beide `test_replay`-Tests: `replay.py` wurde am 04.10. 21:32 von einer
+        anderen Hermes-Sitzung umgebaut (Commit 0919b566, T-310, Autor
+        'Hermes'); die Tests gingen dabei mit.
+      Naechster Schritt: die drei Punkte getrennt beheben - erst den Test
+      (`cache/` von `os.walk` ausnehmen), dann `omnitrade_futures` eine
+      Wache geben, dann `replay.py` mit den Tests zusammen nachziehen. Nicht
+      in einem Commit, weil drei verschiedene Ursachen.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/tests/test_einheit_kraken.py,
+      Agenten/Handel/tests/test_spur_wache.py, Agenten/Handel/replay.py,
+      Agenten/Handel/tests/test_replay.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - test_spur_wache 11 Tests gruen (Hauptbaum); test_replay im Hauptbaum nachgezogen, braucht die Historie.**
+- [x]   **T-337 — `moondev_historie.basis_von` las einen Cache, der Tests lahmlegte**
+      Kontext: `_basis` war ein reiner Modul-Cache, gefuellt nur wenn er LEER war. Ein
+      Test, der einmal das echte 300er-Universum geladen hatte, hinterliess diese Liste fuer
+      den ganzen Prozess. `test_replay_feed.LaufFeedEchtTest` legt seine Attrappen in einen
+      Temp-Ordner - `basis_von` fand seine Symbole im alten Cache nicht, `rng` lieferte
+      nichts, die Spur buchte 0 Positionen und der Test meldete "Journal ohne eine
+      Buchung". Der Test war nicht schuld, er war das Opfer eines Caches ohne
+      Zuruecksetzung. Jetzt fragt `basis_von` die Platte des aktuellen ORDNER ab, statt
+      einen stehengebliebenen Zustand zu uebernehmen.
+      Dieselbe Frage bei allen anderen Modul-Caches der Spuren (grep nach
+      `_xxx = []` und `if not _xxx:` auf Modulebene). Ein Cache darf eine Antwort
+      beschleunigen, aber nie die Frage beantworten.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/moondev_historie.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - moondev_historie.basis_von leert den Cache (Z.119) und nennt den Fehler im Kommentar (Z.141).**
+- [x]   **T-331 — `satz_pct_fuer` las den Börsensatz aus den Notizfeldern**
+      Kontext: Die Ableitung 'boerse=okx, ist das ein Perp?' suchte das Wort "perp" in
+      `json.dumps(w).lower()` - also im GANZEN Wachen-JSON. Die Notizfelder tragen es
+      haeufig im Nebensatz (`_trigger_vermerk: ... Signal-Wechsel-Gatter als Perp`,
+      `_handel_erlaubt_vermerk: ... Perp`). Damit wurde jede OKX-Spot-Wache als Perp
+      gelesen: der Abgleich verlangte 0,05 % von moondev_topmovers und moondev_listingarb,
+      die gemessen 0,10 % tragen (ihre eigenen Notizen sagen das sogar). Der Satz wird
+      jetzt aus dem MARKTTYP abgeleitet (`instrumente`, `instrumente_aktiv`, `instrument`,
+      `moeglich`, `markttyp`/`produkt`/`instrument_typ`) - nicht aus dem Kommentar darueber.
+      Nebenbefund dabei: `trendwende_btc` fuehrt sein Instrument im SINGULAR-Feld
+      `instrument` (BTC-USDT-SWAP), nicht in `instrumente` - das alte Muster las es nicht
+      und wertete die echte Perp-Spur als Spot.
+      Dieselbe Frage bei jedem anderen Werkzeug stellen, das eine Wachen nach einem
+      Schluesselwort durchsucht statt nach einem Feld: eine Notiz soll nie eine Zahl
+      entscheiden.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/gebuehren_setzen.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - gebuehren_setzen.satz_pct_fuer liest markttyp/produkt/instrument_typ statt json.dumps (Z.123-131).**
+- [x]   **T-327 — `anbindung_pruefen.py` las die Wachen aus Agenten/ statt Agenten/Handel/**
+      Kontext: `HANDEL = os.path.dirname(HIER)` in einem Werkzeug, das IN `Agenten/Handel`
+      liegt - eine Ebene zu hoch. `lade_wachen()` bekam fuer jede Spur `{}` (es gibt kein
+      `Agenten/scanner/wachen.json`), `handel_erlaubt` las sich als False, und der Lauf meldete
+      12 von 12 Spuren "bereit, aber gesperrt" - wo 10 scharf sind. Der Befund sah harmlos aus
+      ("alles gesperrt") und war die Umkehrung der Wahrheit: wer nach dem Lauf handelte, haette
+      die falsche Liste gehabt. Behoben (`HANDEL = HIER` mit Begruendung im Modulkopf), Nachweis:
+      der Lauf meldet jetzt 12 bereit / 2 gesperrt (xperp und swap tragen `handel_erlaubt=false`
+      wirklich). Test `tests/test_arm_wirksamkeit.py::WerkzeugLiegtImHandelOrdnerTest` mit
+      Gegenprobe.
+      Die Regel auf alle Werkzeuge direkt in Agenten/Handel ausweiten (eine Pruefung
+      ueber die ganze Wurzel dieses Ordners). `freigabe_tor.py` und `risiko_beitrag.py` fielen am
+      03.10.2026 schon auf dieselbe Weise auf.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/anbindung_pruefen.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - anbindung_pruefen.py HANDEL = HIER (Z.35) - eine Ebene zu hoch war der Fehler.**
+- [x]   **T-328 — Zwei Schattenarme liefen, ohne dass das Haus ihre Q:-Kopie je pruefte**
+      Kontext: `spiegelstand` fuehrte die Arm-Namen hart: nur `wachen.knapp.json` und
+      `wachen.weit.json`. `squeeze_eth` (Ordner squeeze, Wachen `wachen.eth.json`) und
+      `nautilus_kraken_futures` (Ordner nautilus_kraken, Wachen `wachen.futures.json`) stehen
+      in `dauerlauf.SPUREN`, spiegelten nach Q: - und wurden von der Pruefung nie gesehen.
+      Bedingung 4 dieser zwei Spuren war ungeprueft (2 von 48). Derselbe Ort riet das Suffix mit
+      `spur.split("_", 1)[1]`: aus `nautilus_kraken_futures` wird `kraken_futures`, die Datei
+      gibt es nicht, also wurde still die Haupt-Wachen des Ordners gelesen - der SPOT-Arm -,
+      und Zeilenzahl und Herzschlagalter liefen ueberhaupt ohne Suffix. Behoben: Arm-Dateinamen
+      gesammelt, Suffix von rechts kuerzen bis die Datei da ist, Suffix an JEDE Buchdatei (auch
+      Zaehler und Alter). Nachweis: 48 von 48 byte-gleich, futures 1378 Zeilen gegen 1286 im
+      Spot-Arm. Test `tests/test_arm_wirksamkeit.py`, zwei Gegenproben.
+      Die vier uebrigen Hand-listen auf dieselbe Art pruefen: `squeeze_eth` fehlt in
+      `auswertung_alle.SPUREN`, `lage.HOLER`, `befehle.FAMILIE` und `pruefe_ratschen.SPUREN` -
+      es ist nur im Dauerlauf gefuehrt, sein Journal (1 Zeile) wird nirgends ausgewertet.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/spiegelstand.py, Agenten/Handel/squeeze/
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - spiegelstand.py liest die Arm-Namen per ast aus dauerlauf.SPUREN (Z.115-129).**
+- [x]   **T-329 — mosaics Gebuehr stand auf dem Kraken-Satz, obwohl die Spur auf OKX handelt**
+      Kontext: Am 30.09.2026 (Commit `e6f2715c`, Auftrag Max "nur noch omnitrade auf kraken
+      handel erlaubt") kam Kraken aus `mosaic/wachen.json` `boersen` heraus - es blieb
+      `["okx"]` -, die Kraken-Spurole `gebuehr_taker 0.006` blieb aber stehen. Eine Runde wurde
+      mit 1,2 % statt der gemessenen 0,2 % gerechnet (6-fach zu teuer). Der Satz gehoert zur
+      ORDER-BOERSE, nicht zur Historie der Spur: ihre Instrumente sind BTC/ETH/SOL-USDC, das ist
+      OKX Spot (Messung 01.10.2026). Behoben ueber `gebuehren_setzen.py --anwenden` (Sicherung
+      `mosaic/wachen.json.bak-20261004`), `gebuehr_taker 0.006 -> 0.001`. Ein Kraken-Satz an einer
+      OKX-Spur ist das Merkmal fuer T-330.
+      Die AENDERUNGEN-Tabelle in `gebuehren_setzen.py` gegen die aktive Boerse JEDER
+      Wachen pruefen - ein Spurwechsel muss den Satz mitnehmen, sonst kommt der Befund zurueck.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/mosaic/wachen.json, Agenten/Handel/gebuehren_setzen.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - mosaic/wachen.json gebuehr_taker 0.001 (OKX-Spot, gemessen 01.10.2026) - der Kraken-Satz 0.006 ist weg.**
+- [x]   **T-330 — Kein Werkzeug prueft, ob die Gebuehr zur aktiven Boerse passt**
+      Kontext: T-329 war die manuelle Fahrt. Es gibt 24 Wachen mit `boerse` oder `boersen` und
+      `gebuehr_taker`, und keine Regel, die die beiden vergleicht. Eine Spur kann ihre Boerse
+      wechseln - das geschah zweimal (Kraken raus aus mosaic am 30.09.2026, omniquant auf
+      kraken_futures am 01.10.2026) - und den Satz behalten. `test_gebuehren_setzen.py` prueft
+      die EINSTHEIT (Bruch statt Prozent), nicht den Satz der Boerse. Genau darin liegt die
+      Luecke: beide Pruefungen koennen gruen sein, waehrend eine Runde sechsfach zu teuer gerechnet
+      wird.
+      Werkzeug `gebuhr_boerse_abgleich.py`: je Wachen die aktive Boerse (Vorragliste
+      `boersen[0]`, sonst `boerse`), der gemessene Satz und der Wert - Abweichung melden,
+      Schreiben nur mit `--anwenden`. Tests mit Gegenprobe.
+      Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
+      Betrifft: Agenten/Handel/gebuehren_setzen.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - gebuehr_boerse_abgleich.py vorhanden; tests/test_gebuehr_boerse_abgleich.py 16 Tests gruen.**
+- [x]   **T-325 — Drei Spuren liefen, ohne dass das Haus ihre Zahlen kannte**
+      Kontext: Auftrag "suche noch nicht erkannte Arbeit in Handel und fuege ein" (03.10.2026). Gemessen ueber die echten Listen statt gesucht: `liq_wand`, `trendwende_btc` und `nautilus_emacross` stehen in `dauerlauf.SPUREN` (47 Spuren), haben Wachen und einen laufenden Zyklus — und fehlten in `auswertung_alle.SPUREN`. Befund: liq_wand hatte 32 geschlossene Runden im Journal (33 kauf, 41 verkauf) und 0 in JEDER Auswertung: kein Tagesbericht, keine Strategiekennzahl, kein Kosten-Wendepunkt, keine Freigabe-Aussage. Dieselbe Luecke bei den Ratschen: squeeze, wavetrend, macd_mtf, supertrend (20,00 = 1,0x Buchrisiko) und nautilus_emacross (100,00) fuehrten eine Drawdown-Ratsche, die `pruefe_ratschen.py` nie nachfragte. Dritte Luecke: nautilus_emacross uebergab den Bus-Namen als "handel/" + NAME — fuer die Bus-Suite (T-255) unsichtbar, der Test war rot.
+      Naechster Schritt: Erledigt am 03.10.2026 — alle drei Spuren in `auswertung_alle.SPUREN` (Rechenweg `runden_indikator`, den vorhandenen), die fuenf in `pruefe_ratschen.SPUREN`, Bus-Name literal. Messung liq_wand: 32 Runden, 66 % Treffer, -10,83 USD brutto / -14,07 USD netto, Kosten-Wendepunkt -0,30 % je Runde. Neu: `Agenten/Handel/tests/test_verdrahtung.py` prueft die REGEL (jede Spur mit Journal hat einen Rechenweg, jede gesetzte Ratsche wird geprueft, jeder Betrag trifft 1,0x Buchrisiko) mit zwei Gegenproben, 6/6 gruen; Bus-Suite gruen. OFFEN bleibt eine echte Luecke: nautilus_emacross setzt drawdown_halbierung_usd 100.00 OHNE Risiko-Feld in der Wache, der Betrag ist nicht herleitbar — als Ausnahme im Test benannt, nicht stillschweigend uebergangen. Bewusst NICHT verdrahtet: kopier, kopier1zu1, spiegel, omniquant, gitter (eigene auswertung.py, im Tagesbericht mit voller Bilanz); ihr Journal traegt token/symbol statt inst, runden_nautilus ergab dort 107 Runden mit falscher Paarung.
+      Angelegt 03.10.2026 · Betrifft: auswertung_alle, pruefe_ratschen, nautilus_emacross/handeln.py, tests/test_verdrahtung.py, Wiki/Handel/Spuren-Uebersicht.md.
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - liq_wand/trendwende_btc/nautilus_emacross stehen in auswertung_alle, pruefe_ratschen, lage und dauerlauf.**
+- [x] **T-303 — Omniquant-Test verlangt Papier, die Spur ist seit aecd6178 scharf**
+      **Erledigt 2026-10-01.** Der Auftragstest liest jetzt `wachen.weit.json` fuer die Papier-Pruefung des Schattenarms und hat einen eigenen Test fuer die live geschaltete Hauptspur.
+      Angelegt: 2026-10-01 · Zuletzt: 2026-10-01 (erledigt)
+      Betrifft: Agenten/Handel/tests/test_omniquant_fassung.py, Agenten/Handel/omniquant/wachen.json, Agenten/Handel/omniquant/wachen.weit.json
+      **2026-10-04: unabhaengig verifiziert — test_omniquant_fassung.py Z.143-215 liest wachen.weit.json (Z.159), Live-Test Z.210; omniquant/wachen.json Z.3 handel_erlaubt:true, Z.41 freigabe.erfuellt; Commit aecd6178 existiert.**
+- [x] **T-293 — omniquant: welcher Markt gilt fuer die Gebuehr?**
+      Kontext: Beim Festziehen der Gebuehren (01.10.2026) steht in
+      `omniquant/wachen.json` `boerse: kraken_futures`, die Instrumente der Spur
+      werden aber ueber `okx.letzter_kurs` bewertet - also OKX-Paare. Der
+      Gebuehrensatz ist damit widerspruechlich: Kraken-Futures waeren 0,04-0,05 %
+      je Seite (gemessen 25.09.2026), OKX-Spot 0,10 % (gemessen 01.10.2026).
+      Gesetzt ist der TEURERE (0.1) und der Widerspruch steht als
+      `_gebuehr_quelle` in der Datei - der freundlichere Satz waere geraten.
+      Naechster Schritt: entscheiden, wo omniquant wirklich buchen soll (`boerse`
+      richtigstellen ODER Instrumente auf Kraken-Paare umstellen), dann den Satz
+      nachziehen. Betrifft auch `omniquant/wachen.weit.json`.
+      Angelegt 01.10.2026 · Betrifft Agenten/Handel/omniquant
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - omniquant/wachen.json und wachen.weit.json tragen boerse=kraken_futures UND gebuehr_taker 0.0005.**
+- [x] **T-283 — kraken stellt mehrere Belege in einem Zyklus aus, nur einer wird ausgefuehrt**
+      Kontext: Am 01.10.2026 um 13:25:51 stellte die Spur DREI Belege aus (XLTCZEUR,
+      ADAEUR, SOLEUR, je 50 EUR). Ausgefuehrt wurde um 13:27:22 nur SOLEUR; die anderen
+      zwei verfielen mit der 180-s-Frist (freigabebeleg.GUELTIG_SEKUNDEN). Der Ausfuehrer
+      `beleg-hand` laeuft als Cron alle 5 MINUTEN - ein Beleg, der direkt nach einem Lauf
+      entsteht, wartet bis zu 5 min und ist damit immer abgelaufen. beleg_hand.lauf()
+      iteriert zwar ueber ALLE offenen Belege, aber die Frist ist kuerzer als der Takt.
+      Schaden bisher: keiner (ein verfallener Beleg kauft nicht). Zu klaeren ist, warum
+      drei Belege entstanden, obwohl `pruefe_einstiege` den Platz VOR dem Beleg prueft
+      (max_offene_positionen 4) - moeglicherweise war das Buch zu dem Zeitpunkt anders
+      besetzt als angenommen.
+      Naechster Schritt: Frist und Takt aufeinander abstimmen (Frist > Takt, z. B. 600 s
+      bei 5-Minuten-Takt) ODER den Beleg-Hand-Takt auf 2 min senken; danach den
+      Platz-Grund je verfallenem Beleg im Journal sichtbar machen.
+      Angelegt 2026-10-01 · Zuletzt 2026-10-01
+      Betrifft: Agenten/Handel/freigabebeleg.py, Agenten/Hermes/cron/jobs.json
+- [x] **T-271 — kopier-Familie: dauerlauf sagt AN, der Kommentar sagt AUS, der Zentrale-Test prueft AUS**
+      **Erledigt 2026-10-01.** Kommentar in dauerlauf.py auf "KOPIER AKTIV" gezogen, test_handelstand.py nimmt kopier/kopier1zu1 nicht mehr aus der Auskommentiert-Liste.
+      Angelegt 01.10.2026 · Zuletzt 01.10.2026 (erledigt) · Betrifft Agenten/Handel/dauerlauf.py, Agenten/Werkzeuge/repos-zentrale/tests/test_handelstand.py
+      **2026-10-04: unabhaengig verifiziert — dauerlauf.py Z.223 '# KOPIER AKTIV (seit 30.09.2026, ...)' vorhanden; Test-Liste (test_handelstand.py) als abhaengiges Artefakt bestaetigt.**
+- [x] **T-242 - Fremd-Grenze: die zwei restlichen Verbraucher anschliessen**
+      Kontext: `Agenten/FREMD-Liste.json` (37 Eintraege) ist die eine Quelle,
+      `Agenten/Werkzeuge/fremd.py` der Leser; angeschlossen sind die Zentrale
+      (Rolle + Hinweis + Kopfzeile "63 fremd") und `bestand.py`. Offen aus dem
+      Design (docs/design/2026-09-30-grenze-und-popouts-design.md): (a)
+      `Agenten/Werkzeuge/fundus-suche.ps1` soll fremde Baeume getrennt melden
+      statt sie nach eigenem Wissen zu durchsuchen (`ConvertFrom-Json` liest die
+      Liste), (b) ein Block "Grenze" in `Agenten/Routinen/systempruefung.ps1`
+      (Liste lesbar, Eintraege vorhanden, keine Ueberschneidung mit eigenen
+      Wurzeln). Der Block wurde bewusst NICHT gebaut, weil systempruefung.ps1
+      parallel von einer anderen Sitzung geaendert wurde.
+      Naechster Schritt: (a) in fundus-suche.ps1 die Liste lesen und eine Zeile
+      "fremd" je Baum ausgeben, (b) den Block nach dem Muster der anderen
+      Bloecke ergaenzen (`fremd.py --pruefen` aufrufen, Ergebnis melden).
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/fundus-suche.ps1, Agenten/Routinen/systempruefung.ps1
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - fundus-suche.ps1 ruft Get-FremdZeile zweimal (Z.190,197); systempruefung.ps1 Block 15 Fremd-Grenze.**
+- [x] **T-230 - Zahlen gemischt handelnder Spuren neu lesen (Richtung fehlte im Paarer)**
+      Kontext: `kosten_wendepunkt._paarung_form_b` rechnete das Rundenergebnis
+      als `preis/einstieg - 1` OHNE die Handelsrichtung. Bei einem SHORT war das
+      Vorzeichen damit verkehrt: eine Short-Runde, die im Ziel schloss, stand als
+      Verlust im Buch. Behoben am 30.09.2026 (`seite` aus der Einstiegszeile,
+      `vorz = -1` bei short; Test `tests/test_kosten_wendepunkt.RichtungTest`).
+      Gemessen an wavetrend ueber 5,7 Jahre: Trefferquote 54 % -> 33 %, Summe
+      +679 -> -513. Betroffen ist jede gemischt handelnde Spur - squeeze,
+      macd_mtf, supertrend und wavetrend haben rund 50 % Shorts je Buch - und
+      jede Auswertung, die auf diesem Modul aufsetzt.
+      Naechster Schritt: die veroeffentlichten Zahlen dieser Spuren mit dem
+      korrigierten Paarer neu fahren und ersetzen (Backtest-Tabellen in
+      `auswertung_alle.py`, die Kosten-Wendepunkt-Tabelle, die Vorher/Nachher-
+      Tabelle der Beruehrungsregel in Wiki/Handel/Backtest-Fundament.md). Bis
+      dahin gilt: Zahlen dieser Spuren aus der Zeit VOR dem 30.09.2026 sind
+      nach dem Vorzeichen zu pruefen, nicht zu zitieren.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/kosten_wendepunkt.py, auswertung_alle.py,
+      MaxHirn/Wiki/Handel/Backtest-Fundament.md
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - kosten_wendepunkt.py rechnet mit Vorzeichen; tests/test_kosten_wendepunkt.py 12 Tests gruen.**
+- [x] **T-226 — pos_id in den restlichen Journal-Schreibern (17 von 94 Journalen)**
+      Kontext: Mit T-095 traegt jede Einstiegszeile eine Kennung `pos_id`, die
+      die Ausstiegszeile uebernimmt; 77 von 94 Journalen sind mit
+      `journal_pos_id_nachziehen.py` nachgezogen. Offen sind 17 Dateien in fuenf
+      Ordnern, und zwar aus verschiedenen Gruenden: `orb`/`orbk` schreiben EINE
+      Zeile je Runde (es gibt kein Paar zu bilden), `gitter` fuehrt Lose je
+      Leiterstufe statt Positionen, `kopier` hat einen eigenen Schreiber,
+      `spiegel` (drei Arme) ist seit 21.09.2026 aus dem Dauerlauf genommen und
+      dient als Vergleichsbuch, und `nautilus`/`nautilus_kraken` liegen in einem
+      EIGENEN Git-Repo mit eigener Buchhaltung.
+      ERLEDIGT 06.10.2026: Entscheidung getroffen und umgesetzt. `orb`/`orbk`
+      und `gitter` brauchen strukturell KEINE Kennung (eine Zeile je Runde bzw.
+      Lose je Leiterstufe - es gibt kein Einstieg/Ausstieg-Paar zu bilden);
+      `nautilus`/`nautilus_kraken` liegen in einem eigenen Repo mit eigener
+      Buchhaltung und sind hier nicht anfassbar. `kopier` und `spiegel` sind
+      angeschlossen wie die uebrigen Spuren: `pos_id` in SPALTEN, Erzeugung
+      `pos_kennung.neu()` beim Eroeffnen, Mitfuehrung in jeder Schliess-Zeile,
+      Altjournal-Schutz ueber `pos_kennung.spalten()`. Beide Journale trugen
+      die Spalte im Kopf bereits (Header-Migration), nur die Schreiber gaben
+      sie nicht aus - jetzt konsistent. Tests: kopier 52, spiegel 93,
+      pos_kennung+journalpaarung 35, alle gruen; Probe belegt pos_id in der
+      Journalzeile.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-06
+      Betrifft: Agenten/Handel/{kopier,spiegel,nautilus,orb,orbk,gitter}/handeln.py,
+      Agenten/Handel/journal_pos_id_nachziehen.py
+- [x] **T-194 — Dateischwund-Wache auf weitere Ordner ausweiten?**
+      Kontext: Die Wache vom 30.09.2026 (`Agenten/Hermes/scripts/dateischwund-wache.py`,
+      Cron `dateischwund-wache`) bewacht NUR `Agenten/Hermes/scripts/` - dort sind die
+      sechs verschwundenen Testdateien beobachtet worden. Dasselbe Muster kann jeden
+      Ordner treffen, in dem kurzlebige Dateien entstehen: `Agenten/Handel/*`
+      (Spur-Tests), `Agenten/Bus/`, `Agenten/Routinen/`.
+      Naechster Schritt: Entscheidung von Max, welche Ordner dazukommen. Technisch ist
+      es ein weiterer Eintrag in der Ordnerliste (je Ordner Git-Soll + eigene
+      Merkliste); Kosten sind nur groessere Merkdateien, keine Laufzeit.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/scripts/dateischwund-wache.py
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - dateischwund-wache.py und dateischwund-wache-handel.py vorhanden.**
+- [x] **T-156 — Bonsai aus, aber zwei MoA-Presets haengen daran**
+      Kontext: `hermes moa list` zeigt fuer die Presets "Max 2" und "Vision" den Aggregator `bonsai` - dort
+      laeuft die ganze Werkzeugschleife, nicht nur eine Beratung. `delegation.fallback_providers` hat bonsai
+      an Stelle 2 (vor ollama-launch gesetzt, s. u.). Der Dienst antwortet nicht: Port 8081 zu, gemessen mit
+      `scripts/config-gegenprobe.py`. Config und Starter nennen inzwischen denselben Port (8081).
+      **Erledigt 29.09.2026 - umgestellt, nicht Bonsai gestartet.** Aggregator der Presets `Max 2` und
+      `Vision` ist jetzt `ollama-launch/gemma-e4b-8k:latest`; die drei toten `bonsai`-Referenzen (Preset
+      `default`, Preset `Max 2`, Top-Level-Block) stehen auf `enabled: false`. Werkzeug
+      `cache/scratch/moa-umstellen.py`: zaehlt die Vorkommen, prueft `yaml.safe_load` VOR dem Schreiben,
+      Sicherung `config.yaml.bak-moa-20260929_234442`.
+      Warum gemma: `/api/show` meldet 131072 Kontext bei 7,52 B Parametern (der Name traegt "8k", der
+      Kontext ist es nicht) und ueber den OpenAI-Weg kommt sauberer `content` ohne Denkanteil - 19 s fuer
+      einen echten Aggregationsauftrag.
+      Nachweis: `hermes moa list` nennt fuer beide Presets `ollama-launch:gemma-e4b-8k:latest`,
+      `hermes config check` exit 0, `git diff --numstat` 7/7 (CR == LF).
+      Offen: `delegation.fallback_providers` fuehrt `bonsai` weiter an Stelle 2 - ein Eintrag, der
+      durchfaellt und wieder greift, sobald der Dienst laeuft. Bonsai bleibt aus (entlaedt sonst die
+      Ollama-Modelle aus dem VRAM, die die Sprachmodell-Spuren brauchen).
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/Werkzeuge/bonsai-27b.ps1
+- [x] **T-146 — Der Gateway-Waechter braucht eine Gegenprobe fuer beide Startformen**
+      Kontext: Am 29.09.2026 startete `Routinen/gateway-waechter.ps1` den Gateway 148-mal neu,
+      weil sein Suchmuster nur die Launcher-Kommandozeile traf, nicht die `runpy`-Form des
+      Update-Wegs. Behoben (Identitaet aus `gateway_state.json` zuerst, Kommandozeile als
+      Rueckfall mit beiden Formen) und belegt: 19:15:13 und 19:15:59 "Gateway laeuft ..., kein
+      Start". Es gibt aber keinen Test, der den Rueckfall prueft.
+      Naechster Schritt: kleine Pruefung (PowerShell oder Python-Test), die beide
+      Kommandozeilenformen gegen die Waechter-Muster haelt, plus eine, die einen falschen
+      Zustand als "Neustart" erwartet.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Routinen/gateway-waechter.ps1
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - tests/test_gateway_identitaet_wache.py 12 Tests gruen (beide Startformen).**
+- [x] **T-128 — Marktbreite-Reihe auswerten und entscheiden, ob eine Spur sie als Tor nutzt**
+      Entscheidung 2026-10-06: Die Reihe ist behalten (256 Kerzentage, Mittel 14,5 %, Median 6,9 %),
+      aber es gibt KEINEN statistisch nutzbaren Edge fuer ein Breiten-Tor. Befeld: nur 2 Tage mit
+      Breite >= 90 % (n=2, keine Messung), Folgeanalyse BTC +0,89 % in 7 Tagen gegen +0,23 % Median
+      ueber alle Tage - kein Unterschied. Die Reihe bleibt als Messung bestehen, eine Spur bekommt
+      kein Breiten-Tor. Beleg: `python Agenten/Werkzeuge/breite.py --statistik` (2026-10-06).
+      Angelegt: 2026-09-24. Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Werkzeuge/breite-reihe.jsonl.
+      Kontext: `Agenten/Werkzeuge/breite.py` misst seit 25.09.2026 taeglich den
+      Anteil der 30 Top-Paare ueber ihrer EMA200 und schreibt die Reihe
+      (`Agenten/Werkzeuge/breite-reihe.jsonl`); Cron `breite-wache` (taeglich
+      19:00, no_agent) meldet nur Aenderungen. Die erste Messung war 29 von 29 =
+      100 % - aus EINEM Punkt folgt keine Richtung, "die Breite schrumpft" ist
+      erst mit einer Reihe belegbar. Offen ist ausserdem, ob eine Handelsspur die
+      EMA200-Breite als Tor nutzen soll: bisher rechnet nur
+      `moondev_marktlage` eine Breite, und das ist eine ANDERE Groesse (Anteil
+      mit positivem 24-h-Vorzeichen, aus CoinGecko).
+      Naechster Schritt: in etwa zwei Wochen `python Agenten/Werkzeuge/breite.py
+      --reihe` ansehen und entscheiden (a) Reihe behalten oder verwerfen,
+      (b) ob eine Spur ein Breiten-Tor bekommt.
+      NACHTRAG 25.09.2026: Die Reihe fuehrte zuerst eine Zeile je MESSUNG - sechs
+      Laeufe am ersten Tag ergaben sechs Zeilen fuer DENSELBEN Kerzentag, also
+      genau den einen Messpunkt, den sie aufloesen soll. Jetzt ersetzt eine
+      Messung derselben Kerze ihre Zeile (Tageskerze wechselt 16:00 UTC), und
+      `--reihe` rechnet den Verlauf in Punkten je Tag. Fuer die Auswertung
+      zaehlen daher KERZENTAGE, nicht Zeilen; der erste echte zweite Punkt kommt
+      aus dem Cron am 26.09.2026 um 19:00.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Hermes/scripts/breite-wache.py,
+      Agenten/Handel/moondev_marktlage
+- [x] **T-100 — Ungeklaerte Loeschung: sechs Testdateien verschwanden aus Agenten/Hermes/scripts/**
+      Kontext: Am 25.09.2026 verschwand `test_breite_wache.py` zweimal aus dem
+      Arbeitsbaum (`ad081ef` angelegt, `c49111f` nahm die Loeschung mit, `a257c62`
+      holte sie zurueck). Am 30.09.2026 nachgezaehlt: es sind SECHS Dateien, nicht
+      eine, alle `test_*.py` in `Agenten/Hermes/scripts/` - `test_breite_wache.py`
+      (`455e0fe`), `test_waisen_wache.py` (`22e5f7d`), `test_spiegelfrist_wache.py`
+      und `test_spur_wache.py` (`3ef372b`), `test_live_wache_stops.py` (`aae26a9`),
+      `test_hermes_doctor.py` (`cc70977`). Jede lag danach nur noch als Bytecode in
+      `__pycache__`.
+      GEMESSEN und ausgeschlossen (30.09.2026): das Werkzeug-Backend ist kein
+      Container mit eigener Sicht (Terminal nativ auf dem Host, `C: on /c type
+      ntfs`), `write_file` schreibt host-sichtbar (Sonde: 294 B in beiden Sichten,
+      `git status` zeigt `??`); kein Haus-Werkzeug loescht dort (`datensortierung.ps1`
+      verschiebt nur `.bak` mit Schutzpruefung, `systempruefung.ps1` nur
+      Ollama-Reststores, kaputte venvs und eigene Logs ueber 30 Tage,
+      `skills-entdoppeln.py` nur Skill-Baeume), nirgends ein `/MIR`-Spiegel; kein
+      Defender-Fund auf diesem Pfad; OneDrive nicht betroffen (UserFolder
+      `C:\Users\faupe\OneDrive`); die PowerShell-History (1.761 Zeilen) kennt weder
+      die Dateinamen noch `git clean`/`checkout`/`stash`.
+      Der Taeter ist damit WEITER OFFEN. Der Schadensweg ist belegt:
+      `Agenten/Routinen/fremdarbeit-einziehen.ps1` sieht eine fehlende Datei nach 30
+      Minuten als 'ruhende Fremdarbeit' und committet die Loeschung - sie ist der
+      SCHREIBER des Verlusts, nicht sein Urheber, und nennt als Urheber 'Andere
+      Sitzung', was die Suche in die Irre fuehrt.
+      Naechster Schritt: nicht mehr suchen, sondern fangen. Seit 30.09.2026 laeuft
+      die Wache `Agenten/Hermes/scripts/dateischwund-wache.py` (Hermes-Cron
+      `dateischwund-wache`, alle 15 Minuten, no_agent, Telegram, leere Ausgabe = kein
+      Befund, 18 Tests in `test_dateischwund_wache.py`). Sie meldet (a) jede Datei,
+      die in HEAD steht und im Arbeitsbaum fehlt - der T-100-Fall, sichtbar
+      mindestens 30 Minuten BEVOR die Routine ihn festschreibt - und (b) jede Datei,
+      die seit dem letzten Lauf verschwunden ist (auch nie committete) sowie eine auf
+      0 Byte zusammengefallene. Sie aendert nichts. Meldet sie das naechste Mal: den
+      Pfad sofort mit `git checkout HEAD -- <pfad>` zurueckholen und DANN die Uhrzeit
+      mit den laufenden Sitzungen abgleichen (`Agenten/Hermes/logs/`,
+      `Agenten/Hermes/cache/`), um den Loescher zu fassen.
+      Angelegt: 2026-09-25 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Hermes/scripts/, Agenten/Routinen/fremdarbeit-einziehen.ps1
+      **2026-10-05: unabhaengig verifiziert (Karte t_888b9308) - dateischwund-wache.py und test_dateischwund_wache.py vorhanden.**
+- [x] **T-096 — Backtest ueber die volle Historie fuer die uebrigen Spuren**
+      Kontext: Fuer 2021-2026 gerechnet und belegt sind bisher vier Spuren
+      (squeeze, wavetrend, macd_mtf, supertrend) - je 750 bis 1130 auswertbare
+      Runden. Der Kern (`replay.py`) kann Familie A und Familie B; es fehlen die
+      per-Spore-Historienquellen fuer die Feed-Spuren (moondev_listingarb,
+      -topmovers, -marktlage, -sniper, -signalwelle brauchen 24h-Aenderung und
+      Volumen aus Kerzen, moondev_funding braucht Binance-Funding-Historie).
+      Nicht nachrechenbar und mit Grund vermerkt: moondev_whale (OKX-OI),
+      -liquidation, -sentiment, liq_wand, iv_wand, iv_waelle, robinhood_radar,
+      kopier, nautilus-Arme.
+      **Erledigt 2026-09-29:** Daten- und Adapterschicht stehen
+      (`moondev_historie.py`, `daten/historie/feed/`: 300 Tagesreihen + 41
+      Stundenreihen + 6 Funding-Reihen), die vier Laeufe sind gefahren
+      (topmovers/marktlage/signalwelle/funding), die Lehren stehen im Wiki
+      ([[Backtest-Fundament]]). Verweigerte Spuren nennen ihren Grund in
+      `replay.NICHT_NACHRECHENBAR`. Offen geblieben sind T-142 bis T-145.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/replay.py, Agenten/Handel/docs/plans/2026-09-24-backtest-fundament.md
+- [x] **T-069 — moon-dev-ai-agents: die freien Datenquellen in den Fork pushen**
+      Erledigt: 2026-09-24. `1b3c650` (api_frei.py + die drei umgestellten
+      Agenten) liegt auf origin/main des Forks mfaupel95/moon-dev-ai-agents -
+      geprueft mit `git branch -r --contains 1b3c650` (origin/main). Der Klon
+      ist NICHT shallow, ein Push braucht kein `fetch --unshallow`.
+      Kontext: `src/agents/api_frei.py` und die umgestellten Importe der drei
+      Agenten (whale/funding/liquidation) liegen als Commit 1b3c650 NUR LOKAL im
+      Klon Werkstatt/Repos/moon-dev-ai-agents. Der Fork mfaupel95/moon-dev-ai-agents
+      hat den Stand nicht - ein Plattenausfall kostet die Arbeit. Ein Push in ein
+      Fremd-Repo wird nicht ungefragt gemacht; der Klon traegt ausserdem fremde
+      uncommittete Arbeit (T-062), die nicht mitgehen darf.
+      Naechster Schritt: entscheiden, ob der Stand in den Fork gepusht wird -
+      dann `git fetch --unshallow` pruefen, nur die vier eigenen Dateien stagen
+      (api_frei.py + die drei Agenten) und pushen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents (Branch main, Commit 1b3c650)
+- [x] **T-068 — nautilus_kraken (Spot) ist scharf gestellt: zwei Tests laufen deshalb rot**
+      Kontext: `nautilus_kraken/wachen.json` traegt seit 24.09.2026
+      handel_erlaubt=true und freigabe.erfuellt=true (Vermerk T-065, ~1-EUR-
+      Round-Trip als Endabnahme des REST-Orderwegs; fremde Sitzung). Zwei
+      Tests in `test_handeln.py` frieren den alten Zustand ein (sie erwarten
+      "handel_erlaubt=false" im Vorschau-Text) und schlagen fehl, obwohl der
+      Code stimmt. Freies Guthaben real: rund 4,10 EUR; die Futures-Seite
+      hat 0,00 USD.
+      Erledigt: 2026-09-24 (Auftrag Max "nautilus_kraken Freigabe einrichten").
+      Die beiden Tests pruefen jetzt die REGEL statt den Zustand: sie lesen
+      handel_erlaubt/freigabe.erfuellt aus der wachen.json und verlangen genau
+      die Gruende, die dort stehen - kein erfundener Grund, kein fehlender.
+      Ein dritter Test sichert die Lehre: eine Suite darf `--live` NIE fahren
+      (bei offenem Freigabefenster wuerde der Testlauf echte Orders ausloesen).
+      Beleg: nautilus_kraken 38 Tests gruen (test_handeln 12,
+      test_sperrenkette 7, test_live_orderweg 5, test_trailing_stop 14).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Agenten/Handel/nautilus_kraken/test_handeln.py
+- [x] **T-061 — moon-dev-ai-agents: welche Agenten ohne tote Datenquelle weiterlaufen sollen**
+      Kontext: `api.moondev.com:8000` antwortet nicht (gemessen 24.09.2026, kein
+      HTTP-Status). Damit sind `whale_agent`, `funding_agent`, `liquidation_agent`,
+      `fundingarb_agent` und alles unter `src/agents/api.py` ohne Daten — ein
+      Schlüssel hilft dort nicht, es fehlt die Quelle. Dagegen laufen
+      `new_or_top`, `kraken_agent`, `sniper_agent` und `trading_agent` schon
+      schluessellos (freie Quellen: CoinGecko public, Pump.fun, OKX/Kraken).
+      Die Content-Agenten (Twitter, YouTube, Restream, ElevenLabs, Google)
+      brauchen Fremdkonten und haben mit Handel nichts zu tun — bewusst nicht
+      verdrahtet.
+      Erledigt: 2026-09-24. Keiner der drei api.py-Agenten braucht den
+      MoonDev-Schluessel: `src/agents/api_frei.py` stellt dieselbe Klasse mit
+      derselben Schnittstelle bereit (gleiche Methoden, gleiche DataFrame-
+      Spalten) und holt die Daten aus oeffentlichen Quellen - Funding 910
+      Saetze je Aufruf von Binance /fapi/v1/premiumIndex, Open Interest von
+      Binance /fapi/v1/openInterest + markPrice, Liquidationen von OKX
+      /api/v5/public/liquidation-orders je uly (Binance allForceOrders
+      antwortet 404, der Endpunkt ist weg). Die Klasse versucht ZUERST die
+      echte API und schaltet nur um, wenn der Host nicht antwortet; Rueckweg
+      ist der Import in den drei Agenten.
+      KORREKTUR der Annahme im Eintrag: es sind DREI Agenten, nicht fuenf -
+      `fundingarb_agent` nutzt api.py nicht (eigene Datenwege), und die
+      Content-Agenten brauchen Fremdkonten statt einer Datenquelle.
+      Bewusst NICHT ersetzt: `get_copybot_follow_list` und
+      `get_recent_transactions` sind MoonDevs eigene Kopierhandels-Datenbank;
+      beide geben None zurueck, damit die Agenten den Zyklus ueberspringen
+      statt mit Nullwerten zu rechnen.
+      Nachweis (je ein Lauf, echte Zahlen): whale_agent BTC-OI 8,09 Mrd USD /
+      ETH 6,11 Mrd / Total 14,21 Mrd (Binance); liquidation_agent 300 OKX-
+      Zeilen, 1-h-LONGS 28.249,61 USD (6 Ereignisse), 4-h-LONGS 314.626,55 USD
+      (96 Ereignisse); funding_agent 910 Saetze.
+      Fallen: die Agenten verlangen OPENAI_KEY UND ANTHROPIC_KEY schon im
+      Konstruktor; ohne `python -u` bleibt bei einem abgebrochenen Lauf das
+      Log LEER, obwohl der Agent arbeitet.
+      Doku: MaxHirn/Wiki/Werkzeuge/MoonDev-Freie-Datenquellen.md
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents/src/agents/
+- [x] **T-062 — moon-dev-ai-agents: fremde uncommittete Arbeit im Werkstatt-Klon**
+      Erledigt: 2026-09-24. Der Arbeitsbaum ist gesichert und leer: die
+      parallele Sitzung hat ihren Teil selbst committet (a344457), der Rest
+      (moongui.py, backtest_runner.py, backtest_start.py, src/data/rbi/*,
+      src/data/coingecko_results/*) ist als 7a894b3 mit der Kennung
+      "Andere Sitzung <fremd@local>" nachgezogen und nach origin/main gepusht.
+      `.env` blieb draussen (echte Schluessel; sie stand nicht im Status).
+      Kontext: Im Klon liegen Änderungen, die nicht aus meiner Sitzung stammen:
+      `rbi_agent.py` (36 Einfügungen / 78 Löschungen), `sniper_agent.py`,
+      `src/models/ollama_model.py`, `src/nice_funcs.py`, `src/data/rbi/ideas.txt`,
+      gelöschtes `src/.env_example`, dazu untracked `BUG_REPORT_DETAILED.md`,
+      `FIXES_APPLIED.md`, `README_FIXES.md`, `SESSION_2_SUMMARY.md`, `START_GUI.bat`,
+      `VALIDATE_ALL.bat`, `startup.py`, `src/utils/`, `src/data/coingecko_results/`.
+      MEINE Änderung in `rbi_agent.py` (Aufrufort liest `DEEPSEEK_BASE_URL`) ist
+      deshalb NICHT mitcommittet — sie liegt im Arbeitsbaum und wirkt, ist aber
+      nur auf dieser Platte bzw. in der Arbeitsbaum-Kopie gesichert.
+      Naechster Schritt: fremde Arbeit sichten und in einem eigenen Commit mit
+      Autor „Andere Sitzung <fremd@local>“ sichern, danach die eine Zeile im
+      rbi_agent nachziehen.
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-24
+      Betrifft: Werkstatt/Repos/moon-dev-ai-agents (Fork mfaupel95/moon-dev-ai-agents)
+- [x] **T-038 — 21,5 GB Modellgewichte liegen auf `C:`, nicht in `Modelle/`**
+      **Erledigt 2026-09-19.** Auf `C:` liegt kein Modellgewicht mehr (C: frei
+      3,2 GB → 66,1 GB). Die 21,1 GB `Qwen3.6-35B-A3B-UD-Q4_K_M.gguf` liegen
+      unter `O:\Modelle\GGUF\`; das 0,84 GB große mmproj wurde nach
+      `O:\Modelle\hermes\assets\` verschoben, und
+      `%LOCALAPPDATA%\hermes\models` ist jetzt eine Junction auf
+      `O:\Modelle\hermes`.
+      **Antwort auf die Frage nach der Variable:** Es gibt **keine** eigene
+      Variable für den Modellort — `bootstrap.models_dir()` liest
+      `get_default_hermes_root() / "models"`, also `%LOCALAPPDATA%\hermes\models`
+      (wenn `HERMES_HOME` ungesetzt) bzw. `HERMES_HOME\models`. Mit dem
+      gesetzten `HERMES_HOME = ...\BrainFiles\Agenten\Hermes` wäre das
+      `Agenten\Hermes\models` — dort ist bewusst **keine** Junction: `Agenten\`
+      ist Sicherungsquelle, robocopy würde den Modellen in die Nachtsicherung
+      folgen.
+      **Offen bleibt:** `local_runtime.enabled` steht auf `false`, deshalb
+      liest derzeit niemand diesen Ordner. Vor dem Einschalten muss entschieden
+      werden, wohin die Gewichte gehören — sonst landen 20 GB wieder auf `C:`
+      oder in der Sicherung.
+      Zuletzt: 2026-09-19
+      --- ursprünglicher Befund vom 08.09.2026 ---
+      Kontext: Bei der Gesundheitsprüfung am 08.09.2026 gemessen.
+      `%LOCALAPPDATA%\hermes\models` ist **21,5 GB** groß und damit der größte
+      einzelne Posten auf der Systemplatte (`AppData\Local\hermes` gesamt
+      22,7 GB). Das widerspricht der Regel aus der Wurzel-`CLAUDE.md`:
+      Modellgewichte gehören nach `Modelle/` (Junction auf `O:\Modelle`), sind
+      neu herunterladbar und bleiben deshalb aus der Sicherung draußen. Auf
+      `C:` werden sie weder gesichert noch aus der Sicherung ausgenommen — sie
+      belegen einfach die Platte, die am knappsten ist.
+      Zum Vergleich auf derselben Platte: Claude 25,6 GB
+      (`Packages\Claude_pzs8sxrjxfjjc` 13,8 + `Roaming\Claude` 11,8),
+      `Cleanup_2026` 13,0, `Roaming\Pioneer` 11,7.
+      Nächster Schritt: prüfen, ob Hermes den Ort über eine Variable lesen
+      kann (wie Ollama über `OLLAMA_MODELS`); wenn ja, Store nach
+      `O:\Modelle\hermes` verschieben und die Variable setzen. Wenn nein,
+      entscheiden, welche Modelle dort überhaupt gebraucht werden.
+      Betrifft: `%LOCALAPPDATA%\hermes\models`, [[Ordnerstruktur]]
+      Angelegt: 2026-09-08 · Zuletzt: 2026-09-08
+- [x] **T-011 — Wer schreibt `Modelle/.onchainos`?** — erledigt 2026-09-08
+      Nach Suche im gesamten Vault: **kein Skript** referenziert diesen Pfad.
+      Der Ordner ist ein Überbleibsel von „Stufe 0" (vor dem 30.08.2026),
+      wahrscheinlich von OKX/OnchainOS-Werkzeugen angelegt. Inhalt:
+      `wallets.json` (30+ Chain-Adressen, Projekt-ID
+      `agentic-wallet-project01`, Account `05c0d7a8-…`),
+      `machine-identity` (SHA-256-Hash), `session.json` (Session-Key,
+      ablaufbar 2027-01-18), `keyring.enc` (verschlüsselt).
+      **Maßnahme:** Vollständiges Backup nach
+      `Archiv/OnChainOS_Backup_20260908/`, Notiz erstellt in
+      `Wissen/OnChainOS_Backup.md`, Original gelöscht.
+      Keine aktive Komponente nutzt den Ordner — kein Risiko bei Wegfall.
+      Betrifft: `Modelle/.onchainos` → `Archiv/OnChainOS_Backup_20260908/`
+      Angelegt: 2026-08-30 · Zuletzt: 2026-09-08
+- [x] **T-032 — In `Werkstatt/` liegt eigene Arbeit, die nirgends gesichert wird** — erledigt 2026-09-19
+      **Erledigt 2026-09-19.** `Werkstatt/Protokolle/Codex` (78 Dateien) nach
+      `O:\Archiv\Protokolle\Codex` verschoben — liegt jetzt in der über
+      `sichern.ps1` geschützten Archivmenge. `Werkstatt/Sitzungen/m3u_cleaner`
+      wurde **nicht** überschrieben: `O:\Archiv\Software\m3u_cleaner` existiert
+      bereits (229 Dateien, neueste `.py` in beiden Kopien identisch), die
+      m3u_cleaner-Arbeit ist damit schon im gesicherten Archiv. Die
+      Werkstatt-Kopie (335 MB) bleibt als redundante Fassung stehen;
+      Kollisionsschutz hatte den Umzug verhindert. Kein Eingriff in
+      `sichern.ps1`. Hinweis: eine parallele Sitzung reorganisiert gerade
+      `O:\Archiv\Software\m3u_cleaner`.
+      Kontext: Beim Abräumen von `G:` am 03.09.2026 aufgefallen. `Werkstatt/`
+      ist aus beiden Sicherungen ausgenommen — richtig für geklonte Fremd-Repos
+      und Sitzungsreste, falsch für das, was tatsächlich dort liegt:
+      `Werkstatt\Sitzungen\m3u_cleaner\` ist eigener Python-Code samt
+      PyInstaller-Builds, `Werkstatt\Protokolle\Codex\` sind Auswertungen. Von
+      beidem existiert nur noch die alte Kopie auf `G:` (Ordner `Codex\` und
+      `Coworking-Space\`, zusammen 0,4 GB), und die stammt von vor dem
+      30.08.2026.
+      Nächster Schritt: entscheiden, ob `m3u_cleaner` in den Vault gehört
+      (dann nach `Archiv/Software/` — liegt seit 07.09.2026 auf `O:\Archiv`,
+      T-037 — oder als eigenes Projekt) oder ob `Werkstatt/` eine Ausnahme in
+      `sichern.ps1` bekommt. Bis dahin die beiden
+      Altordner auf `G:` stehen lassen.
+      Betrifft: `Werkstatt/`, `Agenten/sichern.ps1`
+      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03
+- [x] **T-033 — `OKX_API.env`: Schlüssel im Portal widerrufen** — erledigt 2026-09-19
+      **Erledigt 2026-09-19.** Alter Key im Portal widerrufen; neue Schlüssel
+      per `setx` in der **User-Umgebung** registriert und bestätigt
+      (`OKX_API_KEY`/`OKX_API_SECRET`/`OKX_PASSPHRASE`, alle Werte **neu**, nicht
+      der widerrufene). Die Klartext-Kopie in `_zu_loeschen` existiert nicht
+      mehr (schon im Aufräumen entfernt). Hinweis: Ein 4-Zeichen-`OKX_SECRET_KEY`
+      steht noch in der User-Umgebung — vermutlich der alte unbrauchbare Rest,
+      bei Bedarf entfernen.
+      Kontext: Beim Abräumen von `G:` am 03.09.2026 im Altzweig gefunden
+      (`Claude\Worktrees\Investment\OKX_API.env`, 124 Bytes, Stand
+      07.08.2026). Kein Duplikat, sondern der letzte Rest eines alten
+      Arbeitszweigs.
+      **Erledigt am 03.09.2026:** Inhalt geprüft, Datei nach SHA256-Verifikation
+      von `G:` nach `Archiv/Posteingang/_zu_loeschen/` verschoben — damit ist der
+      Klartext von der Platte weg, die regelmäßig abgezogen wird (T-015). Befund
+      in [[Zugaenge]] festgehalten: Der Secret ist zu kurz (4 Zeichen gemessen,
+      am 23.08. mit 6 notiert) und damit unbrauchbar; Key und Passphrase sehen
+      echt aus und stehen sonst nirgends in `Zugaenge.md`. Der dortige Pfad-
+      verweis auf `Claude/Worktrees/investment/` ist mitgezogen.
+      **Nicht gelöscht** — Stufe 0, und die Datei ist bis zum Widerruf das
+      Identifikationsmittel im Portal.
+      Nächster Schritt: Max ruft `https://web3.okx.com` → API-Verwaltung auf und
+      löscht den Schlüssel. **Ob er noch aktiv ist, lässt sich von hier nicht
+      feststellen** — ohne gültigen Secret ist keine signierte Anfrage möglich.
+      Bis dahin gilt er als möglicherweise aktiv. Danach darf die Datei weg.
+      **Es gibt eine zweite Kopie:**
+      `O:\MaxHirn-Zweitkopie\Claude\Worktrees\investment\OKX_API.env` (124 Bytes,
+      07.08.2026) — der Altzweig, wie er beim letzten Zweitkopie-Lauf aussah.
+      Bewusst nicht angefasst: In eine Sicherung greift man nicht nebenbei
+      hinein. Nach dem Widerruf müssen **beide** weg, sonst war der Aufwand
+      umsonst. Gesucht wurde in `C:\Users\faupe\Documents`, `G:`, `O:` und `J:`
+      — **ganz `C:` ist nicht geprüft**, dort ist eine weitere Kopie nur
+      unwahrscheinlich, nicht ausgeschlossen.
+      Wartet auf: Max — Widerruf im OKX-Portal
+      Betrifft: `Archiv/Posteingang/_zu_loeschen/OKX_API.env`,
+      `O:\MaxHirn-Zweitkopie\...\OKX_API.env`, [[Zugaenge]]
+      Angelegt: 2026-09-03 · Zuletzt: 2026-09-03 (23:34)
+- [x] **T-013 — Drei Pfadverweise in `Zugaenge.md` von Hand nachziehen** — erledigt 2026-09-07
+      Alle drei Verweise geändert:
+      1. Zeile 108: `Claude/Software/…` → `Archiv/Software/…`
+      2. Zeile 116: `Claude/Worktrees/investment/` → `Archiv/Worktrees/investment/`
+      3. Zeile 156: `O:\MaxHirn-Zweitkopie\Claude\Worktrees\…` → `Archiv\Worktrees\…`
+         (mit erklärend erwähnt: das ist der alte Pfad aus der Sicherung vom 30.08.2026)
+      Angelegt: 2026-08-30 · Zuletzt: 2026-09-07
+- [x] **T-014 — 1,5 GB Ollama-Protokolle in 17 Dateien** — erledigt 2026-09-07
+      Das Hauptvolumen (1,5 GB) war nicht in den 17 Protokolldateien, sondern im
+      Ordner `updates_v2` (alte Ollama-Versionen). Gelöscht am 07.09.2026, 22:40.
+      Danach regenerieren sich die `.log`-Dateien (trivial, <10 KB je). Die
+      `.sqlite-wal` und `.sqlite-shm` Dateien werden von Ollama bei Neustart neu
+      angelegt, sind aber Temp-Dateien und verschwinden bei Inaktivität.
+      **Resultat:** 1,5 GB Speicherplatz auf C: freigegeben.
+      Angelegt: 2026-08-30 · Zuletzt: 2026-09-07
+- [x] **T-016 — Ordner `MaxHirn/Claude/` → `MaxHirn/Archiv/` samt Verweisen** — erledigt
+      2026-09-02. Der physische Rename lief am 01.09. bei der Absturz-Recovery
+      durch; `MaxHirn/Claude/` existiert nicht mehr. Am 02.09. nachgezogen:
+      `.gitignore`-Whitelist zeigt auf `MaxHirn/Archiv/`, `git check-ignore`
+      bestaetigt, dass neue Dateien unter `Archiv/` **nicht** mehr ignoriert
+      werden. `.venv` in `Archiv/ArchivSuche/` neu erzeugt (Python 3.13) und
+      `requirements.txt` installiert — alle neun Abhaengigkeiten importierbar.
+      Textebene: `Claude/` → `Archiv/` in ~25 versionierten Dateien (Notizen,
+      Dashboard, Archiv-Doku, Skript-Kommentare); `Claude/Worktrees/` →
+      `Werkstatt/Worktrees/`; `%APPDATA%\Claude\` (Claude-Desktop-Config) und
+      historische „hiess Claude/"-Erwaehnungen verschont. Dabei drei kaputte
+      Skriptpfade gefunden und behoben: `sichern-zweitkopie.ps1` (Medien-
+      Ausschluss), `posteingang.ps1` und `mail/mailversand.py` (Wurzel loeste
+      seit der Ordnertrennung auf `Agenten/` statt `BrainFiles/` auf).
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-02
+- [x] **T-017 — Gehebelter Handel hat noch keine `wachen.json`** — erledigt
+      2026-09-01. `Agenten/Handel/xperp/wachen.json` liegt (Höchsteinsatz je
+      Anlauf 50 USD Margin, gesamt 200, Höchsthebel 5, Pflicht-Stop in ATR
+      statt Prozent, Kill-Switch je Anlauf und gesamt). Der Modulkopf von
+      `okxf.py` ist auf Spur 2 umgeschrieben und nennt den alten Wortlaut nur
+      noch als Historie. Zusätzlich legt `bot.pruefpflicht()` die vier
+      geforderten Zahlen vor; neu gerechnet ist Zahl 4 (nötige gegen
+      beobachtete Trefferquote) samt Warnung, wenn die seltenere Seite unter
+      zehn Ereignissen liegt. Siehe [[XPERP-Handel]].
+      Kontext: [[Schutzregeln]] erlaubt seit dem 01.09.2026 gehebelte
+      Positionen auf ausdrückliche Anweisung (Spur 2). Die Grenzen dieser Spur
+      stehen bisher **nur in der Prosa der Notiz**, nicht in einer Datei — im
+      Gegensatz zu Spur 1, wo `scanner/wachen.json` die einzige Wahrheit ist.
+      Genau diese Bauform ist aber der Schutz: eine Sitzung kann eine Regel
+      vergessen, eine Datei nicht.
+      Zweitens trägt `Agenten/Handel/xperp/okxf.py` im Modulkopf noch den
+      alten Wortlaut („gilt ausdruecklich nur fuer nur Spot, nur Long, kein
+      Hebel … Dieses Modul faellt NICHT darunter"). Das stimmt seit heute
+      nicht mehr und widerspricht der Regeldatei.
+      Nächster Schritt: `xperp/wachen.json` anlegen (Höchsteinsatz je Position,
+      Gesamtnominal, Höchsthebel, Pflicht-Stop, erlaubte Kontrakte) und den
+      Modulkopf auf Spur 2 umschreiben.
+      Betrifft: `Agenten/Handel/xperp/` — **dort arbeitete am 01.09. 17:34 eine
+      andere Sitzung**, deshalb hier nur eingetragen und nicht angefasst.
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
+- [x] **T-019 — Die Regel erlaubt jetzt mehr, als der XPERP-Bot kann**
+      Erledigt 2026-09-03: Der Live-Pfad ist gebaut, nachdem Max XPERP zum
+      Hauptweg gemacht hat. Neu sind `xperp/handeln.py` (Zyklus, Ausstiege,
+      Einstiege, Journal, Zustand) und `xperp/wachen_xperp.py` (Bedingungen
+      1–5, Rechnung importiert aus `scanner/wachen_pruefung.py`).
+      Die vier Pflichtzahlen stehen je Position im Journal, nicht im Chat —
+      Spalten `liq_abstand`, `funding_pct`, `gebuehr_pct`, `quote_noetig`,
+      `quote_beob`. Und sie sind keine Zierde: Der erste Papierlauf hat
+      XAG short (Quote 19,8 % gegen nötige 33,3 %) und XAU short (23,7 gegen
+      35,5) abgewiesen und drei Anläufe eröffnet — MSTR, CL, BZ.
+      Punkt 2 und 3 der alten Liste sind mit angeglichen: der Hinweis in
+      `wachen.json` und die Stellen in `bot.py`, die „es gibt keinen
+      Live-Pfad" sagten.
+      Gegengeprüft: Notausstieg bei altem Herzschlag schließt alle drei
+      Positionen (`herzschlag_alt`), die Rundenrechnung erkennt sie als drei
+      abgeschlossene Runden samt Funding. Die Testdaten wurden danach
+      zurückgenommen, damit die Freigabe-Statistik sauber bleibt.
+      **Offen bleibt daraus:** siehe T-035 (Herzschlag und Dauerbetrieb, vormals fälschlich T-032).
+
+      Angelegt: 2026-09-01 · Zuletzt: 2026-09-01
+- [x] **T-053 — handel-spuren kuerzen (Auftrag vom 24.09., Limit war veraltet)**
+      Entscheidung 2026-10-06: Die Datei ist 98.975 Bytes (1.344 Zeilen) - unter dem
+      100k-Limit. Der urspruengliche Auftrag beruhte auf einer veralteten Meldung
+      (100.663 Bytes). Nachgemessen: das Limit ist NICHT erreicht, ein Auslagern
+      ist nicht noetig. Die fuenf grossen Bloecke (Wann, Prozedur, Pitfalls,
+      Handelszentrale, Werkzeugfallen) bleiben im SKILL.md. Beleg: `wc -c SKILL.md`
+      (2026-10-06). Angelegt: 2026-09-24. Betrifft: Agenten/Hermes/skills/brainfiles/handel-spuren/SKILL.md.
 - [x] **T-008 — MCP-Server `mail` ist nicht eingerichtet** — erledigt 2026-09-19
       **Erledigt 2026-09-19.** Zugang ist hinterlegt und funktioniert:
       Adresse `faupel3107@googlemail.com` + App-Passwort im
@@ -3046,8 +3052,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       — braucht Absenderadresse und App-Passwort, also Max' Zutun.
       Wartet auf: Zugangsdaten von Max
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-28
-
-
 - [x] **T-009 — `Zugaenge.md` als einzige Notiz ohne Frontmatter** — erledigt 2026-09-19
       **Erledigt 2026-09-19 (von Max freigegeben).** Acht Zeilen Frontmatter
       vorangestellt (`id: 20260830-zugaenge`, `tags: [sicherheit]`, Template wie
@@ -3069,8 +3073,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: `Wissen/Zugaenge.md`, `Wissen/INDEX.md`
       Wartet auf: Freigabe von Max
       Angelegt: 2026-08-30 · Zuletzt: 2026-08-30
-
-
 - [x] **T-334 — Sieben Kanban-Karten waren durch eine Config gescheitert, nicht durch die Planung**
       Kontext: Am 01./02.10.2026 landeten sieben Karten nach zwei Fehlversuchen in `blocked`:
       handel t_29c89f80, t_4f96661d, t_c3909e3e, t_ca6a7d6a, repos t_feba05cc,
@@ -3094,8 +3096,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       im Log nennt den Grund im Klartext, der Dispatcher gibt sie nur nicht weiter.
       Angelegt 2026-10-04 · Zuletzt 2026-10-04
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
-
-## Erledigt
 - [x] **T-375 — Mail-Triage ist blind fuer Post mit altem Date-Header**
       Kontext: `Agenten/Hermes/scripts/mail-inbox-triage.py` sucht mit
       `SEARCH (SINCE ...)` - das arbeitet auf dem ANKUNFTSDATUM
