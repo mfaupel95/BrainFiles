@@ -81,13 +81,13 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
   meldet falsch "alle gleich" - MD5 ueber .NET auf die Bytes); MEHRERE Here-Strings
   in EINEM Befehl kommen verstuemmelt an - eine Datei je Aufruf, Groesse pruefen.
 - 20.09.2026 Headless (Kanban/Cron): `execute_code` und gefaehrliche Shell-Befehle
-  werden abgewiesen, `write_file` laeuft in den Timeout; auch der INHALT zaehlt -
-  Risikomuster aus Teilen bauen.
+  werden abgewiesen, `write_file` laeuft in den Timeout; auch der INHALT zaehlt.
 - 20.09.2026 Schreiben nach `O:\Werkstatt` scheitert (Junction): Arbeitsergebnisse
   unter `C:\...\BrainFiles` ablegen.
-- 20.09.2026 Tool-Ausgabe ist LOSSY (Gleichheitszeichen, Pfeile, Doppel-Leerzeichen
-  fallen weg): Quelltext nie per Augenschein pruefen - Leerzeichen sichtbar machen
-  oder inspect.signature lesen, sonst diagnostiziert man Fehler, die nicht dastehen.
+- 20.09.2026 Tool-Ausgabe ist LOSSY: Quelltext nie per Augenschein pruefen.
+  08.10.2026 neue Spielart: Read verschluckt CR-Bytes (CRLF-Mix) - Edit auf Basis
+  der gelesenen Kopie zerstoert die Datei. Tier-1: vor dem ersten Lesen cp
+  .bak-JJJJMMTT, Edit byte-exakt gegen das .bak bauen, Head-Gleichheit pruefen.
 - 20.09.2026 Zwei getrennt gebaute Komponenten sind nicht integriert, nur weil beide
   Testreihen gruen sind: die Naht ist das Vokabular - ein Test PRO Wort der Gegenseite;
   ein Probe-Modus darf keine Marke fortschreiben.
@@ -97,4 +97,4 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
   Fundort `Get-MpThreatDetection`.
 - 22.09.2026 Symlink `auth.json`: `pwsh` 7 legt ihn an, `powershell.exe` 5.1 verweigert (Admin noetig).
 
-Verdichtet 2026-10-08: 6122 -> 5921 Zeichen (Stash-Regel eingepreist)
+Verdichtet 2026-10-08: 6122 -> 5921 (Stash-Regel), -> 5974 (CR-Falle)
