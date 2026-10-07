@@ -86,3 +86,91 @@ def kandidaten_schritt(werte, w, anzahl=6):
                         "seite": seite, "kategorie": x["kategorie"],
                         "punkte": x["punkte"][seite], "deckel": deckel})
     return aus
+
+
+def _cvd_neutral():
+    return cvd.leer("Ruecktest: CVD-4h nicht historisch verfuegbar (Spec-"
+                    "Abgrenzung, OKX-Endpunkt deckt nur ~16 Tage ab)")
+
+
+def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
+                    offene_positionen, zustand, zeit_ms, jetzt_dt):
+    """Die Einstiegskette aus handeln.pruefe_einstiege(), Schritt fuer Schritt
+    auf einen Kandidaten zu einem historischen Zeitpunkt angewendet. Gibt eine
+    neue Position oder None zurueck.
+    """
+    if len(offene_positionen) >= w["max_offene_anlaeufe"]:
+        return None
+    if zugelassen(zustand, w, kandidat["basis"], kandidat["seite"]) is not ERLAEUT:
+        return None
+    if kandidat["basis"] in {p.get("basis") for p in offene_positionen}:
+        return None
+    letzter_stop = (zustand.get("letzte_stops") or {}).get(kandidat["basis"])
+    if letzter_stop is not None and (jetzt_dt - letzter_stop).days < w.get(
+            "abklingzeit_tage", 3):
+        return None
+    if wx.wochenende_sperrt(w, jetzt_dt) and kandidat["kategorie"] in (
+            "aktie", "rohstoff"):
+        return None
+    fam = wx.familien_belegung(offene_positionen, w).get(kandidat["kategorie"])
+    if fam and fam["voll"]:
+        return None
+
+    instr = instr_je_basis.get(kandidat["basis"])
+    k4 = schnitt_bis(k4_je_inst.get(kandidat["instId"], []), zeit_ms)
+    if instr is None or len(k4) < 60:
+        return None
+    lage = indikatoren.lage(k4, inst=kandidat["instId"], cvd_lage=_cvd_neutral())
+    if lage["signal"] != kandidat["seite"]:
+        return None
+    atr = lage["atr"]
+    if not atr:
+        return None
+
+    seite = kandidat["seite"]
+    vz = 1 if seite == "long" else -1
+    einstieg = okxf.auf_tick(instr, lage["kurs"]
+                             - vz * w["einstieg_atr_abschlag"] * atr)
+    stop = okxf.auf_tick(instr, einstieg - vz * w["stop_atr_faktor"] * atr)
+    ziel = okxf.auf_tick(instr, einstieg + vz * w["ziel_atr_faktor"] * atr)
+
+    g = bot.groesse(w, instr, einstieg, stop, seite, kandidat["deckel"])
+    if not g:
+        return None
+    if (sum(float(p.get("margin") or 0.0) for p in offene_positionen)
+            + g["margin"] > w["max_margin_gesamt_usd"]):
+        return None
+
+    # pruefpflicht() greift live auf OKX zu: funding() fuer den Funding-Satz
+    # und - ueber hebel_deckel() - auf die Tageskerzen (Seam
+    # bot.tages_kerzen_quelle). Beides wird fuer die Dauer dieses einen
+    # Aufrufs auf den historischen Stand zu zeit_ms umgeleitet; die
+    # Pflichtzahlen selbst bleiben die EINE Rechnung aus bot.py.
+    satz_bis = getattr(pruefe_einstieg, "_satz_bis", None)
+    echt_funding = okxf.funding
+    echt_seam = bot.tages_kerzen_quelle
+    try:
+        if satz_bis is not None:
+            okxf.funding = lambda inst: satz_bis(inst, zeit_ms)
+        bot.tages_kerzen_quelle = (
+            lambda inst_id, n=300: schnitt_bis(k1d_je_inst.get(inst_id, []),
+                                               zeit_ms))
+        pflicht = bot.pruefpflicht(
+            w, instr, k4, seite, einstieg, stop, ziel, g["hebel"],
+            stop_atr_f=w["stop_atr_faktor"], ziel_atr_f=w["ziel_atr_faktor"],
+            still=True)
+    finally:
+        okxf.funding = echt_funding
+        bot.tages_kerzen_quelle = echt_seam
+
+    if not pflicht.get("traegt") or not pflicht.get("hebel_traegt"):
+        return None
+
+    return {"inst": kandidat["instId"], "basis": kandidat["basis"],
+            "seite": seite, "kategorie": kandidat["kategorie"],
+            "einstieg": einstieg, "stop": stop, "ziel": ziel,
+            "liq": g["liq"], "hebel": g["hebel"], "kontrakte": g["kontrakte"],
+            "nominal": g["nominal"], "margin": g["margin"],
+            "hoechstkurs": einstieg, "stop_id": "ruecktest",
+            "eroeffnet_ts": zeit_ms, "letzte_funding_ts": zeit_ms,
+            "funding_summe": 0.0}
