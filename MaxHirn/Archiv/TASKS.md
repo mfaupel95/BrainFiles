@@ -51,8 +51,36 @@
       binnen 4 h). Tritt es wieder auf, im selben Moment die Kommandozeilen laufender
       Skripte mitschreiben - der Verursacher ist dann fassbar. Offen bleibt: welche
       Sitzung um 22:12 im Baum schrieb.
-      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
-      Betrifft: Agenten/Hermes/scripts/konfig-doktor-wache.py, Werkstatt (Junction), Modelle (Junction)
+
+      07.10.2026 - BEFUND (Hermes, beim Schreiben von AGENTS.md im Repo claude-code):
+      Die Junction ist wieder da und zeigt auf `O:\Werkstatt`. Laut Zeitstempel wurde sie
+      am 07.10.2026 um 00:16 neu angelegt (`dir /AL`: "<JUNCTION> Werkstatt
+      [\??\O:\Werkstatt]", `LinkType: Junction`). Heute also KEIN Verlust.
+      Gefunden wurde derselbe Mechanismus von der anderen Seite: Hermes' Schreib-Sandbox
+      (`HERMES_WRITE_SAFE_ROOT`) stand nur auf `C:\...\BrainFiles`. Beim Schreiben nach
+      `C:\...\BrainFiles\Werkstatt\Repos\claude-code\AGENTS.md` loeste der Pruefer den
+      Reparse-Punkt auf, landete auf `O:\Werkstatt\...` und lehnte ab: "outside
+      HERMES_WRITE_SAFE_ROOT". Dreimal gescheitert, waehrend `read_file` und `terminal`
+      durchkamen - dieselbe Kante, zwei verschiedene Urteile ueber denselben Pfad.
+      Damit ist die Kante benannt: alles, was ueber den BrainFiles-Pfad auf Werkstatt
+      zugreift, haengt am Reparse-Punkt. Fehlt er, sind die 49 Repos unsichtbar; ist er da,
+      entscheiden aufloesende Werkzeuge ueber `O:\` - und liegen dann ausserhalb einer
+      Sandbox, die nur auf BrainFiles gesetzt ist.
+      BEHOBEN: `HERMES_WRITE_SAFE_ROOT` umfasst jetzt beide Wurzeln, in ZWEI `.env`-Dateien
+      (jedes Hermes-Profil fuehrt den Wert selbst): `Agenten/Hermes/.env` und
+      `Agenten/Hermes/profiles/claude-code/.env`. Wert:
+      `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`. Beleg: `get_safe_write_roots()`
+      liefert beide; `O:\Werkstatt\Repos\...` ERLAUBT, `C:\Windows\...` und `~/.ssh`
+      weiterhin GESPERRT.
+      FUER DIE WACHE: `konfig-doktor-wache.py` prueft nur, ob der Verweis DA ist - nicht, ob
+      er auf das richtige Ziel zeigt und ob die Werkzeuge durchkommen. Eine Zusatzpruefung
+      "Ziel == O:\Werkstatt UND ein Schreibtest im Repo klappt" faengt beide Ausfaelle
+      dieser Kante.
+      Offen (Entscheidung Max): die uebrigen Repo-Bot-Profile unter
+      `Agenten/Hermes/profiles/<name>/.env` tragen weiterhin nur BrainFiles. Dort bleibt es
+      so, solange kein Bot in Werkstatt schreiben muss.
+      Angelegt: 05-10-2026 · Zuletzt: 07-10-2026
+      Betrifft: Agenten/Hermes/scripts/konfig-doktor-wache.py, Werkstatt (Junction), Modelle (Junction), Agenten/Hermes/.env, Agenten/Hermes/profiles/claude-code/.env
 - [x] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
       Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
       habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
