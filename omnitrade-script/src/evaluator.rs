@@ -115,19 +115,12 @@ impl Evaluator {
             } => {
                 let cond_val = self.eval_expr(condition, candles)?;
                 if cond_val != 0.0 {
-                    for s in then_block {
-                        if let Some(sig) = self.eval_stmt(s, candles)? {
-                            return Ok(Some(sig));
-                        }
-                    }
+                    self.eval_block(then_block, candles)
                 } else if let Some(else_stmts) = else_block {
-                    for s in else_stmts {
-                        if let Some(sig) = self.eval_stmt(s, candles)? {
-                            return Ok(Some(sig));
-                        }
-                    }
+                    self.eval_block(else_stmts, candles)
+                } else {
+                    Ok(None)
                 }
-                Ok(None)
             }
             Stmt::SignalBuy => {
                 self.current_intent.signal = Signal::Buy;
@@ -157,6 +150,23 @@ impl Evaluator {
                 Ok(None)
             }
         }
+    }
+
+    /// Führt alle Statements eines Blocks aus und liefert das erste Signal zurück.
+    /// Kein Abbruch beim ersten Signal, sonst gingen `stop_loss(..)`/`take_profit(..)`
+    /// hinter `buy()` im selben Block verloren.
+    fn eval_block(
+        &mut self,
+        block: &[Stmt],
+        candles: &[Candle],
+    ) -> Result<Option<Signal>, ScriptError> {
+        let mut first = None;
+        for s in block {
+            if let Some(sig) = self.eval_stmt(s, candles)? {
+                first.get_or_insert(sig);
+            }
+        }
+        Ok(first)
     }
 
     /// Evaluates an AST expression to a 64-bit floating point value.
@@ -482,6 +492,27 @@ mod tests {
     fn test_evaluate_extended_with_stop_loss() {
         // Arrange
         let code = "buy(); stop_loss(90.0); take_profit(110.0)";
+        let tokens = tokenize(code).expect("tokenization should succeed");
+        let stmts = parse(&tokens).expect("parsing should succeed");
+        let candles = helper_candles(&[100.0]);
+        let mut evaluator = Evaluator::new();
+        let mut state = EvaluatorState::new(100.0);
+
+        // Act
+        let intent = evaluator
+            .evaluate_extended(&stmts, &candles, &mut state)
+            .expect("extended evaluation should succeed");
+
+        // Assert
+        assert_eq!(intent.signal, Signal::Buy);
+        assert_eq!(intent.stop_loss, Some(90.0));
+        assert_eq!(intent.take_profit, Some(110.0));
+    }
+
+    #[test]
+    fn test_stop_loss_and_take_profit_after_signal_inside_if_block() {
+        // Arrange
+        let code = "if close() > 0 { buy(); stop_loss(90.0); take_profit(110.0) }";
         let tokens = tokenize(code).expect("tokenization should succeed");
         let stmts = parse(&tokens).expect("parsing should succeed");
         let candles = helper_candles(&[100.0]);
