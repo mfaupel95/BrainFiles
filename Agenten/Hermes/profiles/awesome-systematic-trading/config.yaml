@@ -250,7 +250,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: true
-_config_version: 49
+_config_version: 50
 a2a_agents:
   omniroute:
     auth:

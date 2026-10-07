@@ -1065,7 +1065,7 @@ desktop:
   renderer_max_old_space_mb: 4096
 local_runtime:
   enabled: true
-_config_version: 49
+_config_version: 50
 a2a_agents:
   omniroute:
     auth:

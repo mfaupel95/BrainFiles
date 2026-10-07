@@ -27,7 +27,7 @@ providers:
       - gemma-e4b-8k:latest
       - gemma-e4b-8k:cpu
     name: Ollama
-_config_version: 49
+_config_version: 50
 terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\osiris

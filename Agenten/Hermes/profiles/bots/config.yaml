@@ -67,7 +67,7 @@ prompt_caching:
 memory:
   memory_char_limit: 220000
   user_char_limit: 137500
-_config_version: 49
+_config_version: 50
 onboarding:
   seen:
     tool_progress_prompt: true
