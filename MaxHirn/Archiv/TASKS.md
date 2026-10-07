@@ -2277,6 +2277,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Wartet auf: Max — Handgriff an Kabel und Steckdose.
       Messbefehl: Routinen/absturz-nachmessen.ps1 (nur lesend, ohne Adminrechte)
       Betrifft: [[Hardware]], Abschnitt „Nachmessung 30.08.2026, 22:20"
+      **BELEG 07.10.2026 (gemessen - der Text oben ist ueberholt):** nicht zwoelf,
+      sondern **23 Kernel-Power-41-Ereignisse in 90 Tagen**, letztes am
+      05.10.2026 03:28:44 - jedes mit `BugcheckCode=0` und jedes von einem
+      Systemstart (Ereignis 6005) Sekunden spaeter gefolgt. Das ist die
+      Signatur eines HARTEN Stromausfalls, nicht eines Bluescreens. Die
+      Abstaende sind unregelmaessig (23.09., 24.09., 25.09., 30.09., 04.10.,
+      05.10.) - kein Lastmuster, eher Netzteil oder Zuleitung. Der Netzteiltausch
+      hat nichts geaendert.
+      **ZUSATZBEFUND derselben Messung:** im selben Zeitraum **341 Ereignisse 2004**
+      ('virtueller Speicher unzureichend'), zuletzt 07.10. 18:01. Die
+      Auslagerungsdatei ist der zweite Verdaechtige (Commit-Grenze) - beides
+      gehoert in dieselbe Untersuchung.
+      Naechster Schritt: (1) Auslagerungsdatei vergroessern (Skript
+      `Routinen/einmalig-20260930-auslagerung.ps1` liegt fertig, braucht Admin),
+      (2) danach 14 Tage beobachten, ob 41 UND 2004 zurueckgehen. Ohne Schritt 1
+      ist jede weitere Messung wertlos.
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-30 (22:20)
 
 
