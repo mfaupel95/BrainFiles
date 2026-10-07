@@ -7,7 +7,8 @@ use crate::grid_loop::{grid_loop, GridLiveConfig};
 use crate::kill_switch;
 use crate::live_loop::{live_loop, LiveConfig};
 use omnitrade_exchange::{
-    credentials, BinanceClient, Exchange, Keystore, Network, OkxClient, OkxRestClient,
+    credentials, fetch_symbol_filters, BinanceClient, Exchange, Keystore, Network, OkxClient,
+    OkxRestClient,
 };
 use omnitrade_risk::guard::RiskGuard;
 use omnitrade_script::GridConfig;
@@ -17,10 +18,6 @@ use tracing::info;
 
 /// Abstand der Fill-Abfragen im Grid-Betrieb.
 const GRID_POLL_SECS: u64 = 5;
-/// Tick-Size-Annahme (BTCUSDT-artig); abweichende Symbole lehnt die Börse ab.
-const GRID_PRICE_DECIMALS: u32 = 2;
-/// Step-Size-Annahme (BTCUSDT-artig); abweichende Symbole lehnt die Börse ab.
-const GRID_QTY_DECIMALS: u32 = 5;
 
 /// Handles the live trading command.
 ///
@@ -148,6 +145,15 @@ pub async fn handle_live(
         let grid = GridConfig::from_json(&std::fs::read_to_string(grid_path)?)
             .map_err(|e| format!("Grid-Konfiguration ungültig: {e}"))?;
 
+        // Rundung aus den echten Handelsregeln des Symbols (fail closed bei Fehler).
+        let filters = fetch_symbol_filters(network, symbol)
+            .await
+            .map_err(|e| format!("Handelsregeln für {symbol} nicht ladbar: {e}"))?;
+        info!(
+            "Handelsregeln {symbol}: {} Preis-, {} Mengen-Nachkommastellen, Mindestmenge {}, Mindestwert {}",
+            filters.price_decimals, filters.qty_decimals, filters.min_qty, filters.min_notional
+        );
+
         let mut trading_client = BinanceClient::new();
         trading_client.set_credentials(load_credentials(network)?)?;
 
@@ -157,8 +163,8 @@ pub async fn handle_live(
             initial_capital,
             kill_file: &kill_file,
             poll_interval: Duration::from_secs(GRID_POLL_SECS),
-            price_decimals: GRID_PRICE_DECIMALS,
-            qty_decimals: GRID_QTY_DECIMALS,
+            price_decimals: filters.price_decimals,
+            qty_decimals: filters.qty_decimals,
         };
         grid_loop(&config, trading_client, &mut risk_guard).await?;
 

@@ -27,8 +27,8 @@ pub mod traits;
 pub mod venue;
 
 pub use binance::{
-    fetch_depth_snapshot, fetch_klines, BinanceClient, BinanceMarginClient, BinanceRestClient,
-    DepthSnapshot,
+    fetch_depth_snapshot, fetch_klines, fetch_symbol_filters, BinanceClient, BinanceMarginClient,
+    BinanceRestClient, DepthSnapshot, SymbolFilters,
 };
 pub use credentials::{ApiCredentials, Network};
 pub use error::ExchangeError;

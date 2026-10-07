@@ -13,7 +13,7 @@ const MAINNET_REST_URL: &str = "https://api.binance.com";
 /// Obergrenze der Börse pro Abruf.
 const MAX_LIMIT: usize = 1000;
 
-fn base_url(network: Network) -> &'static str {
+pub(crate) fn base_url(network: Network) -> &'static str {
     match network {
         Network::Testnet => TESTNET_REST_URL,
         Network::Mainnet => MAINNET_REST_URL,
