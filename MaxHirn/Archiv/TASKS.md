@@ -1,14 +1,14 @@
 ## Offen
-- [ ] **T-377 - carry.py: Cross-Venue-Scanner gebaut, kein Autotrader**
-      Kontext: 07.10.2026, Auftrag Max ("koennen wir auch trading bot mit omniquant ai bauen").
-      Die im Netz kursierende Arbitrage (150 Maerkte, Binance-Sync) ist widerlegt: groesste echte
-      Luecke zwischen zwei fuer uns erreichbaren Maerkten 0,012 %, Kraken-Spot-Gebuehr 0,60 %/Seite.
-      Gebaut: Agenten/Handel/carry.py (rein lesend, kein Buch/Journal/Orderweg) fragt OKX-Spot/Perp
-      und Kraken-Spot/Futures je Basiswert ab, rechnet Basis in bp, Funding (OKX p.a., Kraken je
-      Zyklus - Kraken nennt kein Intervall), OI in USD, netto nach gemessenen Gebuehren. 16 Tests,
-      repos-zentrale-Eintrag, Commit f9b06806.
-      Naechster Schritt: als Wache/Cron einbinden, wenn Max eine Zeile sehen will; Entscheidung,
-      ob daraus je eine Spur wird, bleibt offen.
+- [x] **T-377 - carry.py Wache fertig gestellt**
+      Kontext: 07.10.2026. carry.py fertig: Cross-Venue-Carry-Scanner, rein lesend,
+      OKX+Kraken, 5 Basen negativ (netto bp -34,1…-37,0), 16/16 Tests gruen.
+      Wache gebaut: carry-wache.py + tests (5/5 gruen), Hermes-Cron alle 15 min no_agent,
+      Watchdog-Muster (leere Ausgabe = nichts zu melden), Default MIN_NETTO_BP=2.0,
+      --vorschau/--min-netto. Commits f9b06806 + 162952e8 + Wache-Commit (772aee44) +
+      Cron-Commit (6cdd2b48). Nicht angefasst: Fremdarbeit (historie_okx.py,
+      knowledge-base, scanner_quant, worktrees-rueckgabe, SKILL.md, .worktrees/),
+      OKX/Kraken-Schluessel, Guthaben, live-Orderwege. Entscheidung Max: MAX_MELDUNGEN_PRO_TAG=3,
+      --min-netto als Wachen-Param.
       Angelegt 07.10.2026 · Zuletzt 07.10.2026 · Betrifft Agenten/Handel
 - [ ] **T-374 - Handpositionen (herkunft=boerse_handgriff) werden nicht automatisch geschlossen**
       Kontext: 06.10.2026, NIGHT-XPERP-Position von Max an der OKX-Boerse von Hand eroeffnet;
@@ -1381,41 +1381,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-131 — Kraken-EUR: 0,71 EUR frei blockieren `kraken` UND `nautilus_kraken` live**
-      Kontext: Am 25.09.2026 waren in beiden Spuren die Papier-Positionen ausgebucht
-      (siehe T-103 und Wiki/Handel/Lektionen.md) - damit ist das Buch frei, aber das
-      Geld ist der naechste Grund: `kraken/verifiziere_guthaben.py` misst ZEUR = 0,7059,
-      noetig sind 60,00 EUR (`mindest_guthaben_eur`); `nautilus_kraken` braucht fuer den
-      ~1-EUR-Round-Trip 1,00 EUR (`live_einsatz_eur` 1.0, `mindest_guthaben_eur` 2).
-      Das Kraken-EUR haengt in mosaics Live-Positionen (SOL + BTC, rund 96 EUR Nominal)
-      und wird erst beim Ausstieg wieder frei. Kraken ist ausserdem `handel_erlaubt=false`
-      und ordert ueber den Freigabe-Beleg (`order_ueber: mcp`), nautilus_kraken hat
-      `handel_erlaubt=true` und den REST-Orderweg gebaut.
-      Naechster Schritt: entscheiden - (a) auf mosaics Ausstieg warten (dann wird EUR frei
-      und nautilus_kraken kann den 1-EUR-Test fahren), (b) EUR einlegen, oder (c)
-      `mindest_guthaben_eur`/`live_einsatz_eur` senken. Nicht getan: nichts davon ohne
-      Entscheidung, kein Geld umgeschichtet.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/kraken/wachen.json, nautilus_kraken/wachen.json, Kraken-Konto
 
 
 
 
 
 
-- [ ] **T-127 — Kein freies Guthaben fuer neue Live-Einstiege (Kraken 0,71 EUR / OKX 0,15 USDC)**
-      Kontext: `mosaic` und `swap` nennen ihre Sperre seit 25.09.2026 mit Boerse
-      und Waehrung. Der Fakt dahinter: Kraken traegt **0,71 EUR** frei, waehrend
-      ~196 EUR in drei offenen Live-Positionen liegen (BTC/ETH/SOL, alle mit
-      Boersen-Stop); OKX traegt **0,15 USDC** frei, die uebrigen 757 USDC sind
-      die Besicherung laufender XPERP-Positionen (FIL/MON/MSTR/CRCL + die
-      manuelle FIL-Position). Kein Dateischalter loest das - es fehlt Geld, keine
-      Bedingung.
-      Naechster Schritt: Entscheidung von Max - Guthaben aufstocken, eine
-      Position schliessen oder die Spuren im Papier lassen. Nichts davon
-      automatisch tun.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/mosaic, Agenten/Handel/swap, Kraken- und OKX-Konto
 
 
 - [ ] **T-126 — swap handelt jetzt den XPERP-Kontrakt; der Geld-Blocker bleibt**
@@ -2203,38 +2174,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/okx_bot_waechter/, OKX-Bots UNI/ARB/MON/BCH
 
 
-- [ ] **T-036 — Codex über OmniRoute: Provider „codex" hat im Router keine aktiven Credentials**
-      Kontext: Am 07.09.2026 war `MaxHirn/.codex/config.toml` in dreifacher Hinsicht
-      kaputt: (1) eine `export …`-Zeile in TOML (Parse-Fehler), (2) globale Keys
-      standen hinter `[mcp_servers.okx-agent-trade-kit]` und hingen damit unter
-      dem MCP-Table (wurden still ignoriert), (3) `model_provider` ist auf
-      Projektebene von Codex ein unsupported Key. Repariert: Projekt-Config neu
-      geordnet (globale Keys oben, MCP ans Ende), Provider-Definition
-      `[model_providers.omniroute]` in die User-Config `~/.codex/config.toml`
-      gelegt (additiv, `.bak-20260907`), Aktivierung je Lauf per
-      `-c model_provider="omniroute"` — Codex zeigt jetzt
-      `provider: omniroute, model: cx/gpt-5.5`. Der Endpunkt selbst antwortet
-      (401 ohne Key, Modellkatalog mit Key). **Verbleibender Blocker:** OmniRoute
-      liefert `401 Unauthorized: No active credentials for provider: codex` —
-      der Router hat keine hinterlegten Upstream-Credentials für den Provider
-      `codex` (Log: `AutoRefreshDaemon … checking 0 credentials`). Das ist der
-      seit 07.09. bekannte offene Punkt (Workspace-Key / Provider-Credentials),
-      nicht mehr ein Config-Fehler. OmniRoute-Serverstart 20:17 beobachtet,
-      Port 20128 danach nicht mehr erreichbar — **nicht angefasst**, andere
-      Agenten nutzen den Router.
-      Nächster Schritt: OmniRoute-Admin: Credentials für Provider `codex`
-      hinterlegen (oder Modell auf einen Provider mit Keys umstellen), dann
-      Smoke-Test wiederholen.
-      Betrifft: `MaxHirn/.codex/config.toml`, `~/.codex/config.toml`, OmniRoute
-      Wartet auf: Credentials für Provider `codex` in OmniRoute
-      **Key-Verweis (13.09.2026):** Der Admin-Schlüssel für die OmniRoute-Config steckt
-      nicht im Router-Prozess. Lesbar sind die Benutzervariablen
-      `OMNIROUTE_ADMIN_API_KEY` (Admin-/Config-API `/api/*`) und `OMNIROUTE_API_KEY`
-      (Modell-API `/v1/*`) direkt aus `HKCU\Environment` - der Prozess erbt frisch
-      gesetzte Variablen nicht, also aus der Registry lesen statt env. Der Klartext
-      selbst liegt nur in [[Zugaenge]] (Stufe 0): dorthin sehen, nie in Notizen
-      kopieren.
-      Angelegt: 2026-09-07 · Zuletzt: 2026-09-13 (Key-Verweis ergänzt)
 
 - [?] **T-042 — orbk und kraken sind per Telegram nicht freizugeben**
       Kontext: Beim Pruefen von Max' Frage „Orbk ist noch nicht in freigabe.py
@@ -2365,6 +2304,70 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-036 — Codex über OmniRoute: Provider „codex" hat im Router keine aktiven Credentials**
+      Kontext: Am 07.09.2026 war `MaxHirn/.codex/config.toml` in dreifacher Hinsicht
+      kaputt: (1) eine `export …`-Zeile in TOML (Parse-Fehler), (2) globale Keys
+      standen hinter `[mcp_servers.okx-agent-trade-kit]` und hingen damit unter
+      dem MCP-Table (wurden still ignoriert), (3) `model_provider` ist auf
+      Projektebene von Codex ein unsupported Key. Repariert: Projekt-Config neu
+      geordnet (globale Keys oben, MCP ans Ende), Provider-Definition
+      `[model_providers.omniroute]` in die User-Config `~/.codex/config.toml`
+      gelegt (additiv, `.bak-20260907`), Aktivierung je Lauf per
+      `-c model_provider="omniroute"` — Codex zeigt jetzt
+      `provider: omniroute, model: cx/gpt-5.5`. Der Endpunkt selbst antwortet
+      (401 ohne Key, Modellkatalog mit Key). **Verbleibender Blocker:** OmniRoute
+      liefert `401 Unauthorized: No active credentials for provider: codex` —
+      der Router hat keine hinterlegten Upstream-Credentials für den Provider
+      `codex` (Log: `AutoRefreshDaemon … checking 0 credentials`). Das ist der
+      seit 07.09. bekannte offene Punkt (Workspace-Key / Provider-Credentials),
+      nicht mehr ein Config-Fehler. OmniRoute-Serverstart 20:17 beobachtet,
+      Port 20128 danach nicht mehr erreichbar — **nicht angefasst**, andere
+      Agenten nutzen den Router.
+      Nächster Schritt: OmniRoute-Admin: Credentials für Provider `codex`
+      hinterlegen (oder Modell auf einen Provider mit Keys umstellen), dann
+      Smoke-Test wiederholen.
+      Betrifft: `MaxHirn/.codex/config.toml`, `~/.codex/config.toml`, OmniRoute
+      Wartet auf: Credentials für Provider `codex` in OmniRoute
+      **Key-Verweis (13.09.2026):** Der Admin-Schlüssel für die OmniRoute-Config steckt
+      nicht im Router-Prozess. Lesbar sind die Benutzervariablen
+      `OMNIROUTE_ADMIN_API_KEY` (Admin-/Config-API `/api/*`) und `OMNIROUTE_API_KEY`
+      (Modell-API `/v1/*`) direkt aus `HKCU\Environment` - der Prozess erbt frisch
+      gesetzte Variablen nicht, also aus der Registry lesen statt env. Der Klartext
+      selbst liegt nur in [[Zugaenge]] (Stufe 0): dorthin sehen, nie in Notizen
+      kopieren.
+      Angelegt: 2026-09-07 · Zuletzt: 2026-09-13 (Key-Verweis ergänzt)
+      **Erledigt 07.10.2026 - ueberholt.** Der Task meldete, der Provider 'codex' habe im Router keine aktiven Keys. Gemessen in OmniRoute storage.sqlite: es gibt KEINE Verbindung mit provider LIKE '%codex%' mehr (14 Verbindungen gesamt, keine davon codex). Der Gegenstand existiert nicht mehr.
+- [x] **T-127 — Kein freies Guthaben fuer neue Live-Einstiege (Kraken 0,71 EUR / OKX 0,15 USDC)**
+      Kontext: `mosaic` und `swap` nennen ihre Sperre seit 25.09.2026 mit Boerse
+      und Waehrung. Der Fakt dahinter: Kraken traegt **0,71 EUR** frei, waehrend
+      ~196 EUR in drei offenen Live-Positionen liegen (BTC/ETH/SOL, alle mit
+      Boersen-Stop); OKX traegt **0,15 USDC** frei, die uebrigen 757 USDC sind
+      die Besicherung laufender XPERP-Positionen (FIL/MON/MSTR/CRCL + die
+      manuelle FIL-Position). Kein Dateischalter loest das - es fehlt Geld, keine
+      Bedingung.
+      Naechster Schritt: Entscheidung von Max - Guthaben aufstocken, eine
+      Position schliessen oder die Spuren im Papier lassen. Nichts davon
+      automatisch tun.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/mosaic, Agenten/Handel/swap, Kraken- und OKX-Konto
+      **Erledigt 07.10.2026 - ueberholt.** Der Task nannte 'Kraken 0,71 EUR / OKX 0,15 USDC frei'. Gemessen heute: Kraken ZEUR 86,9980 / ZUSD 22,3333 / USDC 98,1926. Auf OKX liegen laut Kontostand ebenfalls Mittel. Die im Task behauptete Sperre ist keine mehr.
+- [x] **T-131 — Kraken-EUR: 0,71 EUR frei blockieren `kraken` UND `nautilus_kraken` live**
+      Kontext: Am 25.09.2026 waren in beiden Spuren die Papier-Positionen ausgebucht
+      (siehe T-103 und Wiki/Handel/Lektionen.md) - damit ist das Buch frei, aber das
+      Geld ist der naechste Grund: `kraken/verifiziere_guthaben.py` misst ZEUR = 0,7059,
+      noetig sind 60,00 EUR (`mindest_guthaben_eur`); `nautilus_kraken` braucht fuer den
+      ~1-EUR-Round-Trip 1,00 EUR (`live_einsatz_eur` 1.0, `mindest_guthaben_eur` 2).
+      Das Kraken-EUR haengt in mosaics Live-Positionen (SOL + BTC, rund 96 EUR Nominal)
+      und wird erst beim Ausstieg wieder frei. Kraken ist ausserdem `handel_erlaubt=false`
+      und ordert ueber den Freigabe-Beleg (`order_ueber: mcp`), nautilus_kraken hat
+      `handel_erlaubt=true` und den REST-Orderweg gebaut.
+      Naechster Schritt: entscheiden - (a) auf mosaics Ausstieg warten (dann wird EUR frei
+      und nautilus_kraken kann den 1-EUR-Test fahren), (b) EUR einlegen, oder (c)
+      `mindest_guthaben_eur`/`live_einsatz_eur` senken. Nicht getan: nichts davon ohne
+      Entscheidung, kein Geld umgeschichtet.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/kraken/wachen.json, nautilus_kraken/wachen.json, Kraken-Konto
+      **Erledigt 07.10.2026 - ueberholt.** Der Task nannte 'Kraken-EUR: 0,71 EUR frei'. Gemessen heute (kraken.kontostaende()): ZEUR 86,9980 + ZUSD 22,3333 + USDC 98,1926. Der genannte Blocker besteht nicht mehr; die beiden Spuren sind nicht mehr am Guthaben gesperrt. Der Vorgang selbst (Guthaben aufladen) ist Max' Hand gewesen und hat gewirkt.
 - [x] **T-254 - Paperclip: Instanz laeuft und der Umgebungstest ist gruen - offen sind Anmeldung, Modell, Autostart**
       Kontext: Dashboard `http://127.0.0.1:3100` (HTTP 200), eingebettete PostgreSQL auf
       127.0.0.1:54329, 278 Migrationen. Der erste Start braucht rund 3 min (sieht wie ein
