@@ -1276,3 +1276,51 @@ Backslash-Pfade. Deshalb: Zeilenenden vorher byte-genau bestimmen, das Skript al
 Sicherungen: `Agenten/Hermes/.sicherung/.env.bak-20261007`,
 `Agenten/Hermes/profiles/claude-code/.env.bak-20261007`,
 `Wissen/Hermes.md.bak-20261007-safe-root`.
+
+## Claude Code CLI auf 2.1.293 aktualisiert (07.10.2026)
+
+**Auftrag Max:** CLI updaten. Ausgangslage 2.1.285, Ziel 2.1.293.
+
+**Der erste Befund war eine Falle.** `claude update` meldete zweimal
+"Claude Code is up to date (2.1.285)", obwohl das Repo v2.1.293 kennt. Zwei Ursachen:
+
+1. `autoUpdates: false` in `C:\Users\faupe\.claude.json` - Max' Entscheidung,
+   die **auch den ausdruecklichen Update-Befehl** blockiert.
+2. Der Kanal stand auf `stable` - und `stable` ist genau 2.1.285.
+
+Die Endpunkte direkt abgefragt (das war der Beweis, nicht die Vermutung):
+
+    BASE=https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases
+    stable -> 2.1.285      latest -> 2.1.293      beta/next -> NoSuchKey
+
+**Ablauf:** Launcher gesichert -> `autoUpdates: true` -> Kanal auf `latest` ->
+`claude update` (~240 MB, rund 90 s) -> beide Schalter zurueck auf `stable`/`false`.
+
+**Installationsart:** native, nicht npm. Launcher
+`C:\Users\faupe\.local\bin\claude.exe`, Versionen unter
+`C:\Users\faupe\.local\share\claude\versions\`. Rueckfall:
+`versions/2.1.285.bak-20261007`.
+
+**Wichtig:** Das laufende Binary muss nicht frei sein. Es ist waehrend des Betriebs
+gesperrt (`Permission denied`), der Updater legt die neue Version daneben und schaltet
+den Launcher um. **27 laufende Claude-Sitzungen und das Hermes-Gateway (PID 70456)
+liefen ununterbrochen weiter** - kein Agent wurde gestoert.
+
+**Belege:** `claude --version` -> 2.1.293; `claude doctor` -> native 2.1.293, Commit
+`3abc54a9d60b` (gleich `manifest.json`), Kanal stable; echter Lauf
+`claude -p "Antworte mit genau: OK"` -> `OK`; `claude plugin test mods/agents-md` ->
+5 pass, 0 fail.
+
+**Nebenbefund, offen:** Die neue Version warnt beim Start ueber acht wirkungslose
+deny-Regeln in `MaxHirn/.claude/settings.local.json` - `Write(./Archiv/**)`,
+`Write(./Wissen/**)`, `Write(./Claude/**)`, `Write(./Bilder/**)`, `Write(./Videos/**)`,
+`Write(./Musik/**)`, `Write(./Dokumente/**)`, `Write(**/.obsidian/**)`. Meldung:
+"only Edit(path) rules are [matched]". **Die Schutzregeln greifen weiter:** fuer jedes
+dieser Verzeichnisse steht daneben eine `Edit(...)`-Regel, und die deckt laut Meldung
+alle Datei-Werkzeuge ab. Die `Write(...)`-Zeilen sind Dopplung und erzeugen nur
+Rauschen. Aufraeumen braucht einen Auftrag (Schutzregeln, Stufe 1).
+
+Sicherungen: `.claude.json.bak-20261007`, `.claude/settings.json.bak-20261007`
+(beide byte-identisch zurueck bis auf `autoUpdates`),
+`versions/2.1.285.bak-20261007` (Rueckfall-Binary).
+Gelerntes auch in `Werkstatt/Repos/rule_repo-bots.md`.
