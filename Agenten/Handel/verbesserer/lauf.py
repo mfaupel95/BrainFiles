@@ -122,7 +122,8 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
         vorschlag.kein_vorschlag(ordner, ergebnis, spur_name)
 
     d = digest.erzeuge(befund, ergebnis["basis_wf"], ergebnis["kandidat_wf"],
-                       ergebnis.get("aenderungen", {}), konfig["llm"])
+                       ergebnis.get("aenderungen", {}), konfig["llm"],
+                       fast_kandidat=ergebnis.get("fast_kandidat"))
     digest.annotiere_bericht(ordner / "bericht.md", d)
     if d["lehren"]:
         digest.haenge_lehren_an(LEHREN, d["lehren"], datum)
