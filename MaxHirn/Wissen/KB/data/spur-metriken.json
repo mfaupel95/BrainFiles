@@ -1,5 +1,33 @@
 {
-  "generiert_at": "2026-10-07T00:00:00+00:00",
-  "hinweis": "Wird automatisch von Agenten/Routinen/kb-metriken-sync.ps1 alle 6h aktualisiert.",
-  "spuren": {}
+  "generiert_at": "2026-10-07T01:00:01.917232+00:00",
+  "spuren": {
+    "scanner": {
+      "0": "2026-10-07",
+      "1": "scanner",
+      "2": 37,
+      "3": 37,
+      "4": 67.6,
+      "5": 67.6,
+      "6": 196.32,
+      "7": 0,
+      "8": "2026-10-07T00:50:43.430256+00:00",
+      "profit_faktor_30d": 45.28,
+      "max_drawdown_30d_pct": 66.9,
+      "stop_ausloesung_rate_30d_pct": 100.0
+    },
+    "xperp": {
+      "0": "2026-10-07",
+      "1": "xperp",
+      "2": 0,
+      "3": 0,
+      "4": null,
+      "5": null,
+      "6": null,
+      "7": 0,
+      "8": null,
+      "profit_faktor_30d": null,
+      "max_drawdown_30d_pct": null,
+      "stop_ausloesung_rate_30d_pct": null
+    }
+  }
 }
