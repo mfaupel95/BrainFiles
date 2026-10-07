@@ -63,6 +63,19 @@ ueberhaupt tragbar ist (Spitzenbindung + Drawdown), nicht die Rendite.
 
 ## Werkzeugfallen beim Bauen einer Auswertung
 
+- **Das Journal mit `csv.DictReader` und den Feldnamen aus dem Header lesen,
+  nie mit festen Spaltenindizes.** Der Header wandert (24 Spalten hier, andere
+  bei anderen Spuren), und ein Index-Offset (`r[17]` fuer `grund`) trifft
+  daneben - die Ausgabe sieht dann aus wie „schliessen grund=stop", obwohl die
+  Wirklichkeit anders war. Vor dem Filtern `print(header)` und die Namen aus
+  der ersten Zeile nehmen; Zeilen mit `z.get("inst")` statt `r[3]` filtern.
+- **Eine Ausgabe, die in einer Zeile zusammengefuehrt ankommt („1 lines
+  output"), ist kein Journal-Inhalt.** Die Ursache kann ein kaputter
+  f-String im eigenen Abruf sein (verschachtelte Klammern, `%`-Formate, ein
+  Dict statt einer Zahl) - dann die Ausgabe in einem SCHLICHTEN Lauf erneut
+  holen (kein Formatieren, `print(repr(zeile))`), bevor man die Zahlen
+  deutet. Zweimal nacheinander dasselbe Merkwuerdige ist ein Lese-Artefakt,
+  kein Befund.
 - **Nicht jede Journal-Spalte ist eine Zahl.** Ein generischer Lader, der alles
   durch `float()` schickt ("erst als Zahl versuchen"), macht aus
   `kette="solana"` ein `None` - danach liest sich jedes Band als "?". Erst

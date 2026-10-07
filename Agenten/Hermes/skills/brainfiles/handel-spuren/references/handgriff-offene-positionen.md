@@ -69,3 +69,32 @@ weil nur der freie Teil (Betrag minus `hold_trade`) geordert wird),
 `okx.stop_stornieren(algo_id, inst)` (inst ist PFLICHT). Nach einem `--anwenden`
 NICHT noch einmal anwenden - ein zweiter Lauf storniert den frischen Stop; erst
 `--nur-buch`.
+
+## OKX-Handpositionen: keine Boersen-Stop-Kennung, Ausstieg gehoert Max
+
+Eine von Max von Hand an der OKX-Boerse eroeffnete Position wird von der Spur
+als Fremdposition uebernommen (Journal-grund `fremdposition_uebernommen`,
+Positionsfeld `herkunft = boerse_handgriff`). Zwei Eigenschaften, beide
+gemessen:
+
+- **Keine Boersen-Stop-Kennung.** Die OKX-Position wurde nicht ueber den
+  Orderweg der Spur mit Stop eroeffnet; stopdeckung und stops_nachziehen
+  koennen deshalb weder Stop noch Trailing an der Boerse verankern (Journal-
+  Vermerk im 15-Minuten-Takt: "trailing nicht ausgefuehrt: keine Boersen-
+  Stop-Kennung"). Das ist der erwartete Zustand einer Handposition, kein
+  defekter Waechter - der erste Stop-Ausstieg danach (grund=stop im Journal)
+  ist der Haus-Stop der Spur, der den Kursabfall deckt.
+- **Die Spur schliesst sie nicht automatisch.** Regel (Auftrag Max):
+  `pruefe_ausstiege` und `flach_stellen` (Kill/Kill-Switch/Notaus)
+  ueberspringen Positionen mit `herkunft == "boerse_handgriff"`; sie bleiben
+  im Buch (Funding, Journal, Bilanz), den Ausstieg macht Max selbst. Dieselbe
+  Regel gehoert an JEDEN Weg, der einen Ausstieg entscheidet (Ausstiegspruefung
+  UND Notaus), und braucht je Weg eine Gegenprobe - eine normale Position muss
+  weiter automatisch geschlossen werden, sonst ist die Ausnahme zur Regel
+  geworden.
+
+Zeitkorrelation bei der Rekonstruktion eines Vorfalls: Max nennt Ortszeiten
+(CEST), das Journal schreibt UTC. "um 18:30 eroeffnet, direkt danach verkauft"
+war hier ein Stop um 16:31:59 UTC (= 18:31:59 CEST) auf eine Position, die
+schon seit dem Morgen im Buch lief; der 15-Minuten-Vermerk "trailing nicht
+ausgefuehrt" ist die Uhrquelle, nicht der Vorfall selbst.
