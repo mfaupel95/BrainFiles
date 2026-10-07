@@ -1,0 +1,74 @@
+# Abweichungen der Hermes-Profile vom mcp_servers-Block der Haupt-Config.
+# Quelle ist Agenten/Hermes/config.yaml; Werkzeug: Agenten/Werkzeuge/mcp-profile-sync.py.
+# Hier steht NUR, was ein Profil bewusst anders braucht - nichts sonst.
+#
+# alle.ausschluss      Server der Haupt-Config, die kein Profil bekommt
+#                      (MCP_DOCKER startet je Profil ein Docker-Gateway; die
+#                      Remote-Server sind ohnehin abgeschaltet).
+# profile.<n>.einschluss          nimmt einen Server aus alle.ausschluss heraus
+# profile.<n>.ersetze             Textersetzung im Server-Abschnitt [alt, neu]
+# profile.<n>.projectatlas_repo   Atlas-DB/-Config unter Werkstatt\Repos\<repo>\
+#                                 statt Werkstatt\omnitrade\
+# profile.<n>.zusatz              Server, den die Haupt-Config nicht hat (zusatzbloecke)
+alle:
+  ausschluss:
+  - MCP_DOCKER
+  - airtable
+  - buildkite
+  - circleci
+  - deepwiki
+  - gitlab
+zusatzbloecke:
+  robinhood: |2
+      robinhood:
+        url: https://agent.robinhood.com/mcp/trading
+        auth: oauth
+        enabled: false
+        tools:
+          exclude:
+            - get_option_level_upgrade_info
+            - get_popular_watchlists
+            - follow_watchlist
+            - unfollow_watchlist
+profile:
+  agent-trade-kit:
+    einschluss:
+    - gitlab
+    ersetze:
+      gitlab:
+      - - 'enabled: false'
+        - 'enabled: true'
+  awesome-systematic-trading:
+    projectatlas_repo: awesome-systematic-trading
+  basic-memory:
+    projectatlas_repo: basic-memory
+  caveman:
+    projectatlas_repo: caveman
+  claude-code:
+    projectatlas_repo: claude-code
+  deepseek-harness:
+    projectatlas_repo: deepseek-harness
+  easycliproxyapi:
+    projectatlas_repo: EasyCLIProxyAPI
+    zusatz:
+    - robinhood
+  everything-claude-code:
+    projectatlas_repo: everything-claude-code
+  fomo-radar:
+    projectatlas_repo: fomo-robinhood-radar
+  harvard-trading:
+    projectatlas_repo: Harvard-Algorithmic-Trading-with-AI
+    zusatz:
+    - robinhood
+  moon-dev-agents:
+    projectatlas_repo: moon-dev-ai-agents
+    zusatz:
+    - robinhood
+  one-skill-to-rule-them-all:
+    projectatlas_repo: one-skill-to-rule-them-all
+  openmontage:
+    projectatlas_repo: openmontage
+  openterminal:
+    projectatlas_repo: OpenTerminal
+    zusatz:
+    - robinhood
