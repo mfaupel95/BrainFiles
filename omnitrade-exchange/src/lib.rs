@@ -21,6 +21,7 @@ pub mod credentials;
 pub mod error;
 pub mod keystore;
 pub mod kraken;
+pub mod okx;
 pub mod trading;
 pub mod traits;
 
@@ -32,5 +33,6 @@ pub use credentials::{ApiCredentials, Network};
 pub use error::ExchangeError;
 pub use keystore::Keystore;
 pub use kraken::{KrakenClient, KrakenRestClient};
+pub use okx::{OkxClient, OkxRestClient};
 pub use trading::{Account, AccountBalance, ExchangeTrading, OrderRequest};
 pub use traits::{DepthUpdate, ExchangeInfo, ExchangeStream};
