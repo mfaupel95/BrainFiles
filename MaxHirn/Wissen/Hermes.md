@@ -1372,3 +1372,58 @@ Gelerntes auch im Skill `protecting-irreplaceable-data` (Step 3: `Edit(path)` st
 
 Sicherungen: `settings.local.json.bak-20261007-write-regeln` (MaxHirn und Archiv),
 `settings-deny-list.json.bak-20261007`.
+
+## Wache um Ziel-, Schreib- und .env-Pruefung erweitert (07.10.2026)
+
+**Auftrag Max:** die in T-369 vorgeschlagene Zusatzpruefung umsetzen.
+
+**Was fehlte.** `Agenten/Hermes/scripts/konfig-doktor-wache.py` fragte bisher nur,
+OB ueberhaupt ein Verweis da ist. Ein Verweis aufs **falsche Ziel**, ein Verweis,
+den die Werkzeuge **nicht durchlaufen**, und ein Profil ohne Werkstatt-Pfad in
+`HERMES_WRITE_SAFE_ROOT` kamen darin nicht vor. Alle drei sind vorgekommen.
+
+Die Wache hat jetzt **drei Zeugen** statt zwei: Verweis -> Ziel + Schreibtest +
+`.env`-Lage -> Doktor.
+
+**Der Schreibtest** legt eine Probedatei durch den **BrainFiles-Pfad** an (nicht
+direkt auf O:) und raeumt sie wieder weg. Genau dieser Weg zeigt, ob ein Werkzeug,
+das den Reparse-Punkt aufloest, danach noch in seiner Sandbox liegt - daran
+scheiterte das Schreiben in die Repos, waehrend Lesen und Terminal weiterkamen.
+
+**Der `.env`-Zeuge** prueft nur die Profile, deren `SOUL.md` `Werkstatt` nennt -
+sonst waeren es 27 Meldungen statt 17 und die Wache wuerde zum Dauer-Alarm. Dazu
+die Haupt-`.env`, die alle erben. Ein Profil **ohne** eigene `.env` erbt und ist
+gesund; gemeldet wird nur, was den Werkstatt-Pfad nicht traegt.
+
+**Ein echter Fund beim ersten Lauf:** **16 von 18** Repo-Bot-`.env` tragen den
+Werkstatt-Pfad nicht - diese Bots koennen nicht in die Repos schreiben. Betroffen:
+basic-memory, caveman, claudian, deepseek-harness, easycliproxyapi,
+everything-claude-code, gbrain, harvard-trading, moon-dev-agents, obsidian-skills,
+one-skill-to-rule-them-all, openmontage, openterminal (ohne Werkstatt) sowie lotse,
+markt-recherche, nerd (kein Eintrag). Nur `claude-code` und die Haupt-`.env` sind
+vollstaendig. **Behoben habe ich das nicht** - es ist die offene Entscheidung aus
+T-369.
+
+**Falle, die die Tests aufgedeckt haben (wichtig):** `os.path.islink` liefert fuer
+eine **Windows-Junction `False`**. Meine ersten Fassungen von `ziel_lage` und
+`schreibtest` stiegen deshalb sofort aus und prueften **nie** - sie meldeten
+"gesund", ohne etwas getan zu haben. Richtig ist das Datei-Attribut
+`FILE_ATTRIBUTE_REPARSE_POINT` (0x400); es gibt jetzt `_ist_verweis()`, und auch
+Zeuge 1 nutzt es. Ohne die Tests waere das nie aufgefallen: die Wache haette still
+zugestimmt.
+
+**Tests:** `Agenten/Hermes/scripts/tests/test_konfig_doktor_wache.py` (12 Tests,
+alle gruen). Sie bauen eine eigene Wurzel in `%TEMP%`, legen dort **echte
+Junctions** an (falsches Ziel, nicht beschreibbares Ziel, echter Ordner statt
+Verweis) und pruefen die `.env`-Faelle inklusive Vererbung. Die echte
+BrainFiles-Wurzel bleibt unberuehrt. Aufruf:
+`python Agenten/Hermes/scripts/tests/test_konfig_doktor_wache.py`
+
+**Beleg (echter Lauf):** `konfig-doktor-wache.py --immer` meldet die 16 `.env` und
+sonst nichts; Verweis, Ziel und Schreibtest fuer `Werkstatt` und `Modelle` sind
+gesund; keine Probedatei bleibt liegen.
+
+Sicherung: `konfig-doktor-wache.py.bak-20261007`.
+Empfehlung offen: der Cron-Text (`konfig-doktor-wache`, 1beb6d64a8c8) beschreibt
+noch den alten Umfang ("prueft die Wurzel-Verweise") - er liegt in der
+Haupt-Cron des Default-Profils und wurde deshalb nicht angefasst.
