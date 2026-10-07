@@ -216,7 +216,7 @@ def schreibe(spur: str, seite: str, paar: str, menge: float, preis_max: float,
 
     jetzt = _jetzt()
     beleg = {
-        "kennung": secrets.token_hex(8),
+        "kennung": secrets.token_hex(16),
         "spur": spur,
         "seite": seite,
         "paar": paar.upper(),
