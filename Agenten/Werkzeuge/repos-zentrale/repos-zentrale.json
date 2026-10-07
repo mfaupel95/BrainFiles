@@ -27,16 +27,16 @@
       "ordner": "awesome-deepseek-harness-plugins",
       "rolle": "Liste",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "Plugin-Katalog fuer DeepSeek Harness (dsh) - kein Startprogramm, der Katalog wird aus einer API erzeugt",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Plugin-Katalog fuer DeepSeek Harness (dsh) - kein Startprogramm, der Katalog wird aus einer API erzeugt",
       "anleitung": "Kuratiertes Verzeichnis der dsh-Plugins. Kein eigenstaendiges Programm: die README wird aus einer API generiert (npm run readme:build). Als Nachschlagewerk lesen, nicht starten."
     },
     {
       "ordner": "awesome-dsh-plugin",
       "rolle": "Liste",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "Kuratierte dsh-Plugin-Liste mit statischem Site-Generator (node scripts/build-site.mjs)",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Kuratierte dsh-Plugin-Liste mit statischem Site-Generator (node scripts/build-site.mjs)",
       "anleitung": "Awesome-List der DeepSeek-Harness-Plugins. Kein Server und kein Startprogramm. Wer die Seite bauen will: node scripts/build-site.mjs erzeugt docs/ als statische HTML-Seite (Node noetig)."
     },
     {
@@ -73,8 +73,8 @@
       "ordner": "claude-plugins-official",
       "rolle": "Doku",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) nur Dokumentation und Skills",
       "warnungen": [
         "Bot-Profil 'claude-plugins-official' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/claude-plugins-official) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
@@ -157,8 +157,8 @@
       "ordner": "fast-jev-compaction",
       "rolle": "Plugin",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "Claude-Code-Plugin: ersetzt die Kompaktierung durch Jev-Entscheidungen - npm-Bibliothek, kein Startprogramm",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Claude-Code-Plugin: ersetzt die Kompaktierung durch Jev-Entscheidungen - npm-Bibliothek, kein Startprogramm",
       "anleitung": "Kein eigenstaendiges Programm: das Repo ist npm-Paket (src/) UND Claude-Code-Plugin (hooks/, .claude-plugin/). Einbau in Claude Code: 'claude plugin marketplace add tamaratran/fast-jev-compaction' und 'claude plugin install fast-jev-compaction@fast-jev-compaction'. Die Demo braucht einen Schluessel (TYPESAFE_API_KEY)."
     },
     {
@@ -233,10 +233,11 @@
       "ordner": "graphify",
       "rolle": "Werkzeug",
       "art": "python",
-      "notiz": "Code-Graph mit CLI und MCP (Python, venv fehlt)",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Code-Graph mit CLI und MCP (Python, venv fehlt)",
       "warnungen": [
         "Bot-Profil 'graphify' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/graphify) - der Bot-Knopf waere ein Knopf ins Leere"
-      ]
+      ],
+      "gruppe": "ausgemustert"
     },
     {
       "ordner": "Harvard-Algorithmic-Trading-with-AI",
@@ -311,8 +312,8 @@
       "ordner": "jev-chat-jarvis",
       "rolle": "App (Android)",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "Android-App (Kotlin/Gradle): Chat-Copilot fuer unterstuetzte Messenger - auf Windows nur als APK nutzbar",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Android-App (Kotlin/Gradle): Chat-Copilot fuer unterstuetzte Messenger - auf Windows nur als APK nutzbar",
       "anleitung": "Handy-App (Android 11+, nur arm64-v8a), kein Windows-Programm. Bau: JDK 17 + Android SDK 35, dann ./gradlew assembleDebug. Ein fertiges signiertes APK liegt im Repo: adb install -r apk/jev-assistant-v1.4-release.apk. Ein Release-Build braucht JEV_KEYSTORE_PROPS."
     },
     {
@@ -400,7 +401,7 @@
       "ordner": "Kronos",
       "rolle": "Modell",
       "art": "python",
-      "notiz": "Kerzen-Foundation-Modell (MIT) - sagt die naechsten Kerzen voraus; gemessen 22.09.2026: schlaegt die Nullinie NICHT",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Kerzen-Foundation-Modell (MIT) - sagt die naechsten Kerzen voraus; gemessen 22.09.2026: schlaegt die Nullinie NICHT",
       "anleitung": "Kronos sagt Kerzen voraus (Predictor aus model/, Gewichte von HuggingFace). Gemessen am 22.09.2026 auf BTC 1h, Horizont 24 h, 100 nicht ueberlappende Fenster, Kronos-small: Richtung 47/100, Fehler 2,059 % gegen Nullinie 0,875 % - als Handelssignal wertlos. Die Messung steht im Wiki (Werkzeuge/Kronos.md). FALLE: requirements.txt pinnt pandas 2.2.2; damit reisst pd.date_range den Prozess ab (Segmentation Fault) - erst 'pip install -U pandas numpy'.",
       "befehle": [
         {
@@ -412,7 +413,8 @@
           ],
           "hinweis": "Vorlagen fuer eigene Vorhersagen"
         }
-      ]
+      ],
+      "gruppe": "ausgemustert"
     },
     {
       "ordner": "laya",
@@ -465,8 +467,8 @@
       "ordner": "Moon-Dev-Code",
       "rolle": "Doku",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) nur Dokumentation und Skills",
       "warnungen": [
         "Bot-Profil 'moon-dev-code' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/moon-dev-code) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
@@ -483,10 +485,11 @@
       "ordner": "odysseus",
       "rolle": "Werkzeug",
       "art": "python+node",
-      "notiz": "Python+Node, kein erklaerter Einstieg in der README",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Python+Node, kein erklaerter Einstieg in der README",
       "warnungen": [
         "Bot-Profil 'odysseus' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/odysseus) - der Bot-Knopf waere ein Knopf ins Leere"
-      ]
+      ],
+      "gruppe": "ausgemustert"
     },
     {
       "ordner": "one-skill-to-rule-them-all",
@@ -631,15 +634,16 @@
       "ordner": "robinhood-fomo-kronos-arena",
       "rolle": "Rahmen",
       "art": "doku",
-      "notiz": "LEERER RAHMEN: fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile, verlangt Schluessel, die es nicht gibt",
-      "anleitung": "Nicht lauffaehig (geprueft 22.09.2026): 7 Dateien, fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile. Verlangt ROBINHOOD_API_KEY, ROBINHOOD_SECRET und PRIVATE_KEY. Nichts angefasst - erst entscheiden, ob hier gebaut wird."
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) LEERER RAHMEN: fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile, verlangt Schluessel, die es nicht gibt",
+      "anleitung": "Nicht lauffaehig (geprueft 22.09.2026): 7 Dateien, fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile. Verlangt ROBINHOOD_API_KEY, ROBINHOOD_SECRET und PRIVATE_KEY. Nichts angefasst - erst entscheiden, ob hier gebaut wird.",
+      "gruppe": "ausgemustert"
     },
     {
       "ordner": "santiment",
       "rolle": "Doku",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) nur Dokumentation und Skills",
       "warnungen": [
         "Bot-Profil 'santiment' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/santiment) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
@@ -657,8 +661,8 @@
       "ordner": "skills",
       "rolle": "Doku",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) nur Dokumentation und Skills",
       "warnungen": [
         "Bot-Profil 'skills' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/skills) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
@@ -667,8 +671,8 @@
       "ordner": "superpowers",
       "rolle": "Skills",
       "art": "node",
-      "gruppe": "doku",
-      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) nur Dokumentation und Skills",
       "warnungen": [
         "Bot-Profil 'superpowers' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/superpowers) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
@@ -718,17 +722,18 @@
       "ordner": "Trading-View-MCP-for-AI-by-Moon-Dev",
       "rolle": "MCP-Server",
       "art": "python",
-      "notiz": "MCP-Server fuer TradingView-Daten",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) MCP-Server fuer TradingView-Daten",
       "warnungen": [
         "Bot-Profil 'tradingview-mcp' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/tradingview-mcp) - der Bot-Knopf waere ein Knopf ins Leere"
-      ]
+      ],
+      "gruppe": "ausgemustert"
     },
     {
       "ordner": "winget-cli",
       "rolle": "Doku",
       "art": "doku",
-      "gruppe": "doku",
-      "notiz": "nur Dokumentation und Skills",
+      "gruppe": "ausgemustert",
+      "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) nur Dokumentation und Skills",
       "warnungen": [
         "Bot-Profil 'winget-cli' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/winget-cli) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
