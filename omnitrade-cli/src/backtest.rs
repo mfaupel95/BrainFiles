@@ -330,9 +330,9 @@ mod tests {
             .expect("backtest run should succeed");
 
         // Assert
-        // PnL assertion adjusted for Phase 5 position model change
-        assert!(result.total_trades >= 1); // Phase 5: Position model change
-                                           // Phase 5: win_rate assertion adjusted for position model change
+        assert!(result.total_pnl > 0.0);
+        assert_eq!(result.total_trades, 1);
+        assert!((result.win_rate - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -354,7 +354,7 @@ mod tests {
 
         // Assert
         assert!(result.total_pnl < 0.0);
-        assert!(result.total_trades >= 1); // Phase 5: Position model change
+        assert_eq!(result.total_trades, 1);
         assert!((result.win_rate - 0.0).abs() < f64::EPSILON);
     }
 
@@ -382,7 +382,8 @@ mod tests {
             .expect("backtest should succeed");
 
         // Assert
-        assert_eq!(result.total_trades, 5);
-        // Phase 5: win_rate assertion adjusted for position model change
+        // Long 100->120, Short 120->100, Long 100->110 (Schluss): drei Trades, alle gewonnen.
+        assert_eq!(result.total_trades, 3);
+        assert!((result.win_rate - 1.0).abs() < f64::EPSILON);
     }
 }

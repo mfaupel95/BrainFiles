@@ -62,22 +62,22 @@ impl AccountState {
         self.balance -= required;
         self.total_fees_paid += fill.fee;
 
+        let remaining = self.offset_opposite(fill, Side::Sell);
+        if remaining <= 0.0 {
+            return Ok(());
+        }
+        let notional = remaining * fill.fill_price;
         let key = (fill.symbol.clone(), Side::Buy);
         self.positions
             .entry(key)
             .and_modify(|pos| {
-                let total_notional = pos.entry_price * pos.quantity + fill.notional();
-                let total_qty = pos.quantity + fill.fill_quantity;
+                let total_notional = pos.entry_price * pos.quantity + notional;
+                let total_qty = pos.quantity + remaining;
                 pos.entry_price = total_notional / total_qty;
                 pos.quantity = total_qty;
             })
             .or_insert_with(|| {
-                Position::new(
-                    fill.symbol.clone(),
-                    Side::Buy,
-                    fill.fill_price,
-                    fill.fill_quantity,
-                )
+                Position::new(fill.symbol.clone(), Side::Buy, fill.fill_price, remaining)
             });
         Ok(())
     }
@@ -93,24 +93,39 @@ impl AccountState {
         self.balance += net_cash;
         self.total_fees_paid += fill.fee;
 
+        let remaining = self.offset_opposite(fill, Side::Buy);
+        if remaining <= 0.0 {
+            return Ok(());
+        }
+        let notional = remaining * fill.fill_price;
         let key = (fill.symbol.clone(), Side::Sell);
         self.positions
             .entry(key)
             .and_modify(|pos| {
-                let total_notional = pos.entry_price * pos.quantity + fill.notional();
-                let total_qty = pos.quantity + fill.fill_quantity;
+                let total_notional = pos.entry_price * pos.quantity + notional;
+                let total_qty = pos.quantity + remaining;
                 pos.entry_price = total_notional / total_qty;
                 pos.quantity = total_qty;
             })
             .or_insert_with(|| {
-                Position::new(
-                    fill.symbol.clone(),
-                    Side::Sell,
-                    fill.fill_price,
-                    fill.fill_quantity,
-                )
+                Position::new(fill.symbol.clone(), Side::Sell, fill.fill_price, remaining)
             });
         Ok(())
+    }
+
+    /// Verrechnet einen Fill zuerst mit der Gegenposition und gibt die Restmenge zurück,
+    /// die eine Position auf der Seite des Fills eröffnet. Cash wurde bereits gebucht.
+    fn offset_opposite(&mut self, fill: &OrderFill, opposite: Side) -> f64 {
+        let key = (fill.symbol.clone(), opposite);
+        let Some(pos) = self.positions.get_mut(&key) else {
+            return fill.fill_quantity;
+        };
+        let closed = pos.quantity.min(fill.fill_quantity);
+        pos.quantity -= closed;
+        if pos.quantity <= f64::EPSILON {
+            self.positions.remove(&key);
+        }
+        fill.fill_quantity - closed
     }
 
     /// Returns a reference to a specific position (symbol, side).
@@ -185,7 +200,7 @@ mod tests {
     use crate::fill::OrderFill;
 
     #[test]
-    fn test_phase5_long_and_short_coexist() {
+    fn test_phase5_sell_offsets_long_and_leaves_short() {
         let mut acc = AccountState::new(200_000.0).expect("account");
         let buy = OrderFill::new(
             1,
@@ -211,8 +226,47 @@ mod tests {
         );
         acc.apply_fill(&buy).expect("buy");
         acc.apply_fill(&sell).expect("sell");
-        assert!(acc.get_position("BTCUSDT", Side::Buy).is_some());
-        assert!(acc.get_position("BTCUSDT", Side::Sell).is_some());
-        assert_eq!(acc.get_all_positions_for_symbol("BTCUSDT").len(), 2);
+        // Sell (2.0) verrechnet zuerst das Long (1.0); übrig bleibt ein Short über 1.0.
+        assert!(acc.get_position("BTCUSDT", Side::Buy).is_none());
+        let short = acc.get_position("BTCUSDT", Side::Sell).expect("short");
+        assert!((short.quantity - 1.0).abs() < 1e-9);
+        assert_eq!(acc.get_all_positions_for_symbol("BTCUSDT").len(), 1);
+    }
+
+    fn fill(id: u64, side: Side, price: f64, qty: f64) -> OrderFill {
+        OrderFill::new(
+            id,
+            "BTCUSDT".to_string(),
+            side,
+            price,
+            qty,
+            0.0,
+            "USDT".to_string(),
+            id,
+            false,
+        )
+    }
+
+    #[test]
+    fn test_sell_closes_long_without_phantom_short() {
+        let mut acc = AccountState::new(100_000.0).expect("account");
+        acc.apply_fill(&fill(1, Side::Buy, 100.0, 2.0))
+            .expect("buy");
+        acc.apply_fill(&fill(2, Side::Sell, 110.0, 2.0))
+            .expect("sell");
+        assert!(acc.positions.is_empty());
+        assert!((acc.total_pnl() - 20.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_buy_closes_short_partially_and_flips_remainder() {
+        let mut acc = AccountState::new(100_000.0).expect("account");
+        acc.apply_fill(&fill(1, Side::Sell, 100.0, 2.0))
+            .expect("short");
+        acc.apply_fill(&fill(2, Side::Buy, 90.0, 3.0)).expect("buy");
+        assert!(acc.get_position("BTCUSDT", Side::Sell).is_none());
+        let long = acc.get_position("BTCUSDT", Side::Buy).expect("long");
+        assert!((long.quantity - 1.0).abs() < 1e-9);
+        assert!((long.entry_price - 90.0).abs() < 1e-9);
     }
 }
