@@ -6594,7 +6594,7 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
 
 ## T-372 — Verbesserer: strukturiertes Event-Log in lauf.py
 
-- [ ] **T-372 — Verbesserer: strukturiertes Event-Log in lauf.py**
+- [x] **T-372 — Verbesserer: strukturiertes Event-Log in lauf.py**
   - Kontext: Growth-Engineering-Analyse (07.10.2026) hat ergeben, dass lauf.py kein
     maschinenlesbares Ergebnis-Log schreibt. Ohne das sind A/B-Experimente (Holdout-Gate,
     F7-Wirkung) und Re-Engagement-Trigger nicht auswertbar. lauf.py soll nach jedem Lauf
@@ -6607,7 +6607,7 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
 
 ## T-373 — Verbesserer: Anwendungslog in anwenden.py
 
-- [ ] **T-373 — Verbesserer: Anwendungslog in anwenden.py**
+- [x] **T-373 — Verbesserer: Anwendungslog in anwenden.py**
   - Kontext: Growth-Engineering-Analyse (07.10.2026): der Funnel ist nach dem Digest-Schritt
     blind. anwenden.py weiss, ob ein Vorschlag angewendet wurde, schreibt das aber nicht
     zurueck. Loessung: bei jedem Aufruf einen Eintrag in `verbesserer/anwendungslog.json`
