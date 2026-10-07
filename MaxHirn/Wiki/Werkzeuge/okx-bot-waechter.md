@@ -180,8 +180,10 @@ Daraus drei Regeln:
 3. Das Band aus dem ATR, nicht aus dem Bauch: im Erfolgsfall fuellte sich das
    Netz wegen der BEWEGUNG, nicht wegen der Enge.
 
-Nachpruefbar mit `Agenten/Hermes/cache/scratch/okx_grid_kursweg.py` (Wegwerfsonde
-vom 25.09.2026; die Uebernahme in den Waechter steht als T-076).
+Nachpruefbar mit `Agenten/Handel/okx_bot_waechter/grid_historie.py` (T-076,
+08.10.2026: die Wegwerfsonde ist als Leser in den Waechter uebernommen - je Grid
+Seite, Laufzeit, Netzgewinn, Richtungsgewinn, Stop ja/nein, Marktbewegung;
+`waechter.py --historie` haengt die Summen an den Bericht).
 
 ## Eine laufende Contract-DCA nimmt keinen Stop an (25.09.2026)
 

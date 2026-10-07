@@ -1768,20 +1768,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - im swap-Journal stehen 3 live-Zeilen, aber alle sind funding - keine live-eroeffnen-Zeile; bleibt offen.**
 
 
-- [ ] **T-076 — Der OKX-Bot-Waechter kennt die GESCHLOSSENEN Grids nicht**
-      Kontext: `waechter.py`/`analyse.py` lesen nur laufende Bots
-      (`dca/ongoing-list`, `grid/orders-algo-pending`). Die 62 geschlossenen Grids
-      (`grid/orders-algo-history`, 08.08.-24.09.2026) sind damit unsichtbar -
-      genau die Bots, deren Ergebnis man auswerten will. Die Auswertung vom
-      25.09.2026 (Netzgewinn +305,64 gegen Richtungsgewinn -392,99 = -77,01 auf
-      7.072,87 USDC Einsatz) entstand aus einer Wegwerfsonde in
-      `Agenten/Hermes/cache/scratch/okx_grid_kursweg.py`.
-      Naechster Schritt: die Sonde als `grid_historie.py` in `okx_bot_waechter`
-      uebernehmen (je Grid: Seite, Laufzeit, Netzgewinn, Richtungsgewinn, Stop
-      vorhanden ja/nein, Marktbewegung waehrend der Lebensdauer) und in den
-      Bericht aufnehmen; rein lesend, wie der uebrige Bericht.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/okx_bot_waechter/, MaxHirn/Wiki/Werkzeuge/okx-bot-waechter.md
 
 
 - [ ] **T-075 — kraken_rest.guthaben() scheitert sporadisch mit EGeneral:Permission denied**
@@ -2320,6 +2306,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-076 — Der OKX-Bot-Waechter kennt die GESCHLOSSENEN Grids nicht**
+      Kontext: `waechter.py`/`analyse.py` lesen nur laufende Bots
+      (`dca/ongoing-list`, `grid/orders-algo-pending`). Die 62 geschlossenen Grids
+      (`grid/orders-algo-history`, 08.08.-24.09.2026) sind damit unsichtbar -
+      genau die Bots, deren Ergebnis man auswerten will. Die Auswertung vom
+      25.09.2026 (Netzgewinn +305,64 gegen Richtungsgewinn -392,99 = -77,01 auf
+      7.072,87 USDC Einsatz) entstand aus einer Wegwerfsonde in
+      `Agenten/Hermes/cache/scratch/okx_grid_kursweg.py`.
+      Naechster Schritt: die Sonde als `grid_historie.py` in `okx_bot_waechter`
+      uebernehmen (je Grid: Seite, Laufzeit, Netzgewinn, Richtungsgewinn, Stop
+      vorhanden ja/nein, Marktbewegung waehrend der Lebensdauer) und in den
+      Bericht aufnehmen; rein lesend, wie der uebrige Bericht.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/okx_bot_waechter/, MaxHirn/Wiki/Werkzeuge/okx-bot-waechter.md
+      
 - [x] **T-036 — Codex über OmniRoute: Provider „codex" hat im Router keine aktiven Credentials**
       Kontext: Am 07.09.2026 war `MaxHirn/.codex/config.toml` in dreifacher Hinsicht
       kaputt: (1) eine `export …`-Zeile in TOML (Parse-Fehler), (2) globale Keys
