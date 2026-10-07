@@ -288,5 +288,59 @@ class CLIUnterstuetzt(unittest.TestCase):
         self.assertIn("choices=(\"lage\", \"trend\", \"grid\")", txt)
 
 
+class CLIEndeZuEndeTest(unittest.TestCase):
+    """Der Akzeptanz-Aufruf `python replay.py --spur xperp --lauf test`.
+
+    Faehrt die ECHTE Kommandozeile (subprocess, kein Import) und prueft, dass
+    die JSON-Ausgabe die drei Akzeptanz-Groessen traegt: Runden, Trefferquote
+    (p) und PnL (ergebnis_summe). Das ist der eine Test, der die Karte
+    t_6ae063a4 beantwortet - die Mechanik pruefen die Stub-Tests oben, hier
+    wird der Aufruf selbst zum Zeugen.
+
+    Die OKX-Historie (daten/historie_okx) ist nicht versioniert - fehlt sie
+    (Worktree, frische Kopie), wird der Test UEBERSPRUNGEN statt rot: ein
+    fehlender Datenordner ist kein Codefehler. Erst 'python historie_okx.py
+    --auffuellen --instrumente BTC --takte 4H' legt ihn an.
+    """
+
+    def setUp(self):
+        self.ordner = os.path.join(HANDEL, "daten", "historie_okx")
+        if not os.path.isdir(self.ordner):
+            self.skipTest("OKX-Historie fehlt (%s) - erst historie_okx.py "
+                          "--auffuellen" % self.ordner)
+
+    def _lauf(self, *extra):
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, os.path.join(HANDEL, "replay.py"),
+             "--spur", "xperp", "--lauf", "test"] + list(extra),
+            cwd=HANDEL, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0,
+                         "Exit %d\nstdout: %s\nstderr: %s"
+                         % (r.returncode, r.stdout, r.stderr))
+        return json.loads(r.stdout)
+
+    def test_ausgabe_traegt_runden_trefferquote_und_pnl(self):
+        aus = self._lauf()
+        self.assertEqual("xperp", aus["spur"])
+        self.assertEqual("okx", aus["kerzenquelle"])
+        # Runden: die Top-Level-Zahl und die Kennzahlen-Rechnung muessen
+        # uebereinstimmen (dieselbe Quelle, kein zweiter Zaehler).
+        self.assertEqual(aus["runden"], aus["kennzahlen"]["runden"])
+        # Trefferquote p und PnL ergebnis_summe sind die Akzeptanz-Groessen.
+        self.assertIn("p", aus["kennzahlen"])
+        self.assertIn("ergebnis_summe", aus["kennzahlen"])
+        self.assertGreaterEqual(aus["kennzahlen"]["p"], 0.0)
+        self.assertLessEqual(aus["kennzahlen"]["p"], 1.0)
+
+    def test_bot_methode_ist_waehlbar_und_landet_im_ergebnis(self):
+        for methode in ("lage", "trend", "grid"):
+            aus = self._lauf("--bot-methode", methode)
+            self.assertEqual(methode, aus["bot_methode"])
+            # lage erzeugt keine Order (CLI-Wahrheit) - 0 Runden ist dort
+            # ein gueltiges Ergebnis, kein Fehler.
+            self.assertIn("runden", aus)
+
+
 if __name__ == "__main__":
     unittest.main()
