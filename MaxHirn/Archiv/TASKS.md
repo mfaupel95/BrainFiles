@@ -145,29 +145,6 @@
       UND `orderweg` den Perp-Weg. Kein Gebuehrenwert wird hier geaendert.
       Angelegt 04.10.2026 · Betrifft Agenten/Handel/moondev_*/wachen.json
 
-- [ ] **T-351 — signal-executor und die Queue: die Trennung ist an einer Stelle tot**
-      Kontext: T-347 hat gezeigt, dass `trigger_modus: signal` im Papier
-      strukturell nicht buchen kann (Gatter legt in die Queue, der
-      signal-executor setzt sie nur bei handel_erlaubt + Freigabe + Fenster
-      um). Diese Trennung ist fuer die LIVE-Spuren richtig, hat aber eine
-      blinde Stelle: eine Spur, die zwischendurch von live auf papier zurueck
-      geschaltet wird, legt weiter Eintraege in die Queue, die niemand
-      abholt. Sie sammeln sich, bis der Executor sie bei 30 min Alter
-      verwirft (Stand 04.10.: topmover-Queue 59 Eintraege in 88 Minuten,
-      darin je Instrument dreimal dieselbe Richtung - ein Wechsel je
-      Risikostufe).
-      Naechster Schritt: entweder der Executor raeumt Warteschlangen von
-      Spuren, die nicht mehr live sind (mit Meldezeile "Queue abgeraeumt"),
-      oder die Warteschlange traegt ein Ablaufdatum je Spur. Die heutige
-      30-Minuten-Regel im Executor ist der Notaus, nicht die Regel - sie
-      loest das Wachstum, nicht den Grund.
-      Angelegt 04.10.2026 · Betrifft Agenten/Hermes/scripts/signal-executor.py
-
-Punkte
-
-Sitzungsübergreifende Aufgabenliste. Einzige Quelle für „was ist noch offen".
-Angelegt am 2026-08-28, weil offene Punkte aus früheren Chats bis dahin
-nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
 
 ## Regeln
 
@@ -3243,6 +3220,30 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-351 — signal-executor und die Queue: die Trennung ist an einer Stelle tot**
+      Kontext: T-347 hat gezeigt, dass `trigger_modus: signal` im Papier
+      strukturell nicht buchen kann (Gatter legt in die Queue, der
+      signal-executor setzt sie nur bei handel_erlaubt + Freigabe + Fenster
+      um). Diese Trennung ist fuer die LIVE-Spuren richtig, hat aber eine
+      blinde Stelle: eine Spur, die zwischendurch von live auf papier zurueck
+      geschaltet wird, legt weiter Eintraege in die Queue, die niemand
+      abholt. Sie sammeln sich, bis der Executor sie bei 30 min Alter
+      verwirft (Stand 04.10.: topmover-Queue 59 Eintraege in 88 Minuten,
+      darin je Instrument dreimal dieselbe Richtung - ein Wechsel je
+      Risikostufe).
+      Naechster Schritt: entweder der Executor raeumt Warteschlangen von
+      Spuren, die nicht mehr live sind (mit Meldezeile "Queue abgeraeumt"),
+      oder die Warteschlange traegt ein Ablaufdatum je Spur. Die heutige
+      30-Minuten-Regel im Executor ist der Notaus, nicht die Regel - sie
+      loest das Wachstum, nicht den Grund.
+      Angelegt 04.10.2026 · Betrifft Agenten/Hermes/scripts/signal-executor.py
+
+Punkte
+
+Sitzungsübergreifende Aufgabenliste. Einzige Quelle für „was ist noch offen".
+Angelegt am 2026-08-28, weil offene Punkte aus früheren Chats bis dahin
+nirgends festgehalten wurden und mit dem Sitzungsende verloren gingen.
+      **Erledigt 07.10.2026.** signal-executor leert Queues nicht-live Spuren sofort (Meldung 'Queue abgeraeumt' statt 30-Minuten-Verfall); 'Queue abgeraeumt' ist ein Ereignis und wird immer gemeldet. Tests test_signal_executor_queue.py 3 + test_signal_executor_meldung 7 + test_signal_executor_merge 1 = 12 gruen. Commit b22f7b4e.
 - [x] **T-166 - Zehn neue Repos haben kein Bot-Profil**
       Kontext: Am 29.09.2026 sind neun Repos ins Manifest der Repos-Zentrale
       aufgenommen worden (osiris, jev-trader, deepseek-harness,
