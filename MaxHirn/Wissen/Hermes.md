@@ -1324,3 +1324,51 @@ Sicherungen: `.claude.json.bak-20261007`, `.claude/settings.json.bak-20261007`
 (beide byte-identisch zurueck bis auf `autoUpdates`),
 `versions/2.1.285.bak-20261007` (Rueckfall-Binary).
 Gelerntes auch in `Werkstatt/Repos/rule_repo-bots.md`.
+
+## Wirkungslose Write-Regeln bereinigt (07.10.2026)
+
+**Auftrag Max:** die Write-Regeln aufraeumen, die die neue CLI seit dem Update auf
+2.1.293 bei jedem Start als wirkungslos meldet.
+
+**Die Ursache war eine Skill-Vorlage.** Die sechs `Write(...)`-Zeilen stammen aus
+`Agenten/Hermes/skills/productivity/protecting-irreplaceable-data/templates/
+settings-deny-list.json` - dem Drop-in-Block, der laut Skill in jede
+`settings.local.json` kopiert wird. Von dort sind sie in alle Settings-Dateien
+gewandert. Die Vorlage ist deshalb **mitkorrigiert**; sonst waeren sie beim
+naechsten Anwenden wieder da.
+
+**Warum sie nichts schuetzen:** Die CLI wertet fuer Dateipfade nur `Edit(...)` aus.
+`Write(...)` trifft nichts und erzeugt nur eine Warnzeile je Regel. `Edit(...)` deckt
+laut Meldung **alle** Datei-Werkzeuge ab - die `Write(...)`-Zwillinge brachten also
+null zusaetzliche Deckung. Fuer jedes der acht Verzeichnisse stand daneben bereits
+die wirksame `Edit(...)`-Regel.
+
+**Bereinigt wurden drei aktive Dateien:**
+
+| Datei | vorher | nachher |
+|---|---|---|
+| `MaxHirn/.claude/settings.local.json` | 37 deny, 8 Write | 29 deny, 0 Write |
+| `MaxHirn/Archiv/.claude/settings.local.json` | 34 deny, 7 Write | 27 deny, 0 Write |
+| `.../protecting-irreplaceable-data/templates/settings-deny-list.json` | 33 deny, 6 Write | 27 deny, 0 Write |
+
+**Nachweis (echter Lauf, vorher/nachher):** `claude -p "sag OK"` in `MaxHirn` gab
+vorher 8 Warnungen, im `Archiv` 7 - jetzt **0**, stderr leer. Alle Schutzregeln
+unveraendert: `Edit(...)` fuer jedes Stufe-0-Verzeichnis, 9 `Read`-Sperren auf
+Schluessel, 11-12 Loesch-Sperren (`rm`, `mv`, `Remove-Item`, `/MIR`, `--delete`).
+Genau die erwarteten Zeilen entfernt (`diff`), LF und BOM-Status erhalten, JSON gueltig.
+
+**Fehler, den ich gemacht habe:** Die Worktrees unter `.worktrees/` und
+`.claude/worktrees/` sind **echte Git-Branches**, und `settings.local.json` ist
+versioniert. Ich hatte zuerst in zwei davon geschrieben (`t_3d11d36a`, `t_bcc968fc`)
+und damit fremde Arbeit in Branches erzeugt, die mir nicht gehoeren. Mit den
+Sicherungen zurueckgesetzt - beide sind wieder sauber (0 Aenderungen). **Lehre: vor
+jedem Schreiben in einem Worktree pruefen, ob die Datei versioniert ist
+(`git ls-files --error-unmatch <pfad>`), und in fremden Branches grundsaetzlich nicht
+schreiben.** Die verbleibenden `Write(...)`-Vorkommen liegen ausschliesslich in diesen
+Branch-Kopien und werden dort nicht angefasst.
+
+Gelerntes auch im Skill `protecting-irreplaceable-data` (Step 3: `Edit(path)` statt
+`Write(path)`, mit Pruefbefehl).
+
+Sicherungen: `settings.local.json.bak-20261007-write-regeln` (MaxHirn und Archiv),
+`settings-deny-list.json.bak-20261007`.
