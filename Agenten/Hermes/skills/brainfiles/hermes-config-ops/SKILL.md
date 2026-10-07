@@ -149,6 +149,30 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
     `/workspace`, was in `/workspace/..`, funktioniert `git`) und das Ergebnis in
     den Bericht — als Faehigkeit oder als Grenze, nicht als Nebensatz
     (references/docker-sandbox.md, Abschnitt *Was der Fix kostet*).
+17. **Den Terminal-Backend nach der ARBEITSLAST waehlen, nicht nach der
+    Verfuegbarkeit.** Der Docker-Backend ist Linux: die Spur-venvs sind
+    Windows-EXEs (`PE32+`), `Routinen/*.ps1` sind PowerShell — im Container
+    laeuft davon nichts. Ein Baum, dessen Arbeit in diesen Programmen steckt,
+    gehoert auf `local`; `docker` ist die Wahl fuer reine Python/Node-Laeufe, die
+    isoliert laufen sollen. Die Kosten von `local` sind nicht „der Agent loescht
+    alles", sondern derselbe Benutzer ohne Rueckfrage bei destruktiven Kommandos
+    — das faengt die Sicherung ab, nicht der Container. Kommt „Docker faellt
+    staendig aus" als Argument, erst die Rate messen (Event-Log je Tag plus
+    `cron/output/<job-id>/`, wo `**Status:** silent` = gesund): Wahrnehmung und
+    Rate gehen weit auseinander (references/docker-sandbox.md, Abschnitt
+    *Backend waehlen*).
+
+17. **Ein Eintrag in einer Auswahlliste ist kein Beleg, dass das Modell existiert.**
+    Eine `models:`-Liste in `config.yaml` kann tote Einträge tragen — Modellnamen,
+    die der Router nicht mehr kennt, oder Präfixe, die ein Provider nicht führt.
+    Wer eine Liste kürzt oder erweitert, prüft **jeden Namen gegen die Live-Quelle**
+    (`/v1/models` beim Router, `provider list` beim Gateway), nicht gegen die
+    Liste selbst. Gegenprobe: die Anzahl der Einträge vorher und nachher muss
+    der Differenz der Live-Treffer entsprechen. Ein Eintrag, der in der Liste
+    steht aber nicht auflöst, ist tot — und ein Eintrag, der fehlt aber auflöst,
+    gehört hinein. Die Liste ist ein Cache, nicht die Wahrheit.
+    **Dieselbe Regel gilt für jede Auswahlliste** (Provider, Profile, Skills):
+    ein Name in einer Konfigurationsdatei ist eine Behauptung, keine Messung.
 
 ## Index — references laden, wenn ...
 

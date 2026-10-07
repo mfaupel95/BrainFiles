@@ -218,6 +218,55 @@ laeuft dann am Host und sieht die ganze Wurzel, ohne `mount_cwd` und ohne
 `docker_volumes`. Der Docker-Backend ist die Wahl, wenn Kommandos **isoliert**
 laufen sollen - dann braucht es beide Eintraege.
 
+### Backend waehlen: `local` oder `docker` - die Windows-Binaries entscheiden
+
+Die Frage ist nicht, ob Docker gerade erreichbar ist, sondern **was die Arbeit
+ausfuehren muss**. Der Container ist Linux; alles, was ein Windows-Programm
+braucht, laeuft dort nicht:
+
+    file Agenten/Handel/scanner/.venv/Scripts/python.exe
+    -> PE32+ executable for MS Windows (console), x86-64
+
+Die Spur-venvs sind Windows-EXEs, `Agenten/Routinen/handel-tests.ps1` sucht
+`.venv\Scripts\python.exe`, und die `Routinen/*.ps1` sind PowerShell. Im Container
+ist davon nichts ausfuehrbar - also entscheidet die **Arbeitslast**, nicht die
+Verfuegbarkeit:
+
+| Arbeitslast | Backend |
+|---|---|
+| BrainFiles selbst: Spur-venvs, `.ps1`-Routinen, Git an der Wurzel | `local` |
+| reines Python/Node ohne Windows-Programme, isolierte Laeufe | `docker` |
+
+`local` laeuft als derselbe Benutzer **ohne Rueckfrage bei destruktiven
+Kommandos** - das ist die eigentliche Kostenstelle, nicht „der Agent loescht
+alles". Sie wird mit einer Sicherung bezahlt, nicht mit einem Container (`.git`
+an der Wurzel, die drei Kopien, `Wissen/Schutzregeln.md`), und die greift
+unabhaengig vom Backend.
+
+**Wenn „Docker faellt staendig aus" als Argument kommt: erst messen.** Gemessen
+am 08.10.2026: **10** Docker-Abstuerze in 30 Tagen, **alle an einem Tag** (der
+Commit-Erschoepfungstag mit 31 App-Abstuerzen), an den uebrigen 29 Tagen null.
+Die Wahrnehmung stimmt nicht mit der Rate ueberein - jeder Ausfall trifft, weil
+er das Terminal mitnimmt, aber er ist selten. Messweg:
+
+    # Abstuerze (Application Error) je Tag, 30 Tage
+    Get-WinEvent -FilterHashtable @{LogName='Application';
+      ProviderName='Application Error'; StartTime=(Get-Date).AddDays(-30)} \
+      -MaxEvents 5000 | Where-Object { $_.Message -match 'docker' } |
+      Group-Object { $_.TimeCreated.ToString('yyyy-MM-dd') }
+
+    # Wie oft hat eine Wache geheilt? Agenten/Hermes/cron/output/<job-id>/
+    #   '**Status:** silent (empty output)' = gesund, nichts gesendet
+    #   Statuszeile FEHLT                   = gemeldet (Heilung/Erholung)
+
+Der zweite Punkt ist der wichtigere: die Wache schreibt fuer **jeden** Lauf eine
+Datei, auch die stillen. „Wie viele Meldungen" ist deshalb eine Zaehlung ueber
+`Status`, nicht ueber die Dateizahl (50 Laeufe, 49 still, 1 gemeldet).
+
+Der Docker-Pfad laesst sich vollstaendig einrichten und **liegen lassen** -
+er ist dann nicht kaputt, nur nicht aktiv, und ein spaeterer Wechsel kostet
+keine zweite Einrichtung.
+
 Einen `docker_volumes`-Eintrag erkennt man an zwei Regeln: er ist ein
 **roher `-v`-Spec** und braucht deshalb den **Doppelpunkt** (ohne ihn: `Docker
 volume '...' missing colon, skipping`), und ein Nicht-String wird ebenso

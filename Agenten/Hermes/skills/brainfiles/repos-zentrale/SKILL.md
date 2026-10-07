@@ -166,7 +166,10 @@ ist nicht beliebig — jeder Schritt liefert die Eingabe fuer den naechsten.
    Dublette.
 3. **Groessen messen, nicht schaetzen.** Je Ordner eine Zeile (Dateien + GB) —
    `Get-ChildItem -Recurse -File -Force | Measure-Object Length -Sum` ueber
-   `terminal`. Die zweite Zahl, die zaehlt: wieviel davon venv/node_modules/
+   `terminal`, NIE `du`: unter der Werkstatt-Junction (→ `O:\`) laeuft `du`
+   in Zeitueberschreitungen (gemessen 180 s und 240 s fuer ~15 Ordner),
+   PowerShell misst dieselbe Menge in einem Lauf. Die zweite Zahl, die zaehlt:
+   wieviel davon venv/node_modules/
    `target`/`.git` ist (wieder herstellbar).
 4. **Warum steht eine Zeile in EINRICHTEN?** `scripts/warum-einrichten.py`
    (write_file, durch `terminal` aufrufen) druckt je Zeile Bereich, Gruppe und
@@ -184,6 +187,54 @@ ist nicht beliebig — jeder Schritt liefert die Eingabe fuer den naechsten.
    verschobener Ordner mit Manifest-Eintrag wird sonst FEHLT.
 8. **Was du nicht angefasst hast, in `MaxHirn/Archiv/TASKS.md` eintragen**
    (Entscheidungen, die Max braucht) — nicht in die Antwort allein.
+
+### Welche Repos sind ungenutzt? (Nutzungs-Audit)
+
+„Prüfe, welche der Projekte ungenutzt sind“ hat eine feste Kriterienkette —
+ein Repo gilt erst als ungenutzt, wenn ALLE sechs Zeugen schweigen:
+
+1. **Bot-Profil über die `cwd`, nicht über den Profilnamen.** Profilnamen sind
+   klein und weichen vom Reponamen ab (`nerd` → `claude-red`, `fomo-radar` →
+   `fomo-robinhood-radar`). Maßgeblich ist `config.yaml` → `terminal.cwd`;
+   ein Repo hat einen Bot, wenn ein Profil-cwd auf `Werkstatt/Repos/<name>`
+   zeigt. Die Namensgleichheit allein verliert die Hälfte der Bots.
+2. **Startbefehl im Manifest** (`repos-zentrale.json` → `start` nicht leer).
+3. **Laufender Prozess:** `Get-CimInstance Win32_Process` mit exaktem
+   Pfadmuster `Werkstatt\\Repos\\<name>` in CommandLine ODER ExecutablePath —
+   und die EIGENE PID ausschließen (`$_.ProcessId -ne $PID`): der Prüfaufruf
+   selbst trägt die Pfade in seiner Kommandozeile und matcht sich sonst
+   selbst. Ein bloßer Namens-Regex trifft außerdem fremde Prozesse („skills“
+   steht in jeder claude/Kommandzeile) — nie bloße Namen matchen.
+4. **Exakte Pfad-Referenzen statt bloßem Namen.** `rg 'Repos/<name>'` in
+   Skills/scripts/cron/Routinen/Wissen/Wiki; der bloße Name ist wertlos
+   („skills“ 3375, „codex“ 1522, „laya“ 202 Treffer). Wrapper außerhalb der
+   Repos zählen als Nutzung (`codex-remote-control.ps1` macht `codex`
+   genutzt, obwohl 0 Pfad-Referenzen).
+5. **MCP-Manifest:** ein Eintrag unter `disabled` ist KEINE Nutzung
+   (`santiment` war seit 13.09. disabled = ungenutzt).
+6. **Frisches `.venv` ist das Gegenzeichen:** ein venv, das Tage alt ist,
+   heißt „jemand richtet das gerade ein“ — trotz 0 Referenzen NICHT
+   anfassen (`foreman`). Alter von `Get-Item <dir>\.venv` → CreationTime.
+
+Danach verschieben (Schritt 7) und das Manifest nachziehen: `gruppe` auf
+`ausgemustert` setzen, `notiz` mit „(ausgemustert am JJJJMMTT nach
+Werkstatt/Ausgemustert/<name>-JJJJMMTT)“ praefixieren. Dabei `git diff`
+LESEN, nicht nur `--numstat`: Einträge ohne vorherige gruppe-Zeile bekommen
+sie neu dazu — 36/31 statt 30/30 ist dann korrekt, kein Schaden. Eine
+Worktree-Sammlung ohne `.git`-Wahrheit kann ganz außerhalb des Manifests
+stehen (`copilot-worktrees`) — fehlt sie dort, ist das kein Widerspruch.
+
+**Ein Repo mit `plugins/`-Unterordner ist KEIN Hermes-Desktop-Plugin.**
+Die Plugin-Ordner der Flotte (basic-memory, caveman, claude-code,
+everything-claude-code, …) sind Claude-Code-Plugin-Formate (agent-sdk-dev,
+code-review, …) und laufen unter claude, nicht in der Hermes-Desktop-App.
+Hermes-Desktop-Plugins erkennst du an `desktop/plugin.js` (Standalone) bzw.
+`plugins/<id>/desktop/plugin.js` + `plugin.yaml` (unified package);
+Katalog-Einträge installiert `hermes plugins install <name>`. Die Antwort
+auf „gehört das in Desktop-Plugins?“ ist für die Repo-Flotte also fast
+immer NEIN — die echten Kandidaten sind die eigenen GUI-Werkzeuge
+(handelszentrale, leitstand, repos-zentrale), ein Bau-Projekt, kein
+Klon-Thema.
 
 ### Was der Audit typischerweise findet
 

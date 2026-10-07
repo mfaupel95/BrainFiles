@@ -2,8 +2,8 @@
   "_zweck": "Hebel-Bein der omnitrade-Spur: das Signal kommt aus den Rust-Laeufen (Werkstatt/omnitrade/status, gelesen ueber omnitrade/lesen.py), die Ausfuehrung laeuft auf Kraken FUTURES mit Hebel 7. Auftrag Max 30.09.2026: 'hebel x7 fuer den anfang, aggressiver dann weniger, kleine positionsgroessen zuerst'.",
   "_warum_eigene_spur": "Ein Buch fuehrt EINE Waehrung: die Spot-Spur omnitrade rechnet in USDC, Futures in USD. Zwei Boersen in einem Buch haetten zwei Waehrungen in einer Rechnung.",
   "waehrung": "USD",
-  "handel_erlaubt": false,
-  "_handel_erlaubt_vermerk": "false auf Auftrag Max 04.10.2026. Zuvor true seit dem 01.10.2026 (Auto-Freigabe, Commit aecd6178-Naehe). Grund ist eine Messung: mit dem am 04.10. gestarteten adx_macd-Lauf (OKX-DEMO, BTCUSDC, 15m) liefert der gepinnte Status zum ersten Mal ein Signal ('long'), --vorschau meldet 'Live waere gesperrt durch: nichts', und das Kraken-Futures-Konto hat 69,88 USD frei (Tor ab 25 USD). Die Spur haette beim naechsten Zyklus einen echten 7x-Futures-Trade eröffnet. Grundsatz: ein Lauf, dessen Backtest in 5 von 6 Fenstern verliert (nur adx_macd 28 Tage +117 USD, 14 Tage -291, 42 Tage -130), ist kein Beleg fuer Live. Die Spur sammelt jetzt PAPIERRunden. Zuruecknehmen: handel_erlaubt true - dann erst, wenn echte Papierrunden vorliegen und T-291 (Guthaben) geklaert ist.",
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf Auftrag Max 07.10.2026 ('kraken und kraken future live schalten freigabe'). Vorher false seit 04.10.2026. Der gepinnte Status ist rsi_noema_BTCUSDC.json (seit 05.10.); das Kraken-Futures-Konto muss mindest_guthaben 25 USD frei haben - der Dauerlauf prueft das beim naechsten Zyklus und oeffnet das Freigabefenster.",
   "hebel": 7.0,
   "_hebel": "Zahl, nicht 'hoch' (Hausregel). Max 30.09.2026: 'hebel x7 fuer den anfang, aggressiver dann weniger'. Verringern = diesen Wert senken; der Start ist bewusst KLEIN (1 Kontrakt). Der Wert geht mit jeder Order als leverage-Parameter an die Boerse - ob Kraken ihn annimmt, belegt der erste echte 1-Kontrakt-Lauf (gemessen ist nur der Einschussplan EEA retail 10 % = 10x; 7x liegt darunter).",
   "instrument": "PF_XBTUSD",
@@ -38,9 +38,9 @@
   "live_max_gesamt_usd": 90000.0,
   "_live_grenzen": "Ein Platz, ein Kontrakt. 'Aggressiver dann weniger' umgekehrt gelesen: der Anfang ist klein, Groesse kommt spaeter ueber max_offene_positionen/kontrakte - nie durch groesseres Risiko je Runde.",
   "freigabe": {
-    "erfuellt": false,
-    "_erfuellt_vermerk": "true auf Auftrag Max 01.10.2026. Die Bedingung-1-Kriterien sind einzeln als _..._entfaellt vermerkt; der Code rechnet sie nicht nach. Ein getrenntes _herzschlag_minuten-Feld gibt es nicht - es gilt die Hausregel 180 Minuten fuer alle Spuren, auch live. Zuruecknehmen: erfuellt auf false.",
-    "geprueft_am": "2026-10-01"
+    "erfuellt": true,
+    "_erfuellt_vermerk": "true auf Auftrag Max 07.10.2026 ('kraken und kraken future live schalten freigabe'). Vorher false seit 04.10.2026. Die Bedingung-1-Kriterien sind als _..._entfaellt vermerkt; der Code rechnet sie nicht nach. Zuruecknehmen: erfuellt auf false.",
+    "geprueft_am": "2026-10-07"
   },
   "_grund": "omnitrade_hebel",
   "_journal_zweitziel": "Bedingung 4: Journal und Zustand ausser Haus.",

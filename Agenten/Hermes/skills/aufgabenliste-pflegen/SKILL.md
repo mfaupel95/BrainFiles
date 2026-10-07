@@ -613,6 +613,46 @@ print(bereich.count("- [ ] "), bereich.count("- [x]"), bereich.count("- [?]"))
   reine Insertions zeigen (eine Zeile Loeschung ist die Kopfzeile, die mit
   `[ ]` auf `[x]` wechselt - mehr Loeschungen bedeuten Fremdtext).
 
+## Überholte Tasks systematisch finden
+
+Ein Task, der eine Zahl oder einen Zustand nennt („Kraken 0,71 EUR frei",
+„Provider codex hat keine aktiven Keys"), kann überholt sein — die Zahl hat sich
+geändert, ohne dass jemand den Task geschlossen hat. Die Prüfung ist die
+Messung gegen die Wirklichkeit, **nicht das Alter**: ein Task, der 100 Tage alt
+ist, kann noch aktuell sein; ein Task, der eine Woche alt ist, kann überholt sein.
+
+**Verfahren:**
+1. Alle offenen Blöcke mit Zahlen extrahieren (Muster: `\b\d{2,7}\s*(?:Einträge|Dateien|Zeilen|GB|MB|Tests|Runden|Commits)`).
+2. Jede genannte Zahl gegen die aktuelle Wirklichkeit messen (API-Aufruf,
+   `git ls-files`, `Get-ChildItem`, Datenbankabfrage).
+3. Stimmt die Zahl nicht mehr: Task als überholt schließen, mit Beleg
+   („gemessen heute: X, Task sagte Y").
+4. Stimmt die Zahl: Task bleibt offen, auch wenn er alt ist.
+
+**Fallen:**
+- **Ein relativer Pfad ohne Kontext ist kein Befund.** Die meisten Blöcke
+  nennen `wachen.json` ohne Spur-Ordner — ein Pfad-Check ohne den
+  übergeordneten Ordner erzeugt Dutzende Fehlalarme. Erst die Verengung auf
+  *genannte Zahlen gegen die Wirklichkeit* liefert belastbare Treffer.
+- **Das Alter sortiert, es beweist nicht.** Eine Liste nach `Angelegt`-Datum
+  sortiert zeigt die aeltesten zuerst, aber „alt" heißt nicht „überholt".
+  Die Reihenfolge ist ein Kandidaten-Filter, kein Ergebnis.
+- **Ein Beleg gehört VOR die Strukturzeilen (`Angelegt`/`Betrifft`), nicht
+  hinter sie.** Der Block endet mit `Betrifft:`, ein Anhängen danach landet
+  außerhalb der Struktur. Einfügestelle: vor der ERSTEN `Angelegt`-Zeile
+  innerhalb des Blocks.
+- **Die Gegenprobe für die Einfügestelle muss INNERHALB des Blocks sein.**
+  `neu.index("BELEG") < neu.index("Angelegt")` über die ganze Datei findet
+  das erste Vorkommen — das kann ein fremder Block sein. Richtig: den neuen
+  Block extrahieren und darin prüfen.
+- **`Assert` ist PowerShell-Syntax, nicht Python.** Ein Python-Skript mit
+  `Assert ma, "..."` bricht mit `SyntaxError: invalid syntax` ab. In Python
+  heißt es `assert` (klein). Bei Fehlversuchen mit `Assert` zuerst die Syntax
+  prüfen, nicht den Logikfehler suchen.
+- **`erledigen.py` nimmt nur `- [ ]` an.** Ein Eintrag in anderer Kastenstellung
+  (`- [?]`, `- [!]`) wird über den Byte-Weg geschlossen. Die Meldung
+  „ist schon abgehakt" meint „nicht `- [ ]`", nicht „bereits erledigt".
+
 ## Block verschieben (Offen -> Erledigt)
 
 Der fehleranfaelligste Vorgang an der Datei. Vier Fehler treten gehaeuft
