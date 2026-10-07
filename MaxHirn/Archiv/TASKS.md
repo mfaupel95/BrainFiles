@@ -1057,22 +1057,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
       Betrifft: `C:\Users\faupe\.omniroute\`, `Agenten/sichern.ps1`
 
-- [ ] **T-183 — NODE_ENV=production in der Agenten-Shell bricht jeden vite-Dev-Lauf**
-      Kontext: Beim ersten echten Lauf der Skill-Anleitung `inspecting-hermes-desktop-dom`
-      starb der Renderer mit `ReferenceError: $RefreshSig$ is not defined`
-      (`apps/desktop/src/i18n/context.tsx`), `#root` blieb leer. Ursache ist ein geerbtes
-      `NODE_ENV=production` in der Shell des Agenten: `@vitejs/plugin-react` emittiert dann
-      die Fast-Refresh-Aufrufe OHNE die Laufzeit. Gemessen am 2026-09-30:
-      `cmd /c "set NODE_ENV"` = production; NICHT in `HKCU\Environment`, NICHT in
-      `terminal.docker_forward_env` der config.yaml (dort Zeile 2295 nur im env-Block des
-      MCP-Servers desktop-commander). Mit `env -u NODE_ENV` vor vite UND electron mountet die
-      App normal: 351 Knoten, 79 `[data-slot]`, ~32 s bis gemountet, Port 9333 liefert DOM
-      und Konsolenfehler. Die Skill-Pitfalls sind entsprechend ergaenzt (Commit b39288f).
-      Naechster Schritt: Quelle des geerbten NODE_ENV finden (Startweg der Hermes-TUI,
-      `hermes.exe --tui` aus `Agenten/Hermes/bin`) und entscheiden, ob sie dort bleiben muss —
-      sie faerbt JEDEN Dev-Server, den ein Agent startet, nicht nur diesen einen.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: `Agenten/Hermes/config.yaml`, `Agenten/Hermes/skills/software-development/inspecting-hermes-desktop-dom`, `apps/desktop` (Fremd-Checkout)
 
 
 
@@ -2306,6 +2290,32 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-183 — NODE_ENV=production in der Agenten-Shell bricht jeden vite-Dev-Lauf**
+      Kontext: Beim ersten echten Lauf der Skill-Anleitung `inspecting-hermes-desktop-dom`
+      starb der Renderer mit `ReferenceError: $RefreshSig$ is not defined`
+      (`apps/desktop/src/i18n/context.tsx`), `#root` blieb leer. Ursache ist ein geerbtes
+      `NODE_ENV=production` in der Shell des Agenten: `@vitejs/plugin-react` emittiert dann
+      die Fast-Refresh-Aufrufe OHNE die Laufzeit. Gemessen am 2026-09-30:
+      `cmd /c "set NODE_ENV"` = production; NICHT in `HKCU\Environment`, NICHT in
+      `terminal.docker_forward_env` der config.yaml (dort Zeile 2295 nur im env-Block des
+      MCP-Servers desktop-commander). Mit `env -u NODE_ENV` vor vite UND electron mountet die
+      App normal: 351 Knoten, 79 `[data-slot]`, ~32 s bis gemountet, Port 9333 liefert DOM
+      und Konsolenfehler. Die Skill-Pitfalls sind entsprechend ergaenzt (Commit b39288f).
+      Naechster Schritt: Quelle des geerbten NODE_ENV finden (Startweg der Hermes-TUI,
+      `hermes.exe --tui` aus `Agenten/Hermes/bin`) und entscheiden, ob sie dort bleiben muss —
+      sie faerbt JEDEN Dev-Server, den ein Agent startet, nicht nur diesen einen.
+      **2026-10-08: QUELLE GEFUNDEN.** `hermes_cli/main_tui_launch.py:386` setzt
+      `env.setdefault("NODE_ENV", "development" if tui_dev else "production")` beim TUI-Start;
+      zweite Quelle `hermes_cli/web_server_chat.py:438` (Web-Server-Chat, ebenfalls setdefault).
+      Beide sind `setdefault` (setzen nur, wenn NODE_ENV nicht schon in der Umgebung steht) und
+      fuer die TUI/den Web-Server selbst gedacht (production-Laufzeit). Der Leak in Kindprozesse
+      (vite-Dev-Server) ist die Nebenwirkung. Entscheidung: die Zeilen muessen dort bleiben
+      (die TUI braucht production), der Leak ist ein Hermes-Core-Thema (Fremd-Checkout) - ein
+      Agent, der einen Dev-Server startet, entfernt NODE_ENV selbst (`env -u NODE_ENV`), wie die
+      Skill-Pitfalls es schon dokumentieren. Kein Core-Eingriff.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-08
+      Betrifft: `Agenten/Hermes/config.yaml`, `Agenten/Hermes/skills/software-development/inspecting-hermes-desktop-dom`, `apps/desktop` (Fremd-Checkout)
+      
 - [x] **T-076 — Der OKX-Bot-Waechter kennt die GESCHLOSSENEN Grids nicht**
       Kontext: `waechter.py`/`analyse.py` lesen nur laufende Bots
       (`dca/ongoing-list`, `grid/orders-algo-pending`). Die 62 geschlossenen Grids
