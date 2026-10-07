@@ -94,10 +94,12 @@ def _cvd_neutral():
 
 
 def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
-                    offene_positionen, zustand, zeit_ms, jetzt_dt):
+                    offene_positionen, zustand, zeit_ms, jetzt_dt,
+                    satz_bis=None):
     """Die Einstiegskette aus handeln.pruefe_einstiege(), Schritt fuer Schritt
     auf einen Kandidaten zu einem historischen Zeitpunkt angewendet. Gibt eine
-    neue Position oder None zurueck.
+    neue Position oder None zurueck. satz_bis(inst, zeit_ms) liefert den
+    historischen Funding-Satz fuer die Pflichtzahlen; None = okxf.funding.
     """
     if len(offene_positionen) >= w["max_offene_anlaeufe"]:
         return None
@@ -146,7 +148,6 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
     # bot.tages_kerzen_quelle). Beides wird fuer die Dauer dieses einen
     # Aufrufs auf den historischen Stand zu zeit_ms umgeleitet; die
     # Pflichtzahlen selbst bleiben die EINE Rechnung aus bot.py.
-    satz_bis = getattr(pruefe_einstieg, "_satz_bis", None)
     echt_funding = okxf.funding
     echt_seam = bot.tages_kerzen_quelle
     try:
@@ -242,3 +243,77 @@ def funding_faellig(p, zeit_ms, saetze_je_inst):
     p["letzte_funding_ts"] += perioden * ACHT_STUNDEN_MS
     p["funding_summe"] = p.get("funding_summe", 0.0) + gesamt
     return gesamt
+
+
+SCHRITT_MS = 4 * 3_600_000
+
+
+def _ergebnis(p, kurs, w):
+    """Bewegung des Nominals abzueglich Einstiegs- UND Ausstiegsgebuehr
+    (2 x gebuehr_taker, wie bot.pruefpflicht() sie als Kosten ansetzt)."""
+    vz = 1 if p["seite"] == "long" else -1
+    bewegung = vz * (kurs - p["einstieg"]) / p["einstieg"]
+    return p["nominal"] * bewegung - 2 * p["nominal"] * w["gebuehr_taker"]
+
+
+def simuliere(universum, k4_je_inst, k1h_je_inst, k1d_je_inst,
+              saetze_je_inst, umsatz_je_inst, instr_je_basis, w,
+              start_ms, end_ms):
+    """4H-Aussentakt (Rangliste/Einstieg), 1H-Innenaufloesung (Ausstieg,
+    Trailing, Funding). Gibt die abgeschlossenen Runden zurueck.
+
+    Entscheidungen zum Zeitpunkt t sehen nur ABGESCHLOSSENE 4H-Kerzen
+    (ts <= t - 4H): die Kerze mit ts == t laeuft erst und ihr Schlusskurs ist
+    noch nicht bekannt. Zum Ende offene Positionen werden nicht bewertet.
+    """
+    from datetime import datetime, timezone
+
+    zustand, offene, runden = {}, [], []
+
+    def satz_bis(inst, zeit_ms):
+        return satz_zu_zeitpunkt(saetze_je_inst, inst, zeit_ms)
+
+    t = start_ms
+    while t <= end_ms:
+        stand = t - SCHRITT_MS
+        jetzt_dt = datetime.fromtimestamp(t / 1000, tz=timezone.utc)
+
+        werte = rangliste_schritt(universum, k4_je_inst, k1d_je_inst,
+                                  umsatz_je_inst, stand)
+        for kand in kandidaten_schritt(werte, w):
+            if len(offene) >= w["max_offene_anlaeufe"]:
+                break
+            p = pruefe_einstieg(kand, w, instr_je_basis, k4_je_inst,
+                                k1d_je_inst, offene, zustand, stand, jetzt_dt,
+                                satz_bis=satz_bis)
+            if p is not None:
+                p["eroeffnet_ts"] = t
+                p["letzte_funding_ts"] = t
+                offene.append(p)
+
+        for p in list(offene):
+            for kerze in k1h_je_inst.get(p["inst"], []):
+                if not (max(t, p["eroeffnet_ts"]) <= kerze[0]
+                        < t + SCHRITT_MS):
+                    continue
+                funding_faellig(p, kerze[0], saetze_je_inst)
+                grund, preis = pruefe_ausstieg_1h(p, kerze, w)
+                if grund is None:
+                    continue
+                runden.append({
+                    "inst": p["inst"], "basis": p["basis"],
+                    "seite": p["seite"], "kategorie": p["kategorie"],
+                    "einstieg": p["einstieg"], "ausstieg": preis,
+                    "nominal": p["nominal"], "grund": grund,
+                    "gv": _ergebnis(p, preis, w) - p["funding_summe"],
+                    "funding_summe": p["funding_summe"],
+                    "eroeffnet_ts": p["eroeffnet_ts"],
+                    "geschlossen_ts": kerze[0]})
+                offene.remove(p)
+                if grund in ("stop", "LIQUIDATION"):
+                    zustand.setdefault("letzte_stops", {})[p["basis"]] = (
+                        datetime.fromtimestamp(kerze[0] / 1000,
+                                               tz=timezone.utc))
+                break
+        t += SCHRITT_MS
+    return runden

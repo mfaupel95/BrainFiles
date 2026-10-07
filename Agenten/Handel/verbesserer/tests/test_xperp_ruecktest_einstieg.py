@@ -124,6 +124,27 @@ class TestPruefeEinstieg(unittest.TestCase):
                               "kurs": self.k4[-1][4]}):
             self.assertIsNone(self._einstieg())
 
+    def test_satz_bis_leitet_pruefpflicht_funding_auf_historischen_satz_um(self):
+        gesehen = []
+
+        def pflicht(*a, **k):
+            gesehen.append(rt.okxf.funding(INSTR["instId"]))
+            return {"traegt": True, "hebel_traegt": True}
+
+        with mock.patch.object(rt.bot, "pruefpflicht", side_effect=pflicht):
+            rt.pruefe_einstieg(
+                KANDIDAT, W, {"AAA": INSTR}, {INSTR["instId"]: self.k4}, {},
+                [], {}, zeit_ms=self.k4[-1][0], jetzt_dt=MITTWOCH,
+                satz_bis=lambda inst, t: 0.0042)
+        self.assertEqual(gesehen, [0.0042])
+        # Nach dem Aufruf ist die echte Funktion wiederhergestellt.
+        self.assertEqual(rt.okxf.funding(INSTR["instId"]), 0.0001)
+
+    def test_tages_kerzen_seam_wird_nach_dem_aufruf_zurueckgesetzt(self):
+        vorher = rt.bot.tages_kerzen_quelle
+        self._einstieg()
+        self.assertIs(rt.bot.tages_kerzen_quelle, vorher)
+
 
 if __name__ == "__main__":
     unittest.main()
