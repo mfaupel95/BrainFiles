@@ -1,4 +1,15 @@
 ## Offen
+- [ ] **T-377 - carry.py: Cross-Venue-Scanner gebaut, kein Autotrader**
+      Kontext: 07.10.2026, Auftrag Max ("koennen wir auch trading bot mit omniquant ai bauen").
+      Die im Netz kursierende Arbitrage (150 Maerkte, Binance-Sync) ist widerlegt: groesste echte
+      Luecke zwischen zwei fuer uns erreichbaren Maerkten 0,012 %, Kraken-Spot-Gebuehr 0,60 %/Seite.
+      Gebaut: Agenten/Handel/carry.py (rein lesend, kein Buch/Journal/Orderweg) fragt OKX-Spot/Perp
+      und Kraken-Spot/Futures je Basiswert ab, rechnet Basis in bp, Funding (OKX p.a., Kraken je
+      Zyklus - Kraken nennt kein Intervall), OI in USD, netto nach gemessenen Gebuehren. 16 Tests,
+      repos-zentrale-Eintrag, Commit f9b06806.
+      Naechster Schritt: als Wache/Cron einbinden, wenn Max eine Zeile sehen will; Entscheidung,
+      ob daraus je eine Spur wird, bleibt offen.
+      Angelegt 07.10.2026 · Zuletzt 07.10.2026 · Betrifft Agenten/Handel
 - [ ] **T-374 - Handpositionen (herkunft=boerse_handgriff) werden nicht automatisch geschlossen**
       Kontext: 06.10.2026, NIGHT-XPERP-Position von Max an der OKX-Boerse von Hand eroeffnet;
       die Spur uebernahm sie als Fremdposition (grund=fremdposition_uebernommen), konnte aber
