@@ -225,3 +225,29 @@ verworfen. Der gebundene Pfad ist der einzige Weg an den `cwd` heran -
 `_existing_host_mount()` vergleicht ueber `_host_path_key` und findet einen
 Mount nur, wenn **derselbe Host-Pfad** dort noch einmal steht.
 
+### Nachgemessen am 06.10.2026: der Container-Test ist BLOCKIERT
+
+Der Eintrag steht in der Config, aber der Beleg am echten Container fehlt - der
+Docker-Daemon ist beschaedigt und kann **keinen** Container mehr starten:
+
+    docker run ... -> Exit 125
+      write /var/lib/desktop-containerd/daemon/io.containerd.metadata.v1.bolt/meta.db:
+      read-only file system
+    docker image ls -> rpc error: ... input/output error (Content-Blob)
+
+**Die Gegenprobe, die den Verdacht entkraeftet:** derselbe `docker run` **ohne
+jeden Volume-Eintrag** scheitert exakt gleich. Der Schaden liegt also nicht am
+`docker_volumes`-Eintrag. Wer hier „der Eintrag hat es kaputtgemacht" liest,
+liest eine unbelegte Ursache.
+
+Was sich trotzdem belegen laesst:
+
+- Der Spec ist formal gueltig: `_split_volume_spec` (in
+  `tools/environments/docker.py`, NICHT in `remote_common`) zerlegt beide
+  Schreibweisen zu `('C:\Users\...\BrainFiles', '/brainfiles')`.
+- Der Host-Pfad existiert.
+- Der Eintrag selbst: `git diff --numstat` 2/0, `terminal` 12 -> 13 Schluessel,
+  `yaml.safe_load` liest ihn zurueck, CRLF 1377 -> 1379, bareLF 0.
+
+**Offen bleibt der eine Beleg:** `docker exec <container> ls /brainfiles` zeigt
+`MaxHirn` und `Agenten`. Dafuer muss erst Docker Desktop repariert werden.
