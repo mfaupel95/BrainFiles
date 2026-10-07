@@ -45,6 +45,9 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
     if positional.len() > 2 {
         return Err("Zu viele Argumente: [SYMBOL] [testnet|mainnet]".to_string());
     }
+    if positional.iter().any(|a| a.trim().is_empty()) {
+        return Err("Symbol und Netzwerk dürfen nicht leer sein".to_string());
+    }
     let symbol = positional.first().map_or_else(
         || exchange.default_symbol().to_string(),
         |s| s.to_uppercase(),
