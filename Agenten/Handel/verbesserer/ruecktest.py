@@ -31,6 +31,51 @@ def merkmals_matrix(kerzen_je_inst):
     return aus
 
 
+def ausrichten(kerzen_je_inst, min_anteil=0.9):
+    """Richtet alle Kerzenreihen auf gemeinsame Kalendertage aus.
+
+    Tag = ts // 86400000 (ts = kerze[0]). Ein Instrument mit weniger als
+    min_anteil der Tage des laengsten faellt mit Hinweis heraus (junges Listing
+    soll nicht die ganze Watchlist kuerzen); erst danach wird die Schnittmenge
+    der Tage der verbleibenden Instrumente gebildet und jede Reihe auf diese
+    Tage gefiltert - eine Kerze je Tag (die spaetere bei Doppeltagen),
+    aufsteigend. Idempotent: schon ausgerichtete Reihen kommen unveraendert
+    zurueck. hinweise gehen in den Lauf-Bericht.
+
+    -> (ausgerichtet: dict inst->kerzen, hinweise: list[str])
+    """
+    if not kerzen_je_inst:
+        return {}, []
+    hinweise = []
+    tage_je = {inst: {k[0] // 86400000 for k in kerzen}
+               for inst, kerzen in kerzen_je_inst.items()}
+    max_tage = max(len(t) for t in tage_je.values())
+    behalten = {}
+    for inst, tage in tage_je.items():
+        if len(tage) < min_anteil * max_tage:
+            hinweise.append(
+                "%s verworfen: %d von %d Tagen (< %d%%)"
+                % (inst, len(tage), max_tage, int(min_anteil * 100)))
+            continue
+        behalten[inst] = tage
+    if not behalten:
+        return {}, hinweise
+    schnitt = set.intersection(*behalten.values())
+    aus = {}
+    for inst, tage in behalten.items():
+        luecken = len(tage) - len(schnitt)
+        if luecken:
+            hinweise.append("%s: %d Tage ausserhalb der Schnittmenge entfernt"
+                            % (inst, luecken))
+        je_tag = {}
+        for k in sorted(kerzen_je_inst[inst], key=lambda k: k[0]):
+            tag = k[0] // 86400000
+            if tag in schnitt:
+                je_tag[tag] = k  # Doppeltag: die spaetere Kerze gewinnt
+        aus[inst] = [je_tag[t] for t in sorted(je_tag)]
+    return aus, hinweise
+
+
 # --- Kandidaten-Simulation (TP2 Teil 2) ----------------------------------
 
 def stop_prozent(vola_pa, stop_min, stop_max):
@@ -240,7 +285,8 @@ def walk_forward(kerzen_je_inst, kandidat, konfig):
     um oos_schritt_tage, solange das Testfenster noch in die Historie passt.
     Die Merkmals-Matrix wird einmal berechnet und in jedem Fenster genutzt.
     """
-    laenge = min(len(k) for k in kerzen_je_inst.values())
+    kerzen_je_inst, _hinweise = ausrichten(kerzen_je_inst)
+    laenge = min((len(k) for k in kerzen_je_inst.values()), default=0)
     matrix = merkmals_matrix(kerzen_je_inst)
 
     fenster = []

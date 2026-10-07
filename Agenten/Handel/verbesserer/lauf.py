@@ -82,6 +82,14 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
         print("Kein ausreichender Kerzen-Cache - Abbruch.", file=sys.stderr)
         return None
 
+    kerzen_je_inst, ausricht_hinweise = ruecktest.ausrichten(kerzen_je_inst)
+    for h in ausricht_hinweise:
+        print("  Ausrichtung: %s" % h, file=sys.stderr)
+    if len(kerzen_je_inst) < 3:
+        print("Nach Ausrichtung weniger als 3 Instrumente - Abbruch.",
+              file=sys.stderr)
+        return None
+
     datum = (jetzt or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
     ordner = BERICHTE / ("%s-%s" % (datum, spur_name))
     # Ein zweiter Lauf am selben Tag greift auf denselben Ordner. Liegt er
