@@ -80,7 +80,8 @@ def melde_neu(zeilen, jetzt):
     neu = {}
     for spur, m in zeilen.items():
         eintrag = alt.get(spur) or {}
-        immer = spur in IMMER_MELDEN or "Order" in m or "scheitert" in m
+        immer = (spur in IMMER_MELDEN or "Order" in m or "scheitert" in m
+                 or "Queue abgeraeumt" in m)
         alt_genug = jetzt - float(eintrag.get("zeit") or 0) > WIEDERHOLUNG_S
         if eintrag.get("meldung") != m or immer or alt_genug:
             raus.append(m)
