@@ -19,16 +19,11 @@ const MAX_CANDLE_BUFFER: usize = 500;
 const QUOTE_ASSET: &str = "USDT";
 
 /// Errors that can occur during live trading loop execution.
-#[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum LiveLoopError {
     /// File I/O error reading the strategy script.
     #[error("Script file error: {0}")]
     ScriptFileError(#[from] std::io::Error),
-
-    /// Script parsing or compilation error.
-    #[error("Script compilation error: {0}")]
-    ScriptCompilationError(String),
 
     /// Exchange connection or trading error.
     #[error("Exchange error: {0}")]
@@ -37,10 +32,6 @@ pub enum LiveLoopError {
     /// Risk guard rejection.
     #[error("Risk guard rejection: {0}")]
     RiskViolation(String),
-
-    /// Channel receive error when waiting for market data.
-    #[error("Market data channel error")]
-    ChannelError,
 
     /// Network validation error.
     #[error("Network validation error: {0}")]
@@ -70,7 +61,6 @@ pub struct LiveConfig<'a> {
 /// # Error Handling
 /// Non-fatal errors (individual order rejections, risk violations) are logged but
 /// do not halt the loop. The loop continues monitoring for new signals.
-#[allow(dead_code)]
 pub async fn live_loop(
     config: &LiveConfig<'_>,
     mut exchange_stream: impl ExchangeStream,
@@ -183,7 +173,6 @@ pub async fn live_loop(
 ///
 /// Creates a mock Order from the request, checks it against RiskGuard,
 /// and if approved, submits to the exchange.
-#[allow(dead_code)]
 async fn place_order_with_risk_check(
     exchange_trading: &impl ExchangeTrading,
     risk_guard: &mut RiskGuard,
