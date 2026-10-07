@@ -1,0 +1,8 @@
+{
+  "_zweck": "Steuert den Quant-Teil von scanner_quant/scan.py. Der Original-Scanner liest diese Datei nicht.",
+  "aktiv": true,
+  "_modus": "'bericht' = nur zusaetzliche Spalten, das Tor bleibt wie im Original. 'tor' = Tor verlangt zusaetzlich quant_score >= mindest_quant_score und nicht zu_gedehnt. Start bewusst auf 'bericht': erst messen, ob das Urteil Kandidaten trennt, dann entscheiden, ob es sperren darf.",
+  "modus": "bericht",
+  "mindest_quant_score": 60,
+  "dehnung_max_atr": 6.0
+}
