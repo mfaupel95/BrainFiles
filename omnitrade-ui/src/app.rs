@@ -2,6 +2,7 @@
 
 use std::sync::{Arc, RwLock};
 
+use omnitrade_core::Position;
 use omnitrade_engine::L2OrderBook;
 
 use crate::state::UIState;
@@ -41,6 +42,10 @@ pub struct OmniTradeAppBehavior<'a> {
     pub depth: &'a DepthWidget,
     /// Optional snapshot of the active symbol's L2 order book.
     pub orderbook: Option<&'a L2OrderBook>,
+    /// Snapshot of open positions, sorted by symbol.
+    pub positions: &'a [Position],
+    /// Snapshot of the console log lines (oldest first).
+    pub log: &'a [String],
 }
 
 impl<'a> egui_tiles::Behavior<PanelKind> for OmniTradeAppBehavior<'a> {
@@ -61,15 +66,53 @@ impl<'a> egui_tiles::Behavior<PanelKind> for OmniTradeAppBehavior<'a> {
             PanelKind::OrderBook => {
                 self.depth.show(ui, self.orderbook);
             }
-            PanelKind::Positions => {
-                ui.label("Positions Panel (Placeholder)");
-            }
-            PanelKind::Console => {
-                ui.label("Console Panel (Placeholder)");
-            }
+            PanelKind::Positions => show_positions(ui, self.positions),
+            PanelKind::Console => show_console(ui, self.log),
         }
         egui_tiles::UiResponse::None
     }
+}
+
+fn show_positions(ui: &mut egui::Ui, positions: &[Position]) {
+    if positions.is_empty() {
+        ui.label("Keine offenen Positionen");
+        return;
+    }
+    egui::Grid::new("positions_grid")
+        .striped(true)
+        .show(ui, |ui| {
+            for header in [
+                "Symbol",
+                "Seite",
+                "Menge",
+                "Einstand",
+                "Unrealisiert",
+                "Realisiert",
+            ] {
+                ui.strong(header);
+            }
+            ui.end_row();
+            for p in positions {
+                ui.label(&p.symbol);
+                ui.label(format!("{:?}", p.side));
+                ui.label(format!("{:.6}", p.quantity));
+                ui.label(format!("{:.2}", p.entry_price));
+                ui.label(format!("{:+.2}", p.unrealized_pnl));
+                ui.label(format!("{:+.2}", p.realized_pnl));
+                ui.end_row();
+            }
+        });
+}
+
+fn show_console(ui: &mut egui::Ui, log: &[String]) {
+    egui::ScrollArea::vertical()
+        .stick_to_bottom(true)
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            for line in log {
+                ui.monospace(line);
+            }
+        });
 }
 
 /// Main `omnitrade` application state holding UI tree and sub-widgets.
@@ -82,15 +125,28 @@ pub struct OmniTradeApp {
     pub chart: CandleChartWidget,
     /// Order book depth widget.
     pub depth: DepthWidget,
+    /// Symbol shown in the chart and order book panels.
+    pub symbol: String,
 }
 
 impl OmniTradeApp {
-    /// Creates a new `OmniTradeApp` initialized with default tiles (`Chart` & `OrderBook`).
+    /// Creates a new `OmniTradeApp` for `BTCUSDT` with the default layout.
     pub fn new(state: Arc<RwLock<UIState>>) -> Self {
+        Self::with_symbol(state, "BTCUSDT")
+    }
+
+    /// Creates a new `OmniTradeApp` for the given symbol.
+    ///
+    /// Layout: chart and order book on top, positions and console below.
+    pub fn with_symbol(state: Arc<RwLock<UIState>>, symbol: impl Into<String>) -> Self {
         let mut tiles = egui_tiles::Tiles::default();
         let chart_pane = tiles.insert_pane(PanelKind::Chart);
         let book_pane = tiles.insert_pane(PanelKind::OrderBook);
-        let root = tiles.insert_horizontal_tile(vec![chart_pane, book_pane]);
+        let positions_pane = tiles.insert_pane(PanelKind::Positions);
+        let console_pane = tiles.insert_pane(PanelKind::Console);
+        let top = tiles.insert_horizontal_tile(vec![chart_pane, book_pane]);
+        let bottom = tiles.insert_horizontal_tile(vec![positions_pane, console_pane]);
+        let root = tiles.insert_vertical_tile(vec![top, bottom]);
         let tree = egui_tiles::Tree::new("omnitrade_tile_tree", root, tiles);
 
         Self {
@@ -98,31 +154,52 @@ impl OmniTradeApp {
             tree,
             chart: CandleChartWidget::new(Vec::new()),
             depth: DepthWidget::new(15),
+            symbol: symbol.into(),
         }
     }
 }
 
 impl eframe::App for OmniTradeApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        const ACTIVE_SYMBOL: &str = "BTCUSDT";
+        let (current_orderbook, mut positions, log, connected, balance, pnl) = {
+            let guard = self
+                .state
+                .read()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            self.chart
+                .set_candles(guard.latest_candles(&self.symbol, 100).to_vec());
+            (
+                guard.orderbook.get(&self.symbol).cloned(),
+                guard.positions.values().cloned().collect::<Vec<_>>(),
+                guard.log.iter().cloned().collect::<Vec<_>>(),
+                guard.is_connected(),
+                guard.account_balance,
+                guard.total_pnl,
+            )
+        };
+        positions.sort_by(|a, b| a.symbol.cmp(&b.symbol));
 
-        let mut current_orderbook = None;
-
-        let guard = self
-            .state
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-        let candles = guard.latest_candles(ACTIVE_SYMBOL, 100).to_vec();
-        self.chart.set_candles(candles);
-        if let Some(book) = guard.orderbook.get(ACTIVE_SYMBOL) {
-            current_orderbook = Some(book.clone());
-        }
+        egui::TopBottomPanel::top("status_bar").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.strong(&self.symbol);
+                ui.separator();
+                if connected {
+                    ui.colored_label(egui::Color32::LIGHT_GREEN, "verbunden");
+                } else {
+                    ui.colored_label(egui::Color32::LIGHT_RED, "getrennt");
+                }
+                ui.separator();
+                ui.label(format!("Guthaben {balance:.2}"));
+                ui.label(format!("PnL {pnl:+.2}"));
+            });
+        });
 
         let mut behavior = OmniTradeAppBehavior {
             chart: &mut self.chart,
             depth: &self.depth,
             orderbook: current_orderbook.as_ref(),
+            positions: &positions,
+            log: &log,
         };
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -158,7 +235,31 @@ mod tests {
         // Assert
         assert_eq!(app.chart.candles.len(), 0);
         assert_eq!(app.depth.max_levels, 15);
+        assert_eq!(app.symbol, "BTCUSDT");
         assert!(app.tree.root().is_some());
+    }
+
+    #[test]
+    fn test_layout_contains_all_four_panels() {
+        // Arrange & Act
+        let app = OmniTradeApp::with_symbol(Arc::new(RwLock::new(UIState::new())), "ETHUSDT");
+
+        // Assert
+        assert_eq!(app.symbol, "ETHUSDT");
+        for kind in [
+            PanelKind::Chart,
+            PanelKind::OrderBook,
+            PanelKind::Positions,
+            PanelKind::Console,
+        ] {
+            assert!(
+                app.tree
+                    .tiles
+                    .tiles()
+                    .any(|t| matches!(t, egui_tiles::Tile::Pane(k) if *k == kind)),
+                "panel {kind:?} missing"
+            );
+        }
     }
 
     #[test]

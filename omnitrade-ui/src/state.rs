@@ -1,6 +1,6 @@
 //! UI state container for passive consumption of trading engine updates.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use omnitrade_core::{Candle, Position};
 use omnitrade_engine::L2OrderBook;
@@ -20,7 +20,12 @@ pub struct UIState {
     pub total_pnl: f64,
     /// Connection status indicator.
     pub connected: bool,
+    /// Recent log lines for the console panel (oldest first).
+    pub log: VecDeque<String>,
 }
+
+/// Maximum number of retained console log lines.
+pub const MAX_LOG_LINES: usize = 500;
 
 impl UIState {
     /// Creates a new, empty `UIState`.
@@ -32,15 +37,48 @@ impl UIState {
             account_balance: 0.0,
             total_pnl: 0.0,
             connected: false,
+            log: VecDeque::new(),
         }
     }
 
-    /// Appends a new candle snapshot for a given symbol.
+    /// Appends a candle, or replaces the last one if it has the same timestamp
+    /// (exchanges stream the still-open candle repeatedly).
     pub fn update_candle(&mut self, symbol: &str, candle: Candle) {
-        self.candles
+        let series = self.candles.entry(symbol.to_string()).or_default();
+        match series.last_mut() {
+            Some(last) if last.timestamp_ms == candle.timestamp_ms => *last = candle,
+            _ => series.push(candle),
+        }
+    }
+
+    /// Replaces the whole candle series of a symbol (e.g. after loading history).
+    pub fn set_candles(&mut self, symbol: &str, candles: Vec<Candle>) {
+        self.candles.insert(symbol.to_string(), candles);
+    }
+
+    /// Applies a depth delta to the symbol's order book (creating it if missing).
+    pub fn apply_depth(
+        &mut self,
+        symbol: &str,
+        timestamp_ms: u64,
+        bids: &[(f64, f64)],
+        asks: &[(f64, f64)],
+    ) -> Result<(), omnitrade_engine::EngineError> {
+        let book = self
+            .orderbook
             .entry(symbol.to_string())
-            .or_default()
-            .push(candle);
+            .or_insert_with(|| L2OrderBook::new(symbol));
+        book.apply_delta(bids, asks)?;
+        book.set_last_update_ms(timestamp_ms);
+        Ok(())
+    }
+
+    /// Appends a console log line, dropping the oldest beyond [`MAX_LOG_LINES`].
+    pub fn push_log(&mut self, line: impl Into<String>) {
+        if self.log.len() >= MAX_LOG_LINES {
+            self.log.pop_front();
+        }
+        self.log.push_back(line.into());
     }
 
     /// Updates or inserts the L2 order book snapshot for a given symbol.
@@ -168,5 +206,75 @@ mod tests {
         assert_eq!(state.account_balance, 10000.0);
         assert_eq!(state.total_pnl, 250.5);
         assert!(state.is_connected());
+    }
+
+    #[test]
+    fn test_update_candle_replaces_open_candle_with_same_timestamp() {
+        // Arrange
+        let mut state = UIState::new();
+        state.update_candle("BTCUSDT", dummy_candle(1000, 100.0));
+
+        // Act
+        state.update_candle("BTCUSDT", dummy_candle(1000, 101.0));
+        state.update_candle("BTCUSDT", dummy_candle(2000, 102.0));
+
+        // Assert
+        let candles = state.latest_candles("BTCUSDT", 10);
+        assert_eq!(candles.len(), 2);
+        assert_eq!(candles[0].close, 101.0);
+        assert_eq!(candles[1].close, 102.0);
+    }
+
+    #[test]
+    fn test_apply_depth_creates_book_and_removes_zero_levels() {
+        // Arrange
+        let mut state = UIState::new();
+
+        // Act
+        state
+            .apply_depth("BTCUSDT", 5, &[(100.0, 1.0)], &[(101.0, 2.0)])
+            .expect("valid delta");
+        state
+            .apply_depth("BTCUSDT", 6, &[(100.0, 0.0)], &[])
+            .expect("valid delta");
+
+        // Assert
+        let book = &state.orderbook["BTCUSDT"];
+        assert_eq!(book.best_bid(), None);
+        assert_eq!(book.best_ask(), Some((101.0, 2.0)));
+        assert_eq!(book.last_update_ms(), 6);
+    }
+
+    #[test]
+    fn test_push_log_is_bounded() {
+        // Arrange
+        let mut state = UIState::new();
+
+        // Act
+        for i in 0..(MAX_LOG_LINES + 10) {
+            state.push_log(format!("line {i}"));
+        }
+
+        // Assert
+        assert_eq!(state.log.len(), MAX_LOG_LINES);
+        assert_eq!(state.log.front().map(String::as_str), Some("line 10"));
+    }
+
+    #[test]
+    fn test_set_candles_replaces_series() {
+        // Arrange
+        let mut state = UIState::new();
+        state.update_candle("BTCUSDT", dummy_candle(1000, 1.0));
+
+        // Act
+        state.set_candles(
+            "BTCUSDT",
+            vec![dummy_candle(2000, 2.0), dummy_candle(3000, 3.0)],
+        );
+
+        // Assert
+        let candles = state.latest_candles("BTCUSDT", 10);
+        assert_eq!(candles.len(), 2);
+        assert_eq!(candles[0].timestamp_ms, 2000);
     }
 }

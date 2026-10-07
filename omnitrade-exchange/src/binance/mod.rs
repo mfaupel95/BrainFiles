@@ -3,6 +3,7 @@
 pub mod client;
 pub mod connection;
 pub mod dto;
+pub mod klines;
 pub mod margin;
 pub mod rest;
 pub mod router;
@@ -11,6 +12,7 @@ pub mod signing;
 pub use client::BinanceClient;
 pub use connection::{BinanceConnection, ConnectionState};
 pub use dto::{BinanceDepthEvent, BinanceKlineEvent, BinanceStreamWrapper};
+pub use klines::fetch_klines;
 pub use margin::BinanceMarginClient;
 pub use rest::BinanceRestClient;
 pub use router::BinanceRouter;

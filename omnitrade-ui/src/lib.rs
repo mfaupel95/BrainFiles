@@ -1,6 +1,7 @@
 //! UI state container, widgets, docking app, and passive channel subscriber for omnitrade-ui.
 
 pub mod app;
+pub mod feed;
 pub mod state;
 pub mod widgets;
 
