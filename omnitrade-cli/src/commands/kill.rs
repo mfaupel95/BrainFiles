@@ -1,22 +1,26 @@
-//! Kill switch handler for emergency trading halt.
-//!
-//! Phase 1: Scaffolding only. Phase 3 will implement actual IPC mechanism
-//! to signal running live trading process to halt and close positions.
+//! Kill-Switch-Befehl: Not-Aus für einen laufenden Live-Handel.
 
-/// Handles the emergency kill command.
+use crate::kill_switch;
+use std::path::Path;
+
+/// Setzt oder löscht den Not-Aus.
 ///
-/// In Phase 3, this will:
-/// - Check for running live trading process via lock file / IPC channel
-/// - Send kill signal to pause all new orders
-/// - Trigger market-sell of all open positions
-/// - Log final account state
+/// Gesetzt stoppt er die laufende Live-Schleife (keine neuen Orders, offene
+/// Orders werden storniert) und verhindert neue Live-Läufe. Bestände werden
+/// nicht automatisch verkauft. Mit `reset` wird der Not-Aus wieder aufgehoben.
 ///
-/// For now, this is scaffolding for CLI integration.
-pub fn handle_kill() -> Result<(), Box<dyn std::error::Error>> {
-    eprintln!("WARN: Kill switch command received");
-    eprintln!("INFO: Kill switch scaffolding - full implementation in Phase 3");
-    eprintln!("INFO: Expected: IPC channel to running live trading process");
-    eprintln!("INFO: Expected: Automatic position liquidation");
+/// # Errors
+/// Gibt einen Fehler zurück, wenn die Flag-Datei nicht geschrieben oder gelöscht werden kann.
+pub fn handle_kill(reset: bool, flag: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    if reset {
+        kill_switch::clear(flag)?;
+        eprintln!("Not-Aus aufgehoben ({})", flag.display());
+    } else {
+        kill_switch::engage(flag)?;
+        eprintln!("Not-Aus gesetzt ({})", flag.display());
+        eprintln!("Laufender Live-Handel stoppt und storniert offene Orders.");
+        eprintln!("Bestände werden nicht verkauft. Aufheben mit: omnitrade-cli kill --reset");
+    }
     Ok(())
 }
 
@@ -25,8 +29,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_handle_kill_success() {
-        let result = handle_kill();
-        assert!(result.is_ok());
+    fn kill_sets_and_reset_clears_flag() {
+        let flag = std::env::temp_dir().join(format!("omnitrade-kill-cmd-{}", std::process::id()));
+        handle_kill(false, &flag).expect("kill");
+        assert!(kill_switch::is_engaged(&flag));
+        handle_kill(true, &flag).expect("reset");
+        assert!(!kill_switch::is_engaged(&flag));
     }
 }

@@ -6,6 +6,7 @@
 mod args;
 mod backtest;
 mod commands;
+mod kill_switch;
 mod live_loop;
 
 use args::{CliArgs, Commands};
@@ -69,8 +70,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .await?;
         }
-        Commands::Kill => {
-            handle_kill()?;
+        Commands::Kill { reset } => {
+            handle_kill(reset, &kill_switch::default_path())?;
         }
     }
 

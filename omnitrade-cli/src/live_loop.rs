@@ -9,8 +9,12 @@ use omnitrade_exchange::{ExchangeStream, ExchangeTrading, Network, OrderRequest}
 use omnitrade_risk::guard::RiskGuard;
 use omnitrade_script::compile_and_run;
 use std::fs;
+use std::path::Path;
+use std::time::Duration;
 use thiserror::Error;
-use tracing::{info, trace, warn};
+use tracing::{error, info, trace, warn};
+
+use crate::kill_switch;
 
 /// Maximale Anzahl Kerzen, die für die Skript-Auswertung vorgehalten werden.
 const MAX_CANDLE_BUFFER: usize = 500;
@@ -51,6 +55,8 @@ pub struct LiveConfig<'a> {
     pub initial_capital: f64,
     /// Menge je Market-Order (Basiswährung).
     pub order_quantity: f64,
+    /// Flag-Datei des Not-Aus; ist sie gesetzt, stoppt die Schleife.
+    pub kill_file: &'a Path,
 }
 
 /// Main async actor-style loop for live trading.
@@ -73,6 +79,7 @@ pub async fn live_loop(
         network,
         initial_capital,
         order_quantity,
+        kill_file,
     } = *config;
 
     // Validate network (testnet-first, mainnet requires explicit opt-in)
@@ -107,8 +114,27 @@ pub async fn live_loop(
     // Candle buffer for script evaluation (auf MAX_CANDLE_BUFFER begrenzt)
     let mut candle_buffer: Vec<Candle> = Vec::new();
 
+    // Not-Aus wird bei jeder Kerze und im Sekundentakt geprüft, damit er auch
+    // bei ruhigem Markt wirkt.
+    let mut kill_check = tokio::time::interval(Duration::from_secs(1));
+
     // Main event loop: process each candle as it arrives
-    while let Some(candle) = candle_rx.recv().await {
+    loop {
+        let candle = tokio::select! {
+            received = candle_rx.recv() => match received {
+                Some(candle) => candle,
+                None => break,
+            },
+            _ = kill_check.tick() => {
+                if kill_switch::is_engaged(kill_file) {
+                    return halt_trading(&exchange_trading, &mut exchange_stream).await;
+                }
+                continue;
+            }
+        };
+        if kill_switch::is_engaged(kill_file) {
+            return halt_trading(&exchange_trading, &mut exchange_stream).await;
+        }
         candle_buffer.push(candle.clone());
         if candle_buffer.len() > MAX_CANDLE_BUFFER {
             let overflow = candle_buffer.len() - MAX_CANDLE_BUFFER;
@@ -167,6 +193,34 @@ pub async fn live_loop(
         .map_err(|e| LiveLoopError::ExchangeError(e.to_string()))?;
 
     Ok(())
+}
+
+/// Not-Aus: storniert alle offenen Orders und trennt die Verbindung.
+///
+/// Bestände werden bewusst nicht verkauft. Einzelne Stornierungsfehler werden
+/// geloggt und brechen den Halt nicht ab.
+async fn halt_trading(
+    exchange_trading: &impl ExchangeTrading,
+    exchange_stream: &mut impl ExchangeStream,
+) -> Result<(), LiveLoopError> {
+    error!("Not-Aus ausgelöst: keine neuen Orders, storniere offene Orders");
+    match exchange_trading.get_open_orders().await {
+        Ok(orders) => {
+            for order in orders {
+                if let Err(e) = exchange_trading
+                    .cancel_order(&order.id.to_string(), &order.symbol)
+                    .await
+                {
+                    warn!("Stornierung von Order {} fehlgeschlagen: {}", order.id, e);
+                }
+            }
+        }
+        Err(e) => warn!("Offene Orders nicht abrufbar: {}", e),
+    }
+    exchange_stream
+        .disconnect()
+        .await
+        .map_err(|e| LiveLoopError::ExchangeError(e.to_string()))
 }
 
 /// Helper: Place order after passing risk guard checks.
@@ -312,6 +366,7 @@ mod tests {
     struct MockTrading {
         usdt: Option<f64>,
         placed: Arc<Mutex<Vec<OrderRequest>>>,
+        cancelled: Arc<Mutex<Vec<String>>>,
     }
 
     #[async_trait]
@@ -338,12 +393,30 @@ mod tests {
             })
         }
 
-        async fn cancel_order(&self, _order_id: &str, _symbol: &str) -> Result<(), ExchangeError> {
+        async fn cancel_order(&self, order_id: &str, _symbol: &str) -> Result<(), ExchangeError> {
+            self.cancelled
+                .lock()
+                .expect("cancelled")
+                .push(order_id.to_string());
             Ok(())
         }
 
         async fn get_open_orders(&self) -> Result<Vec<omnitrade_core::Order>, ExchangeError> {
-            Ok(Vec::new())
+            Ok(vec![omnitrade_core::Order {
+                id: 77,
+                symbol: "BTCUSDT".to_string(),
+                side: Side::Buy,
+                order_type: OrderType::Limit,
+                time_in_force: TimeInForce::GTC,
+                price: 1.0,
+                stop_price: 0.0,
+                quantity: 1.0,
+                filled_quantity: 0.0,
+                status: OrderStatus::New,
+                created_at_ms: 0,
+                updated_at_ms: 0,
+                trailing_highest_price: None,
+            }])
         }
 
         async fn get_balance(&self) -> Result<Account, ExchangeError> {
@@ -363,6 +436,8 @@ mod tests {
         script: PathBuf,
         log: Log,
         placed: Arc<Mutex<Vec<OrderRequest>>>,
+        cancelled: Arc<Mutex<Vec<String>>>,
+        kill: PathBuf,
     }
 
     impl Harness {
@@ -376,6 +451,11 @@ mod tests {
                 script: path,
                 log: Arc::default(),
                 placed: Arc::default(),
+                cancelled: Arc::default(),
+                kill: std::env::temp_dir().join(format!(
+                    "omnitrade-liveloop-{}-{name}.kill",
+                    std::process::id()
+                )),
             }
         }
 
@@ -398,6 +478,7 @@ mod tests {
             let trading = MockTrading {
                 usdt,
                 placed: self.placed.clone(),
+                cancelled: self.cancelled.clone(),
             };
             let script = self.script.to_string_lossy().to_string();
             let config = LiveConfig {
@@ -406,6 +487,7 @@ mod tests {
                 network,
                 initial_capital: 1000.0,
                 order_quantity: quantity,
+                kill_file: &self.kill,
             };
             let mut guard = RiskGuard::testnet();
             live_loop(&config, stream, trading, &mut guard).await
@@ -415,6 +497,7 @@ mod tests {
     impl Drop for Harness {
         fn drop(&mut self) {
             let _ = fs::remove_file(&self.script);
+            let _ = fs::remove_file(&self.kill);
         }
     }
 
@@ -453,6 +536,35 @@ mod tests {
             *h.log.lock().expect("log"),
             vec!["subscribe", "connect", "disconnect"]
         );
+    }
+
+    #[tokio::test]
+    async fn engaged_kill_switch_blocks_orders_cancels_open_orders_and_disconnects() {
+        let h = Harness::new("kill", BUY_BELOW_40K);
+        kill_switch::engage(&h.kill).expect("engage");
+
+        h.run(&[30_000.0], Some(1000.0), Network::Testnet, 0.001)
+            .await
+            .expect("halt is a graceful end");
+
+        assert!(h.placed.lock().expect("placed").is_empty());
+        assert_eq!(*h.cancelled.lock().expect("cancelled"), vec!["77"]);
+        assert_eq!(
+            h.log.lock().expect("log").last().map(String::as_str),
+            Some("disconnect")
+        );
+    }
+
+    #[tokio::test]
+    async fn without_kill_switch_nothing_is_cancelled() {
+        let h = Harness::new("nokill", BUY_BELOW_40K);
+
+        h.run(&[30_000.0], Some(1000.0), Network::Testnet, 0.001)
+            .await
+            .expect("run");
+
+        assert_eq!(h.placed.lock().expect("placed").len(), 1);
+        assert!(h.cancelled.lock().expect("cancelled").is_empty());
     }
 
     #[tokio::test]

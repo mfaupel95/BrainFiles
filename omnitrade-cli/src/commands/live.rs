@@ -3,6 +3,7 @@
 //! Orchestrates live trading setup: initializes exchange connections,
 //! instantiates RiskGuard, and delegates to the live_loop.
 
+use crate::kill_switch;
 use crate::live_loop::{live_loop, LiveConfig};
 use omnitrade_exchange::{credentials, BinanceClient, Keystore, Network};
 use omnitrade_risk::guard::RiskGuard;
@@ -50,6 +51,16 @@ pub async fn handle_live(
         );
     }
 
+    // Gesetzter Not-Aus verhindert den Start (fail closed).
+    let kill_file = kill_switch::default_path();
+    if kill_switch::is_engaged(&kill_file) {
+        return Err(format!(
+            "Not-Aus ist gesetzt ({}). Aufheben mit: omnitrade-cli kill --reset",
+            kill_file.display()
+        )
+        .into());
+    }
+
     // Initialize risk guard with appropriate limits
     let mut risk_guard = match network {
         Network::Testnet => RiskGuard::testnet(),
@@ -95,6 +106,7 @@ pub async fn handle_live(
             network,
             initial_capital,
             order_quantity,
+            kill_file: &kill_file,
         };
         live_loop(&config, stream_client, trading_client, &mut risk_guard).await?;
 
