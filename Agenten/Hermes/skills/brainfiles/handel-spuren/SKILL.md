@@ -20,7 +20,11 @@ warum ein Warteschlangen-Eintrag pro Risikostufe eine eigene Datei braucht.
 `references/laufzeit-audit-und-live-berechtigung.md` - neun Schritte in fester
 Reihenfolge, warum jeder Logbefund eine Gegenprobe am laufenden System
 braucht, welche Auswertung welche Frage beantwortet, und warum in der
-Verdict-Tabelle die Spalte der echten Live-Zeilen entscheidet.
+Verdict-Tabelle die Spalte der echten Live-Zeilen entscheidet. Dort auch die
+Diagnose "war das ein Bug eines Waechters?": erst die Live-Flags
+(`handel_erlaubt`, `freigabe.erfuellt`, `trailing_aktiv`) und die
+Journalzeile (`modus=live` + `grund=stop`) pruefen, bevor man den
+Waechter-Code verdaechtigt - ein Live-Stop-Ausstieg ist normale Schutzlogik.
 
 **Offene Positionen nachtraeglich absichern (Spot wie Margin):**
 `references/handgriff-offene-positionen.md` - Handgriff an Positionen, die

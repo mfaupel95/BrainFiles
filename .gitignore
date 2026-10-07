@@ -110,6 +110,14 @@ Agenten/Handel/stand/
 # Ohne diese Zeile faengt die Regel in Zeile 20 sie mit ein, und eine
 # Aenderung an der Live-Verdrahtung waere ohne ihren Nachweis im Verlauf.
 !Agenten/Handel/scanner/tests/*.py
+# scanner_quant (07.10.2026): Quant-Urteil + Scanner-Kopie. Nur Text und Tests;
+# berichte/ bleibt ausserhalb (Laufzeitstand).
+!Agenten/Handel/scanner_quant/
+!Agenten/Handel/scanner_quant/*.py
+!Agenten/Handel/scanner_quant/*.md
+!Agenten/Handel/scanner_quant/*.json
+!Agenten/Handel/scanner_quant/tests/
+!Agenten/Handel/scanner_quant/tests/*.py
 !Agenten/Handel/xperp/*.py
 !Agenten/Handel/xperp/*.md
 !Agenten/Handel/xperp/*.json
