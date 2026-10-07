@@ -4,6 +4,7 @@
 //! `x-simulated-trading: 1`, `wspap` WebSocket hosts).
 
 pub mod client;
+pub mod klines;
 pub mod rest;
 pub mod router;
 pub mod signing;

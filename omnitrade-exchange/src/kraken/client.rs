@@ -20,7 +20,7 @@ const BOOK_DEPTH: u32 = 25;
 pub const WS_URL: &str = "wss://ws.kraken.com/v2";
 
 /// Maps an interval string (`1m`, `1h`, ...) to Kraken's minute count.
-fn interval_minutes(interval: &str) -> Option<u32> {
+pub(crate) fn interval_minutes(interval: &str) -> Option<u32> {
     match interval {
         "1m" => Some(1),
         "5m" => Some(5),

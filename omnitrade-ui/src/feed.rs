@@ -1,4 +1,5 @@
-//! Background market-data feed: streams Binance candles and depth into [`UIState`].
+//! Background market-data feed: streams candles and depth of the selected exchange
+//! (Binance, Kraken or OKX) into [`UIState`].
 //!
 //! The feed is strictly read-only (public market data); the GUI never places orders.
 
@@ -6,9 +7,7 @@ use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use omnitrade_exchange::{
-    fetch_depth_snapshot, fetch_klines, BinanceClient, ExchangeError, ExchangeStream, Network,
-};
+use omnitrade_exchange::{fetch_depth_snapshot, Exchange, ExchangeError, Network};
 
 use crate::state::UIState;
 
@@ -22,6 +21,7 @@ const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 /// The thread reconnects after stream errors and runs until the process exits.
 pub fn spawn_feed(
     state: Arc<RwLock<UIState>>,
+    exchange: Exchange,
     symbol: String,
     network: Network,
 ) -> std::io::Result<JoinHandle<()>> {
@@ -40,7 +40,7 @@ pub fn spawn_feed(
             };
             runtime.block_on(async {
                 loop {
-                    match run_session(&state, &symbol, network).await {
+                    match run_session(&state, exchange, &symbol, network).await {
                         Ok(()) => log(&state, "Stream beendet, verbinde neu".to_string()),
                         Err(e) => log(&state, format!("Stream-Fehler: {e}, verbinde neu")),
                     }
@@ -54,21 +54,27 @@ pub fn spawn_feed(
 /// One connection lifetime: subscribe, connect and forward events until a channel closes.
 async fn run_session(
     state: &Arc<RwLock<UIState>>,
+    exchange: Exchange,
     symbol: &str,
     network: Network,
 ) -> Result<(), ExchangeError> {
-    load_history(state, symbol, network).await;
+    load_history(state, exchange, symbol, network).await;
 
-    let mut client = BinanceClient::for_network(network);
+    let mut client = exchange.stream(network);
     let mut candles = client.subscribe_candles(symbol, CANDLE_INTERVAL).await?;
     let mut depth = client.subscribe_depth(symbol).await?;
     client.connect().await?;
 
-    load_depth_snapshot(state, symbol, network).await;
+    seed_order_book(state, exchange, symbol, network).await;
     set_connected(state, true);
+    let environment = if exchange.has_test_environment() {
+        network.to_string()
+    } else {
+        "echte Marktdaten, kein Testnet".to_string()
+    };
     log(
         state,
-        format!("Verbunden: {symbol} ({network}), {CANDLE_INTERVAL}-Kerzen + Depth"),
+        format!("Verbunden: {exchange} {symbol} ({environment}), {CANDLE_INTERVAL}-Kerzen + Depth"),
     );
 
     loop {
@@ -93,8 +99,16 @@ async fn run_session(
 }
 
 /// Seeds the chart with recent candles; the stream only delivers closed candles.
-async fn load_history(state: &Arc<RwLock<UIState>>, symbol: &str, network: Network) {
-    match fetch_klines(network, symbol, CANDLE_INTERVAL, HISTORY_CANDLES).await {
+async fn load_history(
+    state: &Arc<RwLock<UIState>>,
+    exchange: Exchange,
+    symbol: &str,
+    network: Network,
+) {
+    match exchange
+        .fetch_history(network, symbol, CANDLE_INTERVAL, HISTORY_CANDLES)
+        .await
+    {
         Ok(candles) => {
             let count = candles.len();
             with_state(state, |s| {
@@ -106,11 +120,24 @@ async fn load_history(state: &Arc<RwLock<UIState>>, symbol: &str, network: Netwo
     }
 }
 
-/// Seeds the order book; the stream only carries changes, so unchanged levels would be missing.
-async fn load_depth_snapshot(state: &Arc<RwLock<UIState>>, symbol: &str, network: Network) {
-    match fetch_depth_snapshot(network, symbol, DEPTH_SNAPSHOT_LEVELS).await {
-        Ok(snap) => with_state(state, |s| {
-            if let Err(e) = s.set_orderbook_snapshot(symbol, &snap.bids, &snap.asks) {
+/// Seeds the order book. Binance streams only changes, so a REST snapshot is loaded first.
+/// Kraken and OKX send a snapshot as their first stream message, so the book is only
+/// cleared here (a reconnect must not keep stale levels).
+async fn seed_order_book(
+    state: &Arc<RwLock<UIState>>,
+    exchange: Exchange,
+    symbol: &str,
+    network: Network,
+) {
+    let snapshot = match exchange {
+        Exchange::Binance => fetch_depth_snapshot(network, symbol, DEPTH_SNAPSHOT_LEVELS)
+            .await
+            .map(|snap| (snap.bids, snap.asks)),
+        Exchange::Kraken | Exchange::Okx => Ok((Vec::new(), Vec::new())),
+    };
+    match snapshot {
+        Ok((bids, asks)) => with_state(state, |s| {
+            if let Err(e) = s.set_orderbook_snapshot(symbol, &bids, &asks) {
                 s.push_log(format!("Order-Book-Snapshot verworfen: {e}"));
             }
         }),

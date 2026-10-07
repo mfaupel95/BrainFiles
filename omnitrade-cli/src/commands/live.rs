@@ -6,7 +6,9 @@
 use crate::grid_loop::{grid_loop, GridLiveConfig};
 use crate::kill_switch;
 use crate::live_loop::{live_loop, LiveConfig};
-use omnitrade_exchange::{credentials, BinanceClient, Keystore, Network};
+use omnitrade_exchange::{
+    credentials, BinanceClient, Exchange, Keystore, Network, OkxClient, OkxRestClient,
+};
 use omnitrade_risk::guard::RiskGuard;
 use omnitrade_script::GridConfig;
 use std::path::Path;
@@ -35,6 +37,7 @@ pub async fn handle_live(
     script_path: Option<&Path>,
     grid_config_path: Option<&Path>,
     symbol: &str,
+    exchange_str: &str,
     network_str: &str,
     initial_capital: f64,
     order_quantity: f64,
@@ -42,6 +45,17 @@ pub async fn handle_live(
     // Validate that either script or grid is specified
     if script_path.is_none() && grid_config_path.is_none() {
         return Err("Error: either --script or --grid-config must be provided".into());
+    }
+
+    let exchange: Exchange = exchange_str.parse()?;
+    if exchange == Exchange::Kraken {
+        return Err(
+            "Kraken: Handel ist gesperrt (Spot hat kein Testnet). Marktdaten gibt es in der GUI."
+                .into(),
+        );
+    }
+    if grid_config_path.is_some() && exchange != Exchange::Binance {
+        return Err("Grid-Live läuft nur auf Binance (feste Tick-/Step-Size-Rundung)".into());
     }
 
     // Parse network string
@@ -85,19 +99,6 @@ pub async fn handle_live(
         info!("Using strategy script: {}", script_path.display());
         info!("Script-based trading mode enabled");
 
-        let creds = load_credentials(network)?;
-        let trading_creds = creds.clone();
-
-        // Two clients, one per role: the stream client owns the WebSocket
-        // connection (connect() takes &mut self), the trading client places
-        // orders (takes &self). BinanceClient is not Clone, so each role gets
-        // its own instance built from the same credentials.
-        let mut stream_client = BinanceClient::for_network(network);
-        stream_client.set_credentials(creds)?;
-        let mut trading_client = BinanceClient::new();
-        trading_client.set_credentials(trading_creds)?;
-
-        // Run the live loop
         let script_str = script_path.to_string_lossy().to_string();
         let config = LiveConfig {
             script_path: &script_str,
@@ -107,7 +108,33 @@ pub async fn handle_live(
             order_quantity,
             kill_file: &kill_file,
         };
-        live_loop(&config, stream_client, trading_client, &mut risk_guard).await?;
+
+        match exchange {
+            Exchange::Binance => {
+                let creds = load_credentials(network)?;
+                let trading_creds = creds.clone();
+
+                // Two clients, one per role: the stream client owns the WebSocket
+                // connection (connect() takes &mut self), the trading client places
+                // orders (takes &self). BinanceClient is not Clone, so each role gets
+                // its own instance built from the same credentials.
+                let mut stream_client = BinanceClient::for_network(network);
+                stream_client.set_credentials(creds)?;
+                let mut trading_client = BinanceClient::new();
+                trading_client.set_credentials(trading_creds)?;
+
+                live_loop(&config, stream_client, trading_client, &mut risk_guard).await?;
+            }
+            Exchange::Okx => {
+                // Testnet = OKX demo trading (demo API keys, simulated-trading header).
+                let (creds, passphrase) = load_okx_credentials(network)?;
+                let stream_client = OkxClient::for_network(network);
+                let trading_client = OkxRestClient::new(creds, passphrase)?;
+
+                live_loop(&config, stream_client, trading_client, &mut risk_guard).await?;
+            }
+            Exchange::Kraken => return Err("Kraken: Handel ist gesperrt".into()),
+        }
 
         info!("Live trading loop completed gracefully");
     } else if let Some(grid_path) = grid_config_path {
@@ -157,4 +184,109 @@ fn load_credentials(
         credentials::ApiCredentials::new(api_key, api_secret, network)
     };
     Ok(creds)
+}
+
+/// OKX-Zugänge: Keystore (`omnitrade/okx/<netzwerk>`) hat Vorrang, sonst
+/// `OKX_API_KEY`/`OKX_API_SECRET`. Die API-Passphrase kommt immer aus `OKX_PASSPHRASE`.
+fn load_okx_credentials(
+    network: Network,
+) -> Result<(credentials::ApiCredentials, String), Box<dyn std::error::Error>> {
+    let creds = if Keystore::credentials_exist("okx", network) {
+        Keystore::load_credentials("okx", network).map_err(|e| format!("Keystore: {e}"))?
+    } else {
+        let key = std::env::var("OKX_API_KEY").map_err(|_| {
+            "Keine OKX-Zugänge: weder Keystore-Eintrag omnitrade/okx/<netzwerk> noch OKX_API_KEY"
+        })?;
+        let secret = std::env::var("OKX_API_SECRET")
+            .map_err(|_| "OKX_API_SECRET environment variable not set")?;
+        credentials::ApiCredentials::new(key, secret, network)
+    };
+    let passphrase = std::env::var("OKX_PASSPHRASE")
+        .map_err(|_| "OKX_PASSPHRASE environment variable not set")?;
+    Ok((creds, passphrase))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn run(
+        script: Option<&str>,
+        grid: Option<&str>,
+        symbol: &str,
+        exchange: &str,
+    ) -> Result<(), String> {
+        handle_live(
+            script.map(Path::new),
+            grid.map(Path::new),
+            symbol,
+            exchange,
+            "testnet",
+            1000.0,
+            0.001,
+        )
+        .await
+        .map_err(|e| e.to_string())
+    }
+
+    #[tokio::test]
+    async fn kraken_trading_is_refused_with_reason() {
+        // Act
+        let err = run(Some("s.omni"), None, "BTC/USD", "kraken")
+            .await
+            .expect_err("refused");
+
+        // Assert
+        assert!(
+            err.contains("Kraken") && err.contains("kein Testnet"),
+            "{err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn grid_is_binance_only() {
+        // Act
+        let err = run(None, Some("g.json"), "BTC-USDT", "okx")
+            .await
+            .expect_err("refused");
+
+        // Assert
+        assert!(err.contains("nur auf Binance"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn unknown_exchange_is_rejected() {
+        // Act
+        let err = run(Some("s.omni"), None, "BTCUSDT", "bybit")
+            .await
+            .expect_err("rejected");
+
+        // Assert
+        assert!(err.contains("Unbekannte Börse"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn okx_without_credentials_fails_before_any_connection() {
+        // Arrange: Keystore/Umgebung dürfen keine OKX-Zugänge liefern.
+        if Keystore::credentials_exist("okx", Network::Testnet)
+            || std::env::var("OKX_API_KEY").is_ok()
+        {
+            return; // Entwicklerrechner mit echten Zugängen: Test nicht aussagekräftig.
+        }
+        let script = std::env::temp_dir().join("omnitrade-live-okx-test.omni");
+        std::fs::write(
+            &script, "buy()
+",
+        )
+        .expect("write script");
+
+        // Act
+        let err = run(script.to_str(), None, "BTC-USDT", "okx")
+            .await
+            .expect_err("no creds");
+        let _ = std::fs::remove_file(&script);
+
+        // Assert
+        assert!(err.contains("OKX"), "{err}");
+    }
 }

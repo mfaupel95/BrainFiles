@@ -62,9 +62,13 @@ pub enum Commands {
         #[arg(long, value_name = "PATH")]
         grid_config: Option<PathBuf>,
 
-        /// Trading symbol (e.g., "BTCUSDT").
+        /// Trading symbol in the exchange's notation (BTCUSDT, BTC-USDT, BTC/USD).
         #[arg(long, value_name = "SYMBOL")]
         symbol: String,
+
+        /// Exchange: "binance", "okx" or "kraken" (Kraken has no testnet, trading is refused).
+        #[arg(long, value_name = "EXCHANGE", default_value = "binance")]
+        exchange: String,
 
         /// Network: "testnet" or "mainnet".
         #[arg(long, value_name = "NETWORK", default_value = "testnet")]
@@ -247,6 +251,7 @@ mod tests {
             script,
             grid_config,
             symbol,
+            exchange,
             network,
             initial_capital,
             quantity,
@@ -255,6 +260,7 @@ mod tests {
             assert_eq!(script, Some(PathBuf::from("strategy.omni")));
             assert_eq!(grid_config, None);
             assert_eq!(symbol, "BTCUSDT");
+            assert_eq!(exchange, "binance");
             assert_eq!(network, "testnet");
             assert_eq!(initial_capital, None);
             assert_eq!(quantity, 0.001);
@@ -284,6 +290,7 @@ mod tests {
             script,
             grid_config,
             symbol,
+            exchange,
             network,
             initial_capital,
             quantity,
@@ -292,6 +299,7 @@ mod tests {
             assert_eq!(script, None);
             assert_eq!(grid_config, Some(PathBuf::from("grid.json")));
             assert_eq!(symbol, "BTCUSDT");
+            assert_eq!(exchange, "binance");
             assert_eq!(network, "testnet");
             assert_eq!(initial_capital, None);
             assert_eq!(quantity, 0.001);
@@ -325,6 +333,7 @@ mod tests {
             script,
             grid_config,
             symbol,
+            exchange,
             network,
             initial_capital,
             quantity,
@@ -333,9 +342,39 @@ mod tests {
             assert_eq!(script, Some(PathBuf::from("strategy.omni")));
             assert_eq!(grid_config, None);
             assert_eq!(symbol, "ETHUSDT");
+            assert_eq!(exchange, "binance");
             assert_eq!(network, "testnet");
             assert_eq!(initial_capital, Some(5000.0));
             assert_eq!(quantity, 0.001);
+        } else {
+            unreachable!("Expected Commands::Live variant");
+        }
+    }
+
+    #[test]
+    fn test_parse_live_command_exchange_flag() {
+        // Arrange
+        let args = vec![
+            "omnitrade-cli",
+            "live",
+            "--script",
+            "s.omni",
+            "--symbol",
+            "BTC-USDT",
+            "--exchange",
+            "okx",
+        ];
+
+        // Act
+        let parsed = CliArgs::try_parse_from(args).expect("Should parse --exchange");
+
+        // Assert
+        if let Commands::Live {
+            exchange, symbol, ..
+        } = parsed.command
+        {
+            assert_eq!(exchange, "okx");
+            assert_eq!(symbol, "BTC-USDT");
         } else {
             unreachable!("Expected Commands::Live variant");
         }

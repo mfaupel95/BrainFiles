@@ -69,7 +69,7 @@ pub async fn fetch_klines(
     parse_klines(&body)
 }
 
-async fn get_text(url: &str, query: &[(&str, &str)]) -> Result<String, ExchangeError> {
+pub(crate) async fn get_text(url: &str, query: &[(&str, &str)]) -> Result<String, ExchangeError> {
     let conn_err = |e: reqwest::Error| ExchangeError::ConnectionFailed {
         url: url.to_string(),
         reason: e.to_string(),

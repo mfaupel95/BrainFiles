@@ -4,6 +4,7 @@
 //! (see [`rest::KrakenRestClient`]).
 
 pub mod client;
+pub mod klines;
 pub mod rest;
 pub mod router;
 pub mod signing;

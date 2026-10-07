@@ -184,6 +184,8 @@ pub struct OmniTradeApp {
     pub depth: DepthWidget,
     /// Symbol shown in the chart and order book panels.
     pub symbol: String,
+    /// Name of the exchange the data comes from (status bar label).
+    pub venue: String,
     /// Path of the kill-switch flag file shared with `omnitrade-cli kill`.
     pub kill_path: PathBuf,
 }
@@ -214,6 +216,7 @@ impl OmniTradeApp {
             chart: CandleChartWidget::new(Vec::new()),
             depth: DepthWidget::new(8),
             symbol: symbol.into(),
+            venue: String::new(),
             kill_path: crate::kill::default_path(),
         }
     }
@@ -281,6 +284,9 @@ impl eframe::App for OmniTradeApp {
 
         egui::TopBottomPanel::top("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
+                if !self.venue.is_empty() {
+                    ui.label(&self.venue);
+                }
                 ui.strong(&self.symbol);
                 ui.separator();
                 if connected {

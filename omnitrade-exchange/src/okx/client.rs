@@ -33,7 +33,7 @@ pub const DEMO_PUBLIC_URL: &str = "wss://wspap.okx.com:8443/ws/v5/public";
 pub const DEMO_BUSINESS_URL: &str = "wss://wspap.okx.com:8443/ws/v5/business";
 
 /// Maps an interval string to OKX's channel suffix (`1m`, `1H`, `1D`, ...).
-fn interval_code(interval: &str) -> Option<&'static str> {
+pub(crate) fn interval_code(interval: &str) -> Option<&'static str> {
     match interval {
         "1m" => Some("1m"),
         "3m" => Some("3m"),
