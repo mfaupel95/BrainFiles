@@ -24,5 +24,31 @@
         "RISIKO_GEWICHTE": [0.0, 0.5]
       }
     }
+  },
+  "spur3": {
+    "name": "spur3",
+    "_name": "Kraken/EUR",
+    "journal": "../kraken/handelsjournal.csv",
+    "zustand": "../kraken/zustand.json",
+    "wachen": "../kraken/wachen.json",
+    "berichte": "../kraken/berichte",
+    "bewertung_datei": "../scanner/bewertung.py",
+    "waehrung": "EUR",
+    "kerzen_modul": "kraken_kerzen",
+    "deckel_felder": {
+      "max_pro_trade_usd": "max_pro_trade_eur",
+      "max_gesamt_usd": "max_gesamt_eur"
+    },
+    "aenderbar": {
+      "wachen.json": {
+        "mindest_score": [55, 75],
+        "max_volatilitaet_pa": [1.5, 2.5],
+        "mindest_chance_risiko": [1.5, 2.5],
+        "pflicht_stop_prozent_min": [5, 8],
+        "pflicht_stop_prozent_max": [8, 15],
+        "abklingzeit_tage": [2, 5],
+        "watchlist": "liste"
+      }
+    }
   }
 }

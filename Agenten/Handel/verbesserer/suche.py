@@ -309,7 +309,8 @@ def _aenderungen(kandidat, basis):
     return aus
 
 
-def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None, holdout_fn=None):
+def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None, holdout_fn=None,
+          gewichte_durchsuchbar=None):
     """Koordinatenabstieg von ``basis`` aus mit Overfitting-Sperre.
 
     Von ``basis`` aus wird wiederholt die Nachbarschaft (``nachbarn``)
@@ -341,6 +342,9 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None, holdout_fn=None)
     ``holdout_fn`` ersetzt ``ruecktest.holdout`` (fuer Tests); ohne werden sie
     traege importiert.
     """
+    if gewichte_durchsuchbar is None:
+        gewichte_durchsuchbar = konfig.get("gewichte_durchsuchbar", True)
+
     if bewerte is None:
         import ruecktest
         bewerte = ruecktest.walk_forward
@@ -381,7 +385,7 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None, holdout_fn=None)
     while auswertungen < budget:
         bester_nb = None
         bester_nb_wf = None
-        for kand in nachbarn(bestes, grenzen):
+        for kand in nachbarn(bestes, grenzen, gewichte_durchsuchbar):
             if auswertungen >= budget:
                 break
             kand_wf = bewerte(kerzen_je_inst, kand, konfig)

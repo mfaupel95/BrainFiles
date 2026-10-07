@@ -237,5 +237,55 @@ class TestLaufPfadAufloesung(unittest.TestCase):
         self.assertTrue(Path(self.gesehene_spur["berichte"]).is_absolute())
 
 
+class TestLaufSpur3(unittest.TestCase):
+    """End-to-End: lauf.einmal('spur3') nutzt kraken_kerzen statt kerzen und
+    ein KrakenModell statt SPOT_MODELL, ohne spur1 zu beruehren."""
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self._berichte_alt = lauf.BERICHTE
+        lauf.BERICHTE = Path(self._tmp.name)
+        self.addCleanup(setattr, lauf, "BERICHTE", self._berichte_alt)
+
+        # spuren.json liefert fuer spur3 echte Pfade (Task 6 legt sie an) -
+        # hier nur kraken_kerzen.laden faken, damit der Test ohne Netz und
+        # ohne echtes kraken/wachen.json laeuft.
+        import kraken_kerzen
+        p = mock.patch.object(
+            kraken_kerzen, "laden",
+            side_effect=lambda inst, cache_dir=None: (
+                [[i * 86400000, 1.0, 1.0, 1.0, 1.0, 1.0] for i in range(5)],
+                1.0))
+        p.start(); self.addCleanup(p.stop)
+
+        p = mock.patch.object(
+            lauf.auswerter, "befund",
+            side_effect=lambda spur, konfig, ordner: {"befunde": [],
+                                                      "runden_gesamt": 0})
+        p.start(); self.addCleanup(p.stop)
+        p = mock.patch.object(
+            lauf.digest, "erzeuge",
+            side_effect=lambda *a, **k: {"empfehlungen": "", "lehren": "",
+                                        "uebersprungen": "LLM-Modus aus"})
+        p.start(); self.addCleanup(p.stop)
+
+    def test_spur3_laeuft_ohne_absturz_und_nutzt_kraken_kerzen(self):
+        ordner = lauf.einmal("spur3", kerzen_holen=False)
+        self.assertIsNotNone(ordner)
+        self.assertTrue((ordner / "bericht.md").exists())
+
+    def test_spur1_unveraendert_nutzt_weiter_kerzen_modul(self):
+        # Regression: spur1 ohne kerzen_modul-Schluessel laeuft weiter ueber
+        # das oben schon gemockte lauf.kerzen (Bestandsmock in setUp der
+        # Nachbarklassen) - hier nur die Modulauswahl selbst pruefen.
+        self.assertIs(lauf._kerzen_modul({"name": "spur1"}), lauf.kerzen)
+
+    def test_spur3_waehlt_kraken_kerzen_modul(self):
+        import kraken_kerzen
+        self.assertIs(lauf._kerzen_modul({"kerzen_modul": "kraken_kerzen"}),
+                     kraken_kerzen)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -18,6 +18,7 @@ Nur Standardbibliothek.
 """
 
 import argparse
+import importlib
 import json
 import shutil
 import sys
@@ -34,6 +35,19 @@ import bewertung  # noqa: E402
 KERZEN_DIR = WURZEL / "kerzen"
 BERICHTE = WURZEL / "berichte"
 LEHREN = WURZEL.parents[2] / "Werkstatt" / "handelslehren-eingang.md"
+
+_KERZEN_MODULE = {"kerzen": kerzen}
+
+
+def _kerzen_modul(spur):
+    """Das Kerzen-Modul dieser Spur - Default 'kerzen' (OKX, Spur 1), sonst
+    der in spuren.json genannte Name (z. B. 'kraken_kerzen'). Import einmal,
+    danach aus dem Cache - damit ein Test, der lauf.kerzen patcht, weiter
+    dieselbe Objektidentitaet trifft wie vorher."""
+    name = spur.get("kerzen_modul", "kerzen")
+    if name not in _KERZEN_MODULE:
+        _KERZEN_MODULE[name] = importlib.import_module(name)
+    return _KERZEN_MODULE[name]
 
 
 def _konf():
@@ -68,15 +82,17 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
             + konfig.get("oos_fenster_ziel", 12) * konfig["oos_test_tage"]
             + konfig.get("holdout_tage", 0))
 
+    km = _kerzen_modul(spur)
+    km_dir = KERZEN_DIR if km is kerzen else WURZEL / km.__name__
     kerzen_je_inst = {}
     for inst in watchlist:
         if kerzen_holen:
             try:
-                kerzen.hole(inst, tage, KERZEN_DIR)
+                km.hole(inst, tage, km_dir)
             except Exception as e:  # noqa: BLE001
                 print("  Kerzen %s: %s - nehme Cache" % (inst, e),
                       file=sys.stderr)
-        k, _alter = kerzen.laden(inst, KERZEN_DIR)
+        k, _alter = km.laden(inst, km_dir)
         if k:
             kerzen_je_inst[inst] = k
     if len(kerzen_je_inst) < 3:
@@ -109,12 +125,27 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
 
     befund = auswerter.befund(spur, konfig, ordner)
     basis = suche.basis_kandidat(wachen, bewertung.CHANCE_GEWICHTE,
-                                 bewertung.RISIKO_GEWICHTE)
+                                 bewertung.RISIKO_GEWICHTE,
+                                 deckel_felder=spur.get("deckel_felder"))
     grenzen = spur["aenderbar"]["wachen.json"]
     grenzen = {**grenzen,
                "stop_min": grenzen.get("pflicht_stop_prozent_min", [4, 8]),
                "stop_max": grenzen.get("pflicht_stop_prozent_max", [8, 15])}
-    ergebnis = suche.suche(basis, kerzen_je_inst, konfig, grenzen)
+
+    modell = None
+    if spur_name == "spur3":
+        import kraken_modell
+        fx_eur_usdc, _ = km.laden("EURUSDC", km_dir)
+        fx_eur_eurc, _ = km.laden("EURCEUR", km_dir)
+        modell = kraken_modell.erzeuge(wachen, fx_eur_usdc, fx_eur_eurc)
+    bewerte = ((lambda k, kand, konf: ruecktest.walk_forward(k, kand, konf, modell))
+              if modell else None)
+    holdout_fn = ((lambda k, kand, h: ruecktest.holdout(k, kand, h, modell))
+                 if modell else None)
+    ergebnis = suche.suche(basis, kerzen_je_inst, konfig, grenzen,
+                           bewerte=bewerte, holdout_fn=holdout_fn,
+                           gewichte_durchsuchbar=konfig.get(
+                               "gewichte_durchsuchbar", True))
 
     if ergebnis["kandidat"] is not None:
         vorschlag.baue(ordner, ergebnis, spur, konfig,
