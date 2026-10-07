@@ -114,6 +114,73 @@ class TestLaufKeinVorschlag(unittest.TestCase):
         self.assertTrue((erledigt / "bericht.md").exists())
 
 
+class TestLaufHoldoutUndAusrichtung(unittest.TestCase):
+    """Review-Funde C1/I2: basis_wf=None darf nicht abstuerzen, und
+    Ausrichtungs-Hinweise muessen im Bericht landen - end-to-end durch
+    lauf.einmal(), nicht nur auf vorschlag.py-Ebene."""
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+        self._berichte_alt = lauf.BERICHTE
+        lauf.BERICHTE = Path(self._tmp.name)
+        self.addCleanup(setattr, lauf, "BERICHTE", self._berichte_alt)
+
+        p = mock.patch.object(
+            lauf.kerzen, "laden",
+            side_effect=lambda inst, cache_dir=None: ([[0, 1, 2, 3, 4, 5]], 1.0))
+        p.start(); self.addCleanup(p.stop)
+
+        p = mock.patch.object(
+            lauf.auswerter, "befund",
+            side_effect=lambda spur, konfig, ordner: {"befunde": [],
+                                                      "runden_gesamt": 0})
+        p.start(); self.addCleanup(p.stop)
+
+        p = mock.patch.object(
+            lauf.digest, "erzeuge",
+            side_effect=lambda *a, **k: {"empfehlungen": "", "lehren": "",
+                                        "uebersprungen": "LLM-Modus aus"})
+        p.start(); self.addCleanup(p.stop)
+
+    def test_zu_wenig_historie_fuer_holdout_stuerzt_nicht_ab(self):
+        p = mock.patch.object(
+            lauf.suche, "suche",
+            side_effect=lambda *a, **k: {
+                "kandidat": None, "basis_wf": None, "kandidat_wf": None,
+                "auswertungen": 0, "grund": "zu wenig Historie fuer Holdout",
+                "aenderungen": {}, "holdout_basis": None,
+                "holdout_kandidat": None, "fast_kandidat": None,
+            })
+        p.start(); self.addCleanup(p.stop)
+
+        ordner = lauf.einmal("spur1", kerzen_holen=False)
+        self.assertIsNotNone(ordner)
+        text = (ordner / "bericht.md").read_text("utf-8")
+        self.assertIn("zu wenig Historie fuer Holdout", text)
+
+    def test_ausrichtungs_hinweise_landen_im_bericht(self):
+        p = mock.patch.object(
+            lauf.suche, "suche",
+            side_effect=lambda *a, **k: {
+                "kandidat": None, "basis_wf": _basis_wf(), "kandidat_wf": None,
+                "auswertungen": 1, "grund": "nur 5 OOS-Runden (>= 20 noetig)",
+                "aenderungen": {},
+            })
+        p.start(); self.addCleanup(p.stop)
+
+        p = mock.patch.object(
+            lauf.ruecktest, "ausrichten",
+            side_effect=lambda kerzen: (
+                kerzen, ["XYZ-USDT verworfen: 5 von 20 Tagen (< 90%)"]))
+        p.start(); self.addCleanup(p.stop)
+
+        ordner = lauf.einmal("spur1", kerzen_holen=False)
+        text = (ordner / "bericht.md").read_text("utf-8")
+        self.assertIn("XYZ-USDT verworfen", text)
+
+
 class TestLaufPfadAufloesung(unittest.TestCase):
     """auswerter.befund muss die Spur-Pfade absolut sehen - sonst loest es
     spur["journal"]/spur["berichte"] gegen das CWD auf und liest aus der

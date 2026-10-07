@@ -117,9 +117,11 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     ergebnis = suche.suche(basis, kerzen_je_inst, konfig, grenzen)
 
     if ergebnis["kandidat"] is not None:
-        vorschlag.baue(ordner, ergebnis, spur, konfig)
+        vorschlag.baue(ordner, ergebnis, spur, konfig,
+                       hinweise=ausricht_hinweise)
     else:
-        vorschlag.kein_vorschlag(ordner, ergebnis, spur_name)
+        vorschlag.kein_vorschlag(ordner, ergebnis, spur_name,
+                                 hinweise=ausricht_hinweise)
 
     d = digest.erzeuge(befund, ergebnis["basis_wf"], ergebnis["kandidat_wf"],
                        ergebnis.get("aenderungen", {}), konfig["llm"],
