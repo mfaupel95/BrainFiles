@@ -176,6 +176,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 ## Offen
 
+- [ ] **T-376 — Historie ausserhalb des Baums? (Entscheidung Max)**
+      Kontext: T-361 (05.10.2026) war kein Loeschvorgang - der rote Replay-Lauf kam
+      aus einem Worktree, und daten/ ist nicht versioniert. Damit ist die Frage nach
+      dem ORT neu zu stellen: `historie_binance.ORDNER = HIER/daten/historie` ist
+      relativ zur Modulposition, also sieht JEDE Kopie des Baums einen anderen Ordner.
+      Gemessen 05./06.10.2026: 127 MB, 57 Reihen (45x 1H, 3x 4H, 3x 1D, 3x 5M),
+      plus feed/ (30x 1D). Kein Umzug noetig, damit etwas funktioniert.
+      Naechster Schritt: ENTSCHEIDUNG - liegt die Historie weiter unter
+      Agenten/Handel/daten/ (taeglich nachgefuellt vom Cron historie-wache), oder
+      zieht sie nach O:/ neben die Zweitkopie? Meine Empfehlung: LASSEN - ein Umzug
+      bringt nur neue Pfadbrueche, und der Nachfueller haelt den Bestand frisch.
+      Angelegt: 06-10-2026 · Zuletzt: 06-10-2026
+      Betrifft: Agenten/Handel/historie_binance.py, Agenten/Handel/daten/historie/
 - [ ] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Wache haelt sie jetzt, Ursache offen**
       Kontext: Die Windows-Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30,
       Wrapper `Agenten/Routinen/ausserhaus-kopie.ps1`) war am 05.10. um 22:30
