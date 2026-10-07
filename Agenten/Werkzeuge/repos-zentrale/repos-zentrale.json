@@ -3060,6 +3060,47 @@
         "--help"
       ],
       "venv_pflicht": true
+    },
+    {
+      "ordner": "carry.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "carry.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Cross-Venue-Scanner (rein lesend, kein Orderweg): OKX-Spot/Perp und Kraken-Spot/Futures je Basiswert, Basis in bp, Funding (OKX p.a., Kraken je Zyklus), OI in USD, netto nach den gemessenen Gebuehren. Entscheidet NICHTS - stellt nur die Zahlen hin.",
+      "befehle": [
+        {
+          "was": "Carry-Tabelle BTC/ETH/SOL",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "carry.py"
+          ],
+          "hinweis": "rein lesend"
+        },
+        {
+          "was": "Carry breit (auch XRP/DOGE)",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "carry.py",
+            "--breit"
+          ],
+          "hinweis": "rein lesend"
+        },
+        {
+          "was": "Carry als JSON",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "carry.py",
+            "--json"
+          ],
+          "hinweis": "fuer Wachen"
+        }
+      ]
     }
   ]
 }
