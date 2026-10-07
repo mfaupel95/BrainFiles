@@ -856,7 +856,7 @@
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1"
+        "../Projekte/OmniRoute/omniroute-quell-produktion.ps1"
       ],
       "beleg_frist_s": 600
     },
