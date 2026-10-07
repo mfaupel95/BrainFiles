@@ -2231,6 +2231,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `Routinen/einmalig-20260930-auslagerung.ps1` liegt fertig, braucht Admin),
       (2) danach 14 Tage beobachten, ob 41 UND 2004 zurueckgehen. Ohne Schritt 1
       ist jede weitere Messung wertlos.
+      **STAND 07.10.2026 (gemessen):** Die Auslagerungsdatei ist bereits eingerichtet
+      (Skript lief am 30.09., Neustart erfolgt, Uptime 68,9 h). Commit-Grenze
+      103,7 GB (vorher 84,5 GB). C: 8192/8192 MB fest, O: 32768/32768 MB.
+      **Was noch offen ist:** Commit frei nur 13,0 GB (belegt 90,7 GB), O: nur
+      17,3 GB frei (die 32-GB-Datei kann nicht wachsen). 776 Prozesse, davon
+      vmmemWSL 11,3 GB, 57 Python, 27 Claude, 31 Chrome, 37 Node. Ereignis 2004:
+      4 in den letzten 24 h (gegenüber 341 in 90 Tagen deutlich weniger, aber noch da).
+      **Naechster Schritt:** (1) vmmemWSL beenden (WSL/Docker abschalten) oder
+      (2) Chrome/ChatGPT/TradingView schliessen, wenn nicht gebraucht. Beides
+      entlastet den Commit um 15-20 GB. (3) Danach 14 Tage beobachten, ob 2004
+      auf 0 geht.
       Angelegt: 2026-08-28 · Zuletzt: 2026-08-30 (22:20)
 
 
