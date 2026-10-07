@@ -180,11 +180,23 @@ impl AccountState {
         }
     }
 
-    /// Calculates total account equity (balance + unrealized PnL sum).
+    /// Calculates total account equity: cash plus the marked-to-market value of all
+    /// positions.
+    ///
+    /// `balance` is real cash (a buy pays the full price, a sell credits the proceeds),
+    /// so a long adds its position value (`entry * qty + unrealized PnL`) and a short
+    /// subtracts the buy-back liability (`entry * qty - unrealized PnL`).
     #[must_use]
     pub fn total_equity(&self) -> f64 {
-        let unrealized_sum: f64 = self.positions.values().map(|p| p.unrealized_pnl).sum();
-        self.balance + unrealized_sum
+        let positions_value: f64 = self
+            .positions
+            .values()
+            .map(|p| match p.side {
+                Side::Buy => p.notional_value() + p.unrealized_pnl,
+                Side::Sell => -p.notional_value() + p.unrealized_pnl,
+            })
+            .sum();
+        self.balance + positions_value
     }
 
     /// Calculates total PnL since account creation.
@@ -268,5 +280,68 @@ mod tests {
         let long = acc.get_position("BTCUSDT", Side::Buy).expect("long");
         assert!((long.quantity - 1.0).abs() < 1e-9);
         assert!((long.entry_price - 90.0).abs() < 1e-9);
+    }
+
+    fn unit_fill(side: Side, price: f64, qty: f64) -> OrderFill {
+        OrderFill::new(
+            1,
+            "BTCUSDT".to_string(),
+            side,
+            price,
+            qty,
+            0.0,
+            "USDT".to_string(),
+            1000,
+            true,
+        )
+    }
+
+    #[test]
+    fn test_equity_of_open_long_includes_position_value() {
+        // Arrange: 0.1 BTC @ 50_000 costs 5_000 cash, equity must stay 10_000.
+        let mut acc = AccountState::new(10_000.0).expect("account");
+        acc.apply_fill(&unit_fill(Side::Buy, 50_000.0, 0.1))
+            .expect("buy");
+
+        // Act & Assert
+        assert!((acc.balance - 5_000.0).abs() < 1e-9);
+        assert!((acc.total_equity() - 10_000.0).abs() < 1e-9);
+        acc.update_unrealized_pnl("BTCUSDT", Side::Buy, 51_000.0)
+            .expect("mtm");
+        assert!((acc.total_equity() - 10_100.0).abs() < 1e-9);
+        assert!((acc.total_pnl() - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_equity_of_open_short_excludes_sale_proceeds() {
+        // Arrange: shorting 0.1 BTC @ 50_000 credits 5_000 cash but owes the coins back.
+        let mut acc = AccountState::new(10_000.0).expect("account");
+        acc.apply_fill(&unit_fill(Side::Sell, 50_000.0, 0.1))
+            .expect("sell");
+
+        // Act & Assert
+        assert!((acc.balance - 15_000.0).abs() < 1e-9);
+        assert!((acc.total_equity() - 10_000.0).abs() < 1e-9);
+        acc.update_unrealized_pnl("BTCUSDT", Side::Sell, 49_000.0)
+            .expect("mtm");
+        assert!((acc.total_equity() - 10_100.0).abs() < 1e-9);
+        acc.update_unrealized_pnl("BTCUSDT", Side::Sell, 52_000.0)
+            .expect("mtm");
+        assert!((acc.total_equity() - 9_800.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_equity_equals_cash_after_flat_round_trip() {
+        // Arrange
+        let mut acc = AccountState::new(10_000.0).expect("account");
+        acc.apply_fill(&unit_fill(Side::Buy, 50_000.0, 0.1))
+            .expect("buy");
+        acc.apply_fill(&unit_fill(Side::Sell, 52_000.0, 0.1))
+            .expect("sell");
+
+        // Act & Assert
+        assert!(acc.positions.is_empty());
+        assert!((acc.total_equity() - acc.balance).abs() < 1e-9);
+        assert!((acc.total_pnl() - 200.0).abs() < 1e-9);
     }
 }
