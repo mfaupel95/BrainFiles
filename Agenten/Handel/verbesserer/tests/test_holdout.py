@@ -46,5 +46,97 @@ class TestHoldoutFunktion(unittest.TestCase):
         self.assertEqual(kz["n"], 0)
 
 
+WACHEN = {"mindest_score": 60, "max_volatilitaet_pa": 1.2,
+          "mindest_chance_risiko": 1.5, "pflicht_stop_prozent_min": 4.0,
+          "pflicht_stop_prozent_max": 12.0, "abklingzeit_tage": 3,
+          "max_pro_trade_usd": 50, "max_gesamt_usd": 200,
+          "max_offene_positionen": 4,
+          "watchlist": ["BTC-USDT", "ETH-USDT", "SOL-USDT"]}
+GRENZEN = {"mindest_score": [55, 75], "max_volatilitaet_pa": [0.9, 1.4],
+           "mindest_chance_risiko": [1.3, 2.2], "stop_min": [4, 8],
+           "stop_max": [8, 15], "abklingzeit_tage": [2, 5], "watchlist": "liste"}
+# Holdout aktiv; Historie reicht (240 - 60 = 180 >= 120 + 3*30 = 210? nein ->
+# darum oos_test_tage klein halten fuer den Historie-Test unten gesondert).
+KONF_HOLDOUT = {"such_budget": 50, "overfit_min_runden": 20,
+                "overfit_min_fenster": 3, "oos_training_tage": 120,
+                "oos_test_tage": 30, "oos_schritt_tage": 30,
+                "holdout_tage": 60, "holdout_min_runden": 8}
+
+
+def _wf(gv_je_runde, n=30, fenster_besser=0, basis_gv=0.0, fenster_anz=5):
+    fenster = []
+    for i in range(fenster_anz):
+        g = gv_je_runde if i < fenster_besser else basis_gv
+        fenster.append({"von_tag": 120 + 30 * i, "bis_tag": 150 + 30 * i,
+                        "kennzahlen": {"n": n // fenster_anz,
+                                       "netto_gv_je_runde": g}})
+    return {"fenster": fenster, "fenster_anzahl": fenster_anz,
+            "gesamt": {"n": n, "netto_gv_je_runde": gv_je_runde}}
+
+
+def _kz(netto, n):
+    return {"n": n, "netto_gv_je_runde": netto}
+
+
+class TestHoldoutInSuche(unittest.TestCase):
+    def setUp(self):
+        self.basis = suche.basis_kandidat(
+            WACHEN, bewertung.CHANCE_GEWICHTE, bewertung.RISIKO_GEWICHTE)
+        # Genug Historie: ein Instrument, L = 400 Tage > 60 + 210.
+        self.kerzen = {"AAA": _kerzen(400)}
+
+    def _sieger_fake(self):
+        """bewerte: Basis schlecht, jeder Nachbar schlaegt sie in 4/5 Fenstern
+        und hat >= 20 Runden -> ein Sieger kommt durch alle Altsperren."""
+        def fake(kerzen, kand, konf):
+            if kand == self.basis:
+                return _wf(0.0, n=30, fenster_besser=0)
+            return _wf(1.0, n=30, fenster_besser=4)
+        return fake
+
+    def test_holdout_verlust_wird_abgelehnt_fast_kandidat_gesetzt(self):
+        # Sieger gewinnt die Suche, verliert aber im Holdout (Kandidat <= Basis).
+        def hold(kerzen, kand, h):
+            return _kz(-0.5, 12) if kand != self.basis else _kz(0.0, 12)
+        r = suche.suche(self.basis, self.kerzen, KONF_HOLDOUT, GRENZEN,
+                        bewerte=self._sieger_fake(), holdout_fn=hold)
+        self.assertIsNone(r["kandidat"])
+        self.assertEqual(r["grund"], "Holdout nicht bestanden")
+        self.assertIsNotNone(r["fast_kandidat"])
+        self.assertIsNone(r["kandidat_wf"])
+
+    def test_echter_gewinn_laeuft_durch(self):
+        def hold(kerzen, kand, h):
+            return _kz(2.0, 12) if kand != self.basis else _kz(0.0, 12)
+        r = suche.suche(self.basis, self.kerzen, KONF_HOLDOUT, GRENZEN,
+                        bewerte=self._sieger_fake(), holdout_fn=hold)
+        self.assertIsNotNone(r["kandidat"])
+        self.assertIsNone(r["fast_kandidat"])
+        self.assertEqual(r["holdout_kandidat"]["netto_gv_je_runde"], 2.0)
+
+    def test_zu_wenige_runden_im_holdout_wird_abgelehnt(self):
+        # Kandidat besser, aber n < holdout_min_runden (8).
+        def hold(kerzen, kand, h):
+            return _kz(2.0, 7) if kand != self.basis else _kz(0.0, 7)
+        r = suche.suche(self.basis, self.kerzen, KONF_HOLDOUT, GRENZEN,
+                        bewerte=self._sieger_fake(), holdout_fn=hold)
+        self.assertIsNone(r["kandidat"])
+        self.assertEqual(r["grund"], "Holdout nicht bestanden")
+
+    def test_grenze_genau_min_runden_besteht(self):
+        def hold(kerzen, kand, h):
+            return _kz(2.0, 8) if kand != self.basis else _kz(0.0, 8)
+        r = suche.suche(self.basis, self.kerzen, KONF_HOLDOUT, GRENZEN,
+                        bewerte=self._sieger_fake(), holdout_fn=hold)
+        self.assertIsNotNone(r["kandidat"])
+
+    def test_zu_wenig_historie(self):
+        # L = 150 Tage: 150 - 60 = 90 < 120 + 3*30 = 210 noetig.
+        r = suche.suche(self.basis, {"AAA": _kerzen(150)}, KONF_HOLDOUT, GRENZEN,
+                        bewerte=self._sieger_fake(), holdout_fn=lambda *a: _kz(0, 0))
+        self.assertIsNone(r["kandidat"])
+        self.assertEqual(r["grund"], "zu wenig Historie fuer Holdout")
+
+
 if __name__ == "__main__":
     unittest.main()

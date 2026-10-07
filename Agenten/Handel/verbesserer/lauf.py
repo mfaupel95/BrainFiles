@@ -65,7 +65,8 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     wachen = json.loads(Path(spur["wachen"]).read_text("utf-8"))
     watchlist = wachen["watchlist"]
     tage = (konfig["oos_training_tage"]
-            + konfig.get("oos_fenster_ziel", 12) * konfig["oos_test_tage"])
+            + konfig.get("oos_fenster_ziel", 12) * konfig["oos_test_tage"]
+            + konfig.get("holdout_tage", 0))
 
     kerzen_je_inst = {}
     for inst in watchlist:
