@@ -1,7 +1,7 @@
-//! Bounded **real-money** round trip on OKX production (BTC-USDT spot).
+//! Bounded **real-money** round trip on OKX production (BTC-USDT or BTC-USDC spot).
 //!
-//! Hard cap: 20 USDT notional. The program only trades when started with
-//! `run --confirm-real-money`; `check` is read-only.
+//! Hard cap: 20 USD-stablecoin notional. The program only trades when started with
+//! `run --confirm-real-money`; `check` and `balances` are read-only.
 //!
 //! Credentials from `OKX_API_KEY`, `OKX_API_SECRET`, `OKX_PASSPHRASE` (production keys);
 //! optional `OKX_REST_BASE` for regional domains (`https://eea.okx.com`, `https://us.okx.com`).
@@ -18,7 +18,8 @@ use omnitrade_exchange::{
     Account, ApiCredentials, Exchange, ExchangeTrading, Network, OkxRestClient, OrderRequest,
 };
 
-const SYMBOL: &str = "BTC-USDT";
+/// Default pair; EEA accounts usually hold USDC instead of USDT (`--symbol BTC-USDC`).
+const DEFAULT_SYMBOL: &str = "BTC-USDT";
 /// Absolute notional cap in USDT. Never raised by arguments.
 const MAX_NOTIONAL_USDT: f64 = 20.0;
 /// Buy target, below the cap to leave room for price movement between quote and fill.
@@ -41,10 +42,15 @@ fn floor_to(value: f64, decimals: i32) -> f64 {
     (value * f).floor() / f
 }
 
-async fn wait_until_filled(client: &OkxRestClient, id: u64, what: &str) -> Result<f64, String> {
+async fn wait_until_filled(
+    client: &OkxRestClient,
+    symbol: &str,
+    id: u64,
+    what: &str,
+) -> Result<f64, String> {
     for _ in 0..20 {
         tokio::time::sleep(Duration::from_millis(500)).await;
-        match client.get_order(&id.to_string(), SYMBOL).await {
+        match client.get_order(&id.to_string(), symbol).await {
             Ok(Some(o)) if o.status == OrderStatus::Filled => {
                 println!("{what}: gefüllt, Menge {}", o.filled_quantity);
                 return Ok(o.filled_quantity);
@@ -64,6 +70,19 @@ async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mode = args.first().map_or("check", String::as_str);
     let confirmed = args.iter().any(|a| a == "--confirm-real-money");
+    let symbol = args
+        .iter()
+        .position(|a| a == "--symbol")
+        .and_then(|i| args.get(i + 1))
+        .map_or(DEFAULT_SYMBOL, String::as_str);
+    let Some((base, quote)) = symbol.split_once('-') else {
+        println!("Symbol muss BASE-QUOTE sein, z. B. BTC-USDC");
+        std::process::exit(2);
+    };
+    if base != "BTC" || !matches!(quote, "USDT" | "USDC") {
+        println!("Nur BTC gegen USDT/USDC erlaubt (Deckel gilt für USD-Stablecoins).");
+        std::process::exit(2);
+    }
 
     let creds = ApiCredentials::new(env("OKX_API_KEY"), env("OKX_API_SECRET"), Network::Mainnet);
     let mut client = OkxRestClient::new(creds, env("OKX_PASSPHRASE")).expect("client");
@@ -77,11 +96,24 @@ async fn main() {
         println!("Kontostand fehlgeschlagen: {e}");
         std::process::exit(1);
     });
-    let (usdt0, btc0) = (free(&before, "USDT"), free(&before, "BTC"));
-    println!("Konto lesbar. Frei: USDT {usdt0:.4}, BTC {btc0:.8}");
+    if mode == "balances" {
+        let mut held: Vec<_> = before
+            .balances
+            .iter()
+            .filter(|(_, b)| b.total() > 0.0)
+            .collect();
+        held.sort_by(|a, b| a.0.cmp(b.0));
+        println!("Assets mit Bestand: {}", held.len());
+        for (ccy, b) in held {
+            println!("  {ccy}: frei {:.8}, gesperrt {:.8}", b.free, b.locked);
+        }
+        return;
+    }
+    let (usdt0, btc0) = (free(&before, quote), free(&before, "BTC"));
+    println!("Konto lesbar. Frei: {quote} {usdt0:.4}, BTC {btc0:.8}");
 
     let price = Exchange::Okx
-        .fetch_history(Network::Mainnet, SYMBOL, "1m", 5)
+        .fetch_history(Network::Mainnet, symbol, "1m", 5)
         .await
         .ok()
         .and_then(|c| c.last().map(|c| c.close))
@@ -91,7 +123,7 @@ async fn main() {
         });
     let qty = floor_to(TARGET_NOTIONAL_USDT / price, 5);
     println!(
-        "Referenzpreis {price:.2}, geplante Menge {qty:.5} BTC (~{:.2} USDT, Deckel {MAX_NOTIONAL_USDT})",
+        "{symbol}: Referenzpreis {price:.2}, geplante Menge {qty:.5} BTC (~{:.2} {quote}, Deckel {MAX_NOTIONAL_USDT})",
         qty * price
     );
 
@@ -109,7 +141,7 @@ async fn main() {
     }
     if usdt0 < qty * price * 1.01 {
         println!(
-            "Abbruch: zu wenig freies USDT ({usdt0:.4}) für {:.2} USDT.",
+            "Abbruch: zu wenig freies {quote} ({usdt0:.4}) für {:.2} {quote}.",
             qty * price
         );
         std::process::exit(2);
@@ -117,24 +149,29 @@ async fn main() {
 
     // 1) Market-Kauf.
     let buy = client
-        .place_order(&OrderRequest::market(SYMBOL.into(), Side::Buy, qty))
+        .place_order(&OrderRequest::market(symbol.into(), Side::Buy, qty))
         .await
         .unwrap_or_else(|e| {
             println!("Kauf abgelehnt: {e}");
             std::process::exit(1);
         });
     println!("Market-Kauf angelegt: id={}", buy.id);
-    if let Err(e) = wait_until_filled(&client, buy.id, "Kauf").await {
-        println!("{e}");
-        println!("KEIN Rückverkauf ausgelöst. Bitte Konto prüfen.");
-        std::process::exit(1);
-    }
+    let bought = match wait_until_filled(&client, symbol, buy.id, "Kauf").await {
+        Ok(filled) => filled,
+        Err(e) => {
+            println!("{e}");
+            println!("KEIN Rückverkauf ausgelöst. Bitte Konto prüfen.");
+            std::process::exit(1);
+        }
+    };
 
     // 2) Tatsächlich erhaltene BTC-Menge (Gebühr wird in BTC abgezogen) zurückverkaufen.
     tokio::time::sleep(Duration::from_secs(1)).await;
     let mid = client.get_balance().await.expect("balance after buy");
-    let received = floor_to(free(&mid, "BTC") - btc0, 8);
-    println!("Erhaltene BTC: {received:.8}");
+    // Never sell more than this purchase filled: other orders on the account may move
+    // balances at the same time.
+    let received = floor_to((free(&mid, "BTC") - btc0).min(bought), 8);
+    println!("Erhaltene BTC (netto nach Gebühr): {received:.8}");
     if received < MIN_BTC_ORDER {
         println!(
             "Zu wenig BTC zum Rückverkauf (Mindestmenge {MIN_BTC_ORDER}). Bitte Konto prüfen."
@@ -142,23 +179,23 @@ async fn main() {
         std::process::exit(1);
     }
     let sell = client
-        .place_order(&OrderRequest::market(SYMBOL.into(), Side::Sell, received))
+        .place_order(&OrderRequest::market(symbol.into(), Side::Sell, received))
         .await
         .unwrap_or_else(|e| {
             println!("Rückverkauf abgelehnt: {e}. BTC bleiben im Konto!");
             std::process::exit(1);
         });
     println!("Market-Verkauf angelegt: id={}", sell.id);
-    if let Err(e) = wait_until_filled(&client, sell.id, "Verkauf").await {
+    if let Err(e) = wait_until_filled(&client, symbol, sell.id, "Verkauf").await {
         println!("{e}. BTC könnten noch im Konto sein!");
         std::process::exit(1);
     }
 
     tokio::time::sleep(Duration::from_secs(1)).await;
     let after = client.get_balance().await.expect("balance after sell");
-    let (usdt1, btc1) = (free(&after, "USDT"), free(&after, "BTC"));
+    let (usdt1, btc1) = (free(&after, quote), free(&after, "BTC"));
     println!(
-        "Ergebnis: USDT {usdt0:.4} -> {usdt1:.4} (Differenz {:+.4}), BTC {btc0:.8} -> {btc1:.8}",
+        "Ergebnis: {quote} {usdt0:.4} -> {usdt1:.4} (Differenz {:+.4}), BTC {btc0:.8} -> {btc1:.8}",
         usdt1 - usdt0
     );
 }
