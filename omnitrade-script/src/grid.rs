@@ -105,8 +105,15 @@ impl GridConfig {
     /// # Errors
     /// Returns `Err` if JSON parsing fails or validation fails.
     pub fn from_json(json: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let config: GridConfig = serde_json::from_str(json)?;
-        Ok(config)
+        let raw: GridConfig = serde_json::from_str(json)?;
+        // Deserialisierung umgeht `new`; Werte hier erneut prüfen.
+        Ok(Self::new(
+            raw.levels,
+            raw.spacing_pct,
+            raw.size_per_level,
+            raw.start_price,
+            raw.leverage,
+        )?)
     }
 
     /// Serializes GridConfig to a JSON string.
@@ -211,6 +218,16 @@ mod tests {
         let deserialized = GridConfig::from_json(&json).expect("deserialization");
 
         assert_eq!(original, deserialized);
+    }
+
+    #[test]
+    fn test_grid_config_from_json_rejects_invalid_values() {
+        let json = r#"{"levels": 0, "spacing_pct": 0.02, "size_per_level": 1.0,
+            "start_price": 100.0, "leverage": 1.0}"#;
+        assert!(GridConfig::from_json(json).is_err());
+        let json = r#"{"levels": 3, "spacing_pct": -0.02, "size_per_level": 1.0,
+            "start_price": 100.0, "leverage": 1.0}"#;
+        assert!(GridConfig::from_json(json).is_err());
     }
 
     #[test]

@@ -3,17 +3,27 @@
 //! Orchestrates live trading setup: initializes exchange connections,
 //! instantiates RiskGuard, and delegates to the live_loop.
 
+use crate::grid_loop::{grid_loop, GridLiveConfig};
 use crate::kill_switch;
 use crate::live_loop::{live_loop, LiveConfig};
 use omnitrade_exchange::{credentials, BinanceClient, Keystore, Network};
 use omnitrade_risk::guard::RiskGuard;
+use omnitrade_script::GridConfig;
 use std::path::Path;
+use std::time::Duration;
 use tracing::info;
+
+/// Abstand der Fill-Abfragen im Grid-Betrieb.
+const GRID_POLL_SECS: u64 = 5;
+/// Tick-Size-Annahme (BTCUSDT-artig); abweichende Symbole lehnt die Börse ab.
+const GRID_PRICE_DECIMALS: u32 = 2;
+/// Step-Size-Annahme (BTCUSDT-artig); abweichende Symbole lehnt die Börse ab.
+const GRID_QTY_DECIMALS: u32 = 5;
 
 /// Handles the live trading command.
 ///
 /// Currently supports script-based trading only.
-/// Grid-based trading will be implemented in a future phase.
+/// Grid-Betrieb (`--grid-config`) läuft nur auf dem Testnet.
 /// Sets up exchange connections and starts the live trading event loop.
 /// Returns error if setup fails; the live loop itself handles individual
 /// order placement errors gracefully.
@@ -75,18 +85,7 @@ pub async fn handle_live(
         info!("Using strategy script: {}", script_path.display());
         info!("Script-based trading mode enabled");
 
-        // Zugänge: Keystore (getrennt je Netzwerk) hat Vorrang, Umgebungs-
-        // variablen nur als Fallback für Läufe ohne Credential Manager.
-        let creds = if Keystore::credentials_exist("binance", network) {
-            Keystore::load_credentials("binance", network).map_err(|e| format!("Keystore: {e}"))?
-        } else {
-            let api_key = std::env::var("BINANCE_API_KEY").map_err(|_| {
-                "Keine Zugänge: weder Keystore-Eintrag omnitrade/binance/<netzwerk> noch BINANCE_API_KEY"
-            })?;
-            let api_secret = std::env::var("BINANCE_API_SECRET")
-                .map_err(|_| "BINANCE_API_SECRET environment variable not set")?;
-            credentials::ApiCredentials::new(api_key, api_secret, network)
-        };
+        let creds = load_credentials(network)?;
         let trading_creds = creds.clone();
 
         // Two clients, one per role: the stream client owns the WebSocket
@@ -111,10 +110,51 @@ pub async fn handle_live(
         live_loop(&config, stream_client, trading_client, &mut risk_guard).await?;
 
         info!("Live trading loop completed gracefully");
-    } else if grid_config_path.is_some() {
-        info!("Grid trading mode requested");
-        return Err("Grid-based live trading not yet implemented - use --script for now".into());
+    } else if let Some(grid_path) = grid_config_path {
+        info!("Grid trading mode: {}", grid_path.display());
+
+        // Wie die Skript-Schleife: Mainnet bleibt gesperrt, bis Phase-3-Gates stehen.
+        if network == Network::Mainnet {
+            return Err("Grid-Live auf Mainnet ist gesperrt (nur Testnet)".into());
+        }
+
+        let grid = GridConfig::from_json(&std::fs::read_to_string(grid_path)?)
+            .map_err(|e| format!("Grid-Konfiguration ungültig: {e}"))?;
+
+        let mut trading_client = BinanceClient::new();
+        trading_client.set_credentials(load_credentials(network)?)?;
+
+        let config = GridLiveConfig {
+            grid: &grid,
+            symbol,
+            initial_capital,
+            kill_file: &kill_file,
+            poll_interval: Duration::from_secs(GRID_POLL_SECS),
+            price_decimals: GRID_PRICE_DECIMALS,
+            qty_decimals: GRID_QTY_DECIMALS,
+        };
+        grid_loop(&config, trading_client, &mut risk_guard).await?;
+
+        info!("Grid-Lauf beendet");
     }
 
     Ok(())
+}
+
+/// Zugänge: Keystore (getrennt je Netzwerk) hat Vorrang, Umgebungsvariablen
+/// nur als Fallback für Läufe ohne Credential Manager.
+fn load_credentials(
+    network: Network,
+) -> Result<credentials::ApiCredentials, Box<dyn std::error::Error>> {
+    let creds = if Keystore::credentials_exist("binance", network) {
+        Keystore::load_credentials("binance", network).map_err(|e| format!("Keystore: {e}"))?
+    } else {
+        let api_key = std::env::var("BINANCE_API_KEY").map_err(|_| {
+            "Keine Zugänge: weder Keystore-Eintrag omnitrade/binance/<netzwerk> noch BINANCE_API_KEY"
+        })?;
+        let api_secret = std::env::var("BINANCE_API_SECRET")
+            .map_err(|_| "BINANCE_API_SECRET environment variable not set")?;
+        credentials::ApiCredentials::new(api_key, api_secret, network)
+    };
+    Ok(creds)
 }

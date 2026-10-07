@@ -243,6 +243,22 @@ impl ExchangeTrading for BinanceClient {
             .await
     }
 
+    async fn get_order(
+        &self,
+        order_id: &str,
+        symbol: &str,
+    ) -> Result<Option<Order>, ExchangeError> {
+        self.rest_client
+            .as_ref()
+            .ok_or_else(|| {
+                ExchangeError::InvalidRequest(
+                    "Trading not enabled; set credentials first".to_string(),
+                )
+            })?
+            .get_order(order_id, symbol)
+            .await
+    }
+
     async fn get_balance(&self) -> Result<Account, ExchangeError> {
         self.rest_client
             .as_ref()

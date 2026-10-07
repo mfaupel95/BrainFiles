@@ -224,6 +224,41 @@ impl ExchangeTrading for BinanceRestClient {
         Ok(())
     }
 
+    async fn get_order(
+        &self,
+        order_id: &str,
+        symbol: &str,
+    ) -> Result<Option<Order>, ExchangeError> {
+        let mut params = HashMap::new();
+        params.insert("symbol".to_string(), symbol.to_string());
+        params.insert("orderId".to_string(), order_id.to_string());
+
+        let response = self
+            .signed_request(Method::GET, "/order", Some(&params))
+            .await?;
+
+        if !response.status().is_success() {
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            // -2013: Order existiert nicht.
+            if body.contains("-2013") {
+                return Ok(None);
+            }
+            return Err(ExchangeError::ApiError(body));
+        }
+
+        let order = response.json::<BinanceOrderResponse>().await.map_err(|e| {
+            ExchangeError::MessageParseFailed {
+                raw: e.to_string(),
+                reason: "Failed to parse order response".to_string(),
+            }
+        })?;
+
+        Ok(Some(self.parse_order_response(&order)))
+    }
+
     async fn get_open_orders(&self) -> Result<Vec<Order>, ExchangeError> {
         let response = self
             .signed_request(Method::GET, "/openOrders", None)

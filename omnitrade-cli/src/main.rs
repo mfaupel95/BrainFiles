@@ -6,6 +6,7 @@
 mod args;
 mod backtest;
 mod commands;
+mod grid_loop;
 mod kill_switch;
 mod live_loop;
 

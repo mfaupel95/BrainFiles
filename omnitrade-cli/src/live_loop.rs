@@ -127,13 +127,13 @@ pub async fn live_loop(
             },
             _ = kill_check.tick() => {
                 if kill_switch::is_engaged(kill_file) {
-                    return halt_trading(&exchange_trading, &mut exchange_stream).await;
+                    return halt_trading(&exchange_trading, symbol, &mut exchange_stream).await;
                 }
                 continue;
             }
         };
         if kill_switch::is_engaged(kill_file) {
-            return halt_trading(&exchange_trading, &mut exchange_stream).await;
+            return halt_trading(&exchange_trading, symbol, &mut exchange_stream).await;
         }
         candle_buffer.push(candle.clone());
         if candle_buffer.len() > MAX_CANDLE_BUFFER {
@@ -195,18 +195,14 @@ pub async fn live_loop(
     Ok(())
 }
 
-/// Not-Aus: storniert alle offenen Orders und trennt die Verbindung.
+/// Storniert alle offenen Orders des Symbols. Fremde Symbole bleiben unberührt.
 ///
-/// Bestände werden bewusst nicht verkauft. Einzelne Stornierungsfehler werden
-/// geloggt und brechen den Halt nicht ab.
-async fn halt_trading(
-    exchange_trading: &impl ExchangeTrading,
-    exchange_stream: &mut impl ExchangeStream,
-) -> Result<(), LiveLoopError> {
+/// Einzelne Fehler werden geloggt und brechen den Vorgang nicht ab.
+pub(crate) async fn cancel_open_orders(exchange_trading: &impl ExchangeTrading, symbol: &str) {
     error!("Not-Aus ausgelöst: keine neuen Orders, storniere offene Orders");
     match exchange_trading.get_open_orders().await {
         Ok(orders) => {
-            for order in orders {
+            for order in orders.into_iter().filter(|o| o.symbol == symbol) {
                 if let Err(e) = exchange_trading
                     .cancel_order(&order.id.to_string(), &order.symbol)
                     .await
@@ -217,6 +213,17 @@ async fn halt_trading(
         }
         Err(e) => warn!("Offene Orders nicht abrufbar: {}", e),
     }
+}
+
+/// Not-Aus: storniert offene Orders des Symbols und trennt die Verbindung.
+///
+/// Bestände werden bewusst nicht verkauft.
+async fn halt_trading(
+    exchange_trading: &impl ExchangeTrading,
+    symbol: &str,
+    exchange_stream: &mut impl ExchangeStream,
+) -> Result<(), LiveLoopError> {
+    cancel_open_orders(exchange_trading, symbol).await;
     exchange_stream
         .disconnect()
         .await
@@ -227,7 +234,7 @@ async fn halt_trading(
 ///
 /// Creates a mock Order from the request, checks it against RiskGuard,
 /// and if approved, submits to the exchange.
-async fn place_order_with_risk_check(
+pub(crate) async fn place_order_with_risk_check(
     exchange_trading: &impl ExchangeTrading,
     risk_guard: &mut RiskGuard,
     order_req: &OrderRequest,
