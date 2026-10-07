@@ -40,6 +40,7 @@ KAPITAL_USD = 500
 
 # name -> (Strategie ohne .omni, Symbol). Intervall je Lauf 1h (Standard).
 LAEUFE = {
+    "ema_cross_btc": ("ema_cross_20_50", "BTCUSDC"),
     "adx_macd_btc": ("adx_macd", "BTCUSDC"),
     "adx_macd_eth": ("adx_macd", "ETHUSDC"),
     "rsi30_stop5_btc": ("rsi30_stop5", "BTCUSDC"),
