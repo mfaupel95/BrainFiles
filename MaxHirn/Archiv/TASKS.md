@@ -1205,25 +1205,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/daten_probe_coingecko.py, tests/test_replay_feed.py
 
 
-- [ ] **T-141 - Braucht ein Werkzeug TCP 9900? Der Gateway lauscht nur noch auf dem Control-Pipe**
-      Kontext: Seit dem Hermes-Update vom 29.09.2026 lauscht der Gateway auf einem Named Pipe
-      (`\\.\pipe\hermes-gateway-*`, belegt: 1 Pipe im Namensraum) und bedient Webhooks auf 8644;
-      **TCP 9900 bleibt zu, waehrend der Dienst gesund laeuft** (`hermes gateway status` =
-      "Gateway process running", `hermes doctor` = "gateway running", Telegram wurde bedient).
-      Die zwei Haus-Wachen sind umgestellt (siehe T-139). Offen ist, ob ein a2a-Peer oder ein
-      Fremdwerkzeug den Port erwartet - die Peer-Liste steht in der `a2a_agents`-Sektion der
-      Hermes-`config.yaml`.
-      Naechster Schritt: einen Peer-Aufruf aus einer Bot-Sitzung fahren (`a2a_list`/`a2a_call`);
-      gelingt er ohne 9900, ist der Port endgueltig Altweg.
-      KORREKTUR 2026-09-30: Die Annahme "TCP 9900 bleibt zu, waehrend er gesund laeuft"
-      ist widerlegt. Gemessen am 30.09.2026 01:52 mit `Get-NetTCPConnection`: der
-      Dienstprozess 73852 haelt **127.0.0.1:9900** (A2A) und **0.0.0.0:8644** (Webhook).
-      Der Gateway laeuft als EINE Kette 73620 (Launcher-venv) -> 36840 (.hermes-runtime)
-      -> 73852 (tools-Python, `runpy`-Form, schreibt `gateway_state.json`). Die
-      Prozesssuche `*gateway run*` findet 73852 NICHT (die runpy-Form traegt den Text
-      nicht) - deshalb lesen die Wachen zuerst `gateway_state.json`. Offen bleibt nur,
-      ob ein Peer den Port BRAUCHT: er ist da, also ist die Frage nach dem Altweg erledigt.
-      Angelegt 2026-09-29. Betrifft Agenten/Hermes (config.yaml), Agenten/Routinen/gateway-waechter.ps1.
 
 
 - [ ] **T-140 - Gateway-Wache laeuft nur 08:15: ein abends gescheitertes Update faellt erst am Morgen auf**
@@ -2290,6 +2271,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-141 - Braucht ein Werkzeug TCP 9900? Der Gateway lauscht nur noch auf dem Control-Pipe**
+      Kontext: Seit dem Hermes-Update vom 29.09.2026 lauscht der Gateway auf einem Named Pipe
+      (`\\.\pipe\hermes-gateway-*`, belegt: 1 Pipe im Namensraum) und bedient Webhooks auf 8644;
+      **TCP 9900 bleibt zu, waehrend der Dienst gesund laeuft** (`hermes gateway status` =
+      "Gateway process running", `hermes doctor` = "gateway running", Telegram wurde bedient).
+      Die zwei Haus-Wachen sind umgestellt (siehe T-139). Offen ist, ob ein a2a-Peer oder ein
+      Fremdwerkzeug den Port erwartet - die Peer-Liste steht in der `a2a_agents`-Sektion der
+      Hermes-`config.yaml`.
+      Naechster Schritt: einen Peer-Aufruf aus einer Bot-Sitzung fahren (`a2a_list`/`a2a_call`);
+      gelingt er ohne 9900, ist der Port endgueltig Altweg.
+      KORREKTUR 2026-09-30: Die Annahme "TCP 9900 bleibt zu, waehrend er gesund laeuft"
+      ist widerlegt. Gemessen am 30.09.2026 01:52 mit `Get-NetTCPConnection`: der
+      Dienstprozess 73852 haelt **127.0.0.1:9900** (A2A) und **0.0.0.0:8644** (Webhook).
+      Der Gateway laeuft als EINE Kette 73620 (Launcher-venv) -> 36840 (.hermes-runtime)
+      -> 73852 (tools-Python, `runpy`-Form, schreibt `gateway_state.json`). Die
+      Prozesssuche `*gateway run*` findet 73852 NICHT (die runpy-Form traegt den Text
+      nicht) - deshalb lesen die Wachen zuerst `gateway_state.json`. Offen bleibt nur,
+      ob ein Peer den Port BRAUCHT: er ist da, also ist die Frage nach dem Altweg erledigt.
+      Angelegt 2026-09-29. Betrifft Agenten/Hermes (config.yaml), Agenten/Routinen/gateway-waechter.ps1.
+      
 - [x] **T-183 — NODE_ENV=production in der Agenten-Shell bricht jeden vite-Dev-Lauf**
       Kontext: Beim ersten echten Lauf der Skill-Anleitung `inspecting-hermes-desktop-dom`
       starb der Renderer mit `ReferenceError: $RefreshSig$ is not defined`
