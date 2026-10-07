@@ -130,6 +130,81 @@ class RechenwegTest(unittest.TestCase):
                          % sorted(set(offen) - erlaubt))
 
 
+class IndikatorSchwellenTest(unittest.TestCase):
+    """T-097: Indikatorschwellen stehen in der wachen.json, nicht im Code.
+
+    Die vier Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend)
+    lasen bis 05.10.2026 ihre Indikator-Parameter als Konstanten aus dem
+    Quelltext - optimieren.py konnte sie deshalb nicht variieren. Nach der
+    Hebung MUSS jede dieser Spuren ihre Schluessel in der ECHTEN wachen.json
+    tragen, sonst ist der Umbau stumm. Geprueft wird die Regel (Schluessel
+    vorhanden), nicht ein Zahlenwert: ein Test gegen den Wert geht bei jeder
+    bewussten Aenderung kaputt, ohne dass die Hebung weg ist.
+    """
+
+    # Indikator-Schluessel je Spur, deren Code-Stand vor T-097 fest war.
+    SCHLUESSEL = {
+        "squeeze": ("squeeze_laenge", "squeeze_bb_mult", "squeeze_kc_mult",
+                    "atr_n"),
+        "wavetrend": ("wt_n1", "wt_n2", "wt_ueberverkauft", "atr_n"),
+        "macd_mtf": ("mtf_faktoren", "mtf_schnell", "mtf_langsam",
+                     "mtf_signal", "atr_n"),
+        "supertrend": ("supertrend_n", "supertrend_faktor", "atr_n"),
+    }
+
+    def test_jede_indikator_spur_traegt_ihre_schluessel(self):
+        fehlend = {}
+        for spur, schluessel in self.SCHLUESSEL.items():
+            w = wache(spur)
+            fehlen = [k for k in schluessel if k not in w]
+            if fehlen:
+                fehlend[spur] = fehlen
+        self.assertEqual(fehlend, {},
+                         "Indikatorschluessel fehlen in der wachen.json: %s"
+                         % fehlend)
+
+    def test_gegenprobe_ohne_schluessel_greift_die_regel(self):
+        """Ein entfernter Schluessel muss von diesem Test gefunden werden.
+
+        Geprueft wird gegen eine KOPIE im Temp-Ordner, nicht gegen die echte
+        Datei: drei Dauerlauf-Stufen lesen wavetrend/wachen.json gerade live,
+        ein Schreibfenster in die echte Datei koennte einen Zyklus treffen
+        (halb geschriebenes JSON). Die Regel ist dieselbe - ein fehlender
+        Schluessel muss den Test rot machen.
+        """
+        import shutil
+        import tempfile as _tmp
+
+        global wache
+        quelle = wachen_pfad("wavetrend")
+        tmp = _tmp.mkdtemp(prefix="t097-schwelle-")
+        try:
+            ziel = os.path.join(tmp, "wachen.json")
+            shutil.copy2(quelle, ziel)
+            with open(ziel, encoding="utf-8") as f:
+                w = json.load(f)
+            w.pop("wt_ueberverkauft")
+            with open(ziel, "w", encoding="utf-8") as f:
+                json.dump(w, f, ensure_ascii=False)
+
+            echte_wache = wache
+
+            def wache_aus_kopie(spur):
+                if spur == "wavetrend":
+                    with open(ziel, encoding="utf-8") as f:
+                        return json.load(f)
+                return echte_wache(spur)
+
+            wache = wache_aus_kopie
+            try:
+                with self.assertRaises(AssertionError):
+                    self.test_jede_indikator_spur_traegt_ihre_schluessel()
+            finally:
+                wache = echte_wache
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class RueckwaertsTest(unittest.TestCase):
     """Gegenprobe: ohne die Nachtraege melden dieselben Tests mehr."""
 

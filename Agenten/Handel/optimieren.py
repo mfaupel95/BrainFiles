@@ -11,13 +11,18 @@ Nur EIN Lauf je Kandidat, nicht einer je Fenster: die Zeiten stehen im
 Journal (virtuelle Uhr), die Aufteilung passiert danach. Das ist derselbe
 Vergleich und um ein Vielfaches billiger.
 
-WAS SICH UEBERHAUPT SUCHEN LAESST (gemessen 2026-09-25): die vier
-Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend) lesen aus ihrer
-wachen.json NUR die Ausstiegs-Geometrie - `pflicht_stop_prozent_min`,
-`pflicht_stop_prozent_max`, `ziel_r_vielfaches` und die Platzzahl. Ihre
-Indikatorschwellen stehen als Konstanten im Code (squeeze.signal() ist eine
-feste Regel ueber ti.squeeze_momentum). Wer hier einen Schluessel in
-`spur_opt.json` eintraegt, den die Spur nicht liest, bekommt KEINE stille
+WAS SICH UEBERHAUPT SUCHEN LAESST (Stand T-097, 05.10.2026): die vier
+Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend) lesen ihre
+Indikatorschwellen inzwischen aus der wachen.json (`squeeze_laenge`/
+`squeeze_bb_mult`/`squeeze_kc_mult`, `wt_n1`/`wt_n2`/`wt_ueberverkauft`,
+`mtf_faktoren`/`mtf_schnell`/`mtf_langsam`/`mtf_signal`,
+`supertrend_n`/`supertrend_faktor`, je `atr_n`). Bis 05.10.2026 standen
+diese Schwellen fest im Code (squeeze.signal() war eine feste Regel ueber
+ti.squeeze_momentum); seit der Hebung kann ein Schluessel in `spur_opt.json`
+die Indikatorrechnung selbst variieren. Ausstiegs-Geometrie bleibt
+suchbar wie zuvor (`pflicht_stop_prozent_min`, `pflicht_stop_prozent_max`,
+`ziel_r_vielfaches`). Wer einen Schluessel in `spur_opt.json` eintraegt,
+den die Spur nicht liest, bekommt KEINE stille
 Nullnummer: `pruefe_schluessel()` bricht ab und nennt die fehlenden Namen.
 
 Geschrieben wird NIE in eine wachen.json. Ausgabe ist eine Vorschlagsdatei
