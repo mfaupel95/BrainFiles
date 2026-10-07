@@ -86,6 +86,25 @@ with open(PFAD, "wb") as f:
 re.compile(r"- \[[ x]\] \*\*T-067.*?(?=\r?\n- \[[ x]\] \*\*|\Z)", re.S)
 ```
 
+   **Und zwischen Kastenstellung und `**` darf MEHR als ein Leerzeichen stehen.**
+   Die Hausform ist nicht stabil: es gibt `- [ ] **T-338` und daneben
+   `- [ ]   **T-336` (drei Leerzeichen, von fremder Hand). Ein Anker mit genau
+   EINEM Leerzeichen ueberspringt den Block mit der abweichenden Einrueckung -
+   und die Grenze rutscht auf den NAECHSTEN Treffer, sodass der ausgeschnittene
+   Bereich den fremden Nachbarn mitnimmt. Regel: `[ \t]*` zwischen Klammer und
+   `**` zulassen, und den Treffer gegen die BLOCKZAHL pruefen, nicht nur gegen
+   `len(matches) == 1`.
+
+```python
+# findet beide Einrueckungen
+re.compile(r"(?m)^- \[[ x?]\][ \t]*\*\*(T-\d+)")
+```
+
+   **Und die Kastenstellung im Anker ist `[ x?]`, nicht `[ x]`.** Wartende
+   Eintraege (`- [?]`, „Wartet auf: Max") fallen sonst aus jeder Suche - wer
+   nach „den offenen mit Entscheidungsbedarf" sucht, uebersieht genau die
+   Eintraege, die darauf warten.
+
 4. **Nach JEDEM Schreiben die Nummernmenge vergleichen.**
 
 ```python
@@ -532,6 +551,21 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   Blockzahl, die niemand nachvollziehen konnte. Symptom ist eine ZAHL, die nicht
   stimmt; die Ursache ist Struktur. Nach jedem Umbau deshalb zaehlen und die
   Zaun-Zeilen einzeln ansehen, bevor Zahlen diskutiert werden.
+- **Der `## Offen`-Abschnitt sammelt erledigte Eintraege an — die Zahl der
+  Bloecke ist NICHT die Zahl der offenen Aufgaben.** Gemessen: 143 Bloecke im
+  Abschnitt, davon 22 mit `- [x]` (fertig, aber nie nach `## Erledigt` gezogen).
+  Wer die Blockzahl als „so viele offene Punkte" berichtet, gibt eine zu hohe
+  Zahl weiter und uebersieht, dass Aufraeumarbeit ansteht. Richtig zaehlen:
+
+```python
+# je Kastenstellung getrennt, im Offen-Bereich
+print(bereich.count("- [ ] "), bereich.count("- [x]"), bereich.count("- [?]"))
+```
+
+  Beim Zusammenfassen fuer Max die ECHTEN offenen nennen und die liegen
+  gebliebenen `- [x]` als eigenen Aufraeumpunkt anbieten - nicht mitzaehlen und
+  nicht stillschweigend nach `## Erledigt` schieben (das ist ein eigener Auftrag,
+  weil dabei Nummern und Abschnitte gegenprueft werden muessen).
 - **Der erste Treffer eines Abschnittsnamens ist nicht die Ueberschrift — und
   derselbe Abschnittsname kann DREIMAL vorkommen.** `## Erledigt` steht zweimal
   (echte Ueberschrift plus eine Erwaehnung im Regeltext weiter oben);

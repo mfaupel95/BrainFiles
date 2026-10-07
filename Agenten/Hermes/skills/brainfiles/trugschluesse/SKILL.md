@@ -183,13 +183,13 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
   `zustand.json` und das eigene Journal sind EIN Zeuge; die Boerse, der Task,
   die Registry sind der andere.
 - **`archive`/Filter decken offene Sitzungen nicht ab.** „No sessions match" bei
+  `--older-than 30d` heisst nur: beendete Sitzungen passten nicht — 46 offene
+  Sitzungen blieben still liegen. Bestand nur ueber die DB zaehlen.
 - **Zum Trennen von Commits `GIT_INDEX_FILE`, nie `checkout --`.** Ich habe
   einmal die Fremdarbeit einer Parallelsitzung mit `git checkout --
   <datei>` verworfen (Hausregel verbietet es) und aus einer Sicherung
   gerettet. Der Index gehoert allen Sitzungen; die Arbeitskopie gehoert der
-  gerade schreibenden. „No sessions match" bei
-  `--older-than 30d` heisst nur: beendete Sitzungen passten nicht — 46 offene
-  Sitzungen blieben still liegen. Bestand nur ueber die DB zaehlen.
+  gerade schreibenden.
 - **`git.exe`-Prozesse beweisen keinen Committer.** 12 gleichzeitige `git.exe`
   waren alle `git fsmonitor--daemon run --detach`. Vorgehen bei `index.lock`:
   Alter + echte git-Prozesse **ohne** `fsmonitor` zaehlen, dann die 0-Byte-Sperre
@@ -252,6 +252,29 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
   erreichte die Börse und wurde dort von zwei Sperren gestoppt. Ein Teilschritt,
   als Erfolg gemeldet, ist die teuerste Form: sie sieht aus wie ein Beleg und
   ist es nicht.
+- **Ein Schaden im zeitlichen Umfeld der eigenen Aenderung ist nicht deshalb
+  ihre Folge.** Nach dem Setzen eines `docker_volumes`-Eintrags ging ploetzlich
+  kein `docker run` mehr (`Exit 125`, `read-only file system`). Der Verdacht lag
+  auf der Hand und war falsch: derselbe `docker run` **ohne jeden
+  Volume-Eintrag** scheiterte zeichengleich — der Daemon war unabhaengig davon
+  beschaedigt. **Regel: bei einem Schaden kurz nach einer Aenderung ZUERST die
+  Gegenprobe OHNE die Aenderung fahren** — dieselbe Handlung mit entferntem
+  Parameter, oder auf einem unveraenderten Nachbarobjekt. Bleibt das Ergebnis
+  gleich, ist die Aenderung entlastet. Ohne diese Gegenprobe wird eine richtige
+  Aenderung zurueckgedreht, weil sie „danach kaputt war" — und die naechste
+  Sitzung liest den Zurueckdreher als Beleg.
+- **Der Exitcode nennt die Klasse nicht, der Text schon.** Zweimal derselbe
+  Code 125 mit zwei verschiedenen Ursachen: einmal ein Windows-Pfad in
+  `docker run -w`, einmal ein read-only Metadaten-Store des Daemons. Ein
+  Exitcode ist ein Fingerabdruck, keine Diagnose — immer den Fehlertext lesen
+  und die Faelle unterscheiden, statt eine bekannte Signatur der alten Ursache
+  zuzuschreiben.
+- **Ein Befehl ohne sein Ergebnis ist keine Messung.** Eine Pruefung, die nicht
+  laufen kann (kein Container, kein Ziel, kein Prozess), belegt NICHTS ueber
+  den Gegenstand — auch nicht „teilweise". Was sich dann noch belegen laesst,
+  ist die FORM (Eintrag korrekt geschrieben, Pfad existiert, Zerlegung ergibt
+  das Erwartete) und muss ausdruecklich als Form-Beleg benannt werden. Der
+  Wirkungsbeleg bleibt offen, bis der Befehl wirklich gelaufen ist.
 - **Eine Kette aus Toren pruefen, nicht das erste.** Drei Sperren
   (`freigabe.erfuellt`, Gebuehren-Tor, Freigabefenster) — ein gesetzter Haken
   loest genau eines. Bei `moondev_topmovers`: Excess +0,01 % minus 0,20 %
@@ -268,6 +291,21 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
 - **Datei, Reihe und Symbol sind drei Zaehlweisen.** „406 Dateien" gegen „54
   Reihen" gegen die `instrumente` aller `wachen.json`: dieselbe Lueke war 348,
   0 und 0. Geprueft wurde am Ende die Forderungsquelle, nicht die Dateiliste.
+- **„Die Daten sind weg" ist eine Aussage ueber die QUELLE, nicht ueber die
+  Daten.** Bevor ein Loeschvorgang gesucht wird: pruefen, ob der LESER auf den
+  richtigen Ort zeigte. Ein aus der Modulposition abgeleiteter Pfad
+  (`ORDNER = os.path.join(HIER, "daten", …)`) ist RELATIV — jede Kopie des Baums
+  sieht einen ANDEREN Ordner, und eine Kopie ohne den (nicht versionierten)
+  Ordner meldet ehrlich „0 Kerzen". Die Meldung war richtig, der SCHLUSS daraus
+  („N Reihen geloescht") war erfunden. **Eine korrekte Fehlermeldung ist noch
+  kein Befund.** Rezept: Pfadkonstruktion im Quelltext lesen, den abgeleiteten
+  Pfad ausdrucken lassen, und eine Kopie ohne den Ordner bauen — kommt dieselbe
+  Meldung, ist der Loeschverdacht erledigt.
+- **Ein passender Zeitstempel ist kein Beweis fuer eine Ursache.** Ein
+  Ordner-`mtime`, der „genau ins Verschwindefenster faellt", gehoert meist einem
+  Unterordner, der NACH dem Ereignis schrieb — und ein `mtime`, den man einmal
+  aus dem Kopf behaelt, wandert beim Nachmessen. Denselben Pfad erneut messen
+  und den Zeitstempel aus der AUSGABE zitieren, nie aus dem Gedaechtnis.
 - **Bei einer spaet eintreffenden Hintergrundmeldung den Zeitstempel halten.**
   Ein `EXIT=1` aus einem Lauf, der vor der Reparatur endete, ist kein Befund
   ueber den jetzigen Stand.
@@ -292,11 +330,7 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
 - **Ein eingefrorener PID beweist keinen lebenden Lauf — und umgekehrt.** Vor
   dem Neustart eines Statusordner-Laufs die alte Datei **loeschen**: sie behauptet
   `state: running` und eine verwaiste PID, und eine Bruecke, die nur die Datei
-  liest, haelt den frischen Lauf fuer tot. Ich habe
-  einmal die Fremdarbeit einer Parallelsitzung mit `git checkout --
-  <datei>` verworfen (Hausregel verbietet es) und aus einer Sicherung
-  gerettet. Der Index gehoert allen Sitzungen; die Arbeitskopie gehoert der
-  gerade schreibenden.
+  liest, haelt den frischen Lauf fuer tot.
 - **Nach jedem Arbeitsschritt committen (Faustregel).** Sonst sammelt
   `fremdarbeit-einziehen.ps1` die Arbeit ein und sie erscheint unter der
   Meldung einer anderen Sitzung (belegt: `cb165f55`).

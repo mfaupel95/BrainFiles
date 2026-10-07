@@ -311,6 +311,15 @@ den Windows-PATH nicht (VS Code liegt in
   `repos-launcher.ps1 -Mode Gui` oeffnet je Repo ein VSCode-Fenster (28 Stueck,
   je mehrere Prozesse). Vorher `-Repos <eins>` setzen. Nach einem versehentlichen
   Lauf nur Prozesse beenden, deren Startzeit im eigenen Testfenster liegt.
+- **`repos-zentrale.json` mit `indent=2` schreiben, sonst ist der Diff die ganze
+  Datei.** Die Datei ist 2-Space-formatiert (LF); ein `json.dump(..., indent=1)`
+  oder `indent=4` formatiert JEDE Zeile um und `git diff --numstat` zeigt
+  3106/3065 statt der einen Zeile. Nach dem Schreiben `git diff --numstat`
+  pruefen: zeigt es die ganze Datei, mit `indent=2` neu schreiben (und
+  `ensure_ascii=False`, LF, abschliessendes Newline). Derselbe Test
+  `test_manifest_gegenprobe` verlangt ausserdem einen Logbeleg in `logs/` fuer
+  jeden Startbefehl — `fuellen.py --belege` erzeugt ihn automatisch, ein
+  manuell eingetragener `start` ohne Log bleibt rot.
 
 ## Verwandtes
 

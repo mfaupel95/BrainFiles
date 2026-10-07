@@ -153,6 +153,17 @@ tool_call([{"name": "mcp__windows_mcp__PowerShell", "arguments": {"command": "..
    zurück und die Ausgabe des Befehls ist verloren — Warten und Messen trennen
    (kurz warten, dann in einem EIGENEN Aufruf lesen) oder den Lauf als
    Hintergrundprozess starten und seinen Status abfragen.
+   **Ein `TimeoutError` heisst NICHT, dass der Kindprozess tot ist** — er laeuft
+   weiter und schreibt seine Ausgabe. Beim naechsten Aufruf also NICHT neu
+   starten, sondern die Ausgabedatei lesen (`(Get-Content <log>).Count`,
+   `-Tail 5`) und die Prozessliste pruefen. Ein zweiter Start legt sonst einen
+   zweiten Lauf auf dieselbe Sperre.
+   **Fuer eine lange Suite die Umleitung per `cmd /c` nehmen:**
+   `cmd /c '<exe> -m unittest a b > <log> 2>&1'`, danach `$LASTEXITCODE` und die
+   Datei lesen. Das traegt auch dann, wenn `Start-Process -PassThru` leer
+   zurueckkommt (kein PID, keine Datei) — in dem Fall den Aufruf **einmal** mit
+   der `cmd /c`-Form wiederholen und erst dann urteilen. Ein leerer PID ist noch
+   kein Befund ueber das Programm.
 7. **Eine Messung ist ein Zeitpunkt, kein Zustand.** Auf diesem Rechner arbeiten
    mehrere Sitzungen und Agenten gleichzeitig am selben Baum: zwischen zwei
    Aufrufen können Ordner auftauchen oder verschwinden (eine parallele
@@ -323,6 +334,28 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   `write_file` auf die Platte legen und ausfuehren, oder das `patch`-Werkzeug nehmen.
   Muss es doch inline sein, die Fluchtfolge aus `chr(92) + "n"` bauen statt als
   Literal — und die geaenderte Datei danach mit `ast.parse` parsen.
+- **Auch eine PowerShell-Ersetzung gehoert in eine DATEI, nicht in einen
+  `-Command`-Einzeiler.** Derselbe Grund, teurer: ein mehrzeiliger neuer Text
+  braucht in PowerShell Backtick-Escapes (`` `n `` fuer Zeilenumbruch), und die
+  kommen durch die Werkzeugschicht verstuemmelt an. Gemessen: zwei Anlaeufe, beide
+  `Status Code 1` — einmal ein stiller Nichtlauf ohne jede Ausgabe, einmal ein
+  `ParserError` (`Nach „(“ wurde ein Ausdruck erwartet`), weil der Backtick-Ausdruck
+  im Quelltext als Code gelesen wurde. Beide Male war das Skript NICHT angewendet,
+  und der stille Fall sah wie ein Erfolg aus (`OK: gepatcht` kam aus der
+  Shell-Zeile, nicht aus dem Schreibvorgang).
+  **Verlaesslicher Weg fuer eine Textersetzung auf dem Host:** den Ersatz als
+  **Python**-Skript schreiben (nicht PowerShell) — `write_file` auf
+  `Agenten/Hermes/cache/scratch/<zweck>.py`, darin die Datei per
+  `open(p,"rb").read()`, `assert text.count(anker) == 1`, `replace`, und
+  `open(p,"wb").write(...)`; dann
+  `python <pfad>` ueber `mcp__windows_mcp__PowerShell` starten. Python hat keine
+  Backtick-Escapes, die Assertion belegt den Treffer, und der Exitcode ist
+  eindeutig. PowerShell bleibt fuer alles, was WIRKLICH PowerShell ist (Dienste,
+  Registry, Aufgabenplanung, Prozesse).
+  **Nach JEDEM Host-Schreibvorgang die Wirkung nachlesen, nicht den Exitcode
+  glauben:** `Select-String -Path <datei> -Pattern '<neuer text>'` bzw.
+  `grep -n` — gemessen war die Datei nach dem „OK" unveraendert. Derselbe Blick
+  zeigt, ob der Ersatz an der richtigen Stelle landete.
 - **Syntax mit `ast.parse` pruefen, nicht mit `py_compile`.**
   `py_compile.compile(p, doraise=True)` wirft `PyCompileError` (kein `SyntaxError`) —
   ein `except SyntaxError` greift nicht, und eine Reparatur per `lineno` laeuft ins

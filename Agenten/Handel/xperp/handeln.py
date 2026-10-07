@@ -297,6 +297,37 @@ def _kurs_aktuell(p):
     return float(kurs)
 
 
+def _hand_erloes(p, preis, menge):
+    """(nominal, erloes) einer von Hand verkauften Menge, beides in USD.
+
+    DER FEHLER, DER HIER BEHOBEN IST (gemessen 07.10.2026): die Buchung rechnete
+    `preis * menge` und schrieb das in nominal_usd UND margin_usd. Das ist weder
+    das eine noch das andere: es fehlen die Kontraktgroesse (ctVal) und der
+    Hebel. XAU, 96 Kontrakte @ 4150,2 stand mit 398.419 statt rund 80 USD
+    Margin im Journal; die Auswertung meldete damit +438.540 USD und die Spur
+    als "belastbar".
+
+    Die Konvention ist die von `_ergebnis` und der schliessen-Zeile sonst:
+    margin_usd ist, was von der Margin ZURUECKKOMMT (Einsatz plus Ergebnis),
+    nominal_usd das Nominal der Position. Beides aus dem BUCH, nicht aus der
+    Boerse - ctVal und Hebel stecken schon im Nominal der Position, ein
+    Netzabruf waere eine zweite Quelle. Bei einem Teilverkauf zaehlt nur der
+    verkaufte Anteil. Gebuehr ist nicht abgezogen (sie steht an der Boerse;
+    gebuehr_pct bleibt leer, wie bei den uebrigen Handschliessungen).
+
+    Ohne Zeugen kommt preis = Einstieg an: Ergebnis 0, die Margin geht zurueck.
+    """
+    alt = abs(float(p.get("kontrakte") or 0.0))
+    anteil = min(1.0, abs(menge) / alt) if alt > 0 else 1.0
+    nominal = float(p.get("nominal") or 0.0) * anteil
+    margin = float(p.get("margin") or 0.0) * anteil
+    einstieg = float(p.get("einstieg") or p.get("preis") or 0.0)
+    if not einstieg:
+        return nominal, margin                     # ohne Einstieg kein Ergebnis
+    vz = 1 if p.get("seite") == "long" else -1
+    return nominal, margin + nominal * vz * (preis - einstieg) / einstieg
+
+
 def _ergebnis(p, kurs):
     """Was von der Margin zurueckkommt. Gebuehr beim Schliessen abgezogen."""
     vz = 1 if p["seite"] == "long" else -1
@@ -608,17 +639,17 @@ def buche_verkaeufe_aus_boerse(z, live=True, still=False):
             preis = float(p.get("einstieg") or p.get("preis") or 0.0)
             grund = "verkauf_ohne_zeuge_neutral"
             quelle = "neutral"
-        erloes = preis * menge
+        nominal, erloes = _hand_erloes(p, preis, menge)
         if not still:
             print("  VERKAUF gebucht: %s %s %.0f Stuecke @ %.6f = %.2f USD "
-                  "(Boerse hat %s)"
+                  "Margin zurueck (Boerse hat %s)"
                   % (p.get("inst"), p.get("seite"), menge, preis, erloes,
                      "bezeugt" if v else "KEINEN Zeugen -> neutral"))
         journal(zeit=_jetzt(), modus="live", aktion="schliessen",
                 inst=p.get("inst", ""), pos_id=p.get("pos_id", ""),
                 seite=p.get("seite", ""), familie=p.get("familie", ""),
                 preis="%.8g" % preis, kontrakte="%.4f" % menge,
-                nominal_usd="%.2f" % erloes,
+                nominal_usd="%.2f" % nominal,
                 margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
                 grund=grund)
         # Die Position bleibt stehen, wenn an der Boerse noch Rest steht -
