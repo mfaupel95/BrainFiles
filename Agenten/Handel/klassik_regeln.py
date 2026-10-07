@@ -713,8 +713,12 @@ def _kerzen(inst, bar, anzahl):
     return k
 
 
-def bauen(name):
-    """(quelle, signal, ausstieg) fuer die Spur `name` - Naht fuer Tests/Replay."""
+def bauen(name, ordner=None):
+    """(quelle, signal, ausstieg, preis_fuer) fuer die Spur `name`.
+
+    `ordner` ist optional und wird von `preis_fuer` benutzt, um die Wachen-
+    Werte (Zeitrahmen, Kerzenzahl) zu laden - ohne ihn gelten die Vorgaben.
+    """
     ein, aus = REGELN[name]
 
     def quelle(w):
@@ -760,9 +764,35 @@ def bauen(name):
             return None
         return aus(k, seite, w)
 
-    return quelle, signal, ausstieg
+    def preis_fuer(inst):
+        """Kurs EINES Symbols - die T-160-Naht fuer gestrichene Positionen.
 
+        `quelle` holt die Kerzen ueber die PLAN-Liste. Wird ein Instrument aus
+        `w["instrumente"]"` genommen, waehrend eine Position darauf offen ist,
+        bekommt sie ueber `kurse` keinen Kurs mehr und `pruefe_ausstiege`
+        behaelt sie still (Befund 29.09.2026, vier Indikatorspuren). zyklus()
+        ruft `preis_fuer(inst)` genau fuer solche Positionen - DIESELBE
+        Kerzenquelle, nur gezielt. Kein Marktpreis, weil die Spur papierene
+        Buch-Spur ohne Orderweg ist.
+        """
+        bar, anzahl = "4H", 400
+        if ordner:
+            try:
+                import json as _json
+                with open(os.path.join(ordner, "wachen.json"),
+                          encoding="utf-8") as _f:
+                    _w = _json.load(_f)
+                bar = _w.get("kerzen_zeitrahmen", bar)
+                anzahl = int(_w.get("kerzen_anzahl", anzahl))
+            except Exception:                                      # noqa: BLE001
+                pass
+        try:
+            k = _kerzen(inst, bar, anzahl)
+        except Exception:                                      # noqa: BLE001
+            return None
+        return float(k[-1][4]) if k else None
 
+    return quelle, signal, ausstieg, preis_fuer
 def spur_main(name, ordner, bus_name=None):
     """Gemeinsamer Startpunkt: `handeln.py` ruft nur noch dies.
 
@@ -776,7 +806,7 @@ def spur_main(name, ordner, bus_name=None):
     (Ableitung aus `name`), damit ein Aufruf ohne Bus-Namen nicht bricht.
     """
     import argparse
-    quelle, signal, ausstieg = bauen(name)
+    quelle, signal, ausstieg, preis_fuer = bauen(name)
     sp = _lade(HANDEL / "spur_buch.py", "spur_buch_" + name)
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     g = p.add_mutually_exclusive_group()
@@ -794,4 +824,4 @@ def spur_main(name, ordner, bus_name=None):
         return 0
     return sp.zyklus(str(ordner), quelle, signal, modus,
                      ereignis_name=bus_name or ("handel/" + name),
-                     zusatz_ausstieg=ausstieg)
+                     zusatz_ausstieg=ausstieg, preis_fuer=preis_fuer)

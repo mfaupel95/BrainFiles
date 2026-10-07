@@ -593,6 +593,10 @@ def kennzahlen(tage):
         "max": max(zahlen), "max_tag": max(werte, key=lambda z: z[1])[0],
         "n_ueber_90": sum(1 for b in zahlen if b >= 90.0),
         "n_ueber_80": sum(1 for b in zahlen if b >= 80.0),
+        # Hochphasen-Tage (>= 60, die "achtung"-Stufe der Wache): die
+        # Stichprobe fuer die Rueckgang-Schwelle (RUCKGANGS_PP). Entscheidet
+        # wird erst mit 30 solchen Tagen - bis dahin zaehlt die Statistik.
+        "n_ueber_60": sum(1 for b in zahlen if b >= 60.0),
         "n_unter_60": sum(1 for b in zahlen if b < 60.0),
         "n_delta": len(deltas),
         "delta_median_abs": round(_median(betraege), 2) if betraege else None,
@@ -750,8 +754,9 @@ def main(argv):
               "max %.1f %% (%s)"
               % (k["mittel"], k["median"], k["min"], k["min_tag"], k["max"],
                  k["max_tag"]))
-        print("  Tage >= 90 %%: %d    >= 80 %%: %d    < 60 %%: %d"
-              % (k["n_ueber_90"], k["n_ueber_80"], k["n_unter_60"]))
+        print("  Tage >= 90 %%: %d    >= 80 %%: %d    >= 60 %%: %d    < 60 %%: %d"
+              % (k["n_ueber_90"], k["n_ueber_80"], k["n_ueber_60"],
+                 k["n_unter_60"]))
         s = k["laengste_serie_90"]
         print("  laengste Serie >= 90 %%: %d Kerzentag(e) (%s .. %s)"
               % (s["n"], s["von"], s["bis"]))

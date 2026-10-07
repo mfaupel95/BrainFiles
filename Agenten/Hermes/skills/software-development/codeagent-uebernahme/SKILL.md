@@ -70,6 +70,14 @@ abbricht. Erst wenn beide gruen sind, den echten Lauf (Schritt 3) starten.
    `~/.config/opencode/opencode.jsonc` lesen (Hausweg omniroute), dann
    `opencode models`, dann zweistufiger Test (Ping + Mini-Lauf, siehe
    How to Run); im Fehlerfall naechster Kandidat.
+   **Fallback, wenn kein Weg stabil laeuft**: nach 2-3 fehlgeschlagenen
+   Wegen (Combo-Retry-Limit, Abbruch nach dem ersten Satz) NICHT weiter am
+   Modellweg laborieren - die Arbeit ist ausfuehrbar, nur das Uebergabe-
+   Tool ist es gerade nicht. Die Tasks dann selbst abarbeiten (gleiche
+   Regeln: PAPER, kein Commit fremder Pfade, Tests ohne Netz, Beleg) und
+   dem Nutzer sagen, dass die Uebergabe am Modellweg scheiterte und die
+   Arbeit direkt erledigt wurde. Der Skill-Zweck ist die gepruefte
+   Uebernahme, nicht das Tool um jeden Preis.
 3. **Start im Hintergrund** (`terminal` mit background=true + notify),
    Brief-PFAD im Prompt nennen.
 4. **Fortschritt beobachten**: `git status --porcelain <ordner>` und
@@ -91,7 +99,15 @@ abbricht. Erst wenn beide gruen sind, den echten Lauf (Schritt 3) starten.
    mit .bak-JJJJMMTT-Sicherung und Gegenprobe (Zeilenzahl, Spaltenlaengen,
    Stichprobe).
 7. **Selbst fixen**: kleine, gezielte `patch`-Schritte; nach jedem Lauf die
-   Suite; die Agent-Arbeit ist Geruest, nicht Wahrheit.
+   Suite; die Agent-Arbeit ist Geruest, nicht Wahrheit. FALLE (gemessen
+   07.10.2026): das fuzzy patch-Werkzeug kann bei einem Block mit
+   ungleichmaessiger Einrueckung Tippfehler EINFUEGEN ("pre preis_fuer",
+   "aus ausstieg") und die Einrueckung verschieben - nach dem ERSTEN
+   IndentationError nicht weiterpatchen, sondern den Block byte-genau per
+   Python-Skript ersetzen (Zeilen per Index finden, Block-Liste neu
+   schreiben, `py_compile` vor dem Schreiben) oder die Datei komplett neu
+   schreiben. Ein fuzzy patch, das zweimal denselben Fehler erzeugt, ist
+   das Signal fuer den byte-genauen Weg.
 8. **Commit NUR eigene Pfade** (explizites `git add`, nie `-A`), Meldung
    nennt die Fix-Runde; Push erst nach gruenen Suiten.
 
@@ -101,6 +117,13 @@ abbricht. Erst wenn beide gruen sind, den echten Lauf (Schritt 3) starten.
   "10/10 OK" war real FAILED (fehlendes Paket im venv); eine behauptete
   Codeaenderung fehlte ganz; ein gerufenes Symbol (`handeln.groessenfaktor`)
   existierte nicht. Jede Zahl im Bericht nachfahren.
+- **Exit-Code 0 des Hintergrundlaufs ist KEIN Abschluss**: der Prozess
+  kann mit 0 enden, nachdem er nur den ersten Satz des Prompts ausgab und
+  dann still abbrach - kein Tool-Aufruf, keine Dateiaenderung, kein
+  Commit (gemessen 07.10.2026: Ausgabe war nur "Ich lese die Datei...",
+  `git status --porcelain` leer). Abschluss heisst: `git status` zeigt
+  die erwarteten Aenderungen UND das Agent-Log zeigt Tool-Aufrufe nach
+  dem ersten Satz. Erst dann gegenpruefen.
 - **Agent committet trotz Verbot** - und nimmt vorgemerkte fremde Arbeit mit
   (gemessen: der Agent-Commit enthielt die USDC-Arbeit einer Parallelsitzung).
   Nach dem Lauf `git log -1 -- <pfad>` pruefen.
@@ -118,6 +141,16 @@ abbricht. Erst wenn beide gruen sind, den echten Lauf (Schritt 3) starten.
   producing a non-ping SSE event") = Router-Zweig tot - naechster
   Kandidat. 401/403 = Key/Rechte. Reihenfolge: Gratis-Modell vor
   Bezahlmodell, im Fehlerfall naechster Weg (nicht denselben dreimal).
+- **Auch der Mini-Lauf ist kein Beleg fuer den vollen Lauf**: die
+  auto/*-Combo-Aufloesung ist lastabhaengig - ein Weg, der Ping UND
+  Mini-Lauf (liest den Brief, arbeitet) gruen besteht, kann beim vollen
+  Hintergrundlauf mit "Maximum combo retry limit reached" abfallen
+  (gemessen 07.10.2026: auto/coding:fast bestand beide, der echte Lauf
+  starb). Verlaesslich ist ein Weg, der auf ein KONKRETES externes Modell
+  aufloest (z. B. auto/glm -> zai-org/glm-5.2) statt auf eine Combo, die
+  je Last neu waehlt. Vor dem Start den Router direkt fragen, welches
+  Modell der Weg aufloest (`/v1/models` + Chat-Completion-Probe mit einem
+  realistisch langen Prompt inkl. Tool-Aufruf), nicht nur den Ein-Wort-Ping.
 - **PowerShell-Einzeiler aus bash**: `$var`/`$_` werden von bash
   verschluckt oder brechen den Parser - Skript als .ps1-Datei schreiben und
   mit `-File` aufrufen, nie als `-Command` einbetten.

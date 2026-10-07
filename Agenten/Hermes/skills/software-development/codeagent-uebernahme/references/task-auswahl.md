@@ -59,6 +59,13 @@ Mehrere Bloecke haben Voraussetzungen, die erst nachgeprueft werden muessen
   genannten Dateien pruefen.
 - "es fehlt Datei D": `os.path.exists` - fehlt sie, ist der Task NICHT
   abgebbar (er verlangt einen Download/Extern, kein Codeweg).
+- **Task schon erledigt, aber nicht abgehakt**: ein offener Task kann
+  bereits umgesetzt sein, waehrend das `[ ]` in TASKS.md stehen blieb
+  (gemessen 07.10.2026: T-345 war mit Commit cd57661e fertig, der Block
+  war nicht abgehakt). Vor der Beauftragung je Kandidat
+  `git log -1 --format="%h %ci %s" -- <betroffene Datei>` pruefen - ist
+  der naechste Schritt schon im Commit, den Task als erledigt markieren
+  statt ihn in den Brief zu geben.
 
 ## 4. Tranchengrenze ziehen
 

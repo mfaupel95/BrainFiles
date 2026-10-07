@@ -693,6 +693,29 @@ Ein Ledger-Skript kann nach einem Kill keine Schlusszeile mehr schreiben: Eine
 angefangene Meldung ohne Ende ist dann kein Skriptfehler, sondern die Folge des
 Abbruchs. Deshalb vor jedem Befund erst `LastTaskResult` ansehen.
 
+### Eine Aufgabe per XML anlegen (ohne Adminrechte)
+
+Fuer eine Aufgabe mit `LeastPrivilege` + `InteractiveToken` + Logon-Trigger mit
+`Delay` ist eine XML-Datei der verlaessliche Weg:
+`schtasks /create /tn <name> /xml <datei> /f` — das braucht KEINE Elevation.
+
+- **Vom HOST aus anlegen, nicht aus dem Sandkasten.** Der Kasten hat eine eigene
+  Sicht auf `C:\Windows\System32\Tasks`; dort angelegte Aufgaben sind im naechsten
+  Aufruf weg, obwohl `schtasks` Erfolg gemeldet hat.
+- **Die XML-Datei MUSS UTF-16LE MIT BOM am ANFANG sein.** Ein hinten angehaengtes
+  `b"\x00\x00"` ist kein BOM: `schtasks` antwortet `FEHLER: Die Aufgaben-XML ist
+  ungueltig. (1,2)::FEHLER: Ein Stammelement.` — die Meldung zeigt auf den
+  XML-INHALT, gemeint ist die KODIERUNG. Richtig:
+  `f.write(codecs.BOM_UTF16_LE)` dann `f.write(xml.encode("utf-16-le"))`, und
+  vorher `roh[:2] == b"\xff\xfe"` asserten.
+- **Idempotenz zuerst pruefen:** `schtasks /query /tn <name>` liefert Exit 0, wenn
+  die Aufgabe schon existiert — dann nichts tun. `Get-ScheduledTask -TaskName`
+  findet auch VORHANDENE Aufgaben nicht zuverlaessig; die Aufzaehlung und
+  `schtasks /query` sind die belastbaren Wege.
+- **Danach EINEN echten Lauf zeigen:** `schtasks /run /tn <name>`, dann das Log des
+  Wrappers lesen. Die Zeile „Bereit" im Query beweist nur die Registrierung, nicht
+  die Funktion — der Lauf beweist die Aufgabe.
+
 ## Linux-gated Installer/CLI: in WSL2 laufen lassen, nicht in der MSYS-Bash
 
 Manche Fremd-Installer und CLIs sind auf Linux/macOS fest verdrahtet (z.B. ein
