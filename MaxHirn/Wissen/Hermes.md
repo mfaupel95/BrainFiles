@@ -1196,3 +1196,56 @@ wieder eingeschaltet wird.
 (`docker ps` lief 90 s ohne Ausgabe in den Timeout) - deshalb ist der
 Volume-Spec am echten Container NICHT nachgemessen. Nachzuweisen bleibt:
 `docker exec <container> ls /brainfiles` zeigt `MaxHirn` und `Agenten`.
+
+## Schreib-Sandbox um Werkstatt erweitert (07.10.2026)
+
+**Auftrag Max:** `HERMES_WRITE_SAFE_ROOT` auf `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`
+erweitern.
+
+**Die Ursache lag tiefer als erwartet.** `BrainFiles\Werkstatt` ist ein **Symlink auf
+`O:\Werkstatt`** (Laufwerk O:, nicht unterhalb von BrainFiles). Die Sandbox stand nur auf
+`BrainFiles`, der Pruefer loest den Symlink auf und lehnte jeden Schreibzugriff in die
+Repos unter `Werkstatt\Repos` ab (AGENTS.md-Schreiben scheiterte dreimal). Lesen und
+Terminal waren nie betroffen - deshalb lief die Analyse, nur das Schreiben nicht.
+
+**Gesetzt wurde es NICHT in der Registry und nicht in `config.yaml`** (Zeile 630 dort ist
+nur ein Name in `terminal.docker_forward_env`), sondern in der `.env`:
+
+- `Agenten/Hermes/.env` Zeile 507 (Hauptablage)
+- `Agenten/Hermes/profiles/claude-code/.env` Zeile 507 (dieses Bot-Profil)
+
+**Jedes Profil hat eine eigene `.env`.** Ohne die zweite Aenderung haette die Haupt-.env
+fuer dieses Profil nichts bewirkt. Wer den Wert kuenftig aendert, muss beide Stellen
+treffen (bzw. alle `profiles/<name>/.env`, die den Wert fuehren).
+
+Wert jetzt: `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`
+Trennzeichen ist `os.pathsep` (`;` unter Windows), mehrere Wurzeln sind vorgesehen
+(`agent/file_safety.py::get_safe_write_roots`).
+
+**Beleg (echte Laeufe):**
+
+- Frische Instanz aus der Profil-.env: aufgeloeste Wurzeln =
+  `C:\Users\faupe\Documents\BrainFiles` **und** `O:\Werkstatt`.
+- Schreibpruefung: `O:\Werkstatt\Repos\claude-code\AGENTS.md` ERLAUBT,
+  `O:\Werkstatt\Repos\codex\AGENTS.md` ERLAUBT,
+  `C:\Windows\System32\drivers\etc\hosts` GESPERRT,
+  `C:\Users\faupe\.ssh\id_rsa` GESPERRT.
+- Genau eine Zeile je Datei geaendert (`diff` gegen die Sicherung), BOM-Status und
+  Zeilenenden erhalten.
+- `hermes gateway status`: Aufgabe registriert, Prozess laeuft (PID 70456) - **kein
+  Agent neu gestartet.**
+
+**Wichtig - die Grenze bleibt:** Die Erweiterung wirkt in **neuen** Sitzungen. Die
+laufende Sitzung hat die alte Umgebung schon im Prozess (Gegenprobe: Schreibversuch nach
+`O:\Werkstatt` aus dieser Sitzung weiterhin abgelehnt). Sie ist eine
+Verteidigungslinie, keine Sicherheitsgrenze - das Terminal umgeht sie ohnehin (so wurde
+das AGENTS.md auch geschrieben).
+
+**Falle (zweimal gekostet):** Die `.env` nutzt **CRLF**. Ein Suchmuster mit `\n` findet
+dort nichts ("Treffer: 0"), und ein Heredoc durch die Werkzeugschicht verstuemmelt die
+Backslash-Pfade. Deshalb: Zeilenenden vorher byte-genau bestimmen, das Skript als
+**Datei** schreiben und die Laengenaenderung pruefen.
+
+Sicherungen: `Agenten/Hermes/.sicherung/.env.bak-20261007`,
+`Agenten/Hermes/profiles/claude-code/.env.bak-20261007`,
+`Wissen/Hermes.md.bak-20261007-safe-root`.
