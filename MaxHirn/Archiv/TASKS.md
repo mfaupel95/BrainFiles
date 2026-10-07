@@ -1,4 +1,15 @@
 ## Offen
+- [ ] **T-379 - Profil-Skills versionieren: .gitignore-Freigabe fuer Agenten/Hermes/profiles/*/skills/**
+      Kontext: 08.10.2026, vormerken lassen (Max: "ja vormerken"). Die Skills unter
+      Agenten/Hermes/profiles/<bot>/skills/ (z. B. claude-code/productivity/protecting-irreplaceable-data)
+      sind git-ignoriert - nur Agenten/Hermes/skills/ ist versioniert. Eine dort gepflegte
+      Lehre (CR-Byte-Falle im Edit) hatte keine Git-Historie. Aufgabe: Whitelist-
+      Rueckausnahmen in .gitignore ergaenzen (!Agenten/Hermes/profiles/*/skills/**/*.md
+      plus Traverse-Regeln wie bei anderen Freigaben), git check-ignore -v gegenprobe,
+      status sauber, commit. Vorher pruefen, ob keine Secrets/Cache-Dateien in den
+      Skill-Ordnern liegen (find ... -name '*.json' -o -name '*.env').
+      Angelegt: 2026-10-08
+      Betrifft: .gitignore, Agenten/Hermes/profiles/*/skills/
 - [ ] **T-378 — BtcRegimeKurz abgelegt: Kante 1,2:1, nicht lebensfaehig**
       Kontext: Auftrag Max 05.10.2026 (BTC-Strategie fuer Seitwaerts-/Aufwaerts-Phasen,
       Haltung max 48 h, moeglichst kurz, hohe Fluktuation). Gebaut und gemessen:
