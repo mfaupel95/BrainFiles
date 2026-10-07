@@ -3,7 +3,7 @@ id: 20260830-hermes
 title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
-updated: 2026-09-13
+updated: 2026-10-08
 related: [20260830-verbindungen, 20260831-python-versionen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
@@ -92,10 +92,37 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
-- **24 eigene** unter `Hermes/skills/claude-code-imports/` — Abgleich mit dem Vault
-  vom 07.10.2026. Dazu `data-guard-audit` under `skills/productivity/`.
-  Gegengeprüft mit `hermes skills list` (HERMES_HOME gesetzt): 162 Skills geladen,
-  alle neuen `local` und `enabled`.
+**24 eigene** unter `Hermes/skills/claude-code-imports/` — jeder Vault-Skill hat
+dort eine Kopie, keine Luecke. Dazu `data-guard-audit` unter `skills/productivity/`.
+`hermes skills list` (HERMES_HOME gesetzt): **161 Skills geladen** (145 local,
+15 builtin, 1 hub), alle vier neuen `local`/`enabled`.
+
+**Der Abgleich vom 07.10.2026 hat sich selbst ins Knie geschossen — und ist
+repariert.** Der Import-Commit `0b7b5158` (07.10., 20:54) setzte drei Hermes-Kopien
+auf den alten Vault-Stand zurueck und loeschte dabei die Weiterarbeit in den Kopien:
+
+| Kopie | vorher | nach dem Import | verloren |
+|---|---|---|---|
+| `rueckschau/sitzungen_auswerten.py` | 23.949 B | 8.271 B | `--umwege`, zweite Quelle `state.db` |
+| `rueckschau/SKILL.md` | 4.719 B | 2.904 B | Umweg-Methodik, Zahlen vom 30.09. |
+| `skill/SKILL.md` | 5.803 B | 5.269 B | Regel „Referenzdatei muss in SKILL.md stehen" |
+
+`state.db` und `--umwege` sind genau der Inhalt, der am 05./06.10. als **T-229
+erledigt** belegt worden war (383 Sitzungen aus `state.db`, read-only) — der Skill
+beschrieb danach Optionen, die sein eigenes Skript nicht mehr hatte. Kein Fehler,
+keine Meldung, die Hashes waren vorher wie nachher sauber.
+
+Wiederhergestellt **byte-genau** aus `0b7b5158^` (sha `9cbcdf36c9` / `b15da2160b` /
+`1b85c2248e`), Commit `d4b03015`. Gegenprobe: Datei == Blob, `--help` zeigt wieder
+`--umwege` und `--hermes-db`, `hermes skills list` fuehrt alle vier als
+`local`/`enabled`. Der zerstoerte Stand liegt unter
+`Hermes/.sicherung/skills-import-20261007/`.
+
+**Damit sind drei der Kopien bewusst nicht mehr zeichengleich mit dem Vault** — sie
+sind die neuere Fassung. `sichern` und `scanner-papier` sind es weiter. Wer kuenftig
+abgleicht: **erst die Richtung und die Git-Historie lesen, dann kopieren** (der Skill
+`skill-library-sync` hat dafuer jetzt den Abschnitt „Vor dem Ersetzen").
+
 - **Der erste Import** lief am 23.08.2026 mit
   `hermes import-agent claude-code --source "…\MaxHirn\.claude"` und holte 11 Skills.
   Am 10.09.2026 fehlten 11 weitere, die inzwischen im Vault entstanden waren
