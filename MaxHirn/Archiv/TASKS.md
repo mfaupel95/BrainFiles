@@ -11,21 +11,6 @@
       Naechster Schritt: beobachten; soll die Regel wieder greifen, braucht es einen Schalter
       in wachen.json (offene Entscheidung Max).
       Angelegt: 06.10.2026 - Zuletzt: 06.10.2026 - Betrifft: Agenten/Handel/xperp
-- [ ] **T-371 — OmniRoute-Log fehlt: Gegenprobe-Test bleibt rot bis zum naechsten Zentrale-Lauf**
-      Kontext: T-234 (05.10.2026) hat OmniRoute einmal ueber die Zentrale gestartet und
-      das Log erzeugt. Das Log ist seitdem verschwunden (wahrscheinlich beim Junction-
-      Verlust oder einer nicht versionierten Bereinigung). Jetzt zeigt
-      `test_manifest_gegenprobe.test_jeder_startbefehl_hat_einen_beleg_im_log` einen
-      Fehler: OmniRoute traegt `start`, hat aber kein `OmniRoute-*.log` in
-      `repos-zentrale/logs/`.
-      NICHT behebbar ohne OmniRoute zu starten - das Skript selbst sagt
-      'Nur auf ausdrueckliche Anweisung'. 
-      Naechster Schritt: OmniRoute einmal ueber die Zentrale starten (Skript
-      `Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1`, Port 20128,
-      bestehende Instanz vorher stoppen), danach entsteht ein Log und der Test
-      wird gruen.
-      Angelegt: 06-10-2026 · Betrifft: Agenten/Werkzeuge/repos-zentrale/logs/,
-      Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1
 
 - [ ] **T-369 — Junction-Verlust der Wurzel: Ursache unbewiesen, Wache gebaut**
       Kontext: Am 05.10.2026 um 22:12:52 war `BrainFiles/Werkstatt` kein Verweis mehr
@@ -3181,6 +3166,22 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-371 — OmniRoute-Log fehlt: Gegenprobe-Test bleibt rot bis zum naechsten Zentrale-Lauf**
+      Kontext: T-234 (05.10.2026) hat OmniRoute einmal ueber die Zentrale gestartet und
+      das Log erzeugt. Das Log ist seitdem verschwunden (wahrscheinlich beim Junction-
+      Verlust oder einer nicht versionierten Bereinigung). Jetzt zeigt
+      `test_manifest_gegenprobe.test_jeder_startbefehl_hat_einen_beleg_im_log` einen
+      Fehler: OmniRoute traegt `start`, hat aber kein `OmniRoute-*.log` in
+      `repos-zentrale/logs/`.
+      NICHT behebbar ohne OmniRoute zu starten - das Skript selbst sagt
+      'Nur auf ausdrueckliche Anweisung'. 
+      Naechster Schritt: OmniRoute einmal ueber die Zentrale starten (Skript
+      `Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1`, Port 20128,
+      bestehende Instanz vorher stoppen), danach entsteht ein Log und der Test
+      wird gruen.
+      Angelegt: 06-10-2026 · Betrifft: Agenten/Werkzeuge/repos-zentrale/logs/,
+      Werkstatt/Projekte/OmniRoute/omniroute-quell-produktion.ps1
+      **Erledigt 07.10.2026.** Zwei Befunde: (1) Der Manifest-Startbefehl war relativ zur WURZEL (Werkstatt/Projekte/...), die Zentrale startet aber mit cwd=O:\Werkstatt\OmniRoute -> Powershell fand das Skript nicht, der erste Beleg war ein unehrlicher Fehlschlag. Korrigiert auf ../Projekte/OmniRoute/omniroute-quell-produktion.ps1 (relativ zum Klon-cwd). (2) OmniRoute laeuft bereits (Port 20128 belegt): Skript bricht korrekt mit 'Port belegt' + Exit 1 ab - das ist der ehrliche Beleg (Log OmniRoute-20261007-1733.log). test_manifest_gegenprobe 2/2 gruen. Neustart des Routers bewusst NICHT erzwungen (laufender Dienst).
 - [x] **T-370 — Docker-Terminal: Fix auf der Platte, Gateway hat ihn noch nicht gelesen**
       Kontext: Am 05.10.2026 fielen waehrend einer Sitzung ALLE Docker-gestuetzten
       Werkzeuge aus (`terminal`, `write_file`, `read_file`, `patch`, `execute_code`)
