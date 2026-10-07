@@ -92,9 +92,9 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
-- **23 eigene** unter `Hermes/skills/claude-code-imports/` — Abgleich mit dem Vault
-  vom 10.09.2026. Dazu `data-guard-audit` unter `skills/productivity/`.
-  Gegengeprüft mit `hermes skills list` (HERMES_HOME gesetzt): 113 Skills geladen,
+- **24 eigene** unter `Hermes/skills/claude-code-imports/` — Abgleich mit dem Vault
+  vom 07.10.2026. Dazu `data-guard-audit` under `skills/productivity/`.
+  Gegengeprüft mit `hermes skills list` (HERMES_HOME gesetzt): 162 Skills geladen,
   alle neuen `local` und `enabled`.
 - **Der erste Import** lief am 23.08.2026 mit
   `hermes import-agent claude-code --source "…\MaxHirn\.claude"` und holte 11 Skills.
