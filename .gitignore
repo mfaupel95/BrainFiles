@@ -344,6 +344,9 @@ Agenten/Handel/kraken/berichte/**
 # Hand und oben freigegeben, diese drei schreibt jeder Lauf.
 Agenten/Handel/xperp/zustand.json
 Agenten/Handel/xperp/handelsjournal.csv
+# carry.py: kein Orderweg, aber Zustand + Ergebnis je Lauf
+Agenten/Handel/carry/zustand.json
+Agenten/Handel/carry/handelsjournal.csv
 Agenten/Handel/xperp/berichte/**
 
 # SWAP-Spur: dieselbe Aufteilung wie bei den Spuren 1-3. wachen.json ist

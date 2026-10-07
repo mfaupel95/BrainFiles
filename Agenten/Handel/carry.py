@@ -35,6 +35,7 @@ import os
 import sys
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
 
 HANDEL = os.path.dirname(os.path.abspath(__file__))
 if HANDEL not in sys.path:
@@ -79,6 +80,12 @@ KRAKEN_FUTURES = "https://futures.kraken.com"
 KRAKEN_SPOT = "https://api.kraken.com"
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
+
+# --- Journal-Konfiguration ---
+JOURNAL_DIR = Path(__file__).resolve().parent / "carry"
+JOURNAL_DIR.mkdir(parents=True, exist_ok=True)
+ZUSTAND_DATEI = JOURNAL_DIR / "zustand.json"
+JOURNAL_DATEI = JOURNAL_DIR / "handelsjournal.csv"
 
 
 def _get_json(url, get_json=None):
@@ -339,6 +346,30 @@ def zeilen_text(zeilen, fehler):
     return "\n".join(linien)
 
 
+def _schreibe_journal(zeilen, fehler):
+    """Zustand + Journal schreiben. Kein Orderweg - nur Aufzeichnung."""
+    erstellt = datetime.now(timezone.utc).isoformat()
+    zustand = {"erstellt": erstellt, "zeilen": zeilen, "fehler": fehler}
+    tmp = ZUSTAND_DATEI.with_suffix(".tmp")
+    tmp.write_text(json.dumps(zustand, ensure_ascii=False, indent=1,
+                                  default=str), encoding="utf-8")
+    os.replace(str(tmp), ZUSTAND_DATEI)
+    with open(JOURNAL_DATEI, "a", encoding="utf-8", newline="") as f:
+        if f.tell() == 0:
+            f.write("zeitstempel,basis,okx_spot,okx_perp,"
+                    "kraken_spot,kraken_futures,okx_basis_bp,"
+                    "boerse,netto_bp,urteil\n")
+        for z in zeilen:
+            ts = datetime.now(timezone.utc).isoformat()
+            f.write("%s,%s,%.4f,%.4f,%.4f,%.4f,%.4f,%s,%.1f,%s\n" % (
+                ts, z["basis"],
+                z.get("okx_spot") or 0, z.get("okx_perp") or 0,
+                z.get("kraken_spot") or 0, z.get("kraken_futures") or 0,
+                z.get("okx_basis_bp") or 0, z.get("boerse") or "-",
+                z.get("netto_bp") if z.get("netto_bp") is not None else 0,
+                z.get("urteil", "-").replace(",", ";")))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", action="store_true",
@@ -349,6 +380,12 @@ def main():
 
     daten = sammeln(breit=args.breit)
     zeilen, fehler = auswerten(daten)
+
+    try:
+        _schreibe_journal(zeilen, fehler)
+    except Exception as e:
+        fehler.append("journal: %s" % str(e)[:100])
+
     if args.json:
         print(json.dumps({"erstellt": datetime.now(timezone.utc).isoformat(),
                           "fehler": fehler, "zeilen": zeilen},
