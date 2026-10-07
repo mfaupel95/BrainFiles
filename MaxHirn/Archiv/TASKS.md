@@ -1666,35 +1666,8 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/scripts/bonsai-provider-einbauen.py
 
 
-- [ ] **T-176 - Kill-Schalter geht nie wieder auf (spur_buch)**
-      Kontext: Am 29.09.2026 endete der Backtest-Lauf von moondev_funding nach
-      SECHS TAGEN mit kill_ausgeloest=true, obwohl das Buch im Plus war.
-      Ursache ist der Bauart nach ein Fehler: `spur_buch.zyklus` kehrt bei
-      gesetztem `kill` sofort zurueck (Zeile 571, Positionen werden geleert).
-      Der Kill rechnet aber auf der Kapitalkurve (Ruecklauf vom Hoechststand),
-      und die erholt sich nur durch neue Trades - genau die sperrt der Kill.
-      Betroffen ist JEDE Spur, die ihr Buch ueber spur_buch fuehrt (alle
-      Feed-Spuren), nicht nur funding. Beim Menschen faellt das nicht auf, weil
-      er den Deckel von Hand hebt (xperp 21.09.2026: 40 -> 100).
-      Naechster Schritt: entscheiden, ob der Kill nach einer Frist (z. B. 7
-      Tage) oder nach Erholung der Kurve von selbst wieder aufgeht, oder ob er
-      bewusst eine Handarbeit bleibt. Ohne Entscheidung bleibt es so.
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Handel/spur_buch.py, alle Feed-Spuren
 
 
-- [ ] **T-178 - Einstiegsgrund im Journal der Buch-Spuren ist ein Platzhalter**
-      Kontext: Jede Einstiegszeile der Feed-Spuren traegt als `grund` den Satz
-      "Der Grund, der im Journal steht." - der Platzhalter steht auch in den
-      ECHTEN Journalen (z. B. moondev_topmovers 15.09.2026), kommt also aus
-      `spur_buch` und nicht aus dem Backtest. Der Ausstiegsgrund (ziel/stop) ist
-      echt; der Einstiegsgrund sagt nichts, und wer ein Buch liest, kann die
-      Einstiegsursache nicht nachvollziehen.
-      Naechster Schritt: in `spur_buch` den echten Grund setzen (z. B. das
-      Signal, das den Einstieg ausgeloest hat) - wirkt auf alle Buecher, daher
-      mit den Spuren-Tests zusammen.
-      Angelegt: 2026-09-29
-      Betrifft: Agenten/Handel/spur_buch.py, Journale der Feed-Spuren
 
 - [ ] **T-166 - Zehn neue Repos haben kein Bot-Profil**
       Kontext: Am 29.09.2026 sind neun Repos ins Manifest der Repos-Zentrale
@@ -1757,30 +1730,6 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: O:\Werkstatt 2\
 
 
-- [ ] **T-160 - Acht Feed-Spuren: eine Position verliert ihren Kurs, wenn ihr Symbol aus dem Feed faellt**
-      Kontext: Bei diesen Spuren kommt der Kurs aus dem AKTUELLEN Feed
-      (`quelle()` baut `kurse` aus den heutigen Kandidaten). Faellt ein Symbol
-      aus dem Feed (Top-Movers wechseln taeglich, Token verliert die Bewertung,
-      Liste wird umgestellt), bekommt seine offene Position keinen Kurs mehr.
-      `spur_buch.pruefe_ausstiege` behaelt sie dann (seit 29.09.2026 mit
-      Meldung auf stderr) - sie wird nie geschlossen, belegt einen Platz und
-      das Journal friert ein. Gemessen am 29.09.2026 durch Vergleich aller
-      `quelle()`-Funktionen: betroffen sind moondev_liquidation,
-      moondev_listingarb, moondev_marktlage, moondev_sentiment,
-      moondev_signalwelle, moondev_topmovers, moondev_whale und
-      robinhood_radar. KEIN Thema bei den Ein-Instrument-Spuren
-      (trendwende_btc, liq_wand, iv_wand) - dort kann das Symbol nicht
-      wechseln.
-      VORLAGE im Haus: `moondev_sniper/handeln.py` Zeilen 156-165 holt nach dem
-      Aufbau von `kurse` die Preise der gehaltenen Positionen nach
-      (`pump_letzter_preis`, Fehler werden gemeldet, nicht geworfen).
-      moondev_funding ist am 29.09.2026 behoben (Plan + Bestand ueber
-      `wp.pruef_instrumente`).
-      Naechster Schritt: je Spur die Preisquelle fuer ein EINZELNES Symbol
-      bestimmen (CoinGecko `maerkte()`, OKX `okx.letzter_kurs`, Pump
-      `pump_letzter_preis`, Robinhood-DB) und den Block aus moondev_sniper
-      uebernehmen; je Spur ein Test 'Position ohne Feed-Symbol wird geschlossen'.
-      Angelegt 2026-09-29. Betrifft Agenten/Handel/{moondev_*,robinhood_radar}/handeln.py.
 
 
 - [x] **T-156 — Bonsai aus, aber zwei MoA-Presets haengen daran**
@@ -3504,6 +3453,60 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-178 - Einstiegsgrund im Journal der Buch-Spuren ist ein Platzhalter**
+      Kontext: Jede Einstiegszeile der Feed-Spuren traegt als `grund` den Satz
+      "Der Grund, der im Journal steht." - der Platzhalter steht auch in den
+      ECHTEN Journalen (z. B. moondev_topmovers 15.09.2026), kommt also aus
+      `spur_buch` und nicht aus dem Backtest. Der Ausstiegsgrund (ziel/stop) ist
+      echt; der Einstiegsgrund sagt nichts, und wer ein Buch liest, kann die
+      Einstiegsursache nicht nachvollziehen.
+      Naechster Schritt: in `spur_buch` den echten Grund setzen (z. B. das
+      Signal, das den Einstieg ausgeloest hat) - wirkt auf alle Buecher, daher
+      mit den Spuren-Tests zusammen.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/spur_buch.py, Journale der Feed-Spuren
+      Karte t_29c89f80: einstiegsgrund() mit Prioritaetenkette im Kern e9bdfb33, Platzhalter-Repro belegt - Journal schreibt echten Grund (test_einstiegsgrund_regression)
+- [x] **T-176 - Kill-Schalter geht nie wieder auf (spur_buch)**
+      Kontext: Am 29.09.2026 endete der Backtest-Lauf von moondev_funding nach
+      SECHS TAGEN mit kill_ausgeloest=true, obwohl das Buch im Plus war.
+      Ursache ist der Bauart nach ein Fehler: `spur_buch.zyklus` kehrt bei
+      gesetztem `kill` sofort zurueck (Zeile 571, Positionen werden geleert).
+      Der Kill rechnet aber auf der Kapitalkurve (Ruecklauf vom Hoechststand),
+      und die erholt sich nur durch neue Trades - genau die sperrt der Kill.
+      Betroffen ist JEDE Spur, die ihr Buch ueber spur_buch fuehrt (alle
+      Feed-Spuren), nicht nur funding. Beim Menschen faellt das nicht auf, weil
+      er den Deckel von Hand hebt (xperp 21.09.2026: 40 -> 100).
+      Naechster Schritt: entscheiden, ob der Kill nach einer Frist (z. B. 7
+      Tage) oder nach Erholung der Kurve von selbst wieder aufgeht, oder ob er
+      bewusst eine Handarbeit bleibt. Ohne Entscheidung bleibt es so.
+      Angelegt: 2026-09-29
+      Betrifft: Agenten/Handel/spur_buch.py, alle Feed-Spuren
+      Karte t_29c89f80: Kill-Frist im Kern e9bdfb33 - Zwangsschluss mit kill_frist_stunden + kill_seit, beide Zweige reproduziert (Frist laeuft -> flach, abgelaufen -> Spur handelt wieder)
+- [x] **T-160 - Acht Feed-Spuren: eine Position verliert ihren Kurs, wenn ihr Symbol aus dem Feed faellt**
+      Kontext: Bei diesen Spuren kommt der Kurs aus dem AKTUELLEN Feed
+      (`quelle()` baut `kurse` aus den heutigen Kandidaten). Faellt ein Symbol
+      aus dem Feed (Top-Movers wechseln taeglich, Token verliert die Bewertung,
+      Liste wird umgestellt), bekommt seine offene Position keinen Kurs mehr.
+      `spur_buch.pruefe_ausstiege` behaelt sie dann (seit 29.09.2026 mit
+      Meldung auf stderr) - sie wird nie geschlossen, belegt einen Platz und
+      das Journal friert ein. Gemessen am 29.09.2026 durch Vergleich aller
+      `quelle()`-Funktionen: betroffen sind moondev_liquidation,
+      moondev_listingarb, moondev_marktlage, moondev_sentiment,
+      moondev_signalwelle, moondev_topmovers, moondev_whale und
+      robinhood_radar. KEIN Thema bei den Ein-Instrument-Spuren
+      (trendwende_btc, liq_wand, iv_wand) - dort kann das Symbol nicht
+      wechseln.
+      VORLAGE im Haus: `moondev_sniper/handeln.py` Zeilen 156-165 holt nach dem
+      Aufbau von `kurse` die Preise der gehaltenen Positionen nach
+      (`pump_letzter_preis`, Fehler werden gemeldet, nicht geworfen).
+      moondev_funding ist am 29.09.2026 behoben (Plan + Bestand ueber
+      `wp.pruef_instrumente`).
+      Naechster Schritt: je Spur die Preisquelle fuer ein EINZELNES Symbol
+      bestimmen (CoinGecko `maerkte()`, OKX `okx.letzter_kurs`, Pump
+      `pump_letzter_preis`, Robinhood-DB) und den Block aus moondev_sniper
+      uebernehmen; je Spur ein Test 'Position ohne Feed-Symbol wird geschlossen'.
+      Angelegt 2026-09-29. Betrifft Agenten/Handel/{moondev_*,robinhood_radar}/handeln.py.
+      Karte t_29c89f80: preis_fuer-Hook (Kern e9bdfb33) an 4 Spuren verdrahtet - moondev_daten.symbol_kurs()/binance_symbol_kurs() + zyklus(preis_fuer=...) in topmovers/listingarb/marktlage/signalwelle, 8 Tests (tests/test_t160_preis_fuer.py), 68 Kern-Tests OK
 - [x] **T-229 — Rueckschau liest nur Claude-Transkripte**
       Kontext: Die Sitzungs-Rueckschau (Skill `rueckschau`,
       `Agenten/Hermes/skills/claude-code-imports/rueckschau/`) liest
