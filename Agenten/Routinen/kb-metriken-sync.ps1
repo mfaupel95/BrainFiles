@@ -16,8 +16,15 @@ $ZIEL_JSON   = Join-Path $REPO_ROOT "MaxHirn\Wissen\KB\data\spur-metriken.json"
 Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
 Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
 
+# Bus-Anbindung (Hausmuster): jede geplante Routine meldet Start und Ende.
+$agenten = Join-Path $REPO_ROOT 'Agenten'
+. (Join-Path $agenten 'Bus\Ereignis.ps1')
+$marke = Melde-Start -Wer 'routine/kb-metriken-sync' `
+           -Log 'Agenten/Routinen/logs/kb-metriken-sync-letzter-lauf.md'
+
 if (-not (Test-Path $VENV)) {
     Write-Warning "kb-metriken-sync: venv nicht gefunden ($VENV), abgebrochen."
+    Melde-Ende -Marke $marke -Code 1 -Text 'venv nicht gefunden'
     exit 1
 }
 
@@ -39,6 +46,7 @@ print('ok')
 $result = & $VENV -c $py_code 2>&1
 if ($LASTEXITCODE -ne 0 -or $result -notmatch "ok") {
     Write-Warning "kb-metriken-sync: Python-Fehler: $result"
+    Melde-Ende -Marke $marke -Code 1 -Text "Python-Fehler: $result"
     exit 1
 }
 
@@ -56,3 +64,5 @@ try {
 } finally {
     Pop-Location
 }
+
+Melde-Ende -Marke $marke -Code 0 -Text 'ok' 

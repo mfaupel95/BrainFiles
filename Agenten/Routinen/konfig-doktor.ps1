@@ -20,6 +20,12 @@ if (-not $Wurzel) { $Wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Par
 $Wurzel = [System.IO.Path]::GetFullPath($Wurzel).TrimEnd('\', '/')
 $script:Befunde = New-Object System.Collections.ArrayList
 
+# Bus-Anbindung (Hausmuster): jede geplante Routine meldet Start und Ende.
+$agenten = Join-Path $Wurzel 'Agenten'
+. (Join-Path $agenten 'Bus\Ereignis.ps1')
+$marke = Melde-Start -Wer 'routine/konfig-doktor' `
+           -Log 'Agenten/Routinen/logs/konfig-doktor-letzter-lauf.md'
+
 # ---------- Hilfen ----------
 function Maske([string]$t) {
     if ($null -eq $t) { return '' }
@@ -924,9 +930,16 @@ try {
         }
     }
     if ($PassThru) { $sortiert }
-    if ($zaehler['KRITISCH'] -gt 0) { exit 1 } else { exit 0 }
+    if ($zaehler['KRITISCH'] -gt 0) {
+        Melde-Ende -Marke $marke -Code 1 -Text "KRITISCH $($zaehler['KRITISCH'])"
+        exit 1
+    } else {
+        Melde-Ende -Marke $marke -Code 0 -Text "ok (KRITISCH 0)"
+        exit 0
+    }
 }
 catch {
     Write-Host "konfig-doktor: Doktor selbst defekt - $($_.Exception.Message)"
+    Melde-Ende -Marke $marke -Code 2 -Text "Doktor selbst defekt: $($_.Exception.Message)"
     exit 2
 }
