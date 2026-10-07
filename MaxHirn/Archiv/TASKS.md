@@ -1254,28 +1254,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       moondev_marktlage, kraken, nautilus_kraken.
 
 
-- [ ] **T-102 — Kraken kauft denselben Wert mehrfach: "Kauf ohne Fuellung" ist eine Fehlmeldung**
-      Kontext: Der Tagesbericht 28.09.2026 22:05 fuehrte fuer Kraken vier Positionen,
-      davon DOTEUR/ATOMEUR/FILEUR mit "1 EUR"/"2 EUR" statt ~50 EUR. An der Boerse
-      nachgemessen: **FILEUR wurde am 28.09. VIER mal gekauft** (15:33 53,48 @0,935 ·
-      15:44 53,42 @0,936 · 16:32 55,13 @0,911 · 16:44 55,43 @0,906) = rund 200 EUR
-      fuer EIN Signal; das Buch fuehrt 55,43 Einheiten, also einen Kauf.
-      Ursache: `Agenten/Handel/beleg_hand.py:99-100` fragt `kraken.gefuellte_menge(txid)`
-      SOFORT nach dem Marktkauf ab. Die Boerse fuelte um 16:32 (53,42 Einheiten,
-      50,00 EUR), das Journal schrieb 53 s spaeter "beleg_hand: Kauf ohne Fuellung"
-      (14:32:53 UTC). Ohne erkannten Fill bucht die Spur keine Position und stellt im
-      naechsten Zyklus (alle 15 min) einen neuen Beleg - der naechste Kauf folgt.
-      Zweiter Befund: XLMEUR wurde am 28.09. 17:02 fuer 50,02 EUR gekauft und steht
-      NICHT im Buch; die Buchpositionen tragen nur `paar`+`menge`, keinen Einstiegspreis,
-      Einsatz oder Stop (daher die 1-2-EUR-Anzeige im Bericht).
-      Naechster Schritt: (1) nach AddOrder die Fuellung abwarten (Poll auf gefuellte
-      Menge/Orderstatus, ~10 s, wie die wartende-Auftraege-Logik in xperp) und erst
-      danach "ohne Fuellung" melden; (2) vor dem Stellen eines Belegs pruefen, ob fuer
-      dasselbe Instrument schon Beleg, offene Order oder Bestand existiert; (3) die
-      Buchpositionen der Kraken-Spur mit preis/einsatz/stop fuellen.
-      Nicht dringend: 45,90 EUR frei < 50 EUR Beleg, derzeit ist kein weiterer Kauf moeglich.
-      Angelegt: 2026-09-28
-      Betrifft: Agenten/Handel/beleg_hand.py, Agenten/Handel/kraken/handeln.py
 
 
 - [ ] **T-132 — Nautilus-Arme erst nach belastbarer Statistik live**
@@ -2228,6 +2206,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-102 — Kraken kauft denselben Wert mehrfach: "Kauf ohne Fuellung" ist eine Fehlmeldung**
+      Kontext: Der Tagesbericht 28.09.2026 22:05 fuehrte fuer Kraken vier Positionen,
+      davon DOTEUR/ATOMEUR/FILEUR mit "1 EUR"/"2 EUR" statt ~50 EUR. An der Boerse
+      nachgemessen: **FILEUR wurde am 28.09. VIER mal gekauft** (15:33 53,48 @0,935 ·
+      15:44 53,42 @0,936 · 16:32 55,13 @0,911 · 16:44 55,43 @0,906) = rund 200 EUR
+      fuer EIN Signal; das Buch fuehrt 55,43 Einheiten, also einen Kauf.
+      Ursache: `Agenten/Handel/beleg_hand.py:99-100` fragt `kraken.gefuellte_menge(txid)`
+      SOFORT nach dem Marktkauf ab. Die Boerse fuelte um 16:32 (53,42 Einheiten,
+      50,00 EUR), das Journal schrieb 53 s spaeter "beleg_hand: Kauf ohne Fuellung"
+      (14:32:53 UTC). Ohne erkannten Fill bucht die Spur keine Position und stellt im
+      naechsten Zyklus (alle 15 min) einen neuen Beleg - der naechste Kauf folgt.
+      Zweiter Befund: XLMEUR wurde am 28.09. 17:02 fuer 50,02 EUR gekauft und steht
+      NICHT im Buch; die Buchpositionen tragen nur `paar`+`menge`, keinen Einstiegspreis,
+      Einsatz oder Stop (daher die 1-2-EUR-Anzeige im Bericht).
+      Naechster Schritt: (1) nach AddOrder die Fuellung abwarten (Poll auf gefuellte
+      Menge/Orderstatus, ~10 s, wie die wartende-Auftraege-Logik in xperp) und erst
+      danach "ohne Fuellung" melden; (2) vor dem Stellen eines Belegs pruefen, ob fuer
+      dasselbe Instrument schon Beleg, offene Order oder Bestand existiert; (3) die
+      Buchpositionen der Kraken-Spur mit preis/einsatz/stop fuellen.
+      Nicht dringend: 45,90 EUR frei < 50 EUR Beleg, derzeit ist kein weiterer Kauf moeglich.
+      Angelegt: 2026-09-28
+      Betrifft: Agenten/Handel/beleg_hand.py, Agenten/Handel/kraken/handeln.py
+      
 - [x] **T-365 — `trailing.py` verdrahtet den Stop, ohne vorher die Mengen-Deckung zu pruefen**
       Kontext: Die Referenz `handel-spur-optimization/references/
       trailing-stop-gehebelt.md` fordert in Abschnitt 5.1 als ERSTE
