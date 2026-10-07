@@ -126,24 +126,6 @@
       eng) ist eine eigene Messung und gehoert nicht in diese Zelle.
       Angelegt 04.10.2026 · Betrifft Agenten/Handel/omnitrade/intervalle_messen.py
 
-- [ ] **T-350 — fuenf moondev-Spuren tragen den Perp-Satz ohne Perp-Nachweis**
-      Kontext: `gebuehr_boerse_abgleich.py` (neu, T-330) meldet 5 Abweichungen
-      ueber die Wachen: moondev_funding, moondev_liquidation,
-      moondev_marktlage, moondev_sentiment und moondev_whale tragen
-      `gebuehr_taker 0.0005` (0,05 % = OKX PERP), tragen aber weder
-      `boerse`, noch `moeglich: perp`, noch ein Perp-Instrument. Die Wachen
-      nennen nur Kurzzeichen (['BTC','ETH','SOL','HYPE','FIL','ZEC']) oder
-      gar keine Instrumente (marktlage, whale). Ihre `_gebuehr_quelle` belegt
-      den Satz mit echten Fuellungen: "ZEC-USD_UM_XPERP, ADA-USD_UM_XPERP je
-      0,0500 %" - der Satz ist also RICHTIG.
-      Das Problem ist die Nachweisfuehrung, nicht der Satz: `spur_buch.
-      orderweg` liest `str(w.get("boerse") or "okx")` und liefert damit
-      `mosaic/okx_spot` - einen SPOT-Weg fuer eine Perp-Spur. Wer die Spur
-      je scharf schaltet, wuerde auf Spot handeln und den Perp-Satz rechnen.
-      Naechster Schritt: `moeglich: perp` (oder `instrument: BTC-USD_UM_XPERP`)
-      in den fuenf Wachen ergaenzen, damit die Rechnung den Perp-Satz sieht
-      UND `orderweg` den Perp-Weg. Kein Gebuehrenwert wird hier geaendert.
-      Angelegt 04.10.2026 · Betrifft Agenten/Handel/moondev_*/wachen.json
 
 
 ## Regeln
@@ -3220,6 +3202,25 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-350 — fuenf moondev-Spuren tragen den Perp-Satz ohne Perp-Nachweis**
+      Kontext: `gebuehr_boerse_abgleich.py` (neu, T-330) meldet 5 Abweichungen
+      ueber die Wachen: moondev_funding, moondev_liquidation,
+      moondev_marktlage, moondev_sentiment und moondev_whale tragen
+      `gebuehr_taker 0.0005` (0,05 % = OKX PERP), tragen aber weder
+      `boerse`, noch `moeglich: perp`, noch ein Perp-Instrument. Die Wachen
+      nennen nur Kurzzeichen (['BTC','ETH','SOL','HYPE','FIL','ZEC']) oder
+      gar keine Instrumente (marktlage, whale). Ihre `_gebuehr_quelle` belegt
+      den Satz mit echten Fuellungen: "ZEC-USD_UM_XPERP, ADA-USD_UM_XPERP je
+      0,0500 %" - der Satz ist also RICHTIG.
+      Das Problem ist die Nachweisfuehrung, nicht der Satz: `spur_buch.
+      orderweg` liest `str(w.get("boerse") or "okx")` und liefert damit
+      `mosaic/okx_spot` - einen SPOT-Weg fuer eine Perp-Spur. Wer die Spur
+      je scharf schaltet, wuerde auf Spot handeln und den Perp-Satz rechnen.
+      Naechster Schritt: `moeglich: perp` (oder `instrument: BTC-USD_UM_XPERP`)
+      in den fuenf Wachen ergaenzen, damit die Rechnung den Perp-Satz sieht
+      UND `orderweg` den Perp-Weg. Kein Gebuehrenwert wird hier geaendert.
+      Angelegt 04.10.2026 · Betrifft Agenten/Handel/moondev_*/wachen.json
+      **Erledigt 07.10.2026.** Alle fuenf Wachen tragen moeglich=['perp'] (moondev_funding/-liquidation/-marktlage/-sentiment/-whale), gesetzt per Skript; Committed von der Fremdarbeit-Routine (3d63fb30). orderweg() liest jetzt den Perp-Weg statt mosaic/okx_spot. Kein Gebuehrenwert geaendert.
 - [x] **T-351 — signal-executor und die Queue: die Trennung ist an einer Stelle tot**
       Kontext: T-347 hat gezeigt, dass `trigger_modus: signal` im Papier
       strukturell nicht buchen kann (Gatter legt in die Queue, der
