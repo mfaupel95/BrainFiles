@@ -1864,8 +1864,10 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
 
 - [ ] **T-144 — Die Signalwelle rechnet im Ruecklauf auf kleinerem Universum**
       Kontext: 41 Symbole mit 1H-Kerzen gegen 250 Coins im Betrieb; der Lauf
-      liefert 62 Runden. Die Zahl ist mit dem Betrieb nicht vergleichbar, weil
-      das Tor (Aenderung 1h, Volumen 24h) auf einem kleineren Feld greift.
+      liefert 62 Runden. Gehandelt wurden 37 einzigartige Instrumente in 111
+      Transaktionen (51 Kaeufe, 60 Verkaeufe; gezaehlt 2026-10-07). Die Zahl
+      ist mit dem Betrieb nicht vergleichbar, weil das Tor (Aenderung 1h,
+      Volumen 24h) auf einem kleineren Feld greift.
       Naechster Schritt: entweder das Universum aufziehen (1H-Kerzen fuer 250
       Symbole, ~1,5 GB) oder in jeder Aussage dazuschreiben. Entscheidung Max.
       Angelegt: 2026-09-29
