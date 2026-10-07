@@ -55,6 +55,37 @@ def _konf():
             json.loads((WURZEL / "spuren.json").read_text("utf-8")))
 
 
+def _ergebnis_schreiben(ergebnis, eingang, nach_ausrichten, jetzt=None):
+    """T-372: maschinenlesbares Ergebnis-Log nach jedem Lauf.
+
+    Ablage ``verbesserer/lauf_ergebnis.json`` (eine Zeile, ueberschreibend).
+    Ohne das sind A/B-Experimente (Holdout-Gate, F7-Wirkung) und
+    Re-Engagement-Trigger nicht auswertbar. Abwaertskompatibel: neue Datei,
+    kein Umbau bestehender Logik.
+    """
+    kandidat = ergebnis.get("kandidat")
+    fast = ergebnis.get("fast_kandidat")
+    if kandidat is not None and ergebnis.get("holdout_kandidat") is not None:
+        holdout = True
+    elif fast is not None:
+        holdout = False
+    else:
+        holdout = None
+    eintrag = {
+        "lauf_ts": (jetzt or datetime.now(timezone.utc)).isoformat(),
+        "instrumente_eingang": eingang,
+        "instrumente_nach_ausrichten": nach_ausrichten,
+        "kandidat_gefunden": kandidat is not None,
+        "holdout_bestanden": holdout,
+        "fast_kandidat": "ja" if fast is not None else None,
+        "vorschlag_erzeugt": kandidat is not None,
+        "grund": ergebnis.get("grund"),
+    }
+    (WURZEL / "lauf_ergebnis.json").write_text(
+        json.dumps(eintrag, ensure_ascii=False, indent=2), "utf-8")
+    return eintrag
+
+
 def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     """Kette fuer eine Spur ausfuehren und den Vorschlagsordner zurueckgeben.
 
@@ -99,9 +130,11 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
         print("Kein ausreichender Kerzen-Cache - Abbruch.", file=sys.stderr)
         return None
 
+    eingang = len(kerzen_je_inst)
     kerzen_je_inst, ausricht_hinweise = ruecktest.ausrichten(kerzen_je_inst)
     for h in ausricht_hinweise:
         print("  Ausrichtung: %s" % h, file=sys.stderr)
+    nach_ausrichten = len(kerzen_je_inst)
     if len(kerzen_je_inst) < 3:
         print("Nach Ausrichtung weniger als 3 Instrumente - Abbruch.",
               file=sys.stderr)
@@ -168,6 +201,7 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     digest.annotiere_bericht(ordner / "bericht.md", d)
     if d["lehren"]:
         digest.haenge_lehren_an(LEHREN, d["lehren"], datum)
+    _ergebnis_schreiben(ergebnis, eingang, nach_ausrichten, jetzt=jetzt)
     return ordner
 
 

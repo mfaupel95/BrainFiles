@@ -36,6 +36,56 @@ class TestLaufAbbruch(unittest.TestCase):
             lauf.KERZEN_DIR = alt
 
 
+class TestErgebnisLog(unittest.TestCase):
+    """T-372: lauf.py schreibt nach jedem Lauf lauf_ergebnis.json."""
+
+    def _lauf(self, ergebnis):
+        alt = lauf.WURZEL
+        try:
+            with TemporaryDirectory() as d:
+                lauf.WURZEL = Path(d)
+                e = lauf._ergebnis_schreiben(
+                    ergebnis, eingang=5, nach_ausrichten=4,
+                    jetzt=datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc))
+                datei = Path(d) / "lauf_ergebnis.json"
+                self.assertTrue(datei.exists(), "lauf_ergebnis.json fehlt")
+                import json
+                gelesen = json.loads(datei.read_text("utf-8"))
+                return e, gelesen
+        finally:
+            lauf.WURZEL = alt
+
+    def test_kandidat_mit_holdout(self):
+        ergebnis = {"kandidat": {"name": "x"}, "holdout_kandidat": {"n": 5},
+                    "fast_kandidat": None, "grund": None}
+        e, g = self._lauf(ergebnis)
+        self.assertTrue(g["kandidat_gefunden"])
+        self.assertIs(g["holdout_bestanden"], True)
+        self.assertTrue(g["vorschlag_erzeugt"])
+        self.assertIsNone(g["fast_kandidat"])
+        self.assertEqual(g["instrumente_eingang"], 5)
+        self.assertEqual(g["instrumente_nach_ausrichten"], 4)
+
+    def test_holdout_abgelehnt(self):
+        ergebnis = {"kandidat": None, "holdout_kandidat": None,
+                    "fast_kandidat": {"name": "fast"},
+                    "grund": "Holdout nicht bestanden"}
+        e, g = self._lauf(ergebnis)
+        self.assertFalse(g["kandidat_gefunden"])
+        self.assertIs(g["holdout_bestanden"], False)
+        self.assertEqual(g["fast_kandidat"], "ja")
+        self.assertEqual(g["grund"], "Holdout nicht bestanden")
+
+    def test_kein_kandidat_kein_holdout(self):
+        ergebnis = {"kandidat": None, "holdout_kandidat": None,
+                    "fast_kandidat": None, "grund": "kein Kandidat"}
+        e, g = self._lauf(ergebnis)
+        self.assertFalse(g["kandidat_gefunden"])
+        self.assertIsNone(g["holdout_bestanden"])
+        self.assertIsNone(g["fast_kandidat"])
+        self.assertFalse(g["vorschlag_erzeugt"])
+
+
 def _basis_wf():
     return {
         "gesamt": {"netto_gv_je_runde": -0.1, "n": 5, "max_drawdown": 1.0},
