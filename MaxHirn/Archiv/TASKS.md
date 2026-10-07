@@ -1,4 +1,16 @@
 ## Offen
+- [ ] **T-374 - Handpositionen (herkunft=boerse_handgriff) werden nicht automatisch geschlossen**
+      Kontext: 06.10.2026, NIGHT-XPERP-Position von Max an der OKX-Boerse von Hand eroeffnet;
+      die Spur uebernahm sie als Fremdposition (grund=fremdposition_uebernommen), konnte aber
+      keinen Boersen-Stop verankern (Journal den ganzen Tag: 'trailing nicht ausgefuehrt: keine
+      Boersen-Stop-Kennung in der Position'). Am 06.10. um 16:31:59 UTC schloss pruefe_ausstiege
+      die Position mit grund=stop, obwohl Max sie halten wollte ('ja war meine und das wollte ich').
+      FIX umgesetzt: handeln.py pruefe_ausstiege + flach_stellen ueberspringen Positionen mit
+      herkunft=boerse_handgriff (Tests xperp/tests/test_handeln_handposition.py, 5 gruen;
+      Gegenprobe: normale Positionen werden weiter automatisch geschlossen).
+      Naechster Schritt: beobachten; soll die Regel wieder greifen, braucht es einen Schalter
+      in wachen.json (offene Entscheidung Max).
+      Angelegt: 06.10.2026 - Zuletzt: 06.10.2026 - Betrifft: Agenten/Handel/xperp
 - [ ] **T-371 — OmniRoute-Log fehlt: Gegenprobe-Test bleibt rot bis zum naechsten Zentrale-Lauf**
       Kontext: T-234 (05.10.2026) hat OmniRoute einmal ueber die Zentrale gestartet und
       das Log erzeugt. Das Log ist seitdem verschwunden (wahrscheinlich beim Junction-

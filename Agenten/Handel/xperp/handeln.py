@@ -1264,9 +1264,32 @@ def _tick_fuer(inst):
         return 0.0
 
 
+def _ist_handposition(p):
+    """Eine von Max von Hand an der OKX-Boerse eroeffnete Position.
+
+    ERKENNUNG: Bei der Uebernahme traegt die Position das Feld
+    `herkunft == "boerse_handgriff"` (siehe bueche_fremde_positionen_uebernehmen).
+    Solche Positionen werden von der Spur NICHT automatisch geschlossen:
+    kein Stop, kein Ziel, kein Trailing, kein Kill/Kill-Switch - Max
+    verwaltet sie selbst (Auftrag 06.10.2026, Journal-Vermerk
+    "das wollte ich"). Die Spur fuehrt sie nur im Buch (Funding, Journal,
+    Bilanz) und meldet sie.
+    """
+    return (p or {}).get("herkunft") == "boerse_handgriff"
+
+
 def pruefe_ausstiege(z, live, w):
     behalten = []
     for p in z["positionen"]:
+        # HANDPOSITION (Auftrag 06.10.2026): von Hand eroeffnete OKX-Positionen
+        # werden von pruefe_ausstiege NICHT geschlossen. Der NIGHT-Fall:
+        # 06.10. 16:31:59 UTC schloss der Haus-Stop eine von Max von Hand
+        # eroeffnete XPERP-Position mit grund=stop, obwohl er sie halten
+        # wollte (Journal: "ja war meine und das wollte ich"). Handpositionen
+        # bleiben stehen - egal wie der Kurs laeuft. Max schliesst sie selbst.
+        if _ist_handposition(p):
+            behalten.append(p)
+            continue
         if not live and p.get("modus") == "live":
             # Siehe flach_stellen: ein Papierlauf schliesst keine echte Position.
             behalten.append(p)
@@ -1408,9 +1431,20 @@ def flach_stellen(z, live, grund):
 
     Deshalb: im Papierlauf bleiben Positionen mit modus=live stehen und werden
     ausdruecklich gemeldet. Geschlossen werden sie nur vom Live-Lauf.
+
+    HANDPOSITIONEN (Auftrag 06.10.2026): Positionen mit herkunft==
+    "boerse_handgriff" (von Max von Hand an der OKX-Boerse eroeffnet) werden
+    auch vom Kill/Notaus NICHT geschlossen - weder im Papier- noch im
+    Live-Lauf. Sie gehoeren Max, nicht der Spur; er verwaltet sie selbst.
     """
     behalten = []
     for p in z["positionen"]:
+        if _ist_handposition(p):
+            print("  %s bleibt im Buch: Handposition (herkunft=boerse_handgriff)"
+                  " wird auch von %s nicht geschlossen (Max verwaltet selbst)"
+                  % (p.get("inst"), grund))
+            behalten.append(p)
+            continue
         if not live and p.get("modus") == "live":
             print("  %s bleibt im Buch: echte Position (modus=live) wird nur "
                   "vom Live-Lauf geschlossen" % p.get("inst"))
