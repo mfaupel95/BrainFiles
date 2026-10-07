@@ -91,7 +91,8 @@ if ($waisen.Count -gt 0) {
 }
 
 robocopy $quelle $ziel /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics browser-profile $waisen /XF *.pid *.db-wal *.db-shm   # fluechtige Dateien (Sperrdateien, SQLite-WAL/-SHM): robocopy kann sie nicht lesen und meldet sonst Code 11, obwohl nichts fehlt (skillsbot.pid haelt den Bus); robocopy kann sie nicht lesen und meldet sonst Code 11. $waisen = gesperrte Update-Reste als aufgeloeste Vollpfade
+  /XD $ausserhalb Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics browser-profile $waisen `
+  /XF *.pid *.db-wal *.db-shm 'Zugaenge.md'   # fluechtige Dateien (Sperrdateien, SQLite-WAL/-SHM): robocopy kann sie nicht lesen und meldet sonst Code 11, obwohl nichts fehlt (skillsbot.pid haelt den Bus); robocopy kann sie nicht lesen und meldet sonst Code 11. $waisen = gesperrte Update-Reste als aufgeloeste Vollpfade. 'Zugaenge.md' ist seit 07.10.2026 ausgeschlossen (derselbe Grund wie in sichern.ps1): die Schluesselablage lag nach jedem Lauf im Klartext auf O:.
 $code = $LASTEXITCODE
 
 # Zweiter Lauf: der unersetzliche Archivteil liegt seit dem echten Umzug
