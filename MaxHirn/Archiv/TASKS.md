@@ -1057,6 +1057,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
       Betrifft: `C:\Users\faupe\.omniroute\`, `Agenten/sichern.ps1`
 
+- [ ] **T-183 — NODE_ENV=production in der Agenten-Shell bricht jeden vite-Dev-Lauf**
+      Kontext: Beim ersten echten Lauf der Skill-Anleitung `inspecting-hermes-desktop-dom`
+      starb der Renderer mit `ReferenceError: $RefreshSig$ is not defined`
+      (`apps/desktop/src/i18n/context.tsx`), `#root` blieb leer. Ursache ist ein geerbtes
+      `NODE_ENV=production` in der Shell des Agenten: `@vitejs/plugin-react` emittiert dann
+      die Fast-Refresh-Aufrufe OHNE die Laufzeit. Gemessen am 2026-09-30:
+      `cmd /c "set NODE_ENV"` = production; NICHT in `HKCU\Environment`, NICHT in
+      `terminal.docker_forward_env` der config.yaml (dort Zeile 2295 nur im env-Block des
+      MCP-Servers desktop-commander). Mit `env -u NODE_ENV` vor vite UND electron mountet die
+      App normal: 351 Knoten, 79 `[data-slot]`, ~32 s bis gemountet, Port 9333 liefert DOM
+      und Konsolenfehler. Die Skill-Pitfalls sind entsprechend ergaenzt (Commit b39288f).
+      Naechster Schritt: Quelle des geerbten NODE_ENV finden (Startweg der Hermes-TUI,
+      `hermes.exe --tui` aus `Agenten/Hermes/bin`) und entscheiden, ob sie dort bleiben muss —
+      sie faerbt JEDEN Dev-Server, den ein Agent startet, nicht nur diesen einen.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: `Agenten/Hermes/config.yaml`, `Agenten/Hermes/skills/software-development/inspecting-hermes-desktop-dom`, `apps/desktop` (Fremd-Checkout)
 
 
 
@@ -1205,6 +1221,25 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/daten_probe_coingecko.py, tests/test_replay_feed.py
 
 
+- [ ] **T-141 - Braucht ein Werkzeug TCP 9900? Der Gateway lauscht nur noch auf dem Control-Pipe**
+      Kontext: Seit dem Hermes-Update vom 29.09.2026 lauscht der Gateway auf einem Named Pipe
+      (`\\.\pipe\hermes-gateway-*`, belegt: 1 Pipe im Namensraum) und bedient Webhooks auf 8644;
+      **TCP 9900 bleibt zu, waehrend der Dienst gesund laeuft** (`hermes gateway status` =
+      "Gateway process running", `hermes doctor` = "gateway running", Telegram wurde bedient).
+      Die zwei Haus-Wachen sind umgestellt (siehe T-139). Offen ist, ob ein a2a-Peer oder ein
+      Fremdwerkzeug den Port erwartet - die Peer-Liste steht in der `a2a_agents`-Sektion der
+      Hermes-`config.yaml`.
+      Naechster Schritt: einen Peer-Aufruf aus einer Bot-Sitzung fahren (`a2a_list`/`a2a_call`);
+      gelingt er ohne 9900, ist der Port endgueltig Altweg.
+      KORREKTUR 2026-09-30: Die Annahme "TCP 9900 bleibt zu, waehrend er gesund laeuft"
+      ist widerlegt. Gemessen am 30.09.2026 01:52 mit `Get-NetTCPConnection`: der
+      Dienstprozess 73852 haelt **127.0.0.1:9900** (A2A) und **0.0.0.0:8644** (Webhook).
+      Der Gateway laeuft als EINE Kette 73620 (Launcher-venv) -> 36840 (.hermes-runtime)
+      -> 73852 (tools-Python, `runpy`-Form, schreibt `gateway_state.json`). Die
+      Prozesssuche `*gateway run*` findet 73852 NICHT (die runpy-Form traegt den Text
+      nicht) - deshalb lesen die Wachen zuerst `gateway_state.json`. Offen bleibt nur,
+      ob ein Peer den Port BRAUCHT: er ist da, also ist die Frage nach dem Altweg erledigt.
+      Angelegt 2026-09-29. Betrifft Agenten/Hermes (config.yaml), Agenten/Routinen/gateway-waechter.ps1.
 
 
 - [ ] **T-140 - Gateway-Wache laeuft nur 08:15: ein abends gescheitertes Update faellt erst am Morgen auf**
@@ -2271,52 +2306,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
-- [x] **T-141 - Braucht ein Werkzeug TCP 9900? Der Gateway lauscht nur noch auf dem Control-Pipe**
-      Kontext: Seit dem Hermes-Update vom 29.09.2026 lauscht der Gateway auf einem Named Pipe
-      (`\\.\pipe\hermes-gateway-*`, belegt: 1 Pipe im Namensraum) und bedient Webhooks auf 8644;
-      **TCP 9900 bleibt zu, waehrend der Dienst gesund laeuft** (`hermes gateway status` =
-      "Gateway process running", `hermes doctor` = "gateway running", Telegram wurde bedient).
-      Die zwei Haus-Wachen sind umgestellt (siehe T-139). Offen ist, ob ein a2a-Peer oder ein
-      Fremdwerkzeug den Port erwartet - die Peer-Liste steht in der `a2a_agents`-Sektion der
-      Hermes-`config.yaml`.
-      Naechster Schritt: einen Peer-Aufruf aus einer Bot-Sitzung fahren (`a2a_list`/`a2a_call`);
-      gelingt er ohne 9900, ist der Port endgueltig Altweg.
-      KORREKTUR 2026-09-30: Die Annahme "TCP 9900 bleibt zu, waehrend er gesund laeuft"
-      ist widerlegt. Gemessen am 30.09.2026 01:52 mit `Get-NetTCPConnection`: der
-      Dienstprozess 73852 haelt **127.0.0.1:9900** (A2A) und **0.0.0.0:8644** (Webhook).
-      Der Gateway laeuft als EINE Kette 73620 (Launcher-venv) -> 36840 (.hermes-runtime)
-      -> 73852 (tools-Python, `runpy`-Form, schreibt `gateway_state.json`). Die
-      Prozesssuche `*gateway run*` findet 73852 NICHT (die runpy-Form traegt den Text
-      nicht) - deshalb lesen die Wachen zuerst `gateway_state.json`. Offen bleibt nur,
-      ob ein Peer den Port BRAUCHT: er ist da, also ist die Frage nach dem Altweg erledigt.
-      Angelegt 2026-09-29. Betrifft Agenten/Hermes (config.yaml), Agenten/Routinen/gateway-waechter.ps1.
-      
-- [x] **T-183 — NODE_ENV=production in der Agenten-Shell bricht jeden vite-Dev-Lauf**
-      Kontext: Beim ersten echten Lauf der Skill-Anleitung `inspecting-hermes-desktop-dom`
-      starb der Renderer mit `ReferenceError: $RefreshSig$ is not defined`
-      (`apps/desktop/src/i18n/context.tsx`), `#root` blieb leer. Ursache ist ein geerbtes
-      `NODE_ENV=production` in der Shell des Agenten: `@vitejs/plugin-react` emittiert dann
-      die Fast-Refresh-Aufrufe OHNE die Laufzeit. Gemessen am 2026-09-30:
-      `cmd /c "set NODE_ENV"` = production; NICHT in `HKCU\Environment`, NICHT in
-      `terminal.docker_forward_env` der config.yaml (dort Zeile 2295 nur im env-Block des
-      MCP-Servers desktop-commander). Mit `env -u NODE_ENV` vor vite UND electron mountet die
-      App normal: 351 Knoten, 79 `[data-slot]`, ~32 s bis gemountet, Port 9333 liefert DOM
-      und Konsolenfehler. Die Skill-Pitfalls sind entsprechend ergaenzt (Commit b39288f).
-      Naechster Schritt: Quelle des geerbten NODE_ENV finden (Startweg der Hermes-TUI,
-      `hermes.exe --tui` aus `Agenten/Hermes/bin`) und entscheiden, ob sie dort bleiben muss —
-      sie faerbt JEDEN Dev-Server, den ein Agent startet, nicht nur diesen einen.
-      **2026-10-08: QUELLE GEFUNDEN.** `hermes_cli/main_tui_launch.py:386` setzt
-      `env.setdefault("NODE_ENV", "development" if tui_dev else "production")` beim TUI-Start;
-      zweite Quelle `hermes_cli/web_server_chat.py:438` (Web-Server-Chat, ebenfalls setdefault).
-      Beide sind `setdefault` (setzen nur, wenn NODE_ENV nicht schon in der Umgebung steht) und
-      fuer die TUI/den Web-Server selbst gedacht (production-Laufzeit). Der Leak in Kindprozesse
-      (vite-Dev-Server) ist die Nebenwirkung. Entscheidung: die Zeilen muessen dort bleiben
-      (die TUI braucht production), der Leak ist ein Hermes-Core-Thema (Fremd-Checkout) - ein
-      Agent, der einen Dev-Server startet, entfernt NODE_ENV selbst (`env -u NODE_ENV`), wie die
-      Skill-Pitfalls es schon dokumentieren. Kein Core-Eingriff.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-10-08
-      Betrifft: `Agenten/Hermes/config.yaml`, `Agenten/Hermes/skills/software-development/inspecting-hermes-desktop-dom`, `apps/desktop` (Fremd-Checkout)
-      
 - [x] **T-076 — Der OKX-Bot-Waechter kennt die GESCHLOSSENEN Grids nicht**
       Kontext: `waechter.py`/`analyse.py` lesen nur laufende Bots
       (`dca/ongoing-list`, `grid/orders-algo-pending`). Die 62 geschlossenen Grids
