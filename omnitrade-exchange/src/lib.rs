@@ -20,6 +20,7 @@ pub mod binance;
 pub mod credentials;
 pub mod error;
 pub mod keystore;
+pub mod kraken;
 pub mod trading;
 pub mod traits;
 
@@ -30,5 +31,6 @@ pub use binance::{
 pub use credentials::{ApiCredentials, Network};
 pub use error::ExchangeError;
 pub use keystore::Keystore;
+pub use kraken::{KrakenClient, KrakenRestClient};
 pub use trading::{Account, AccountBalance, ExchangeTrading, OrderRequest};
 pub use traits::{DepthUpdate, ExchangeInfo, ExchangeStream};
