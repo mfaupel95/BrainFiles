@@ -208,6 +208,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--stunden", type=float, default=26.0,
                     help="Fenster, wenn keine Merkdatei vorliegt")
+    ap.add_argument("--fenster-erzwingen", action="store_true",
+                    help="--stunden auch bei vorhandener Merkdatei nutzen "
+                         "(Gegenlesen); sonst gilt UID-Fortschritt")
     ap.add_argument("--grenze", type=float, default=SCHWELLE_FRIST,
                     help="ab dieser Punktzahl wird gemeldet")
     ap.add_argument("--alle", action="store_true", help="jede neue Mail listen")
@@ -219,17 +222,35 @@ def main() -> int:
 
     merk = _merkdatei()
     jetzt = datetime.now(timezone.utc)
-    if merk.get("zuletzt_gelesen_bis"):
-        try:
-            bis = datetime.fromisoformat(merk["zuletzt_gelesen_bis"])
-        except ValueError:
+    # T-375 (07.10.2026): SEARCH SINCE arbeitet auf INTERNALDATE und
+    # verwirft Mails, deren Date-KOPF alt ist (Gmail legt nachtraeglich
+    # Mails in die INBOX, deren Ankunftsdatum weit zurueckliegt). Der
+    # Fortschritt laeuft deshalb ueber die UID: "alle Mails, die seit der
+    # zuletzt gesehenen UID dazu kamen" ist die richtige Menge fuer
+    # "seit dem letzten Lauf", unabhaengig von Ankunfts- und Absendedatum.
+    # --fenster-erzwingen schaltet fuer ein Gegenlesen zurueck auf das
+    # Zeitfenster (auch bei vorhandener Merkdatei). Beide Wege fahren
+    # UID SEARCH - der Datum-Weg nur mit zusaetzlichem SINCE-Kriterium.
+    zuletzt_uid = merk.get("zuletzt_uid")
+    if args.fenster_erzwingen or not zuletzt_uid:
+        if merk.get("zuletzt_gelesen_bis") and not args.fenster_erzwingen:
+            try:
+                bis = datetime.fromisoformat(merk["zuletzt_gelesen_bis"])
+            except ValueError:
+                bis = jetzt - timedelta(hours=args.stunden)
+            # Auch im Datum-Weg die UIDs mitlesen: so schaltet der Betrieb
+            # nach dem ERSTEN Lauf mit gesehener UID automatisch auf den
+            # UID-Anker um (sonst bliebe der Fix fuer immer wirkungslos).
+            kriterium = f'(SINCE "{bis.astimezone().strftime("%d-%b-%Y")}")'
+        else:
             bis = jetzt - timedelta(hours=args.stunden)
+            kriterium = f'(SINCE "{bis.astimezone().strftime("%d-%b-%Y")}")'
     else:
-        bis = jetzt - timedelta(hours=args.stunden)
-
-    suche = f'(SINCE "{bis.astimezone().strftime("%d-%b-%Y")}")'
+        bis = None
+        kriterium = None
     kandidaten: list[dict] = []
     newest_bis = bis
+    newest_uid = int(zuletzt_uid or 0)
 
     with imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=60) as imap:
         imap.login(adresse, passwort)
@@ -241,11 +262,21 @@ def main() -> int:
                 inbox_name = text.split(' "/" ')[-1].strip()
                 break
         imap.select(inbox_name)
-        typ, daten = imap.search(None, suche)
+        # Immer UID SEARCH: auch der Datum-Weg liefert UIDs zurueck, damit
+        # der Betrieb nach dem ersten Lauf auf den UID-Anker umschaltet.
+        if kriterium:
+            typ, daten = imap.uid("SEARCH", None, kriterium)
+        else:
+            # UID-Suche: alles, was seit der zuletzt gesehenen UID dazu kam.
+            # Nachricht 1905 (altes INTERNALDATE, neu in der INBOX) hat eine
+            # hohe UID und wird so gefunden, obwohl SINCE sie ueberspringt.
+            typ, daten = imap.uid("SEARCH", None, f"UID {int(zuletzt_uid) + 1}:*")
         ids = (daten[0].split() if typ == "OK" and daten else [])
         # Nur die letzten 60 holen - es geht um NEUE Post, nicht um Historie
         for nummer in ids[-60:]:
-            typ, voll = imap.fetch(nummer, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])")
+            typ, voll = imap.uid(
+                "FETCH", nummer,
+                "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])")
             if typ != "OK" or not voll or not isinstance(voll[0], tuple):
                 continue
             kopf = email.message_from_bytes(voll[0][1])
@@ -257,9 +288,17 @@ def main() -> int:
                 datum = datum.astimezone(timezone.utc)
             except Exception:
                 pass
-            if datum and datum <= bis:
+            # T-375: der Date-Kopf entscheidet im UID-Weg NICHT mehr - eine
+            # Mail mit altem Kopf ist trotzdem NEU in der INBOX und muss
+            # geprueft werden. Nur im Zeitfenster-Weg (--fenster-erzwingen
+            # bzw. ohne Merkdatei) bleibt der Kopf-Filter als zweiter
+            # Zeuge gegen den Ankunftszeitraum.
+            if bis is not None and datum and datum <= bis:
                 continue
-            typ2, roh = imap.fetch(nummer, "(BODY.PEEK[])")
+            # UID aus der Suche mitlesen: bei UID SEARCH sind die ids selbst
+            # die UIDs - kein Parsen der FETCH-Antwort noetig (T-375).
+            uid_aktuell = int(nummer) if nummer.isdigit() else 0
+            typ2, roh = imap.uid("FETCH", nummer, "(BODY.PEEK[])")
             koerper = ""
             if typ2 == "OK" and roh and isinstance(roh[0], tuple):
                 # Die VOLLE Nachricht holen, nicht BODY.PEEK[TEXT]: bei einer
@@ -276,21 +315,37 @@ def main() -> int:
                 "ausschnitt": " ".join(koerper.split())[:400],
                 **urteil,
             })
-            if datum and datum > newest_bis:
+            if datum and (newest_bis is None or datum > newest_bis):
                 newest_bis = datum
+            if uid_aktuell > newest_uid:
+                newest_uid = uid_aktuell
 
     kandidaten.sort(key=lambda m: (-m["punkte"], m["datum"] or ""), reverse=False)
     gemeldet = [m for m in kandidaten if args.alle or m["punkte"] >= args.grenze]
 
     if not args.trocken and kandidaten:
-        _merk_schreiben({"zuletzt_gelesen_bis": newest_bis.isoformat(),
-                        "zuletzt_lauf": jetzt.isoformat(),
-                        "gelesen": len(kandidaten)})
+        merk_neu = {"zuletzt_lauf": jetzt.isoformat(),
+                    "gelesen": len(kandidaten)}
+        # Die UID ist der dauerhafte Anker: auch im Datum-Weg wird sie
+        # mitgeschrieben, damit der naechste Lauf auf UID umschaltet.
+        if newest_uid > int(zuletzt_uid or 0):
+            merk_neu["zuletzt_uid"] = newest_uid
+        # Der Datum-Fortschritt bleibt als Rueckfall erhalten (nur im
+        # Zeitfenster-Weg sinnvoll; beim Gegenlesen mit --fenster-erzwingen
+        # wird die Merkdatei bewusst NICHT veraendert - das Waere das
+        # festgeschriebene Gegenlese-Datum).
+        if bis is not None and not args.fenster_erzwingen:
+            merk_neu["zuletzt_gelesen_bis"] = newest_bis.isoformat()
+        _merk_schreiben(merk_neu)
 
     if not gemeldet:
         return 0   # leere Ausgabe = nichts senden
 
-    zeilen = [f"**Post seit {bis.astimezone().strftime('%d.%m. %H:%M')}: "
+    if bis is not None:
+        anker = f"seit {bis.astimezone().strftime('%d.%m. %H:%M')}"
+    else:
+        anker = f"ab UID {zuletzt_uid}+"
+    zeilen = [f"**Post {anker}: "
               f"{len(gemeldet)} von {len(kandidaten)} neuen Mails ueber der Schwelle**", ""]
     for m in gemeldet[:12]:
         zeilen.append(f"- **{m['betreff'][:90]}**")
