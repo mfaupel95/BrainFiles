@@ -62,13 +62,22 @@ Anforderung (~25 statt ~14.700 Tokens je Anfrage). Ein Symlink des Fremd-Baums i
    die Hermes-Kopien vollständig), jeden Fund einer Zeile der Tabelle oben
    zuordnen. *Fertig, wenn* kein Fund aus einem Fremd-Baum stammt und jede der
    beiden Zielablagen einzeln aufgelistet ist.
-2. **Drift prüfen.** Je Bestandsskill `Get-FileHash` auf Vault und Kopie, Ergebnis
-   auf `gleich` / `abweichend` / `fehlt`. *Fertig, wenn* kein Bestandsskill ohne
-   Urteil bleibt.
+2. **Drift prüfen — mit dem Werkzeug, nicht mit dem Auge.**
+   `python Agenten/Hermes/scripts/skill-abgleich.py` bestimmt je Datei die
+   **Richtung** (`gleich` / `rueckstand` / `kopie_weiter` / `beidseitig` / `zu_jung`),
+   nicht nur gleich/ungleich. Ein reiner Hash-Vergleich genuegt hier nicht — er
+   sagt nur *dass* etwas abweicht, nie *wer* weiter ist. *Fertig, wenn* kein
+   Bestandsskill ohne Urteil bleibt und der Lauf mit Code 0 endet.
 3. **Sichern.** Jede Kopie, die ersetzt wird, vorher nach
    `Agenten/Hermes/.sicherung/skills-import-<JJJJMMTT>/<name>/` kopieren.
    *Fertig, wenn* jede ersetzte Datei dort liegt.
-4. **Richtung prüfen, dann kopieren.** Bei jeder *abweichenden* Kopie zuerst
+4. **Richtung prüfen, dann kopieren.** `skill-abgleich.py` erledigt das: es
+   **sperrt** jede Kopie, die weiter ist als die Quelle oder juenger als 10
+   Minuten, und laesst sie unangetastet (Exit 1). Geschrieben wird nur
+   nachweislicher Rueckstand — mit `--anwenden`. Mit `--zusammenfuehren` wird
+   der Inhalt, den die Kopie voraus hat, zuerst in die Quelle nachgezogen
+   (Sicherung `.bak-<JJJJMMTT>`), erst dann kopiert.
+   Von Hand gilt derselbe Schritt: bei jeder *abweichenden* Kopie zuerst
    `Compare-Object` in **beide** Richtungen. Zeilen, die nur in der Quelle stehen,
    sind verpasster Nachzug. Zeilen, die nur in der Kopie stehen, sind Inhalt, den
    die Quelle nie bekommen hat — den **zuerst in die Quelle nachziehen**, sonst
