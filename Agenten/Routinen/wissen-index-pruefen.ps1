@@ -74,6 +74,30 @@ foreach ($z in ($index -split "`r?`n")) {
 # 8. Zugaenge.md: bewusst ohne Frontmatter, aber registriert?
 if ($index -notmatch '20260830-zugaenge') { Write-Output 'ZUGAENGE NICHT REGISTRIERT'; $fehler++ }
 
+# 9. Regeldatei-Paare muessen zeichengleich sein (CLAUDE.md = AGENTS.md). Das
+# Wurzel-Paar lief am 03.10.2026 auseinander, ohne dass diese Pruefung es sah -
+# sie pruefte nur MaxHirn. Seit 08.10.2026 gehoeren alle drei Paare dazu, plus
+# die Pruefung, dass die Stash-Regel (Fall Vault-Schutzschicht) noch drinsteht.
+$paare = @(
+    @{ a = (Join-Path (Split-Path $root -Parent) 'CLAUDE.md');  b = (Join-Path (Split-Path $root -Parent) 'AGENTS.md');  wo = 'Wurzel' },
+    @{ a = (Join-Path $root 'CLAUDE.md');                       b = (Join-Path $root 'AGENTS.md');                       wo = 'MaxHirn' },
+    @{ a = (Join-Path (Split-Path $root -Parent) 'Werkstatt\CLAUDE.md'); b = (Join-Path (Split-Path $root -Parent) 'Werkstatt\AGENTS.md'); wo = 'Werkstatt' }
+)
+foreach ($paar in $paare) {
+    if ((Test-Path $paar.a) -and (Test-Path $paar.b)) {
+        $ha = [IO.File]::ReadAllBytes($paar.a); $hb = [IO.File]::ReadAllBytes($paar.b)
+        if ($ha.Length -ne $hb.Length -or -not [Linq.Enumerable]::SequenceEqual($ha, $hb)) {
+            Write-Output ("PAAR AUSEINANDER (" + $paar.wo + "): CLAUDE.md und AGENTS.md muessen zeichengleich sein"); $fehler++
+        }
+    } else { Write-Output ("PAAR FEHLT (" + $paar.wo + ")"); $fehler++ }
+}
+$bots = Join-Path (Split-Path $root -Parent) 'Agenten\Hermes\profiles\rule_repo-bots.md'
+if (Test-Path $bots) {
+    $botsText = [IO.File]::ReadAllText($bots)
+    if ($botsText -notmatch 'git stash') { Write-Output 'STASH-REGEL FEHLT in rule_repo-bots.md'; $fehler++ }
+    if ($botsText.Length -gt 6000) { Write-Output ('RULE_REPO-BOTS UEBER BUDGET: ' + $botsText.Length + ' von 6000 Zeichen'); $fehler++ }
+} else { Write-Output 'rule_repo-bots.md FEHLT'; $fehler++ }
+
 Write-Output ('--- Notizen geprüft: ' + $ids.Count + ' | Fehler: ' + $fehler)
 
 Melde-Ende -Marke $marke -Code 0 -Text "$fehler Fehler"                 # neu
