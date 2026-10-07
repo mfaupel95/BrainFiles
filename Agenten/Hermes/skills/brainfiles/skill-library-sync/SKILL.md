@@ -205,6 +205,31 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
    einer Klasse fehlt in der geladenen Liste UND steht in der Schlusszeile), dann haelt
    der Test auch die naechste Ausmistung aus.
 
+## Vor dem Ersetzen: Richtung und Historie lesen
+
+Ein Abgleich ist die einzige Stelle im Haus, an der ein Werkzeug Inhalt **loeschen**
+kann, und zwar still. Zwei Pruefungen, bevor irgendetwas kopiert wird:
+
+1. **Beide Richtungen vergleichen, nie nur den Hash.** Ein Hash sagt nur *dass*
+   etwas abweicht, nicht *wer* weiter ist. `Compare-Object` in beide Richtungen:
+   Zeilen nur in der Quelle = verpasster Nachzug; Zeilen nur in der Kopie = Inhalt,
+   den die Quelle nie bekam. Der zweite Fall ist der gefaehrliche.
+2. **`git log` der Zieldatei lesen, nicht nur den Arbeitsbaum.** Steht die Kopie in
+   Git, verraet die Historie, ob die Abweichung *Nacharbeit* war (dann gehoert sie
+   zuerst in die Quelle) oder *Rueckstand* (dann wird sie ersetzt). Ohne diesen Blick
+   sieht beides gleich aus.
+
+**Belegter Fall (07.10.2026).** Der Abgleich setzte drei Hermes-Kopien auf den alten
+Vault-Stand zurueck. In `rueckschau/sitzungen_auswerten.py` verschwanden dabei 15.678
+Bytes (23.949 -> 8.271): die Option `--umwege` und die zweite Quelle `state.db` —
+also genau die Arbeit, die einen Tag vorher als **T-229 erledigt** belegt worden war.
+Auch `skill/SKILL.md` verlor eine Regel. Die Hashes waren vorher wie nachher sauber,
+kein Fehler, keine Meldung. Der Skill `rueckschau` beschrieb danach Optionen, die
+sein eigenes Skript nicht mehr hatte.
+
+**Regel.** Eine Abweichung ist erst dann ein Rueckstand, wenn die Historie es sagt.
+Ist die Kopie weiter als die Quelle: **erst die Quelle nachziehen, dann kopieren.**
+
 ## Fallen
 
 - **Die SKILL.md hat eine harte Groessengrenze: ab ~100.000 Zeichen verweigert
