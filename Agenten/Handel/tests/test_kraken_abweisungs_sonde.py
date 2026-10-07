@@ -36,6 +36,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.parse
 
 TESTS = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(TESTS)
@@ -299,6 +300,135 @@ class SondenTest(unittest.TestCase):
         # Nanosekunden seit 1970: > 1e18 (Millisekunden wären ~1e12)
         self.assertGreater(int(nonce), 10**18,
                            "Nonce muss im Nanosekundenbereich liegen")
+
+
+class NonceWiederholungTest(unittest.TestCase):
+    """Der Haus-Ausweg aus T-075: bei "EAPI:Invalid nonce" schiebt die Sonde
+    den geteilten Zaehler mit vorwaerts() vor und wiederholt - identisch zu
+    kraken.py._roh_privat. Ohne das Schieben waere der Zeuge ein
+    Nonce-Artefakt statt der echten Abweisung.
+
+    Alle Aufrufe gehen an eine TOTE Adresse (Port 9 = discard) - selbst ein
+    Fehlgriff der echten urllib-Schicht kaeme nie bei Kraken an. Die Sonde
+    kennt weiterhin keine eigene Kraken-Adresse.
+    """
+
+    class Pool:
+        def __init__(self):
+            self.wert = 1_700_000_000_000_000_000   # ~2023-11, Nanosekunden
+            self.vorwaerts_aufrufe = []
+
+        def monotone_nonce(self):
+            return self.wert
+
+        def vorwaerts(self, sekunden):
+            self.wert += int(sekunden * 1_000_000_000)
+            self.vorwaerts_aufrufe.append(sekunden)
+            return self.wert
+
+    NONCE_ANTWORT = {"status": 200, "kopf": {},
+                     "anfang": '{"error":["EAPI:Invalid nonce"],"result":{}}'}
+    ABWEISUNG = {"status": 200, "kopf": {},
+                 "anfang": '{"error":["EGeneral:Permission denied"],"result":{}}'}
+
+    def setUp(self):
+        self.alt_env = {}
+        for name, wert in (("KRAKEN_SPOT_API_KEY", "attrappe-key"),
+                           ("KRAKEN_SPOT_API_SECRET",
+                            base64.b64encode(b"geheim" * 8).decode()),
+                           ("KRAKEN_FUTURE_API_KEY", "attrappe-future-key"),
+                           ("KRAKEN_FUTURE_API_SECRET",
+                            base64.b64encode(b"geheim" * 8).decode())):
+            self.alt_env[name] = os.environ.get(name)
+            os.environ[name] = wert
+        self.rufe = []
+
+    def tearDown(self):
+        for name, wert in self.alt_env.items():
+            if wert is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = wert
+
+    def _module(self, basis="http://127.0.0.1:9"):
+        """Hausmodule mit toter Adresse: nie echtes Kraken."""
+        kraken = sonde._lade(sonde.KRAKEN_QUELLE, "test_nc_kraken")
+        futures = sonde._lade(sonde.FUTURES_QUELLE, "test_nc_futures")
+        for m in (kraken, futures):
+            m.BASIS = basis
+        return kraken, futures
+
+    def _fange_ab(self, antworten):
+        self._antworten = list(antworten)
+
+        def fake_roh_aufruf(url, kopf, daten):
+            self.rufe.append({"url": url, "kopf": kopf, "daten": daten})
+            return self._antworten.pop(0)
+
+        self._original_roh = sonde._roh_aufruf
+        sonde._roh_aufruf = fake_roh_aufruf
+
+    def _gib_frei(self):
+        sonde._roh_aufruf = self._original_roh
+
+    def test_spot_wiederholt_invalid_nonce_mit_vorwaerts(self):
+        kraken, _ = self._module()
+        pool = self.Pool()
+        self._fange_ab([self.NONCE_ANTWORT, self.ABWEISUNG])
+        try:
+            ergebnis = sonde._roh_spot(kraken, pool)
+        finally:
+            self._gib_frei()
+        self.assertEqual(pool.vorwaerts_aufrufe, [1])
+        self.assertEqual(ergebnis["versuche"], 2)
+        self.assertIn("Permission denied", ergebnis["anfang"])
+        self.assertEqual(len(self.rufe), 2)
+        for r in self.rufe:
+            self.assertTrue(r["url"].startswith("http://127.0.0.1:9"),
+                            "der Zeuge geht an die tote Testadresse, nie an Kraken")
+        nonces = [int(urllib.parse.parse_qs(r["daten"].decode())["nonce"][0])
+                  for r in self.rufe]
+        self.assertGreater(nonces[1], nonces[0],
+                           "der zweite Versuch muss einen hoeheren nonce tragen")
+
+    def test_spot_gibt_nach_drei_versuchen_den_letzten_befund(self):
+        kraken, _ = self._module()
+        pool = self.Pool()
+        self._fange_ab([self.NONCE_ANTWORT] * 3)
+        try:
+            ergebnis = sonde._roh_spot(kraken, pool)
+        finally:
+            self._gib_frei()
+        self.assertEqual(pool.vorwaerts_aufrufe, [1, 2])
+        self.assertEqual(ergebnis["versuche"], 3)
+        self.assertEqual(len(self.rufe), 3)
+
+    def test_spot_wiederholt_nur_nonce_befunde(self):
+        kraken, _ = self._module()
+        pool = self.Pool()
+        self._fange_ab([self.ABWEISUNG])
+        try:
+            ergebnis = sonde._roh_spot(kraken, pool)
+        finally:
+            self._gib_frei()
+        self.assertEqual(pool.vorwaerts_aufrufe, [],
+                         "eine echte Abweisung schiebt den Pool nicht vor")
+        self.assertEqual(ergebnis["versuche"], 1)
+        self.assertEqual(len(self.rufe), 1)
+
+    def test_futures_wiederholt_mit_hoeherem_nonce(self):
+        _, futures = self._module()
+        pool = self.Pool()
+        self._fange_ab([self.NONCE_ANTWORT, self.ABWEISUNG])
+        try:
+            ergebnis = sonde._roh_futures(futures, pool)
+        finally:
+            self._gib_frei()
+        self.assertEqual(pool.vorwaerts_aufrufe, [1])
+        self.assertEqual(ergebnis["versuche"], 2)
+        nonces = [int(r["kopf"]["Nonce"]) for r in self.rufe]
+        self.assertGreater(nonces[1], nonces[0],
+                           "der zweite Versuch muss einen hoeheren nonce tragen")
 
 
 if __name__ == "__main__":

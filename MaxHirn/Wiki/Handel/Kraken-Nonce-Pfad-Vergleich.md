@@ -43,26 +43,35 @@ kraken_abweisungs_sonde.py
   |     |-- kraken.guthaben("ZEUR")                  # -> _roh_privat -> _monotone_nonce()
   |
   |-- _roh_spot(kraken, pool)                        # NUR IM FEHLERFALL (Zeuge)
-        |-- pool.monotone_nonce()                    # KEIN _vorwaerts()
+        |-- Versuch 0: pool.monotone_nonce()
+        |-- Versuch 1: pool.vorwaerts(1)
+        |-- Versuch 2: pool.vorwaerts(2)
         |-- Signatur: identisch zu kraken.py
         |-- Header: API-Key, API-Sign, Content-Type
 ```
 
-**Eigenschaften:**
-- Kein 3-Versuchs-Loop — die Sonde beobachtet nur, sie handelt nicht
-- `_roh_spot()` nutzt `pool.monotone_nonce()` direkt, ohne `_vorwaerts()`-Ausweg
+**Eigenschaften (seit 07.10.2026, Kanban t_2eb4971f):**
+- 3-Versuchs-Loop wie `kraken.py`: bei "EAPI:Invalid nonce" schiebt der naechste
+  Versuch den geteilten Zaehler mit `vorwaerts()` vor (identisch zu `_roh_privat`)
+- Ein echter Befund (Permission denied, Lockout, HTTP-Fehler) wird NIE wiederholt
 - Signatur-Pfad: identisch zu `kraken.py` (`pfad.encode() + hashlib.sha256((nonce + formular).encode()).digest()`)
 
 ### Kernunterschied
 
 | Aspekt | `kraken.py` | Sonde |
 |---|---|---|
-| Nonce-Quelle | `_monotone_nonce()` + `_vorwaerts()` | nur `monotone_nonce()` |
-| Wiederholung bei Invalid nonce | 3 Versuche, ab 2. mit `_vorwaerts()` | kein Retry |
+| Nonce-Quelle | `_monotone_nonce()` + `_vorwaerts()` | `monotone_nonce()` + `vorwaerts()` (seit 07.10.2026) |
+| Wiederholung bei Invalid nonce | 3 Versuche, ab 2. mit `_vorwaerts()` | 3 Versuche, ab 2. mit `_vorwaerts()` (identisch) |
 | Zweck | Handelsausfuehrung (Order, Stops) | reine Beobachtung + Fehlerprotokoll |
-| `_vorwaerts()`-Ausweg | ja | nein |
+| `_vorwaerts()`-Ausweg | ja | ja (seit 07.10.2026, Kanban t_2eb4971f) |
 
-**Konsequenz:** Die Sonde kann einen `EAPI:Invalid nonce`-Befund protokollieren, aber nicht selbst vorwaerts schieben, um den Zeuge-Aufruf zu wiederholen. Sie ist ein passiver Beobachter, kein aktiver Akteur.
+**Konsequenz:** Die Sonde kann einen `EAPI:Invalid nonce`-Befund wie der
+Haus-Pfad selbst aufloesen: sie schiebt den geteilten Zaehler mit
+`vorwaerts()` vor und wiederholt den Zeuge-Aufruf (bis zu drei Versuche).
+Damit protokolliert sie die ECHTE Abweisung statt eines Nonce-Artefakts,
+wenn ein fremdes Werkzeug (die offizielle kraken-cli) den Schluessel-Nonce
+hochgesetzt hat. Sie bleibt ein Beobachter - sie ordert nichts, sie
+verschiebt nur den gemeinsamen nonce-Zaehler, genau wie jeder Hausaufruf.
 
 ---
 
@@ -125,6 +134,6 @@ sig = base64.b64encode(
 
 ## 4. Zusammenfassung
 
-1. **Nonce-Pfad:** `kraken.py` nutzt den Pool mit 3-Versuchs-Logik inkl. `_vorwaerts()`-Ausweg. Die Sonde nutzt nur `monotone_nonce()` ohne Wiederholungsweg — sie ist ein reiner Beobachter, kein Akteur.
-2. **Zeitstempel:** Nonce = Nanosekunden-Integer (Wallclock). Sonde-Protokoll = ISO-8601 ohne Mikrosekunden. Beide Systeme koexistieren, aber die Sonde koennte bei einem `EAPI:Invalid nonce`-Befund nicht selbst vorwaerts schieben, um den Zeuge-Aufruf zu wiederholen.
+1. **Nonce-Pfad:** `kraken.py` nutzt den Pool mit 3-Versuchs-Logik inkl. `_vorwaerts()`-Ausweg. Die Sonde nutzt seit 07.10.2026 (Kanban t_2eb4971f) denselben Weg: Versuch 0 aus dem Pool, ab Versuch 1 mit `vorwaerts()` vorgeschoben — nur bei einem `EAPI:Invalid nonce`-Befund, echte Abweisungen werden nie wiederholt.
+2. **Zeitstempel:** Nonce = Nanosekunden-Integer (Wallclock, gemeinsamer Pool). Sonde-Protokoll = ISO-8601 ohne Mikrosekunden. Beide Systeme koexistieren; die Sonde kann bei einem `EAPI:Invalid nonce`-Befund den Zaehler selbst vorwaerts schieben und den Zeuge-Aufruf wiederholen.
 3. **Signatur:** Identisch in beiden Stellen — kein Unterschied.
