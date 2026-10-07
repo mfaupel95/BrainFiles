@@ -212,7 +212,7 @@ impl OmniTradeApp {
             state,
             tree,
             chart: CandleChartWidget::new(Vec::new()),
-            depth: DepthWidget::new(15),
+            depth: DepthWidget::new(8),
             symbol: symbol.into(),
             kill_path: crate::kill::default_path(),
         }
@@ -221,23 +221,27 @@ impl OmniTradeApp {
 
 impl OmniTradeApp {
     /// Kill-switch button (sets the shared flag file) and, once set, a reset button.
+    /// Returns the response of the visible button.
     ///
     /// The running live loop notices the flag, cancels the symbol's open orders and
     /// stops; it does not sell holdings.
-    fn kill_controls(&mut self, ui: &mut egui::Ui) {
+    fn kill_controls(&mut self, ui: &mut egui::Ui) -> egui::Response {
         if crate::kill::is_engaged(&self.kill_path) {
             ui.colored_label(egui::Color32::LIGHT_RED, "NOT-AUS GESETZT");
-            if ui.button("Zurücksetzen").clicked() {
+            let response = ui.button("Zurücksetzen");
+            if response.clicked() {
                 self.report_kill(crate::kill::clear(&self.kill_path), "Not-Aus aufgehoben");
             }
-        } else if ui
-            .add(egui::Button::new("NOT-AUS").fill(egui::Color32::DARK_RED))
-            .clicked()
-        {
-            self.report_kill(
-                crate::kill::engage(&self.kill_path),
-                "Not-Aus gesetzt: Live-Schleifen stornieren offene Orders und stoppen",
-            );
+            response
+        } else {
+            let response = ui.add(egui::Button::new("NOT-AUS").fill(egui::Color32::DARK_RED));
+            if response.clicked() {
+                self.report_kill(
+                    crate::kill::engage(&self.kill_path),
+                    "Not-Aus gesetzt: Live-Schleifen stornieren offene Orders und stoppen",
+                );
+            }
+            response
         }
     }
 
@@ -288,7 +292,7 @@ impl eframe::App for OmniTradeApp {
                 ui.label(format!("Guthaben {balance:.2}"));
                 ui.label(format!("PnL {pnl:+.2}"));
                 ui.separator();
-                self.kill_controls(ui);
+                let _ = self.kill_controls(ui);
             });
         });
 
@@ -334,7 +338,7 @@ mod tests {
 
         // Assert
         assert_eq!(app.chart.candles.len(), 0);
-        assert_eq!(app.depth.max_levels, 15);
+        assert_eq!(app.depth.max_levels, 8);
         assert_eq!(app.symbol, "BTCUSDT");
         assert!(app.tree.root().is_some());
     }
@@ -380,5 +384,72 @@ mod tests {
         // Assert
         assert_eq!(app.chart.candles.len(), 1);
         assert_eq!(app.chart.candles[0].close, 104.0);
+    }
+
+    /// Runs one frame of the kill controls and returns the button response.
+    fn frame(
+        ctx: &egui::Context,
+        app: &mut OmniTradeApp,
+        events: Vec<egui::Event>,
+    ) -> egui::Response {
+        let mut response = None;
+        let input = egui::RawInput {
+            events,
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(800.0, 600.0),
+            )),
+            ..Default::default()
+        };
+        let _ = ctx.run(input, |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                response = Some(app.kill_controls(ui));
+            });
+        });
+        response.expect("button response")
+    }
+
+    fn click(ctx: &egui::Context, app: &mut OmniTradeApp) {
+        let pos = frame(ctx, app, vec![]).rect.center();
+        frame(ctx, app, vec![egui::Event::PointerMoved(pos)]);
+        let button = |pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        frame(ctx, app, vec![button(true)]);
+        frame(ctx, app, vec![button(false)]);
+    }
+
+    #[test]
+    fn test_kill_button_engages_and_reset_button_clears_flag() {
+        // Arrange
+        let path = std::env::temp_dir().join(format!("omnitrade-ui-btn-{}", std::process::id()));
+        let _ = crate::kill::clear(&path);
+        let mut app = OmniTradeApp::new(Arc::new(RwLock::new(UIState::new())));
+        app.kill_path = path.clone();
+        let ctx = egui::Context::default();
+
+        // Act & Assert: click NOT-AUS
+        click(&ctx, &mut app);
+        assert!(
+            crate::kill::is_engaged(&path),
+            "flag must be set after click"
+        );
+        assert!(app
+            .state
+            .read()
+            .expect("lock")
+            .log
+            .iter()
+            .any(|l| l.contains("Not-Aus gesetzt")));
+
+        // Act & Assert: click Zurücksetzen
+        click(&ctx, &mut app);
+        assert!(
+            !crate::kill::is_engaged(&path),
+            "flag must be cleared after reset"
+        );
     }
 }

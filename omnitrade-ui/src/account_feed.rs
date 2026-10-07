@@ -81,7 +81,7 @@ async fn poll_loop(state: Arc<RwLock<UIState>>, credentials: ApiCredentials) {
                     .filter(|(_, b)| b.total() > 0.0)
                     .map(|(asset, b)| (asset, b.free, b.locked))
                     .collect();
-                balances.sort_by(|a, b| a.0.cmp(&b.0));
+                balances.sort_by_key(|(asset, _, _)| (asset_rank(asset), asset.clone()));
                 let mut guard = state.write().unwrap_or_else(|p| p.into_inner());
                 guard.set_account_snapshot(balances, orders);
             }
@@ -97,9 +97,34 @@ async fn poll_loop(state: Arc<RwLock<UIState>>, credentials: ApiCredentials) {
     }
 }
 
+/// Main assets first so the balance list does not start with exotic testnet airdrops.
+fn asset_rank(asset: &str) -> usize {
+    ["USDT", "BTC", "ETH", "BNB"]
+        .iter()
+        .position(|a| *a == asset)
+        .unwrap_or(usize::MAX)
+}
+
 fn push_log(state: &Arc<RwLock<UIState>>, line: String) {
     state
         .write()
         .unwrap_or_else(|p| p.into_inner())
         .push_log(line);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_asset_rank_puts_main_assets_first() {
+        // Arrange
+        let mut assets = vec!["0G", "BNB", "USDT", "ETH", "BTC", "1INCH"];
+
+        // Act
+        assets.sort_by_key(|a| (asset_rank(a), a.to_string()));
+
+        // Assert
+        assert_eq!(assets, ["USDT", "BTC", "ETH", "BNB", "0G", "1INCH"]);
+    }
 }

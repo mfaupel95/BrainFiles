@@ -12,7 +12,7 @@ pub mod signing;
 pub use client::BinanceClient;
 pub use connection::{BinanceConnection, ConnectionState};
 pub use dto::{BinanceDepthEvent, BinanceKlineEvent, BinanceStreamWrapper};
-pub use klines::fetch_klines;
+pub use klines::{fetch_depth_snapshot, fetch_klines, DepthSnapshot};
 pub use margin::BinanceMarginClient;
 pub use rest::BinanceRestClient;
 pub use router::BinanceRouter;

@@ -23,7 +23,10 @@ pub mod keystore;
 pub mod trading;
 pub mod traits;
 
-pub use binance::{fetch_klines, BinanceClient, BinanceMarginClient, BinanceRestClient};
+pub use binance::{
+    fetch_depth_snapshot, fetch_klines, BinanceClient, BinanceMarginClient, BinanceRestClient,
+    DepthSnapshot,
+};
 pub use credentials::{ApiCredentials, Network};
 pub use error::ExchangeError;
 pub use keystore::Keystore;

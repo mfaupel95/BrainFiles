@@ -6,12 +6,15 @@ use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use omnitrade_exchange::{fetch_klines, BinanceClient, ExchangeError, ExchangeStream, Network};
+use omnitrade_exchange::{
+    fetch_depth_snapshot, fetch_klines, BinanceClient, ExchangeError, ExchangeStream, Network,
+};
 
 use crate::state::UIState;
 
 const CANDLE_INTERVAL: &str = "1m";
 const HISTORY_CANDLES: usize = 200;
+const DEPTH_SNAPSHOT_LEVELS: usize = 100;
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 
 /// Starts the feed on a dedicated thread with its own Tokio runtime.
@@ -61,6 +64,7 @@ async fn run_session(
     let mut depth = client.subscribe_depth(symbol).await?;
     client.connect().await?;
 
+    load_depth_snapshot(state, symbol, network).await;
     set_connected(state, true);
     log(
         state,
@@ -99,6 +103,18 @@ async fn load_history(state: &Arc<RwLock<UIState>>, symbol: &str, network: Netwo
             });
         }
         Err(e) => log(state, format!("Historie nicht geladen: {e}")),
+    }
+}
+
+/// Seeds the order book; the stream only carries changes, so unchanged levels would be missing.
+async fn load_depth_snapshot(state: &Arc<RwLock<UIState>>, symbol: &str, network: Network) {
+    match fetch_depth_snapshot(network, symbol, DEPTH_SNAPSHOT_LEVELS).await {
+        Ok(snap) => with_state(state, |s| {
+            if let Err(e) = s.set_orderbook_snapshot(symbol, &snap.bids, &snap.asks) {
+                s.push_log(format!("Order-Book-Snapshot verworfen: {e}"));
+            }
+        }),
+        Err(e) => log(state, format!("Order-Book-Snapshot nicht geladen: {e}")),
     }
 }
 

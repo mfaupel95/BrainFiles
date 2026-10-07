@@ -89,6 +89,19 @@ impl UIState {
         Ok(())
     }
 
+    /// Replaces the order book of a symbol with a full snapshot.
+    pub fn set_orderbook_snapshot(
+        &mut self,
+        symbol: &str,
+        bids: &[(f64, f64)],
+        asks: &[(f64, f64)],
+    ) -> Result<(), omnitrade_engine::EngineError> {
+        let mut book = L2OrderBook::new(symbol);
+        book.apply_delta(bids, asks)?;
+        self.orderbook.insert(symbol.to_string(), book);
+        Ok(())
+    }
+
     /// Appends a console log line, dropping the oldest beyond [`MAX_LOG_LINES`].
     pub fn push_log(&mut self, line: impl Into<String>) {
         if self.log.len() >= MAX_LOG_LINES {
@@ -308,5 +321,24 @@ mod tests {
         // Assert
         assert_eq!(state.account_balance, 100.0);
         assert_eq!(state.balances.len(), 2);
+    }
+
+    #[test]
+    fn test_set_orderbook_snapshot_replaces_book() {
+        // Arrange
+        let mut state = UIState::new();
+        state
+            .apply_depth("BTCUSDT", 1, &[(1.0, 1.0)], &[(2.0, 1.0)])
+            .expect("valid");
+
+        // Act
+        state
+            .set_orderbook_snapshot("BTCUSDT", &[(10.0, 1.0)], &[(11.0, 2.0)])
+            .expect("valid");
+
+        // Assert
+        let book = &state.orderbook["BTCUSDT"];
+        assert_eq!(book.best_bid(), Some((10.0, 1.0)));
+        assert_eq!(book.best_ask(), Some((11.0, 2.0)));
     }
 }

@@ -1,4 +1,5 @@
-//! Öffentlicher Abruf historischer Kerzen (`GET /api/v3/klines`, ohne Zugangsdaten).
+//! Öffentliche Marktdaten per REST ohne Zugangsdaten: Kerzen (`/api/v3/klines`) und
+//! Order-Book-Snapshot (`/api/v3/depth`).
 
 use crate::credentials::Network;
 use crate::error::ExchangeError;
@@ -19,6 +20,34 @@ fn base_url(network: Network) -> &'static str {
     }
 }
 
+/// Order-Book-Snapshot: Gebote absteigend, Angebote aufsteigend, je `(Preis, Menge)`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DepthSnapshot {
+    /// Gebote `(Preis, Menge)`.
+    pub bids: Vec<(f64, f64)>,
+    /// Angebote `(Preis, Menge)`.
+    pub asks: Vec<(f64, f64)>,
+}
+
+/// Lädt einen Order-Book-Snapshot mit bis zu `limit` Ebenen je Seite.
+pub async fn fetch_depth_snapshot(
+    network: Network,
+    symbol: &str,
+    limit: usize,
+) -> Result<DepthSnapshot, ExchangeError> {
+    let url = format!("{}/api/v3/depth", base_url(network));
+    let limit = limit.clamp(1, 5000).to_string();
+    let body = get_text(
+        &url,
+        &[
+            ("symbol", symbol.to_uppercase().as_str()),
+            ("limit", limit.as_str()),
+        ],
+    )
+    .await?;
+    parse_depth(&body)
+}
+
 /// Lädt die letzten `limit` Kerzen (älteste zuerst). Die letzte kann noch offen sein.
 pub async fn fetch_klines(
     network: Network,
@@ -28,38 +57,70 @@ pub async fn fetch_klines(
 ) -> Result<Vec<Candle>, ExchangeError> {
     let url = format!("{}/api/v3/klines", base_url(network));
     let limit = limit.clamp(1, MAX_LIMIT).to_string();
-    let client = reqwest::Client::builder()
-        .timeout(REQUEST_TIMEOUT)
-        .build()
-        .map_err(|e| ExchangeError::ConnectionFailed {
-            url: url.clone(),
-            reason: e.to_string(),
-        })?;
-    let response = client
-        .get(&url)
-        .query(&[
+    let body = get_text(
+        &url,
+        &[
             ("symbol", symbol.to_uppercase().as_str()),
             ("interval", interval),
             ("limit", limit.as_str()),
-        ])
+        ],
+    )
+    .await?;
+    parse_klines(&body)
+}
+
+async fn get_text(url: &str, query: &[(&str, &str)]) -> Result<String, ExchangeError> {
+    let conn_err = |e: reqwest::Error| ExchangeError::ConnectionFailed {
+        url: url.to_string(),
+        reason: e.to_string(),
+    };
+    let client = reqwest::Client::builder()
+        .timeout(REQUEST_TIMEOUT)
+        .build()
+        .map_err(conn_err)?;
+    let response = client
+        .get(url)
+        .query(query)
         .send()
         .await
-        .map_err(|e| ExchangeError::ConnectionFailed {
-            url: url.clone(),
-            reason: e.to_string(),
-        })?;
+        .map_err(conn_err)?;
     let status = response.status();
-    let body = response
-        .text()
-        .await
-        .map_err(|e| ExchangeError::ConnectionFailed {
-            url: url.clone(),
-            reason: e.to_string(),
-        })?;
+    let body = response.text().await.map_err(conn_err)?;
     if !status.is_success() {
         return Err(ExchangeError::ApiError(format!("HTTP {status}: {body}")));
     }
-    parse_klines(&body)
+    Ok(body)
+}
+
+/// Parst die Depth-Antwort `{"lastUpdateId":..,"bids":[["p","q"],..],"asks":[..]}`.
+fn parse_depth(body: &str) -> Result<DepthSnapshot, ExchangeError> {
+    let parse_err = |reason: &str| ExchangeError::MessageParseFailed {
+        raw: body.chars().take(200).collect(),
+        reason: reason.to_string(),
+    };
+    let value: Value = serde_json::from_str(body).map_err(|e| parse_err(&e.to_string()))?;
+    let side = |key: &str| -> Result<Vec<(f64, f64)>, ExchangeError> {
+        value
+            .get(key)
+            .and_then(Value::as_array)
+            .ok_or_else(|| parse_err("Seite fehlt"))?
+            .iter()
+            .map(|level| {
+                let num = |i: usize| {
+                    level
+                        .get(i)
+                        .and_then(Value::as_str)
+                        .and_then(|s| s.parse::<f64>().ok())
+                        .ok_or_else(|| parse_err("ungültige Ebene"))
+                };
+                Ok((num(0)?, num(1)?))
+            })
+            .collect()
+    };
+    Ok(DepthSnapshot {
+        bids: side("bids")?,
+        asks: side("asks")?,
+    })
 }
 
 /// Parst die Klines-Antwort: Array von Arrays `[openTime, open, high, low, close, volume, ...]`.
@@ -135,5 +196,24 @@ mod tests {
     fn base_url_matches_network() {
         assert_eq!(base_url(Network::Testnet), TESTNET_REST_URL);
         assert_eq!(base_url(Network::Mainnet), MAINNET_REST_URL);
+    }
+
+    #[test]
+    fn parses_depth_snapshot() {
+        // Act
+        let snap = parse_depth(
+            r#"{"lastUpdateId":1,"bids":[["100.5","2"],["100.0","1"]],"asks":[["101.0","3"]]}"#,
+        )
+        .expect("valid depth");
+
+        // Assert
+        assert_eq!(snap.bids, vec![(100.5, 2.0), (100.0, 1.0)]);
+        assert_eq!(snap.asks, vec![(101.0, 3.0)]);
+    }
+
+    #[test]
+    fn rejects_malformed_depth() {
+        assert!(parse_depth("{\"bids\":[[\"1\",\"x\"]],\"asks\":[]}").is_err());
+        assert!(parse_depth("{\"code\":-1121}").is_err());
     }
 }
