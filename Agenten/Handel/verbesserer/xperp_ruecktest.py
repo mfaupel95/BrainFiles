@@ -317,3 +317,109 @@ def simuliere(universum, k4_je_inst, k1h_je_inst, k1d_je_inst,
                 break
         t += SCHRITT_MS
     return runden
+
+
+def bericht(runden):
+    """Leistungsbericht fuer die AKTUELLE wachen.json - kein Vorschlag."""
+    if not runden:
+        return {"anzahl_runden": 0, "gv_gesamt": 0.0, "runden_je_grund": {},
+                "trefferquote": None, "liquidationsanteil": 0.0,
+                "groesster_ruecklauf_usd": 0.0, "je_familie": {},
+                "funding_gesamt": 0.0}
+
+    runden = sorted(runden, key=lambda r: r["geschlossen_ts"])
+    je_grund, je_familie = {}, {}
+    for r in runden:
+        je_grund[r["grund"]] = je_grund.get(r["grund"], 0) + 1
+        f = je_familie.setdefault(r["kategorie"], {"gv": 0.0, "n": 0})
+        f["gv"] += r["gv"]
+        f["n"] += 1
+
+    kapital = hoch = ruecklauf = 0.0
+    for r in runden:
+        kapital += r["gv"]
+        hoch = max(hoch, kapital)
+        ruecklauf = max(ruecklauf, hoch - kapital)
+
+    n = len(runden)
+    return {
+        "anzahl_runden": n,
+        "gv_gesamt": sum(r["gv"] for r in runden),
+        "runden_je_grund": je_grund,
+        "trefferquote": je_grund.get("ziel", 0) / n,
+        "liquidationsanteil": je_grund.get("LIQUIDATION", 0) / n,
+        "groesster_ruecklauf_usd": ruecklauf,
+        "je_familie": je_familie,
+        "funding_gesamt": sum(r["funding_summe"] for r in runden),
+    }
+
+
+def zeitfenster(k4_je_inst, tage):
+    """(start_ms, end_ms): die letzten 'tage' Tage bis zum juengsten 4H-Datum.
+    Ohne Daten (0, -1) - die Schleife laeuft dann nicht."""
+    enden = [k[-1][0] for k in k4_je_inst.values() if k]
+    if not enden:
+        return 0, -1
+    ende = max(enden)
+    return ende - tage * 86_400_000, ende
+
+
+WARMUP_TAGE = 60       # Rangliste braucht 21 Tage 4H, Hebel-Deckel 14+ Tage 1D
+
+
+def _main():
+    import argparse
+    import json
+    import xperp_kerzen as xk
+
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--tage", type=int, default=180,
+                   help="Rueckblick (ohne Warmup)")
+    p.add_argument("--kerzen-holen", action="store_true",
+                   help="Cache vorher auffrischen - langsam (siehe Spec, "
+                        "'Takt und Laufzeit')")
+    a = p.parse_args()
+
+    universum = xk.hole_universum() if a.kerzen_holen else xk.laden_universum()
+    if not universum:
+        print("Kein Universum-Cache - einmal mit --kerzen-holen starten.")
+        return 1
+
+    gesamt_tage = a.tage + WARMUP_TAGE
+    seiten_1h = -(-gesamt_tage * 24 // 100)
+    seiten_4h = -(-gesamt_tage * 6 // 100)
+    seiten_fund = -(-gesamt_tage * 3 // 100) + 1
+
+    k4, k1h, k1d, saetze = {}, {}, {}, {}
+    for x in universum:
+        iid = x["instId"]
+        if a.kerzen_holen:
+            xk.hole(iid, "1H", seiten=seiten_1h)
+            xk.hole(iid, "4H", seiten=seiten_4h)
+            xk.hole(iid, "1D")
+            xk.hole_funding(iid, seiten=seiten_fund)
+        k4[iid], _ = xk.laden(iid, "4H")
+        k1h[iid], _ = xk.laden(iid, "1H")
+        k1d[iid], _ = xk.laden(iid, "1D")
+        saetze[iid], _ = xk.laden_funding(iid)
+
+    # Einmal abrufen statt je Instrument. Umsatz: es gibt nur den HEUTIGEN
+    # 24h-Umsatz - er gilt im Ruecktest als konstant (bekannte Naeherung).
+    instr_je_basis = {i["instId"].split("-")[0]: i
+                      for i in okxf.instrumente(kategorie=None)}
+    ticker = okxf.tickers()
+    umsatz = {}
+    for x in universum:
+        iid = x["instId"]
+        kurs = k4[iid][-1][4] if k4[iid] else 0.0
+        umsatz[iid] = float((ticker.get(iid) or {}).get("volCcy24h") or 0) * kurs
+
+    start_ms, end_ms = zeitfenster(k4, a.tage)
+    runden = simuliere(universum, k4, k1h, k1d, saetze, umsatz,
+                       instr_je_basis, bot.wachen(), start_ms, end_ms)
+    print(json.dumps(bericht(runden), ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(_main())
