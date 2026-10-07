@@ -13,8 +13,13 @@ Lauf:
     scanner/.venv/Scripts/python.exe -m unittest test_omnitrade_lauf -v
 """
 
+import hashlib
+import json
 import os
+import subprocess
 import sys
+import tempfile
+import time
 import unittest
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +28,7 @@ if HANDEL not in sys.path:
     sys.path.insert(0, HANDEL)
 
 import omnitrade_lauf as lauf  # noqa: E402
+import omnitrade_bridge as bruecke  # noqa: E402
 
 
 def lage(state="running", pid=1234, alter=5.0, ok=True, fehler=""):
@@ -146,6 +152,82 @@ class BeurteilungTest(unittest.TestCase):
         """Exit 0 = laeuft, 1 = nicht - das ist die Schnittstelle fuer die .cmd
         und fuer einen Cron (leere Ausgabe ist hier NICHT das Signal)."""
         self.assertEqual(lauf.main.__code__.co_argcount, 0)
+
+
+class KeineNebeneffekteTest(unittest.TestCase):
+    """Die Anker-Logik (omnitrade_lauf) ist REIN LESEND: sie darf beim
+    Ausfuehren weder einen Rust-Lauf starten noch stoppen. Das ist der Kern
+    dieser Karte - die Entscheidung 'laeuft er?' darf nie selbst in den
+    Betrieb eingreifen, sonst wuerde eine Wache Laeufe duplizieren oder killen.
+    """
+
+    def test_modul_enthaelt_keinen_start_oder_stop_aufruf(self):
+        """Statische Pruefung: kein Popen, kein Kill, kein taskkill, kein
+        Import des Startwerkzeugs, kein Schreiben in eine Datei. Die einzigen
+        Prozessaufrufe sind subprocess.run (tasklist/powershell, rein lesend)."""
+        with open(os.path.join(HANDEL, "omnitrade_lauf.py"), "r",
+                  encoding="utf-8") as f:
+            quelle = f.read()
+        for verboten in ("Popen", "os.kill", ".terminate(", "taskkill",
+                         "omnitrade_start", "CREATE_NO_WINDOW", "open(",
+                         "os.remove", "os.rename", "shutil"):
+            self.assertNotIn(verboten, quelle,
+                             "Anker-Logik darf %r nicht enthalten" % verboten)
+        # subprocess darf nur als run() vorkommen (lesend), nie als Popen.
+        self.assertIn("subprocess.run", quelle)
+
+    def test_beurteile_schreibt_nicht_in_die_statusdatei(self):
+        """Die Statusdatei bleibt byte-identisch, und es entstehen keine neuen
+        Dateien - die Entscheidung liest, schreibt aber nie."""
+        with tempfile.TemporaryDirectory() as tmp:
+            datei = os.path.join(tmp, "live.json")
+            daten = {"schema": 1, "state": "running", "pid": 1234,
+                     "updated_ms": time.time() * 1000,
+                     "recent_candles": [{"time_ms": 0}, {"time_ms": 3_600_000}]}
+            with open(datei, "w", encoding="utf-8") as f:
+                json.dump(daten, f)
+            with open(datei, "rb") as f:
+                vorher = hashlib.sha256(f.read()).hexdigest()
+            l = bruecke.lage(datei)
+            u = lauf.beurteile(l, lebt=lambda pid: True, grenze_fuer=GRENZE_FEST)
+            self.assertTrue(u["laeuft"], u["grund"])
+            with open(datei, "rb") as f:
+                nachher = hashlib.sha256(f.read()).hexdigest()
+            self.assertEqual(vorher, nachher, "Statusdatei wurde veraendert")
+            self.assertEqual(sorted(os.listdir(tmp)), ["live.json"],
+                             "Anker-Logik hat Dateien angelegt")
+
+    def _zaehle_omnitrade(self):
+        """Anzahl der laufenden omnitrade-cli.exe-Prozesse (rein lesend)."""
+        try:
+            aus = subprocess.run(
+                [lauf._tasklist(), "/FI", "IMAGENAME eq omnitrade-cli.exe", "/NH"],
+                capture_output=True, timeout=30)
+        except Exception:
+            return None
+        text = (aus.stdout or b"").decode("utf-8", "replace")
+        return sum(1 for z in text.splitlines() if "omnitrade-cli.exe" in z)
+
+    def test_ausfuehrung_startet_keinen_rust_lauf(self):
+        """Integration: die Anzahl der omnitrade-cli.exe-Prozesse bleibt beim
+        Ausfuehren der Anker-Logik unveraendert - weder startet noch stoppt
+        sie einen Rust-Lauf. (Prozessliste nicht lesbar -> uebersprungen.)"""
+        vorher = self._zaehle_omnitrade()
+        if vorher is None:
+            self.skipTest("Prozessliste nicht lesbar")
+        with tempfile.TemporaryDirectory() as tmp:
+            datei = os.path.join(tmp, "live.json")
+            daten = {"schema": 1, "state": "stopped", "pid": 999999,
+                     "updated_ms": time.time() * 1000}
+            with open(datei, "w", encoding="utf-8") as f:
+                json.dump(daten, f)
+            l = bruecke.lage(datei)
+            u = lauf.beurteile(l, lebt=lambda pid: False)
+            self.assertFalse(u["laeuft"])
+        nachher = self._zaehle_omnitrade()
+        self.assertEqual(vorher, nachher,
+                         "Anker-Logik hat die Zahl der Rust-Laeufe veraendert "
+                         "(vorher %d, nachher %d)" % (vorher, nachher))
 
 
 if __name__ == "__main__":
