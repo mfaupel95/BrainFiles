@@ -204,3 +204,41 @@ def pruefe_ausstieg_1h(p, kerze_1h, w):
         p["stop"] = kand["stop"]
         p["hoechstkurs"] = kand["hoechstkurs"]
     return None, None
+
+
+ACHT_STUNDEN_MS = 8 * 3_600_000
+
+
+class FundingLuecke(Exception):
+    """Kein historischer Funding-Satz vor diesem Zeitpunkt - nicht mit 0.0
+    auffuellen. Dieselbe Haltung wie kraken_modell.FXLuecke."""
+
+
+def satz_zu_zeitpunkt(saetze_je_inst, inst, zeit_ms):
+    """Der zuletzt VOR (oder genau zu) zeit_ms veroeffentlichte Funding-Satz."""
+    frueher = [s for s in saetze_je_inst.get(inst, []) if s[0] <= zeit_ms]
+    if not frueher:
+        raise FundingLuecke(
+            "kein Funding-Satz vor Zeitpunkt %d fuer %s" % (zeit_ms, inst))
+    return frueher[-1][1]
+
+
+def funding_faellig(p, zeit_ms, saetze_je_inst):
+    """Faelliges Funding seit der letzten Buchung: nominal * Satz je Periode,
+    mit dem historischen Satz der jeweiligen Periode (genauer als
+    handeln.buche_funding(), das den aktuellen Satz auf alle Perioden legt).
+    Positiv = gezahlt (Long bei positivem Satz). Veraendert p erst, wenn alle
+    Perioden gerechnet sind - eine FundingLuecke laesst p unberuehrt.
+    """
+    perioden = (zeit_ms - p["letzte_funding_ts"]) // ACHT_STUNDEN_MS
+    if perioden <= 0:
+        return 0.0
+    vz = 1 if p["seite"] == "long" else -1
+    gesamt = 0.0
+    for i in range(perioden):
+        t = p["letzte_funding_ts"] + (i + 1) * ACHT_STUNDEN_MS
+        gesamt += p["nominal"] * satz_zu_zeitpunkt(
+            saetze_je_inst, p["inst"], t) * vz
+    p["letzte_funding_ts"] += perioden * ACHT_STUNDEN_MS
+    p["funding_summe"] = p.get("funding_summe", 0.0) + gesamt
+    return gesamt
