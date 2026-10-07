@@ -286,6 +286,66 @@ class TestLaufSpur3(unittest.TestCase):
         self.assertIs(lauf._kerzen_modul({"kerzen_modul": "kraken_kerzen"}),
                      kraken_kerzen)
 
+    def test_spur3_uebergibt_gewichte_durchsuchbar_false(self):
+        # Review-Fund Critical #1: konfig.json steht global auf true - ohne
+        # einen Override je Spur wuerde Spur 3 trotzdem Gewichts-Nachbarn
+        # erzeugen und damit bewertung.py (geteilt mit Spur 1) mitaendern.
+        gesehen = {}
+
+        def _fake_suche(*a, **k):
+            gesehen.update(k)
+            return {"kandidat": None, "basis_wf": _basis_wf(),
+                    "kandidat_wf": None, "auswertungen": 1,
+                    "grund": "nur 5 OOS-Runden (>= 20 noetig)",
+                    "aenderungen": {}, "holdout_basis": None,
+                    "holdout_kandidat": None, "fast_kandidat": None}
+
+        p = mock.patch.object(lauf.suche, "suche", side_effect=_fake_suche)
+        p.start(); self.addCleanup(p.stop)
+
+        lauf.einmal("spur3", kerzen_holen=False)
+        self.assertFalse(gesehen["gewichte_durchsuchbar"])
+
+    def test_spur3_holt_fx_kerzen_wenn_kerzen_holen_true(self):
+        # Review-Fund Critical #3: bisher wurde fuer die FX-Paare nur
+        # geladen (laden), nie geholt (hole) - die FX-Listen blieben also
+        # immer leer, egal was im Cache lag.
+        import kraken_kerzen
+        geholt = []
+        p = mock.patch.object(
+            kraken_kerzen, "hole",
+            side_effect=lambda paar, tage, cache_dir=None: geholt.append(paar))
+        p.start(); self.addCleanup(p.stop)
+
+        lauf.einmal("spur3", kerzen_holen=True)
+        self.assertIn("EURUSDC", geholt)
+        self.assertIn("EURCEUR", geholt)
+
+    def test_spur1_behaelt_gewichte_durchsuchbar_true(self):
+        gesehen = {}
+
+        def _fake_suche(*a, **k):
+            gesehen.update(k)
+            return {"kandidat": None, "basis_wf": _basis_wf(),
+                    "kandidat_wf": None, "auswertungen": 1,
+                    "grund": "nur 5 OOS-Runden (>= 20 noetig)",
+                    "aenderungen": {}}
+
+        p = mock.patch.object(
+            lauf.kerzen, "laden",
+            side_effect=lambda inst, cache_dir=None: ([[0, 1, 2, 3, 4, 5]], 1.0))
+        p.start(); self.addCleanup(p.stop)
+        p = mock.patch.object(
+            lauf.auswerter, "befund",
+            side_effect=lambda spur, konfig, ordner: {"befunde": [],
+                                                      "runden_gesamt": 5})
+        p.start(); self.addCleanup(p.stop)
+        p = mock.patch.object(lauf.suche, "suche", side_effect=_fake_suche)
+        p.start(); self.addCleanup(p.stop)
+
+        lauf.einmal("spur1", kerzen_holen=False)
+        self.assertTrue(gesehen["gewichte_durchsuchbar"])
+
 
 if __name__ == "__main__":
     unittest.main()

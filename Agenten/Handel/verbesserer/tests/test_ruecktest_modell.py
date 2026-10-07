@@ -138,5 +138,60 @@ class TestWalkForwardUndHoldoutReichenModellDurch(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+def _flat_dann_hoch_ab_tag(n, start_epoch_tag):
+    """Wie _flat_dann_hoch, aber die Kerzen beginnen an einem echten,
+    von 0 verschiedenen Kalendertag - deckt auf, wenn ein Hook mit dem
+    Array-Index statt dem echten Kalendertag aufgerufen wird (Review-Fund
+    Critical #2: kraken_modell schluesselt FX-Kurse nach Kalendertag, nicht
+    nach Index)."""
+    k = []
+    for i in range(n):
+        p = 100.0 if i < 122 else 100.0 + (i - 122) * 6.0
+        ts = (start_epoch_tag + i) * 86400000
+        k.append([ts, p, p * 1.001, p * 0.999, p, 1000.0])
+    return k
+
+
+class TestModellBekommtKalendertagNichtIndex(unittest.TestCase):
+    """Review-Fund Critical #2: der Hook muss den echten Kalendertag aus dem
+    Kerzen-Zeitstempel sehen, nicht den Array-Index in simuliere()'s
+    Fenster-Schleife - sonst schluesselt ein Modell wie kraken_modell, das
+    FX-Kurse nach Kalendertag ablegt, ins Leere."""
+
+    def test_gebuehr_pct_bekommt_kalendertag_nicht_index(self):
+        start_epoch_tag = 20000
+        kerzen = {"AAA": _flat_dann_hoch_ab_tag(140, start_epoch_tag)}
+        m = ruecktest.merkmals_matrix(kerzen)
+        gesehen = []
+
+        def _gebuehr(inst, tag):
+            gesehen.append(tag)
+            return 0.0005
+
+        modell = dict(ruecktest.SPOT_MODELL)
+        modell["gebuehr_pct"] = _gebuehr
+        ruecktest.simuliere(m, kerzen, KAND, 120, 125, modell=modell)
+        # Ziel-Treffer bei Array-Index 124 - der echte Kalendertag ist
+        # start_epoch_tag + 124, NICHT 124.
+        self.assertIn(start_epoch_tag + 124, gesehen)
+        self.assertNotIn(124, gesehen)
+
+    def test_in_basiswaehrung_bekommt_kalendertag_nicht_index(self):
+        start_epoch_tag = 20000
+        kerzen = {"AAA": _flat_dann_hoch_ab_tag(140, start_epoch_tag)}
+        m = ruecktest.merkmals_matrix(kerzen)
+        gesehen = []
+
+        def _basis(betrag, inst, tag):
+            gesehen.append(tag)
+            return betrag
+
+        modell = dict(ruecktest.SPOT_MODELL)
+        modell["in_basiswaehrung"] = _basis
+        ruecktest.simuliere(m, kerzen, KAND, 120, 125, modell=modell)
+        self.assertIn(start_epoch_tag + 124, gesehen)
+        self.assertNotIn(124, gesehen)
+
+
 if __name__ == "__main__":
     unittest.main()

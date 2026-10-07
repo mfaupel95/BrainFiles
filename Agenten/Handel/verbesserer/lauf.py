@@ -135,6 +135,13 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     modell = None
     if spur_name == "spur3":
         import kraken_modell
+        for fx_paar in ("EURUSDC", "EURCEUR"):
+            if kerzen_holen:
+                try:
+                    km.hole(fx_paar, tage, km_dir)
+                except Exception as e:  # noqa: BLE001
+                    print("  FX-Kerzen %s: %s - nehme Cache" % (fx_paar, e),
+                          file=sys.stderr)
         fx_eur_usdc, _ = km.laden("EURUSDC", km_dir)
         fx_eur_eurc, _ = km.laden("EURCEUR", km_dir)
         modell = kraken_modell.erzeuge(wachen, fx_eur_usdc, fx_eur_eurc)
@@ -144,8 +151,9 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
                  if modell else None)
     ergebnis = suche.suche(basis, kerzen_je_inst, konfig, grenzen,
                            bewerte=bewerte, holdout_fn=holdout_fn,
-                           gewichte_durchsuchbar=konfig.get(
-                               "gewichte_durchsuchbar", True))
+                           gewichte_durchsuchbar=spur.get(
+                               "gewichte_durchsuchbar",
+                               konfig.get("gewichte_durchsuchbar", True)))
 
     if ergebnis["kandidat"] is not None:
         vorschlag.baue(ordner, ergebnis, spur, konfig,

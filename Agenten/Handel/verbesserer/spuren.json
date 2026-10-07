@@ -35,6 +35,7 @@
     "bewertung_datei": "../scanner/bewertung.py",
     "waehrung": "EUR",
     "kerzen_modul": "kraken_kerzen",
+    "gewichte_durchsuchbar": false,
     "deckel_felder": {
       "max_pro_trade_usd": "max_pro_trade_eur",
       "max_gesamt_usd": "max_gesamt_eur"

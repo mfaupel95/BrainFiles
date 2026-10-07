@@ -44,9 +44,12 @@ class TestWaehrungsumrechnung(unittest.TestCase):
             m["in_basiswaehrung"](54.0, "XBTUSDC", 100), 50.0, places=4)
 
     def test_eurc_paar_wird_mit_gemessenem_kurs_umgerechnet(self):
-        m = kraken_modell.erzeuge(WACHEN, _fx({100: 1.08}), _fx({100: 1.002}))
+        # Kraken-Paarname EURCEUR: Basis EURC, Quote EUR - der Schlusskurs
+        # ist "EUR je 1 EURC", also wird MULTIPLIZIERT (umgekehrte Richtung
+        # zu EURUSDC, wo die Basis EUR ist). 50 EURC bei Kurs 1,1 -> 55 EUR.
+        m = kraken_modell.erzeuge(WACHEN, _fx({100: 1.08}), _fx({100: 1.1}))
         self.assertAlmostEqual(
-            m["in_basiswaehrung"](50.1, "XBTEURC", 100), 50.0, places=4)
+            m["in_basiswaehrung"](50.0, "XBTEURC", 100), 55.0, places=4)
 
     def test_fehlender_fx_tag_wirft_statt_eins_zu_eins_anzunehmen(self):
         m = kraken_modell.erzeuge(WACHEN, _fx({100: 1.08}), _fx({100: 1.0}))

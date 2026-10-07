@@ -175,10 +175,14 @@ def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag, modell=None)
             grund, trigger = ausstieg
             if grund == "stop":
                 frei_ab[p["inst"]] = t + g["abklingzeit_tage"]
-            gebuehr = modell["gebuehr_pct"](p["inst"], t)
+            # kalendertag, nicht der Array-Index t: ein Modell wie
+            # kraken_modell schluesselt FX-/Gebuehrkurse nach echtem Datum,
+            # nicht nach der Position im Fenster [start_tag, end_tag).
+            kalendertag = kerze[0] // 86400000
+            gebuehr = modell["gebuehr_pct"](p["inst"], kalendertag)
             erloes = p["einsatz"] * trigger / p["einstieg_kurs"] * (1.0 - gebuehr)
             einsatz_mit_gebuehr = p["einsatz"] * (1.0 + gebuehr)
-            laufend = modell["laufende_kosten"](p, t)
+            laufend = modell["laufende_kosten"](p, kalendertag)
             gv = erloes - einsatz_mit_gebuehr - laufend
             runden.append({
                 "inst": p["inst"],
@@ -186,9 +190,9 @@ def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag, modell=None)
                 "ausstieg_tag": t,
                 "einstieg_kurs": p["einstieg_kurs"],
                 "ausstieg_kurs": trigger,
-                "einsatz": modell["in_basiswaehrung"](p["einsatz"], p["inst"], t),
-                "erloes": modell["in_basiswaehrung"](erloes, p["inst"], t),
-                "gv": modell["in_basiswaehrung"](gv, p["inst"], t),
+                "einsatz": modell["in_basiswaehrung"](p["einsatz"], p["inst"], kalendertag),
+                "erloes": modell["in_basiswaehrung"](erloes, p["inst"], kalendertag),
+                "gv": modell["in_basiswaehrung"](gv, p["inst"], kalendertag),
                 "grund": grund,
                 "score": p["score"],
                 "vola_pa": p["vola_pa"],
