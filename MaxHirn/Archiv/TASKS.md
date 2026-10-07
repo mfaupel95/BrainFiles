@@ -46,27 +46,6 @@
       Sitzung um 22:12 im Baum schrieb.
       Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
       Betrifft: Agenten/Hermes/scripts/konfig-doktor-wache.py, Werkstatt (Junction), Modelle (Junction)
-- [ ] **T-370 — Docker-Terminal: Fix auf der Platte, Gateway hat ihn noch nicht gelesen**
-      Kontext: Am 05.10.2026 fielen waehrend einer Sitzung ALLE Docker-gestuetzten
-      Werkzeuge aus (`terminal`, `write_file`, `read_file`, `patch`, `execute_code`)
-      URSACHE BEWIESEN (nicht geraten), zwei Zeugen ohne Hermes:
-        `docker run -w 'C:\Users\...\Agenten\Hermes'` -> Exit 125,
-        'the working directory ... is invalid, it needs to be an absolute path'
-        `docker run -w /workspace` -> Exit 0.
-      Der rohe Windows-Pfad ging in `docker run -w`; `docker_mount_cwd_to_workspace`
-      stand auf false. Eine PARALLELE Sitzung hat das um 00:34 erkannt und auf true
-      gestellt (Commit 99da8bb6, byte-genau, mit Gegenprobe) - die Absicht ist richtig.
-      Auf der Platte verifiziert: yaml.safe_load liest
-      `docker_mount_cwd_to_workspace = True`, 12 terminal-Schluessel, backend docker.
-      Warum es trotzdem noch klemmt: der laufende Gateway (PID 40120, gestartet 22:13)
-      hat die Config VOR der Aenderung gelesen; Docker-Werkzeuge laufen als Kind des
-      Gateways und erben die alte Einstellung.
-      Naechster Schritt: Gateway einmal neu starten (Aufgabe Hermes_Gateway_2ef9d0b7,
-      danach `docker run`-Probe ueber das terminal-Werkzeug). MEINE FRUEHERE DEUTUNG
-      WAR FALSCH und ist zurueckgenommen: 'Duplicate mount point: /workspace' entstand
-      nur in MEINEM eigenen Testaufbau (zwei -v auf denselben Punkt), nicht im Hermes-Weg.
-      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
-      Betrifft: Agenten/Hermes/config.yaml (terminal.docker_mount_cwd_to_workspace), Gateway
 - [x] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
       Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
       habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
@@ -3202,6 +3181,28 @@ omnitrade.cmd, Werkstatt/omnitrade/status/.
       Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/*/config.yaml
 
 ## Erledigt
+- [x] **T-370 — Docker-Terminal: Fix auf der Platte, Gateway hat ihn noch nicht gelesen**
+      Kontext: Am 05.10.2026 fielen waehrend einer Sitzung ALLE Docker-gestuetzten
+      Werkzeuge aus (`terminal`, `write_file`, `read_file`, `patch`, `execute_code`)
+      URSACHE BEWIESEN (nicht geraten), zwei Zeugen ohne Hermes:
+        `docker run -w 'C:\Users\...\Agenten\Hermes'` -> Exit 125,
+        'the working directory ... is invalid, it needs to be an absolute path'
+        `docker run -w /workspace` -> Exit 0.
+      Der rohe Windows-Pfad ging in `docker run -w`; `docker_mount_cwd_to_workspace`
+      stand auf false. Eine PARALLELE Sitzung hat das um 00:34 erkannt und auf true
+      gestellt (Commit 99da8bb6, byte-genau, mit Gegenprobe) - die Absicht ist richtig.
+      Auf der Platte verifiziert: yaml.safe_load liest
+      `docker_mount_cwd_to_workspace = True`, 12 terminal-Schluessel, backend docker.
+      Warum es trotzdem noch klemmt: der laufende Gateway (PID 40120, gestartet 22:13)
+      hat die Config VOR der Aenderung gelesen; Docker-Werkzeuge laufen als Kind des
+      Gateways und erben die alte Einstellung.
+      Naechster Schritt: Gateway einmal neu starten (Aufgabe Hermes_Gateway_2ef9d0b7,
+      danach `docker run`-Probe ueber das terminal-Werkzeug). MEINE FRUEHERE DEUTUNG
+      WAR FALSCH und ist zurueckgenommen: 'Duplicate mount point: /workspace' entstand
+      nur in MEINEM eigenen Testaufbau (zwei -v auf denselben Punkt), nicht im Hermes-Weg.
+      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
+      Betrifft: Agenten/Hermes/config.yaml (terminal.docker_mount_cwd_to_workspace), Gateway
+      **Erledigt 07.10.2026.** Gateway PID 72132 laeuft seit 06.10. 01:36 Ortszeit — nach der Config-Aenderung (05.10. 00:34); docker_mount_cwd_to_workspace=true (config.yaml:658) gelesen. Probe: docker run -w /workspace echo ok = Exit 0. Alle Plattformen connected (a2a/telegram/photon/webhook).
 - [x] **T-350 — fuenf moondev-Spuren tragen den Perp-Satz ohne Perp-Nachweis**
       Kontext: `gebuehr_boerse_abgleich.py` (neu, T-330) meldet 5 Abweichungen
       ueber die Wachen: moondev_funding, moondev_liquidation,
