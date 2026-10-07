@@ -5,7 +5,7 @@
 //! and places orders via the exchange trading interface.
 
 use omnitrade_core::{Candle, OrderStatus, Side, TimeInForce};
-use omnitrade_exchange::{ExchangeStream, ExchangeTrading, Network, OrderRequest};
+use omnitrade_exchange::{Account, ExchangeStream, ExchangeTrading, Network, OrderRequest};
 use omnitrade_risk::guard::RiskGuard;
 use omnitrade_script::compile_and_run;
 use std::fs;
@@ -20,7 +20,11 @@ use crate::kill_switch;
 const MAX_CANDLE_BUFFER: usize = 500;
 
 /// Quote-Währung, deren Bestand als Konto-Equity für den RiskGuard dient.
-const QUOTE_ASSET: &str = "USDT";
+/// Quote-Währungen für Symbole ohne Trennzeichen (`BTCUSDT`), längere zuerst, damit
+/// z. B. `USDT` vor `USD` und `BNB` erkannt wird.
+const KNOWN_QUOTES: [&str; 10] = [
+    "FDUSD", "USDT", "USDC", "BUSD", "TUSD", "USD", "EUR", "BTC", "ETH", "BNB",
+];
 
 /// Errors that can occur during live trading loop execution.
 #[derive(Debug, Error)]
@@ -230,6 +234,34 @@ async fn halt_trading(
         .map_err(|e| LiveLoopError::ExchangeError(e.to_string()))
 }
 
+/// Zerlegt ein Börsensymbol in (Basis, Quote): `BTC-USDT`, `BTC/USD` oder `BTCUSDT`.
+pub(crate) fn split_symbol(symbol: &str) -> Option<(String, String)> {
+    let upper = symbol.to_uppercase();
+    if let Some((base, quote)) = upper.split_once(['-', '/']) {
+        return (!base.is_empty() && !quote.is_empty() && !quote.contains(['-', '/']))
+            .then(|| (base.to_string(), quote.to_string()));
+    }
+    KNOWN_QUOTES.iter().find_map(|quote| {
+        upper
+            .strip_suffix(quote)
+            .filter(|base| !base.is_empty())
+            .map(|base| (base.to_string(), (*quote).to_string()))
+    })
+}
+
+/// Eigenkapital des Handelspaars: Quote-Bestand plus Basis-Bestand zum aktuellen Preis
+/// (jeweils frei + gesperrt). Nur das Quote-Guthaben zu zählen ließe jeden Kauf wie
+/// einen Verlust in Höhe des Kaufpreises aussehen.
+pub(crate) fn pair_equity(account: &Account, base: &str, quote: &str, price: f64) -> f64 {
+    let total = |asset: &str| {
+        account
+            .balances
+            .get(asset)
+            .map_or(0.0, |b| b.free + b.locked)
+    };
+    total(quote) + total(base) * price
+}
+
 /// Helper: Place order after passing risk guard checks.
 ///
 /// Creates a mock Order from the request, checks it against RiskGuard,
@@ -285,18 +317,25 @@ pub(crate) async fn place_order_with_risk_check(
         }
     }
 
-    // Echter Kontostand (Quote-Währung) statt fester Startsumme, sonst bleiben
-    // Drawdown- und Tagesverlust-Limits wirkungslos. Schlägt der Abruf fehl,
-    // wird die Order abgelehnt (fail closed).
+    // Echter Kontostand statt fester Startsumme, sonst bleiben Drawdown- und
+    // Tagesverlust-Limits wirkungslos. Schlägt der Abruf fehl oder lässt sich das
+    // Symbol nicht zerlegen, wird die Order abgelehnt (fail closed).
+    if !current_price.is_finite() || current_price <= 0.0 {
+        return Err(LiveLoopError::RiskViolation(format!(
+            "ungültiger Preis {current_price} für die Eigenkapital-Bewertung"
+        )));
+    }
+    let (base, quote) = split_symbol(&order_req.symbol).ok_or_else(|| {
+        LiveLoopError::ExchangeError(format!(
+            "Symbol {} lässt sich nicht in Basis/Quote zerlegen",
+            order_req.symbol
+        ))
+    })?;
     let balances = exchange_trading
         .get_balance()
         .await
         .map_err(|e| LiveLoopError::ExchangeError(format!("Kontostand: {e}")))?;
-    let equity = balances
-        .balances
-        .get(QUOTE_ASSET)
-        .map(|b| b.free + b.locked)
-        .unwrap_or(0.0);
+    let equity = pair_equity(&balances, &base, &quote, current_price);
     let account = SimpleAccount {
         initial: initial_capital,
         current: equity,
@@ -372,6 +411,8 @@ mod tests {
     /// Trading-Mock: konfigurierbarer Kontostand, protokolliert platzierte Orders.
     struct MockTrading {
         usdt: Option<f64>,
+        /// Gehaltene BTC (Basis-Bestand); 0 = kein Eintrag im Konto.
+        btc: f64,
         placed: Arc<Mutex<Vec<OrderRequest>>>,
         cancelled: Arc<Mutex<Vec<String>>>,
     }
@@ -428,12 +469,20 @@ mod tests {
 
         async fn get_balance(&self) -> Result<Account, ExchangeError> {
             match self.usdt {
-                Some(free) => Ok(Account {
-                    balances: HashMap::from([(
-                        "USDT".to_string(),
-                        AccountBalance { free, locked: 0.0 },
-                    )]),
-                }),
+                Some(free) => {
+                    let mut balances =
+                        HashMap::from([("USDT".to_string(), AccountBalance { free, locked: 0.0 })]);
+                    if self.btc > 0.0 {
+                        balances.insert(
+                            "BTC".to_string(),
+                            AccountBalance {
+                                free: self.btc,
+                                locked: 0.0,
+                            },
+                        );
+                    }
+                    Ok(Account { balances })
+                }
                 None => Err(ExchangeError::ChannelClosed),
             }
         }
@@ -484,6 +533,7 @@ mod tests {
             };
             let trading = MockTrading {
                 usdt,
+                btc: 0.0,
                 placed: self.placed.clone(),
                 cancelled: self.cancelled.clone(),
             };
@@ -675,5 +725,171 @@ mod tests {
             "file not found",
         ));
         assert!(err.to_string().contains("Script file error"));
+    }
+
+    fn trading_with(usdt: f64, btc: f64) -> MockTrading {
+        MockTrading {
+            usdt: Some(usdt),
+            btc,
+            placed: Arc::default(),
+            cancelled: Arc::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn bought_coins_do_not_look_like_a_drawdown_to_the_risk_guard() {
+        // Arrange: 5 % Drawdown-Limit, Referenzpreis 50_000.
+        let mut guard = RiskGuard::new(omnitrade_risk::RiskLimits::new(
+            1_000_000_000.0,
+            5.0,
+            1_000_000_000.0,
+        ));
+        let req = OrderRequest::market("BTCUSDT".into(), Side::Buy, 0.0001);
+
+        // Act: erste Order bei 10_000 USDT setzt die Spitze.
+        place_order_with_risk_check(
+            &trading_with(10_000.0, 0.0),
+            &mut guard,
+            &req,
+            50_000.0,
+            10_000.0,
+        )
+        .await
+        .expect("first order passes");
+        // Nach einem Kauf: 5_000 USDT + 0.1 BTC (= 5_000 USDT) bleiben 10_000 Eigenkapital.
+        let after_buy = place_order_with_risk_check(
+            &trading_with(5_000.0, 0.1),
+            &mut guard,
+            &req,
+            50_000.0,
+            10_000.0,
+        )
+        .await;
+
+        // Assert: ohne Bewertung der BTC sähe der Guard 50 % Drawdown und lehnte ab.
+        assert!(after_buy.is_ok(), "{after_buy:?}");
+    }
+
+    #[tokio::test]
+    async fn real_loss_is_still_blocked_after_valuing_holdings() {
+        // Arrange
+        let mut guard = RiskGuard::new(omnitrade_risk::RiskLimits::new(
+            1_000_000_000.0,
+            5.0,
+            1_000_000_000.0,
+        ));
+        let req = OrderRequest::market("BTCUSDT".into(), Side::Buy, 0.0001);
+        place_order_with_risk_check(
+            &trading_with(10_000.0, 0.0),
+            &mut guard,
+            &req,
+            50_000.0,
+            10_000.0,
+        )
+        .await
+        .expect("first order passes");
+
+        // Act: Preis fällt auf 40_000, 5_000 USDT + 0.1 BTC = 9_000, also 10 % Drawdown.
+        let res = place_order_with_risk_check(
+            &trading_with(5_000.0, 0.1),
+            &mut guard,
+            &req,
+            40_000.0,
+            10_000.0,
+        )
+        .await;
+
+        // Assert
+        assert!(
+            matches!(res, Err(LiveLoopError::RiskViolation(_))),
+            "{res:?}"
+        );
+    }
+
+    #[test]
+    fn split_symbol_handles_all_exchange_notations() {
+        let pair = |b: &str, q: &str| Some((b.to_string(), q.to_string()));
+        assert_eq!(split_symbol("BTCUSDT"), pair("BTC", "USDT"));
+        assert_eq!(split_symbol("btcusdc"), pair("BTC", "USDC"));
+        assert_eq!(split_symbol("ETHBTC"), pair("ETH", "BTC"));
+        assert_eq!(split_symbol("BNBUSDT"), pair("BNB", "USDT"));
+        assert_eq!(split_symbol("USDCUSDT"), pair("USDC", "USDT"));
+        assert_eq!(split_symbol("BTC-USDT"), pair("BTC", "USDT"));
+        assert_eq!(split_symbol("btc/usd"), pair("BTC", "USD"));
+        assert_eq!(split_symbol("BTCEUR"), pair("BTC", "EUR"));
+    }
+
+    #[test]
+    fn split_symbol_rejects_unsplittable_input() {
+        for bad in [
+            "",
+            "USDT",
+            "BTC-",
+            "-USDT",
+            "A-B-C",
+            "BTCXYZ",
+            "BTC/USD/EUR",
+        ] {
+            assert_eq!(split_symbol(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn pair_equity_values_base_holdings_at_price() {
+        // Arrange
+        let account = Account {
+            balances: HashMap::from([
+                (
+                    "USDT".to_string(),
+                    AccountBalance {
+                        free: 5_000.0,
+                        locked: 1_000.0,
+                    },
+                ),
+                (
+                    "BTC".to_string(),
+                    AccountBalance {
+                        free: 0.1,
+                        locked: 0.05,
+                    },
+                ),
+                (
+                    "ETH".to_string(),
+                    AccountBalance {
+                        free: 99.0,
+                        locked: 0.0,
+                    },
+                ),
+            ]),
+        };
+
+        // Act & Assert: fremde Assets (ETH) zählen nicht, gesperrte Bestände schon.
+        assert!((pair_equity(&account, "BTC", "USDT", 50_000.0) - 13_500.0).abs() < 1e-9);
+        assert!((pair_equity(&account, "SOL", "USDT", 50_000.0) - 6_000.0).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn invalid_price_or_symbol_is_rejected_fail_closed() {
+        // Arrange
+        let mut guard = RiskGuard::testnet();
+        let ok = OrderRequest::market("BTCUSDT".into(), Side::Buy, 0.0001);
+        let bad_symbol = OrderRequest::market("FOO".into(), Side::Buy, 0.0001);
+        let trading = trading_with(10_000.0, 0.0);
+
+        // Act & Assert
+        for price in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            let res = place_order_with_risk_check(&trading, &mut guard, &ok, price, 1000.0).await;
+            assert!(
+                matches!(res, Err(LiveLoopError::RiskViolation(_))),
+                "{price}"
+            );
+        }
+        let res =
+            place_order_with_risk_check(&trading, &mut guard, &bad_symbol, 50_000.0, 1000.0).await;
+        assert!(
+            matches!(res, Err(LiveLoopError::ExchangeError(_))),
+            "{res:?}"
+        );
+        assert!(trading.placed.lock().expect("placed").is_empty());
     }
 }
