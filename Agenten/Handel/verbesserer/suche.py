@@ -36,6 +36,11 @@ DENYLIST = frozenset({
     "handel_erlaubt", "freigabe", "drawdown_halbierung_prozent",
     "kill_switch_gesamt_usd", "herzschlag_max_minuten", "journal_zweitziel",
     "max_pro_trade_usd", "max_gesamt_usd", "max_offene_positionen",
+    # Spur 3 (Kraken) nennt dieselben Deckel mit EUR-Endung (teils
+    # historisch falsch "_usd", siehe kraken/wachen.json-Kommentar) - zweite
+    # Verteidigungslinie zusaetzlich zur Whitelist in spuren.json.
+    "max_pro_trade_eur", "max_gesamt_eur", "drawdown_halbierung_usd",
+    "kill_switch_gesamt_eur",
 })
 
 # Schrittweiten je durchsuchbarem Gate. Ein Nachbar bewegt genau ein Gate um
@@ -60,15 +65,29 @@ _SIZING_WERTE = ("flach", "score-linear", "vola-invers")
 _WATCHLIST_MIN = 3
 
 
-def basis_kandidat(wachen, chance_g, risiko_g):
+_DECKEL_FELDER_DEFAULT = {
+    "max_pro_trade_usd": "max_pro_trade_usd",
+    "max_gesamt_usd": "max_gesamt_usd",
+}
+
+
+def basis_kandidat(wachen, chance_g, risiko_g, deckel_felder=None):
     """Start-Kandidat aus ``wachen.json`` plus den Gewichtskonstanten.
 
     Die Stop-Grenzen heissen in ``wachen.json`` ``pflicht_stop_prozent_min`` /
     ``pflicht_stop_prozent_max``; im Kandidat und in ``grenzen`` heissen sie
-    ``stop_min`` / ``stop_max`` (dieselbe Umbenennung nimmt der Orchestrator in
-    Task 9 aus ``spuren.json`` vor). Die uebrigen Gates und die Deckel werden
-    unveraendert uebernommen.
+    ``stop_min`` / ``stop_max`` (dieselbe Umbenennung nimmt der Orchestrator
+    aus ``spuren.json`` vor). Die uebrigen Gates werden unveraendert
+    uebernommen.
+
+    ``deckel_felder`` mappt die candidate-internen Deckel-Schluessel
+    (``max_pro_trade_usd``/``max_gesamt_usd`` - eine Namenskonvention fuer
+    "Geld-Deckel", nicht woertlich US-Dollar) auf den tatsaechlichen
+    ``wachen.json``-Feldnamen der Spur. Default liest dieselben Namen
+    (Spur 1); Spur 3 (Kraken, EUR) uebergibt z. B. ``{"max_pro_trade_usd":
+    "max_pro_trade_eur", "max_gesamt_usd": "max_gesamt_eur"}``.
     """
+    deckel_felder = deckel_felder or _DECKEL_FELDER_DEFAULT
     gates = {
         "mindest_score": wachen["mindest_score"],
         "max_volatilitaet_pa": wachen["max_volatilitaet_pa"],
@@ -77,8 +96,8 @@ def basis_kandidat(wachen, chance_g, risiko_g):
         "stop_max": wachen["pflicht_stop_prozent_max"],
         "abklingzeit_tage": wachen["abklingzeit_tage"],
         "max_offene_positionen": wachen["max_offene_positionen"],
-        "max_gesamt_usd": wachen["max_gesamt_usd"],
-        "max_pro_trade_usd": wachen["max_pro_trade_usd"],
+        "max_gesamt_usd": wachen[deckel_felder["max_gesamt_usd"]],
+        "max_pro_trade_usd": wachen[deckel_felder["max_pro_trade_usd"]],
     }
     return {
         "gates": gates,

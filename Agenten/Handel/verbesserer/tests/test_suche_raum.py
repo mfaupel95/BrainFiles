@@ -102,5 +102,31 @@ class TestGewichteSchalter(unittest.TestCase):
                                         gewichte_durchsuchbar=True))
 
 
+class TestDeckelMapping(unittest.TestCase):
+    def test_default_liest_usd_feldnamen(self):
+        basis = suche.basis_kandidat(
+            WACHEN, bewertung.CHANCE_GEWICHTE, bewertung.RISIKO_GEWICHTE)
+        self.assertEqual(basis["gates"]["max_pro_trade_usd"], 50)
+        self.assertEqual(basis["gates"]["max_gesamt_usd"], 200)
+
+    def test_eur_mapping_liest_eur_feldnamen_in_dieselben_gate_schluessel(self):
+        wachen_eur = {**WACHEN, "max_pro_trade_eur": 50, "max_gesamt_eur": 200}
+        del wachen_eur["max_pro_trade_usd"], wachen_eur["max_gesamt_usd"]
+        basis = suche.basis_kandidat(
+            wachen_eur, bewertung.CHANCE_GEWICHTE, bewertung.RISIKO_GEWICHTE,
+            deckel_felder={"max_pro_trade_usd": "max_pro_trade_eur",
+                           "max_gesamt_usd": "max_gesamt_eur"})
+        # candidate-interner Schluessel bleibt "_usd", Wert kommt aus "_eur".
+        self.assertEqual(basis["gates"]["max_pro_trade_usd"], 50)
+        self.assertEqual(basis["gates"]["max_gesamt_usd"], 200)
+
+
+class TestDenylistEurErweiterung(unittest.TestCase):
+    def test_eur_deckel_in_denylist(self):
+        for feld in ("max_pro_trade_eur", "max_gesamt_eur",
+                     "drawdown_halbierung_usd", "kill_switch_gesamt_eur"):
+            self.assertIn(feld, suche.DENYLIST)
+
+
 if __name__ == "__main__":
     unittest.main()
