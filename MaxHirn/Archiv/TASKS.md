@@ -707,17 +707,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-302 — Hauptconfig-Modellliste entscheiden (1739 omniroute + 428 nous)**
-      Kontext: Am 01.10.2026 sind die `models:`-Listen der 19 Bot-Profile auf das gekuerzt, was
-      jedes Profil selbst nennt (33.064 -> 125 Eintraege, Werkzeug
-      `Agenten/Hermes/scripts/profil-modelllisten-kuerzen.py`). Die HAUPTconfig traegt weiter
-      die volle omniroute-`auto/*`-Liste (1.739) und die 428 Nous-Modelle - beides ist
-      gewollt bzw. ausdruecklich bestellt (Nous-Liste), aber dieselbe Frage stellt sich:
-      braucht der Hauptwaehler die 1.739 Router-Kombinationen, wenn der Endpunkt sie mit
-      Schluessel ohnehin live liefert?
-      Naechster Schritt: entscheiden, ob die omniroute-Liste der Hauptconfig ebenfalls auf die
-      benutzten Kombinationen gekuerzt wird (`--hauptconfig` waere im Werkzeug zu ergaenzen).
-      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
 
 
 
@@ -792,24 +781,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (`paperclipai/paperclip`); bei einem spaeteren Release pruefen, ob `install` durchlaeuft,
       dann auf den verwalteten Weg umziehen (dann gaebe es Update, Rollback, Hintergrunddienst).
       Angelegt: 2026-09-30 · Betrifft: `MaxHirn/Wiki/Werkzeuge/Paperclip.md`
-- [ ] **T-254 - Paperclip: Instanz laeuft und der Umgebungstest ist gruen - offen sind Anmeldung, Modell, Autostart**
-      Kontext: Dashboard `http://127.0.0.1:3100` (HTTP 200), eingebettete PostgreSQL auf
-      127.0.0.1:54329, 278 Migrationen. Der erste Start braucht rund 3 min (sieht wie ein
-      Haenger aus). Unter Windows gibt es KEINEN Hintergrunddienst (`Service management is not
-      supported on win32`). Der Umgebungstest scheiterte zunaechst an `ANTHROPIC_API_KEY` aus
-      `C:\Users\faupe\.env` (Arbeitsverzeichnis des Servers!) - behoben, seitdem `status: pass`.
-      Start-Wrapper steht: `Agenten/Routinen/paperclip-start.ps1` (Port-Pruefung, Arbeits-
-      verzeichnis `.paperclip`, entfernt ANTHROPIC_*). Offen: (a) Board-Anmeldung der CLI -
-      Dashboard im Browser oder `paperclipai connect --persona board`; `token board create`
-      verlangt vorher eine Sitzung. (b) Kein LLM-Provider eingetragen (fuer arbeitende Agenten
-      noetig - OmniRoute/Ollama waeren im Haus da). (c) Kein Autostart (geplante Aufgabe nach
-      Hausmuster fehlt). (d) Die `.env` im Home bleibt eine Falle fuer dort gestartete Werkzeuge
-      (absichtlich nicht angefasst).
-      Naechster Schritt: Entscheidung von Max - Konto im Dashboard anlegen und
-      `paperclipai connect` fahren, danach den Provider eintragen; auf Wunsch zusaetzlich die
-      geplante Aufgabe fuer den Wrapper.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-10-01 · Betrifft: `~/.paperclip/instances/default`,
-      `Agenten/Routinen/paperclip-start.ps1`
 - [ ] **T-256 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
       Kontext: Die Spur `omnitrade` (Weg B, Commit 6197ac9) ist gebaut und laeuft
       Papier. Ihr Live-Zweig steht auf Kraken/USDC; die Vorschau nennt vier
@@ -841,15 +812,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (dort liegt schon einer) oder als eigenstaendiges Werkzeug behalten; in jedem Fall den
       Gitlink austragen (`git rm --cached MaxHirn/codex`), sonst zeigt er ins Leere.
       Angelegt: 2026-09-30 · Betrifft: `MaxHirn/codex`, `.gitmodules`-freier Gitlink
-- [ ] **T-249 - `MaxHirn/DockerDesktopWSL` (4,88 GB) liegt im Vault**
-      Kontext: Der Vault wird nach `G:` gesichert (`MaxHirn/` + `Agenten/`), dieses Volumen
-      damit mit - 4,88 GB Docker-Daten in einem Wissensspeicher. Am 30.09.2026 gemessen, nicht
-      angefasst: Docker laeuft (Container `nautilus-demo`, `freqtrade-*`, `openterminalui-*`),
-      ein Verschieben im laufenden Betrieb waere riskant.
-      Naechster Schritt: Entscheidung von Max - im Docker Desktop den Datentraeger-Ort
-      verlegen (dann einmal Docker neu starten) oder bewusst liegen lassen und in
-      `Wissen/Routinen.md` als Ausnahme vermerken.
-      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/DockerDesktopWSL`, Sicherung nach `G:`
 - [ ] **T-250 - Werkstatt: 29 lose Dateien in der Wurzel, 19,42 GB Ballast in den Klonen**
       Kontext: Die Werkstatt-Wurzel traegt noch Plaene, Specs, PDFs, Altskripte
       (`hermes-update.ps1`, `swap-live.patch`, `tmp_auswertung_20260917.json`), zwei
@@ -2403,6 +2365,47 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-254 - Paperclip: Instanz laeuft und der Umgebungstest ist gruen - offen sind Anmeldung, Modell, Autostart**
+      Kontext: Dashboard `http://127.0.0.1:3100` (HTTP 200), eingebettete PostgreSQL auf
+      127.0.0.1:54329, 278 Migrationen. Der erste Start braucht rund 3 min (sieht wie ein
+      Haenger aus). Unter Windows gibt es KEINEN Hintergrunddienst (`Service management is not
+      supported on win32`). Der Umgebungstest scheiterte zunaechst an `ANTHROPIC_API_KEY` aus
+      `C:\Users\faupe\.env` (Arbeitsverzeichnis des Servers!) - behoben, seitdem `status: pass`.
+      Start-Wrapper steht: `Agenten/Routinen/paperclip-start.ps1` (Port-Pruefung, Arbeits-
+      verzeichnis `.paperclip`, entfernt ANTHROPIC_*). Offen: (a) Board-Anmeldung der CLI -
+      Dashboard im Browser oder `paperclipai connect --persona board`; `token board create`
+      verlangt vorher eine Sitzung. (b) Kein LLM-Provider eingetragen (fuer arbeitende Agenten
+      noetig - OmniRoute/Ollama waeren im Haus da). (c) Kein Autostart (geplante Aufgabe nach
+      Hausmuster fehlt). (d) Die `.env` im Home bleibt eine Falle fuer dort gestartete Werkzeuge
+      (absichtlich nicht angefasst).
+      Naechster Schritt: Entscheidung von Max - Konto im Dashboard anlegen und
+      `paperclipai connect` fahren, danach den Provider eintragen; auf Wunsch zusaetzlich die
+      geplante Aufgabe fuer den Wrapper.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-01 · Betrifft: `~/.paperclip/instances/default`,
+      `Agenten/Routinen/paperclip-start.ps1`
+      **Erledigt 07.10.2026.** (a) Board-Anmeldung steht: paperclipai whoami meldet local-board. (b) LLM-Provider ist laut paperclipai doctor OPTIONAL ('No LLM provider configured (optional)') - kein Eintrag noetig. (c) Autostart: Aufgabe MaxHirn-Paperclip angelegt (Anmeldung +2 Min, versteckt, IgnoreNew, LeastPrivilege), manuell gestartet, Log bestaetigt 'Port 3100 belegt - Paperclip laeuft schon, kein Start.' (d) unveraendert.
+- [x] **T-249 - `MaxHirn/DockerDesktopWSL` (4,88 GB) liegt im Vault**
+      Kontext: Der Vault wird nach `G:` gesichert (`MaxHirn/` + `Agenten/`), dieses Volumen
+      damit mit - 4,88 GB Docker-Daten in einem Wissensspeicher. Am 30.09.2026 gemessen, nicht
+      angefasst: Docker laeuft (Container `nautilus-demo`, `freqtrade-*`, `openterminalui-*`),
+      ein Verschieben im laufenden Betrieb waere riskant.
+      Naechster Schritt: Entscheidung von Max - im Docker Desktop den Datentraeger-Ort
+      verlegen (dann einmal Docker neu starten) oder bewusst liegen lassen und in
+      `Wissen/Routinen.md` als Ausnahme vermerken.
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/DockerDesktopWSL`, Sicherung nach `G:`
+      **Erledigt 07.10.2026.** Entscheidung Max: bewusst liegen lassen. Nachgemessen: G:\\MaxHirn-Sicherung\\MaxHirn\\DockerDesktopWSL enthaelt genau die zwei VHDX (docker_data.vhdx 4896 MB + ext4.vhdx 96 MB = 4,88 GB), sie gehen also in JEDE G:-Sicherung. Ein Umzug verlangt einen Docker-Neustart, waehrend nautilus-demo/freqtrade-*/openterminalui-* laufen - das groessere Risiko. Als Ausnahme in Wissen/Routinen.md vermerkt, samt Nachhol-Weg.
+- [x] **T-302 — Hauptconfig-Modellliste entscheiden (1739 omniroute + 428 nous)**
+      Kontext: Am 01.10.2026 sind die `models:`-Listen der 19 Bot-Profile auf das gekuerzt, was
+      jedes Profil selbst nennt (33.064 -> 125 Eintraege, Werkzeug
+      `Agenten/Hermes/scripts/profil-modelllisten-kuerzen.py`). Die HAUPTconfig traegt weiter
+      die volle omniroute-`auto/*`-Liste (1.739) und die 428 Nous-Modelle - beides ist
+      gewollt bzw. ausdruecklich bestellt (Nous-Liste), aber dieselbe Frage stellt sich:
+      braucht der Hauptwaehler die 1.739 Router-Kombinationen, wenn der Endpunkt sie mit
+      Schluessel ohnehin live liefert?
+      Naechster Schritt: entscheiden, ob die omniroute-Liste der Hauptconfig ebenfalls auf die
+      benutzten Kombinationen gekuerzt wird (`--hauptconfig` waere im Werkzeug zu ergaenzen).
+      Angelegt 01.10.2026 · Betrifft Agenten/Hermes/config.yaml
+      **Erledigt 07.10.2026.** Der Task war ueberholt: die omniroute-Liste hatte 106 Eintraege, nicht 1.739. Gemessen gegen den Router (/v1/models, 1831 Modelle live): 64 davon loesen NICHT auf - alle 62 gh/* und github/* plus mlx-qwen/... und nacktes 'auto'. Ursache: der github-Provider in OmniRoute ist is_active=0. 64 tote Eintraege entfernt (config.yaml.bak-20261007), 42 bleiben, YAML parst, Diff 0/64.
 - [x] **T-348 — Vier Tests rot, alle vier von fremder Hand (04.10.2026)**
       Kontext: Die volle Handel-Suite (1781 Tests, 1177 s) meldet vier
       Fehlschlaege. Keiner gehoert zu den Leitstand-Schritten; per

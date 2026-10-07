@@ -494,73 +494,9 @@ providers:
       auto/llama: {}
       auto/gemini: {}
       hermes-free-local: {}
-      gh/claude-fable-5: {}
-      github/claude-fable-5: {}
-      gh/claude-opus-5: {}
-      github/claude-opus-5: {}
-      gh/claude-opus-4.8-fast: {}
-      github/claude-opus-4.8-fast: {}
-      gh/claude-opus-4.8: {}
-      github/claude-opus-4.8: {}
-      gh/claude-opus-4.7: {}
-      github/claude-opus-4.7: {}
-      gh/claude-opus-4.6: {}
-      github/claude-opus-4.6: {}
-      gh/claude-sonnet-4.6: {}
-      github/claude-sonnet-4.6: {}
-      gh/claude-opus-4.5: {}
-      github/claude-opus-4.5: {}
-      gh/claude-sonnet-5: {}
-      github/claude-sonnet-5: {}
-      gh/claude-sonnet-4.5: {}
-      github/claude-sonnet-4.5: {}
-      gh/claude-haiku-4.5: {}
-      github/claude-haiku-4.5: {}
-      gh/gemini-3.1-pro-preview: {}
-      github/gemini-3.1-pro-preview: {}
-      gh/gemini-3.7-flash: {}
-      github/gemini-3.7-flash: {}
-      gh/gemini-3.6-flash: {}
-      github/gemini-3.6-flash: {}
-      gh/gemini-3.5-flash: {}
-      github/gemini-3.5-flash: {}
-      gh/gpt-5.6-sol: {}
-      github/gpt-5.6-sol: {}
-      gh/gpt-5.6-terra: {}
-      github/gpt-5.6-terra: {}
-      gh/gpt-5.6-luna: {}
-      github/gpt-5.6-luna: {}
-      gh/gpt-5.5: {}
-      github/gpt-5.5: {}
-      gh/gpt-5.4: {}
-      github/gpt-5.4: {}
-      gh/gpt-5.4-mini: {}
-      github/gpt-5.4-mini: {}
-      gh/gpt-5.4-nano: {}
-      github/gpt-5.4-nano: {}
-      gh/gpt-5.3-codex: {}
-      github/gpt-5.3-codex: {}
-      gh/gpt-5-mini: {}
-      github/gpt-5-mini: {}
-      gh/gpt-4o-2024-11-20: {}
-      github/gpt-4o-2024-11-20: {}
-      gh/gpt-4o-mini: {}
-      github/gpt-4o-mini: {}
-      gh/gpt-4-0125-preview: {}
-      github/gpt-4-0125-preview: {}
-      gh/kimi-k2.7-code: {}
-      github/kimi-k2.7-code: {}
-      gh/mai-code-1-flash: {}
-      github/mai-code-1-flash: {}
-      gh/mai-code-1.1-flash: {}
-      github/mai-code-1.1-flash: {}
-      gh/mai-code-1-flash-picker: {}
-      github/mai-code-1-flash-picker: {}
-      mlx-qwen/maglun/Qwen3.8-27B-MLX-Mixed-3.80bpw: {}
       ollama-local/embeddinggemma: {}
       ollama-local/nomic-embed-text: {}
       ollama-local/bge-m3: {}
-      auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
 fallback_providers:
   # Ein Eintrag, der dem Hauptmodell entspricht, taugt nicht als Rueckfall - er

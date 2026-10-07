@@ -548,3 +548,19 @@ trotzdem liegen bleibt.
   bräuchte es einen Server — bewusst zurückgestellt.
 - Routinen, die Mails senden oder öffentlich posten, immer als Entwurf enden
   lassen, nicht als Versand.
+
+## Ausnahme: Docker-Daten liegen im Vault
+
+`MaxHirn/DockerDesktopWSL` traegt zwei VHDX-Dateien (4,88 GB: 
+`disk/docker_data.vhdx` 4.896 MB + `main/ext4.vhdx` 96 MB) und wird von der 
+Sicherung nach `G:` mitgenommen - nachgemessen am 07.10.2026: 
+`G:\MaxHirn-Sicherung\MaxHirn\DockerDesktopWSL` enthaelt genau diese zwei Dateien.
+
+**Entscheidung (Max, 07.10.2026): bewusst liegen lassen.** Die Alternative waere, den 
+Datentraeger-Ort im Docker Desktop zu verlegen - das verlangt einen Docker-Neustart, und 
+zu diesem Zeitpunkt laufen `nautilus-demo`, `freqtrade-*` und `openterminalui-*`. 
+Ein Umzug im laufenden Betrieb ist das groessere Risiko als 4,88 GB in der Sicherung.
+
+Wenn Docker einmal ohnehin steht (Neustart, Update), ist der Umzug nachzuholen: 
+Docker Desktop > Settings > Resources > Advanced > Disk image location. Danach 
+`MaxHirn/DockerDesktopWSL` loeschen und die naechste Sicherung ist 4,88 GB kleiner.
