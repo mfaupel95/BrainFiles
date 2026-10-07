@@ -174,3 +174,33 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
             "hoechstkurs": einstieg, "stop_id": "ruecktest",
             "eroeffnet_ts": zeit_ms, "letzte_funding_ts": zeit_ms,
             "funding_summe": 0.0}
+
+
+def pruefe_ausstieg_1h(p, kerze_1h, w):
+    """Ausstiegsvorrang LIQUIDATION > stop > ziel auf einer 1H-Kerze, danach
+    Trailing-Nachfuehrung, wenn kein Ausstieg greift. Reihenfolge 1:1 aus
+    handeln.pruefe_ausstiege(), aber auf Kerzen-Extremen (hoch/tief) statt auf
+    einem einzelnen Live-Preis. Gibt (grund, ausstiegspreis) oder (None, None).
+    """
+    _, _, hoch, tief, schluss, _ = kerze_1h
+    if p["seite"] == "long":
+        if tief <= p["liq"]:
+            return "LIQUIDATION", p["liq"]
+        if tief <= p["stop"]:
+            return "stop", p["stop"]
+        if hoch >= p["ziel"]:
+            return "ziel", p["ziel"]
+    else:
+        if hoch >= p["liq"]:
+            return "LIQUIDATION", p["liq"]
+        if hoch >= p["stop"]:
+            return "stop", p["stop"]
+        if tief <= p["ziel"]:
+            return "ziel", p["ziel"]
+
+    trailing_modul.erst_hoch(p, schluss)
+    kand, _grund = trailing_modul.kandidat(p, schluss, w, liq=p.get("liq"))
+    if kand is not None:
+        p["stop"] = kand["stop"]
+        p["hoechstkurs"] = kand["hoechstkurs"]
+    return None, None
