@@ -86,7 +86,10 @@ pub async fn handle_live(
     let mut risk_guard = match network {
         Network::Testnet => RiskGuard::testnet(),
         Network::Mainnet => RiskGuard::mainnet(),
-    };
+    }
+    // Verlustlimit gegen das echte Eigenkapital zu Laufbeginn messen, nicht gegen
+    // das angegebene Startkapital.
+    .with_run_baseline();
 
     info!("Starting live trading on {} (symbol: {})", network, symbol);
     info!("Initial capital: {}", initial_capital);

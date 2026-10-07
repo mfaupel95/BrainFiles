@@ -24,6 +24,10 @@ pub struct RiskGuard {
     limits: RiskLimits,
     peak_equity: f64,
     daily_loss: f64,
+    /// Opt-in: measure the loss limit against the equity seen at the first check
+    /// instead of `AccountInfo::initial_balance`.
+    track_run_baseline: bool,
+    run_baseline: Option<f64>,
 }
 
 impl RiskGuard {
@@ -33,7 +37,26 @@ impl RiskGuard {
             limits,
             peak_equity: 0.0,
             daily_loss: 0.0,
+            track_run_baseline: false,
+            run_baseline: None,
         }
+    }
+
+    /// Measures the loss limit (`max_daily_loss`) against the account equity at the
+    /// **first checked order** of this guard instead of the declared initial balance.
+    ///
+    /// Live trading needs this: the declared starting capital is a user input and says
+    /// nothing about what the account really holds. If the account holds far more, the
+    /// loss `initial - equity` stays negative and the limit never triggers.
+    #[must_use]
+    pub fn with_run_baseline(mut self) -> Self {
+        self.track_run_baseline = true;
+        self
+    }
+
+    /// Equity recorded at the first check, if run-baseline tracking is enabled.
+    pub fn run_baseline(&self) -> Option<f64> {
+        self.run_baseline
     }
 
     /// Creates a RiskGuard for testnet trading.
@@ -60,6 +83,9 @@ impl RiskGuard {
         let current_equity = account.total_equity();
         if current_equity > self.peak_equity {
             self.peak_equity = current_equity;
+        }
+        if self.track_run_baseline && self.run_baseline.is_none() {
+            self.run_baseline = Some(current_equity);
         }
 
         // Check position size limit
@@ -105,7 +131,10 @@ impl RiskGuard {
     /// Validates daily loss against limit.
     fn check_daily_loss(&self, account: &dyn AccountInfo) -> Result<(), RiskViolation> {
         // Nur Verluste zählen; Gewinne (negativer Wert) dürfen nicht blockieren.
-        let current_loss = account.initial_balance() - account.total_equity();
+        let reference = self
+            .run_baseline
+            .unwrap_or_else(|| account.initial_balance());
+        let current_loss = reference - account.total_equity();
         if current_loss > self.limits.max_daily_loss {
             return Err(RiskViolation::DailyLossExceeded {
                 loss: current_loss,
@@ -259,5 +288,59 @@ mod tests {
         let order = create_test_order(5, 0.1);
         let _ = guard.check_order(&order, &account, 50000.0);
         assert_eq!(guard.peak_equity(), 15000.0);
+    }
+
+    #[test]
+    fn test_run_baseline_makes_loss_limit_independent_of_declared_initial_balance() {
+        // Arrange: Konto hält 93_000, deklariertes Startkapital war nur 10_000.
+        let order = create_test_order(7, 1.0);
+        let start = create_mock_account(93_000.0, 10_000.0, 83_000.0);
+        let later = create_mock_account(90_000.0, 10_000.0, 80_000.0);
+
+        // Act & Assert: ohne Basis löst ein Verlust von 3_000 nie aus (initial − equity < 0) …
+        let mut plain = RiskGuard::testnet();
+        plain.check_order(&order, &start, 3000.0).expect("start");
+        assert!(plain.check_order(&order, &later, 3000.0).is_ok());
+
+        // … mit Laufbeginn-Basis schon (3_000 > max_daily_loss 2_000).
+        let mut guard = RiskGuard::testnet().with_run_baseline();
+        guard.check_order(&order, &start, 3000.0).expect("start");
+        assert_eq!(guard.run_baseline(), Some(93_000.0));
+        assert!(matches!(
+            guard.check_order(&order, &later, 3000.0),
+            Err(RiskViolation::DailyLossExceeded { .. })
+        ));
+    }
+
+    #[test]
+    fn test_run_baseline_is_set_once_and_gains_do_not_block() {
+        // Arrange
+        let order = create_test_order(8, 1.0);
+        let mut guard = RiskGuard::testnet().with_run_baseline();
+        assert_eq!(guard.run_baseline(), None);
+
+        // Act
+        guard
+            .check_order(&order, &create_mock_account(10_000.0, 1.0, 0.0), 3000.0)
+            .expect("first");
+        let gain = guard.check_order(&order, &create_mock_account(15_000.0, 1.0, 0.0), 3000.0);
+
+        // Assert
+        assert!(gain.is_ok(), "{gain:?}");
+        assert_eq!(
+            guard.run_baseline(),
+            Some(10_000.0),
+            "baseline must not move"
+        );
+    }
+
+    #[test]
+    fn test_default_guard_has_no_run_baseline() {
+        let mut guard = RiskGuard::testnet();
+        let order = create_test_order(9, 1.0);
+        guard
+            .check_order(&order, &create_mock_account(1_000.0, 1_000.0, 0.0), 10.0)
+            .expect("ok");
+        assert_eq!(guard.run_baseline(), None);
     }
 }

@@ -892,4 +892,37 @@ mod tests {
         );
         assert!(trading.placed.lock().expect("placed").is_empty());
     }
+
+    #[tokio::test]
+    async fn loss_limit_uses_equity_at_run_start_not_declared_capital() {
+        // Arrange: deklariertes Startkapital 10_000, das Konto hält aber 93_000.
+        let limits = omnitrade_risk::RiskLimits::new(1_000_000_000.0, 100.0, 2_000.0);
+        let mut guard = RiskGuard::new(limits).with_run_baseline();
+        let req = OrderRequest::market("BTCUSDT".into(), Side::Buy, 0.0001);
+        place_order_with_risk_check(
+            &trading_with(93_000.0, 0.0),
+            &mut guard,
+            &req,
+            50_000.0,
+            10_000.0,
+        )
+        .await
+        .expect("first order sets the baseline");
+
+        // Act: 3_000 Verlust seit Laufbeginn (> 2_000), obwohl 90_000 weit über 10_000 liegt.
+        let res = place_order_with_risk_check(
+            &trading_with(90_000.0, 0.0),
+            &mut guard,
+            &req,
+            50_000.0,
+            10_000.0,
+        )
+        .await;
+
+        // Assert
+        assert!(
+            matches!(res, Err(LiveLoopError::RiskViolation(_))),
+            "{res:?}"
+        );
+    }
 }
