@@ -45,6 +45,17 @@ impl BinanceClient {
         }
     }
 
+    /// Creates a `BinanceClient` whose market-data stream matches the network.
+    ///
+    /// Testnet-Orders mit Mainnet-Kursen zu handeln verfälscht Signale und
+    /// Risikoprüfung, deshalb nutzt das Testnet auch den Testnet-Stream.
+    pub fn for_network(network: crate::Network) -> Self {
+        match network {
+            crate::Network::Testnet => Self::with_base_url(BinanceConnection::TESTNET_BASE_URL),
+            crate::Network::Mainnet => Self::new(),
+        }
+    }
+
     /// Creates a new `BinanceClient` with a custom base URL endpoint.
     pub fn with_base_url(base_url: impl Into<String>) -> Self {
         let (raw_tx, raw_rx) = mpsc::channel(RAW_CHANNEL_CAPACITY);
@@ -274,6 +285,21 @@ impl ExchangeTrading for BinanceClient {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn for_network_selects_matching_stream_endpoint() {
+        use super::*;
+        let testnet = BinanceClient::for_network(crate::Network::Testnet);
+        assert_eq!(
+            testnet.connection().base_url(),
+            BinanceConnection::TESTNET_BASE_URL
+        );
+        let mainnet = BinanceClient::for_network(crate::Network::Mainnet);
+        assert_eq!(
+            mainnet.connection().base_url(),
+            BinanceConnection::DEFAULT_BASE_URL
+        );
+    }
+
     use super::*;
 
     #[test]

@@ -92,7 +92,7 @@ pub async fn handle_live(
         // connection (connect() takes &mut self), the trading client places
         // orders (takes &self). BinanceClient is not Clone, so each role gets
         // its own instance built from the same credentials.
-        let mut stream_client = BinanceClient::new();
+        let mut stream_client = BinanceClient::for_network(network);
         stream_client.set_credentials(creds)?;
         let mut trading_client = BinanceClient::new();
         trading_client.set_credentials(trading_creds)?;
