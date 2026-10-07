@@ -249,5 +249,21 @@ Was sich trotzdem belegen laesst:
 - Der Eintrag selbst: `git diff --numstat` 2/0, `terminal` 12 -> 13 Schluessel,
   `yaml.safe_load` liest ihn zurueck, CRLF 1377 -> 1379, bareLF 0.
 
-**Offen bleibt der eine Beleg:** `docker exec <container> ls /brainfiles` zeigt
-`MaxHirn` und `Agenten`. Dafuer muss erst Docker Desktop repariert werden.
+**Beleg erbracht am 06.10.2026** (nach einem Neustart von Docker Desktop, der
+den read-only-Metadaten-Store geheilt hat):
+
+    docker run -d --name probeBF -v 'C:\Users\faupe\Documents\BrainFiles:/brainfiles' \
+        nikolaik/python-nodejs:python3.11-nodejs20 sleep infinity
+    docker exec probeBF ls /brainfiles
+    -> AENDERUNGSPLAN-TASKS-2026-10-04.md  AGENTS.md  Agenten  MaxHirn  Modelle  Werkstatt ...
+    docker exec probeBF ls -d /brainfiles/.git && cd /brainfiles && git log --oneline -1
+    -> /brainfiles/.git / 0c68b4d2 Wiki-Lektion 5: ...
+    docker exec probeBF sh -c 'touch /brainfiles/.__probe && rm /brainfiles/.__probe'
+    -> schreiben-OK
+
+**Image-Falle beim Nachstellen:** `nousresearch/hermes-sandbox:desktop` startet in
+dieser Umgebung nicht - der Container endet sofort mit Exit 255 und
+`exec /usr/bin/sleep: exec format error` (Architektur). Fuer die Mount-Gegenprobe
+ein passendes Image nehmen (`nikolaik/python-nodejs:python3.11-nodejs20`); die
+Bindung selbst wird von Docker angelegt und ist am `hermes-sandbox`-Image mit
+`docker inspect --format '{{range .Mounts}}...'` genauso zu sehen.
