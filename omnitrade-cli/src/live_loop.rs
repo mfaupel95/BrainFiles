@@ -61,7 +61,14 @@ pub struct LiveConfig<'a> {
     pub order_quantity: f64,
     /// Flag-Datei des Not-Aus; ist sie gesetzt, stoppt die Schleife.
     pub kill_file: &'a Path,
+    /// Deckel für die Position, die dieser Lauf selbst aufbaut (Quote-Währung).
+    /// Auf Mainnet Pflicht und höchstens [`MAINNET_HARD_CAP`].
+    pub max_notional: Option<f64>,
 }
+
+/// Fest verdrahteter Höchstwert des Deckels auf Mainnet (Quote-Währung, z. B. USD).
+/// Er lässt sich nur per Code-Änderung anheben, nie per Argument.
+pub const MAINNET_HARD_CAP: f64 = 100.0;
 
 /// Main async actor-style loop for live trading.
 ///
@@ -84,14 +91,23 @@ pub async fn live_loop(
         initial_capital,
         order_quantity,
         kill_file,
+        max_notional,
     } = *config;
 
-    // Validate network (testnet-first, mainnet requires explicit opt-in)
-    if network == Network::Mainnet {
-        return Err(LiveLoopError::NetworkError(
-            "Mainnet trading requires additional Phase 3 safety gates".to_string(),
-        ));
+    // Mainnet nur mit gültigem Deckel (testnet-first, echtes Geld braucht eine Grenze).
+    if network == Network::Mainnet && !valid_mainnet_cap(max_notional) {
+        return Err(LiveLoopError::NetworkError(format!(
+            "Mainnet trading requires a max notional between 0 and {MAINNET_HARD_CAP}"
+        )));
     }
+    if let Some(cap) = max_notional {
+        if !cap.is_finite() || cap <= 0.0 {
+            return Err(LiveLoopError::NetworkError(format!(
+                "Invalid max notional: {cap}"
+            )));
+        }
+    }
+    let mut exposure = max_notional.map(ExposureLimit::new);
 
     // Load and validate script file
     let script_content = fs::read_to_string(script_path)?;
@@ -171,12 +187,13 @@ pub async fn live_loop(
         info!("Placing order: {:?}", order_req);
 
         // Place order and check risk guard
-        match place_order_with_risk_check(
+        match place_order_guarded(
             &exchange_trading,
             risk_guard,
             &order_req,
             candle.close,
             initial_capital,
+            exposure.as_mut(),
         )
         .await
         {
@@ -262,6 +279,64 @@ pub(crate) fn pair_equity(account: &Account, base: &str, quote: &str, price: f64
     total(quote) + total(base) * price
 }
 
+/// Prüft einen Positionsdeckel für die Position, die ein Lauf selbst aufbaut.
+///
+/// Bestände, die schon vor dem Lauf im Konto lagen, zählen nicht dazu und werden nie
+/// verkauft: Beim ersten Check wird der Basis-Bestand als Ausgangspunkt gemerkt, der
+/// Lauf darf nur darüber hinaus kaufen und höchstens das Gekaufte wieder verkaufen.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ExposureLimit {
+    cap: f64,
+    start_base: Option<f64>,
+}
+
+impl ExposureLimit {
+    pub(crate) fn new(cap: f64) -> Self {
+        Self {
+            cap,
+            start_base: None,
+        }
+    }
+
+    /// `held_base` ist der aktuelle Gesamtbestand (frei + gesperrt) der Basis-Währung.
+    pub(crate) fn check(
+        &mut self,
+        side: Side,
+        quantity: f64,
+        price: f64,
+        held_base: f64,
+    ) -> Result<(), String> {
+        let start = *self.start_base.get_or_insert(held_base);
+        let run_base = (held_base - start).max(0.0);
+        match side {
+            Side::Buy => {
+                let after = (run_base + quantity) * price;
+                if after > self.cap {
+                    return Err(format!(
+                        "Positionsdeckel überschritten: {after:.2} > {:.2}",
+                        self.cap
+                    ));
+                }
+            }
+            Side::Sell => {
+                // Toleranz 1 % der Ordermenge: Gebühren in der Basis-Währung lassen den
+                // Bestand leicht unter der gekauften Menge liegen.
+                if quantity > run_base + quantity * 0.01 {
+                    return Err(format!(
+                        "Verkauf {quantity} übersteigt die in diesem Lauf gekaufte Menge {run_base}"
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// `true`, wenn der Deckel für Mainnet gesetzt, endlich, positiv und unter dem Höchstwert liegt.
+pub(crate) fn valid_mainnet_cap(cap: Option<f64>) -> bool {
+    cap.is_some_and(|c| c.is_finite() && c > 0.0 && c <= MAINNET_HARD_CAP)
+}
+
 /// Helper: Place order after passing risk guard checks.
 ///
 /// Creates a mock Order from the request, checks it against RiskGuard,
@@ -272,6 +347,26 @@ pub(crate) async fn place_order_with_risk_check(
     order_req: &OrderRequest,
     current_price: f64,
     initial_capital: f64,
+) -> Result<omnitrade_core::Order, LiveLoopError> {
+    place_order_guarded(
+        exchange_trading,
+        risk_guard,
+        order_req,
+        current_price,
+        initial_capital,
+        None,
+    )
+    .await
+}
+
+/// Wie [`place_order_with_risk_check`], zusätzlich mit optionalem Positionsdeckel.
+pub(crate) async fn place_order_guarded(
+    exchange_trading: &impl ExchangeTrading,
+    risk_guard: &mut RiskGuard,
+    order_req: &OrderRequest,
+    current_price: f64,
+    initial_capital: f64,
+    exposure: Option<&mut ExposureLimit>,
 ) -> Result<omnitrade_core::Order, LiveLoopError> {
     // Create mock order for risk checking
     let mock_order = omnitrade_core::Order {
@@ -336,6 +431,16 @@ pub(crate) async fn place_order_with_risk_check(
         .await
         .map_err(|e| LiveLoopError::ExchangeError(format!("Kontostand: {e}")))?;
     let equity = pair_equity(&balances, &base, &quote, current_price);
+
+    if let Some(limit) = exposure {
+        let held = balances
+            .balances
+            .get(&base)
+            .map_or(0.0, |b| b.free + b.locked);
+        limit
+            .check(order_req.side, order_req.quantity, current_price, held)
+            .map_err(LiveLoopError::RiskViolation)?;
+    }
     let account = SimpleAccount {
         initial: initial_capital,
         current: equity,
@@ -494,9 +599,15 @@ mod tests {
         placed: Arc<Mutex<Vec<OrderRequest>>>,
         cancelled: Arc<Mutex<Vec<String>>>,
         kill: PathBuf,
+        cap: Option<f64>,
     }
 
     impl Harness {
+        fn with_cap(mut self, cap: f64) -> Self {
+            self.cap = Some(cap);
+            self
+        }
+
         fn new(name: &str, script: &str) -> Self {
             let path = std::env::temp_dir().join(format!(
                 "omnitrade-liveloop-{}-{name}.omni",
@@ -512,6 +623,7 @@ mod tests {
                     "omnitrade-liveloop-{}-{name}.kill",
                     std::process::id()
                 )),
+                cap: None,
             }
         }
 
@@ -545,6 +657,7 @@ mod tests {
                 initial_capital: 1000.0,
                 order_quantity: quantity,
                 kill_file: &self.kill,
+                max_notional: self.cap,
             };
             let mut guard = RiskGuard::testnet();
             live_loop(&config, stream, trading, &mut guard).await
@@ -924,5 +1037,125 @@ mod tests {
             matches!(res, Err(LiveLoopError::RiskViolation(_))),
             "{res:?}"
         );
+    }
+
+    #[test]
+    fn exposure_cap_limits_what_the_run_builds_up() {
+        // Arrange: Deckel 200, Preis 100 → höchstens 2 Einheiten Position aus diesem Lauf.
+        let mut limit = ExposureLimit::new(200.0);
+
+        // Act & Assert
+        assert!(limit.check(Side::Buy, 1.0, 100.0, 5.0).is_ok());
+        assert!(
+            limit.check(Side::Buy, 1.0, 100.0, 6.0).is_ok(),
+            "zweite Einheit: 200"
+        );
+        let over = limit.check(Side::Buy, 1.0, 100.0, 7.0);
+        assert!(
+            matches!(&over, Err(m) if m.contains("Positionsdeckel")),
+            "{over:?}"
+        );
+    }
+
+    #[test]
+    fn exposure_cap_ignores_preexisting_holdings_and_never_sells_them() {
+        // Arrange: das Konto hält schon 5 Einheiten, bevor der Lauf beginnt.
+        let mut limit = ExposureLimit::new(150.0);
+
+        // Act & Assert: Kaufen zählt ab dem Startbestand, nicht ab 0.
+        assert!(limit.check(Side::Buy, 1.0, 100.0, 5.0).is_ok());
+        // Verkaufen vor dem ersten Kauf: Lauf besitzt nichts, der Bestand bleibt tabu.
+        let mut fresh = ExposureLimit::new(150.0);
+        let sell = fresh.check(Side::Sell, 1.0, 100.0, 5.0);
+        assert!(
+            matches!(&sell, Err(m) if m.contains("übersteigt")),
+            "{sell:?}"
+        );
+        // Nach dem Kauf (Bestand 6) darf die gekaufte Einheit zurück, nicht mehr.
+        assert!(limit.check(Side::Sell, 1.0, 100.0, 6.0).is_ok());
+        assert!(limit.check(Side::Sell, 2.0, 100.0, 6.0).is_err());
+    }
+
+    #[test]
+    fn exposure_cap_sell_tolerates_fee_shortfall() {
+        // Arrange: 0.001 gekauft, Gebühr in der Basis → Bestand nur 0.000999.
+        let mut limit = ExposureLimit::new(1_000.0);
+        limit.check(Side::Buy, 0.001, 50_000.0, 1.0).expect("buy");
+
+        // Act & Assert
+        assert!(limit.check(Side::Sell, 0.001, 50_000.0, 1.000999).is_ok());
+    }
+
+    #[test]
+    fn mainnet_cap_validation() {
+        assert!(valid_mainnet_cap(Some(20.0)));
+        assert!(valid_mainnet_cap(Some(MAINNET_HARD_CAP)));
+        for bad in [
+            None,
+            Some(0.0),
+            Some(-1.0),
+            Some(MAINNET_HARD_CAP + 0.01),
+            Some(f64::NAN),
+            Some(f64::INFINITY),
+        ] {
+            assert!(!valid_mainnet_cap(bad), "{bad:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn mainnet_with_cap_above_hard_limit_is_rejected_before_any_exchange_call() {
+        // Arrange
+        let h = Harness::new("mainnet-over", BUY_BELOW_40K).with_cap(MAINNET_HARD_CAP + 1.0);
+
+        // Act
+        let result = h
+            .run(&[35000.0], Some(1000.0), Network::Mainnet, 0.001)
+            .await;
+
+        // Assert
+        assert!(matches!(result, Err(LiveLoopError::NetworkError(_))));
+        assert!(h.log.lock().expect("log").is_empty());
+    }
+
+    #[tokio::test]
+    async fn mainnet_with_valid_cap_runs_and_blocks_orders_over_the_cap() {
+        // Arrange: Deckel 20, Order 0.001 BTC @ 35000 = 35 > 20 → blockiert, kein Aufruf an die Börse.
+        let h = Harness::new("mainnet-cap", BUY_BELOW_40K).with_cap(20.0);
+
+        // Act
+        let result = h
+            .run(&[35000.0], Some(1000.0), Network::Mainnet, 0.001)
+            .await;
+
+        // Assert
+        assert!(result.is_ok(), "{result:?}");
+        assert!(
+            h.placed.lock().expect("placed").is_empty(),
+            "Order über Deckel darf nicht raus"
+        );
+    }
+
+    #[tokio::test]
+    async fn testnet_cap_allows_orders_within_the_cap() {
+        // Arrange: Deckel 50, Order 0.001 @ 35000 = 35 ≤ 50.
+        let h = Harness::new("testnet-cap", BUY_BELOW_40K).with_cap(50.0);
+
+        // Act
+        let result = h
+            .run(&[35000.0], Some(1000.0), Network::Testnet, 0.001)
+            .await;
+
+        // Assert
+        assert!(result.is_ok(), "{result:?}");
+        assert_eq!(h.placed.lock().expect("placed").len(), 1);
+    }
+
+    #[tokio::test]
+    async fn non_positive_cap_is_rejected_even_on_testnet() {
+        let h = Harness::new("cap-zero", BUY_BELOW_40K).with_cap(0.0);
+        let result = h
+            .run(&[35000.0], Some(1000.0), Network::Testnet, 0.001)
+            .await;
+        assert!(matches!(result, Err(LiveLoopError::NetworkError(_))));
     }
 }

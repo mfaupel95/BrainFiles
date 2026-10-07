@@ -5,12 +5,13 @@
 
 use crate::grid_loop::{grid_loop, GridLiveConfig};
 use crate::kill_switch;
-use crate::live_loop::{live_loop, LiveConfig};
+use crate::live_loop::{live_loop, valid_mainnet_cap, LiveConfig, MAINNET_HARD_CAP};
 use omnitrade_exchange::{
     credentials, fetch_symbol_filters, BinanceClient, Exchange, Keystore, Network, OkxClient,
     OkxRestClient,
 };
 use omnitrade_risk::guard::RiskGuard;
+use omnitrade_risk::limits::RiskLimits;
 use omnitrade_script::GridConfig;
 use std::path::Path;
 use std::time::Duration;
@@ -18,6 +19,29 @@ use tracing::info;
 
 /// Abstand der Fill-Abfragen im Grid-Betrieb.
 const GRID_POLL_SECS: u64 = 5;
+
+/// Parameter des `live`-Befehls.
+#[derive(Debug, Clone, Copy)]
+pub struct LiveArgs<'a> {
+    /// Strategieskript (`--script`).
+    pub script_path: Option<&'a Path>,
+    /// Grid-Konfiguration (`--grid-config`).
+    pub grid_config_path: Option<&'a Path>,
+    /// Handelssymbol in der Schreibweise der Börse.
+    pub symbol: &'a str,
+    /// Börse: `binance`, `okx` oder `kraken`.
+    pub exchange: &'a str,
+    /// `testnet` oder `mainnet`.
+    pub network: &'a str,
+    /// Referenzkapital (nur Anzeige, die Limits messen am echten Konto).
+    pub initial_capital: f64,
+    /// Menge je Market-Order in der Basiswährung.
+    pub order_quantity: f64,
+    /// Deckel für die vom Lauf aufgebaute Position (Quote-Währung); auf Mainnet Pflicht.
+    pub max_notional_usd: Option<f64>,
+    /// Ausdrückliche Bestätigung, dass auf Mainnet echtes Geld eingesetzt wird.
+    pub confirm_real_money: bool,
+}
 
 /// Handles the live trading command.
 ///
@@ -30,15 +54,19 @@ const GRID_POLL_SECS: u64 = 5;
 /// # Errors
 /// Returns error if network parsing fails, file I/O fails,
 /// or Binance connection/credential issues occur.
-pub async fn handle_live(
-    script_path: Option<&Path>,
-    grid_config_path: Option<&Path>,
-    symbol: &str,
-    exchange_str: &str,
-    network_str: &str,
-    initial_capital: f64,
-    order_quantity: f64,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn handle_live(args: &LiveArgs<'_>) -> Result<(), Box<dyn std::error::Error>> {
+    let LiveArgs {
+        script_path,
+        grid_config_path,
+        symbol,
+        exchange: exchange_str,
+        network: network_str,
+        initial_capital,
+        order_quantity,
+        max_notional_usd: max_notional,
+        confirm_real_money,
+    } = *args;
+
     // Validate that either script or grid is specified
     if script_path.is_none() && grid_config_path.is_none() {
         return Err("Error: either --script or --grid-config must be provided".into());
@@ -64,6 +92,34 @@ pub async fn handle_live(
         }
     };
 
+    if network == Network::Mainnet {
+        if !confirm_real_money {
+            return Err(
+                "Mainnet setzt echtes Geld ein: --confirm-real-money ist erforderlich".into(),
+            );
+        }
+        if exchange != Exchange::Okx {
+            return Err(
+                "Mainnet-Handel ist nur für OKX freigegeben (nur dort am echten Konto geprüft)"
+                    .into(),
+            );
+        }
+        if grid_config_path.is_some() {
+            return Err("Grid-Live auf Mainnet ist gesperrt (nur Testnet)".into());
+        }
+        if !valid_mainnet_cap(max_notional) {
+            return Err(format!(
+                "Mainnet braucht --max-notional-usd größer 0 und höchstens {MAINNET_HARD_CAP}"
+            )
+            .into());
+        }
+    }
+    if let Some(cap) = max_notional {
+        if !cap.is_finite() || cap <= 0.0 {
+            return Err(format!("--max-notional-usd muss positiv sein (war {cap})").into());
+        }
+    }
+
     // Mainnet safety gate: require explicit environment variable
     if network == Network::Mainnet && std::env::var("OMNITRADE_MAINNET_APPROVED").is_err() {
         return Err(
@@ -83,9 +139,11 @@ pub async fn handle_live(
     }
 
     // Initialize risk guard with appropriate limits
-    let mut risk_guard = match network {
-        Network::Testnet => RiskGuard::testnet(),
-        Network::Mainnet => RiskGuard::mainnet(),
+    let mut risk_guard = match (network, max_notional) {
+        // Mainnet: Limits skalieren mit dem Deckel (Verlust 25 %, Drawdown 10 %).
+        (Network::Mainnet, Some(cap)) => RiskGuard::new(RiskLimits::new(cap, 10.0, cap * 0.25)),
+        (Network::Mainnet, None) => RiskGuard::mainnet(),
+        (Network::Testnet, _) => RiskGuard::testnet(),
     }
     // Verlustlimit gegen das echte Eigenkapital zu Laufbeginn messen, nicht gegen
     // das angegebene Startkapital.
@@ -98,6 +156,12 @@ pub async fn handle_live(
     if let Some(script_path) = script_path {
         info!("Using strategy script: {}", script_path.display());
         info!("Script-based trading mode enabled");
+        if network == Network::Mainnet {
+            tracing::warn!(
+                "ECHTES GELD: Mainnet auf {exchange}, Deckel {} (Höchstwert {MAINNET_HARD_CAP})",
+                max_notional.unwrap_or(0.0)
+            );
+        }
 
         let script_str = script_path.to_string_lossy().to_string();
         let config = LiveConfig {
@@ -107,6 +171,7 @@ pub async fn handle_live(
             initial_capital,
             order_quantity,
             kill_file: &kill_file,
+            max_notional,
         };
 
         match exchange {
@@ -129,7 +194,12 @@ pub async fn handle_live(
                 // Testnet = OKX demo trading (demo API keys, simulated-trading header).
                 let (creds, passphrase) = load_okx_credentials(network)?;
                 let stream_client = OkxClient::for_network(network);
-                let trading_client = OkxRestClient::new(creds, passphrase)?;
+                let mut trading_client = OkxRestClient::new(creds, passphrase)?;
+                // EWR-/US-Konten liegen auf eigenen API-Domains (z. B. https://eea.okx.com).
+                if let Ok(base) = std::env::var("OKX_REST_BASE") {
+                    info!("OKX-API-Domain: {base}");
+                    trading_client = trading_client.with_base_url(base);
+                }
 
                 live_loop(&config, stream_client, trading_client, &mut risk_guard).await?;
             }
@@ -225,15 +295,17 @@ mod tests {
         symbol: &str,
         exchange: &str,
     ) -> Result<(), String> {
-        handle_live(
-            script.map(Path::new),
-            grid.map(Path::new),
+        handle_live(&LiveArgs {
+            script_path: script.map(Path::new),
+            grid_config_path: grid.map(Path::new),
             symbol,
             exchange,
-            "testnet",
-            1000.0,
-            0.001,
-        )
+            network: "testnet",
+            initial_capital: 1000.0,
+            order_quantity: 0.001,
+            max_notional_usd: None,
+            confirm_real_money: false,
+        })
         .await
         .map_err(|e| e.to_string())
     }
@@ -297,5 +369,92 @@ mod tests {
 
         // Assert
         assert!(err.contains("OKX"), "{err}");
+    }
+
+    fn mainnet(
+        exchange: &'static str,
+        grid: Option<&'static str>,
+        cap: Option<f64>,
+        confirm: bool,
+    ) -> LiveArgs<'static> {
+        LiveArgs {
+            script_path: if grid.is_some() {
+                None
+            } else {
+                Some(Path::new("s.omni"))
+            },
+            grid_config_path: grid.map(Path::new),
+            symbol: "BTC-USDC",
+            exchange,
+            network: "mainnet",
+            initial_capital: 1000.0,
+            order_quantity: 0.0001,
+            max_notional_usd: cap,
+            confirm_real_money: confirm,
+        }
+    }
+
+    async fn rejected(args: LiveArgs<'static>) -> String {
+        handle_live(&args)
+            .await
+            .expect_err("must be rejected")
+            .to_string()
+    }
+
+    #[tokio::test]
+    async fn mainnet_requires_explicit_real_money_confirmation() {
+        let err = rejected(mainnet("okx", None, Some(20.0), false)).await;
+        assert!(err.contains("--confirm-real-money"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn mainnet_is_okx_only() {
+        for exchange in ["binance", "kraken"] {
+            let err = rejected(mainnet(exchange, None, Some(20.0), true)).await;
+            assert!(
+                err.contains("nur für OKX") || err.contains("Kraken"),
+                "{exchange}: {err}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn mainnet_grid_stays_blocked() {
+        let err = rejected(mainnet("okx", Some("g.json"), Some(20.0), true)).await;
+        assert!(err.contains("Grid-Live"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn mainnet_needs_a_cap_within_the_hard_limit() {
+        for cap in [
+            None,
+            Some(0.0),
+            Some(-5.0),
+            Some(MAINNET_HARD_CAP + 1.0),
+            Some(f64::NAN),
+        ] {
+            let err = rejected(mainnet("okx", None, cap, true)).await;
+            assert!(err.contains("--max-notional-usd"), "{cap:?}: {err}");
+        }
+    }
+
+    #[tokio::test]
+    async fn mainnet_still_needs_the_environment_approval() {
+        if std::env::var("OMNITRADE_MAINNET_APPROVED").is_ok() {
+            return; // Rechner mit gesetzter Freigabe: Test nicht aussagekräftig.
+        }
+        let err = rejected(mainnet("okx", None, Some(20.0), true)).await;
+        assert!(err.contains("OMNITRADE_MAINNET_APPROVED"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn non_positive_testnet_cap_is_rejected() {
+        let mut args = mainnet("okx", None, Some(-1.0), false);
+        args.network = "testnet";
+        let err = rejected(args).await;
+        assert!(
+            err.contains("--max-notional-usd muss positiv sein"),
+            "{err}"
+        );
     }
 }

@@ -13,6 +13,7 @@ mod live_loop;
 use args::{CliArgs, Commands};
 use backtest::{run_backtest, BacktestConfig};
 use clap::Parser;
+use commands::live::LiveArgs;
 use commands::{handle_kill, handle_live};
 
 /// Initialize structured logging with environment-based filtering.
@@ -60,17 +61,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             network,
             initial_capital,
             quantity,
+            max_notional_usd,
+            confirm_real_money,
         } => {
             let capital = initial_capital.unwrap_or(1000.0);
-            handle_live(
-                script.as_deref(),
-                grid_config.as_deref(),
-                &symbol,
-                &exchange,
-                &network,
-                capital,
-                quantity,
-            )
+            handle_live(&LiveArgs {
+                script_path: script.as_deref(),
+                grid_config_path: grid_config.as_deref(),
+                symbol: &symbol,
+                exchange: &exchange,
+                network: &network,
+                initial_capital: capital,
+                order_quantity: quantity,
+                max_notional_usd,
+                confirm_real_money,
+            })
             .await?;
         }
         Commands::Kill { reset } => {
