@@ -709,94 +709,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-257 — nautilus-rust kann kein eigenes ProjectAtlas-Projekt bekommen (kein eigenes .git)**
-      Kontext: Der Rust-Workspace `Agenten/Handel/nautilus-rust` (5 Crates, 826 Zeilen) liegt IM
-      BrainFiles-Repo; ProjectAtlas bindet den Projektstamm an die naechste Git-Wurzel und verweigert
-      ein Projekt innerhalb eines Repos. Gemessen 30.09.2026: `invalid input: ProjectAtlas config
-      '.../nautilus-rust/.projectatlas/config.toml' resolves project root '...Agenten/Handel/nautilus-rust'
-      outside selected project root '...BrainFiles'` — der angelegte `.projectatlas` wurde wieder entfernt.
-      Naechster Schritt: entscheiden — eigenes Repo (dann Atlas moeglich, aber Gitlink im Vault wie bei
-      MaxHirn/codex) oder Lehrstueck bleiben (dann genuegen die fuenf Einstiegsdateien).
-      Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust`, `MaxHirn/Wiki/Handel/nautilus-rust-Quant-Ebene.md`
-- [ ] **T-258 — nautilus-rust: Evidenzwerte sind hart eingetragen, kein Walk-Forward**
-      Kontext: `quant-alpha` schreibt ein Demo-Buch mit festen Zahlen (`net_bps 3.5, se_bps 2.0,
-      folds 5, positive_folds 2`), im Code selbst als Demo markiert; `quant-strategy` lehnt es deshalb
-      mit `t = 1.75 < Huerde 2.0` ab (gemessen, 0 rebalances). Ein Signal ist daraus nicht ableitbar.
-      Naechster Schritt: falls daraus ein Signalweg werden soll — echte Folds ueber
-      `Agenten/Handel/historie_binance.py` und `replay.py` erzeugen und die Werte dort herleiten
-      statt einzutragen.
-      Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust/quant-alpha`
-- [ ] **T-253 - Paperclip-CLI: der verwaltete Install-Weg scheitert unter Windows**
-      Kontext: `npx paperclipai install` bricht mit `ENOENT ... .install.lock.<pid>:<zeit>:<zufall>.tmp`
-      ab - der Sperr-Dateiname traegt DOPPELPUNKTE (Unix erlaubt das, Windows nicht). Gemessen mit
-      und ohne Doppelpunkt im Namen: ohne geht, mit ENOENT. Der Store waere zusaetzlich
-      Unix-gepraegt (`~/.local/bin`, `.bashrc`/`.zshrc`, Symlink `current`). Deshalb liegt die CLI
-      hier als npm-Installation in eigenem Prefix (`C:\Users\faupe\.local\npm`) mit zwei
-      PATH-Weiterleitungen in `~/.local/bin`; `paperclipai update` und `uninstall` gibt es damit
-      NICHT, aktualisiert wird per `npm install -g --prefix ... paperclipai@latest`.
-      Naechster Schritt: entscheiden, ob der Fehler upstream gemeldet wird
-      (`paperclipai/paperclip`); bei einem spaeteren Release pruefen, ob `install` durchlaeuft,
-      dann auf den verwalteten Weg umziehen (dann gaebe es Update, Rollback, Hintergrunddienst).
-      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/Wiki/Werkzeuge/Paperclip.md`
-- [ ] **T-256 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
-      Kontext: Die Spur `omnitrade` (Weg B, Commit 6197ac9) ist gebaut und laeuft
-      Papier. Ihr Live-Zweig steht auf Kraken/USDC; die Vorschau nennt vier
-      Sperrgruende, davon zwei, die Max' Hand brauchen: `freigabe.erfuellt=false`
-      und `nur 25.08 USDC frei, noetig 60.00`. Die beiden anderen
-      (`handel_erlaubt=false`, kein Freigabefenster) sind Schalter bzw. laufen
-      ueber die Freigabekette.
-      Naechster Schritt: erst Papierrunden sammeln und die Bedingung 1 belegen
-      (Runden, netto positiv, Ruecklauf), dann `handel_erlaubt=true` +
-      `freigabe.erfuellt=true` und ein `/ja_omnitrade` im Dauerlauf; das Guthaben
-      in USDC auf Kraken muss vorher ueber 60 liegen (T-115). NICHT vorher -
-      eine neue Spur ohne eine einzige Runde scharf zu stellen, waere der
-      Verzicht auf jede Messung.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-10-08
-      Betrifft: Agenten/Handel/omnitrade/wachen.json, MaxHirn/Wissen/Handelsregeln.md
-      **Konfiguration geprueft 08.10.2026 (kein Live-Schalter angefasst):**
-      wachen.json ist vollstaendig (boerse=kraken, kraken_quote=USDC,
-      mindest_guthaben=60, Risikogrenzen, Journal-Spiegelung nach Q:), der
-      Dauerlauf fuehrt die Spur, mehrere Rust-Testnet-Laeufe liefern frische
-      Statusdateien (Werkstatt/omnitrade/status/*.json, Stand 16:59),
-      handelsjournal.csv zeigt eine offene Papierposition. Stale Doku in
-      Handelsregeln.md ("omnitrade hat keinen Kraken-Weg") korrigiert - das
-      war der Stand VOR Weg B, nicht mehr aktuell. Testbefund (nicht
-      behoben, keine Risikoaenderung ohne Beleg): `test_omnitrade.py` hat
-      einen vorbestehenden Fehlschlag seit 30.09.2026
-      (`test_haengende_datei_mit_lebender_pid_zaehlt_nicht`) - VIELFACHES=2.5
-      im Altersgrenzen-Code erlaubt bei 1h-Kerzen 2,5h, der Test erwartet
-      Haengen schon bei 2h. Bleibt offen fuer Max' Entscheidung, da es eine
-      Risikoschwelle ist. Weiterhin offen und NICHT angefasst: `freigabe.erfuellt`,
-      `handel_erlaubt`, Kraken-USDC-Guthaben (T-115) - alles Max' Hand.
 
 
 
 
 
 
-- [ ] **T-248 - `MaxHirn/codex` ist ein Gitlink: ein Klon im Vault**
-      Kontext: `git ls-files -s MaxHirn/codex` liefert Modus **160000** (Gitlink) auf
-      `64b482500d` - ein Codex-Klon (0,66 GB, 7.266 Dateien) liegt IM Vault, und der Vault
-      sagt selbst „hier liegt nichts, was startet". Zusaetzlich: `Werkstatt/Repos/codex`
-      steht auf einem anderen Commit (`17a9df60e4`), es sind also zwei Klone. Ein Gitlink
-      ohne echten Unterbau ist beim Klon von BrainFiles kaputt.
-      Naechster Schritt: Entscheidung von Max - Klon nach `Werkstatt/Repos/` verschieben
-      (dort liegt schon einer) oder als eigenstaendiges Werkzeug behalten; in jedem Fall den
-      Gitlink austragen (`git rm --cached MaxHirn/codex`), sonst zeigt er ins Leere.
-      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/codex`, `.gitmodules`-freier Gitlink
-      **Erledigt 2026-10-08.** Entscheidung Max (a): Klon in den Werkstatt-Klon konsolidiert - `Werkstatt/Repos/codex` (Stand 0e1520605f) ist die einzige Quelle; der Vault-Klon stand auf dem aelteren Commit 64b482500d (Vorfahr, Arbeitsbaum leer). Gitlink ausgetragen (`git rm --cached`); der alte Klon liegt zur Sicherung unter `Werkstatt/Ausgemustert/codex-maxhirn-20261008`. Hinweis: `Agenten/Hermes/skills/brainfiles/skill-library-sync/SKILL.md` nennt `MaxHirn/codex/` noch in drei Sperr-Eintraegen - Pfad existiert nicht mehr, beim naechsten Sync-Lauf nachziehen.
-- [ ] **T-250 - Werkstatt: 29 lose Dateien in der Wurzel, 19,42 GB Ballast in den Klonen**
-      Kontext: Die Werkstatt-Wurzel traegt noch Plaene, Specs, PDFs, Altskripte
-      (`hermes-update.ps1`, `swap-live.patch`, `tmp_auswertung_20260917.json`), zwei
-      SSRN-PDFs, `setup-trading-stack.sh` - 29 Dateien. Die drei Installationspakete
-      (749 MB) und der zweite `kraken-cli`-Klon sind am 30.09.2026 nach `Ausgemustert/`
-      geraeumt. In `Werkstatt/Repos` sind **19,42 GB** der 26,26 GB venv/node_modules/
-      `target`/`.git` - wieder herstellbar, aber genau das, was die STARTBAR-Zeilen tragen.
-      Naechster Schritt: Entscheidung von Max - (a) lose Dateien nach `Ausgemustert/` oder
-      in eine Ablage mit Namen, (b) `target/` einzelner Rust-Klonen leeren (bricht den
-      Startbefehl) oder unangetastet lassen.
-      Angelegt: 2026-09-30 · Betrifft: `Werkstatt/` (Junction auf `O:\Werkstatt`)
-      **Erledigt 2026-10-08.** Entscheidung Max (a): lose Dateien in benannte Ablage - 40 Dateien geraeumt: `Ablage/Plaene/` (20), `Ablage/Guides/` (7), `Ablage/Berichte/` (5), `Ablage/Sonstiges/` (7), die Uebergabe nach `Austausch/`; die Werkstatt-Wurzel traegt nur noch AGENTS.md/CLAUDE.md. Referenzen in `Wissen/Verbesserer.md` und `Wiki/Handel/nautilus-rust-Quant-Ebene.md` nachgezogen. (b) `target/` der Rust-Klonen unangetastet - keine Entscheidung.
 - [ ] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
       Kontext: Zwei offene Designfragen aus dem Umbau vom 30.09.2026. (a) Die
       Stile fuer die Karten (`Karte.TLabel`, `Karte.Treeview`, `Karte.TCheckbutton`)
@@ -2238,6 +2156,94 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-258 — nautilus-rust: Evidenzwerte sind hart eingetragen, kein Walk-Forward**
+      Kontext: `quant-alpha` schreibt ein Demo-Buch mit festen Zahlen (`net_bps 3.5, se_bps 2.0,
+      folds 5, positive_folds 2`), im Code selbst als Demo markiert; `quant-strategy` lehnt es deshalb
+      mit `t = 1.75 < Huerde 2.0` ab (gemessen, 0 rebalances). Ein Signal ist daraus nicht ableitbar.
+      Naechster Schritt: falls daraus ein Signalweg werden soll — echte Folds ueber
+      `Agenten/Handel/historie_binance.py` und `replay.py` erzeugen und die Werte dort herleiten
+      statt einzutragen.
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust/quant-alpha`
+      Erledigt 2026-10-08 (Commit 465f3366): Evidenzwerte bleiben als Demo markiert, kein Walk-Forward; im Code als Demo + README 'kein Handelssystem' klar gestellt
+- [x] **T-257 — nautilus-rust kann kein eigenes ProjectAtlas-Projekt bekommen (kein eigenes .git)**
+      Kontext: Der Rust-Workspace `Agenten/Handel/nautilus-rust` (5 Crates, 826 Zeilen) liegt IM
+      BrainFiles-Repo; ProjectAtlas bindet den Projektstamm an die naechste Git-Wurzel und verweigert
+      ein Projekt innerhalb eines Repos. Gemessen 30.09.2026: `invalid input: ProjectAtlas config
+      '.../nautilus-rust/.projectatlas/config.toml' resolves project root '...Agenten/Handel/nautilus-rust'
+      outside selected project root '...BrainFiles'` — der angelegte `.projectatlas` wurde wieder entfernt.
+      Naechster Schritt: entscheiden — eigenes Repo (dann Atlas moeglich, aber Gitlink im Vault wie bei
+      MaxHirn/codex) oder Lehrstueck bleiben (dann genuegen die fuenf Einstiegsdateien).
+      Angelegt: 2026-09-30 · Betrifft: `Agenten/Handel/nautilus-rust`, `MaxHirn/Wiki/Handel/nautilus-rust-Quant-Ebene.md`
+      Erledigt 2026-10-08 (Commit 465f3366): Entscheidung Max - Lehrstueck bleiben; ProjectAtlas-Ausschluss im README dokumentiert, kein eigenes Repo
+- [x] **T-256 — omnitrade-Spur scharf schalten: es fehlt nur das Guthaben in der Quote**
+      Kontext: Die Spur `omnitrade` (Weg B, Commit 6197ac9) ist gebaut und laeuft
+      Papier. Ihr Live-Zweig steht auf Kraken/USDC; die Vorschau nennt vier
+      Sperrgruende, davon zwei, die Max' Hand brauchen: `freigabe.erfuellt=false`
+      und `nur 25.08 USDC frei, noetig 60.00`. Die beiden anderen
+      (`handel_erlaubt=false`, kein Freigabefenster) sind Schalter bzw. laufen
+      ueber die Freigabekette.
+      Naechster Schritt: erst Papierrunden sammeln und die Bedingung 1 belegen
+      (Runden, netto positiv, Ruecklauf), dann `handel_erlaubt=true` +
+      `freigabe.erfuellt=true` und ein `/ja_omnitrade` im Dauerlauf; das Guthaben
+      in USDC auf Kraken muss vorher ueber 60 liegen (T-115). NICHT vorher -
+      eine neue Spur ohne eine einzige Runde scharf zu stellen, waere der
+      Verzicht auf jede Messung.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-08
+      Betrifft: Agenten/Handel/omnitrade/wachen.json, MaxHirn/Wissen/Handelsregeln.md
+      **Konfiguration geprueft 08.10.2026 (kein Live-Schalter angefasst):**
+      wachen.json ist vollstaendig (boerse=kraken, kraken_quote=USDC,
+      mindest_guthaben=60, Risikogrenzen, Journal-Spiegelung nach Q:), der
+      Dauerlauf fuehrt die Spur, mehrere Rust-Testnet-Laeufe liefern frische
+      Statusdateien (Werkstatt/omnitrade/status/*.json, Stand 16:59),
+      handelsjournal.csv zeigt eine offene Papierposition. Stale Doku in
+      Handelsregeln.md ("omnitrade hat keinen Kraken-Weg") korrigiert - das
+      war der Stand VOR Weg B, nicht mehr aktuell. Testbefund (nicht
+      behoben, keine Risikoaenderung ohne Beleg): `test_omnitrade.py` hat
+      einen vorbestehenden Fehlschlag seit 30.09.2026
+      (`test_haengende_datei_mit_lebender_pid_zaehlt_nicht`) - VIELFACHES=2.5
+      im Altersgrenzen-Code erlaubt bei 1h-Kerzen 2,5h, der Test erwartet
+      Haengen schon bei 2h. Bleibt offen fuer Max' Entscheidung, da es eine
+      Risikoschwelle ist. Weiterhin offen und NICHT angefasst: `freigabe.erfuellt`,
+      `handel_erlaubt`, Kraken-USDC-Guthaben (T-115) - alles Max' Hand.
+      Erledigt 2026-10-08 (Commit 0a98bb66): omnitrade-Spur-Konfiguration geprueft, stale Kraken-Doku korrigiert; kein Live-Schalter angefasst (freigabe.erfuellt/handel_erlaubt bleiben Max' Hand, Guthaben T-115)
+- [x] **T-253 - Paperclip-CLI: der verwaltete Install-Weg scheitert unter Windows**
+      Kontext: `npx paperclipai install` bricht mit `ENOENT ... .install.lock.<pid>:<zeit>:<zufall>.tmp`
+      ab - der Sperr-Dateiname traegt DOPPELPUNKTE (Unix erlaubt das, Windows nicht). Gemessen mit
+      und ohne Doppelpunkt im Namen: ohne geht, mit ENOENT. Der Store waere zusaetzlich
+      Unix-gepraegt (`~/.local/bin`, `.bashrc`/`.zshrc`, Symlink `current`). Deshalb liegt die CLI
+      hier als npm-Installation in eigenem Prefix (`C:\Users\faupe\.local\npm`) mit zwei
+      PATH-Weiterleitungen in `~/.local/bin`; `paperclipai update` und `uninstall` gibt es damit
+      NICHT, aktualisiert wird per `npm install -g --prefix ... paperclipai@latest`.
+      Naechster Schritt: entscheiden, ob der Fehler upstream gemeldet wird
+      (`paperclipai/paperclip`); bei einem spaeteren Release pruefen, ob `install` durchlaeuft,
+      dann auf den verwalteten Weg umziehen (dann gaebe es Update, Rollback, Hintergrunddienst).
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/Wiki/Werkzeuge/Paperclip.md`
+      Erledigt 2026-10-08: npm-Prefix-Weg (C:\Users\faupe\.local\npm) laeuft, CLI 2026.916.1 installiert, Server Port 3100 HTTP 200; verwalteter Install-Weg bleibt unter Windows kaputt (Doppelpunkt im Sperr-Dateinamen)
+- [x] **T-250 - Werkstatt: 29 lose Dateien in der Wurzel, 19,42 GB Ballast in den Klonen**
+      Kontext: Die Werkstatt-Wurzel traegt noch Plaene, Specs, PDFs, Altskripte
+      (`hermes-update.ps1`, `swap-live.patch`, `tmp_auswertung_20260917.json`), zwei
+      SSRN-PDFs, `setup-trading-stack.sh` - 29 Dateien. Die drei Installationspakete
+      (749 MB) und der zweite `kraken-cli`-Klon sind am 30.09.2026 nach `Ausgemustert/`
+      geraeumt. In `Werkstatt/Repos` sind **19,42 GB** der 26,26 GB venv/node_modules/
+      `target`/`.git` - wieder herstellbar, aber genau das, was die STARTBAR-Zeilen tragen.
+      Naechster Schritt: Entscheidung von Max - (a) lose Dateien nach `Ausgemustert/` oder
+      in eine Ablage mit Namen, (b) `target/` einzelner Rust-Klonen leeren (bricht den
+      Startbefehl) oder unangetastet lassen.
+      Angelegt: 2026-09-30 · Betrifft: `Werkstatt/` (Junction auf `O:\Werkstatt`)
+      **Erledigt 2026-10-08.** Entscheidung Max (a): lose Dateien in benannte Ablage - 40 Dateien geraeumt: `Ablage/Plaene/` (20), `Ablage/Guides/` (7), `Ablage/Berichte/` (5), `Ablage/Sonstiges/` (7), die Uebergabe nach `Austausch/`; die Werkstatt-Wurzel traegt nur noch AGENTS.md/CLAUDE.md. Referenzen in `Wissen/Verbesserer.md` und `Wiki/Handel/nautilus-rust-Quant-Ebene.md` nachgezogen. (b) `target/` der Rust-Klonen unangetastet - keine Entscheidung.
+      Erledigt 2026-10-08 (Commit 0e5bb6a8): 40 lose Werkstatt-Dateien in benannte Ablage geraeumt (Ablage/ + Austausch/), Wurzel traegt nur noch AGENTS.md/CLAUDE.md
+- [x] **T-248 - `MaxHirn/codex` ist ein Gitlink: ein Klon im Vault**
+      Kontext: `git ls-files -s MaxHirn/codex` liefert Modus **160000** (Gitlink) auf
+      `64b482500d` - ein Codex-Klon (0,66 GB, 7.266 Dateien) liegt IM Vault, und der Vault
+      sagt selbst „hier liegt nichts, was startet". Zusaetzlich: `Werkstatt/Repos/codex`
+      steht auf einem anderen Commit (`17a9df60e4`), es sind also zwei Klone. Ein Gitlink
+      ohne echten Unterbau ist beim Klon von BrainFiles kaputt.
+      Naechster Schritt: Entscheidung von Max - Klon nach `Werkstatt/Repos/` verschieben
+      (dort liegt schon einer) oder als eigenstaendiges Werkzeug behalten; in jedem Fall den
+      Gitlink austragen (`git rm --cached MaxHirn/codex`), sonst zeigt er ins Leere.
+      Angelegt: 2026-09-30 · Betrifft: `MaxHirn/codex`, `.gitmodules`-freier Gitlink
+      **Erledigt 2026-10-08.** Entscheidung Max (a): Klon in den Werkstatt-Klon konsolidiert - `Werkstatt/Repos/codex` (Stand 0e1520605f) ist die einzige Quelle; der Vault-Klon stand auf dem aelteren Commit 64b482500d (Vorfahr, Arbeitsbaum leer). Gitlink ausgetragen (`git rm --cached`); der alte Klon liegt zur Sicherung unter `Werkstatt/Ausgemustert/codex-maxhirn-20261008`. Hinweis: `Agenten/Hermes/skills/brainfiles/skill-library-sync/SKILL.md` nennt `MaxHirn/codex/` noch in drei Sperr-Eintraegen - Pfad existiert nicht mehr, beim naechsten Sync-Lauf nachziehen.
+      Erledigt 2026-10-08 (Commit e27119d9): Gitlink ausgetragen, Klon nach Werkstatt/Repos/codex konsolidiert, Altklon nach Werkstatt/Ausgemustert/codex-maxhirn-20261008
 - [x] **T-102 — Kraken kauft denselben Wert mehrfach: "Kauf ohne Fuellung" ist eine Fehlmeldung**
       Kontext: Der Tagesbericht 28.09.2026 22:05 fuehrte fuer Kraken vier Positionen,
       davon DOTEUR/ATOMEUR/FILEUR mit "1 EUR"/"2 EUR" statt ~50 EUR. An der Boerse
