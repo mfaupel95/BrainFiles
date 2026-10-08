@@ -135,4 +135,6 @@ nennt `id=<n>`, die Entitaet in eckigen Klammern und `(fact, conf ...)`.
   Suchverhalten, `forget`-Semantik, Korrekturweg. Laden bei recall-/forget-Fragen.
 - `references/betrieb.md` - Wartung (`doctor`, taegliche Wache), Sicherung und
   Wiederherstellung, was ein Fakt wert ist, und die Kommandokarte der Installation.
-  Laden bei Betriebsfragen.
+  Laden bei Betriebsfragen - **und immer, wenn `stats`/`list` 0 zeigen oder der
+  Doctor `reinit-pglite` empfiehlt** (beides sieht wie Datenverlust aus, ist keiner,
+  und der Befehl waere einer).

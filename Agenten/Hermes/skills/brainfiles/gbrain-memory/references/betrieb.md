@@ -34,6 +34,44 @@ ausgeschlossene Zugangsdienste neu verbinden, die Routine erst nach der Pruefung
 anhaengen. **Keine Automatik startet bei einer Wiederherstellung von selbst.**
 Abdeckungspruefungen und Markdown-Exporte sind KEINE vollstaendigen Sicherungen.
 
+## Zahlen, die nach Datenverlust aussehen - und keiner sind (gemessen 08.10.2026)
+
+**`stats` und `list` zaehlen SEITEN, nicht Fakten.** Ein Gehirn, das nur ueber die
+Memory-Verben gefuellt wurde, meldet dort **0**:
+
+```
+gbrain stats   ->  Pages: 0   Chunks: 0   Embedded: 0   Links: 0   Timeline: 0
+gbrain list    ->  No pages found.
+gbrain recall  ->  44 Fakten, ids bis #51      <- das ist der wahre Bestand
+```
+
+Die Seiten-Ebene bleibt leer, solange die Quelle nie synchronisiert wurde (der Doctor
+meldet dazu `sync_freshness: Source 'default' has never been synced`). Die Fakten
+liegen trotzdem da. **Gegenprobe ist immer `recall`, nie `stats`.**
+
+### Die Doctor-Empfehlung `reinit-pglite` ist hier ein Datenverlust
+
+`gbrain doctor` meldet bei diesem Bestand einen Breiten-Konflikt
+(`content_chunks.embedding` ist `vector(1024)`, aufgeloest werden 1280 ueber
+`zeroentropyai:zembed-1`) und empfiehlt als einzigen Weg:
+
+    gbrain reinit-pglite --embedding-model zeroentropyai:zembed-1 --embedding-dimensions 1280
+
+Der Arzt sagt selbst, was das kostet: *"Wiping dims is destructive: it drops every
+embedding in your brain"* und *"Wipe-and-reinit is the only path"* - PGLite kann eine
+Vektorspalte nicht umbauen. Bei diesem Bestand **loescht der Befehl alle Fakten**.
+Wer ihn faehrt, weil `stats` 0 zeigt, zerstoert genau das, was `recall` noch findet.
+
+**Regel.** Vor jedem `reinit-pglite`, `init` oder `migrate`: erst `gbrain recall` laufen
+lassen und die Zahl der aktiven Fakten notieren, dann `gbrain backup create --output
+<pfad>`. Die Breiten-Warnung ist ohne Embedding-Anbieter folgenlos - `search`/`query`
+laufen ohnehin degradiert als reine Stichwortsuche. Sie ist kein Grund, das Gehirn zu
+leeren.
+
+**Was die taegliche Wache NICHT tut:** `gbrain-maintenance-wache.py` faehrt nur
+`doctor --fast --json` und gibt Befunde aus. Sie initialisiert nie neu und loescht
+nichts - der Riegel sitzt, aber nur weil sie nichts anderes aufruft.
+
 ## Was ein Fakt wert ist (gemessen 02.10.2026)
 
 GBrain ist das Gehirn fuer BELEGTE Aussagen, nicht fuer Laufzeitstaende.
