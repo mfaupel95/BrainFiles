@@ -131,7 +131,8 @@ if (Test-Path $zielTmp) {
 $start = Get-Date
 Melde "Quelle..."
 robocopy $wurzel $zielTmp /E /XJ /R:1 /W:1 /MT:16 /NP /NFL /NDL `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics `
+  /XF *.pid *.db-shm *.db-wal 'Zugaenge.md' *.env auth.json OKX_API.env nous_auth.json
 $codeQuelle = $LASTEXITCODE
 
 if (Test-Path $archivQuelle) {

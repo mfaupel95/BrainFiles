@@ -1470,3 +1470,65 @@ Empfehlung: `Zugaenge.md` und die `.env`-Dateien aus der Sicherung ausschliessen
 (`/XD`), oder die Secrets in den Hermes-Credential-Pool ueberfuehren.
 
 Sicherungen: `Agenten/Hermes/.sicherung/profil-env-20261007/<profil>.env` (16).
+
+## Klartext-Zugangsdaten verschluesselt statt mitgesichert (08.10.2026)
+
+**Auftrag Max:** die `.env` aus der Sicherung ausschliessen. Beim Pruefen kam ein
+Widerspruch zu Tage, Max hat neu entschieden: **verschluesseln statt ausschliessen.**
+
+**Der Widerspruch.** `sichern.ps1` trug bis heute eine ausdrueckliche Entscheidung
+vom 12.09.2026: die Profil-`.env` bleiben in der Sicherung, "damit ein
+Wiederaufbau die Profile nicht ohne Schluessel dastehen laesst". Ausschliessen
+haette genau das zerstoert. Dazu zwei Funde, die beim Nachsehen auftauchten:
+
+- **`auth.json` war in keinem der vier Skripte ausgeschlossen** - sie traegt den
+  `credential_pool` mit `access_token`, `refresh_token`, `agent_key`.
+- **`Agenten/Hermes/shared/nous_auth.json`** (2,6 KB) kam erst im robocopy-
+  Trockenlauf zum Vorschein: eine zweite Zugangsdatei mit `access_token`
+  (2093 Zeichen) und `refresh_token`. Ein Muster `auth.json` haette sie NICHT
+  getroffen - sie heisst anders. Sie stand in keiner Liste.
+- **Keine der Platten hat BitLocker** (C:, G:, O:, Q: geprueft).
+
+**Die Loesung.** Ein Skript `Agenten/Hermes/scripts/secrets-archivieren.ps1` legt
+`Agenten/Hermes/secrets/secrets-<datum>.7z` an: AES-256 mit `-mhe=on` (auch die
+Dateinamen verschluesselt), 62 Dateien in rund 20 KB. Die Klartextdateien bleiben
+am Ort - der Agent braucht sie -, werden aber aus allen vier Sicherungslaeufen
+ausgeschlossen (`/XF *.env auth.json OKX_API.env nous_auth.json`). Die Sicherung
+nimmt nur das Archiv mit, also gibt es den Wiederaufbau-Stand weiterhin.
+
+**Passwort.** Aus der Windows-Benutzervariable `HERMES_BACKUP_PW`. **Setzt Max
+selbst** (Befehl steht in der Ausgabe des Skripts); Hermes hat es nie gesehen.
+Ohne die Variable bricht das Skript ab und legt **nichts** an - geprueft.
+
+**Fallen, beide gemessen und behoben:**
+
+- **7z kann das Passwort nicht per stdin lesen.** Ein Versuch mit `-p` ohne Wert
+  und Pipe erzeugte ein Archiv, das sich anschliessend **nicht mehr oeffnen**
+  liess ("Wrong password?"). Das Passwort steht deshalb fuer die Dauer des Laufs
+  in der Kommandozeile des 7z-Prozesses - bewusster Kompromiss auf einem
+  Einzelplatzrechner.
+- **`-spf` ist Pflicht.** Ohne sie speichert 7z nur den Dateinamen; 61 Dateien
+  namens `.env` kollidierten mit "Duplicate filename on disk" (Code 2). Mit `-spf`
+  stehen die vollen Pfade im Archiv, was zugleich die Wiederherstellung an den
+  richtigen Ort ermoeglicht.
+
+**Nachweise (echte Laeufe):**
+
+- Verschlüsselung: ohne und mit **falschem** Passwort sind **0 Dateinamen**
+  sichtbar; nur mit dem richtigen alle 62. Exitcodes 255 / 2 / 0.
+- Wiederherstellung testweise in einen leeren Ordner: 62 Dateien, volle Pfade
+  (`...\Hermes\profiles\<profil>\.env`).
+- robocopy-Trockenlauf: **110 Zugangsdateien -> 0**. Gegenprobe: `.env.template`
+  bleibt im Lauf (wird also NICHT faelschlich ausgeschlossen).
+- Syntax aller fuenf geaenderten Skripte geprueft (PowerShell-Parser): OK.
+
+**Geaenderte Skripte:** `Agenten/sichern.ps1`, `sichern-zweitkopie.ps1`,
+`sichern-aussenhaus.ps1`, `sichern-ausser-haus.ps1` (je `/XF` erweitert;
+`Zugaenge.md` fehlte in `sichern-aussenhaus.ps1` ganz), `Routinen/sicherung.ps1`
+(ruft die Archivierung vor dem Kopieren auf und **warnt im Protokoll**, wenn sie
+scheitert), neu `Hermes/scripts/secrets-archivieren.ps1`.
+
+**Offen fuer Max:** `HERMES_BACKUP_PW` setzen (sonst legt der naechste Lauf kein
+Archiv an - die Sicherung laeuft trotzdem, aber ohne die Zugangsdaten). Ausserdem
+liegen in den Profil-`.env` weiterhin Klartext-Secrets am Ort; das ist gewollt,
+sie sind nur nicht mehr auf vier Datentraegern verteilt.

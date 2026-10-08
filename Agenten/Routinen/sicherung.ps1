@@ -24,6 +24,21 @@ $marke = Melde-Start -Wer 'routine/sicherung' `
 "=== Lauf $($start.ToString('yyyy-MM-dd HH:mm:ss')) ===" | Set-Content $log -Encoding UTF8
 try {
   $tmp = Join-Path $logs 'sicherung-lauf.tmp'
+  # Erst das verschluesselte Secrets-Archiv erneuern, DANN kopieren: die
+  # Sicherung schliesst die Klartextdateien aus (/XF *.env, auth.json,
+  # OKX_API.env) und nimmt nur dieses Archiv mit. Scheitert die Archivierung,
+  # laeuft die Sicherung trotzdem - die Klartextdateien sind dann aber NICHT
+  # mitgesichert, und genau das muss im Protokoll stehen.
+  $arch = Join-Path $wurzel 'Agenten\Hermes\scripts\secrets-archivieren.ps1'
+  if (Test-Path $arch) {
+    "--- Secrets-Archiv ---" | Add-Content $log -Encoding UTF8
+    & powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File $arch *>> $log
+    if ($LASTEXITCODE -ne 0) {
+      "WARNUNG: Secrets-Archiv nicht erneuert (Code $LASTEXITCODE) - Klartextdateien sind ausgeschlossen und damit NICHT in dieser Sicherung." | Add-Content $log -Encoding UTF8
+    }
+  } else {
+    "WARNUNG: secrets-archivieren.ps1 fehlt - Klartextdateien sind ausgeschlossen und damit NICHT in dieser Sicherung." | Add-Content $log -Encoding UTF8
+  }
   & powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File (Join-Path $wurzel 'sichern.ps1') *> $tmp
   if (Test-Path $tmp) { Get-Content $tmp -Encoding UTF8 | Add-Content $log -Encoding UTF8; Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
   $code = $LASTEXITCODE
