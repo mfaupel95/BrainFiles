@@ -71,6 +71,14 @@ PowerShell: `Get-CimInstance Win32_Process -Filter "Name='git.exe'"` und
 - **Nach dem Schreiben selbst lesen.** Ein Schreibwerkzeug kann Nicht-ASCII
   einschleusen, das die Formdatei verstellt; `bytes_written` bestaetigt nur die
   Landung, nicht den Inhalt.
+- **Beim Einfuegen per Byteslice die Schnittgrenze aus der LAENGE des Kopfes
+  rechnen, nie aus einer hartkodierten kleinen Zahl.** `b[:7]` statt
+  `b[:len(kopf)]` kuerzt den Kopf (`## Offen` -> `## Offe`) und zerstoert die
+  Datei, ohne dass ein Fehler faellt. Nach dem Schreiben `assert
+  open(p,'rb').read().startswith(kopf)` als Gegenprobe. War die Datei vorher
+  clean gegen HEAD, holt `git checkout HEAD -- <datei>` sie verlustfrei zurueck
+  und der Insert wird mit der korrekten Grenze wiederholt — nie auf dem
+  kaputten Stand weiterbauen.
 - **Die Fremdarbeit-Routine sammelt ein, was 30 min liegt** und attribiert es
   einem „Anderen Sitzung"-Commit. Wer seine Arbeit nicht selbst committet,
   verliert die Zuschreibung — das ist die Faustregel, nicht nur beim Spiegeln.

@@ -932,6 +932,7 @@ command_allowlist:
 plugins:
   enabled:
     - a2a-platform
+    - crypto-prices
     - disk-cleanup
     - drain
     - email-platform
@@ -942,6 +943,7 @@ plugins:
     - nous
     - okx-a2a
     - one-skill-to-rule-them-all
+    - rss-reader
     - self-hosted
   disabled: []
 security:
@@ -1229,6 +1231,24 @@ mcp_servers:
       exclude:
         - hello
         - download_usage_data
+  algolia:
+    url: https://mcp.algolia.com/mcp
+    auth: oauth
+    enabled: true
+  robinhood:
+    url: https://agent.robinhood.com/mcp/trading
+    auth: oauth
+    enabled: true
+    tools:
+      exclude:
+        - get_option_level_upgrade_info
+        - get_popular_watchlists
+        - follow_watchlist
+        - unfollow_watchlist
+  postman:
+    url: https://mcp.postman.com/minimal
+    auth: oauth
+    enabled: false
 platform_toolsets:
   cli:
     - a2a
