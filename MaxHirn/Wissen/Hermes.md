@@ -1532,3 +1532,40 @@ scheitert), neu `Hermes/scripts/secrets-archivieren.ps1`.
 Archiv an - die Sicherung laeuft trotzdem, aber ohne die Zugangsdaten). Ausserdem
 liegen in den Profil-`.env` weiterhin Klartext-Secrets am Ort; das ist gewollt,
 sie sind nur nicht mehr auf vier Datentraegern verteilt.
+
+## Secrets-Archiv in Betrieb (08.10.2026)
+
+Max hat `HERMES_BACKUP_PW` gesetzt (8 Zeichen, sha8 `ab0d1194` - Wert nie gesehen,
+nur Laenge und Hash geprueft). Das Archiv ist damit scharf:
+
+`Agenten/Hermes/secrets/secrets-20261008.7z` - **62 Dateien, 20,1 KB**, AES-256
+mit `-mhe=on`.
+
+**Nachweise (echte Laeufe, unabhaengig von der eingebauten Gegenprobe):**
+
+- Ohne Passwort: **0 Dateinamen** sichtbar, Exit 255.
+- Mit dem echten Passwort: 62 Namen sichtbar, Integritaetstest Exit 0.
+- Enthaelt genau die kritischen Dateien: `auth.json`, `nous_auth.json`,
+  `OKX_API.env`, `Zugaenge.md` (je 1x).
+- **Die Kette ist geschlossen:** der robocopy-Trockenlauf mit den echten
+  Argumenten nimmt `secrets-20261008.7z` mit und laesst **0** Klartext-
+  Zugangsdateien durch.
+
+**Ein Messfehler, der beinahe falsch alarmiert haette:** Ein Nachweis-Lauf meldete
+110 Treffer statt 0 und sah nach einem offenen Leck aus. Ursache war der Test
+selbst: `XF='"*.env" "auth.json"'` - die Anfuehrungszeichen in der
+Shell-Variable wurden Teil des Arguments, robocopy traf nichts. In einer Variable
+die Quotes **weglassen**. Zweite Falle im selben Zusammenhang: `/XD` braucht
+**Backslash**-Pfade; ein Nachbau mit Vorwaertsschraegstrichen schliesst nicht aus
+(4 Treffer aus `Hermes\cache`). Und: ohne **Positivkontrolle** (derselbe Lauf
+ohne `/XF`, hier 106 Treffer) beweist ein 0-Ergebnis nichts. Alles drei steht im
+Skill `protecting-irreplaceable-data`.
+
+**Was jetzt gilt:** Die Klartextdateien liegen weiter am Ort (der Agent braucht
+sie), aber nur noch auf **einem** Datentraeger plus dem verschluesselten Archiv auf
+den Sicherungen - vorher lagen sie auf vier im Klartext. Der naechste geplante
+Sicherungslauf (20:00) erneuert das Archiv selbst; scheitert das, steht es als
+Warnung im Protokoll.
+
+Testartefakte entfernt (rc-*, secrets-test*, 7ztest). Ein fremder 7z-Temp-Ordner
+vom 05.10. (`opencode.exe`) blieb unangetastet.
