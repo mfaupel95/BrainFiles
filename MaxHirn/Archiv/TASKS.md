@@ -1,4 +1,12 @@
 ## Offen
+- [ ] **T-380 - puter self-hosted: Standort und Betrieb entscheiden**
+      Kontext: 08.10.2026 - Parallelsitzung hat HeyPuter/puter (Fork mfaupel95/puter) an die Wurzel geklont
+      und den Docker-Stack gestartet (puter-selfhosted/, Port 80, 6 Container, restart unless-stopped).
+      Zugangsdaten in puter-selfhosted/.env und puter/config/config.json (Stufe 0, nicht gelesen).
+      Naechster Schritt: Entscheidung Max - Klon nach Werkstatt/Repos verschieben und als Repo-Bot
+      anbinden (Hausmuster) oder Stack abbauen; Doku: MaxHirn/Wiki/Werkzeuge/Puter-selfhosted.md
+      Angelegt: 2026-10-08 · Zuletzt: 2026-10-08
+
 - [ ] **T-379 - Profil-Skills versionieren: .gitignore-Freigabe fuer Agenten/Hermes/profiles/*/skills/**
       Kontext: 08.10.2026, vormerken lassen (Max: "ja vormerken"). Die Skills unter
       Agenten/Hermes/profiles/<bot>/skills/ (z. B. claude-code/productivity/protecting-irreplaceable-data)
