@@ -11,6 +11,12 @@ Vollständige Begründung in [[Schutzregeln]]; hier steht der Ablauf.
 
 ## 1. Lage feststellen
 
+**Zuerst die eigene Arbeit committen, dann prüfen.** Ein `git status` über einen
+Arbeitsbaum, in dem die eigene Änderung noch offen steht, meldet sie als „fremd"
+— die Ruheschwelle sieht nur das Alter, nicht den Urheber. Erst die eigene Arbeit
+namentlich committen, dann den Baum lesen; was danach noch liegt, ist wirklich
+fremd.
+
 ```powershell
 ..\Agenten\Routinen\arbeitsbaum-pruefen.ps1
 ```

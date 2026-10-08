@@ -138,6 +138,17 @@ ist kein Beweis fuer einen funktionierenden Orderweg.
   GEBUEHRENSUMME gegen das Ergebnis stellen: liegt sie in derselben
   Groessenordnung, ist der "Verlust" die Gebuehr, und kein Strategieparameter
   aendert das. Die Jahreslast in Prozent ist `Trades/Tag x 0,2`.
+- **Die Kante VOR Gebuehr ist die Zahl, die ueber die Strategie entscheidet —
+  nicht das Netto-Ergebnis.** Rechne `Kante = Ergebnis + Gebuehrsumme`
+  (Gebuehr = 2 x fee x Umsatzvolumen) und stelle sie gegen die Gebuehr je
+  Runde. Eine stabile positive Kante bei negativem Netto heisst: die Regel
+  hat ein Signal, die Boerse kostet es auf — der Hebel ist die Gebuehr
+  (Futures/Maker), nicht die Strategie. Eine Kante, die ueber Stops,
+  Ausstiegslogik und Halbjahre konstant bleibt, ist real; eine, die mit dem
+  Parameter wandert, ist Rauschen. Gemessen (BtcRegimeKurz, 14 Laeufe):
+  Kante stabil +0,09 bis +0,14 % je Umsatz, Gebuehr 0,20 % je Runde ->
+  Verhaeltnis 0,6:1 (Spot, sicherer Verlust); Futures 0,10 % je Runde ->
+  1,2:1 (kein sicherer Verlust, aber auch kein lebender Profit).
   GEMESSEN am 05./07.10.2026 (BtcRegimeKurz, BTC 1h, gleiche Strategie):
   Spot (0,1 %/Seite) H1 −25,9 % / H2 −22,7 %; Futures (0,05 %/Seite,
   `trading_mode: futures`, gleiche Regeln) H1 +0,04 % / H2 −4,2 % — die
@@ -146,6 +157,16 @@ ist kein Beweis fuer einen funktionierenden Orderweg.
   Umsatz; Futures hebt das Verhaeltnis Kante:Gebuehr von 0,6:1 auf
   1,2:1 — aber auch dort bleibt ein Halbjahr negativ, die Kante ist real,
   nur zu duenn (kein lebender Profit, nur kein sicherer Verlust).
+- **Futures-Backtest: Daten UND Config muessen beide auf `futures` stehen, und
+  die Summary-Tabelle hat eine ANDERE Spaltenstruktur als Spot.** Daten laden
+  mit `download-data ... --trading-mode futures` (sonst fehlt die Funding-Rate),
+  Config mit `trading_mode: futures` + `margin_mode: isolated` (aus der
+  Spot-Basis ableiten, `pair_whitelist` auf die `:USDT`-Form). Die
+  `STRATEGY SUMMARY`-Zeile zeigt in Futures-Modus hinten einen Prozentwert, der
+  NICHT das Gesamtergebnis ist (gemessen: +10,73 % gelesen, real +0,04 %) —
+  die Wahrheit steht in den `EXIT REASON STATS` (Summe der Zeilen) bzw. der
+  `Total profit`-Spalte. Vor jedem Urteil die Exit-Reasons aufsummieren, nicht
+  die erste Zeile der Summary glauben.
 - **Ein `Fatal exception` im Backtest ist nicht automatisch ein Strategiefehler.**
   Erst denselben Lauf wiederholen und den Zeitpunkt gegen den Zustand der
   Docker-Maschine halten — ein sterbender Daemon bricht mitten im Lauf ab.
@@ -157,6 +178,45 @@ ist kein Beweis fuer einen funktionierenden Orderweg.
   `user_data/backtest_results/*.zip` (JSON -> `strategy` -> `trades`, je Trade
   `pair`). `scripts/backtest_archiv_lesen.py` zaehlt das nach. Eine doppelte
   Zeile in der Anzeige ist kein Datenfehler — erst nachzaehlen, dann melden.
+- **Eine Config-Aenderung an einem laufenden Bot ueber die API verifizieren
+  heisst: die AUFSATZ-Zugangsdaten nehmen, nicht die Basis.** Jeder Aufsatz
+  (`config.<name>.json`) traegt EIGENE Web-UI-Zugangsdaten; die Basis-`config.json`
+  gibt auf 8081-8083 401. Und `show_config` liefert `strategy` als NAMENS-STRING,
+  nicht als Dict — `use_exit_signal`/`signal_ausstieg` stehen dort gar nicht.
+  Der verlaessliche Beleg fuer einen geschalteten Schalter ist, den Container
+  die Config-Datei lesen zu lassen
+  (`docker exec <bot> python -c "import json; print(json.load(open('/freqtrade/user_data/config.<name>.json'))['moondev'])"`)
+  und den Neustart-Zeitpunkt gegen die Aenderung zu halten. Ein Schalter, der
+  in der Config steht, wirkt erst nach dem Neustart des Bots.
+- **Ein Strategie-Schalter, der gemessen werden soll, gehoert in den
+  `moondev`-Block der Config, nicht als Konstante in den Code.** Die Basis-Strategie
+  liest `config.get("moondev").get("signal_ausstieg")` und setzt daraus
+  `use_exit_signal` — so laeuft derselbe Code vorher/nachher, und der Default
+  im Code bleibt True, damit ein fehlender Config-Eintrag die Regel nicht still
+  umstellt. Die Aufsatz-Configs sind GITIGNORED (tragen Zugangsdaten); die
+  ENTSCHEIDUNG gehoert deshalb als datierter Vermerk in die versionierte
+  Strategie-Datei, sonst ist sie nach einem Datentraegerfehler weg.
+
+## Einen laufenden Bot nach einem Schalter beobachten (Wache)
+
+Nach einem Strategie-/Config-Schalter (z. B. `signal_ausstieg=false`) will man
+sehen, ob er wirkt, ohne die Bots anzufassen. Die Freqtrade-REST-API liefert das:
+`GET /api/v1/trades?limit=50` gibt je Trade `exit_reason`, `profit_abs`,
+`profit_ratio`, `pair`, `trade_id`, `is_open`. Eine Wache pollt das, merkt sich
+je Bot die hoechste `trade_id` in einer Merkdatei und meldet nur NEUE
+geschlossene Trades mit ihrem Exit-Grund. So ist sofort sichtbar, ob ein
+Schalter greift: enden neue Trades nicht mehr mit `exit_signal`, arbeitet er.
+
+- **Merkdatei VOR dem ersten echten Lauf auf den aktuellen Stand initialisieren.**
+  Startet die Wache mit `letzte_trade_id=0`, meldet der erste Lauf die GANZE
+  Historie (hier 29 Trades) als "neu". Erst den aktuellen Maximalstand je Bot
+  in die Merkdatei schreiben, dann laeuft der erste Cron-Lauf leer und meldet
+  nur, was ab jetzt passiert.
+- **Zugangsdaten aus dem AUFSATZ, nicht aus der Basis** — jeder Bot traegt
+  eigene Web-UI-Zugangsdaten in `config.<name>.json` (siehe API-Falle oben).
+- **Watchdog-Muster**: leere Ausgabe = nichts senden; der Cron laeuft `no_agent`
+  mit dem Skript als einziger Meldung. Der Job-Eintrag in `cron/jobs.json` ist
+  Laufzeitstand (ignoriert) — nur das Wache-Skript wird committet.
 
 Die statistischen Regeln fuer die Bewertung (Walk-Forward, Zeithalbierung,
 Nullinie, "eine Zahl, die das Modell gesehen hat, ist keine Messung") stehen in

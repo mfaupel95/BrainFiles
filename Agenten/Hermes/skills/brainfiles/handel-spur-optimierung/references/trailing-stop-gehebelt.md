@@ -87,6 +87,18 @@ des Hochs (long: nur hoeher).
    gibt es zwischen beiden Aktionen ein Fenster OHNE Schutz. Fehlt (a) im Weg,
    laut sagen statt (b) zu nehmen.
 
+**Die Deckungspruefung laedt ihr Modul selbst — der Test muss die NAHT setzen,
+   nicht den Aufrufer patchen.** `stopdeckung.deckung()` ruft intern
+   `_okxf()` und laedt damit das ECHTE okxf (Netzaufruf), solange
+   `stopdeckung.okxf` nicht gesetzt ist. Ein Test, der nur `handeln.okxf`
+   durch eine Attrappe ersetzt, laesst die Deckungspruefung trotzdem an die
+   echte Boerse gehen — der Fehler erscheint als Testfehler, nicht als
+   Netzaufruf. Fix: in der Verdrahtung VOR dem Aufruf
+   `stopdeckung.okxf = okxf` setzen (das okxf der Spur), damit `deckung()`
+   die Attrappe benutzt. Regel: ein Helfer, der ein Modul per Name laedt,
+   braucht eine explizite Naht, die der Test setzt — patchen des Aufrufers
+   reicht nicht.
+
 ## 6. Beleg der Boersenroute ohne Geld zu bewegen — und was der Beleg BEWEIST
 
 Route unbekannt (etwa weil sie kein Haus-Modul hat) und echte Position offen:

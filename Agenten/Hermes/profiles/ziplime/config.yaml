@@ -5,3 +5,6 @@ _config_version: 50
 terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\ziplime
+platforms:
+  photon:
+    enabled: false

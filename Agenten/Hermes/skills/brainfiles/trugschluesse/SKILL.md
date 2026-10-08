@@ -131,7 +131,26 @@ cd /c/Users/faupe/Documents/BrainFiles && git --no-pager diff --numstat
 
 Eine gewollte Zeile = **1 insertion / 1 deletion**. Zeigt eine Datei die ganze
 Datei, ist das Zeilenende falsch (nicht der Inhalt): `LF` und `CRLF` getrennt
-zaehlen und in die Form der Vorversion zurueckdrehen. **Nie `git checkout
+zaehlen und in die Form der Vorversion zurueckdrehen. **Bei einer GEMISCHTEN
+Datei ist „die Form der Vorversion" mehrdeutig** — dann gilt die MEHRHEIT
+(`nl = "\r\n" if crlf > bare else "\n"`), nicht „CRLF kommt vor, also CRLF".
+Belegt: `Wissen/Hermes.md` fuehrt 375 CRLF gegen 773 nackte LF; ein in CRLF
+gehaltener Anhang ergab dort einen Zuwachs von 0 statt 29 nackten LF, und ein
+BESTANDSVERGLEICH haette das nie gezeigt. **Gegenprobe ueber den ZUWACHS, nicht
+ueber den Bestand:** `(neu.count(b"\n") - neu.count(b"\r\n")) -
+(alt.count(b"\n") - alt.count(b"\r\n"))` muss der Zahl der Zeilen im Anhang
+entsprechen. **Eine Datei ohne abschliessenden Umbruch bekommt beim Anhaengen einen
+dazu** - dieser eine zusaetzliche Umbruch gehoert in die Erwartung, sonst meldet die
+Gegenprobe ein Off-by-one und der Schreibvorgang bricht ab, obwohl die Rechnung
+stimmt. Und: **die Basis gegen die VORHERIGE Messung rechnen, nicht gegen die eigene
+Erwartung** - ein `assert out.count(CRLF) == crlf_vor` ist beim Anhaengen immer
+falsch, weil der Anhang selbst Umbrueche mitbringt; richtig ist
+`zuwachs == zeilen_des_anhangs + (1 wenn kein Umbruch am Ende)`, und die Basis
+`crlf_vor`/`bare_vor` nur als Konstante fuer die NICHT wachsende Seite. Beide
+Fehlformen dreimal in einer Sitzung erlebt, jedes Mal an einer anderen Stelle -
+und jedes Mal hat der Assert den Schreibvorgang gestoppt, also nichts beschaedigt:
+**ein Gegenproben-Assert, der zu streng ist, kostet einen Lauf; einer, der zu
+lose ist, kostet die Datei.** **Nie `git checkout
 HEAD -- <datei>`**, wenn eine andere Sitzung darin arbeitet — das verwirft ihre
 Arbeit (am 05.10.2026 so geschehen, aus einer Sicherung gerettet). Nach jeder
 Aenderung am Ziel **den Wert** nachlesen (`read_file`), nicht die Absicht.
@@ -252,6 +271,17 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
   erreichte die Börse und wurde dort von zwei Sperren gestoppt. Ein Teilschritt,
   als Erfolg gemeldet, ist die teuerste Form: sie sieht aus wie ein Beleg und
   ist es nicht.
+- **Ein Gefuehl ueber eine Haeufigkeit ist eine Zustandsaussage — messen, nicht
+  bestaetigen.** „Docker ist erfahrungsgemaess oft nicht erreichbar" klang
+  plausibel; gemessen waren es 10 Abstuerze in 30 Tagen, **alle an einem Tag**,
+  an den uebrigen 29 Tagen null. Wer eine gefuehlte Rate ungeprueft uebernimmt,
+  baut eine Entscheidung auf eine Zahl, die niemand gezaehlt hat. Der Messweg
+  liegt meist schon da: `Get-WinEvent -FilterHashtable @{LogName='Application';
+  ProviderName='Application Error'; StartTime=(Get-Date).AddDays(-30)}` und je
+  Tag gruppieren — und fuer Wachen `Agenten/Hermes/cron/output/<job-id>/`, wo
+  **jeder** Lauf eine Datei hinterlaesst: gesunde mit `**Status:** silent
+  (empty output)`, gemeldete **ohne** die Statuszeile. „Wie viele Meldungen" ist
+  eine Zaehlung ueber `Status`, nicht ueber die Dateizahl.
 - **Ein Schaden im zeitlichen Umfeld der eigenen Aenderung ist nicht deshalb
   ihre Folge.** Nach dem Setzen eines `docker_volumes`-Eintrags ging ploetzlich
   kein `docker run` mehr (`Exit 125`, `read-only file system`). Der Verdacht lag
@@ -269,6 +299,16 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
   Exitcode ist ein Fingerabdruck, keine Diagnose — immer den Fehlertext lesen
   und die Faelle unterscheiden, statt eine bekannte Signatur der alten Ursache
   zuzuschreiben.
+- **Ein Statusbefehl, der ABWESENHEIT meldet, ist der gefaehrlichere Fall.**
+  `hermes gateway status` meldete „✗ Gateway is not running", waehrend der Dienst
+  lief: PID lebte, `Agenten/Hermes/gateway_state.json` sagte
+  `gateway_state: running`, alle Plattformen `connected`. Die Abwesenheitsmeldung
+  fuehrt zum Neustart eines gesunden Dienstes — genau der Schaden, den die
+  Pruefung verhindern sollte. **Regel: meldet ein Statusbefehl „laeuft nicht",
+  erst den Zustandsstand und den Prozess lesen, dann handeln.** Befehl und
+  Laufzeit lesen verschiedene Quellen; Datei und Prozess sind die naeheren Zeugen.
+  Umgekehrt gilt dasselbe fuer eine „laeuft"-Meldung: `hermes profile list` zeigt
+  ein Profil als `running`, das keinen Prozess hat.
 - **Ein Befehl ohne sein Ergebnis ist keine Messung.** Eine Pruefung, die nicht
   laufen kann (kein Container, kein Ziel, kein Prozess), belegt NICHTS ueber
   den Gegenstand — auch nicht „teilweise". Was sich dann noch belegen laesst,
@@ -288,6 +328,26 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
 - **Ein Test beweist seine Attrappe.** Eine Sperrdatei traegt `PID Zeitstempel`;
   ein Test, der selbst `"1234"` schreibt, kann `int()` auf der ganzen Zeile nie
   scheitern sehen — so blieb der Fehler drei Tage unentdeckt.
+- **Schlaegt ein Test fehl, waehrend ein identisch aussehendes Debug gruen ist,
+  liegt der Unterschied in der ASSERTION des Tests, nicht in der Umgebung —
+  den Assertion-Fehlertext lesen, nicht dasselbe Debug erneut fahren.** Belegt
+  07.10.2026: ein Test schlug bei `datei.exists()` fehl, ein Debug mit
+  identischem Code meldete `exists: True`; ich wiederholte das Debug dutzende
+  Male, bis der echte Fehler (ein `lauf_ts`-Parsing-Bug in der Funktion) erst
+  sichtbar wurde, als der Test an einer SPÄTEREN Assertion scheiterte. Der
+  Debug-Beweis „die Funktion schreibt korrekt" und der Test-Fehlschlag
+  koexistieren, wenn die Funktion einen plausiblen FALSCHEN Wert liefert —
+  `datei.exists()` war True, aber `lauf_ts` war `"2026"` statt
+  `"2026-10-07"`. Ein Debug, das nur die Datei-Existenz prueft, sieht den
+  falschen Wert nicht. Regel: bei einem Test-Fehlschlag zuerst die
+  Assertion-Zeile und den IST-Wert lesen; ein Debug, das eine ANDERE
+  Eigenschaft prueft als die fehlgeschlagene Assertion, ist kein Gegenbeweis.
+- **Ein Datums-Praefix im Dateinamen ist nicht mit dem ersten Bindestrich
+  geschnitten.** `name.split("-", 1)[0]` auf `2026-10-07-spur1` liefert
+  `"2026"` — das Datum selbst traegt Bindestriche. Fuer ein `JJJJ-MM-TT`-Praefix
+  die ersten 10 Zeichen nehmen (`name[:10]`), nicht am ersten Trenner
+  schneiden. Der falsche Wert (`"2026"`) sieht wie ein Datum aus und faellt
+  deshalb nicht auf — ein plausibler falscher Wert ist der gefaehrlichste.
 - **Datei, Reihe und Symbol sind drei Zaehlweisen.** „406 Dateien" gegen „54
   Reihen" gegen die `instrumente` aller `wachen.json`: dieselbe Lueke war 348,
   0 und 0. Geprueft wurde am Ende die Forderungsquelle, nicht die Dateiliste.

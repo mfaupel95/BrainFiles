@@ -69,7 +69,9 @@ gbrain stats | gbrain health                Umfang, Zustand
 2. **Schreiben.** Faktentext mit `write_file` in eine Datei legen (nie inline) und dann
    `gbrain remember "$(cat <pfad>)" --provenance "<quelle, datum>" --entity <entitaet>`.
    Der `cat`-Pfad muss in der Form der AUFRUFENDEN Shell liegen (aus dem Windows-Terminal
-   `/c/Users/...`, nicht `/mnt/c/...`). Der `cat` gehoert zum wortgetreuen Aufruf: den Pfad
+   `/c/Users/...`, nicht `/mnt/c/...`) - das gilt fuer den INLINE-Aufruf aus bash. Aus
+   PowerShell gibt es keinen Inline-Weg; dort das `.sh`-Skript nehmen (siehe Pitfalls).
+   Der `cat` gehoert zum wortgetreuen Aufruf: den Pfad
    INNERHALB von WSL kann `read_file` nicht lesen. Den Faktentext selbst legt man mit
    `write_file` auf der Windows-Seite ab.
 3. **Zuruecklesen und zeichengenau vergleichen** (`recall --grep <stichwort>`) - nicht nur
@@ -86,6 +88,20 @@ gbrain stats | gbrain health                Umfang, Zustand
 - **Langtext nie inline.** Die Kommandozeile geht durch eine Huelle, in der einfache
   Anfuehrungszeichen NICHT schuetzen: Backticks, `$`-Ausdruecke und `$(...)` werden
   ausgewertet, bevor gbrain den Text sieht (29.09.2026: vier verstuemmelte Fakten).
+- **Der `$(cat ...)`-Aufruf gehoert in ein Skript, nicht in die Kommandozeile.** Aus
+  PowerShell (`mcp__windows_mcp__PowerShell`) bricht
+  `-Command "... $(cat $f) ..."` mit `Unerwartetes Token "$"` ab - die aeussere Huelle
+  wertet aus, bevor gbrain den Text sieht. Richtiger Weg: eine kleine `.sh` neben die
+  Faktdatei legen und mit `wsl.exe -d archlinux bash <skript.sh>` aufrufen:
+
+      F=/mnt/c/Users/<...>/cache/scratch/fakt.txt
+      TEXT="$(cat "$F")"
+      /workspace/gbrain/bin/gbrain remember "$TEXT" --provenance "<quelle, datum>" \
+        --entity projects/<name> --kind fact
+
+  Der Pfad IM Skript ist die WSL-Form (`/mnt/c/...`), weil das Skript in WSL laeuft -
+  die Form der aufrufenden Shell gilt nur fuer den INLINE-Aufruf aus bash. Beide Wege
+  vorher einmal mit `--help` trocken fahren, wenn der Fakt lang ist.
 - **Auch im Dateiweg wird `$NAME` im Inhalt expandiert** (01.10.2026: `$HERMES_HOME`
   wurde zu LEER). Im Faktentext **kein `$`** verwenden - Ersatzschreibweise wie
   `<HERMES_HOME>` nehmen und im Text erklaeren.

@@ -163,16 +163,6 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
     *Backend waehlen*).
 
 17. **Ein Eintrag in einer Auswahlliste ist kein Beleg, dass das Modell existiert.**
-    Eine `models:`-Liste in `config.yaml` kann tote Einträge tragen — Modellnamen,
-    die der Router nicht mehr kennt, oder Präfixe, die ein Provider nicht führt.
-    Wer eine Liste kürzt oder erweitert, prüft **jeden Namen gegen die Live-Quelle**
-    (`/v1/models` beim Router, `provider list` beim Gateway), nicht gegen die
-    Liste selbst. Gegenprobe: die Anzahl der Einträge vorher und nachher muss
-    der Differenz der Live-Treffer entsprechen. Ein Eintrag, der in der Liste
-    steht aber nicht auflöst, ist tot — und ein Eintrag, der fehlt aber auflöst,
-    gehört hinein. Die Liste ist ein Cache, nicht die Wahrheit.
-    **Dieselbe Regel gilt für jede Auswahlliste** (Provider, Profile, Skills):
-    ein Name in einer Konfigurationsdatei ist eine Behauptung, keine Messung.
 
 ## Index — references laden, wenn ...
 

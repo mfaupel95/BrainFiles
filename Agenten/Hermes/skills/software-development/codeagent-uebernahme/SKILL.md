@@ -164,6 +164,22 @@ abbricht. Erst wenn beide gruen sind, den echten Lauf (Schritt 3) starten.
 - **Tests fassen keine echten Laufzeitdateien an** (pid, Log, Journal):
   eine pid-Pruefung in einem Test hinterliess sonst eine verwaiste Sperre,
   die einen echten Start blockiert.
+- **Eine Test-Attrappe ohne die volle Seam-Flaeche faellt auf das ECHTE
+  Modul zurueck**: wenn der Code eine Methode neu aufruft, die die Attrappe
+  nicht kennt, laeuft die Funktion ueber den Modul-Fallback weiter und
+  macht einen ECHTEN Netzaufruf (gemessen: `stopdeckung.deckung()` laedt
+  das echte okxf, wenn `stopdeckung.okxf` nicht gesetzt ist -> OKX 51001
+  im Test). Beim Erweitern einer Funktion, die ein Modul-Attribut als
+  Testnaht nutzt, DAS Attribut auf die Attrappe setzen und der Attrappe
+  jede neu gerufene Methode geben; der Test muss beweisen, dass nichts an
+  den echten Host geht.
+- **Ein Test, der einen Literal-Text im Quelltext sucht (Gegenprobe),
+  bricht, wenn die Meldung umformuliert wird**: verbessert man die Logik
+  und aendert dabei den Text (z. B. "KEINE Fuellung gelesen" ->
+  "KEINE Kauf-Fuellung gelesen"), muss man BEIDE Stellen anpassen - die
+  Verhaltens-Assertion UND die Quelltext-Suche der Gegenprobe. Ein roter
+  Test, der nach dem alten Text sucht, ist kein Codeproblem, sondern eine
+  veraltete Gegenprobe.
 
 ## Verification
 

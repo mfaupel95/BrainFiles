@@ -261,6 +261,13 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   Wartestatus `- [?]` („Wartet auf: Max") - wird ueber den Byte-Weg nach Schritt 2
   bis 5 geschlossen; die Meldung dieses Werkzeugs lautet dann irrefuehrend „ist
   schon abgehakt" und meint „nicht `- [ ]`", nicht „bereits erledigt".
+  **Und es findet nur Eintraege unter `## Offen`.** Eine parallele Sitzung kann
+  einen Task in einem EIGENEN `## T-NNN`-Abschnitt NACH `## Erledigt` anlegen
+  (am Dateiende) — dann meldet erledigen.py „steht nicht in '## Offen'" und
+  verweigert. Das ist kein fehlender Eintrag, sondern ein falsch platzierter:
+  ueber den Byte-Weg schliessen (`- [ ]` -> `- [x]`), ohne ihn zu verschieben —
+  das Aufraeumen der Struktur ist ein eigener Auftrag, nicht Teil des
+  Schliessens.
 
 Die Nummer gehoert MIT Praefix: `erledigen.py 206` meldet „206 kommt 0x vor“ —
 das liest sich wie ein fehlender Eintrag, ist aber die falsche Argumentform
