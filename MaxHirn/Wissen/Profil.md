@@ -3,7 +3,7 @@ id: 20260830-profil
 title: 'Profil'
 tags: [profil]
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-10-09
 related: [20260830-projekte]
 summary: 'Wer Max ist und wie er arbeitet - Fundament für Antworten ohne Werkzeugaufruf.'
 ---
@@ -14,7 +14,8 @@ summary: 'Wer Max ist und wie er arbeitet - Fundament für Antworten ohne Werkze
 > Werkzeug laufen muss. Belegtes steht als Fakt; Erschlossenes ist als solches
 > markiert; offene Punkte stehen als `⬚ offen` — die kann nur Max schließen.
 >
-> **Stand:** 2026-08-19. Vorher enthielt die Datei nur Platzhalter.
+> **Stand:** 2026-08-19, Abschnitt „Aktuelle Arbeit" und „Arbeitsweise mit
+> Agenten" ergänzt 2026-10-09. Vorher enthielt die Datei nur Platzhalter.
 
 ## Person
 
@@ -133,6 +134,25 @@ lohnen würde?
 - Keine Rückfrage am Ende, ob noch optimiert werden soll, sondern direkt Optimierungen ausführen
 - Keine Optionsliste, wo eine Empfehlung reicht.
 - ⬚ offen: Weiteres?
+
+## Aktuelle Arbeit (Stand 2026-10)
+
+- **BrainFiles als KI-Betriebssystem:** vier Ordner (`MaxHirn/`, `Modelle/`,
+  `Agenten/`, `Werkstatt/`), mehrere Claude- und Hermes-Sitzungen parallel im
+  selben Repo (Git-Nutzer `mfaupel95`).
+- **Handelsagent:** zwei Spuren (Kraken-Scanner, OKX-Perpetuals/xperp) mit
+  Wachen, dazu der selbstverbessernde Verbesserer und die KB-Pipeline
+  (Metriken → JSON → Cloud-Agent).
+- **Infrastruktur:** Hermes-Agenten, MCP-Stabilität (Docker/WSL-Spawn-Sturm).
+
+## Arbeitsweise mit Agenten
+
+- **Autonom handeln, kurz berichten.** Destruktives nur nach Rückfrage.
+- **Regelwerk statt Vertrauen:** Bereichsbesitz (`Agenten/BEREICHE.json`),
+  eigener Zweig je Agent, Merge erst nach grünen Tests und PR.
+- **Shell-Befehle als genau eine Zeile** — das interne Terminal fügt
+  Mehrzeiler nicht ein.
+- **Maximal knapp**, ohne Substanzverlust; Fakten an einem Ort, sonst verlinken.
 
 ## Aktuelle Randbedingungen
 
