@@ -17,9 +17,9 @@
   "gebuehr_umstellung_datum": "2026-09-06",
   "llm": {
     "modus": "ollama",
-    "_modus": "aus | ollama | cliproxy. Seit 2026-09-17 ollama mit qwen35-8k:latest (unter den lokalen Modellen gemessen die vertragstreueste Wahl), seitdem bleibt der Empfehlungsabschnitt nicht mehr leer.",
-    "timeout_s": 60,
-    "ollama": { "url": "http://127.0.0.1:11434", "modell": "qwen35-8k:latest", "think": false },
+    "_modus": "aus | ollama | cliproxy. Seit 2026-09-17 ollama mit qwen35-8k:latest. Dieses Modell ist in Ollama nicht mehr installiert (HTTP 404, Bericht vom 07.10.2026: 'LLM nicht erreichbar'); seit 2026-10-09 qwen3.5:9b, am echten Digest-Prompt geprueft (nummerierte Empfehlungen plus LEHREN-Zeile, 49 s beim ersten Aufruf, deshalb timeout_s 180 statt 60). Nicht gemessen, ob es die Empfehlungen inhaltlich besser trifft als das alte Modell.",
+    "timeout_s": 180,
+    "ollama": { "url": "http://127.0.0.1:11434", "modell": "qwen3.5:9b", "think": false },
     "cliproxy": { "base_url_env": "CLIPROXY_BASE_URL", "schluessel_env": "CLIPROXY_API_KEY", "modell": "claude-sonnet-5" }
   }
 }
