@@ -155,6 +155,27 @@ def _kauf_verkauf_zeiten(journal_pfad):
     return paare
 
 
+def _zeit(iso):
+    """ISO-Zeit als UTC-datetime, oder None wenn nicht lesbar."""
+    try:
+        d = datetime.fromisoformat(str(iso).strip())
+    except ValueError:
+        return None
+    return d.replace(tzinfo=timezone.utc) if d.tzinfo is None         else d.astimezone(timezone.utc)
+
+
+def vor_stichtag(runde, gueltig_ab):
+    """Gehoert die Runde in die Zeit VOR `gueltig_ab` (nach Kaufzeit)?
+
+    Ohne lesbare Kaufzeit: ja - ihre Unschuld ist nicht belegbar. Derselbe
+    Stichtag und dieselbe Linie wie auswertung_alle.GUELTIG_AB (Scanner-Preisfix
+    vom 03.10.2026): die Runden davor messen den Rechenfehler beim Einstieg, und
+    ein Segment- oder Permutationstest darauf misst ihn mit.
+    """
+    d = _zeit(runde.get("kaufzeit"))
+    return d is None or d < _zeit(gueltig_ab)
+
+
 # --- Anreichern -------------------------------------------------------
 
 def anreichern(runden, berichte_dir, journal_pfad=None):
@@ -211,6 +232,7 @@ def anreichern(runden, berichte_dir, journal_pfad=None):
         rr["score"] = score
         rr["verhaeltnis"] = verhaeltnis
         rr["vola_pa"] = vola
+        rr["kaufzeit"] = kaufzeit
         rr["wochentag"] = _wochentag(kaufzeit or verkaufzeit)
         if mit_paaren and kaufzeit:
             rr["haltedauer_tage"] = (_datum(paare[i][1]) - _datum(kaufzeit)).days
@@ -293,7 +315,9 @@ def befund(spur_konf, konfig, ausgabe_dir):
       segmente               volle Segment-Tabelle (mindest_n aus der Konfig)
       befunde                Liste der Auspraegungen mit n >= mindest_n und
                              Permutationstest p < 0.05 gegen den Rest
-      runden_gesamt          Anzahl geschlossener Runden
+      runden_gesamt          Anzahl geschlossener Runden (nach Stichtag)
+      runden_vor_stichtag    davon ausgeschlossen: Kaufzeit < spur_konf
+                             ["gueltig_ab"] (leer: 0, kein Stichtag)
       runden_vor_umstellung  davon mit Kaufdatum < gebuehr_umstellung_datum
       erzeugt                Zeitstempel
 
@@ -316,6 +340,14 @@ def _befund(spur_konf, konfig, ausgabe_dir):
 
     roh = wp.runden_aus_journal(journal)
     angereichert = anreichern(roh, spur_konf["berichte"], journal)
+    # Stichtag aus spuren.json: Runden mit Kaufzeit davor zaehlen nicht, werden
+    # aber AUSGEWIESEN (runden_vor_stichtag) - sonst sieht ein kleiner Befund
+    # aus wie eine kleine Stichprobe statt wie ein abgeschnittenes Journal.
+    gueltig_ab = spur_konf.get("gueltig_ab")
+    runden_alle = len(angereichert)
+    if gueltig_ab:
+        angereichert = [r for r in angereichert
+                        if not vor_stichtag(r, gueltig_ab)]
     seg = segmente(angereichert, mindest_n)
 
     befunde = []
@@ -347,6 +379,8 @@ def _befund(spur_konf, konfig, ausgabe_dir):
         "befunde": befunde,
         "runden_gesamt": len(angereichert),
         "runden_vor_umstellung": vor,
+        "runden_vor_stichtag": runden_alle - len(angereichert),
+        "gueltig_ab": gueltig_ab,
         "erzeugt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
