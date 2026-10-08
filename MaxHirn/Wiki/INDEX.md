@@ -56,7 +56,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 |---|---|
 | [Betrieb/Hermes.md](Betrieb/Hermes.md) | Installation, Profile, config.yaml-Fallen, Gateway, Kompression, Delegation |
 | [Betrieb/Interpreter-Landkarte.md](Betrieb/Interpreter-Landkarte.md) | Welcher Python gehoert zu welcher Komponente, und wie man den falschen erkennt (Muster: 41 Sitzungen mit `ModuleNotFoundError`) |
-| [Betrieb/Wachen-und-Aufgaben.md](Betrieb/Wachen-und-Aufgaben.md) | Geplante Aufgaben, Cron-Wachen, Muster „leere Ausgabe = nichts senden" — und warum dieselbe Stille auch „die Pruefung lief nie" heissen kann (Fehlpfad-Befund 05.10.2026, `audit-werkzeugpfad.py`); zwei gleichnamige Ablageorte |
+| [Betrieb/Wachen-und-Aufgaben.md](Betrieb/Wachen-und-Aufgaben.md) | Geplante Aufgaben, Cron-Wachen, Muster „leere Ausgabe = nichts senden" — und warum dieselbe Stille auch „die Pruefung lief nie" heissen kann (Fehlpfad-Befund 05.10.2026, `audit-werkzeugpfad.py`); zwei gleichnamige Ablageorte; gbrain-maintenance-Wache (08.10.) |
 | [Betrieb/Kanban-Boards.md](Betrieb/Kanban-Boards.md) | Die Boards des Hauses, der Board-Satz, `ready` wird sofort ausgefuehrt, gemessener Stand 30.09.2026 |
 | [Betrieb/Sicherung-und-Laufwerke.md](Betrieb/Sicherung-und-Laufwerke.md) | C:/O:/G:/Q:, Junctions, Was versioniert und was gesichert wird |
 | [Betrieb/Docker-und-Sandbox.md](Betrieb/Docker-und-Sandbox.md) | Docker-Terminal, windows-mcp als Rueckfallweg, weitergeleitete Variablen | **Entscheidung 08.10.2026: `local` bleibt** (10 Docker-Abstuerze in 30 Tagen, alle am 30.09.; Windows-venvs und 62 PowerShell-Routinen laufen im Container nicht) |
@@ -75,7 +75,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Handel/Gates-und-Freigabe.md](Handel/Gates-und-Freigabe.md) | Sperrenkette, Freigabefenster, AUTO_FREIGABE, Arming |
 | [Handel/Kosten-und-Bedingungen.md](Handel/Kosten-und-Bedingungen.md) | Gebuehren, Bedingungen 1-5, f_max-Merksatz |
 | [Handel/Boersen-und-Schluessel.md](Handel/Boersen-und-Schluessel.md) | OKX EEA/Kraken, Margin-Waehrung, welche Variable welche Spur liest |
-| [Handel/Lektionen.md](Handel/Lektionen.md) | Buch war Fiktion, Stoerung vs. Runde, Papier im Live-Buch, Netzfehler im Zyklus; Stop-DECKUNG als vierte Abgleichsstufe und die Paar-Falle (zwei Schreibweisen, 0 Treffer) |
+| [Handel/Lektionen.md](Handel/Lektionen.md) | Buch war Fiktion, Stoerung vs. Runde, Papier im Live-Buch, Netzfehler im Zyklus; Stop-DECKUNG als vierte Abgleichsstufe und die Paar-Falle (zwei Schreibweisen, 0 Treffer); „nur Verlust" ist meist Buchhaltung, nicht Strategie |
 | [Handel/Backtest-Fundament.md](Handel/Backtest-Fundament.md) | Historische Daten 2021-2026, die ersten Zahlen je Spur, vier Fallen des Replays |
 | [Handel/Strategie-Kennzahlen.md](Handel/Strategie-Kennzahlen.md) | Formelblatt von Max: t-Statistik der Expectancy, Stop aus der MAE, was zeitbasiert NICHT geht |
 | [Handel/Freqtrade-Bots.md](Handel/Freqtrade-Bots.md) | Die drei Moon-Dev-Bots: was laeuft, der erste Backtest (alle negativ, Verlust = Gebuehr), die Loopback-Falle |
@@ -110,6 +110,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/ai4trade-AI-Trader.md](Werkzeuge/ai4trade-AI-Trader.md) | Signalplattform ai4trade.ai: Agent `HermesMax2` (ID 25973), Heartbeat per Cron gepollt |
 | [Werkzeuge/config-gegenprobe.md](Werkzeuge/config-gegenprobe.md) | Jede Behauptung der Hermes-Configs gegen die Wirklichkeit: Programmpfade, lokale Adressen, lokale Modellnamen; Wache montags, Befund 29.09.2026 |
 | [Werkzeuge/Paperclip.md](Werkzeuge/Paperclip.md) | Paperclip-CLI (`paperclipai`, Node): der verwaltete Install-Weg scheitert unter Windows an Doppelpunkten im Sperr-Dateinamen, deshalb npm in eigenem Prefix plus zwei PATH-Weiterleitungen in `~/.local/bin`; kein `update`/`uninstall`, aktualisiert wird per npm |
+| [Werkzeuge/Puter-selfhosted.md](Werkzeuge/Puter-selfhosted.md) | Selbst-gehosteter „Internet-Computer" (HeyPuter/puter, Fork `mfaupel95/puter`) an der BrainFiles-Wurzel mit laufendem Docker-Stack (Port 80, 6 Container, `restart unless-stopped`); Zugangsdaten in `.env`/`config.json` (Stufe 0, nicht gelesen); Umzug nach `Werkstatt/Repos` offen |
 | [Offen/Entscheidungen.md](Offen/Entscheidungen.md) | Was auf eine Entscheidung von Max wartet |
 | [Roadmap.md](Roadmap.md) | Zielkarte: gemessene Luecken nach Wirkung sortiert (Zuverlaessigkeit, Schlankheit, Personalisierung, Autonomie) |
 | [[Hermes-Wartung]] | `hermes update` fahren: Ablauf, EXIT 1, Gateway-Task, blockierte Werkzeuge; `state.db` aufraeumen (archiviert ist weich ausblenden) | Werkzeuge |
