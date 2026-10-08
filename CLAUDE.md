@@ -55,10 +55,9 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **Regeldatei-Paare:** `CLAUDE.md`=`AGENTS.md` in der Wurzel, in `MaxHirn/` und in `Werkstatt/` muessen identisch bleiben - wer eine aendert, aendert beide. Maschinell geprueft werden nur die Paare in `MaxHirn/` (`Agenten/Routinen/wissen-index-pruefen.ps1`); das Wurzel-Paar war am 03.10.2026 auseinandergelaufen (Zweig-Abschnitt in `AGENTS.md` noch Stand 16.09.2026) und wurde angeglichen.
 - **Bereichs-Besitz (seit 04.10.2026):** Drei Sitzungen teilen sich denselben
   Arbeitsbaum, und JEDE darf ueberall schreiben - deshalb gewinnt der Schnellere, und
-  der geteilte Git-Index ist nur das spaeteste Symptom. Die Hausloesung ist Regelwerk,
-  nicht Isolation: **eigene Git-Zweige je Sitzung wurden gemessen verworfen** (sie
-  machen es schlimmer - fremde Aenderungen kommen als Branch-Differenz zurueck statt als
-  erkennbar ruhende Datei, und der Zweig-Overkill kostet den Ueberblick). Der Besitz
+  der geteilte Git-Index ist nur das spaeteste Symptom. Die Hausloesung ist
+  Regelwerk plus eigene Zweige (seit 08.10.2026, siehe Abschnitt
+  Zweige; die frueher verworfene Zweig-Variante gilt nicht mehr). Der Besitz
   steht in `Agenten/BEREICHE.json`, geprueft mit `python Agenten/Werkzeuge/bereiche.py
   --register`: `handel` = `Agenten/Handel/`, `bot` = `Agenten/Bus/`,
   `Agenten/Hermes/skills/`, `Agenten/Hermes/profiles/`, `Agenten/MCP-Manifest.json`,
@@ -76,28 +75,27 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
   die Commits, die die Datei seither berührt haben), nur übernehmen, was im
   Repo noch fehlt; Stash erst nach Verifikation droppen.
 
-## Zweige (Stand 29.09.2026)
+## Zweige (Stand 08.10.2026)
 
-- `master` ist der Arbeitszweig: hier wird committet, gepusht und gemergt. Ein
-  Zweig, der getrennt laeuft und liegen bleibt, kostet Ueberblick, ohne etwas
-  zu sichern - darum wurde `telegram-bus` am 16.09.2026 hinein gefuehrt und
-  geloescht (lokal und auf GitHub, Standardzweig ist wieder `master`).
-- **Ausnahme, seit 29.09.2026: kurzlebige PR-Zweige.** Verlangt ein Ablauf
-  (z. B. `<create-pr-command>`) ausdruecklich eine PR, darf dafuer ein Zweig
-  angelegt werden - erzeugen, pushen, PR eroeffnen, nach dem Mergen SOFORT
-  loeschen (lokal `git branch -d <zweig>` und `git push origin --delete
-  <zweig>`). Kein PR-Zweig bleibt laenger als bis zum Merge liegen; ohne
-  konkreten PR-Anlass gilt weiter nur `master`. Grund der Lockerung: gefuehlt
-  ging Arbeit verloren - Ursache war aber kein Zweig, sondern uncommittete
-  Arbeit, die zu lange im Baum stand (siehe Zwischenstand-Takt unten).
+- **Jeder Agent arbeitet auf einem eigenen Zweig, der von `master` abzweigt**
+  (`git switch -c <agent>/<thema> master`, z. B. `claude/gold-hebel`). Ein
+  Arbeitsbaum haelt nur einen Zweig - parallele Agenten brauchen deshalb je einen
+  eigenen Arbeitsbaum unter `.worktrees/` (`git worktree add .worktrees/<name> -b
+  <zweig> master`), nie `git switch` im geteilten Hauptbaum.
+- **Gemergt wird erst, wenn die PR abgeschlossen ist:** Tests gruen, PR eroeffnet
+  und freigegeben. Vorher nichts nach `master` schieben. Gemergt wird per PR; nach
+  dem Merge Zweig und Arbeitsbaum loeschen (lokal `git branch -d <zweig>`,
+  `git worktree remove`, `git push origin --delete <zweig>`). Ein Zweig mit
+  offener Arbeit bleibt bis dahin stehen und ist kein Altlast-Verdacht.
+- `master` ist der Integrationszweig: nur abgeschlossene, getestete Arbeit, dazu
+  die Routinen (kb-sync, Fremdarbeit-Einziehen) und reine Pflege-Commits ohne
+  eigenen Zweig (Notizen, Index, TASKS-Vermerke).
 - `zwischenstand` ist keine Arbeit, sondern die automatische Sicherung der
-  Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig, seit 29.09.2026
-  stuendlich statt taeglich). Nie dort committen, nie anfassen; Aufraeumen,
-  wenn er stoert: `git update-ref -d refs/heads/zwischenstand` (Regeln in
-  MaxHirn/Wissen/Routinen.md).
-- Sonst keine weiteren Zweige anlegen. Ist doch einer entstanden: auf `master`
-  zusammenfuehren (`git branch -f master <zweig>`, wenn master ein Vorfahre
-  ist, sonst `git merge`) und loeschen.
+  Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig, stuendlich). Nie
+  dort committen, nie anfassen; Aufraeumen, wenn er stoert: `git update-ref -d
+  refs/heads/zwischenstand` (Regeln in MaxHirn/Wissen/Routinen.md).
+- Uncommittete Arbeit bleibt das eigentliche Verlustrisiko, nicht der Zweig:
+  oft committen, auf dem eigenen Zweig auch halbfertig.
 
 ## Umgebung
 
