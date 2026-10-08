@@ -866,8 +866,10 @@ try {
   if (-not (Test-Path -LiteralPath $doktor)) {
     Entscheiden "Konfig-Doktor nicht geprueft: Agenten\Routinen\konfig-doktor.ps1 fehlt."
   } else {
-    $dAus = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $doktor -Kurz 2>&1 | Out-String).Trim()
-    $dCode = $LASTEXITCODE
+    # Continue: unter 'Stop' wirft schon eine stderr-Zeile des Kindes (NativeCommandError)
+    $altEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { $dAus = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $doktor -Kurz 2>&1 | Out-String).Trim(); $dCode = $LASTEXITCODE }
+    finally { $ErrorActionPreference = $altEAP }
     if ($dCode -eq 2) { Entscheiden "Konfig-Doktor selbst defekt: $dAus" }
     elseif ($dCode -eq 1) { Entscheiden "$dAus - Bericht: konfig-doktor.ps1 ohne -Kurz laufen lassen." }
     else { Info $dAus }
