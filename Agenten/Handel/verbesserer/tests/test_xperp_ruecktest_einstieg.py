@@ -146,5 +146,43 @@ class TestPruefeEinstieg(unittest.TestCase):
         self.assertIs(rt.bot.tages_kerzen_quelle, vorher)
 
 
+class TestFix3Und7(unittest.TestCase):
+    def setUp(self):
+        self.k4 = _trend_kerzen(600)
+        for rueck in (
+                mock.patch.object(rt.okxf, "funding", return_value=0.0001),
+                mock.patch.object(rt.bot, "pruefpflicht",
+                                  return_value={"traegt": True,
+                                                "hebel_traegt": True})):
+            rueck.start()
+            self.addCleanup(rueck.stop)
+
+    def _lauf(self, kand=KANDIDAT):
+        gesehen = []
+
+        def lage(k, **kw):
+            gesehen.append(len(k))
+            return {"signal": kand["seite"], "grund": "T", "atr": 1.0,
+                    "kurs": self.k4[-1][4]}
+
+        with mock.patch.object(rt.indikatoren, "lage", side_effect=lage):
+            p = rt.pruefe_einstieg(
+                kand, W, {"AAA": INSTR}, {INSTR["instId"]: self.k4}, {}, [],
+                {}, zeit_ms=self.k4[-1][0], jetzt_dt=MITTWOCH)
+        return p, gesehen
+
+    def test_signal_sieht_hoechstens_300_kerzen_wie_live(self):
+        p, gesehen = self._lauf()
+        self.assertIsNotNone(p)
+        self.assertEqual(gesehen, [300])
+
+    def test_position_traegt_familie_fuer_den_familiendeckel(self):
+        p, _ = self._lauf(dict(KANDIDAT, kategorie="aktie"))
+        self.assertEqual(p["familie"], "aktie")
+        w = dict(W, familien={"aktie": {"max_anteil_gesamt": 0.5}})
+        belegung = rt.wx.familien_belegung([p], w)
+        self.assertAlmostEqual(belegung["aktie"]["margin"], p["margin"])
+
+
 if __name__ == "__main__":
     unittest.main()

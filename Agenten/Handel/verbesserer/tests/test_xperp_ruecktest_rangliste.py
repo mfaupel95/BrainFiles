@@ -90,5 +90,45 @@ class TestKandidatenSchritt(unittest.TestCase):
         self.assertEqual(rt.kandidaten_schritt([self._wert()], w), [])
 
 
+class TestFix1TagesKerzeLaeuft(unittest.TestCase):
+    def test_laufende_tageskerze_geht_nicht_in_mae_ein(self):
+        universum = [{"instId": "AAA-X", "basis": "AAA", "kategorie": "krypto"}]
+        k4 = _aufwaerts(150)
+        zeit = k4[149][0]                       # 24,83 Tage
+        k1d = [[d * 86_400_000, 100.0, 101.0, 99.0, 100.0, 1.0] for d in range(60)]
+        # Die Kerze des Tages 24 (ts 24d <= zeit) laeuft noch: ihr Tief liegt
+        # in der Zukunft von 'zeit'.
+        k1d[24] = [24 * 86_400_000, 100.0, 101.0, 10.0, 50.0, 1.0]
+        werte = rt.rangliste_schritt(universum, {"AAA-X": k4}, {"AAA-X": k1d},
+                                     {"AAA-X": 5e6}, zeit)
+        self.assertLess(werte[0]["mae_long"], 0.05)
+
+
+class TestFix3Fenster300(unittest.TestCase):
+    def test_kennzahlen_sehen_hoechstens_300_kerzen(self):
+        from unittest import mock
+        universum = [{"instId": "AAA-X", "basis": "AAA", "kategorie": "krypto"}]
+        k4 = _aufwaerts(600)
+        gesehen = []
+        original = rt.auswahl.kennzahlen
+        with mock.patch.object(rt.auswahl, "kennzahlen",
+                               side_effect=lambda k: gesehen.append(len(k))
+                               or original(k)):
+            rt.rangliste_schritt(universum, {"AAA-X": k4}, {"AAA-X": []},
+                                 {"AAA-X": 5e6}, k4[-1][0])
+        self.assertEqual(gesehen, [300])
+
+
+class TestFix4UmsatzPunktInZeit(unittest.TestCase):
+    def test_umsatz_kommt_aus_den_letzten_24h_kerzen(self):
+        universum = [{"instId": "AAA-X", "basis": "AAA", "kategorie": "krypto"}]
+        k4 = [[i * VIER_H, 100.0, 100.1, 99.9, 100.0, 100.0] for i in range(150)]
+        werte = rt.rangliste_schritt(
+            universum, {"AAA-X": k4}, {"AAA-X": []}, {"AAA-X": 999.0},
+            k4[-1][0], ctval_je_inst={"AAA-X": 2.0})
+        # 6 Kerzen * 100 Kontrakte * ctVal 2 * Kurs 100
+        self.assertAlmostEqual(werte[0]["umsatz"], 120_000.0)
+
+
 if __name__ == "__main__":
     unittest.main()

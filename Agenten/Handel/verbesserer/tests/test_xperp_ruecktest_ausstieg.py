@@ -25,10 +25,36 @@ def _short_pos(stop=110.0, ziel=90.0, liq=120.0):
 
 
 class TestAusstiegsvorrang(unittest.TestCase):
-    def test_liquidation_geht_vor_stop_in_derselben_kerze(self):
+    def test_docht_durch_stop_und_liq_ist_ein_stop_keine_liquidation(self):
+        # Die Boerse loest den Stop beim Durchlaufen aus - bevor der Kurs die
+        # Liquidationsmarke erreicht.
         p = _long_pos(stop=90.0, liq=80.0)
         grund, preis = rt.pruefe_ausstieg_1h(p, [0, 95.0, 96.0, 75.0, 94.0, 1.0], W)
-        self.assertEqual((grund, preis), ("LIQUIDATION", 80.0))
+        self.assertEqual((grund, preis), ("stop", 90.0))
+
+    def test_eroeffnung_hinter_der_liquidation_ist_liquidation(self):
+        p = _long_pos(stop=90.0, liq=80.0)
+        grund, preis = rt.pruefe_ausstieg_1h(p, [0, 78.0, 79.0, 70.0, 75.0, 1.0], W)
+        self.assertEqual((grund, preis), ("LIQUIDATION", 78.0))
+
+    def test_gap_durch_den_stop_fuellt_zum_eroeffnungskurs(self):
+        p = _long_pos(stop=90.0, liq=80.0)
+        grund, preis = rt.pruefe_ausstieg_1h(p, [0, 85.0, 86.0, 84.0, 85.0, 1.0], W)
+        self.assertEqual((grund, preis), ("stop", 85.0))
+
+    def test_short_gap_durch_den_stop_fuellt_zum_eroeffnungskurs(self):
+        p = _short_pos(stop=110.0, liq=120.0)
+        grund, preis = rt.pruefe_ausstieg_1h(p, [0, 115.0, 116.0, 114.0, 115.0, 1.0], W)
+        self.assertEqual((grund, preis), ("stop", 115.0))
+
+    def test_nachgezogener_stop_heisst_trailing_stop(self):
+        p = _long_pos(ziel=200.0)
+        rt.pruefe_ausstieg_1h(p, [0, 109.0, 111.0, 108.0, 110.0, 1.0], W)
+        self.assertGreater(p["stop"], 90.0)
+        grund, preis = rt.pruefe_ausstieg_1h(
+            p, [0, 110.0, 110.5, 100.0, 101.0, 1.0], W)
+        self.assertEqual(grund, "trailing_stop")
+        self.assertEqual(preis, p["stop"])
 
     def test_stop_wenn_nur_stop_beruehrt(self):
         p = _long_pos()
@@ -45,10 +71,15 @@ class TestAusstiegsvorrang(unittest.TestCase):
         grund, _ = rt.pruefe_ausstieg_1h(p, [0, 100.0, 115.0, 85.0, 100.0, 1.0], W)
         self.assertEqual(grund, "stop")
 
-    def test_short_liquidation_vor_stop(self):
+    def test_short_eroeffnung_hinter_der_liquidation(self):
+        p = _short_pos()
+        grund, preis = rt.pruefe_ausstieg_1h(p, [0, 125.0, 126.0, 110.0, 120.0, 1.0], W)
+        self.assertEqual((grund, preis), ("LIQUIDATION", 125.0))
+
+    def test_short_docht_durch_stop_und_liq_ist_ein_stop(self):
         p = _short_pos()
         grund, preis = rt.pruefe_ausstieg_1h(p, [0, 105.0, 125.0, 104.0, 120.0, 1.0], W)
-        self.assertEqual((grund, preis), ("LIQUIDATION", 120.0))
+        self.assertEqual((grund, preis), ("stop", 110.0))
 
     def test_short_stop(self):
         p = _short_pos()

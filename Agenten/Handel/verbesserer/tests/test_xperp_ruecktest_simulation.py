@@ -48,6 +48,10 @@ def _k1h(ab_stunde, kurs_danach):
     return aus
 
 
+def _raster(satz, schritt_h=4):
+    return {IID: [[h * H, satz] for h in range(0, N4 * 4, schritt_h)]}
+
+
 class TestSimuliere(unittest.TestCase):
     def setUp(self):
         for p in (
@@ -75,7 +79,7 @@ class TestSimuliere(unittest.TestCase):
     def _lauf(self, k1h, w=W, saetze=None, start=100, ende=104):
         return rt.simuliere(
             UNIVERSUM, {IID: _k4()}, {IID: k1h}, {IID: _k1d()},
-            saetze or {IID: [[0, 0.0001]]}, {IID: 5e6}, {"AAA": INSTR}, w,
+            saetze or _raster(0.0001), {IID: 5e6}, {"AAA": INSTR}, w,
             start_ms=start * VIER_H, end_ms=ende * VIER_H)
 
     def test_fallender_kurs_endet_im_stop_mit_verlust(self):
@@ -98,9 +102,9 @@ class TestSimuliere(unittest.TestCase):
         # Hoher positiver Satz: Long zahlt - die gv der Runde ist kleiner als
         # ohne Funding, und funding_summe ist positiv.
         mit = self._lauf(_k1h(ab_stunde=420, kurs_danach=115.0),
-                         saetze={IID: [[0, 0.01]]}, ende=110)
+                         saetze=_raster(0.01), ende=110)
         ohne = self._lauf(_k1h(ab_stunde=420, kurs_danach=115.0),
-                          saetze={IID: [[0, 0.0]]}, ende=110)
+                          saetze=_raster(0.0), ende=110)
         self.assertGreater(mit[0]["funding_summe"], 0.0)
         self.assertLess(mit[0]["gv"], ohne[0]["gv"])
 

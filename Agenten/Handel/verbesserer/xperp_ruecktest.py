@@ -32,25 +32,45 @@ def schnitt_bis(kerzen, zeit_ms):
     return [k for k in kerzen if k[0] <= zeit_ms]
 
 
+def _abgeschlossene_tageskerzen(kerzen, zeit_ms):
+    """Nur 1D-Kerzen, die bei zeit_ms bereits geschlossen waren.
+
+    OKX-1D-Kerzen enthalten Hoch/Tief des ganzen laufenden Tages; nur auf
+    ihren Zeitstempel zu schauen wäre ein Vorgriff auf den späteren Tagespfad.
+    """
+    return [k for k in kerzen if k[0] + 86_400_000 <= zeit_ms]
+
+
+def _umsatz_24h(k4, ctval):
+    """Punkt-in-Zeit-Umsatz aus den sechs jüngsten abgeschlossenen 4H-Kerzen."""
+    return sum(k[5] * ctval * k[4] for k in k4[-6:])
+
+
 def rangliste_schritt(universum, kerzen_4h_je_inst, kerzen_1d_je_inst,
-                      umsatz_je_inst, zeit_ms):
+                      umsatz_je_inst, zeit_ms, ctval_je_inst=None):
     """Kennzahlen+Punkte aller Instrumente mit genuegend Historie BIS zeit_ms.
 
-    Punkt-in-Zeit-Aequivalent zu auswahl.sammle(): derselbe kennzahlen()/
-    bewerte()-Aufruf, aber auf einem auf zeit_ms geschnittenen Fenster.
+    Wie auswahl.sammle(): dieselben Kennzahlen auf höchstens 300
+    abgeschlossenen 4H-Kerzen. Umsatz kommt ebenfalls aus dieser historischen
+    Reihe; umsatz_je_inst bleibt nur der Kompatibilitätsweg für Aufrufer ohne
+    Kontraktwert (Tests/Bestandsaufrufe).
     """
     aus = []
     for x in universum:
         iid = x["instId"]
-        k4 = schnitt_bis(kerzen_4h_je_inst.get(iid, []), zeit_ms)
+        k4 = schnitt_bis(kerzen_4h_je_inst.get(iid, []), zeit_ms)[-300:]
         if len(k4) < MIN_KERZEN_4H:
             continue
         z = auswahl.kennzahlen(k4)
-        kt = schnitt_bis(kerzen_1d_je_inst.get(iid, []), zeit_ms)
+        kt = _abgeschlossene_tageskerzen(kerzen_1d_je_inst.get(iid, []),
+                                         zeit_ms)
         if len(kt) >= 14:
             z["mae_long"], z["mae_short"] = auswahl.mae_tage(kt, 7)
         kat = auswahl.KATEGORIEN[x["kategorie"]]
-        umsatz = umsatz_je_inst.get(iid, 0.0)
+        if ctval_je_inst is None:
+            umsatz = umsatz_je_inst.get(iid, 0.0)
+        else:
+            umsatz = _umsatz_24h(k4, ctval_je_inst.get(iid, 0.0))
         z.update(basis=x["basis"], instId=iid, umsatz=umsatz,
                  kategorie=x["kategorie"], vola_tor=kat["vola_tor"],
                  punkte=auswahl.bewerte(z, umsatz, kat["umsatz_bezug"]))
@@ -119,7 +139,7 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
         return None
 
     instr = instr_je_basis.get(kandidat["basis"])
-    k4 = schnitt_bis(k4_je_inst.get(kandidat["instId"], []), zeit_ms)
+    k4 = schnitt_bis(k4_je_inst.get(kandidat["instId"], []), zeit_ms)[-300:]
     if instr is None or len(k4) < 60:
         return None
     lage = indikatoren.lage(k4, inst=kandidat["instId"], cvd_lage=_cvd_neutral())

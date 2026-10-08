@@ -7,12 +7,16 @@ sys.path.insert(0, str(WURZEL))
 sys.path.insert(0, str(WURZEL.parent / "xperp"))
 import xperp_ruecktest as rt  # noqa: E402
 
-ACHT_H = 8 * 3_600_000
+H = 3_600_000
 
 
 def _pos(seite="long", ts=0):
     return {"inst": "AAA-X", "seite": seite, "nominal": 1000.0,
             "letzte_funding_ts": ts, "funding_summe": 0.0}
+
+
+def _raster(schritt_h, bis_h, satz=0.0001, ab_h=0):
+    return {"AAA-X": [[h * H, satz] for h in range(ab_h, bis_h + 1, schritt_h)]}
 
 
 class TestSatzZuZeitpunkt(unittest.TestCase):
@@ -34,43 +38,63 @@ class TestSatzZuZeitpunkt(unittest.TestCase):
 
 
 class TestFundingFaellig(unittest.TestCase):
-    SAETZE = {"AAA-X": [[0, 0.0001]]}
-
-    def test_vor_8h_wird_nichts_gebucht(self):
+    def test_zwischen_zwei_abrechnungen_wird_nichts_gebucht(self):
         p = _pos()
-        self.assertEqual(rt.funding_faellig(p, ACHT_H - 1, self.SAETZE), 0.0)
-        self.assertEqual(p["letzte_funding_ts"], 0)
+        saetze = _raster(4, 100)
+        self.assertEqual(rt.funding_faellig(p, 4 * H - 1, saetze), 0.0)
+        self.assertEqual(p["funding_summe"], 0.0)
 
-    def test_nach_8h_long_zahlt_bei_positivem_satz(self):
+    def test_4h_takt_bucht_sechs_abrechnungen_in_24h(self):
         p = _pos()
-        self.assertAlmostEqual(rt.funding_faellig(p, ACHT_H, self.SAETZE), 0.1)
-        self.assertEqual(p["letzte_funding_ts"], ACHT_H)
-        self.assertAlmostEqual(p["funding_summe"], 0.1)
+        betrag = rt.funding_faellig(p, 24 * H, _raster(4, 100))
+        self.assertAlmostEqual(betrag, 6 * 0.1)
+
+    def test_8h_takt_bucht_drei_abrechnungen_in_24h(self):
+        p = _pos()
+        betrag = rt.funding_faellig(p, 24 * H, _raster(8, 100))
+        self.assertAlmostEqual(betrag, 3 * 0.1)
+
+    def test_1h_takt_wird_ebenfalls_aus_den_daten_abgeleitet(self):
+        p = _pos()
+        betrag = rt.funding_faellig(p, 24 * H, _raster(1, 100))
+        self.assertAlmostEqual(betrag, 24 * 0.1)
 
     def test_short_bekommt_bei_positivem_satz(self):
         p = _pos("short")
-        self.assertAlmostEqual(rt.funding_faellig(p, ACHT_H, self.SAETZE), -0.1)
+        self.assertAlmostEqual(
+            rt.funding_faellig(p, 8 * H, _raster(8, 100)), -0.1)
 
     def test_long_bekommt_bei_negativem_satz(self):
         p = _pos()
         self.assertAlmostEqual(
-            rt.funding_faellig(p, ACHT_H, {"AAA-X": [[0, -0.0002]]}), -0.2)
+            rt.funding_faellig(p, 8 * H, _raster(8, 100, satz=-0.0002)), -0.2)
 
-    def test_mehrere_perioden_mit_je_eigenem_historischem_satz(self):
+    def test_jede_abrechnung_wird_nur_einmal_gebucht(self):
         p = _pos()
-        saetze = {"AAA-X": [[0, 0.0001], [ACHT_H, 0.0002], [2 * ACHT_H, 0.0003]]}
-        # Perioden bei 8h, 16h, 24h -> Saetze 0.0002, 0.0003 und der Satz
-        # bei 24h (letzter <= 24h) = 0.0003 (kein Eintrag bei 3*ACHT_H).
-        betrag = rt.funding_faellig(p, 3 * ACHT_H, saetze)
-        self.assertAlmostEqual(betrag, 1000 * (0.0002 + 0.0003 + 0.0003))
-        self.assertEqual(p["letzte_funding_ts"], 3 * ACHT_H)
+        saetze = _raster(4, 100)
+        a = rt.funding_faellig(p, 9 * H, saetze)
+        b = rt.funding_faellig(p, 9 * H, saetze)
+        c = rt.funding_faellig(p, 13 * H, saetze)
+        self.assertAlmostEqual(a, 2 * 0.1)
+        self.assertEqual(b, 0.0)
+        self.assertAlmostEqual(c, 0.1)
+        self.assertAlmostEqual(p["funding_summe"], 3 * 0.1)
 
-    def test_fehlender_satz_wirft_statt_null_zu_buchen(self):
-        p = _pos(ts=ACHT_H)
+    def test_historie_beginnt_nach_positionseroeffnung_wirft(self):
+        p = _pos(ts=2 * H)
         with self.assertRaises(rt.FundingLuecke):
-            rt.funding_faellig(p, 2 * ACHT_H, {"AAA-X": [[3 * ACHT_H, 0.0001]]})
-        self.assertEqual(p["letzte_funding_ts"], ACHT_H)
+            rt.funding_faellig(p, 20 * H, _raster(4, 100, ab_h=8))
         self.assertEqual(p["funding_summe"], 0.0)
+
+    def test_cache_endet_lange_vor_dem_zeitpunkt_wirft(self):
+        p = _pos()
+        with self.assertRaises(rt.FundingLuecke):
+            rt.funding_faellig(p, 100 * H, _raster(4, 20))
+        self.assertEqual(p["letzte_funding_ts"], 0)
+
+    def test_unbekanntes_instrument_wirft(self):
+        with self.assertRaises(rt.FundingLuecke):
+            rt.funding_faellig(_pos(), 20 * H, {})
 
 
 if __name__ == "__main__":

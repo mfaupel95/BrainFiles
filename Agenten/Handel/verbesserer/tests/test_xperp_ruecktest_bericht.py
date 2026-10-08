@@ -75,5 +75,13 @@ class TestZeitfenster(unittest.TestCase):
         self.assertEqual(rt.zeitfenster({"A": []}, tage=4), (0, -1))
 
 
+class TestGewinnquote(unittest.TestCase):
+    def test_gewinnquote_zaehlt_positive_runden_auch_ueber_trailing_stop(self):
+        b = rt.bericht([_runde(5.0, "ziel"), _runde(2.0, "trailing_stop"),
+                        _runde(-5.0, "stop"), _runde(-9.0, "LIQUIDATION")])
+        self.assertAlmostEqual(b["gewinnquote"], 0.5)
+        self.assertAlmostEqual(b["trefferquote"], 0.25)
+
+
 if __name__ == "__main__":
     unittest.main()
