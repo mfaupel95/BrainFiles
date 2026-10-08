@@ -286,7 +286,12 @@ $r = Lauf $fx @('git-regeln')
 Pruefe 'nur master: keine Zweig-Warnung' (-not (Hat $r 'GIT-ZWEIGE'))
 git -C $fx branch 'claude/test-x' *> $null
 $r = Lauf $fx @('git-regeln')
-Pruefe 'Fremdzweig: WARNUNG mit Namen' (((Schwere-Von $r 'GIT-ZWEIGE') -eq 'WARNUNG') -and (($r | Where-Object { $_.id -eq 'GIT-ZWEIGE' }).beleg -match 'claude/test-x'))
+Pruefe 'frischer Agentenzweig: kein Befund (Zweigregel 08.10.)' (-not (Hat $r 'GIT-ZWEIGE'))
+Schreibe (Join-Path $fx 'b.txt') 'b'
+git -C $fx add b.txt *> $null
+git -C $fx -c user.name=t -c user.email=t@t -c commit.gpgsign=false commit -q -m zwei *> $null
+$r = Lauf $fx @('git-regeln')
+Pruefe 'gemergter Zweig: HINWEIS mit Namen' (((Schwere-Von $r 'GIT-ZWEIGE') -eq 'HINWEIS') -and (($r | Where-Object { $_.id -eq 'GIT-ZWEIGE' }).beleg -match 'claude/test-x'))
 $umlaut = 'z ' + [char]0x00E4 + '.txt'
 git -C $fx mv 'x y.txt' $umlaut *> $null
 Schreibe (Join-Path $fx ('alt ' + [char]0x00F6 + '.txt')) 'alt'

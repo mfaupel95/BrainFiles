@@ -536,7 +536,7 @@ function Pruefe-GitRegeln {
         Add-Befund -Id 'GIT-ZWEIGE-NICHT-LESBAR' -Modul 'git-regeln' -Schwere 'UNKLAR' -Titel 'Zeitbudget erschoepft' `
             -Beleg "Modul-Limit $ModulLimitSek s verbraucht; for-each-ref nicht gestartet" -Status 'gesichert' -Vorschlag 'Mit hoeherem -ModulLimitSek erneut pruefen'
     }
-    else { $r = Invoke-Extern -Datei $git -Argumente @('--no-optional-locks', '-C', $Wurzel, 'for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes') -TimeoutSek $t }
+    else { $r = Invoke-Extern -Datei $git -Argumente @('--no-optional-locks', '-C', $Wurzel, 'for-each-ref', '--merged', 'master', '--format=%(refname) %(objectname)', 'refs/heads') -TimeoutSek $t }
     if ($t -eq 0) { }
     elseif ($r.TimedOut -or $r.ExitCode -ne 0) {
         $e1 = (($r.Err -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
@@ -544,12 +544,17 @@ function Pruefe-GitRegeln {
             -Beleg "TimedOut=$($r.TimedOut) Exit=$($r.ExitCode) $e1" -Status 'gesichert' -Vorschlag 'git for-each-ref von Hand ausfuehren'
     }
     else {
-        $erlaubt = '^refs/heads/(master|zwischenstand)$|^refs/remotes/origin/(master|zwischenstand|HEAD)$'
-        $fremd = @($r.Out -split "`r?`n" | Where-Object { $_ -and $_ -notmatch $erlaubt } | ForEach-Object { $_ -replace '^refs/(heads|remotes)/', '' })
-        if ($fremd.Count -gt 0) {
-            Add-Befund -Id 'GIT-ZWEIGE' -Modul 'git-regeln' -Schwere 'WARNUNG' -Titel "$($fremd.Count) Zweig(e) ausserhalb der Zweigregel (nur master, zwischenstand)" `
-                -Beleg (($fremd | Select-Object -First 10) -join ', ') -Status 'gesichert' `
-                -Vorschlag 'Offene PR-Zweige sind erlaubt (Ausnahme seit 29.09.2026); alle anderen auf master fuehren und loeschen - nur nach Freigabe'
+        # Zweigregel seit 08.10.2026: jeder Agent arbeitet auf eigenem Zweig - offene Zweige sind erlaubt.
+        # Befund nur fuer Zweige, die schon vollstaendig in master stecken (Merge erledigt, Aufraeumen faellig).
+        # Ein frisch abgezweigter Zweig ohne eigenen Commit (gleiche Spitze wie master) zaehlt nicht.
+        $zeilen = @($r.Out -split "`r?`n" | Where-Object { $_ })
+        $mSpitze = ''
+        foreach ($z in $zeilen) { if ($z -match '^refs/heads/master (\S+)$') { $mSpitze = $Matches[1] } }
+        $fertig = @($zeilen | Where-Object { $_ -notmatch '^refs/heads/(master|zwischenstand) ' } | Where-Object { ($_ -split ' ')[1] -ne $mSpitze } | ForEach-Object { ($_ -split ' ')[0] -replace '^refs/heads/', '' })
+        if ($fertig.Count -gt 0) {
+            Add-Befund -Id 'GIT-ZWEIGE' -Modul 'git-regeln' -Schwere 'HINWEIS' -Titel "$($fertig.Count) Zweig(e) bereits in master gemergt" `
+                -Beleg (($fertig | Select-Object -First 10) -join ', ') -Status 'gesichert' `
+                -Vorschlag 'Zweigregel: nach dem Merge Zweig und Arbeitsbaum loeschen (git branch -d, git worktree remove) - nur nach Freigabe'
         }
     }
 
