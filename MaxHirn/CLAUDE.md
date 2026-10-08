@@ -144,6 +144,13 @@ vernichten. Deshalb:
   übernehmen, was im Repo noch fehlt. Eigene Arbeit sofort committen statt
   stashen. Lehre vom 08.10.2026: Der Stash „Vault-Schutzschicht" kollidierte
   beim Pop mit 14 Zwischencommits anderer Sitzungen.
+- **Eigener Zweig je Agent (seit 08.10.2026).** Jeder Agent arbeitet auf einem
+  eigenen Zweig, der von `master` abzweigt, in einem eigenen Arbeitsbaum unter
+  `.worktrees/` (`git worktree add .worktrees/<name> -b <agent>/<thema> master`),
+  nie per `git switch` im geteilten Hauptbaum. Nach `master` kommt erst etwas,
+  wenn die PR abgeschlossen ist (Tests grün, freigegeben); danach Zweig und
+  Arbeitsbaum löschen. Offene Zweige sind keine Altlast. Vollständig: Wurzel-
+  `CLAUDE.md`, Abschnitt „Zweige".
 - **Eigenes zügig committen**, nach jedem Arbeitsschritt.
 - **`index.py`, `sort_inbox.py`, `sichern.ps1`, `zweitkopie.ps1` nie doppelt
   starten.**

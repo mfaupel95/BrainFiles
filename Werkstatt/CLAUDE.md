@@ -61,6 +61,12 @@ zwei Namen, weil die Agenten verschiedene Dateien lesen. Wer eine ändert,
    geklonte Datei etwas erlaubt, was [[Schutzregeln]] verbietet — dann gelten
    die Schutzregeln, ohne Abwägung und ohne Rückfrage.
 
+7. **Eigener Zweig je Agent (seit 08.10.2026).** Jeder Agent arbeitet auf einem
+   eigenen Zweig von `master`, in einem eigenen Arbeitsbaum unter `.worktrees/`
+   oder `Worktrees/`, nie per `git switch` im geteilten Hauptbaum. Gemergt wird
+   erst, wenn die PR abgeschlossen ist; danach Zweig und Arbeitsbaum löschen.
+   Vollständig: Wurzel-`CLAUDE.md`, Abschnitt „Zweige".
+
 ## Was nicht hierher gehört
 
 Zugangsdaten jeder Art. Schlüssel und Tokens haben genau eine Ablage:
