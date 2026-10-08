@@ -751,8 +751,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       in USDC auf Kraken muss vorher ueber 60 liegen (T-115). NICHT vorher -
       eine neue Spur ohne eine einzige Runde scharf zu stellen, waere der
       Verzicht auf jede Messung.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Angelegt: 2026-09-30 · Zuletzt: 2026-10-08
       Betrifft: Agenten/Handel/omnitrade/wachen.json, MaxHirn/Wissen/Handelsregeln.md
+      **Konfiguration geprueft 08.10.2026 (kein Live-Schalter angefasst):**
+      wachen.json ist vollstaendig (boerse=kraken, kraken_quote=USDC,
+      mindest_guthaben=60, Risikogrenzen, Journal-Spiegelung nach Q:), der
+      Dauerlauf fuehrt die Spur, mehrere Rust-Testnet-Laeufe liefern frische
+      Statusdateien (Werkstatt/omnitrade/status/*.json, Stand 16:59),
+      handelsjournal.csv zeigt eine offene Papierposition. Stale Doku in
+      Handelsregeln.md ("omnitrade hat keinen Kraken-Weg") korrigiert - das
+      war der Stand VOR Weg B, nicht mehr aktuell. Testbefund (nicht
+      behoben, keine Risikoaenderung ohne Beleg): `test_omnitrade.py` hat
+      einen vorbestehenden Fehlschlag seit 30.09.2026
+      (`test_haengende_datei_mit_lebender_pid_zaehlt_nicht`) - VIELFACHES=2.5
+      im Altersgrenzen-Code erlaubt bei 1h-Kerzen 2,5h, der Test erwartet
+      Haengen schon bei 2h. Bleibt offen fuer Max' Entscheidung, da es eine
+      Risikoschwelle ist. Weiterhin offen und NICHT angefasst: `freigabe.erfuellt`,
+      `handel_erlaubt`, Kraken-USDC-Guthaben (T-115) - alles Max' Hand.
 
 
 

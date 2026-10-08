@@ -1292,12 +1292,21 @@ erlaubt"*. Umgesetzt wurde das fuer die Spuren mit vorhandenem Kraken-Orderweg:
 
 `dauerlauf.AUTO_FREIGABE` fuehrt die vier nicht mehr.
 
-**Offen und blockierend:** `omnitrade` hat keinen Kraken-Weg. Sein
-Exchange-Modul kennt nur `binance` und `okx`
-(`omnitrade-exchange/src/`), und `omnitrade-cli/src/commands/live.rs` weist
-jedes andere `--exchange` mit *"Invalid exchange: ... Use 'binance' or 'okx'"*
-ab. Bis ein Kraken-Adapter gebaut ist, handelt **niemand** auf Kraken - die
-Anweisung ist als Sperre umgesetzt, nicht als Umzug.
+**Erledigt (Entscheidung Max 30.09.2026, Weg B):** `omnitrade` selbst bekommt
+keinen Rust-Kraken-Adapter (sein Exchange-Modul kennt weiterhin nur `binance`
+und `okx`, `omnitrade-cli/src/commands/live.rs` weist jedes andere
+`--exchange` ab - das bleibt so, kein zweiter Kraken-Schluessel neben dem
+Haus-Pool). Stattdessen spiegelt die Haus-Spur `Agenten/Handel/omnitrade`
+(`omnitrade_bridge.py`, `omnitrade_lauf.py`, `wachen.json`) die POSITION der
+Rust-Testnet-Laeufe (net_quantity aus `Werkstatt/omnitrade/status/*.json`,
+zwei Zeugen: Statusdatei + lebende PID) und fuehrt im Live-Zweig ueber den
+bewaehrten Haus-Kraken-Weg (`kraken_quote=USDC`, `boerse=kraken`). Der
+Rust-Lauf bleibt der Entscheider (Strategie im `.omni`-Skript), die Spur nur
+der Ausfuehrer. Stand 08.10.2026 (T-256): `handel_erlaubt=false`,
+`freigabe.erfuellt=false` - Papierbetrieb laeuft (mehrere Testnet-Laeufe
+liefern frische Statusdateien), Live bleibt gesperrt bis Bedingung 1 (Runden,
+netto positiv, Ruecklauf) belegt ist UND das Kraken-USDC-Guthaben ueber 60
+liegt (T-115, zuletzt ~25 USDC).
 
 **Werkzeuge, die weiter auf Kraken ordern koennen** (bewusst nicht gesperrt,
 sie sind Handwerkzeug und kein Automat): `kraken/spot_stops.py`,
