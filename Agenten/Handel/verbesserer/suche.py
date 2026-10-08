@@ -140,7 +140,8 @@ def _renormiert(gruppe):
     return {name: wert / summe for name, wert in gruppe.items()}
 
 
-def nachbarn(kandidat, grenzen, gewichte_durchsuchbar=True):
+def nachbarn(kandidat, grenzen, gewichte_durchsuchbar=True,
+             watchlist_aenderbar=True):
     """Deterministische bounded Nachbarschaft von ``kandidat``.
 
     * Je durchsuchbarem Gate ein Nachbar mit ``+Schritt`` und einer mit
@@ -209,8 +210,11 @@ def nachbarn(kandidat, grenzen, gewichte_durchsuchbar=True):
         raus.append(nb)
 
     # --- watchlist (nur Drops) ------------------------------------------
+    # watchlist_aenderbar=False: das Live-Universum ist der ganze Markt
+    # (wachen.json universum.modus "alle"), die Watchlist dort nur Rueckfall.
+    # Ein Drop waere ein Vorschlag, den der Live-Scanner nie liest.
     liste = kandidat["watchlist"]
-    if len(liste) - 1 >= _WATCHLIST_MIN:
+    if watchlist_aenderbar and len(liste) - 1 >= _WATCHLIST_MIN:
         for inst in liste:
             nb = copy.deepcopy(kandidat)
             nb["watchlist"] = [x for x in liste if x != inst]
@@ -310,7 +314,7 @@ def _aenderungen(kandidat, basis):
 
 
 def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None, holdout_fn=None,
-          gewichte_durchsuchbar=None):
+          gewichte_durchsuchbar=None, watchlist_aenderbar=True):
     """Koordinatenabstieg von ``basis`` aus mit Overfitting-Sperre.
 
     Von ``basis`` aus wird wiederholt die Nachbarschaft (``nachbarn``)
@@ -385,7 +389,8 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None, holdout_fn=None,
     while auswertungen < budget:
         bester_nb = None
         bester_nb_wf = None
-        for kand in nachbarn(bestes, grenzen, gewichte_durchsuchbar):
+        for kand in nachbarn(bestes, grenzen, gewichte_durchsuchbar,
+                              watchlist_aenderbar):
             if auswertungen >= budget:
                 break
             kand_wf = bewerte(kerzen_je_inst, kand, konfig)
