@@ -138,7 +138,7 @@ class TestSimuliere(unittest.TestCase):
         staende = []
         with mock.patch.object(
                 rt, "rangliste_schritt",
-                side_effect=lambda u, k4, k1d, um, zeit_ms: staende.append(
+                side_effect=lambda u, k4, k1d, um, zeit_ms, **kw: staende.append(
                     zeit_ms) or []):
             self._lauf(_k1h(10_000, 100.0), start=100, ende=102)
         self.assertEqual(staende, [99 * VIER_H, 100 * VIER_H, 101 * VIER_H])

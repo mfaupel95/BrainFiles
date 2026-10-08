@@ -174,8 +174,8 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
         if satz_bis is not None:
             okxf.funding = lambda inst: satz_bis(inst, zeit_ms)
         bot.tages_kerzen_quelle = (
-            lambda inst_id, n=300: schnitt_bis(k1d_je_inst.get(inst_id, []),
-                                               zeit_ms))
+            lambda inst_id, n=300: _abgeschlossene_tageskerzen(
+                k1d_je_inst.get(inst_id, []), zeit_ms))
         pflicht = bot.pruefpflicht(
             w, instr, k4, seite, einstieg, stop, ziel, g["hebel"],
             stop_atr_f=w["stop_atr_faktor"], ziel_atr_f=w["ziel_atr_faktor"],
@@ -189,6 +189,7 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
 
     return {"inst": kandidat["instId"], "basis": kandidat["basis"],
             "seite": seite, "kategorie": kandidat["kategorie"],
+            "familie": kandidat["kategorie"],
             "einstieg": einstieg, "stop": stop, "ziel": ziel,
             "liq": g["liq"], "hebel": g["hebel"], "kontrakte": g["kontrakte"],
             "nominal": g["nominal"], "margin": g["margin"],
@@ -198,24 +199,29 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
 
 
 def pruefe_ausstieg_1h(p, kerze_1h, w):
-    """Ausstiegsvorrang LIQUIDATION > stop > ziel auf einer 1H-Kerze, danach
-    Trailing-Nachfuehrung, wenn kein Ausstieg greift. Reihenfolge 1:1 aus
-    handeln.pruefe_ausstiege(), aber auf Kerzen-Extremen (hoch/tief) statt auf
-    einem einzelnen Live-Preis. Gibt (grund, ausstiegspreis) oder (None, None).
+    """Ausstieg auf einer 1H-Kerze, danach Trailing-Nachfuehrung, wenn keiner
+    greift. Gibt (grund, ausstiegspreis) oder (None, None).
+
+    Die Boerse loest einen Stop beim Durchlaufen aus - ein Docht durch die
+    Liquidationsmarke ist deshalb nur dann eine Liquidation, wenn die Kerze
+    schon HINTER der Marke eroeffnet (Gap). Ebenso fuellt ein Stop bei einer
+    Eroeffnung hinter dem Stop zum Eroeffnungskurs, nicht zum Stop-Preis.
+    Ein vom Trailing verschobener Stop heisst 'trailing_stop'.
     """
-    _, _, hoch, tief, schluss, _ = kerze_1h
-    if p["seite"] == "long":
-        if tief <= p["liq"]:
-            return "LIQUIDATION", p["liq"]
+    _, offen, hoch, tief, schluss, _ = kerze_1h
+    lang = p["seite"] == "long"
+    if lang:
+        if offen <= p["liq"]:
+            return "LIQUIDATION", offen
         if tief <= p["stop"]:
-            return "stop", p["stop"]
+            return _stop_grund(p), min(offen, p["stop"])
         if hoch >= p["ziel"]:
             return "ziel", p["ziel"]
     else:
-        if hoch >= p["liq"]:
-            return "LIQUIDATION", p["liq"]
+        if offen >= p["liq"]:
+            return "LIQUIDATION", offen
         if hoch >= p["stop"]:
-            return "stop", p["stop"]
+            return _stop_grund(p), max(offen, p["stop"])
         if tief <= p["ziel"]:
             return "ziel", p["ziel"]
 
@@ -224,14 +230,19 @@ def pruefe_ausstieg_1h(p, kerze_1h, w):
     if kand is not None:
         p["stop"] = kand["stop"]
         p["hoechstkurs"] = kand["hoechstkurs"]
+        p["stop_nachgezogen"] = True
     return None, None
 
 
-ACHT_STUNDEN_MS = 8 * 3_600_000
+def _stop_grund(p):
+    return "trailing_stop" if p.get("stop_nachgezogen") else "stop"
+
+
+MAX_LUECKE_MS = 2 * 8 * 3_600_000      # laenger ohne neuen Satz = Cache veraltet
 
 
 class FundingLuecke(Exception):
-    """Kein historischer Funding-Satz vor diesem Zeitpunkt - nicht mit 0.0
+    """Keine (ausreichende) historische Funding-Reihe - nicht mit 0.0
     auffuellen. Dieselbe Haltung wie kraken_modell.FXLuecke."""
 
 
@@ -245,22 +256,26 @@ def satz_zu_zeitpunkt(saetze_je_inst, inst, zeit_ms):
 
 
 def funding_faellig(p, zeit_ms, saetze_je_inst):
-    """Faelliges Funding seit der letzten Buchung: nominal * Satz je Periode,
-    mit dem historischen Satz der jeweiligen Periode (genauer als
-    handeln.buche_funding(), das den aktuellen Satz auf alle Perioden legt).
-    Positiv = gezahlt (Long bei positivem Satz). Veraendert p erst, wenn alle
-    Perioden gerechnet sind - eine FundingLuecke laesst p unberuehrt.
+    """Funding aller Abrechnungen in (letzte Buchung, zeit_ms]: Summe aus
+    nominal * Satz je veroeffentlichter Abrechnung. Der Takt (1h/4h/8h) steht
+    in den Daten - er wird nicht angenommen. Positiv = gezahlt (Long bei
+    positivem Satz). p aendert sich erst, wenn gerechnet ist; eine
+    FundingLuecke (Reihe beginnt nach der Eroeffnung oder endet lange vor
+    zeit_ms) laesst p unberuehrt.
     """
-    perioden = (zeit_ms - p["letzte_funding_ts"]) // ACHT_STUNDEN_MS
-    if perioden <= 0:
-        return 0.0
+    saetze = saetze_je_inst.get(p["inst"], [])
+    if not saetze or saetze[0][0] > p["letzte_funding_ts"]:
+        raise FundingLuecke(
+            "Funding-Historie fuer %s beginnt nicht vor %d"
+            % (p["inst"], p["letzte_funding_ts"]))
+    if zeit_ms - saetze[-1][0] > MAX_LUECKE_MS:
+        raise FundingLuecke(
+            "Funding-Historie fuer %s endet bei %d, benoetigt bis %d"
+            % (p["inst"], saetze[-1][0], zeit_ms))
     vz = 1 if p["seite"] == "long" else -1
-    gesamt = 0.0
-    for i in range(perioden):
-        t = p["letzte_funding_ts"] + (i + 1) * ACHT_STUNDEN_MS
-        gesamt += p["nominal"] * satz_zu_zeitpunkt(
-            saetze_je_inst, p["inst"], t) * vz
-    p["letzte_funding_ts"] += perioden * ACHT_STUNDEN_MS
+    gesamt = sum(p["nominal"] * satz * vz for ts, satz in saetze
+                 if p["letzte_funding_ts"] < ts <= zeit_ms)
+    p["letzte_funding_ts"] = zeit_ms
     p["funding_summe"] = p.get("funding_summe", 0.0) + gesamt
     return gesamt
 
@@ -289,6 +304,8 @@ def simuliere(universum, k4_je_inst, k1h_je_inst, k1d_je_inst,
     from datetime import datetime, timezone
 
     zustand, offene, runden = {}, [], []
+    ctval_je_inst = {x["instId"]: float(instr_je_basis[x["basis"]]["ctVal"])
+                     for x in universum if x["basis"] in instr_je_basis}
 
     def satz_bis(inst, zeit_ms):
         return satz_zu_zeitpunkt(saetze_je_inst, inst, zeit_ms)
@@ -299,7 +316,8 @@ def simuliere(universum, k4_je_inst, k1h_je_inst, k1d_je_inst,
         jetzt_dt = datetime.fromtimestamp(t / 1000, tz=timezone.utc)
 
         werte = rangliste_schritt(universum, k4_je_inst, k1d_je_inst,
-                                  umsatz_je_inst, stand)
+                                  umsatz_je_inst, stand,
+                                  ctval_je_inst=ctval_je_inst)
         for kand in kandidaten_schritt(werte, w):
             if len(offene) >= w["max_offene_anlaeufe"]:
                 break
@@ -343,7 +361,8 @@ def bericht(runden):
     """Leistungsbericht fuer die AKTUELLE wachen.json - kein Vorschlag."""
     if not runden:
         return {"anzahl_runden": 0, "gv_gesamt": 0.0, "runden_je_grund": {},
-                "trefferquote": None, "liquidationsanteil": 0.0,
+                "trefferquote": None, "gewinnquote": None,
+                "liquidationsanteil": 0.0,
                 "groesster_ruecklauf_usd": 0.0, "je_familie": {},
                 "funding_gesamt": 0.0}
 
@@ -367,6 +386,7 @@ def bericht(runden):
         "gv_gesamt": sum(r["gv"] for r in runden),
         "runden_je_grund": je_grund,
         "trefferquote": je_grund.get("ziel", 0) / n,
+        "gewinnquote": sum(1 for r in runden if r["gv"] > 0) / n,
         "liquidationsanteil": je_grund.get("LIQUIDATION", 0) / n,
         "groesster_ruecklauf_usd": ruecklauf,
         "je_familie": je_familie,
@@ -408,7 +428,7 @@ def _main():
     gesamt_tage = a.tage + WARMUP_TAGE
     seiten_1h = -(-gesamt_tage * 24 // 100)
     seiten_4h = -(-gesamt_tage * 6 // 100)
-    seiten_fund = -(-gesamt_tage * 3 // 100) + 1
+    seiten_fund = -(-gesamt_tage * 24 // 100) + 1   # deckt auch 1h-Takt
 
     k4, k1h, k1d, saetze = {}, {}, {}, {}
     for x in universum:
@@ -423,19 +443,13 @@ def _main():
         k1d[iid], _ = xk.laden(iid, "1D")
         saetze[iid], _ = xk.laden_funding(iid)
 
-    # Einmal abrufen statt je Instrument. Umsatz: es gibt nur den HEUTIGEN
-    # 24h-Umsatz - er gilt im Ruecktest als konstant (bekannte Naeherung).
+    # Einmal abrufen statt je Instrument. Der Umsatz wird punktgenau aus den
+    # 4H-Kerzen und dem Kontraktwert gerechnet (rangliste_schritt).
     instr_je_basis = {i["instId"].split("-")[0]: i
                       for i in okxf.instrumente(kategorie=None)}
-    ticker = okxf.tickers()
-    umsatz = {}
-    for x in universum:
-        iid = x["instId"]
-        kurs = k4[iid][-1][4] if k4[iid] else 0.0
-        umsatz[iid] = float((ticker.get(iid) or {}).get("volCcy24h") or 0) * kurs
 
     start_ms, end_ms = zeitfenster(k4, a.tage)
-    runden = simuliere(universum, k4, k1h, k1d, saetze, umsatz,
+    runden = simuliere(universum, k4, k1h, k1d, saetze, {},
                        instr_je_basis, bot.wachen(), start_ms, end_ms)
     print(json.dumps(bericht(runden), ensure_ascii=False, indent=2))
     return 0
