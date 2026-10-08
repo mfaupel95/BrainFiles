@@ -3,7 +3,7 @@ id: 20260906-verbesserer
 title: 'Verbesserer — Spur 1'
 tags: [handel]
 created: 2026-09-06
-updated: 2026-10-07
+updated: 2026-10-08
 related: [20260831-marktscanner, 20260830-handelsbots, 20260902-handelsregeln, 20260830-schutzregeln, 20260830-routinen]
 summary: 'Wöchentliche Schleife, die aus Journal und Kurshistorie out-of-sample geprüfte Vorschläge für bessere Scanner-Parameter macht — Entscheidung, Grenzen, schwache Stelle, Stand.'
 ---
@@ -144,6 +144,6 @@ Regimewechseln.
 Listenindex ausrichten (F7); echter Holdout-Block als vierte Sperre (F4).
 
 Vollständiger Entwurf mit Abnahmekriterien:
-`../Werkstatt/spec-selbstverbessernder-handelsagent-2026-09-06.md` und
-`../Werkstatt/spec-verbesserer-stufe-1-5-2026-10-04.md` (Werkstatt ist
+`../Werkstatt/Ablage/Plaene/spec-selbstverbessernder-handelsagent-2026-09-06.md` und
+`../Werkstatt/Ablage/Plaene/spec-verbesserer-stufe-1-5-2026-10-04.md` (Werkstatt ist
 Durchgangsware — diese Notiz ist die dauerhafte Fassung).

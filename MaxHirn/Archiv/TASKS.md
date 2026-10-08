@@ -769,6 +769,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (dort liegt schon einer) oder als eigenstaendiges Werkzeug behalten; in jedem Fall den
       Gitlink austragen (`git rm --cached MaxHirn/codex`), sonst zeigt er ins Leere.
       Angelegt: 2026-09-30 · Betrifft: `MaxHirn/codex`, `.gitmodules`-freier Gitlink
+      **Erledigt 2026-10-08.** Entscheidung Max (a): Klon in den Werkstatt-Klon konsolidiert - `Werkstatt/Repos/codex` (Stand 0e1520605f) ist die einzige Quelle; der Vault-Klon stand auf dem aelteren Commit 64b482500d (Vorfahr, Arbeitsbaum leer). Gitlink ausgetragen (`git rm --cached`); der alte Klon liegt zur Sicherung unter `Werkstatt/Ausgemustert/codex-maxhirn-20261008`. Hinweis: `Agenten/Hermes/skills/brainfiles/skill-library-sync/SKILL.md` nennt `MaxHirn/codex/` noch in drei Sperr-Eintraegen - Pfad existiert nicht mehr, beim naechsten Sync-Lauf nachziehen.
 - [ ] **T-250 - Werkstatt: 29 lose Dateien in der Wurzel, 19,42 GB Ballast in den Klonen**
       Kontext: Die Werkstatt-Wurzel traegt noch Plaene, Specs, PDFs, Altskripte
       (`hermes-update.ps1`, `swap-live.patch`, `tmp_auswertung_20260917.json`), zwei
@@ -780,6 +781,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       in eine Ablage mit Namen, (b) `target/` einzelner Rust-Klonen leeren (bricht den
       Startbefehl) oder unangetastet lassen.
       Angelegt: 2026-09-30 · Betrifft: `Werkstatt/` (Junction auf `O:\Werkstatt`)
+      **Erledigt 2026-10-08.** Entscheidung Max (a): lose Dateien in benannte Ablage - 40 Dateien geraeumt: `Ablage/Plaene/` (20), `Ablage/Guides/` (7), `Ablage/Berichte/` (5), `Ablage/Sonstiges/` (7), die Uebergabe nach `Austausch/`; die Werkstatt-Wurzel traegt nur noch AGENTS.md/CLAUDE.md. Referenzen in `Wissen/Verbesserer.md` und `Wiki/Handel/nautilus-rust-Quant-Ebene.md` nachgezogen. (b) `target/` der Rust-Klonen unangetastet - keine Entscheidung.
 - [ ] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
       Kontext: Zwei offene Designfragen aus dem Umbau vom 30.09.2026. (a) Die
       Stile fuer die Karten (`Karte.TLabel`, `Karte.Treeview`, `Karte.TCheckbutton`)
