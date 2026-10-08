@@ -189,6 +189,7 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
 
     return {"inst": kandidat["instId"], "basis": kandidat["basis"],
             "seite": seite, "kategorie": kandidat["kategorie"],
+            "familie": kandidat["kategorie"],
             "einstieg": einstieg, "stop": stop, "ziel": ziel,
             "liq": g["liq"], "hebel": g["hebel"], "kontrakte": g["kontrakte"],
             "nominal": g["nominal"], "margin": g["margin"],
@@ -198,24 +199,36 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
 
 
 def pruefe_ausstieg_1h(p, kerze_1h, w):
-    """Ausstiegsvorrang LIQUIDATION > stop > ziel auf einer 1H-Kerze, danach
-    Trailing-Nachfuehrung, wenn kein Ausstieg greift. Reihenfolge 1:1 aus
-    handeln.pruefe_ausstiege(), aber auf Kerzen-Extremen (hoch/tief) statt auf
-    einem einzelnen Live-Preis. Gibt (grund, ausstiegspreis) oder (None, None).
+    """Ausstieg auf einer 1H-Kerze, danach Trailing-Nachfuehrung, wenn keiner
+    greift. Gibt (grund, ausstiegspreis) oder (None, None).
+
+    Die Boerse loest den Stop beim Durchlaufen aus - also vor der
+    Liquidationsmarke, die hinter dem Stop liegt. LIQUIDATION gilt nur, wenn
+    die Kerze schon hinter der Marke eroeffnet; ein Gap durch den Stop fuellt
+    zum Eroeffnungskurs. Ein nachgezogener Stop heisst trailing_stop.
     """
-    _, _, hoch, tief, schluss, _ = kerze_1h
+    _, eroeffnung, hoch, tief, schluss, _ = kerze_1h
+    stop_grund = "trailing_stop" if p.get("trailing") else "stop"
     if p["seite"] == "long":
+        if eroeffnung <= p["liq"]:
+            return "LIQUIDATION", eroeffnung
+        if eroeffnung <= p["stop"]:
+            return stop_grund, eroeffnung
+        if tief <= p["stop"]:
+            return stop_grund, p["stop"]
         if tief <= p["liq"]:
             return "LIQUIDATION", p["liq"]
-        if tief <= p["stop"]:
-            return "stop", p["stop"]
         if hoch >= p["ziel"]:
             return "ziel", p["ziel"]
     else:
+        if eroeffnung >= p["liq"]:
+            return "LIQUIDATION", eroeffnung
+        if eroeffnung >= p["stop"]:
+            return stop_grund, eroeffnung
+        if hoch >= p["stop"]:
+            return stop_grund, p["stop"]
         if hoch >= p["liq"]:
             return "LIQUIDATION", p["liq"]
-        if hoch >= p["stop"]:
-            return "stop", p["stop"]
         if tief <= p["ziel"]:
             return "ziel", p["ziel"]
 
@@ -224,6 +237,7 @@ def pruefe_ausstieg_1h(p, kerze_1h, w):
     if kand is not None:
         p["stop"] = kand["stop"]
         p["hoechstkurs"] = kand["hoechstkurs"]
+        p["trailing"] = True
     return None, None
 
 
@@ -245,22 +259,31 @@ def satz_zu_zeitpunkt(saetze_je_inst, inst, zeit_ms):
 
 
 def funding_faellig(p, zeit_ms, saetze_je_inst):
-    """Faelliges Funding seit der letzten Buchung: nominal * Satz je Periode,
-    mit dem historischen Satz der jeweiligen Periode (genauer als
-    handeln.buche_funding(), das den aktuellen Satz auf alle Perioden legt).
-    Positiv = gezahlt (Long bei positivem Satz). Veraendert p erst, wenn alle
-    Perioden gerechnet sind - eine FundingLuecke laesst p unberuehrt.
+    """Faelliges Funding seit der letzten Buchung: nominal * Satz je echter
+    Abrechnung. Das Raster (1h/4h/8h) kommt aus den Daten selbst - jede
+    veroeffentlichte Abrechnung in (letzte Buchung, zeit_ms] wird genau einmal
+    mit ihrem eigenen Satz gebucht. Positiv = gezahlt (Long bei positivem
+    Satz). Beginnt die Historie zu spaet oder endet sie vor zeit_ms, wirft das
+    FundingLuecke; p bleibt dann unberuehrt.
     """
-    perioden = (zeit_ms - p["letzte_funding_ts"]) // ACHT_STUNDEN_MS
-    if perioden <= 0:
-        return 0.0
+    saetze = saetze_je_inst.get(p["inst"], [])
+    if not saetze:
+        raise FundingLuecke("kein Funding-Satz fuer %s" % p["inst"])
+    abstaende = [b[0] - a[0] for a, b in zip(saetze, saetze[1:])
+                 if b[0] > a[0]]
+    raster = min(abstaende) if abstaende else ACHT_STUNDEN_MS
+    if saetze[0][0] > p["letzte_funding_ts"] + raster:
+        raise FundingLuecke(
+            "Funding-Historie fuer %s beginnt erst nach der Eroeffnung"
+            % p["inst"])
+    if saetze[-1][0] < zeit_ms - raster:
+        raise FundingLuecke(
+            "Funding-Historie fuer %s endet vor Zeitpunkt %d"
+            % (p["inst"], zeit_ms))
     vz = 1 if p["seite"] == "long" else -1
-    gesamt = 0.0
-    for i in range(perioden):
-        t = p["letzte_funding_ts"] + (i + 1) * ACHT_STUNDEN_MS
-        gesamt += p["nominal"] * satz_zu_zeitpunkt(
-            saetze_je_inst, p["inst"], t) * vz
-    p["letzte_funding_ts"] += perioden * ACHT_STUNDEN_MS
+    gesamt = sum(p["nominal"] * s[1] * vz for s in saetze
+                 if p["letzte_funding_ts"] < s[0] <= zeit_ms)
+    p["letzte_funding_ts"] = zeit_ms
     p["funding_summe"] = p.get("funding_summe", 0.0) + gesamt
     return gesamt
 
@@ -343,7 +366,8 @@ def bericht(runden):
     """Leistungsbericht fuer die AKTUELLE wachen.json - kein Vorschlag."""
     if not runden:
         return {"anzahl_runden": 0, "gv_gesamt": 0.0, "runden_je_grund": {},
-                "trefferquote": None, "liquidationsanteil": 0.0,
+                "trefferquote": None, "gewinnquote": None,
+                "liquidationsanteil": 0.0,
                 "groesster_ruecklauf_usd": 0.0, "je_familie": {},
                 "funding_gesamt": 0.0}
 
@@ -367,6 +391,7 @@ def bericht(runden):
         "gv_gesamt": sum(r["gv"] for r in runden),
         "runden_je_grund": je_grund,
         "trefferquote": je_grund.get("ziel", 0) / n,
+        "gewinnquote": sum(1 for r in runden if r["gv"] > 0) / n,
         "liquidationsanteil": je_grund.get("LIQUIDATION", 0) / n,
         "groesster_ruecklauf_usd": ruecklauf,
         "je_familie": je_familie,
