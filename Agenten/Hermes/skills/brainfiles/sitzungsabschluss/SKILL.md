@@ -183,6 +183,11 @@ Pu/Commit-Hash.
   ("outside HERMES_WRITE_SAFE_ROOT") — ueber das `terminal`-Werkzeug schreiben.
 - **Zugangsdaten nirgends** — auch nicht gekuerzt; es gibt genau eine Ablage
   (`MaxHirn/Wissen/Zugaenge.md`, Stufe 0).
+- **Nach dem Abschluss nicht in Verifikations-/Memory-Schleifen laufen.** Eine belegte
+  Messung + ein Commit reichen. Wiederholte identische Pruefungen (`carry.py`-Laeufe,
+  Wache, `memory add` mit demselben Text) liefern keine neue Information, `memory`
+  meldet dann "Entry already exists (no duplicate added)" und der Lauf endet im
+  Tool-Loop-Hard-Stop. Abschlussmeldung einmal schreiben, dann aufhoeren.
 - **Kein Push ohne Auftrag**, kein `git reset --hard`/`checkout -- <datei>`/`stash`:
   das loescht fremde Arbeit unwiederbringlich.
 - Bekannter Bestand in `TASKS.md`: der Abschnitt `## Regeln` enthaelt einen
