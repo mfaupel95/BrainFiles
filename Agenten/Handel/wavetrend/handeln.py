@@ -43,6 +43,7 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
 import pos_kennung  # noqa: E402  # die Kennung einer Position (T-095)
+import kill_gemeinsam as kg  # noqa: E402  # Kill-Frist/Reset/Opt-out
 
 # ratschen.py ueber den PFAD laden, nicht ueber sys.path: die Datei liegt
 # eine Ebene hoeher und heisst wie kein Paket. Ein Import ueber sys.path
@@ -306,7 +307,7 @@ def pruefe_einstieg(inst, k, z, w, faktor):
             stop_pct="%.2f" % stop_pct_eff, grund="wavetrend")
 
 
-def pruefe_ausstiege(z, k, w, nur=None):
+def pruefe_ausstiege(z, k, w, nur=None, erzwinge=None):
     """Prueft offene Positionen gegen die Kerzen von `nur`.
 
     `k` sind die Kerzen EINES Instruments. Ohne die Einschraenkung wurde jede
@@ -342,6 +343,9 @@ def pruefe_ausstiege(z, k, w, nur=None):
                 grund = "stop"
             elif kurs <= p["ziel"]:
                 grund = "ziel"
+
+        if erzwinge and not grund:
+            grund = erzwinge       # Kill: Zwangsschluss zum Kurs, Stop/Ziel haben Vorrang
 
         if not grund:
             behalten.append(p)
@@ -380,12 +384,21 @@ def lauf(modus):
     ruecklauf = s.get("ruecklauf_usd", 0.0)
     faktor = groessenfaktor(ruecklauf, w)
 
-    if s.get("kill"):
-        print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach." % ruecklauf)
-        z["positionen"] = []
-        schreibe_zustand(z)
-        spiegeln(z, w)
-        return
+    if s.get("kill") and modus != "vorschau":
+        status, ruecklauf = kg.phase(z, w, ruecklauf, s.get("runden_gesamt", 0), _jetzt)
+        if status == "frei":
+            faktor = groessenfaktor(ruecklauf, w)
+        else:
+            # Offene Positionen zum Marktkurs schliessen UND buchen (bis 09.10.2026
+            # wurden sie ungebucht geleert und die Spur blieb fuer immer gesperrt).
+            kg.schliesse_alle(
+                z, lambda inst: lade_kerzen(inst, w.get("kerzen_takt", "1H"),
+                                            w.get("mindest_kerzen", 300)),
+                lambda k, inst: pruefe_ausstiege(z, k, w, nur=inst,
+                                                 erzwinge=kg.KILL_GRUND))
+            schreibe_zustand(z)
+            spiegeln(z, w)
+            return
 
     if modus == "vorschau":
         print("Vorschau: keine Dateien geschrieben.")
