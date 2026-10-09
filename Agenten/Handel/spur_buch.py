@@ -863,8 +863,26 @@ def kill_schliessen(z, w, quelle, preis_fuer, journal_pfad, zustand_pfad,
                 preis = None
             if preis and preis > 0:
                 kurse[inst] = preis
+    # LIVE-POSITIONEN GEHOEREN DER BOERSE (wie mosaic, Auftrag Max 09.10.2026):
+    # Ohne freie Live-Kette (`live` falsch) darf der Kill sie weder als Papier
+    # verbuchen noch aus dem Buch nehmen - sie stuenden sonst ungeschuetzt in der
+    # Boerse, im Buch fehlte sie. Der Verkauf ist eine Order und gehoert in die
+    # Freigabekette (sperren_live), nicht in einen Papierzyklus. Sie bleiben
+    # stehen, ihr Boersen-Stop schuetzt sie; sobald ein Live-Zyklus laeuft,
+    # schliesst der Kill sie mit echtem Verkauf.
+    zurueck = []
+    if not live:
+        zurueck = [p for p in z["positionen"] if p.get("modus") == "live"]
+        if zurueck:
+            z["positionen"] = [p for p in z["positionen"] if p.get("modus") != "live"]
+            print("  Kill: %d Live-Position(en) bleiben stehen (%s) - kein Verkauf "
+                  "ausserhalb der Live-Kette; der Boersen-Stop schuetzt sie, der "
+                  "naechste freie Live-Zyklus schliesst sie."
+                  % (len(zurueck), ", ".join(str(p.get("inst")) for p in zurueck)),
+                  file=sys.stderr)
     pruefe_ausstiege(z, kurse, w, journal_pfad, zustand_pfad=zustand_pfad,
                      live=live, weg=weg, zusatz=lambda p, w_: KILL_GRUND)
+    z["positionen"] = z["positionen"] + zurueck
     return len(z["positionen"])
 
 
