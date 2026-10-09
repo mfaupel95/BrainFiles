@@ -9,7 +9,7 @@ platforms: [windows]
 metadata:
   hermes:
     tags: [Handel, Papier, Demo, Kraken, OKX, MCP]
-    related_skills: [handel-spuren, okx-live-anbinden, okx-trading-schleifen, mcp-sync]
+    related_skills: [fremdrepos-signal, handel-spuren, okx-live-anbinden, okx-trading-schleifen, mcp-sync]
 ---
 
 # Fremd-Handelswerkzeuge: nur Papier und Demo
@@ -57,3 +57,6 @@ CLI-Gegenprobe ohne MCP: `kraken futures paper status -o json`.
 
 - `Agenten/mcp-sync-check.ps1` zeigt `OK kraken-papier` (und `okx-agentkit` nach dem Einschalten).
 - `kraken futures paper status -o json` antwortet ohne `error`.
+
+## Delegierung
+Telegram-Topic **Handel** ist mit dem Skill `fremdrepos-signal` verdrahtet (Signal-Schema, Stale-Verwurf, Gate). Bot-Profile: `kraken-cli` (MCP `kraken-native`, an) und `agent-trade-kit` (MCP `okx-agentkit`, aus bis Demo-Profil). Dieser Skill ist die Werkzeug-Seite, `fremdrepos-signal` der Vertrag; das Schema nicht hier duplizieren.

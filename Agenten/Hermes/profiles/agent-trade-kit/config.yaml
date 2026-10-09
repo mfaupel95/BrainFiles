@@ -368,6 +368,17 @@ known_plugin_toolsets:
   webhook:
     - homeassistant
 mcp_servers:
+  # OKX Agent Trade Kit, nur DEMO. Aus, bis ~/.okx/config.toml ein Profil demo (demo = true) hat. Nie --live.
+  okx-agentkit:
+    command: node
+    args:
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\agent-trade-kit\packages\mcp\dist\index.js
+      - --demo
+      - --profile
+      - demo
+      - --modules
+      - market,swap,account
+    enabled: false
   affinity:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.canva.affinity\server\index.js
