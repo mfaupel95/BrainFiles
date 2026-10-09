@@ -114,6 +114,13 @@ def laufe(k, i, seite, einstieg, stop, regel_aus, gebuehr, stop_frac, atr,
     hoch = einstieg
     scharf = False
     start = stop
+    mfe = [0.0]                                  # hoechster Schluss-Gewinn in R (nur Messung)
+
+    def _e(*a):
+        t = fb._ergebnis(*a)
+        t["mfe_r"] = mfe[0]
+        return t
+
     for j in range(i + 1, n):
         o, h, l, c = k[j][1], k[j][2], k[j][3], k[j][4]
         if seite == "long":
@@ -125,6 +132,7 @@ def laufe(k, i, seite, einstieg, stop, regel_aus, gebuehr, stop_frac, atr,
                 return _e(seite, einstieg, max(o, stop), gebuehr, stop_frac,
                           "sicherung" if stop != start else "stop", j - i)
         g = regel_aus(j, seite)
+        mfe[0] = max(mfe[0], (c - einstieg) * vz / abstand0)
         if g:
             return _e(seite, einstieg, c, gebuehr, stop_frac, g, j - i)
         if modus is None:
@@ -223,6 +231,67 @@ def lauf(a):
     Path(a.aus).write_text(json.dumps(out))
 
 
+# --- Zaehlung: "erst im Plus, dann bei +-0 oder im Verlust" -------------------
+
+def zaehlen(a):
+    arme = [x for x in ARME if x[0] in ("Kontrolle (kein Trailing)", "Boden nach 1.0R",
+                                        "Boden nach 1.5R", "Boden nach 2.0R")]
+    ges = defaultdict(lambda: defaultdict(float))
+    for spur in [s_ for s_ in a.spuren.split(",") if s_]:
+        ef, af = kr.REGELN[spur]
+        w = json.loads((HANDEL / spur / "wachen.json").read_text(encoding="utf-8"))
+        sp = float(w["stop_prozent"]) / 100.0
+        gb = float(w.get("gebuehr_taker", 0.0005))
+        kn = int(w.get("kerzen_anzahl", 400))
+        for inst in [x for x in a.instrumente.split(",") if x]:
+            k = fb.lade_kerzen(inst, w.get("kerzen_zeitrahmen", "4H"), a.anzahl, a.cache)
+            if len(k) < 1500:
+                continue
+            atr = atr_reihe(k)
+            memo = {}
+
+            def regel_aus(j, seite, k=k, w=w, kn=kn, fn=af, memo=memo):
+                key = (j, seite)
+                if key not in memo:
+                    memo[key] = fn(k[max(0, j - kn + 1): j + 1], seite, w)
+                return memo[key]
+
+            sigs = fb.signale(k, ef, w)
+            for name, kw in arme:
+                for t in simuliere(k, sigs, sp, regel_aus, gb, atr, **kw):
+                    z = ges[(name, t["seite"])]
+                    z["n"] += 1
+                    z["summe"] += t["r"]
+                    if t["mfe_r"] >= 1.0:
+                        z["plus"] += 1
+                        if t["r"] <= 0.0:
+                            z["plus_dann_minus"] += 1
+                            z["verlust_r"] += t["r"]
+                        elif t["r"] < 0.5:
+                            z["plus_dann_fast_null"] += 1
+            print("%s %s gezaehlt" % (spur, inst), flush=True)
+    Path(a.aus).parent.mkdir(parents=True, exist_ok=True)
+    Path(a.aus).write_text(json.dumps({"%s|%s" % k_: dict(v) for k_, v in ges.items()}))
+
+
+def zaehlen_auswerten(dateien):
+    ges = defaultdict(lambda: defaultdict(float))
+    for f in dateien:
+        for key, v in json.loads(Path(f).read_text()).items():
+            for kk, vv in v.items():
+                ges[key][kk] += vv
+    print("%-22s %-6s %6s %8s %12s %18s %10s" % ("Arm", "Seite", "n", "im Plus", "dann <=0 R", "dann 0..0,5 R", "Summe R"))
+    for name in ("Kontrolle (kein Trailing)", "Boden nach 1.0R", "Boden nach 1.5R", "Boden nach 2.0R"):
+        for seite in ("long", "short"):
+            z = ges.get("%s|%s" % (name, seite))
+            if not z:
+                continue
+            print("%-22s %-6s %6d %8d %5d (%4.1f%%) %9d (%4.1f%%) %+10.1f" % (
+                name, seite, z["n"], z["plus"], z["plus_dann_minus"],
+                100.0 * z["plus_dann_minus"] / max(z["plus"], 1),
+                z["plus_dann_fast_null"], 100.0 * z["plus_dann_fast_null"] / max(z["plus"], 1), z["summe"]))
+
+
 # --- Auswertung ---------------------------------------------------------------
 
 def auswerten(dateien):
@@ -305,7 +374,13 @@ def main(argv=None):
     ap.add_argument("--cache", default=str(HANDEL / "daten" / "fib_bt"))
     ap.add_argument("--aus", default=str(HANDEL / "daten" / "studie" / "ergebnis.json"))
     ap.add_argument("--auswerten", nargs="+")
+    ap.add_argument("--zaehlen", action="store_true", help="Plus-dann-Verlust-Zaehlung statt voller Studie")
+    ap.add_argument("--zaehl-auswerten", nargs="+")
     a = ap.parse_args(argv)
+    if a.zaehl_auswerten:
+        return zaehlen_auswerten([f for p in a.zaehl_auswerten for f in glob.glob(p)])
+    if a.zaehlen:
+        return zaehlen(a)
     if a.auswerten:
         dateien = [f for p in a.auswerten for f in glob.glob(p)]
         return auswerten(dateien)
