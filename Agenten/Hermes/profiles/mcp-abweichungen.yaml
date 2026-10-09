@@ -4,7 +4,8 @@
 #
 # alle.ausschluss      Server der Haupt-Config, die kein Profil bekommt
 #                      (MCP_DOCKER startet je Profil ein Docker-Gateway; die
-#                      Remote-Server sind ohnehin abgeschaltet).
+#                      Remote-Server gehoeren der Haupt-Config - robinhood und
+#                      algolia sind dort AKTIV, Profile bekommen sie nicht).
 # profile.<n>.einschluss          nimmt einen Server aus alle.ausschluss heraus
 # profile.<n>.ersetze             Textersetzung im Server-Abschnitt [alt, neu]
 # profile.<n>.projectatlas_repo   Atlas-DB/-Config unter Werkstatt\Repos\<repo>\
@@ -18,6 +19,9 @@ alle:
   - circleci
   - deepwiki
   - gitlab
+  - algolia
+  - postman
+  - robinhood
 zusatzbloecke:
   robinhood: |2
       robinhood:

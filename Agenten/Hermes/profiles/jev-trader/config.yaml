@@ -5,3 +5,6 @@ _config_version: 50
 terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\jev-trader
+platforms:
+  photon:
+    enabled: false

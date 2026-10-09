@@ -217,7 +217,7 @@ def kandidaten(werte, w, anzahl=6):
                 continue
             mae = x["mae_short"] if seite == "short" else x["mae_long"]
             deckel = auswahl.hebel_deckel(mae)
-            if deckel < w["max_hebel"]:
+            if deckel < wx.hebel_grenze(w, x["kategorie"]):
                 continue
             aus.append({"basis": x["basis"], "instId": x["instId"],
                         "seite": seite, "kategorie": x["kategorie"],
@@ -255,11 +255,18 @@ def anlauf(w, kandidat):
     stop = okxf.auf_tick(instr, einstieg - vz * w["stop_atr_faktor"] * atr)
     ziel = okxf.auf_tick(instr, einstieg + vz * w["ziel_atr_faktor"] * atr)
 
-    g = bot.groesse(w, instr, einstieg, stop, seite, kandidat["deckel"])
+    # Hebel und Stopweite je Familie (Auftrag Max 08.10.2026: Rohstoffe 10x,
+    # Stop hoechstens 4 %). Fehlt der Familien-Wert, gilt max_hebel unveraendert.
+    smax = wx.stop_max_pct(w, kandidat["kategorie"])
+    if smax is not None and abs(einstieg - stop) / einstieg * 100.0 > smax:
+        return None
+    wf = wx.fuer_familie(w, kandidat["kategorie"])
+
+    g = bot.groesse(wf, instr, einstieg, stop, seite, kandidat["deckel"])
     if not g:
         return None
 
-    p = bot.pruefpflicht(w, instr, k, seite, einstieg, stop, ziel,
+    p = bot.pruefpflicht(wf, instr, k, seite, einstieg, stop, ziel,
                          g["hebel"], still=True)
     return {"instr": instr, "inst": instr["instId"], "basis": kandidat["basis"],
             "seite": seite, "kategorie": kandidat["kategorie"],
@@ -295,6 +302,37 @@ def _kurs_aktuell(p):
                 familie=p.get("familie", ""),
                 grund="Kontrakt gewechselt: " + alt)
     return float(kurs)
+
+
+def _hand_erloes(p, preis, menge):
+    """(nominal, erloes) einer von Hand verkauften Menge, beides in USD.
+
+    DER FEHLER, DER HIER BEHOBEN IST (gemessen 07.10.2026): die Buchung rechnete
+    `preis * menge` und schrieb das in nominal_usd UND margin_usd. Das ist weder
+    das eine noch das andere: es fehlen die Kontraktgroesse (ctVal) und der
+    Hebel. XAU, 96 Kontrakte @ 4150,2 stand mit 398.419 statt rund 80 USD
+    Margin im Journal; die Auswertung meldete damit +438.540 USD und die Spur
+    als "belastbar".
+
+    Die Konvention ist die von `_ergebnis` und der schliessen-Zeile sonst:
+    margin_usd ist, was von der Margin ZURUECKKOMMT (Einsatz plus Ergebnis),
+    nominal_usd das Nominal der Position. Beides aus dem BUCH, nicht aus der
+    Boerse - ctVal und Hebel stecken schon im Nominal der Position, ein
+    Netzabruf waere eine zweite Quelle. Bei einem Teilverkauf zaehlt nur der
+    verkaufte Anteil. Gebuehr ist nicht abgezogen (sie steht an der Boerse;
+    gebuehr_pct bleibt leer, wie bei den uebrigen Handschliessungen).
+
+    Ohne Zeugen kommt preis = Einstieg an: Ergebnis 0, die Margin geht zurueck.
+    """
+    alt = abs(float(p.get("kontrakte") or 0.0))
+    anteil = min(1.0, abs(menge) / alt) if alt > 0 else 1.0
+    nominal = float(p.get("nominal") or 0.0) * anteil
+    margin = float(p.get("margin") or 0.0) * anteil
+    einstieg = float(p.get("einstieg") or p.get("preis") or 0.0)
+    if not einstieg:
+        return nominal, margin                     # ohne Einstieg kein Ergebnis
+    vz = 1 if p.get("seite") == "long" else -1
+    return nominal, margin + nominal * vz * (preis - einstieg) / einstieg
 
 
 def _ergebnis(p, kurs):
@@ -608,17 +646,17 @@ def buche_verkaeufe_aus_boerse(z, live=True, still=False):
             preis = float(p.get("einstieg") or p.get("preis") or 0.0)
             grund = "verkauf_ohne_zeuge_neutral"
             quelle = "neutral"
-        erloes = preis * menge
+        nominal, erloes = _hand_erloes(p, preis, menge)
         if not still:
             print("  VERKAUF gebucht: %s %s %.0f Stuecke @ %.6f = %.2f USD "
-                  "(Boerse hat %s)"
+                  "Margin zurueck (Boerse hat %s)"
                   % (p.get("inst"), p.get("seite"), menge, preis, erloes,
                      "bezeugt" if v else "KEINEN Zeugen -> neutral"))
         journal(zeit=_jetzt(), modus="live", aktion="schliessen",
                 inst=p.get("inst", ""), pos_id=p.get("pos_id", ""),
                 seite=p.get("seite", ""), familie=p.get("familie", ""),
                 preis="%.8g" % preis, kontrakte="%.4f" % menge,
-                nominal_usd="%.2f" % erloes,
+                nominal_usd="%.2f" % nominal,
                 margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
                 grund=grund)
         # Die Position bleibt stehen, wenn an der Boerse noch Rest steht -
@@ -665,6 +703,16 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
 
     Faellt die Abfrage aus, wird NICHTS gebucht: ein Netzfehler darf das Buch
     nicht leeren.
+
+    REGEL (Max, 09.10.2026): ausgebucht wird NUR mit Boersenbeleg. Der Geist
+    braucht ein realisiertes Ergebnis von der Boerse (realizedPnl aus
+    /account/positions-history, siehe `_geist_erloes`). Fehlt dieser Beleg,
+    bleibt die Position als UNKLAR im Buch stehen und wird gemeldet - NICHT
+    neutral ausgebucht. Anlass: am 05.10.2026 hat die neutrale Buchung
+    (Einsatz zurueck, Erloes 0.00) sechs echte Live-Positionen aus dem Buch
+    geloescht, weil die Boersenabfrage sie kurz nicht zeigte; an der Boerse
+    blieben sie offen und unbewacht. Eine Karteileiche blockiert hoechstens
+    einen Platz, eine echte Position ohne Buch liefe unbewacht weiter.
 
     `stornieren=False` (Papierlauf): eine offene Order zu einem Geist wird
     NICHT storniert. Das waere ein echter Boerseneingriff - und der Grund,
@@ -717,7 +765,26 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
         return 0
     behalten = [p for p in z["positionen"] if p in echte
                 or p.get("modus") != "live"]
+    unklar = []
     for p in geister:
+        erloes, quelle, anteil = _geist_erloes(p)
+        if quelle != "boerse":
+            # REGEL (Max, 09.10.2026): ohne Boersenbeleg wird eine Live-Position
+            # NICHT ausgebucht. Am 05.10.2026 hat genau dieser Weg sechs echte
+            # Positionen aus dem Buch geloescht (TRX, SOL, NIGHT, STRK, QUANT,
+            # XAG): die Boersenabfrage zeigte sie kurz nicht, und die neutrale
+            # Buchung (Einsatz zurueck) liess sie aus dem Buch verschwinden -
+            # an der Boerse blieb die Position offen und unbewacht.
+            # Ohne Beleg bleibt die Position als UNKLAR stehen. Eine Karteileiche
+            # blockiert hoechstens einen Platz; eine echte Position ohne Buch
+            # liefe unbewacht weiter.
+            unklar.append(p)
+            if not still:
+                print("  %s (%s) fehlt an der Boerse, aber KEIN Boersenbeleg "
+                      "(realizedPnl) auffindbar - bleibt als UNKLAR im Buch, "
+                      "wird NICHT ausgebucht (Regel Max 09.10.2026)"
+                      % (p.get("inst"), p.get("seite")))
+            continue
         # Die offene Order gehoert dazu: bliebe sie liegen, koennte sie
         # spaeter fuellen und eine Position ohne Buch erzeugen - dann haette
         # niemand einen Ausstieg im Blick. Sie traegt zwar einen
@@ -735,20 +802,12 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
             elif not still:
                 print("  offene Order zu %s bleibt liegen (Papierlauf storniert "
                       "nichts an der Boerse)" % p.get("inst"))
-        erloes, quelle, anteil = _geist_erloes(p)
         if not still:
-            print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden "
-                  "(nur eine offene Order, kein Bestand)"
-                  % (p.get("inst"), p.get("seite")))
-            if quelle == "boerse":
-                print("    Ergebnis von der Boerse: Einsatz %.2f -> zurueck "
-                      "%.2f (Anteil %.0f%%)"
-                      % (p.get("margin") or 0.0, erloes,
-                         round((anteil or 0.0) * 100)))
-            else:
-                print("    Kein Boersenergebnis auffindbar - NEUTRAL gebucht: "
-                      "Einsatz %.2f zurueck, kein erfundenes Ergebnis"
-                      % erloes)
+            print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden, "
+                  "Ergebnis von der Boerse: Einsatz %.2f -> zurueck %.2f "
+                  "(Anteil %.0f%%)"
+                  % (p.get("inst"), p.get("seite"), p.get("margin") or 0.0,
+                     erloes, round((anteil or 0.0) * 100)))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
                 inst=p.get("inst", ""),
                 pos_id=p.get("pos_id", ""), seite=p.get("seite", ""),
@@ -757,8 +816,8 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
                 nominal_usd="%.2f" % (p.get("nominal") or 0.0),
                 margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
                 grund="buchbereinigung_geist")
-    z["positionen"] = behalten
-    return len(geister)
+    z["positionen"] = behalten + unklar
+    return len(geister) - len(unklar)
 
 
 # Kontraktzahlen sind gebrochen (CRCL 1.1), aber nicht beliebig fein: unter
@@ -1231,9 +1290,23 @@ def _trailing_versuch(p, kurs, w):
         return False
     p["stop_id"] = kennung
     tick = _tick_fuer(p.get("inst"))
+    # T-365: die Mengen-Deckung ist die ERSTE Bedingung (Referenz
+    # trailing-stop-gehebelt.md 5.1: 'erst zusammenfuehren, dann trailingen').
+    # Eine Position, deren Schutz-Menge an der Boerse die Buchmenge nicht
+    # deckt, ist nicht trailingbar - der engste Stop feuert zuerst, die
+    # uebrigen bleiben als Waisen zurueck. stopdeckung.deckung() misst das.
+    def _deckung_pruefen(pos):
+        try:
+            roh = {x["instId"]: x for x in okxf.positionen()}
+        except Exception as e:                              # noqa: BLE001
+            raise RuntimeError("Boersenfrage fehlgeschlagen (%s)" % e)
+        # stopdeckung.okxf auf das okxf DIESER Spur setzen - sonst laedt
+        # deckung() das echte okxf (Netzaufruf) statt der Testattrappe.
+        stopdeckung.okxf = okxf
+        return stopdeckung.deckung(pos, roh)
     ergebnis, grund = trailing_modul.nachziehen(
         p, kurs, okxf, w, liq=float(p.get("liq") or 0.0) or None,
-        tick=tick)
+        tick=tick, deckung_pruefen=_deckung_pruefen)
     if ergebnis is None:
         # Kein Trailing ist der NORMALFALL (vor dem Trigger, Hub zu klein,
         # Stop zu nah am Kurs). Das ist kein Fehler und gehoert NICHT ins

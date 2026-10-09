@@ -195,6 +195,43 @@ def wochenende_sperrt(w, jetzt=None):
     return wt in (5, 6)                        # Samstag, Sonntag
 
 
+# --- Hebel und Stopweite je Familie (Auftrag Max 08.10.2026) ---------------
+
+def hebel_grenze(w, kategorie):
+    """Hebel-Obergrenze einer Familie; ohne eigenen Wert gilt max_hebel.
+
+    Auftrag Max 08.10.2026: Rohstoffe (XAU, XAG, CL, BZ) immer mit 10x. Der
+    Wert steht in familien.<name>.max_hebel der wachen.json, nicht im Code.
+    Er ersetzt NICHT den Volatilitaets-Deckel (auswahl.hebel_deckel): ein
+    Wert, dessen 7-Tage-Ruecklauf den Hebel nicht traegt, faellt weiter aus
+    der Rangliste - "immer 10x" heisst also "nur, wenn 10x den letzten
+    Ruecklauf ueberlebt haette", nie "10x um jeden Preis".
+    """
+    fam = (w.get("familien") or {}).get(kategorie) or {}
+    return float(fam.get("max_hebel", w["max_hebel"]))
+
+
+def stop_max_pct(w, kategorie):
+    """Hoechste Stopweite einer Familie in % des Kurses, oder None (keine Grenze).
+
+    Beim 10x-Hebel liegt die Liquidation grob bei 9-9,5 % gegen die Position
+    (isoliert, Wartungsmarge 0,5 %). Ein Stop weiter als diese Grenze liegt
+    zu nah an der Liquidation, um noch zu schuetzen - der Anlauf entfaellt.
+    """
+    fam = (w.get("familien") or {}).get(kategorie) or {}
+    v = fam.get("stop_max_pct")
+    return None if v is None else float(v)
+
+
+def fuer_familie(w, kategorie):
+    """Kopie der Wachen mit der Hebel-Grenze der Familie als max_hebel.
+
+    Fuer bot.groesse() und bot.pruefpflicht(), die max_hebel aus den Wachen
+    lesen. Die Originaldatei wird nie veraendert.
+    """
+    return dict(w, max_hebel=hebel_grenze(w, kategorie))
+
+
 # --- Sperre schliessen (einziger Schreibzugriff auf wachen.json) ----------
 
 def sperre_zu(grund):

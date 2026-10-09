@@ -41,6 +41,7 @@ vorhandener Skill plus ein Zeitplan.
 | stündlich, zur vollen Stunde | Zwischenstand der Textebene | `Routinen/zwischenstand.ps1` | **eingeplant** 25.08.2026 — `MaxHirn-Zwischenstand`. Lief bis 02.09.2026 stündlich, im Umfeld des System-Umzugs auf täglich 20:00 reduziert, am 29.09.2026 wieder auf stündlich gestellt (Max: „verliere andauernd Arbeit“ — der Umzug ist abgeschlossen, der Grund für die Reduzierung entfällt). Damit sinkt das ungesicherte Fenster von einem Tag auf höchstens eine Stunde. |
 | stündlich, :20 nach der vollen Stunde | Fremdarbeit beendeter Sitzungen in die Hauptarbeit (`master`) übernehmen | `Routinen/fremdarbeit-einziehen.ps1` | **eingeplant** 21.09.2026 — `MaxHirn-Fremdarbeit-Einziehen`, am 29.09.2026 mit dem Zwischenstand auf stündlich umgestellt. Läuft **nach** dem jeweiligen Zwischenstand: der sichert die Arbeit erst auf den Branch `zwischenstand`, diese Aufgabe holt dieselbe Arbeit ein zweites Mal ab und schreibt sie in **einem** Commit mit dem Autor `Andere Sitzung <fremd@local>` nach `master`. Ruhend heißt weiterhin: länger als 30 Minuten unberührt. Details im Abschnitt „Fremdarbeit übernehmen“ unten. |
 | täglich 07:00 | Systemprüfung (Drift-Bericht) | `Routinen/systempruefung.ps1` | **eingeplant** 02.09.2026 — `MaxHirn-Systempruefung`. Sucht nach toten Junctions, doppelten Ollama-Stores, kaputten Pfaden; räumt Eindeutiges selbst auf, meldet den Rest. Bericht: `Routinen/logs/systempruefung-letzter-lauf.md`. Details in [[Systempruefung]]. |
+| täglich 07:00 (in Systemprüfung) | Konfig-Doktor (Konfigurationsgesundheit) | `Routinen/konfig-doktor.ps1` | **eingebunden** 09.10.2026 als Block 16 der Systemprüfung (`-Kurz`, nur Zählzeile; KRITISCH landet unter „Zu entscheiden"). Rein lesend; Module mcp-pfade, hermes, regelpaare, git-regeln, ballast, laufzeit. Vollbericht von Hand ohne `-Kurz` nach `Werkstatt/konfig-doktor-<datum>.md`. Exit 0/1/2. Tests: `Routinen/tests/konfig-doktor.test.ps1`. |
 | bei Systemstart | BrainFiles-Bus | `Agenten/Bus/bus.py` | **eingeplant** 10.09.2026 — `BrainFiles-Bus`, registriert über `Agenten/Routinen/bus.ps1`. Meldet Start und Ende aller geplanten Aufgaben, wertet deren Erfolg aus und sichert Fehler auf dem Handy. Ein toter Bus darf niemals einen Lauf abbrechen — alle Erzeuger schreiben lokal ins Journal zurück. |
 | dauerhaft, Takt 15 min | Handels-Dauerlauf: Zyklus, Befehle vom Handy, Tagesbericht ab 08:00 | `Handel/dauerlauf.py` | **eingeplant** 07.09.2026 — `MaxHirn-Handel-Dauerlauf` (Anmeldung) + Wächter. `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID` seit 07.09.2026 gesetzt, siehe Abschnitt „Der Telegram-Melder" |
 | werktags 08:00 | Tagesbriefing | `tagesbriefing` | noch nicht eingeplant |
@@ -548,3 +549,19 @@ trotzdem liegen bleibt.
   bräuchte es einen Server — bewusst zurückgestellt.
 - Routinen, die Mails senden oder öffentlich posten, immer als Entwurf enden
   lassen, nicht als Versand.
+
+## Ausnahme: Docker-Daten liegen im Vault
+
+`MaxHirn/DockerDesktopWSL` traegt zwei VHDX-Dateien (4,88 GB: 
+`disk/docker_data.vhdx` 4.896 MB + `main/ext4.vhdx` 96 MB) und wird von der 
+Sicherung nach `G:` mitgenommen - nachgemessen am 07.10.2026: 
+`G:\MaxHirn-Sicherung\MaxHirn\DockerDesktopWSL` enthaelt genau diese zwei Dateien.
+
+**Entscheidung (Max, 07.10.2026): bewusst liegen lassen.** Die Alternative waere, den 
+Datentraeger-Ort im Docker Desktop zu verlegen - das verlangt einen Docker-Neustart, und 
+zu diesem Zeitpunkt laufen `nautilus-demo`, `freqtrade-*` und `openterminalui-*`. 
+Ein Umzug im laufenden Betrieb ist das groessere Risiko als 4,88 GB in der Sicherung.
+
+Wenn Docker einmal ohnehin steht (Neustart, Update), ist der Umzug nachzuholen: 
+Docker Desktop > Settings > Resources > Advanced > Disk image location. Danach 
+`MaxHirn/DockerDesktopWSL` loeschen und die naechste Sicherung ist 4,88 GB kleiner.

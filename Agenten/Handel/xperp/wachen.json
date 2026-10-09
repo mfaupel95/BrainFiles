@@ -57,6 +57,9 @@
     },
     "rohstoff": {
       "aktiv": true,
+      "max_hebel": 10,
+      "stop_max_pct": 4.0,
+      "_hebel": "Auftrag Max 08.10.2026: XAU, XAG, CL, BZ immer mit 10x, Stop hoechstens 4 % des Kurses. 10x ist die Grenze der Familie (wachen_xperp.hebel_grenze) und bleibt an den Volatilitaets-Deckel gekoppelt: ein Wert, dessen 7-Tage-Ruecklauf 10x nicht traegt, faellt aus der Rangliste (kandidaten). Bei 10x liegt die Liquidation grob bei 9-9,5 % gegen die Position (isoliert, Wartung 0,5 %); 4 % Stop halten klaren Abstand, ein Wochenend-Gap kann den Stop trotzdem ueberspringen (_wochenende). OKX erlaubt fuer diese XPERP-Kontrakte bis 50x (instruments, lever=50, geprueft 08.10.2026). Das globale max_hebel (5) gilt weiter fuer alle anderen Familien.",
       "instCategory": "4",
       "vola_tor_pa": 0.6,
       "umsatz_bezug_usd": 1000000,
@@ -98,10 +101,10 @@
   "trigger_modus": "signal",
   "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": Signal-Wechsel-Gatter auch fuer Spuren mit EIGENEM Buch. Ein Einstieg wird nur zugelassen, wenn sich die Signalrichtung fuer das Instrument geaendert hat - sonst kein erneuter Einstieg im 15-Minuten-Takt. Gatter: Handel/signal_wechsel.py, verdrahtet VOR dem Orderaufruf. xperp traegt das Gatter auch im Papierbetrieb: es bleibt auf Papier (Entscheidung Max), aber das Papierbuch soll dieselbe Regel messen wie die Live-Buecher - sonst waere die Zahl, an der wir messen, genau die, die nicht mehr gilt.",
   "trailing_aktiv": true,
-  "trailing_stop_prozent": 0.4,
+  "trailing_stop_prozent": 1.5,
   "trailing_trigger_r": 1.0,
   "trailing_abstand_floor_pct": 0.25,
   "trailing_min_hub_r": 0.25,
   "trailing_max_halten_pct": 5.0,
-  "_trailing_vermerk": "Trailing-Stop aktiv (Auftrag Max 05.10.2026: \"intelligent an den gehebelten Positionen Stop-Loss nachziehen\" + \"xperp trailing aktiv\"). Die Zahlen sind Hauswerte aus Handel/trailing.py (neu()), keine Messung: Trailing erst, wenn der Stop vom Verlust zum moeglichen Gewinn geworden ist (trigger_r 1.0); der Stop wandert dann auf 0,40 % hinter den HOCHSTAND (nicht hinter den aktuellen Kurs - ein Ruecksetzer holt ihn sonst zurueck); mindestens 0,25 % Abstand zum Kurs gegen das Marktrauschen; ein Hub unter 0,25R wird nicht bestellt (eine Order fuer einen Tick bringt nichts); nie weiter als 5 % hinter dem Hochstand. Der Stop wird an der Boerse GEAENDERT (okxf.stop_nachziehen -> amend-algos), nicht gestorniert und neu gesetzt - sonst gaebe es zwischen beiden Aktionen ein Fenster OHNE Schutz. Voraussetzung ist EINE Stop-Kennung in der Position: liegen mehrere (der HYPE-Fall vom 05.10.: 33+22+12 auf 67 Kontrakten), wird NICHT nachgezogen und der Vermerk nennt stopdeckung.py - erst zusammenfuehren, dann trailingen. Gemessen am 05.10.2026: Hebel bleibt max_hebel 5, Liquidationsmarke rund 20 % entfernt, jeder Trailing liegt weit davor."
+  "_trailing_vermerk": "Trailing-Stop aktiv (Auftrag Max 05.10.2026: \"intelligent an den gehebelten Positionen Stop-Loss nachziehen\" + \"xperp trailing aktiv\"). Die Zahlen sind Hauswerte aus Handel/trailing.py (neu()), keine Messung: Trailing erst, wenn der Stop vom Verlust zum moeglichen Gewinn geworden ist (trigger_r 1.0); der Stop wandert dann auf 1,50 % hinter den HOCHSTAND (Auftrag Max 09.10.2026; vorher 0,40 %, wegen eines min/max-Fehlers in trailing.py real aber 5 %, jetzt behoben) (nicht hinter den aktuellen Kurs - ein Ruecksetzer holt ihn sonst zurueck); mindestens 0,25 % Abstand zum Kurs gegen das Marktrauschen; ein Hub unter 0,25R wird nicht bestellt (eine Order fuer einen Tick bringt nichts); nie weiter als 5 % hinter dem Hochstand. Der Stop wird an der Boerse GEAENDERT (okxf.stop_nachziehen -> amend-algos), nicht gestorniert und neu gesetzt - sonst gaebe es zwischen beiden Aktionen ein Fenster OHNE Schutz. Voraussetzung ist EINE Stop-Kennung in der Position: liegen mehrere (der HYPE-Fall vom 05.10.: 33+22+12 auf 67 Kontrakten), wird NICHT nachgezogen und der Vermerk nennt stopdeckung.py - erst zusammenfuehren, dann trailingen. Gemessen am 05.10.2026: Hebel bleibt max_hebel 5, Liquidationsmarke rund 20 % entfernt, jeder Trailing liegt weit davor."
 }

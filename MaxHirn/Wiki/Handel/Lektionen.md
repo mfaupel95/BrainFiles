@@ -3,7 +3,7 @@ id: 20260921-handel-lektionen
 title: 'Handel — Lektionen'
 tags: [handel, lektion]
 created: 2026-09-21
-updated: 2026-10-05
+updated: 2026-10-08
 related: ['[[Handel/Spuren-Uebersicht]]', '[[Lektionen/Wahrheit-pruefen]]']
 summary: 'Die teuren Lehren aus dem Handelsteil: Buch und Boerse liefen auseinander, Papier mischte sich in Live-Buecher, Stoerungen sahen wie Runden aus, Preisregeln fehlten beim Notausstieg, ein Netzabbruch riss den ganzen Zyklus mit.'
 ---
@@ -1079,3 +1079,32 @@ Datensatz in `prognose.py` — **nicht** nur als Kommentar, weil der Fehler in d
 Zahl ging. Merksatz: eine zurueckgenommene Aenderung gehoert an die Stelle, an
 der die Zahl steht; wer sie nur im Kommentar begruendet, liest sie beim
 naechsten Mal nur am Kommentar vorbei.
+## Ein "nur Verlust"-Symptom ist meist Buchhaltung, nicht Strategie (08.10.2026)
+
+Drei unabhaengige Mechanismen lassen Spuren "nur Verlust machen" bzw. Positionen
+"oeffnen und sofort schliessen". Vor jeder Parameter-Diskussion alle drei
+pruefen - der Markt ist der letzte Verdaechtige. Die vollstaendige Anleitung
+steht in der Skill-Referenz `handel-spuren/references/verlust-spur-diagnose.md`.
+
+1. **Kill/Ratsche misst gegen einen PHANTOM-Hoechststand.** Eine
+   Schliessen-Zeile mit `margin_usd = NOMINAL` statt echter Marge (typisch
+   `verkauf_von_hand`; Beleg 06.10.2026: drei Zeilen bauten den Hoechststand auf
+   639.977 auf) blaht die kumulierte Kurve auf - der Kill feuert gegen GEWINNER,
+   weil jeder kleine echte Ruecklauf gegen den Phantom-Peak misst. Fix:
+   Blasenzeilen als `buchbereinigung` mit ECHTER Marge, Bahnkurve neu aufsetzen,
+   Schreibstelle korrigieren (`xperp/geister_nachziehen.py`). Deckel erhoehen
+   daempft nur.
+2. **Geister-Ausbuchung loescht echte LIVE-Positionen.** `buchbereinigung_geist`
+   (Preis = EINSTAND, modus=papier) bucht aus, was die Boerse noch fuehrt - das
+   ist "geoeffnet und direkt geschlossen" in einem Zyklus. Echte Verkaeufe tragen
+   `stop`/`ziel`/`limit_wartet`, nie `buchbereinigung_geist`; erst
+   `/account/positions` pruefen, bevor das Buch der Boerse folgt.
+3. **Buch-Stop und Boersen-Stop sind desynchron.** Das Buch fuehrt einen Stop
+   (z.B. 82.800), an der Boerse liegt ein anderer (z.B. 76.061) oder nur ein
+   Teil der Kontrakte ist gedeckt (gemessen: 336 Kontrakte im Buch, 2 Stops ueber
+   je 261 = 75 ungeschuetzt). `_ist_handposition` (herkunft `boerse_handgriff`)
+   laesst pruefe_ausstiege die Position NICHT schliessen - dort ist der
+   Boersen-Stop die einzige Wahrheit.
+
+Merksatz: `modus=live` im Journal ist ein BUCHVERMERK, kein Orderbeleg. Ein
+Kill, der Gewinner schliesst, ist ein Messfehler der Kurve, kein Markturteil.

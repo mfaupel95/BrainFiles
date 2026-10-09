@@ -146,7 +146,8 @@ To accept: `tmux send-keys -t <session> Down && sleep 0.3 && tmux send-keys -t <
 | `claude remote-control` | Start server to control Claude from claude.ai or mobile app |
 | `claude install [target]` | Install native build (stable, latest, or specific version) |
 | `claude setup-token` | Set up long-lived auth token (requires subscription) |
-| `claude plugin` / `claude plugins` | Manage Claude Code plugins |
+| `claude plugin` / `claude plugins` | Manage Claude Code plugins (enable, disable, configure, `details`, `eval`) |
+| `claude plugin test <dir>` | Run a plugin's/mod's `*.test.ts` in an engine-like child process. Requires `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` |
 | `claude auto-mode` | Inspect auto mode classifier configuration |
 
 ## Print Mode Deep Dive
@@ -739,6 +740,7 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 10. **Slash commands (like `/commit`) only work in interactive mode** — in `-p` mode, describe the task in natural language instead.
 11. **`--bare` skips OAuth** — requires `ANTHROPIC_API_KEY` env var or an `apiKeyHelper` in settings.
 12. **Context degradation is real** — AI output quality measurably degrades above 70% context window usage. Monitor with `/context` and proactively `/compact`.
+13. **`claude plugin test` refuses without `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`** — function hooks (the module format plugins are written in) are early access, so the command prints a message that reads like a broken build and exits. Set the variable in the same shell: `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude plugin test <dir>`. Each test file imports its kit from `claude-code/testing`.
 
 ## Rules for Hermes Agents
 

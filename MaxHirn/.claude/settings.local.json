@@ -79,7 +79,8 @@
       "PowerShell($log = \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\Agenten\\\\Routinen\\\\logs\\\\sicherung-letzter-lauf.log\"; $lines = Get-Content $log -Encoding UTF8; Write-Host \"=== LETZTEN 50 ZEILEN ===\" ; $lines[-50..-1] | ForEach-Object { $_ })",
       "PowerShell(head -5)",
       "PowerShell(docker version 2>&1)",
-      "PowerShell(grep -i error)"
+      "PowerShell(grep -i error)",
+      "PowerShell(Stop-Process *)"
     ],
     "deny": [
       "Read(**/Zugaenge.md)",
@@ -99,14 +100,6 @@
       "Edit(./Musik/**)",
       "Edit(./Dokumente/**)",
       "Edit(**/.obsidian/**)",
-      "Write(./Archiv/**)",
-      "Write(./Wissen/**)",
-      "Write(./Claude/**)",
-      "Write(./Bilder/**)",
-      "Write(./Videos/**)",
-      "Write(./Musik/**)",
-      "Write(./Dokumente/**)",
-      "Write(**/.obsidian/**)",
       "Bash(rm:*)",
       "Bash(rmdir:*)",
       "Bash(mv:*)",

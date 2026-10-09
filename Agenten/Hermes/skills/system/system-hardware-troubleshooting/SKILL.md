@@ -45,8 +45,42 @@ If the system continues to reset:
 - **BIOS Voltage Danger**: Do NOT suggest increasing RAM voltage or overclocking to "fix" stability if the PSU is suspect. This can lead to permanent hardware failure.
 - **CMOS Reset Side-Effects**: A CMOS reset clears RAM timings. If the system relied on specific manual tweaks for stability, it may fail to boot until those are reapplied (or the RAM is simplified).
 
-## 4. Verification
+## 4. Commit-Speicher und Ereignis 2004
+
+Kernel-Power 41 mit `BugcheckCode=0` ist die Signatur eines **harten Stromausfalls**, nicht eines Bluescreens. Jede Abschaltung wird von einem Systemstart (Ereignis 6005) Sekunden später gefolgt. Die Abstände sind unregelmäßig — kein Lastmuster, eher Netzteil oder Zuleitung.
+
+**Ereignis 2004** ("virtueller Speicher unzureichend") ist der **zweite Verdächtige** bei Abschaltungen. Die Commit-Grenze steht bei RAM + Auslagerungsdateien. Ist die Auslagerungsdatei zu klein oder das Laufwerk voll, feuert 2004 bevor der Strom ausfällt.
+
+**Messung vor Maßnahme:** Vor jeder Änderung an Auslagerungsdateien den Ist-Zustand messen:
+```powershell
+Get-CimInstance Win32_PageFileSetting   # Einträge je Laufwerk
+Get-CimInstance Win32_PageFileUsage     # belegt / Peak
+Get-CimInstance Win32_OperatingSystem   # Commit-Grenze, Commit frei
+Get-PSDrive C, O                         # freier Platz
+```
+
+**Commit-Belegung messen** (PrivateMemorySize64, nicht VirtualBytes — die Perf-Counter-Spalte liefert Artefakte):
+```powershell
+Get-Process | Sort-Object PrivateMemorySize64 -Descending | Select-Object -First 15
+Get-Process | Group-Object ProcessName | ForEach-Object {
+    [pscustomobject]@{ Name=$_.Name; MB=[math]::Round((($_.Group|Measure-Object PrivateMemorySize64 -Sum).Sum)/1MB,0) }
+} | Sort-Object MB -Descending
+```
+
+**vmmemWSL** (WSL/Docker) kann 11+ GB Commit belegen — der größte Einzelverbraucher neben RAM. Chrome, ChatGPT, TradingView und Claude-Profile liegen darunter.
+
+**Entlastungsbefehle** (gemessen, Commit frei 13,0 → 17,0 GB):
+```powershell
+wsl --shutdown                          # vmmemWSL weg (Docker startet es wieder)
+Stop-Process -Id <pid> -Force           # llama-server (9,9 GB), Chrome, ChatGPT, TradingView
+```
+**Achtung:** `wsl --shutdown` beendet WSL/Docker — laufende Container (nautilus-demo, freqtrade-*) gehen verloren. `vmmemWSL` kommt nach Neustart von Docker Desktop automatisch zurück. Der Gewinn ist temporär, bis Docker wieder startet.
+
+**llama-server** (Port 18434) trägt die Bot-Fallbacks und die drei LLM-Spuren. Beenden ist nur sinnvoll, wenn die Spuren auf Ollama umgestellt sind — sonst fallen die Bots auf `nous/deepseek-vflash-0731` zurück.
+
+## 5. Verification
 A system is considered "Stable" only when:
 1. It passes 5+ consecutive S3 Standby/Wake cycles without a reset.
 2. It boots with all intended components attached.
 3. The system log shows no new `Kernel-Power 41` events for 48 hours.
+4. Ereignis 2004 ist auf 0 zurückgegangen (nach Entlastung des Commit).

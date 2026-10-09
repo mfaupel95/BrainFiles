@@ -32,7 +32,7 @@
   "zeichen_je_schlagzeile": 140,
   "mindest_schlagzeilen": 6,
   "_llm_einstellung": "Modell, Weg und Confidence-Schwelle. llm_weg \"bonsai\" = OpenAI-Dienst auf 8080 (Agenten/Werkzeuge/bonsai-27b.ps1), \"ollama\" = 127.0.0.1:11434. Modellvergleich: llm_probe.py.",
-  "llm_modell": "bonsai",
+  "llm_modell": "deepseek-chat:latest",
   "llm_mindest_confidence": 60.0,
   "llm_zeitgrenze_s": 120,
   "_journal_zweitziel": "Bedingung 4: Journal und Zustand ausser Haus.",

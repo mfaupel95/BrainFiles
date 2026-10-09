@@ -441,3 +441,55 @@ class TestAnwenden(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAnwendungslog(unittest.TestCase):
+    """T-373: anwenden.py haengt je Anwendung einen Eintrag an."""
+
+    def test_eintrag_mit_hash_und_lauf_ts(self):
+        import json
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        alt = anwenden.WURZEL
+        try:
+            with TemporaryDirectory() as d:
+                anwenden.WURZEL = Path(d)
+                ordner = Path(d) / "2026-10-07-spur1"
+                ordner.mkdir(parents=True, exist_ok=True)
+                (ordner / "wachen.neu.json").write_text(
+                    '{"mindest_score": 60}', "utf-8")
+                e = anwenden._anwendungslog(ordner, "angewendet")
+                datei = Path(d) / "anwendungslog.json"
+                self.assertTrue(datei.exists(), "anwendungslog.json fehlt")
+                self.assertEqual(e["lauf_ts"], "2026-10-07")
+                self.assertEqual(e["entscheidung"], "angewendet")
+                self.assertEqual(e["grund_optional"], "")
+                self.assertEqual(len(e["kandidat_hash"]), 16)
+                gelesen = json.loads(datei.read_text("utf-8"))
+                self.assertEqual(gelesen["lauf_ts"], "2026-10-07")
+        finally:
+            anwenden.WURZEL = alt
+
+    def test_append_zwei_eintraege(self):
+        import json
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        alt = anwenden.WURZEL
+        try:
+            with TemporaryDirectory() as d:
+                anwenden.WURZEL = Path(d)
+                o1 = Path(d) / "2026-10-07-spur1"
+                o1.mkdir()
+                (o1 / "wachen.neu.json").write_text("{}", "utf-8")
+                o2 = Path(d) / "2026-10-08-spur2"
+                o2.mkdir()
+                (o2 / "wachen.neu.json").write_text("{}", "utf-8")
+                anwenden._anwendungslog(o1, "angewendet")
+                anwenden._anwendungslog(o2, "angewendet", grund="Test")
+                zeilen = (Path(d) / "anwendungslog.json").read_text(
+                    "utf-8").splitlines()
+                self.assertEqual(len(zeilen), 2, "zwei Eintraege erwartet")
+                self.assertEqual(json.loads(zeilen[1])["lauf_ts"], "2026-10-08")
+                self.assertEqual(json.loads(zeilen[1])["grund_optional"], "Test")
+        finally:
+            anwenden.WURZEL = alt

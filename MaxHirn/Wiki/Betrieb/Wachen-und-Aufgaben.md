@@ -3,7 +3,7 @@ id: 20260921-wachen-und-aufgaben
 title: 'Betrieb — Wachen und geplante Aufgaben'
 tags: [betrieb, wachen]
 created: 2026-09-21
-updated: 2026-10-05
+updated: 2026-10-08
 related: ['[[Betrieb/Hermes]]', '[[Handel/Gates-und-Freigabe]]']
 summary: 'Zwei Scheduler (Windows-Aufgabenplanung und Hermes-Cron), das Wachen-Muster, und die Frage, die man vor jeder Wache stellt.'
 ---
@@ -370,3 +370,19 @@ und der nur ueber Textendungen und ohne `site-packages`, `.venv*` und `dist-info
 (`.venv.bak-*` faellt durch keine Liste, die nur `.venv` kennt). Gemessen danach: 446 s,
 Ende ok. Umgebungs-CA-Buendel (`certifi/cacert.pem`) sind keine losen Schluesseldateien
 und werden nicht mehr gemeldet.
+## gbrain-maintenance-Wache (08.10.2026)
+
+Hermes-Cron `gbrain-maintenance` (Job f8137b52e0ac, taeglich 06:00, `no_agent`,
+Watchdog-Muster: leere Ausgabe = nichts senden), Skript
+`Agenten/Hermes/scripts/gbrain-maintenance-wache.py`. Faehrt
+`gbrain doctor --fast --json` ueber den WSL-Launcher und meldet nur echte
+Fehler; startet nie serve/cron/daemon und keine bezahlten Pfade.
+
+**Die Faktenzahl ist der eigentliche Waechter (gemessen 08.10.2026):**
+`gbrain stats`/`list` zaehlen SEITEN, nicht Fakten. Ein Gehirn, das nur ueber
+die Memory-Verben gefuellt wurde, meldet dort 0, obwohl der Bestand da ist
+(gemessen: 0 Seiten gegen 44 aktive Fakten, ids bis #51). Wer sich auf stats
+verlaesst, sieht einen Verlust nicht - und `gbrain doctor` empfiehlt bei genau
+diesem Bestand `gbrain reinit-pglite`, was laut eigener Ausgabe *"drops every
+embedding in your brain"* bedeutet. Die Wache zaehlt deshalb zusaetzlich die
+AKTIVEN FAKTEN gegen die Merkdatei.

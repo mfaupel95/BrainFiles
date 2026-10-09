@@ -3,7 +3,7 @@ id: 20260830-index
 title: 'Wissen — Index'
 tags: [betrieb]
 created: 2026-08-30
-updated: 2026-09-13
+updated: 2026-10-08
 related: []
 summary: 'Einstiegspunkt für Agenten: vollständiges Verzeichnis aller Notizen in Wissen/ mit Zweck und Pfad.'
 ---
@@ -136,3 +136,4 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260917-externe-api-referenz` — **Externe API-Referenz (public-apis-Liste)** — `Wissen/Externe-API-Referenz-2026-09-17.md` — Angehängte public-apis-README als Nachschlagewerk erfasst; Standouts mit Bezug zu laufenden Handelsspuren (DefiLlama, Hyperliquid Market Data, PumpFunData, Messari, FRED).
 - `20260917-beobachtungslog` — **Beobachtungslog** — `Wissen/Beobachtungen/README.md` — Verzeichnis mit einer Markdown-Datei je beobachtetem Skill-Verbesserungsbedarf, gepflegt vom Skill `beobachtungslog` (schlanker Eigenbau statt des fremden Task-Observer-Meta-Skills).
 - `20261006-sitzungsanalyse` — **Sitzungsanalyse — Themen, Fehler, offene Punkte, Erfolge** — `Wissen/Sitzungsanalyse-2026-10-06.md` — Auswertung von 1.479 User-Nachrichten (05.08.–06.10.2026) und TASKS.md (T-001 bis T-371): Themencluster, sieben Fehler-Klassen, priorisierte offene Punkte, belegte Erfolge.
+- `20261008-stash-geteilter-arbeitsbaum` — **git stash im geteilten Arbeitsbaum** — `Wissen/Stash-Geteilter-Arbeitsbaum.md` — Warum `git stash` im Mehrsitzungsbetrieb Arbeit einfriert und beim Pop gegen Zwischencommits konfligiert; Auflösungsmuster per Datum, Ablösung durch sofortiges Committen.

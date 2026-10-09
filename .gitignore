@@ -24,6 +24,11 @@
 # nichts von dem, was unten freigegeben ist.
 !*/
 
+# Arbeitsbaeume paralleler Agenten (git worktree add .worktrees/<name>, siehe
+# CLAUDE.md, Abschnitt Zweige). Muss NACH '!*/' stehen: sonst macht diese Zeile
+# den Ordner wieder sichtbar und er erscheint als 'untracked'.
+.worktrees/
+
 # --- 3) Der Kopf des Systems ------------------------------------------------
 # Die beiden Git-Steuerdateien zuerst: ohne diese Freigabe faengt die Regel in
 # Zeile 24 sie selbst mit ein, und ausgerechnet die Regeln waeren nicht
@@ -283,6 +288,7 @@ Agenten/Bus/skillsbot.ziel.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
+!Agenten/MCP-Server/okx/**
 
 # --- 6) Konfiguration, die Verhalten steuert --------------------------------
 !MaxHirn/.mcp.json
@@ -343,6 +349,9 @@ Agenten/Handel/kraken/berichte/**
 # Hand und oben freigegeben, diese drei schreibt jeder Lauf.
 Agenten/Handel/xperp/zustand.json
 Agenten/Handel/xperp/handelsjournal.csv
+# carry.py: kein Orderweg, aber Zustand + Ergebnis je Lauf
+Agenten/Handel/carry/zustand.json
+Agenten/Handel/carry/handelsjournal.csv
 Agenten/Handel/xperp/berichte/**
 
 # SWAP-Spur: dieselbe Aufteilung wie bei den Spuren 1-3. wachen.json ist

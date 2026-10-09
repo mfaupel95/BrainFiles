@@ -46,6 +46,7 @@ Commit erzeugt. Die Reihenfolge steht fest:
 Nur Standardbibliothek; Git wird als Kommando aufgerufen.
 """
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -211,6 +212,39 @@ def _ablegen(ordner, unterordner):
     return ziel
 
 
+def _kandidat_hash(ordner):
+    """Stabiler Identifikator des Kandidaten: sha256 ueber wachen.neu.json
+    (die eigentliche Aenderung), sonst ueber bewertung.patch, sonst None."""
+    for name in ("wachen.neu.json", "bewertung.patch"):
+        datei = Path(ordner) / name
+        if datei.exists():
+            return hashlib.sha256(datei.read_bytes()).hexdigest()[:16]
+    return None
+
+
+def _anwendungslog(ordner, entscheidung, grund=""):
+    """T-373: einen Eintrag an ``verbesserer/anwendungslog.json`` anhaengen
+    (Append-JSON-Lines). Der Funnel ist nach dem Digest-Schritt blind -
+    anwenden.py weiss, ob ein Vorschlag angewendet wurde, schreibt das aber
+    nicht zurueck. Abwaertskompatibel: neue Datei, kein Umbau bestehender
+    Logik. ``lauf_ts`` kommt aus dem Ordnernamen (``<datum>-<spur>``)."""
+    name = Path(ordner).name
+    # Ordnername ist "<datum>-<spur>", das Datum selbst hat Bindestriche
+    # (2026-10-07-spur1). Die ersten 10 Zeichen sind das Datum.
+    lauf_ts = name[:10] if len(name) >= 10 else name
+    eintrag = {
+        "lauf_ts": lauf_ts,
+        "anwendung_ts": datetime.now(timezone.utc).isoformat(),
+        "kandidat_hash": _kandidat_hash(ordner),
+        "entscheidung": entscheidung,
+        "grund_optional": grund or "",
+    }
+    ziel = WURZEL / "anwendungslog.json"
+    with open(ziel, "a", encoding="utf-8") as f:
+        f.write(json.dumps(eintrag, ensure_ascii=False) + "\n")
+    return eintrag
+
+
 def anwenden(ordner, spur, repo):
     """Vorschlag aus ``ordner`` anwenden. Rueckgabe
     ``{"ok": bool, "grund": str, "commit": str | None}``.
@@ -355,6 +389,7 @@ def anwenden(ordner, spur, repo):
     # ``{"ok": True}`` mit dem echten Hash (soweit ermittelbar) - nur der
     # Grund vermerkt die misslungene Ablage.
     try:
+        _anwendungslog(ordner, "angewendet")
         _ablegen(ordner, "erledigt")
         kurz = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],

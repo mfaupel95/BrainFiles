@@ -145,9 +145,14 @@ Ausloeser → Referenz:
   **Vor jeder Stilllege-Empfehlung erst der Befund-Lauf**
   (`scripts/null_runden_befund.py`, liest nur, nennt die Lage mit) und im
   Bericht die LAGE nennen statt der Rundenzahl: `references/null-runden.md`
-- „Code optimieren“, „Suche nach Luecken“, „mach das sichtbar“ — Pruef- und
+- **„Code optimieren", „Suche nach Luecken", „mach das sichtbar" — Pruef- und
   Haertungsweg mit Verdachtsmuster-Checkliste, Fix-Disziplin, Nachweis-Kette:
   `references/spur-haerten.md`
+- **„eine Spur macht nur Verlust", „Positionen werden geoeffnet und direkt
+  wieder geschlossen"** — drei BUCHFUEHRUNGS-Ursachen in fester Reihenfolge
+  pruefen (Phantom-Hoechststand des Kill/Ratsche, Geister-Ausbuchung von
+  Live-Positionen, Buch-Stop gegen Boersen-Stop), bevor der Markt verdaechtigt
+  wird: `references/verlust-spur-diagnose.md`
 - **„welche Spur ist die beste?", „hat die Trefferquote einen Sinn?", „eine Spur
   sieht super aus und ist falsch"** — Werkzeug `Agenten/Handel/spur_audit.py`
   (liest nur, `--historie` laedt fehlende Kerzen nach), beantwortet fuer ALLE

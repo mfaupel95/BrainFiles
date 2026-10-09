@@ -76,6 +76,14 @@ You MUST complete each phase before proceeding to the next.
 
 **Action:** Use `read_file` on the relevant source files. Use `search_files` to find the error string in the codebase.
 
+**A debug that passes while a test fails is checking a DIFFERENT property than the test.**
+"The function runs and writes a file" is not "the function produces the asserted value" —
+re-running the same passing debug and failing test without reading the failure output is
+the loop that wastes turns. The `AssertionError` line names the exact property the test
+checks (e.g. `'2026' != '2026-10-07'`); read it first, then make the debug assert THAT
+property, not a nearby one. If the debug and the test disagree, the debug is the weaker
+witness — trust the test's assertion, and widen the debug to check the same value.
+
 ### 2. Build a Tight Feedback Loop
 
 - Can you trigger the user's exact symptom with one command?

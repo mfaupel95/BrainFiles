@@ -234,6 +234,39 @@ auffiel** — **Beleg**.
   ohne ausgecheckten Commit in `skills/`); letzter Commit 18.09.
 - Merksatz: Fruehwarnung `git log -1 --format=%ci zwischenstand`.
 
+## Eine Fehlermeldung, die richtig war — und der Schluss daraus nicht (06.10.2026)
+
+### 29. „Die Historie wurde um 04:23 geleert"
+- Behauptung: ein Vorgang hat den Ordner `daten/historie/` geleert; ein
+  Ordner-`mtime` von 04:23:17 lag „genau im Fenster".
+- Entstehung: ein Replay-Testlauf meldete ehrlich
+  `Historie fehlt oder ist zu kurz: BTC-USDC (0 Kerzen), ETH-USDC (0 Kerzen), …`.
+  Der Lauf startete aus einem **Git-Worktree**
+  (`.worktrees/<id>/Agenten/Handel/tests`). `daten/` ist per `.gitignore`
+  gesperrt (`git ls-files Agenten/Handel/daten` ist leer), ein Worktree bekommt
+  also alle `.py`-Dateien, aber kein `daten/`. Und
+  `historie_binance.ORDNER = os.path.join(HIER, "daten", "historie")` ist
+  RELATIV zur Modulposition — die Modulkopie im Worktree zeigte auf einen
+  Ordner, den es dort nicht gab.
+- Auffiel: erst als der eigene Suchlauf ueber ALLE Sitzungen
+  (`state.db`, `messages.session_id`) **keinen** Loeschaufruf im Fenster fand,
+  und der Ordner `daten/backtest/orb` mit demselben `mtime` als Unterordner
+  eines Replay-Laufs entlarvt wurde.
+- Beleg (Gegenprobe, im Temp-Ordner reproduziert): eine Kopie des Hauses ohne
+  `daten/` liefert
+  `ORDNER: …\wt\Agenten\Handel\daten\historie` / `ordner existiert: False` /
+  `lade BTC 1H -> 0`. Dieselbe Meldung, andere Ursache.
+- Wahrheit: der Ordner wurde nie geleert — er war in der Kopie nie vorhanden.
+  Die 54 Reihen lagen die ganze Zeit im Hauptbaum.
+- Merksatz: **eine korrekte Fehlermeldung ist noch kein Befund.** Vor jedem
+  Loeschverdacht die Pfadkonstruktion im Quelltext lesen und den abgeleiteten
+  Pfad ausdrucken lassen. Ein `mtime`, den man einmal aus dem Kopf behaelt,
+  wandert beim Nachmessen — hier datierte er einen Unterordner, der NACH dem
+  Ereignis schrieb.
+- Nebenprodukt: der falsche Befund stand 24 h in der Aufgabenliste („348 von
+  406 Reihen weg") und wurde zur Folgeaufgabe. Die Korrektur gehoert in
+  denselben Eintrag, nicht in einen neuen.
+
 ## Tests
 
 ### 24. Alle Tests gruen, Bedigung 4 verletzt (14.09.2026)
@@ -285,3 +318,33 @@ auffiel** — **Beleg**.
   Fehler waren `ModuleNotFoundError: psutil`, nicht Defekte. **Handel-Tests
   laufen ueber `Agenten/Routinen/handel-tests.ps1` bzw. das scanner-venv**, nie
   ueber `python -m unittest` mit einem anderen Interpreter.
+
+## Ein Schaden nach der eigenen Aenderung (06.10.2026)
+
+### 30. „Der Volume-Eintrag hat Docker zerstoert"
+- Behauptung: der frisch gesetzte `terminal.docker_volumes`-Eintrag hat den
+  Docker-Daemon beschaedigt; danach ging kein `docker run` mehr.
+- Entstehung: die Reihenfolge war verlockend — Eintrag gesetzt, naechster
+  Containerstart scheitert mit `Exit 125`
+  (`write … meta.db: read-only file system`). Der Eintrag war die letzte
+  Aenderung, also die naheliegende Ursache.
+- Auffiel: der Fehler betraf **jeden** `docker run`, auch mit einem lokal
+  vorhandenen Image, und `docker image ls` brach mit `input/output error` beim
+  Lesen eines Content-Blobs ab — das ist kein Volume-Problem.
+- Gegenprobe, die entscheidet: derselbe `docker run` **ohne jeden
+  `-v`-Eintrag** scheiterte zeichengleich. Damit ist der Eintrag entlastet und
+  der Daemon als Schaden belegt.
+- Zusatzbefund zur Signatur: derselbe Code 125 stand am Vortag fuer eine
+  **andere** Ursache (Windows-Pfad aus `terminal.cwd` roh in `docker run -w`).
+  Wer nur den Code liest, haelt zwei verschiedene Defekte fuer denselben.
+- Was trotzdem belegbar blieb, ausdruecklich als FORM-Beleg: der Spec ist
+  gueltig (`_split_volume_spec` zerlegt beide Schreibweisen zu
+  `('C:\\…\\BrainFiles', '/brainfiles')` — die Funktion liegt in
+  `tools/environments/docker.py`, **nicht** in `remote_common`), der Host-Pfad
+  existiert, der Eintrag steht korrekt (2/0 Insertions, `terminal` 12 -> 13
+  Schluessel, `yaml.safe_load` liest ihn zurueck, CRLF und bareLF unveraendert).
+- Offen geblieben: `docker exec <container> ls /brainfiles` — genau der
+  Wirkungsbeleg. Kein Container trug den Mount, weil alle vorhandenen aelter
+  waren als der Eintrag.
+- Merksatz: **die Gegenprobe ohne die Aenderung ist der Unterschied zwischen
+  „danach kaputt" und „davon kaputt".**

@@ -148,12 +148,42 @@ class SchutzTest(unittest.TestCase):
     def test_liquidationsmarke_wird_verweigert(self):
         w = tr.neu()
         p = long_position()
-        k, g = tr.kandidat(p, 110.0, w, liq=108.0)
+        # Hoch 110, Abstand 1,5 % -> Ziel-Stop 108,35. Liquidation bei 109 liegt darueber.
+        k, g = tr.kandidat(p, 110.0, w, liq=109.0)
         self.assertIsNone(k, "ein Stop unter der Liquidation ist kein Schutz")
         self.assertIn("Liquidationsmarke", g)
         # Oberhalb der Marke ist er erlaubt.
         k2, g2 = tr.kandidat(p, 110.0, w, liq=90.0)
         self.assertIsNotNone(k2, g2)
+
+    def test_abstand_hinter_dem_hoch_ist_halten_pct_nicht_max_halten(self):
+        """Regression 09.10.2026: min/max war vertauscht, der Stop lag immer
+        max_halten_pct (5 %) hinter dem Hoch, egal was halten_pct sagte."""
+        w = tr.neu()
+        w["trailing_stop_prozent"] = 1.5
+        k, g = tr.kandidat(long_position(), 112.0, w)
+        self.assertIsNotNone(k, g)
+        self.assertAlmostEqual(k["stop"], 112.0 * (1 - 0.015), places=6)
+
+    def test_max_halten_pct_begrenzt_den_abstand_nach_oben(self):
+        """Ein halten_pct ueber max_halten_pct wird auf max_halten_pct gekappt."""
+        w = tr.neu()
+        w["trailing_stop_prozent"] = 8.0
+        w["trailing_max_halten_pct"] = 5.0
+        k, g = tr.kandidat(long_position(), 120.0, w)
+        self.assertIsNotNone(k, g)
+        self.assertAlmostEqual(k["stop"], 120.0 * 0.95, places=6)
+
+    def test_short_abstand_hinter_dem_tief(self):
+        w = tr.neu()
+        w["trailing_stop_prozent"] = 1.5
+        p = long_position(einstieg=100.0, stop=105.0, seite="short")
+        k, g = tr.kandidat(p, 90.0, w)
+        self.assertIsNotNone(k, g)
+        self.assertAlmostEqual(k["stop"], 90.0 * 1.015, places=6)
+
+    def test_vorgabe_ist_1_5_prozent(self):
+        self.assertEqual(tr.VORGABE_HALTEN_PCT, 1.5)
 
     def test_hub_zu_klein_wird_verweigert(self):
         """Eine Verlegung um einen Tick kostet eine Order und bringt
@@ -287,6 +317,75 @@ class EinProzentDreiRTest(unittest.TestCase):
         # nicht bei einem R-Wert, der im 1-3R-Band liegt.
         k2, g2 = tr.kandidat(p, 104.0, w)
         self.assertIsNone(k2, g2)
+
+
+class DeckungsTest(unittest.TestCase):
+    """T-365: die Mengen-Deckung ist die ERSTE Bedingung (Referenz 5.1).
+
+    Eine Position, deren Schutz-Menge an der Boerse die Buchmenge nicht
+    deckt, ist nicht trailingbar: der engste Stop feuert zuerst, die
+    uebrigen bleiben als Waisen zurueck. Erst zusammenfuehren, dann
+    trailingen.
+    """
+
+    class Weg:
+        def __init__(self):
+            self.rufe = []
+
+        def stop_nachziehen(self, kennung, inst, preis):
+            self.rufe.append((kennung, inst, preis))
+            return "algo-2"
+
+    def test_geteilte_deckung_wird_abgelehnt(self):
+        p = long_position()          # menge 10.0
+        w = tr.neu()
+        weg = self.Weg()
+
+        def deckung(pos):
+            return {"gedeckt": 6.0, "soll": 10.0, "fehlt": 4.0}
+
+        k, g = tr.nachziehen(p, 110.0, weg, w, tick=0.1,
+                             deckung_pruefen=deckung)
+        self.assertIsNone(k, "geteilte Deckung darf nicht trailingen")
+        self.assertIn("nicht voll gedeckt", g)
+        self.assertEqual(weg.rufe, [], "der Weg wurde trotz Unterdeckung gerufen")
+
+    def test_volle_deckung_darf_durch(self):
+        p = long_position()
+        w = tr.neu()
+        weg = self.Weg()
+
+        def deckung(pos):
+            return {"gedeckt": 10.0, "soll": 10.0, "fehlt": 0.0}
+
+        k, g = tr.nachziehen(p, 110.0, weg, w, tick=0.1,
+                             deckung_pruefen=deckung)
+        self.assertIsNotNone(k, "volle Deckung muss trailingen duerfen: %s" % g)
+        self.assertEqual(len(weg.rufe), 1)
+
+    def test_ohne_deckungspruefung_unveraendert(self):
+        """Ohne deckung_pruefen aendert sich nichts - Rueckwaertskompatibilitaet."""
+        p = long_position()
+        w = tr.neu()
+        weg = self.Weg()
+        k, g = tr.nachziehen(p, 110.0, weg, w, tick=0.1)
+        self.assertIsNotNone(k, g)
+        self.assertEqual(len(weg.rufe), 1)
+
+    def test_deckungspruefung_fehler_laesst_alten_stop_stehen(self):
+        p = long_position()
+        w = tr.neu()
+        weg = self.Weg()
+        alt = float(p["stop"])
+
+        def deckung(pos):
+            raise RuntimeError("Boersenfrage fehlgeschlagen")
+
+        k, g = tr.nachziehen(p, 110.0, weg, w, tick=0.1,
+                             deckung_pruefen=deckung)
+        self.assertIsNone(k)
+        self.assertEqual(float(p["stop"]), alt, "der Stop wurde trotzdem bewegt")
+        self.assertIn("Deckungspruefung fehlgeschlagen", g)
 
 
 if __name__ == "__main__":

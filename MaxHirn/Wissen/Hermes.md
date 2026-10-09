@@ -3,7 +3,7 @@ id: 20260830-hermes
 title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
-updated: 2026-09-13
+updated: 2026-10-08
 related: [20260830-verbindungen, 20260831-python-versionen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
@@ -92,10 +92,37 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
-- **23 eigene** unter `Hermes/skills/claude-code-imports/` — Abgleich mit dem Vault
-  vom 10.09.2026. Dazu `data-guard-audit` unter `skills/productivity/`.
-  Gegengeprüft mit `hermes skills list` (HERMES_HOME gesetzt): 113 Skills geladen,
-  alle neuen `local` und `enabled`.
+**24 eigene** unter `Hermes/skills/claude-code-imports/` — jeder Vault-Skill hat
+dort eine Kopie, keine Luecke. Dazu `data-guard-audit` unter `skills/productivity/`.
+`hermes skills list` (HERMES_HOME gesetzt): **161 Skills geladen** (145 local,
+15 builtin, 1 hub), alle vier neuen `local`/`enabled`.
+
+**Der Abgleich vom 07.10.2026 hat sich selbst ins Knie geschossen — und ist
+repariert.** Der Import-Commit `0b7b5158` (07.10., 20:54) setzte drei Hermes-Kopien
+auf den alten Vault-Stand zurueck und loeschte dabei die Weiterarbeit in den Kopien:
+
+| Kopie | vorher | nach dem Import | verloren |
+|---|---|---|---|
+| `rueckschau/sitzungen_auswerten.py` | 23.949 B | 8.271 B | `--umwege`, zweite Quelle `state.db` |
+| `rueckschau/SKILL.md` | 4.719 B | 2.904 B | Umweg-Methodik, Zahlen vom 30.09. |
+| `skill/SKILL.md` | 5.803 B | 5.269 B | Regel „Referenzdatei muss in SKILL.md stehen" |
+
+`state.db` und `--umwege` sind genau der Inhalt, der am 05./06.10. als **T-229
+erledigt** belegt worden war (383 Sitzungen aus `state.db`, read-only) — der Skill
+beschrieb danach Optionen, die sein eigenes Skript nicht mehr hatte. Kein Fehler,
+keine Meldung, die Hashes waren vorher wie nachher sauber.
+
+Wiederhergestellt **byte-genau** aus `0b7b5158^` (sha `9cbcdf36c9` / `b15da2160b` /
+`1b85c2248e`), Commit `d4b03015`. Gegenprobe: Datei == Blob, `--help` zeigt wieder
+`--umwege` und `--hermes-db`, `hermes skills list` fuehrt alle vier als
+`local`/`enabled`. Der zerstoerte Stand liegt unter
+`Hermes/.sicherung/skills-import-20261007/`.
+
+**Damit sind drei der Kopien bewusst nicht mehr zeichengleich mit dem Vault** — sie
+sind die neuere Fassung. `sichern` und `scanner-papier` sind es weiter. Wer kuenftig
+abgleicht: **erst die Richtung und die Git-Historie lesen, dann kopieren** (der Skill
+`skill-library-sync` hat dafuer jetzt den Abschnitt „Vor dem Ersetzen").
+
 - **Der erste Import** lief am 23.08.2026 mit
   `hermes import-agent claude-code --source "…\MaxHirn\.claude"` und holte 11 Skills.
   Am 10.09.2026 fehlten 11 weitere, die inzwischen im Vault entstanden waren
@@ -1196,6 +1223,352 @@ wieder eingeschaltet wird.
 (`docker ps` lief 90 s ohne Ausgabe in den Timeout) - deshalb ist der
 Volume-Spec am echten Container NICHT nachgemessen. Nachzuweisen bleibt:
 `docker exec <container> ls /brainfiles` zeigt `MaxHirn` und `Agenten`.
+
+## Schreib-Sandbox um Werkstatt erweitert (07.10.2026)
+
+**Auftrag Max:** `HERMES_WRITE_SAFE_ROOT` auf `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`
+erweitern.
+
+**Die Ursache lag tiefer als erwartet.** `BrainFiles\Werkstatt` ist ein **Symlink auf
+`O:\Werkstatt`** (Laufwerk O:, nicht unterhalb von BrainFiles). Die Sandbox stand nur auf
+`BrainFiles`, der Pruefer loest den Symlink auf und lehnte jeden Schreibzugriff in die
+Repos unter `Werkstatt\Repos` ab (AGENTS.md-Schreiben scheiterte dreimal). Lesen und
+Terminal waren nie betroffen - deshalb lief die Analyse, nur das Schreiben nicht.
+
+**Gesetzt wurde es NICHT in der Registry und nicht in `config.yaml`** (Zeile 630 dort ist
+nur ein Name in `terminal.docker_forward_env`), sondern in der `.env`:
+
+- `Agenten/Hermes/.env` Zeile 507 (Hauptablage)
+- `Agenten/Hermes/profiles/claude-code/.env` Zeile 507 (dieses Bot-Profil)
+
+**Jedes Profil hat eine eigene `.env`.** Ohne die zweite Aenderung haette die Haupt-.env
+fuer dieses Profil nichts bewirkt. Wer den Wert kuenftig aendert, muss beide Stellen
+treffen (bzw. alle `profiles/<name>/.env`, die den Wert fuehren).
+
+Wert jetzt: `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`
+Trennzeichen ist `os.pathsep` (`;` unter Windows), mehrere Wurzeln sind vorgesehen
+(`agent/file_safety.py::get_safe_write_roots`).
+
+**Beleg (echte Laeufe):**
+
+- Frische Instanz aus der Profil-.env: aufgeloeste Wurzeln =
+  `C:\Users\faupe\Documents\BrainFiles` **und** `O:\Werkstatt`.
+- Schreibpruefung: `O:\Werkstatt\Repos\claude-code\AGENTS.md` ERLAUBT,
+  `O:\Werkstatt\Repos\codex\AGENTS.md` ERLAUBT,
+  `C:\Windows\System32\drivers\etc\hosts` GESPERRT,
+  `C:\Users\faupe\.ssh\id_rsa` GESPERRT.
+- Genau eine Zeile je Datei geaendert (`diff` gegen die Sicherung), BOM-Status und
+  Zeilenenden erhalten.
+- `hermes gateway status`: Aufgabe registriert, Prozess laeuft (PID 70456) - **kein
+  Agent neu gestartet.**
+
+**Wichtig - die Grenze bleibt:** Die Erweiterung wirkt in **neuen** Sitzungen. Die
+laufende Sitzung hat die alte Umgebung schon im Prozess (Gegenprobe: Schreibversuch nach
+`O:\Werkstatt` aus dieser Sitzung weiterhin abgelehnt). Sie ist eine
+Verteidigungslinie, keine Sicherheitsgrenze - das Terminal umgeht sie ohnehin (so wurde
+das AGENTS.md auch geschrieben).
+
+**Falle (zweimal gekostet):** Die `.env` nutzt **CRLF**. Ein Suchmuster mit `\n` findet
+dort nichts ("Treffer: 0"), und ein Heredoc durch die Werkzeugschicht verstuemmelt die
+Backslash-Pfade. Deshalb: Zeilenenden vorher byte-genau bestimmen, das Skript als
+**Datei** schreiben und die Laengenaenderung pruefen.
+
+Sicherungen: `Agenten/Hermes/.sicherung/.env.bak-20261007`,
+`Agenten/Hermes/profiles/claude-code/.env.bak-20261007`,
+`Wissen/Hermes.md.bak-20261007-safe-root`.
+
+## Claude Code CLI auf 2.1.293 aktualisiert (07.10.2026)
+
+**Auftrag Max:** CLI updaten. Ausgangslage 2.1.285, Ziel 2.1.293.
+
+**Der erste Befund war eine Falle.** `claude update` meldete zweimal
+"Claude Code is up to date (2.1.285)", obwohl das Repo v2.1.293 kennt. Zwei Ursachen:
+
+1. `autoUpdates: false` in `C:\Users\faupe\.claude.json` - Max' Entscheidung,
+   die **auch den ausdruecklichen Update-Befehl** blockiert.
+2. Der Kanal stand auf `stable` - und `stable` ist genau 2.1.285.
+
+Die Endpunkte direkt abgefragt (das war der Beweis, nicht die Vermutung):
+
+    BASE=https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases
+    stable -> 2.1.285      latest -> 2.1.293      beta/next -> NoSuchKey
+
+**Ablauf:** Launcher gesichert -> `autoUpdates: true` -> Kanal auf `latest` ->
+`claude update` (~240 MB, rund 90 s) -> beide Schalter zurueck auf `stable`/`false`.
+
+**Installationsart:** native, nicht npm. Launcher
+`C:\Users\faupe\.local\bin\claude.exe`, Versionen unter
+`C:\Users\faupe\.local\share\claude\versions\`. Rueckfall:
+`versions/2.1.285.bak-20261007`.
+
+**Wichtig:** Das laufende Binary muss nicht frei sein. Es ist waehrend des Betriebs
+gesperrt (`Permission denied`), der Updater legt die neue Version daneben und schaltet
+den Launcher um. **27 laufende Claude-Sitzungen und das Hermes-Gateway (PID 70456)
+liefen ununterbrochen weiter** - kein Agent wurde gestoert.
+
+**Belege:** `claude --version` -> 2.1.293; `claude doctor` -> native 2.1.293, Commit
+`3abc54a9d60b` (gleich `manifest.json`), Kanal stable; echter Lauf
+`claude -p "Antworte mit genau: OK"` -> `OK`; `claude plugin test mods/agents-md` ->
+5 pass, 0 fail.
+
+**Nebenbefund, offen:** Die neue Version warnt beim Start ueber acht wirkungslose
+deny-Regeln in `MaxHirn/.claude/settings.local.json` - `Write(./Archiv/**)`,
+`Write(./Wissen/**)`, `Write(./Claude/**)`, `Write(./Bilder/**)`, `Write(./Videos/**)`,
+`Write(./Musik/**)`, `Write(./Dokumente/**)`, `Write(**/.obsidian/**)`. Meldung:
+"only Edit(path) rules are [matched]". **Die Schutzregeln greifen weiter:** fuer jedes
+dieser Verzeichnisse steht daneben eine `Edit(...)`-Regel, und die deckt laut Meldung
+alle Datei-Werkzeuge ab. Die `Write(...)`-Zeilen sind Dopplung und erzeugen nur
+Rauschen. Aufraeumen braucht einen Auftrag (Schutzregeln, Stufe 1).
+
+Sicherungen: `.claude.json.bak-20261007`, `.claude/settings.json.bak-20261007`
+(beide byte-identisch zurueck bis auf `autoUpdates`),
+`versions/2.1.285.bak-20261007` (Rueckfall-Binary).
+Gelerntes auch in `Werkstatt/Repos/rule_repo-bots.md`.
+
+## Wirkungslose Write-Regeln bereinigt (07.10.2026)
+
+**Auftrag Max:** die Write-Regeln aufraeumen, die die neue CLI seit dem Update auf
+2.1.293 bei jedem Start als wirkungslos meldet.
+
+**Die Ursache war eine Skill-Vorlage.** Die sechs `Write(...)`-Zeilen stammen aus
+`Agenten/Hermes/skills/productivity/protecting-irreplaceable-data/templates/
+settings-deny-list.json` - dem Drop-in-Block, der laut Skill in jede
+`settings.local.json` kopiert wird. Von dort sind sie in alle Settings-Dateien
+gewandert. Die Vorlage ist deshalb **mitkorrigiert**; sonst waeren sie beim
+naechsten Anwenden wieder da.
+
+**Warum sie nichts schuetzen:** Die CLI wertet fuer Dateipfade nur `Edit(...)` aus.
+`Write(...)` trifft nichts und erzeugt nur eine Warnzeile je Regel. `Edit(...)` deckt
+laut Meldung **alle** Datei-Werkzeuge ab - die `Write(...)`-Zwillinge brachten also
+null zusaetzliche Deckung. Fuer jedes der acht Verzeichnisse stand daneben bereits
+die wirksame `Edit(...)`-Regel.
+
+**Bereinigt wurden drei aktive Dateien:**
+
+| Datei | vorher | nachher |
+|---|---|---|
+| `MaxHirn/.claude/settings.local.json` | 37 deny, 8 Write | 29 deny, 0 Write |
+| `MaxHirn/Archiv/.claude/settings.local.json` | 34 deny, 7 Write | 27 deny, 0 Write |
+| `.../protecting-irreplaceable-data/templates/settings-deny-list.json` | 33 deny, 6 Write | 27 deny, 0 Write |
+
+**Nachweis (echter Lauf, vorher/nachher):** `claude -p "sag OK"` in `MaxHirn` gab
+vorher 8 Warnungen, im `Archiv` 7 - jetzt **0**, stderr leer. Alle Schutzregeln
+unveraendert: `Edit(...)` fuer jedes Stufe-0-Verzeichnis, 9 `Read`-Sperren auf
+Schluessel, 11-12 Loesch-Sperren (`rm`, `mv`, `Remove-Item`, `/MIR`, `--delete`).
+Genau die erwarteten Zeilen entfernt (`diff`), LF und BOM-Status erhalten, JSON gueltig.
+
+**Fehler, den ich gemacht habe:** Die Worktrees unter `.worktrees/` und
+`.claude/worktrees/` sind **echte Git-Branches**, und `settings.local.json` ist
+versioniert. Ich hatte zuerst in zwei davon geschrieben (`t_3d11d36a`, `t_bcc968fc`)
+und damit fremde Arbeit in Branches erzeugt, die mir nicht gehoeren. Mit den
+Sicherungen zurueckgesetzt - beide sind wieder sauber (0 Aenderungen). **Lehre: vor
+jedem Schreiben in einem Worktree pruefen, ob die Datei versioniert ist
+(`git ls-files --error-unmatch <pfad>`), und in fremden Branches grundsaetzlich nicht
+schreiben.** Die verbleibenden `Write(...)`-Vorkommen liegen ausschliesslich in diesen
+Branch-Kopien und werden dort nicht angefasst.
+
+Gelerntes auch im Skill `protecting-irreplaceable-data` (Step 3: `Edit(path)` statt
+`Write(path)`, mit Pruefbefehl).
+
+Sicherungen: `settings.local.json.bak-20261007-write-regeln` (MaxHirn und Archiv),
+`settings-deny-list.json.bak-20261007`.
+
+## Wache um Ziel-, Schreib- und .env-Pruefung erweitert (07.10.2026)
+
+**Auftrag Max:** die in T-369 vorgeschlagene Zusatzpruefung umsetzen.
+
+**Was fehlte.** `Agenten/Hermes/scripts/konfig-doktor-wache.py` fragte bisher nur,
+OB ueberhaupt ein Verweis da ist. Ein Verweis aufs **falsche Ziel**, ein Verweis,
+den die Werkzeuge **nicht durchlaufen**, und ein Profil ohne Werkstatt-Pfad in
+`HERMES_WRITE_SAFE_ROOT` kamen darin nicht vor. Alle drei sind vorgekommen.
+
+Die Wache hat jetzt **drei Zeugen** statt zwei: Verweis -> Ziel + Schreibtest +
+`.env`-Lage -> Doktor.
+
+**Der Schreibtest** legt eine Probedatei durch den **BrainFiles-Pfad** an (nicht
+direkt auf O:) und raeumt sie wieder weg. Genau dieser Weg zeigt, ob ein Werkzeug,
+das den Reparse-Punkt aufloest, danach noch in seiner Sandbox liegt - daran
+scheiterte das Schreiben in die Repos, waehrend Lesen und Terminal weiterkamen.
+
+**Der `.env`-Zeuge** prueft nur die Profile, deren `SOUL.md` `Werkstatt` nennt -
+sonst waeren es 27 Meldungen statt 17 und die Wache wuerde zum Dauer-Alarm. Dazu
+die Haupt-`.env`, die alle erben. Ein Profil **ohne** eigene `.env` erbt und ist
+gesund; gemeldet wird nur, was den Werkstatt-Pfad nicht traegt.
+
+**Ein echter Fund beim ersten Lauf:** **16 von 18** Repo-Bot-`.env` tragen den
+Werkstatt-Pfad nicht - diese Bots koennen nicht in die Repos schreiben. Betroffen:
+basic-memory, caveman, claudian, deepseek-harness, easycliproxyapi,
+everything-claude-code, gbrain, harvard-trading, moon-dev-agents, obsidian-skills,
+one-skill-to-rule-them-all, openmontage, openterminal (ohne Werkstatt) sowie lotse,
+markt-recherche, nerd (kein Eintrag). Nur `claude-code` und die Haupt-`.env` sind
+vollstaendig. **Behoben habe ich das nicht** - es ist die offene Entscheidung aus
+T-369.
+
+**Falle, die die Tests aufgedeckt haben (wichtig):** `os.path.islink` liefert fuer
+eine **Windows-Junction `False`**. Meine ersten Fassungen von `ziel_lage` und
+`schreibtest` stiegen deshalb sofort aus und prueften **nie** - sie meldeten
+"gesund", ohne etwas getan zu haben. Richtig ist das Datei-Attribut
+`FILE_ATTRIBUTE_REPARSE_POINT` (0x400); es gibt jetzt `_ist_verweis()`, und auch
+Zeuge 1 nutzt es. Ohne die Tests waere das nie aufgefallen: die Wache haette still
+zugestimmt.
+
+**Tests:** `Agenten/Hermes/scripts/tests/test_konfig_doktor_wache.py` (12 Tests,
+alle gruen). Sie bauen eine eigene Wurzel in `%TEMP%`, legen dort **echte
+Junctions** an (falsches Ziel, nicht beschreibbares Ziel, echter Ordner statt
+Verweis) und pruefen die `.env`-Faelle inklusive Vererbung. Die echte
+BrainFiles-Wurzel bleibt unberuehrt. Aufruf:
+`python Agenten/Hermes/scripts/tests/test_konfig_doktor_wache.py`
+
+**Beleg (echter Lauf):** `konfig-doktor-wache.py --immer` meldet die 16 `.env` und
+sonst nichts; Verweis, Ziel und Schreibtest fuer `Werkstatt` und `Modelle` sind
+gesund; keine Probedatei bleibt liegen.
+
+Sicherung: `konfig-doktor-wache.py.bak-20261007`.
+Empfehlung offen: der Cron-Text (`konfig-doktor-wache`, 1beb6d64a8c8) beschreibt
+noch den alten Umfang ("prueft die Wurzel-Verweise") - er liegt in der
+Haupt-Cron des Default-Profils und wurde deshalb nicht angefasst.
+
+## Schreibzugriff auf alle Repo-Bot-Profile nachgezogen (08.10.2026)
+
+**Auftrag Max:** die Empfehlung aus T-369 umsetzen - die Profile nachziehen, die
+den Werkstatt-Pfad in `HERMES_WRITE_SAFE_ROOT` nicht trugen.
+
+**Befund vorher (von der erweiterten Wache gemeldet):** 16 von 18 Repo-Bot-`.env`
+ohne Werkstatt-Pfad. Nur `claude-code` und die Haupt-`.env` waren vollstaendig -
+diese Bots konnten nicht in die Repos schreiben.
+
+**Nachgezogen, 16 Dateien:**
+
+- **13 erweitert** (Zeile vorhanden, Wert ergaenzt): basic-memory, caveman,
+  claudian, deepseek-harness, easycliproxyapi, everything-claude-code, gbrain,
+  harvard-trading, moon-dev-agents, obsidian-skills, one-skill-to-rule-them-all,
+  openmontage, openterminal
+- **3 neu angelegt** (kein Eintrag vorhanden): lotse, markt-recherche, nerd -
+  jeweils Leerzeile + Kommentarzeile + Wert am Dateiende
+- **1 uebersprungen:** claude-code (war schon ok)
+
+Neuer Wert ueberall: `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`
+
+**Belege:** Je Datei genau eine geaenderte Zeile (`diff` gegen die Sicherung) -
+bei den drei Anlege-Faellen genau die drei neuen Zeilen, sonst nichts. CRLF/LF und
+BOM-Status je Datei erhalten (13x CRLF, `markt-recherche` LF). 16 Sicherungen unter
+`Agenten/Hermes/.sicherung/profil-env-20261007/`.
+
+**Nachweis, dass es wirkt:** `env_lage()` meldet jetzt GESUND statt 16 Befunde.
+**Gegenprobe auf einer echten Datei** (nicht nur im Test): `caveman/.env`
+absichtlich zurueckgedreht -> Wache meldet sofort "1 von 18 (ohne Werkstatt)";
+wiederhergestellt -> GESUND. Die 12 Tests der Wache bleiben gruen.
+
+**WICHTIGER SICHERHEITSBEFUND (offen, Entscheidung Max):** Die Profil-`.env`-Dateien
+enthalten **echte Zugangsdaten im Klartext** - gemessen an den Laengen keine
+Platzhalter (u.a. ein 108-Zeichen-`ANTHROPIC_TOKEN`, ein 93-Zeichen-`GITHUB_TOKEN`,
+ein 73-Zeichen-`OPENROUTER_API_KEY`, dazu `HF_TOKEN`, `MNEMOVERSE_API_KEY`,
+`OLLAMA_API_KEY`, `A2A_PEER_TOKENS`). Werte wurden **nicht gelesen, nicht ausgegeben,
+nicht protokolliert** - nur Laengen geprueft. Diese Dateien werden von `sichern.ps1`
+mitkopiert (nach G: und O:), liegen also auf zwei weiteren Datentraegern im Klartext.
+Empfehlung: `Zugaenge.md` und die `.env`-Dateien aus der Sicherung ausschliessen
+(`/XD`), oder die Secrets in den Hermes-Credential-Pool ueberfuehren.
+
+Sicherungen: `Agenten/Hermes/.sicherung/profil-env-20261007/<profil>.env` (16).
+
+## Klartext-Zugangsdaten verschluesselt statt mitgesichert (08.10.2026)
+
+**Auftrag Max:** die `.env` aus der Sicherung ausschliessen. Beim Pruefen kam ein
+Widerspruch zu Tage, Max hat neu entschieden: **verschluesseln statt ausschliessen.**
+
+**Der Widerspruch.** `sichern.ps1` trug bis heute eine ausdrueckliche Entscheidung
+vom 12.09.2026: die Profil-`.env` bleiben in der Sicherung, "damit ein
+Wiederaufbau die Profile nicht ohne Schluessel dastehen laesst". Ausschliessen
+haette genau das zerstoert. Dazu zwei Funde, die beim Nachsehen auftauchten:
+
+- **`auth.json` war in keinem der vier Skripte ausgeschlossen** - sie traegt den
+  `credential_pool` mit `access_token`, `refresh_token`, `agent_key`.
+- **`Agenten/Hermes/shared/nous_auth.json`** (2,6 KB) kam erst im robocopy-
+  Trockenlauf zum Vorschein: eine zweite Zugangsdatei mit `access_token`
+  (2093 Zeichen) und `refresh_token`. Ein Muster `auth.json` haette sie NICHT
+  getroffen - sie heisst anders. Sie stand in keiner Liste.
+- **Keine der Platten hat BitLocker** (C:, G:, O:, Q: geprueft).
+
+**Die Loesung.** Ein Skript `Agenten/Hermes/scripts/secrets-archivieren.ps1` legt
+`Agenten/Hermes/secrets/secrets-<datum>.7z` an: AES-256 mit `-mhe=on` (auch die
+Dateinamen verschluesselt), 62 Dateien in rund 20 KB. Die Klartextdateien bleiben
+am Ort - der Agent braucht sie -, werden aber aus allen vier Sicherungslaeufen
+ausgeschlossen (`/XF *.env auth.json OKX_API.env nous_auth.json`). Die Sicherung
+nimmt nur das Archiv mit, also gibt es den Wiederaufbau-Stand weiterhin.
+
+**Passwort.** Aus der Windows-Benutzervariable `HERMES_BACKUP_PW`. **Setzt Max
+selbst** (Befehl steht in der Ausgabe des Skripts); Hermes hat es nie gesehen.
+Ohne die Variable bricht das Skript ab und legt **nichts** an - geprueft.
+
+**Fallen, beide gemessen und behoben:**
+
+- **7z kann das Passwort nicht per stdin lesen.** Ein Versuch mit `-p` ohne Wert
+  und Pipe erzeugte ein Archiv, das sich anschliessend **nicht mehr oeffnen**
+  liess ("Wrong password?"). Das Passwort steht deshalb fuer die Dauer des Laufs
+  in der Kommandozeile des 7z-Prozesses - bewusster Kompromiss auf einem
+  Einzelplatzrechner.
+- **`-spf` ist Pflicht.** Ohne sie speichert 7z nur den Dateinamen; 61 Dateien
+  namens `.env` kollidierten mit "Duplicate filename on disk" (Code 2). Mit `-spf`
+  stehen die vollen Pfade im Archiv, was zugleich die Wiederherstellung an den
+  richtigen Ort ermoeglicht.
+
+**Nachweise (echte Laeufe):**
+
+- Verschlüsselung: ohne und mit **falschem** Passwort sind **0 Dateinamen**
+  sichtbar; nur mit dem richtigen alle 62. Exitcodes 255 / 2 / 0.
+- Wiederherstellung testweise in einen leeren Ordner: 62 Dateien, volle Pfade
+  (`...\Hermes\profiles\<profil>\.env`).
+- robocopy-Trockenlauf: **110 Zugangsdateien -> 0**. Gegenprobe: `.env.template`
+  bleibt im Lauf (wird also NICHT faelschlich ausgeschlossen).
+- Syntax aller fuenf geaenderten Skripte geprueft (PowerShell-Parser): OK.
+
+**Geaenderte Skripte:** `Agenten/sichern.ps1`, `sichern-zweitkopie.ps1`,
+`sichern-aussenhaus.ps1`, `sichern-ausser-haus.ps1` (je `/XF` erweitert;
+`Zugaenge.md` fehlte in `sichern-aussenhaus.ps1` ganz), `Routinen/sicherung.ps1`
+(ruft die Archivierung vor dem Kopieren auf und **warnt im Protokoll**, wenn sie
+scheitert), neu `Hermes/scripts/secrets-archivieren.ps1`.
+
+**Offen fuer Max:** `HERMES_BACKUP_PW` setzen (sonst legt der naechste Lauf kein
+Archiv an - die Sicherung laeuft trotzdem, aber ohne die Zugangsdaten). Ausserdem
+liegen in den Profil-`.env` weiterhin Klartext-Secrets am Ort; das ist gewollt,
+sie sind nur nicht mehr auf vier Datentraegern verteilt.
+
+## Secrets-Archiv in Betrieb (08.10.2026)
+
+Max hat `HERMES_BACKUP_PW` gesetzt (8 Zeichen, sha8 `ab0d1194` - Wert nie gesehen,
+nur Laenge und Hash geprueft). Das Archiv ist damit scharf:
+
+`Agenten/Hermes/secrets/secrets-20261008.7z` - **62 Dateien, 20,1 KB**, AES-256
+mit `-mhe=on`.
+
+**Nachweise (echte Laeufe, unabhaengig von der eingebauten Gegenprobe):**
+
+- Ohne Passwort: **0 Dateinamen** sichtbar, Exit 255.
+- Mit dem echten Passwort: 62 Namen sichtbar, Integritaetstest Exit 0.
+- Enthaelt genau die kritischen Dateien: `auth.json`, `nous_auth.json`,
+  `OKX_API.env`, `Zugaenge.md` (je 1x).
+- **Die Kette ist geschlossen:** der robocopy-Trockenlauf mit den echten
+  Argumenten nimmt `secrets-20261008.7z` mit und laesst **0** Klartext-
+  Zugangsdateien durch.
+
+**Ein Messfehler, der beinahe falsch alarmiert haette:** Ein Nachweis-Lauf meldete
+110 Treffer statt 0 und sah nach einem offenen Leck aus. Ursache war der Test
+selbst: `XF='"*.env" "auth.json"'` - die Anfuehrungszeichen in der
+Shell-Variable wurden Teil des Arguments, robocopy traf nichts. In einer Variable
+die Quotes **weglassen**. Zweite Falle im selben Zusammenhang: `/XD` braucht
+**Backslash**-Pfade; ein Nachbau mit Vorwaertsschraegstrichen schliesst nicht aus
+(4 Treffer aus `Hermes\cache`). Und: ohne **Positivkontrolle** (derselbe Lauf
+ohne `/XF`, hier 106 Treffer) beweist ein 0-Ergebnis nichts. Alles drei steht im
+Skill `protecting-irreplaceable-data`.
+
+**Was jetzt gilt:** Die Klartextdateien liegen weiter am Ort (der Agent braucht
+sie), aber nur noch auf **einem** Datentraeger plus dem verschluesselten Archiv auf
+den Sicherungen - vorher lagen sie auf vier im Klartext. Der naechste geplante
+Sicherungslauf (20:00) erneuert das Archiv selbst; scheitert das, steht es als
+Warnung im Protokoll.
+
+Testartefakte entfernt (rc-*, secrets-test*, 7ztest). Ein fremder 7z-Temp-Ordner
+vom 05.10. (`opencode.exe`) blieb unangetastet.
 
 ## MCP-Bloecke der Profile aus einer Quelle, 07.10.2026
 

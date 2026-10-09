@@ -34,6 +34,10 @@ finish cleanly on its own.
 - The session store grew large (\"archivierte Gespräche löschen\", `state.db` several hundred MB):
   `references/session-store-aufraeumen.md` — mess, backup, pin the exceptions, stop every writer,
   prune, then optimize (a delete alone never shrinks the file).
+- The desktop app shows `error invoking remote method: hermes:api Error: read ECONNRESET` (or
+  a repeating 500 in the UI), gateway healthy: the desktop-backend connection is dropping —
+  `references/desktop-verbindungsfehler.md` (ECONNRESET is a symptom of a 500-flood on a
+  polling endpoint; known 500 source: dead GGUF symlinks in `models/`).
 
 ## Prerequisites
 
@@ -526,6 +530,33 @@ demselben Blocker:
 
 Ausfuehrliches Rezept (Log-Zeilen, Befehle, das Anhaenge-Verhalten im Detail, Gegenproben):
 `references/desktop-bootschleife.md`.
+
+## Desktop laeuft, aber `hermes:api`-Aufrufe scheitern (ECONNRESET)
+
+`error invoking remote method: hermes:api Error: read ECONNRESET` heisst: der Electron-Main
+verlor die HTTP-Verbindung zum Backend, waehrend er die Antwort las. Fast immer ist das die
+FOLGE einer 500-Flut auf einem Polling-Endpoint, kein eigener Fehler — der Server wirft
+Exceptions und der Desktop klappt die Verbindung zu. Diagnose-Reihenfolge:
+
+1. Gateway gesund? `cat gateway_state.json` — `running` + Plattformen `connected` verlagert
+die Ursache in den Desktop-Backend-Pfad.
+2. `grep -n "hermes:api.*Error" logs/desktop.log | tail` — die WIEDERHOLTE 500-Zeile suchen
+(der Desktop fragt `/api/local-models/status` alle ~2 s); der einzelne Request mit ECONNRESET
+im selben Zeitfenster ist die Folge.
+3. Bekannte 500-Quelle auf `GET /api/local-models/status`: der Endpoint macht `stat()` auf
+jede stagede GGUF in `Agenten/Hermes/models/` (`_staged_row`); ein Symlink mit fehlendem
+Ziel wirft ungefangen FileNotFoundError -> 500. Fix: den toten Link loeschen (der
+Katalogeintrag bleibt klickbar und legt die Datei beim Download neu an). `preset skip …`-
+Warnungen sind NICHT die Ursache (gefangen, return None).
+4. Nachweis ohne Auth-Token (die API antwortet sonst 401): der Desktop poollt selbst — keine
+NEUEN `hermes:api … Error`-Zeilen NACH dem Fix (Zeitstempel vergleichen, ~2-s-Rhythmus).
+
+Harmlose Nachbarn, keine Reparatur: `preset skip … unknown ggml tensor type 143` (der
+verwaltete llama-server kann ternäre Gewichte nicht laden; Bonsai laeuft separat) und
+MCP-Test-500er (`POST /api/mcp/servers/<name>/test`) auf nicht angemeldete Server
+(algolia/robinhood/postman). Volles Diagnose-Rezept und der Telemetry-ACL-Fix
+(`telemetry/shared_metrics` blockiert den eigenen Benutzer mit WinError 5 -> ein erhoehter
+`icacls … :(OI)(CI)F /T /C`-Lauf genuegt): `references/desktop-verbindungsfehler.md`.
 
 ## Plattenreserve fuer Builds (~20 GB, sonst bricht der Schwanz ab)
 

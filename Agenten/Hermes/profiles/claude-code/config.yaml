@@ -194,6 +194,7 @@ command_allowlist:
   - script execution via heredoc
 plugins:
   enabled:
+    - okx-a2a
     - everything-claude-code
     - homeassistant
     - one-skill-to-rule-them-all

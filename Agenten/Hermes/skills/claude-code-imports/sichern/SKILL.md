@@ -1,6 +1,6 @@
 ---
 name: sichern
-description: Committet den Arbeitsbaum im Mehrsitzungsbetrieb, ohne fremde Arbeit zu vermischen oder zu verlieren. Benutzen bei "commite", "sichere den Stand", "Commit the working tree changes", "was ist uncommittet", "git status", oder nach jedem abgeschlossenen Arbeitsschritt im Vault.
+description: Committet den Arbeitsbaum im Mehrsitzungsbetrieb, ohne fremde Arbeit zu vermischen oder zu verlieren. Benutzen bei "commite", "sichere den Stand", "Commit the working tree changes", "was ist uncommittet", "git status", "fremdarbeit zusammenführen und sichern", "fremde Arbeit einziehen", oder nach jedem abgeschlossenen Arbeitsschritt im Vault.
 ---
 
 # Stand sichern
@@ -10,6 +10,12 @@ nur, was committet ist** — alles davor kann eine andere Sitzung vernichten.
 Vollständige Begründung in [[Schutzregeln]]; hier steht der Ablauf.
 
 ## 1. Lage feststellen
+
+**Zuerst die eigene Arbeit committen, dann prüfen.** Ein `git status` über einen
+Arbeitsbaum, in dem die eigene Änderung noch offen steht, meldet sie als „fremd"
+— die Ruheschwelle sieht nur das Alter, nicht den Urheber. Erst die eigene Arbeit
+namentlich committen, dann den Baum lesen; was danach noch liegt, ist wirklich
+fremd.
 
 ```powershell
 ..\Agenten\Routinen\arbeitsbaum-pruefen.ps1
@@ -49,6 +55,25 @@ plausibel klingt, macht die Historie genauso falsch wie die Ich-Form. Steht der
 Urheber nicht fest — der Regelfall, denn eine Änderung im Arbeitsbaum trägt
 keinen Namen —, gilt `Andere Sitzung <fremd@local>`. Hermes committet nie
 selbst; seine Arbeit ist nur versioniert, wenn eine Claude-Sitzung sie mitnimmt.
+
+### Fremdarbeit gesammelt einziehen
+
+Liegt viel ruhende Fremdarbeit herum, nicht von Hand zusammensuchen, sondern die
+Routine nehmen (sonst läuft sie stündlich um :20 von selbst):
+
+```powershell
+..\Agenten\Routinen\fremdarbeit-einziehen.ps1 -Testlauf
+..\Agenten\Routinen\fremdarbeit-einziehen.ps1 -NichtPushen
+```
+
+- Ohne `-NichtPushen` pusht sie nach `origin master` — Push nur nach Rückfrage.
+- Ihre Ruheschwelle ist **30** Minuten, nicht 10: was der Testlauf als „in
+  Arbeit" meldet, bleibt liegen.
+- Eigener Index (`.git\fremdarbeit.index`), Autor `Andere Sitzung <fremd@local>`;
+  bei Git-Sperre wird übersprungen. Eigene Arbeit vorher selbst committen.
+
+Einzelheiten und Log in [[Routinen]] („Fremdarbeit übernehmen"); Hermes-Gegenstück
+ist der Skill `arbeitsbaum-git-hygiene`.
 
 ## 3. Was nie passiert
 

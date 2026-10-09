@@ -171,11 +171,14 @@ def lauf(profile, anwenden, ausgabe=print):
         drift += 1
         ausgabe("  DRIFT %s: %s" % (p, "; ".join(unterschied(ist, soll))))
         if anwenden:
-            neu = zeilen[:g[0]] + soll + zeilen[g[1]:]
-            e = eol(text)
-            ende = e if text.endswith(("\n", "\r\n")) else ""
+            # Zeilen ausserhalb des Blocks behalten ihr eigenes Zeilenende
+            # (Profile koennen gemischte Enden haben); der neue Block nimmt das
+            # Ende der Zeile 'mcp_servers:'.
+            roh = text.splitlines(True)
+            e = "\r\n" if roh[g[0]].endswith("\r\n") else "\n"
+            neu = "".join(roh[:g[0]]) + "".join(z + e for z in soll) + "".join(roh[g[1]:])
             with open(pfad, "wb") as f:
-                f.write((e.join(neu) + ende).encode("utf-8"))
+                f.write(neu.encode("utf-8"))
     return drift
 
 

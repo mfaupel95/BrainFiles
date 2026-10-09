@@ -82,6 +82,17 @@ Margin         = Positionswert / Hebel
 
 Der Hebel fällt hinten heraus und wird nur noch **gedeckelt** — durch
 `max_hebel` aus `wachen.json` und durch den Rücklauf der letzten sieben Tage.
+
+**Hebel je Familie (seit 08.10.2026, Auftrag Max):** `familien.<name>.max_hebel`
+ersetzt `max_hebel` für diese Familie, `familien.<name>.stop_max_pct` begrenzt
+die Stopweite in % des Kurses. Gesetzt ist beides für `rohstoff` (XAU, XAG, CL,
+BZ): **10x, Stop höchstens 4 %**. Der Rücklauf-Deckel bleibt davor — ein Rohstoff,
+dessen letzte sieben Tage 10x nicht getragen hätten, fällt aus der Rangliste.
+Bei 10x liegt die Liquidation grob bei 9–9,5 % gegen die Position, 4 % Stop
+halten klaren Abstand; ein Wochenend-Gap kann ihn trotzdem überspringen. Das
+Risiko je Anlauf bleibt gleich (Positionswert = Risiko / Stopabstand), nur die
+gebundene Margin halbiert sich gegenüber 5x. Code: `wachen_xperp.hebel_grenze`,
+`stop_max_pct`, `fuer_familie`; dieselbe Regel gilt in `../swap/`.
 `Handel/README.md` hat diese Regel schon aus dem Titelvergleich gezogen: *Die
 Hebelhöhe gehört an die gemessene Volatilität gekoppelt, nicht an eine
 Kurserwartung.*
