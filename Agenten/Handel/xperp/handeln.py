@@ -1175,6 +1175,25 @@ def bueche_stopdeckung(z, w, live, still=False):
     return befunde, True
 
 
+def _abgleich_stufe(name, fn, *args, standard=0, **kwargs):
+    """Eine Stufe des Buchabgleichs, die den Zyklus nie abbrechen darf.
+
+    ANLASS (Review 09.10.2026): `lauf()` ruft `buche_abgleich` VOR Kill-Switch
+    und Herzschlag-Notausstieg. Vier der fuenf Stufen fangen Boersenfehler
+    selbst ab, `wartende_auftraege` aber nicht (`okxf.order_stand` wirft bei
+    fehlenden Schluesseln oder Netzfehler). Die Ausnahme lief durch `lauf()`
+    und uebersprang den Kill - ausgerechnet dann, wenn die Boerse nicht
+    antwortet. Der Abgleich ist Buchhaltung; fehlt er, bleibt das Buch
+    unberuehrt (wie bei den anderen Stufen), der Schutz laeuft trotzdem.
+    """
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:                                     # noqa: BLE001
+        print("  Abgleich-Stufe %s uebersprungen (%s: %s)"
+              % (name, type(e).__name__, e))
+        return standard
+
+
 def buche_abgleich(z, w, live, still=False):
     """Buch gegen BOERSE - in JEDEM Zyklus, nicht nur im Live-Lauf (T-277).
 
@@ -1203,7 +1222,8 @@ def buche_abgleich(z, w, live, still=False):
     Groesse.
     """
     stand = {"wartende": 0, "geister": 0, "fremde": 0, "groessen": 0}
-    stand["wartende"] = wartende_auftraege(z, live, w, still=still)
+    stand["wartende"] = _abgleich_stufe(
+        "wartende", wartende_auftraege, z, live, w, still=still)
     if stand["wartende"] and not still:
         print("  %d wartende(r) Auftrag/Auftraege gefuellt und gebucht"
               % stand["wartende"])
@@ -1212,27 +1232,34 @@ def buche_abgleich(z, w, live, still=False):
     # werden. Andernfalls sieht die Geisterpruefung eine Position, die an der
     # Boerse fehlt, und bucht sie neutral (Einsatz zurueck, Erloes 0.00) -
     # vier echte Positionen verloren so ueber Nacht ihren Erloes.
-    stand["verkaeufe"] = buche_verkaeufe_aus_boerse(z, live, still=still)
+    stand["verkaeufe"] = _abgleich_stufe(
+        "verkaeufe", buche_verkaeufe_aus_boerse, z, live, still=still)
     if stand["verkaeufe"] and not still:
         print("  %d Verkauf/Verkaeufe von der Boerse gebucht (echter Kurs)"
               % stand["verkaeufe"])
-    stand["geister"] = bueche_geister_aus(z, w, still=still, stornieren=live)
+    stand["geister"] = _abgleich_stufe(
+        "geister", bueche_geister_aus, z, w, still=still, stornieren=live)
     if stand["geister"] and not still:
         print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
               "der Boerse)" % stand["geister"])
-    stand["fremde"] = bueche_fremde_positionen_uebernehmen(z, w, still=still,
-                                                           schutz=live)
+    stand["fremde"] = _abgleich_stufe(
+        "fremde", bueche_fremde_positionen_uebernehmen, z, w, still=still,
+        schutz=live)
     if stand["fremde"] and not still:
         print("  %d fremde Position(en) von der Boerse ins Buch uebernommen"
               % stand["fremde"])
-    stand["groessen"] = len(bueche_groessen_abgleichen(z, w, still=still))
+    stand["groessen"] = len(_abgleich_stufe(
+        "groessen", bueche_groessen_abgleichen, z, w, still=still,
+        standard=[]))
     if stand["groessen"] and not still:
         print("  %d Position(en) auf die Boersengroesse gezogen"
               % stand["groessen"])
     # Vierte Stufe: die MENGE des Schutzes. Nur lesend - der Preis fuer ein
     # Nachsetzen kommt vom Menschen (T-362). Ein stiller Zwischenstand zaehlt
     # als Befund, damit `--wachen` und die Vorschau die Luecke zeigen.
-    deckung, deckung_abfrage = bueche_stopdeckung(z, w, live, still=still)
+    deckung, deckung_abfrage = _abgleich_stufe(
+        "stopdeckung", bueche_stopdeckung, z, w, live, still=still,
+        standard=([], False))
     stand["deckung"] = len(deckung)
     stand["deckung_abfrage"] = deckung_abfrage
     if deckung and not still:
