@@ -1933,6 +1933,38 @@ def sperren_live(w, s):
     return g
 
 
+def stopluecken_sperre(z, stand, live):
+    """True, wenn neue Live-Einstiege wegen fehlender Boersen-Stops ruhen.
+
+    ANLASS (Review 09.10.2026): `bueche_stopdeckung` misst ungeschuetzte
+    Kontrakte, aber nichts wertete das aus - `lauf()` verwarf den Rueckgabewert,
+    die Luecke stand nur auf der Konsole. Jetzt gilt (Variante A):
+      * Luecke (`deckung > 0`): keine neuen Einstiege im Live-Lauf. Ausstiege,
+        Abgleich, Kill und Herzschlag laufen unveraendert weiter; nachgesetzt
+        wird weiterhin nur von Hand (`stopdeckung.py --stop`, der Preis ist
+        eine Freigabe).
+      * Abfrage nicht lesbar (`deckung_abfrage` falsch): KEINE Sperre. Ein
+        Netzfehler ist Rauschen, aus ihm folgt kein "kein Stop".
+    Gemeldet wird beim Wechsel (Luecke neu / Luecke weg), nicht in jedem Zyklus;
+    der Merker liegt im Zustand (`stopluecke_gemeldet`).
+    """
+    luecke = bool(live and stand and stand.get("deckung")
+                  and stand.get("deckung_abfrage"))
+    gemeldet = bool(z.get("stopluecke_gemeldet"))
+    if luecke and not gemeldet:
+        z["stopluecke_gemeldet"] = True
+        ereignis.hinweis(
+            "handel/xperp",
+            "Stop-Luecke: %d Live-Position(en) ohne vollen Boersen-Stop - "
+            "neue Einstiege gesperrt. Nachsetzen: stopdeckung.py --anwenden "
+            "--stop <preis>" % stand["deckung"])
+    elif not luecke and gemeldet and stand and stand.get("deckung_abfrage"):
+        z["stopluecke_gemeldet"] = False
+        ereignis.hinweis("handel/xperp",
+                         "Stop-Luecke geschlossen: Einstiege wieder frei.")
+    return luecke
+
+
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -1991,7 +2023,7 @@ def lauf(modus):
     # Auftraege, waehrend an der Boerse EINE stand. Der Abgleich ist
     # Buchhaltung, keine Handelsentscheidung; im Papierlauf stellt er keinen
     # Stop und storniert nichts (siehe buche_abgleich).
-    buche_abgleich(z, w, live, still=False)
+    stand = buche_abgleich(z, w, live, still=False)
     # Bedingung 2 - Kill-Switch.
     if s["kill"]:
         print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"
@@ -2025,7 +2057,10 @@ def lauf(modus):
     if faktor != 1.0:
         print("- Drawdown-Ratsche: Ruecklauf %.2f USD -> Positionen halbiert -"
               % s["ruecklauf_usd"])
-    pruefe_einstiege(z, kand, w, live, s, faktor)
+    if stopluecken_sperre(z, stand, live):
+        print("- Stop-Luecke: neue Einstiege gesperrt, Ausstiege laufen weiter -")
+    else:
+        pruefe_einstiege(z, kand, w, live, s, faktor)
 
     gebunden = sum(p["margin"] for p in z["positionen"])
     print("\nBestand: %d Positionen, %.2f von %g USD Margin gebunden"
