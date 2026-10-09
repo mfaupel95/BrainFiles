@@ -10,15 +10,22 @@ kann nur falsch liegen, indem es zu streng ist, und das sieht man sofort.
 
 DIE DREI BEDINGUNGEN
 --------------------
-1. `runden >= min_runden` (Vorgabe 8). Unter acht Runden ist jede Zahl
-   eine Behauptung. Der scanner hat 161 und trotzdem keinen Edge; eine
+1. `runden >= min_runden` (Vorgabe 30, vorher 8). Unter dreissig Runden
+   ist die Streuung des Mittelwerts zu gross, um einen Edge von einer
+   Glueckssträhne zu trennen. Der scanner hat 161 und trotzdem keinen Edge; eine
    Spur mit 16 Runden hat noch gar keinerlei.
 2. `excess_nach_gebuehr > 0`, wobei `excess` die Basislinie schon
    abzieht: das Rundenergebnis MINUS "dasselbe Instrument einfach halten".
    Die Gebuehr kommt aus der wachen.json (`gebuehr_taker` ist der Anteil
    JE SEITE, eine Runde ist Kauf+Verkauf = doppelt). Ohne Basislinie gibt
    es keine Zahl, also keine Freigabe.
-3. `trigger_modus == "signal"`. Eine Spur, die im 15-Minuten-Takt handelt,
+3. Konfidenz (seit 09.10.2026): die UNTERE Grenze des Netto-Excess muss
+   positiv sein, `netto - z * std / sqrt(n) > 0`. `z` ist die Bonferroni-
+   Korrektur fuer die Zahl der geprueften Spuren (einseitig, alpha 5 %
+   durch K): wer aus 42 Spuren die mit positivem Mittel herausgreift,
+   findet allein durch Zufall Gewinner. Fehlt `std_excess` im Auditstand
+   (aelterer Lauf), entfaellt diese Bedingung bis zur naechsten Messung.
+4. `trigger_modus == "signal"`. Eine Spur, die im 15-Minuten-Takt handelt,
    darf nicht live: sie wuerde Gebuehren zahlen, fuer die es keinen
    Edge gibt.
 
@@ -49,7 +56,8 @@ HANDEL = HIER
 MERK = os.path.join(HANDEL, "cache", "freigabe-tor.json")
 VENV = os.path.join(HANDEL, "scanner", ".venv", "Scripts", "python.exe")
 
-MIN_RUNDEN = 8
+MIN_RUNDEN = 30
+ALPHA = 0.05                  # Familienfehler ueber alle geprueften Spuren
 ALTER_MAX_S = 6 * 3600        # der Audit laeuft alle 6 Stunden
 
 ERLAEUT = "Gebuehren-Tor: Excess nach Gebuehr positiv, genug Runden, Signal-Modus"
@@ -93,6 +101,8 @@ def messen():
             "n_basis": int(d.get("basislinie_n") or 0),
             "n_excess": int(d.get("n_excess") or 0),
             "mean_excess": float(d.get("mean_excess") or 0.0),
+            "std_excess": (None if d.get("std_excess") is None
+                           else float(d["std_excess"])),
             "befunde": [str(b) for b in (d.get("befunde") or [])],
             "mean": float((d.get("roh") or {}).get("mean") or 0.0),
             "treffer": float((d.get("roh") or {}).get("treffer") or 0.0),
@@ -138,6 +148,18 @@ def pruefe(spur, w=None):
     if netto <= 0:
         gruende.append("Gebuehren-Tor: Excess %+.2f %% minus Gebuehr %.2f %% "
                        "= %+.2f %%" % (d["mean_excess"], geb, netto))
+    std = d.get("std_excess")
+    if std is not None and d.get("n_excess", 0) >= 2:
+        from math import sqrt
+        from statistics import NormalDist
+        k = max(1, len(spuren))
+        z = NormalDist().inv_cdf(1.0 - ALPHA / k)
+        untere = netto - z * std / sqrt(d["n_excess"])
+        if untere <= 0:
+            gruende.append("Gebuehren-Tor: untere Konfidenzgrenze des Netto-"
+                           "Excess %+.2f %% (z=%.2f bei %d Spuren, Std %.2f %%, "
+                           "n=%d) - vom Zufall nicht zu trennen"
+                           % (untere, z, k, std, d["n_excess"]))
     # Die vierte Bedingung, und die wichtigste: eine Spur mit einem
     # BEFUND im Audit ist nicht gemessen, sondern beanstandet. Der scanner
     # haette die drei anderen Bedingungen mit +8,52 % Excess klar
