@@ -1,0 +1,99 @@
+# Plan: Fremd-Repos lokal ausbauen und an Hermes + Handel/ anbinden
+
+Stand: 2026-10-09. Status: Entwurf nach Brainstorm, noch nichts umgesetzt außer der Remote-Bereinigung (siehe unten).
+
+## Ziel
+Fremde Repos werden lokal auf Max zugeschnitten, nicht zurückgespielt. Jedes Repo, das handelt oder Märkte liest, wird (1) als Hermes-Agent mit Topic-Delegierung nutzbar, (2) an `Agenten/Handel/` angeschlossen und (3) wenn möglich über eine UI startbar, gegen Börsen-Testumgebungen (OKX-Demo, Papier).
+
+## Bereits erledigt (09.10.)
+- `auto-prediction-modest-birch-bridge`: `origin` (TraderAlice) entfernt, Zweig `research/prediction` bleibt lokal. Keine PR.
+- 13 Klone in `Werkstatt/Repos/` auf eigenen Fork `mfaupel95/<name>` gesetzt; `origin` heißt jetzt `upstream`, **kein `origin`** mehr, also kein versehentlicher Push: Scrapling, EasyCLIProxyAPI, basic-memory, caveman, claude-code, claudian, codex, deepseek-harness, everything-claude-code, gbrain, intelligent-trading-bot, obsidian-skills, one-skill-to-rule-them-all.
+- Bewusst NICHT angefasst: die 20 bestehenden Forks (Hausregel: `origin`=Fork, `upstream`=Original), Hermes-verwaltete Klone (`hermes-agent`, `plugins/*`, `skills/.archive/*`; `hermes update` braucht `origin`), TraderAlice-Mirror/Workspaces (du wolltest dort nicht forken), `CLIProxyAPI` in `MaxHirn/`.
+
+## Offene Entscheidungen (Max)
+1. Die 20 bestehenden Forks ebenfalls auf "ohne origin" umstellen? Das bricht die Hausregel in `CLAUDE.md` (Fremd-Repos) und müsste dort mitgeändert werden. Empfehlung: nein, Pushen geht ohnehin nur in den eigenen Fork.
+2. TraderAlice-Repos (Auto-Prediction, Auto-Quant-V2) ebenfalls forken? Aktuell nein.
+
+## Kandidaten nach Rolle
+| Rolle | Repos | Anschluss |
+|---|---|---|
+| Handel/Signal | intelligent-trading-bot, moon-dev-ai-agents, jev-trader, tradememory-protocol, ziplime, agent-trade-kit (OKX), kraken-cli, Harvard-Algorithmic-Trading-with-AI, fomo-robinhood-radar, osiris, auto-prediction (Prognosemärkte) | `Agenten/Handel/` als Spur; Papier/Demo vor Live |
+| Recherche/Daten | Scrapling, jevgrep, awesome-systematic-trading, Agent-Reach | Hermes-Skill, Topic `markt-recherche` |
+| Gedächtnis/Infrastruktur | basic-memory, gbrain, claudian, obsidian-skills, caveman | Hermes-Gedächtnis / Vault, kein Handel |
+| UI/Terminal | OpenTerminal, OpenTerminalUI, openmontage | UI-Start über Desktop-Verknüpfung, spricht Handel-API |
+| Referenz (nur lesen) | claude-code, codex, deepseek-harness, EasyCLIProxyAPI | kein Anschluss |
+
+## Phasen
+**Phase 0 – Inventur (je Repo ~15 min, lesend).** Start-Befehl, Abhängigkeiten, Börsen-/API-Anbindung, Testmodus, Lizenz. Ergebnis: Tabelle in `MaxHirn/Wissen/` (Bereich `wissen`, Befund melden) oder Werkstatt-Notiz.
+**Phase 1 – Handels-Adapter.** Ein gemeinsamer Auftrags-/Signalvertrag in `Agenten/Handel/` (Bereich `handel`, Sitzung mit Besitz abstimmen, Befund melden). Fremde Repos liefern nur Signale oder Papier-Aufträge; ausgeführt wird ausschließlich über bestehende Wachen (`wachen.json`, Herzschlag 180 min, Stop-Pflicht). Börsen: OKX-DEMO, Kraken nur lesend, Revolut-X lesend.
+**Phase 2 – Hermes-Agent je Repo.** Profil unter `Agenten/Hermes/profiles/<bot>/` (Muster wie `moon-dev-agents`, `jev-trader`), Start-Verzeichnis `Werkstatt/Repos/<repo>`, Skill unter `Agenten/Hermes/skills/brainfiles/` (Hausformat, Skill `skill`). Pro Rolle ein Topic für die Delegierung (Handel, Recherche, Gedächtnis, UI); Zuordnung in der Hermes-Konfiguration, Kanban-Board `handel` für Aufträge.
+**Phase 3 – UI-Start.** Pro Repo ein `start`-Skript (Muster `omnitrade.cmd ui`), Eintrag in Desktop-Verknüpfungen (`Agenten/Werkzeuge/desktop-verknuepfungen.ps1`). Für Repos ohne UI: OpenTerminalUI als gemeinsame Oberfläche vor `Handel/`.
+**Phase 4 – Test und Betrieb.** Je Repo: Papierlauf, Eintrag in die Systemprüfung/Wachen, Tests wie `handel-tests.ps1`. Live erst nach Freigabe durch Max, nie automatisch.
+
+## Regeln
+- Eigener Zweig je Repo (`claude/<thema>`), nichts nach `master`/`main` ohne abgeschlossene Arbeit; kein `git stash`.
+- Keine Keys im Code oder Klartext; Zugangsdaten nur aus Umgebungsvariablen, in Berichten nur Vorhandensein und Länge.
+- Handelnde Pfade erst nach Papier-/Demo-Nachweis; Live nur mit ausdrücklichem Ja.
+- Lokal bleibt lokal: Push nur in den eigenen Fork und nur auf Zuruf.
+
+## Nächster Schritt
+Phase 0 für die Handels-Rolle (7 Repos) als Inventur starten, danach Adaptervertrag entwerfen.
+
+## Phase 0 – Ergebnis Handels-Rolle (09.10., nur gelesen, nichts gestartet)
+| Repo | Stack | Lizenz | Börsen (Treffer) | Testmodus | UI | Eignung für Anschluss |
+|---|---|---|---|---|---|---|
+| agent-trade-kit | TypeScript, pnpm | MIT | OKX (nur) | Demo über OKX-Konto | keine; **MCP-Server** `okx-trade-mcp` | **Hoch**: passt zum bestehenden OKX-Demo-Pfad; direkt als MCP in Hermes einbindbar (Abgleich mit `mcp-sync-check.ps1`) |
+| kraken-cli | Rust, ein Binary | MIT | Kraken (nur) | **Papierhandel eingebaut** | keine; eingebauter MCP | **Hoch**: Papier-Futures und -Spot ohne Risiko; ersetzt/ergänzt den lesenden Kraken-MCP |
+| intelligent-trading-bot | Python, pyproject, Docker | MIT | Binance (1706), wenig OKX/Alpaca | kein dokumentierter Papiermodus | keine | **Mittel**: ML-Signalpipeline; Börsenadapter (Binance) müsste auf OKX umgeschrieben werden; `itb_pruefstand.py` ist bereits lokaler Zuschnitt |
+| tradememory-protocol | Python, Docker, Dashboard | MIT | Binance (Datenquelle) | Dashboard nur synthetisch | `dashboard/` | **Mittel**: Handelsgedächtnis, kein Handeln; passt als Journal zu `handel-journal-forensik`. Projektstatus: Wartungsmodus |
+| moon-dev-ai-agents | Python, `moongui.py`, `START_GUI.bat` | **keine Lizenzdatei** | Binance, Kraken, OKX, Hyperliquid, Coinbase, Bybit | nicht dokumentiert | **GUI vorhanden** | **Mittel**: viel Material, viele Agenten, schon als Hermes-Bot geführt; Lizenz klären, Alt-Dateien (`Kopie.env`) nicht anfassen/lesen |
+| jev-trader | Bun/TypeScript | MIT | Kuru (Monad-DEX), kaum CEX | **Dry-run ohne Schlüssel** | `web/` | **Niedrig**: DEX-spezifisch, anderes Ökosystem; nur als Vorlage für Blockschleife/Dry-run |
+| ziplime | Python 3.12, Poetry, Polars | EULA (kein MIT) | Alpaca, kaum Krypto | Backtest = Live-Datei | keine; **MCP-Server** | **Niedrig-Mittel**: Backtest-Gerüst mit MCP; Lizenz (EULA) vor jeder Weiterverwendung lesen |
+
+### Befunde
+- Für **Börsenanschluss** ist die Reihenfolge klar: `agent-trade-kit` (OKX-Demo) und `kraken-cli` (Papier). Beide bringen MCP mit, damit entfällt eigener Adapterbau.
+- **Signale/ML**: `intelligent-trading-bot` ist der einzige Kandidat mit eigener Modellpipeline, braucht aber den Börsenwechsel.
+- **UI**: nur `moon-dev-ai-agents` (GUI), `tradememory-protocol` (Dashboard), `jev-trader` (web) bringen eine mit; die anderen laufen über OpenTerminalUI oder eine Hermes-Oberfläche.
+- **Lizenz-Vorbehalt**: `moon-dev-ai-agents` ohne Lizenz, `ziplime` unter EULA. Nur lokal nutzen, nichts veröffentlichen.
+- Nicht geprüft (Phase 1): Laufzeit, Abhängigkeitsinstallation, tatsächliche Vollständigkeit des Papiermodus, Schlüsselhandling je Repo.
+
+### Ergebnis Phase 1 – Adaptervertrag (09.10., fertig)
+
+Atlas-Konsultation (agentic-atlas:designing-agent-systems) ergab 6 Muster:
+Effect Discipline, Contract Keystone, LLM Dispatch, Subagent Offload,
+Unsent Thunderstorm, Cost Relocation.
+
+Artefakte erstellt (BEFUND bot-Bereich gemeldet, nicht blockiert):
+- `Agenten/Hermes/profiles/kraken-cli/config.yaml` — dediziertes Profil,
+  kraken-native MCP mit market,paper,workspace (kein dangerous, kein live).
+- `Agenten/Hermes/skills/brainfiles/fremdrepos-signal/SKILL.md` — Adapter-Contract:
+  Signal-Schema, Dispatch-Regeln, Stale-Verwurf, Gate-Übergabe.
+
+Signal-Schema (Contract Keystone): instrument, venue, direction, size_pct,
+source, ts_utc, expiry_s (180 s = Heartbeat-Fenster), mode (paper|demo), confidence.
+
+### Ergebnis Phase 2a – Telegram-Route + Topic-Routing (09.10., fertig)
+
+`gateway.profile_routes[0].enabled: true` gesetzt — Gateway liefert Telegram-Nachrichten
+nun an das `default`-Profil aus. Gateway neu gestartet (PID neu).
+
+`platforms.telegram.extra.dm_topics` konfiguriert für chat_id 7648512088:
+- Allgemein (blau) — kein Skill, allgemein
+- Handel (grün) — `skill: brainfiles/fremdrepos-signal` (Adapter-Contract auto-load)
+- Markt (orange) — kein Skill, Recherche
+- Wissen (rot) — kein Skill, Vault
+
+Hermes erstellt die Topics beim nächsten DM-Kontakt automatisch über die Telegram-API
+(kein thread_id manuell nötig). Topics-Modus muss noch per `/topic` im DM aktiviert werden
+(einmalig, nutzerseitig — Voraussetzung laut Doku).
+
+Hinweis: `profile_routes` unterstützt kein `thread_id`-Matching — Topic→Profil-Routing
+(z. B. Handel-Topic direkt an `agent-trade-kit`-Profil) ist nativ nicht möglich.
+Lösung: `fremdrepos-signal`-Skill delegiert im "Handel"-Topic via `hermes kanban`
+an das richtige Bot-Profil.
+
+### Nächster Schritt
+1. Im Telegram-DM `/topic` senden um Topics-Modus zu aktivieren (einmalig).
+2. Phase 2b: `agent-trade-kit` MCP-Server eintragen (nach `pnpm build`),
+   Bus-Integration (Signal-Schema als Nachrichtentyp), `wachen.json`-Gate erweitern,
+   Tests `test_signal_schema.py`. Bereich `handel` BEFUND vor Gate-Änderungen.
