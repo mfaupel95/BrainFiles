@@ -1569,3 +1569,28 @@ Warnung im Protokoll.
 
 Testartefakte entfernt (rc-*, secrets-test*, 7ztest). Ein fremder 7z-Temp-Ordner
 vom 05.10. (`opencode.exe`) blieb unangetastet.
+
+## MCP-Bloecke der Profile aus einer Quelle, 07.10.2026
+
+**Befund:** 17 Profile trugen handgepflegte Kopien des `mcp_servers`-Blocks. In
+allen fehlte `enabled: false` bei `affinity` und `revolut-x` (in 11 auch bei
+`blender`), dort liefen diese Server also, in der Haupt-Config nicht; ausserdem
+fehlte `cwd` bei `archiv`, `kraken`, `desktop-commander`, `tooluniverse`.
+
+**Regel:** Quelle fuer Hermes ist der Block `mcp_servers` in
+`Agenten/Hermes/config.yaml`. Die Profile werden daraus erzeugt:
+`python Agenten/Werkzeuge/mcp-profile-sync.py` prueft (Exit 1 bei Drift),
+`--anwenden` schreibt. Bewusste Abweichungen (Atlas-DB je Repo, `robinhood`,
+`gitlab` in `agent-trade-kit`, `MCP_DOCKER` in keinem Profil) stehen NUR in
+`Agenten/Hermes/profiles/mcp-abweichungen.yaml`. Der Abgleich Hermes <-> Claude
+Desktop bleibt beim (nicht versionierten) `MCP-Manifest.json` und
+`mcp-sync-check.ps1`.
+
+**Hauptmodell:** `inclusionai/ling-3.0-flash-fin:free` (Entscheidung Max,
+07.10.2026). Die Profile stehen weiter auf `meituan/longcat-2.5-preview:free`;
+`compression.threshold` (0.5) und das Fenster von ling sind nicht neu gemessen.
+
+**`a2a_agents.'8741749061'`:** zweiter Name fuer denselben lokalen Endpunkt wie
+`hermes-mcp` (Port 9900, Token `HERMES_A2A_TOKEN`); im Code nirgends benutzt,
+nur im Skill `a2a-telegram-skills` als "lokaler Peer" genannt. Woher die Zahl
+stammt, steht nirgends im Repo.

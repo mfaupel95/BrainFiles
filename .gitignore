@@ -499,6 +499,7 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Hermes/profiles/
 !Agenten/Hermes/profiles/*/
 !Agenten/Hermes/profiles/*.md
+!Agenten/Hermes/profiles/mcp-abweichungen.yaml
 # dann die Dateien
 !Agenten/Hermes/profiles/*/config.yaml
 !Agenten/Hermes/profiles/*/profile.yaml
@@ -644,6 +645,12 @@ Agenten/Hermes/automatik/spez/inventar.md
 # Fehlerquelle statt eine Loesung. Die Tests gehoeren in dieselbe Freigabe.
 !Agenten/Werkzeuge/zweige.py
 !Agenten/Werkzeuge/tests/test_zweige.py
+# MCP-Bloecke der Profile aus der Haupt-Config erzeugen (07.10.2026), Tests inklusive.
+!Agenten/Werkzeuge/mcp-profile-sync.py
+!Agenten/Werkzeuge/tests/test_mcp_profile_sync.py
+# MCP-Manifest: Quelle fuer den Abgleich Hermes <-> Claude Desktop (mcp-sync-check.ps1).
+# Enthaelt Pfade und Argumente, KEINE Schluessel - vor dem ersten Commit pruefen.
+!Agenten/MCP-Manifest.json
 !Agenten/Werkzeuge/marktdaten.py
 !Agenten/Werkzeuge/fenster_design.py
 !Agenten/Werkzeuge/hermes-gateway-task-deaktivieren.ps1
