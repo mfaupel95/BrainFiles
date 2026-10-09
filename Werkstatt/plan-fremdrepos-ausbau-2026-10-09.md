@@ -97,3 +97,20 @@ an das richtige Bot-Profil.
 2. Phase 2b: `agent-trade-kit` MCP-Server eintragen (nach `pnpm build`),
    Bus-Integration (Signal-Schema als Nachrichtentyp), `wachen.json`-Gate erweitern,
    Tests `test_signal_schema.py`. Bereich `handel` BEFUND vor Gate-Änderungen.
+
+## Phase 1 – Stand (10.10.)
+- `kraken-papier` (MCP, an): kraken-cli, nur Markt/Konto lesen + Papierhandel; Futures-Papierkonto 10 000 USD angelegt. Sync-Check OK.
+- `okx-agentkit` (MCP, **aus**): agent-trade-kit gebaut, startet nur mit `--demo --profile demo`. Wartet auf Demo-Key von Max (Profil `demo` in `~/.okx/config.toml`; `default_profile` bleibt `okx-prod`). Ein erster Versuch mit dem Live-Profil im Lesemodus wurde vom Klassifizierer abgelehnt und nicht wiederholt.
+- Skill `fremd-handel-papier` unter `Agenten/Hermes/skills/brainfiles/` beschreibt Nutzung und Fallen.
+
+### Adaptervertrag (Entwurf, noch nicht in `Agenten/Handel/` umgesetzt)
+Ein Fremd-Werkzeug liefert nur ein **Signal** oder eine **Papier-Order** im Format der bestehenden Spuren; es ruft nie selbst Live-Endpunkte.
+1. Signal: `{spur, symbol, richtung, einstieg, stop, hebel, quelle, zeit}` - Stop Pflicht, sonst verworfen.
+2. Ausfuehrung: Papier/Demo ueber die MCPs; Live nur ueber die bestehende Kette (`handeln.py --wachen`, `handel_erlaubt`, Herzschlag 180 min).
+3. Journal: jede Order landet im Journal der Spur (Bus), Fremdquelle im Feld `quelle`.
+4. Umsetzung erst nach Abstimmung mit dem Bereich `handel`; Befund via `bereiche.py --aufrufer bot --pfad Agenten/Handel/...`.
+
+### Offen
+- Demo-Key (Max). Danach `okx-agentkit` einschalten und gegen die Demo-Umgebung testen.
+- Topic-Delegierung: Zuordnung in der Hermes-Konfiguration (`dm_topics`) noch nicht angefasst.
+- Naechste Repos: intelligent-trading-bot (Signalpipeline auf OKX umbauen), tradememory-protocol (Journal).
