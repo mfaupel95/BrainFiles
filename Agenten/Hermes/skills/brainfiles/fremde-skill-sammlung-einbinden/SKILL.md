@@ -141,6 +141,29 @@ Hinweis, der dasMedium benennt und auf die eigene Designquelle verweist
 im Index keinen Platz hat (60-Zeichen-Grenze). Ohne ihn laedt der Agent den
 Skill fuer ein Fenster und setzt dann Webfarben neben die Hausquelle.
 
+## Finden und Einstufen vor der Uebernahme (Scan)
+
+"Suche nach noch nicht uebernommenen Skills (ab User-Profil, Laufwerken,
+Werkstatt-Wurzel)" ist eine Bestandsaufnahme, KEINE Uebernahme: nichts
+kopieren, am Ende Befund + TASKS-Eintraege mit Entscheidungsbedarf. Rezept,
+bekannte Baeume und Klassifikationstabelle: `references/fremde-skills-finden.md`.
+
+1. **Bekannte Baeume zuerst hashen** (Fundus MaxHirn/skills, Werkstatt/Repos,
+   Hausbibliothek, MaxHirn/.claude/skills + .agents/skills): byte-identisch
+   = bereits uebernommen, nur Hash-Neue sind Kandidaten. Ohne diesen Abgleich
+   zaehlt jede Install-Kopie eines bekannten Repos als "neu".
+2. **Erst klassifizieren, dann melden.** Eine Sammlung ist ein ORDNER mit
+   Git-Klon (origin/HEAD), README und skills/- oder plugins/-Struktur.
+   App-Bundles (Electron resources/), Install-/Cache-Kopien (copilot
+   marketplaces, VS-Code agentPlugins, .codex/.tmp) und tests/-Fixtures von
+   Werkzeugen tragen SKILL.md-Dateien, sind aber keine Quellen. Rohzaehlen
+   nie als Befund ausgeben - gemessen sind ~90 % der "neuen" Treffer Rauschen.
+3. **Junctions beim Abgleich beruecksichtigen.** Die okx-*-Junctions der
+   Hausbibliothek zeigen auf ~/.agents/skills: ein Scanner, der Junctions
+   nicht verfolgt, markiert diese GELADENEN Skills als NEU. Gegen die
+   Junction-ZIELE abgleichen - ein "neuer Fund" dort ist schon in der
+   Bibliothek.
+
 ## Vorgehen
 
 1. **Klon voll** nach `Werkstatt/Repos/<name>` (kein `--depth 1`): ein shallow
