@@ -66,6 +66,10 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
   still und die Regel wuerde umgangen. Wer in einen fremden Bereich schreibt, meldet
   das als BEFUND (`--aufrufer <bereich> --pfad <pfad>`, Exitcode 1 bei Konflikt), es
   wird nicht blockiert.
+  Seit 09.10.2026 gibt es zusaetzlich den Commit-Hook `.githooks/pre-commit`
+  (einmalig je Klon `git config core.hooksPath .githooks`): wer sich per
+  `BRAINFILES_BEREICH=handel|bot|wissen` ausweist, kann nicht in fremde Bereiche
+  committen; ohne die Variable wird nichts blockiert.
 - **Kein `git stash` im geteilten Arbeitsbaum (seit 08.10.2026).** Der Stash
   friert Arbeit ein, während andere Sitzungen weiter committen; ein späteres
   `stash pop` konfligiert gegen Zwischencommits (Fall „Vault-Schutzschicht":

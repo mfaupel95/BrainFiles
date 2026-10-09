@@ -1060,6 +1060,7 @@ Agenten/Handel/prophet_signal/handelsjournal.csv
 # Platte und die Regel im AGENTS.md verweist ins Leere.
 !Agenten/BEREICHE.json
 !Agenten/Werkzeuge/bereiche.py
+!.githooks/pre-commit
 !Agenten/FREMD.md
 !Agenten/Werkzeuge/fremd.py
 !Agenten/Werkzeuge/bestand.py
