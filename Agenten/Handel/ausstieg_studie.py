@@ -212,6 +212,8 @@ def lauf(a):
                 return memo[key]
 
             sigs = fb.signale(k, ef, w)
+            if a.nur_long:                       # wie nur_long in klassik_regeln.bauen()
+                sigs = [x for x in sigs if x[1] == "long"]
             for name, kw in ARME:
                 for t in simuliere(k, sigs, sp, regel_aus, gb, atr, **kw):
                     r_ = reg[t["i"]]
@@ -374,6 +376,7 @@ def main(argv=None):
     ap.add_argument("--cache", default=str(HANDEL / "daten" / "fib_bt"))
     ap.add_argument("--aus", default=str(HANDEL / "daten" / "studie" / "ergebnis.json"))
     ap.add_argument("--auswerten", nargs="+")
+    ap.add_argument("--nur-long", action="store_true", help="Short-Signale verwerfen (wie nur_long in den Wachen)")
     ap.add_argument("--zaehlen", action="store_true", help="Plus-dann-Verlust-Zaehlung statt voller Studie")
     ap.add_argument("--zaehl-auswerten", nargs="+")
     a = ap.parse_args(argv)

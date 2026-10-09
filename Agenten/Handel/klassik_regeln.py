@@ -743,10 +743,16 @@ def bauen(name, ordner=None):
         if len(k) < int(w.get("mindest_kerzen", 210)):
             return None                  # lieber kein Signal als eines aus dem Nichts
         try:
-            return ein(k, w)
+            s = ein(k, w)
         except Exception as e:                                 # noqa: BLE001
             print("  %s: Regel nicht rechenbar (%s)" % (name, e), file=sys.stderr)
             return None
+        # nur_long (Auftrag Max 09.10.2026): Short-Signale eroeffnen nichts.
+        # Der Ausstieg (Gegensignal/Kanal) rechnet ueber `aus`, nicht ueber
+        # diese Funktion, und bleibt davon unberuehrt. Standard: aus.
+        if s == "short" and w.get("nur_long"):
+            return None
+        return s
 
     def ausstieg(p, w):
         if not w.get("ausstieg_bei_regel", True):
