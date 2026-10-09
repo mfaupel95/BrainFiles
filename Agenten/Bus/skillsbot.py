@@ -217,6 +217,23 @@ def _fenster_bilder(cache_key):
     return sorted(dateien, key=_bild_nummer)
 
 
+def _bilder_fuer_auftrag(nachricht, text, cache_key):
+    """Bilder, die zu DIESEM Auftrag gehoeren - nicht das ganze Chat-Fenster.
+
+    GEMESSEN 04.10.2026: Max schickte Fliesenbilder, dann einen Handelsauftrag
+    ("Spuren: Auswertung"). Der Bot haengte die Fliesenbilder an den
+    Handelsauftrag, weil er das GANZE Fenster an JEDE Nachricht haengte.
+
+    Regel: Bilder kommen nur mit, wenn die Nachricht selbst ein Bild
+    MITBRACHTE (dann ist der Text die Bildunterschrift) ODER der Text
+    ausdruecklich auf "Bild" verweist ("Muster im 2. Bild"). Ein reiner
+    Textauftrag ohne Bild und ohne "Bild"-Wort bekommt KEINE Bilder.
+    """
+    if not _bilder(nachricht) and "Bild" not in text:
+        return []
+    return _fenster_bilder(cache_key)
+
+
 def _mit_bildern(frage, pfade):
     """Die Bildpfade an den Auftrag haengen - der Agent soll sie SEHEN."""
     if not pfade:
@@ -1130,10 +1147,11 @@ def schleife():
                 if bild_fehler:
                     _log(chat, text[:40], 0, "bildfehler", 0,
                          fehler=bild_fehler)
-                # Das GANZE Fenster mitgeben, nicht nur das neue Bild: der
-                # Auftrag lautet "Muster im 2. Bild, Boden im 1. Bild" -
-                # beide liegen in der Ablage, nicht in dieser Nachricht.
-                bilder = _fenster_bilder(cache_key)
+                # Bilder NUR wenn die Nachricht selbst ein Bild hat oder der
+                # Text auf "Bild" verweist. Das GANZE Fenster an JEDE Nachricht
+                # zu haengen klebte am 04.10.2026 Fliesenbilder an einen
+                # Handelsauftrag ("Spuren: Auswertung").
+                bilder = _bilder_fuer_auftrag(nachricht, text, cache_key)
                 start = time.time()
                 try:
                     antwort, _ = bearbeite(_mit_bildern(text, bilder),
