@@ -79,7 +79,8 @@
       "PowerShell($log = \"C:\\\\Users\\\\faupe\\\\Documents\\\\BrainFiles\\\\Agenten\\\\Routinen\\\\logs\\\\sicherung-letzter-lauf.log\"; $lines = Get-Content $log -Encoding UTF8; Write-Host \"=== LETZTEN 50 ZEILEN ===\" ; $lines[-50..-1] | ForEach-Object { $_ })",
       "PowerShell(head -5)",
       "PowerShell(docker version 2>&1)",
-      "PowerShell(grep -i error)"
+      "PowerShell(grep -i error)",
+      "PowerShell(Stop-Process *)"
     ],
     "deny": [
       "Read(**/Zugaenge.md)",
