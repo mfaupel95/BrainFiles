@@ -48,6 +48,59 @@ Full human reference (every export, area payloads, backend, security):
 3. If loading fails the app shows a toast naming the error — fix the file
    and save again.
 
+## Installing catalog plugins and verifying they actually ran
+
+Installing is TWO steps and both must succeed:
+
+```
+hermes plugins install <name>     # clones the reviewed, SHA-pinned version
+hermes plugins enable <name>      # activation is separate — install alone leaves it off
+```
+
+`enable` output "Takes effect on next session" is normal: the desktop half
+loads live, but registered TOOLS are deferred to the next session
+("deferred: tools (next session)"). The desktop half of a unified package
+is auto-copied to `$HERMES_HOME/desktop-plugins/<id>/` and the app manages
+that copy — never hand-edit it.
+
+Harmless install noise: `Failed to load bundled provider plugin solstice:
+No module named 'httpx'` appears before the install summary and does NOT
+fail the install (a bundled provider this home doesn't use). Check the
+final `✓ Installed` line, not the stderr line.
+
+### Verifying a plugin stored data (desktop plugins only)
+
+Desktop-plugin state persists in the Electron local storage, NOT in
+`$HERMES_HOME/plugin-data/` (that dir is only for Python-side
+`plugin_data_dir` writes). Read it from the LevelDB:
+
+```
+# Windows: LevelDB under the app profile dir (user data), e.g.
+# %APPDATA%/hermes/Local Storage/leveldb/
+grep -a -l 'plugin.<name>' .../leveldb/*.ldb .../leveldb/*.log
+```
+
+Keys are `plugin.<id>.<key>` (e.g. `plugin.crypto-prices.last...`). Rules:
+- Use `grep -a` / binary read — LevelDB is binary; `strings` misses UTF-16.
+- Glob ALL `*.ldb` AND `*.log`: compaction rotates files between scans (a
+  key found in one file may be gone and live in another a minute later).
+  Absence in one snapshot is not absence overall.
+- Presence of the key WITH data is the proof the plugin ran (ticker prices
+  vs. an empty shell). Absence = the feature was never added through the
+  UI, not "plugin broken" — verify against the UI's data-entry step before
+  debugging.
+
+### Data-entry features are UI-only — do not write the storage
+
+Feeds, subscriptions and settings are entered in the plugin's desktop UI;
+writing the LevelDB or a state file by hand is an unsupported edit of
+third-party plugin internals. The plugin's own command bridge
+(`tools.py` → `broadcast_plugin_event` → `results/<id>.json`) needs its
+tools to be enabled AND a running desktop — and tools are deferred one
+session anyway. The reliable sequence: have the user add the data in the
+UI (name the exact Add → URL → Refresh steps), then verify via the
+storage key above.
+
 ## Quick Reference
 
 The ONLY import surface is `@hermes/plugin-sdk` (plus `react` /

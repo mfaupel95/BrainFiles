@@ -101,6 +101,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | Webhook routes and event-driven runs | `references/webhooks.md` |
 | A custom theme/skin ("synthwave theme", "change the gold ●") | `references/themes.md` + `templates/skin.yaml` |
 | A desktop app UI element (pane, widget, ⌘K command, page) | `references/desktop-plugins.md` + `templates/plugin.js` |
+| Installing/verifying a desktop catalog plugin (`hermes plugins install`, storage-level proof it ran) | `references/desktop-plugins.md` § Installing catalog plugins |
 | A live TUI panel or modal widget (ticker, clock, dashboard) | `references/tui-widgets.md` + `templates/clock.mjs` |
 | Pet mascots — install, select, scale, diagnose | `references/petdex.md` |
 | Windows-specific issues (keybinds, WinError 10106, BOM) | `references/windows-quirks.md` |

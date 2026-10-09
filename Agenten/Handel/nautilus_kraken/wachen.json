@@ -4,6 +4,7 @@
   "_status": "Papier-Modus mit gebautem Live-Zweig (Kraken-REST, 24.09.2026). Freigabekette eingerichtet: freigabe.erfuellt true, handel_erlaubt true, Live-Einsatz 1 EUR. Scharf wird sie erst durch ein OFFENES FREIGABEFENSTER (stellt der Dauerlauf, bestaetigt /ja oder der Bildschirm-Klick) UND freies EUR-Guthaben ueber mindest_guthaben_eur.",
   "symbol": "BTC/EUR",
   "paar": "XXBTZEUR",
+  "boerse": "kraken",
   "_paar_vermerk": "Kraken-REST-Paar zur Order (24.09.2026). kraken.py spricht die REST-API mit dem PAARNAMEN, nicht mit dem Nautilus-Symbol: der Nautilus-Name BTC/EUR wird von Kraken abgelehnt ('EQuery:Unknown asset pair'), gemessen am 24.09.2026.",
   "waehrung": "EUR",
   "produkt": "spot",

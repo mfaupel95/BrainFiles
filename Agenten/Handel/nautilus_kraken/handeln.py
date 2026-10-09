@@ -581,6 +581,17 @@ def lauf(modus):
             print("  %d Papier-Altlast(en) aus dem Live-Buch gebucht" % n_alt)
             positionen = z["positionen"]
             schreibe_zustand(z)
+        # Boersenabgleich (T-227): Buch gegen Boerse, nur im Live-Modus.
+        # Laeuft nach dem Buchabgleich, vor den Ausstiegen. Ist die Boerse
+        # nicht lesbar, bleibt alles unangetastet.
+        try:
+            import boersenabgleich
+            boersenabgleich.pruefe(z, wachen=w, anwenden=True,
+                                   journal=lambda **f: journal(w, **f),
+                                   standard="kraken")
+            schreibe_zustand(z)
+        except Exception as e:
+            print("  Boersenabgleich gescheitert (%s) - weiter ohne" % e)
     # Papierstand im gemeinsamen Buch: Positionen ohne modus=live stammen aus
     # dem Papierlauf. Ein Live-Lauf darf sie NICHT anfassen - sonst verkauft
     # der erste echte Zyklus BTC, das nie gekauft wurde (scanner/xperp hatten
