@@ -2,7 +2,7 @@
 
 Erzeugt von `Agenten/Werkzeuge/fundus-suche.ps1 -Index`. Nicht von Hand pflegen.
 
-Geklonte Fremd-Repos: **869 eindeutige Skills** in 34 Repos (1023 Dateien, 154 byte-identische Kopien zusammengefasst).
+Geklonte Fremd-Repos: **856 eindeutige Skills** in 33 Repos (1008 Dateien, 152 byte-identische Kopien zusammengefasst).
 
 Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-suche.ps1 -Begriff "<wort>"`.
 
@@ -46,38 +46,38 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `basic-memory\integrations\pi\skills\basic-memory-pi-setup\SKILL.md`
 - **basic-memory-setup** - Guide Basic Memory setup in Tau. Use when a user wants to install or configure the Tau memory extension, choose a memory destination or capture policy, verify connectivity, or troubleshoot setup. Chec...
   `basic-memory\integrations\tau\skills\basic-memory-setup\SKILL.md`
-- **bm-checkpoint** - Save a deliberate work checkpoint to Basic Memory with the story, changed files, verification, decisions, blockers, and the next action. Use when the user asks to checkpoint, wrap up, hand off, or rem...
-  `basic-memory\plugins\claude-code\skills\bm-checkpoint\SKILL.md`
 - **bm-checkpoint** - Create an immutable Codex handoff in Basic Memory and return an exact bm-orient resume command.
   `basic-memory\plugins\codex\skills\bm-checkpoint\SKILL.md`
-- **bm-decide** - Capture a durable engineering decision in Basic Memory with rationale, alternatives, consequences, and affected work.
-  `basic-memory\plugins\codex\skills\bm-decide\SKILL.md`
+- **bm-checkpoint** - Save a deliberate work checkpoint to Basic Memory with the story, changed files, verification, decisions, blockers, and the next action. Use when the user asks to checkpoint, wrap up, hand off, or rem...
+  `basic-memory\plugins\claude-code\skills\bm-checkpoint\SKILL.md`
 - **bm-decide** - Capture a durable engineering decision in Basic Memory with rationale, alternatives, consequences, and affected work. Use when the user makes or asks to record a real choice —
   `basic-memory\plugins\claude-code\skills\bm-decide\SKILL.md`
-- **bm-orient** - Resume from an exact Basic Memory checkpoint or orient Codex from current graph and repository evidence.
-  `basic-memory\plugins\codex\skills\bm-orient\SKILL.md`
+- **bm-decide** - Capture a durable engineering decision in Basic Memory with rationale, alternatives, consequences, and affected work.
+  `basic-memory\plugins\codex\skills\bm-decide\SKILL.md`
 - **bm-orient** - Orient Claude from Basic Memory before substantial repo work by reading active tasks, open decisions, recent checkpoints, and repo conventions. Use when resuming old work or when the user asks where t...
   `basic-memory\plugins\claude-code\skills\bm-orient\SKILL.md`
-- **bm-remember** - Quickly save a small fact, reminder, or user preference into Basic Memory from Codex without turning it into a full decision or checkpoint.
-  `basic-memory\plugins\codex\skills\bm-remember\SKILL.md`
+- **bm-orient** - Resume from an exact Basic Memory checkpoint or orient Codex from current graph and repository evidence.
+  `basic-memory\plugins\codex\skills\bm-orient\SKILL.md`
 - **bm-remember** - Quickly capture a thought, fact, or reminder into Basic Memory as a lightweight note. Use when the user says
   `basic-memory\plugins\claude-code\skills\bm-remember\SKILL.md`
-- **bm-setup** - Set up the Basic Memory plugin for this project — a short guided interview that configures the project mapping, seeds note schemas, learns or suggests placement conventions, and enables capture reflex...
-  `basic-memory\plugins\claude-code\skills\bm-setup\SKILL.md`
+- **bm-remember** - Quickly save a small fact, reminder, or user preference into Basic Memory from Codex without turning it into a full decision or checkpoint.
+  `basic-memory\plugins\codex\skills\bm-remember\SKILL.md`
 - **bm-setup** - Set up Basic Memory for Codex at user or project level by mapping a Basic Memory project and seeding schemas.
   `basic-memory\plugins\codex\skills\bm-setup\SKILL.md`
-- **bm-share** - Promote a note from your personal Basic Memory project to a shared team project, with attribution. Use when the user says
-  `basic-memory\plugins\claude-code\skills\bm-share\SKILL.md`
+- **bm-setup** - Set up the Basic Memory plugin for this project — a short guided interview that configures the project mapping, seeds note schemas, learns or suggests placement conventions, and enables capture reflex...
+  `basic-memory\plugins\claude-code\skills\bm-setup\SKILL.md`
 - **bm-share** - Share a personal Basic Memory note to a configured team project from Codex with attribution and explicit confirmation.
   `basic-memory\plugins\codex\skills\bm-share\SKILL.md`
-- **bm-status** - Show the Basic Memory plugin's current state for this project — active project, capture folders, output style, recent session checkpoints, and whether Basic Memory is reachable.
-  `basic-memory\plugins\claude-code\skills\bm-status\SKILL.md`
+- **bm-share** - Promote a note from your personal Basic Memory project to a shared team project, with attribution. Use when the user says
+  `basic-memory\plugins\claude-code\skills\bm-share\SKILL.md`
 - **bm-status** - Report the Basic Memory for Codex configuration, reachability, hook expectations, recent Codex checkpoints, and active tasks.
   `basic-memory\plugins\codex\skills\bm-status\SKILL.md`
-- **bm-writing** - Apply the user-customizable writing standard for Basic Memory notes created or substantially revised by Codex. Use with bm-checkpoint, bm-decide, bm-remember, and other Basic Memory note-writing workf...
-  `basic-memory\plugins\codex\skills\bm-writing\SKILL.md`
+- **bm-status** - Show the Basic Memory plugin's current state for this project — active project, capture folders, output style, recent session checkpoints, and whether Basic Memory is reachable.
+  `basic-memory\plugins\claude-code\skills\bm-status\SKILL.md`
 - **bm-writing** - Apply the user-customizable writing standard for Basic Memory notes created or substantially revised by Claude. Use with bm-remember, the basic-memory output style's decision captures, and other Basic...
   `basic-memory\plugins\claude-code\skills\bm-writing\SKILL.md`
+- **bm-writing** - Apply the user-customizable writing standard for Basic Memory notes created or substantially revised by Codex. Use with bm-checkpoint, bm-decide, bm-remember, and other Basic Memory note-writing workf...
+  `basic-memory\plugins\codex\skills\bm-writing\SKILL.md`
 - **cmux** - End-user control of cmux topology and routing (windows, workspaces, panes/surfaces, focus, moves, reorder, identify, trigger flash). Use when automation needs deterministic placement and navigation in...
   `basic-memory\.agents\skills\cmux\SKILL.md`
 - **cmux-markdown** - Open markdown files in a formatted viewer panel with live reload. Use when you need to display plans, documentation, or notes alongside the terminal with rich rendering (headings, code blocks, tables,...
@@ -375,33 +375,23 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `context7\skills\context7-cli\SKILL.md`
 - **context7-docs** - Fetch up-to-date documentation and code examples for any library, framework, SDK, CLI tool, or cloud service. Use whenever the user asks about a specific library — even well-known ones like React, Nex...
   `context7\packages\pi\skills\context7-docs\SKILL.md`
-- **context7-mcp** - This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of spe...
-  `context7\skills\context7-mcp\SKILL.md`
 - **context7-mcp** - Fetches current, version-specific library documentation and code examples through the Context7 MCP server. Use whenever the user asks about a library, framework, SDK, API, CLI tool, or cloud service, ...
   `context7\plugins\agent-plugins\context7\skills\context7-mcp\SKILL.md`
+- **context7-mcp** - This skill should be used when the user asks about libraries, frameworks, API references, or needs code examples. Activates for setup questions, code generation involving libraries, or mentions of spe...
+  `context7\skills\context7-mcp\SKILL.md`
 - **find-docs** - Retrieves up-to-date documentation, API references, and code examples for any developer technology. Use this skill whenever the user asks about a specific library, framework, SDK, CLI tool, or cloud s...
   `context7\skills\find-docs\SKILL.md`
 
-## deepseek-harness (38)
+## deepseek-harness (27)
 
-- **a11y-debugging** - Uses Chrome DevTools MCP for accessibility (a11y) debugging and auditing based on web.dev guidelines. Use when testing semantic HTML, ARIA labels, focus states, keyboard navigation, tap targets, and c...
-  `deepseek-harness\node_modules\.pnpm\chrome-devtools-mcp@1.9.0\node_modules\chrome-devtools-mcp\skills\a11y-debugging\SKILL.md`
-- **agent-experience** - Use when writing or changing a model-facing tool definition (name, description, parameter schema, or its system-prompt section), and when designing skills, context loading, or multi-step workflows, to...
-  `deepseek-harness\packages\preset\agent-preset\skills\agent-experience\SKILL.md`
 - **agent-experience**
   `deepseek-harness\.agents\skills\agent-experience\SKILL.md`
-- **chrome-devtools** - Uses Chrome DevTools via MCP for efficient debugging, troubleshooting and browser automation. Use when debugging web pages, automating browser interactions, analyzing performance, or inspecting networ...
-  `deepseek-harness\node_modules\.pnpm\chrome-devtools-mcp@1.9.0\node_modules\chrome-devtools-mcp\skills\chrome-devtools\SKILL.md`
-- **chrome-devtools-cli** - Use this skill to write shell scripts or run shell commands to automate tasks in the browser or otherwise use Chrome DevTools via CLI.
-  `deepseek-harness\node_modules\.pnpm\chrome-devtools-mcp@1.9.0\node_modules\chrome-devtools-mcp\skills\chrome-devtools-cli\SKILL.md`
-- **cookie-debugging** - Uses Chrome DevTools MCP for inspecting, debugging, and testing cookies, session state, authentication issues, and cookie consent compliance. Use when diagnosing 401/403 errors, authentication redirec...
-  `deepseek-harness\node_modules\.pnpm\chrome-devtools-mcp@1.9.0\node_modules\chrome-devtools-mcp\skills\cookie-debugging\SKILL.md`
+- **agent-experience** - Use when writing or changing a model-facing tool definition (name, description, parameter schema, or its system-prompt section), and when designing skills, context loading, or multi-step workflows, to...
+  `deepseek-harness\packages\preset\agent-preset\skills\agent-experience\SKILL.md`
 - **cordis-composition-reference** - Use when writing or reading a Cordis bundle patch or agent preset for this harness and you need the Loader YAML dialect (insert, override by id, group, disabled, isolate, !!js) or the list of installa...
   `deepseek-harness\packages\preset\agent-preset\skills\cordis-composition-reference\SKILL.md`
 - **cordis-plugin-development** - Use when designing, reviewing, adding, enabling, disabling, installing, configuring, or debugging a plugin, bundle, feature, page, panel, tool, or MCP connection in the current Harness profile, includ...
   `deepseek-harness\packages\preset\agent-preset\skills\cordis-plugin-development\SKILL.md`
-- **debug-optimize-lcp** - Guides debugging and optimizing Largest Contentful Paint (LCP) using Chrome DevTools MCP tools. Use this skill whenever the user asks about LCP performance, slow page loads, Core Web Vitals optimizati...
-  `deepseek-harness\node_modules\.pnpm\chrome-devtools-mcp@1.9.0\node_modules\chrome-devtools-mcp\skills\debug-optimize-lcp\SKILL.md`
 - **diagnose-windows-sandbox-acl** - 'Use on Windows for unexpected DSH sandbox access denials: workspace writes or listing fail, or an ordinarily readable path cannot be read. One bundled command inspects the path and every ancestor and...
   `deepseek-harness\packages\sandbox\sandbox-windows-acl\assets\diagnose-windows-sandbox-acl\SKILL.md`
 - **dsh-archive-agent-notes** - Use when adding, auditing, pruning, archiving, restoring, or reviewing Agent Notes in deepseek-harness; checks every new note for superseded active records, deletes small UI and purely mechanical reco...
@@ -432,10 +422,6 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `deepseek-harness\.agents\skills\dsh-trim-cot-leakage\SKILL.md`
 - **editing-cordis-compositions** - Use when creating, changing, or validating an agent preset or other Cordis composition for this harness, including deciding host versus preset placement and checking that an authored preset mounts.
   `deepseek-harness\packages\preset\agent-preset\skills\editing-cordis-compositions\SKILL.md`
-- **get-tsconfig** - Find, parse, and query tsconfig.json files — extends resolution, file matching, path alias resolution. Use when reading tsconfig.json, checking if a file belongs to a tsconfig, resolving TypeScript pa...
-  `deepseek-harness\node_modules\.pnpm\get-tsconfig@5.0.0-beta.5\node_modules\get-tsconfig\skills\get-tsconfig\SKILL.md`
-- **memory-leak-debugging** - Diagnoses and resolves memory leaks in JavaScript/Node.js applications. Use when a user reports high memory usage, OOM errors, or wants to capture, compare, or inspect heap snapshots with Chrome DevTo...
-  `deepseek-harness\node_modules\.pnpm\chrome-devtools-mcp@1.9.0\node_modules\chrome-devtools-mcp\skills\memory-leak-debugging\SKILL.md`
 - **model-only-skill** - Prove user-disabled skills remain available to the model.
   `deepseek-harness\snapshots\session\skill-load\workspace\.dsh\skills\model-only-skill\SKILL.md`
 - **office-docx** - Create, read, edit, and check Word documents (.docx), including reports, letters, and formatted tables. Use when a DOCX file is an input or requested deliverable. Load this skill before running Office...
@@ -444,20 +430,12 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `deepseek-harness\packages\skill\skill-office\assets\office-pptx\SKILL.md`
 - **office-xlsx** - Read, create, and modify Excel workbooks (.xlsx), including data, formulas, formatting, and pandas analysis. Use for Excel inputs or deliverables. Load before running Office commands. Data and formula...
   `deepseek-harness\packages\skill\skill-office\assets\office-xlsx\SKILL.md`
-- **playwright-cli** - Automate browser interactions, test web pages and work with Playwright tests.
-  `deepseek-harness\node_modules\.pnpm\playwright-core@1.63.0-alpha-2026-08-31\node_modules\playwright-core\lib\tools\skills\playwright-cli\SKILL.md`
-- **playwright-component-testing** - Set up component testing with Playwright using a story gallery — scaffold stories and a gallery dev page driven by the built-in mount fixture, no dedicated component-testing runtime. Use when asked to...
-  `deepseek-harness\node_modules\.pnpm\playwright-core@1.63.0-alpha-2026-08-31\node_modules\playwright-core\lib\tools\skills\playwright-component-testing\SKILL.md`
-- **playwright-trace** - Inspect Playwright trace files from the command line — list actions, view requests, console, errors, snapshots and screenshots.
-  `deepseek-harness\node_modules\.pnpm\playwright-core@1.63.0-alpha-2026-08-31\node_modules\playwright-core\lib\tools\skills\playwright-trace\SKILL.md`
 - **preview-tour** - Inspect the bundled Preview workspace and its deterministic Session examples.
   `deepseek-harness\packages\experimental\webworker-runtime\tests\fixtures\vfs-example\workspace\.agents\skills\preview-tour\SKILL.md`
 - **record-browser-gif** - Record browser or Web UI interaction demos as optimized GIFs using the available browser-control workflow, optional Playwright Videos for higher capture frame rates, and deterministic encoding, then a...
   `deepseek-harness\.agents\skills\record-browser-gif\SKILL.md`
 - **snapshot-skill** - Exercise project skill discovery and loading in snapshot tests.
   `deepseek-harness\snapshots\session\skill-load\workspace\.dsh\skills\snapshot-skill\SKILL.md`
-- **troubleshooting** - Uses Chrome DevTools MCP and documentation to troubleshoot connection and target issues. Trigger this skill when list_pages, new_page, or navigate_page fail, or when the server initialization fails.
-  `deepseek-harness\node_modules\.pnpm\chrome-devtools-mcp@1.9.0\node_modules\chrome-devtools-mcp\skills\troubleshooting\SKILL.md`
 - **user-only-skill** - Prove model-disabled skills stay outside the model catalog.
   `deepseek-harness\snapshots\session\skill-load\workspace\.dsh\skills\user-only-skill\SKILL.md`
 
@@ -661,41 +639,41 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **archive-crawler** - Universal archivist for personal file archives (Dropbox/B2/Gmail-takeout/local-mount/hard-drive-dump). Filters for high-value content (the user's own writing, ideas, relationships) and surfaces it int...
   `gbrain\plugin\skills\archive-crawler\SKILL.md`
 - **article-enrichment** - Transform raw article text dumps in the brain into structured pages with executive summary, verbatim quotes, key insights, why-it-matters, and cross-references. Replaces walls-of-text with quotable, a...
-  `gbrain\plugin\skills\article-enrichment\SKILL.md`
-- **article-enrichment** - Transform raw article text dumps in the brain into structured pages with executive summary, verbatim quotes, key insights, why-it-matters, and cross-references. Replaces walls-of-text with quotable, a...
   `gbrain\skills\article-enrichment\SKILL.md`
-- **ask-user** - Reusable pattern for presenting the user with explicit choices and gating execution until they respond. Used by other skills when a decision point requires human input before proceeding. Platform-agno...
-  `gbrain\skills\ask-user\SKILL.md`
+- **article-enrichment** - Transform raw article text dumps in the brain into structured pages with executive summary, verbatim quotes, key insights, why-it-matters, and cross-references. Replaces walls-of-text with quotable, a...
+  `gbrain\plugin\skills\article-enrichment\SKILL.md`
 - **ask-user** - Reusable pattern for presenting the user with explicit choices and gating execution until they respond. Used by other skills when a decision point requires human input before proceeding. Platform-agno...
   `gbrain\plugin\skills\ask-user\SKILL.md`
+- **ask-user** - Reusable pattern for presenting the user with explicit choices and gating execution until they respond. Used by other skills when a decision point requires human input before proceeding. Platform-agno...
+  `gbrain\skills\ask-user\SKILL.md`
 - **blog-ingest** - Feed and whole-publication ingestion: turn an entire blog, newsletter, or RSS/Atom archive into brain source pages. Covers feed discovery, pagination walking, normalization to a common article shape, ...
   `gbrain\plugin\skills\blog-ingest\SKILL.md`
 - **blog-ingest** - Feed and whole-publication ingestion: turn an entire blog, newsletter, or RSS/Atom archive into brain source pages. Covers feed discovery, pagination walking, normalization to a common article shape, ...
   `gbrain\skills\blog-ingest\SKILL.md`
 - **book-mirror** - Take any book (EPUB/PDF), produce a personalized chapter-by-chapter analysis. Each chapter is preserved in detail (The Chapter) and mirrored back to the reader's actual life (The Mirror) using brain c...
   `gbrain\plugin\skills\book-mirror\SKILL.md`
-- **book-mirror** - Take any book (EPUB/PDF), produce a personalized chapter-by-chapter analysis. Each chapter is preserved in detail (The Chapter) and mirrored back to the reader's actual life (The Mirror) using brain c...
-  `gbrain\skills\book-mirror\SKILL.md`
 - **book-mirror**
   `gbrain\test\fixtures\openclaw-mixed-merge\skills\book-mirror\SKILL.md`
-- **brain-ingest-gate** - Pre-write quality gate for content entering the brain. No raw copies: a bare cp/mv into the brain repo is a bug. Before any new page lands, resolve named entities registry-first (a vector score is a f...
-  `gbrain\plugin\skills\brain-ingest-gate\SKILL.md`
+- **book-mirror** - Take any book (EPUB/PDF), produce a personalized chapter-by-chapter analysis. Each chapter is preserved in detail (The Chapter) and mirrored back to the reader's actual life (The Mirror) using brain c...
+  `gbrain\skills\book-mirror\SKILL.md`
 - **brain-ingest-gate** - Pre-write quality gate for content entering the brain. No raw copies: a bare cp/mv into the brain repo is a bug. Before any new page lands, resolve named entities registry-first (a vector score is a f...
   `gbrain\skills\brain-ingest-gate\SKILL.md`
-- **brain-link-discipline** - When you report a brain page to the user — created, edited, committed, or relayed from a subagent — a working link is part of the deliverable, in the SAME message. Derive the path mechanically (git ls...
-  `gbrain\plugin\skills\brain-link-discipline\SKILL.md`
+- **brain-ingest-gate** - Pre-write quality gate for content entering the brain. No raw copies: a bare cp/mv into the brain repo is a bug. Before any new page lands, resolve named entities registry-first (a vector score is a f...
+  `gbrain\plugin\skills\brain-ingest-gate\SKILL.md`
 - **brain-link-discipline** - When you report a brain page to the user — created, edited, committed, or relayed from a subagent — a working link is part of the deliverable, in the SAME message. Derive the path mechanically (git ls...
   `gbrain\skills\brain-link-discipline\SKILL.md`
-- **brain-ops** - Core read/write cycle for the generic agent-workspace fixture.
-  `gbrain\test\fixtures\generic-agents-workspace\skills\brain-ops\SKILL.md`
+- **brain-link-discipline** - When you report a brain page to the user — created, edited, committed, or relayed from a subagent — a working link is part of the deliverable, in the SAME message. Derive the path mechanically (git ls...
+  `gbrain\plugin\skills\brain-link-discipline\SKILL.md`
 - **brain-ops** - Brain knowledge base operations. The core read/write cycle: brain-first lookup, read-enrich-write loop, source attribution, ambient enrichment, back-linking. Read this before any brain interaction.
   `gbrain\plugin\skills\brain-ops\SKILL.md`
-- **brain-ops** - Read, enrich, and write brain pages with source attribution.
-  `gbrain\test\fixtures\skill-catalog\skills\brain-ops\SKILL.md`
 - **brain-ops** - Brain knowledge base operations. The core read/write cycle: brain-first lookup, read-enrich-write loop, source attribution, ambient enrichment, back-linking. Read this before any brain interaction.
   `gbrain\skills\brain-ops\SKILL.md`
 - **brain-ops** - Core read/write cycle for the OpenClaw reference fixture.
   `gbrain\test\fixtures\openclaw-reference-minimal\skills\brain-ops\SKILL.md`
+- **brain-ops** - Read, enrich, and write brain pages with source attribution.
+  `gbrain\test\fixtures\skill-catalog\skills\brain-ops\SKILL.md`
+- **brain-ops** - Core read/write cycle for the generic agent-workspace fixture.
+  `gbrain\test\fixtures\generic-agents-workspace\skills\brain-ops\SKILL.md`
 - **brain-pdf** - Generate a publication-quality PDF from any brain page via the gstack make-pdf binary. Strips YAML frontmatter, sanitizes emoji, applies running headers and page numbers. Brain page is always the sour...
   `gbrain\skills\brain-pdf\SKILL.md`
 - **brain-pdf** - Generate a publication-quality PDF from any brain page via the gstack make-pdf binary. Strips YAML frontmatter, sanitizes emoji, applies running headers and page numbers. Brain page is always the sour...
@@ -703,15 +681,15 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **brain-search**
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\brain-search\SKILL.md`
 - **brain-taxonomist** - Filing gate for ALL brain writes. Consulted before creating any new brain page to determine the correct path. Reads the ACTIVE schema pack via `gbrain schema show --json` — no hardcoded directory tabl...
-  `gbrain\skills\brain-taxonomist\SKILL.md`
-- **brain-taxonomist** - Filing gate for ALL brain writes. Consulted before creating any new brain page to determine the correct path. Reads the ACTIVE schema pack via `gbrain schema show --json` — no hardcoded directory tabl...
   `gbrain\plugin\skills\brain-taxonomist\SKILL.md`
-- **briefing** - Compile daily briefing with meeting context, active deals, and citation tracking
-  `gbrain\skills\briefing\SKILL.md`
+- **brain-taxonomist** - Filing gate for ALL brain writes. Consulted before creating any new brain page to determine the correct path. Reads the ACTIVE schema pack via `gbrain schema show --json` — no hardcoded directory tabl...
+  `gbrain\skills\brain-taxonomist\SKILL.md`
 - **briefing** - Compile daily briefing with meeting context, active deals, and citation tracking
   `gbrain\plugin\skills\briefing\SKILL.md`
 - **briefing**
   `gbrain\test\fixtures\openclaw-mixed-merge\skills\briefing\SKILL.md`
+- **briefing** - Compile daily briefing with meeting context, active deals, and citation tracking
+  `gbrain\skills\briefing\SKILL.md`
 - **broken**
   `gbrain\test\fixtures\skill-catalog\skills\broken\SKILL.md`
 - **bulk-ingestion** - End-to-end discipline for turning any large data source (audio libraries, email takeouts, document corpora, chat exports, API dumps) into brain pages at scale. The lifecycle spine: SCHEMA → ACCESS → T...
@@ -720,12 +698,12 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `gbrain\skills\bulk-ingestion\SKILL.md`
 - **calendar-prep**
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\calendar-prep\SKILL.md`
-- **capture** - Synthetic fixture with a boolean marker.
-  `gbrain\test\fixtures\guards\check-skill-publication.ts\good\skills\capture\SKILL.md`
 - **capture** - Save any thought or content into the brain via one CLI command. The single human-facing entrypoint that replaces
   `gbrain\skills\capture\SKILL.md`
 - **capture** - Save any thought or content into the brain via one CLI command. The single human-facing entrypoint that replaces
   `gbrain\plugin\skills\capture\SKILL.md`
+- **capture** - Synthetic fixture with a boolean marker.
+  `gbrain\test\fixtures\guards\check-skill-publication.ts\good\skills\capture\SKILL.md`
 - **capture** - Synthetic fixture with a list-valued marker.
   `gbrain\test\fixtures\guards\check-skill-publication.ts\bad\skills\capture\SKILL.md`
 - **chat-connectors** - Connect a ChatGPT or Claude account and sync its conversation history into the brain automatically. Cookie paste-in is the primary lane; sync is incremental (watermark + trailing-window gap-heal), and...
@@ -733,9 +711,9 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **chat-connectors** - Connect a ChatGPT or Claude account and sync its conversation history into the brain automatically. Cookie paste-in is the primary lane; sync is incremental (watermark + trailing-window gap-heal), and...
   `gbrain\skills\chat-connectors\SKILL.md`
 - **citation-fixer** - Audit and fix citation formatting across brain pages. Ensures every fact has an inline [Source: ...] citation matching the standard format. Extended in v0.25.1: scans for broken tweet/post references ...
-  `gbrain\plugin\skills\citation-fixer\SKILL.md`
-- **citation-fixer** - Audit and fix citation formatting across brain pages. Ensures every fact has an inline [Source: ...] citation matching the standard format. Extended in v0.25.1: scans for broken tweet/post references ...
   `gbrain\skills\citation-fixer\SKILL.md`
+- **citation-fixer** - Audit and fix citation formatting across brain pages. Ensures every fact has an inline [Source: ...] citation matching the standard format. Extended in v0.25.1: scans for broken tweet/post references ...
+  `gbrain\plugin\skills\citation-fixer\SKILL.md`
 - **citation-graph-ingest** - Build a TYPED citation/reference graph over an ingested corpus — not just embeddings. Flat similarity retrieval cannot tell you that document A *overrules* B, *distinguishes* C, or *relies_on* D. This...
   `gbrain\plugin\skills\citation-graph-ingest\SKILL.md`
 - **citation-graph-ingest** - Build a TYPED citation/reference graph over an ingested corpus — not just embeddings. Flat similarity retrieval cannot tell you that document A *overrules* B, *distinguishes* C, or *relies_on* D. This...
@@ -747,9 +725,9 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **cold-start** - Day-one data bootstrapping for a new brain. Sequences the highest-leverage data sources to go from empty brain to useful brain in one session. Uses ClawVisor for safe credential handling — the agent n...
   `gbrain\skills\cold-start\SKILL.md`
 - **company-brainify** - Extract a sanitized shared team/company brain from a personal brain. Strips internal ratings, compensation, performance assessments, retention and political dynamics from pages, takes, and facts acros...
-  `gbrain\skills\company-brainify\SKILL.md`
-- **company-brainify** - Extract a sanitized shared team/company brain from a personal brain. Strips internal ratings, compensation, performance assessments, retention and political dynamics from pages, takes, and facts acros...
   `gbrain\plugin\skills\company-brainify\SKILL.md`
+- **company-brainify** - Extract a sanitized shared team/company brain from a personal brain. Strips internal ratings, compensation, performance assessments, retention and political dynamics from pages, takes, and facts acros...
+  `gbrain\skills\company-brainify\SKILL.md`
 - **compliant-callout** - External-lookup skill with canonical Convention callout
   `gbrain\test\fixtures\brain-first-skills\compliant-callout\SKILL.md`
 - **compliant-phase** - External-lookup skill with explicit Phase 1 brain heading
@@ -769,27 +747,27 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **context-now** - ALWAYS-ON time-sensitivity discipline for the OpenClaw reference fixture.
   `gbrain\test\fixtures\openclaw-reference-minimal\skills\context-now\SKILL.md`
 - **conversation-archive** - Import AI-assistant chat exports (ChatGPT, Claude, Perplexity) and agent session transcripts into the brain as one dated page per conversation under conversations/, validate each page against the nati...
-  `gbrain\plugin\skills\conversation-archive\SKILL.md`
-- **conversation-archive** - Import AI-assistant chat exports (ChatGPT, Claude, Perplexity) and agent session transcripts into the brain as one dated page per conversation under conversations/, validate each page against the nati...
   `gbrain\skills\conversation-archive\SKILL.md`
+- **conversation-archive** - Import AI-assistant chat exports (ChatGPT, Claude, Perplexity) and agent session transcripts into the brain as one dated page per conversation under conversations/, validate each page against the nati...
+  `gbrain\plugin\skills\conversation-archive\SKILL.md`
 - **correction-pipeline** - When the user corrects a factual error, root-cause it immediately. Don't just note the correction — trace the error to its source, fix the source, and prevent recurrence. Every factual error is either...
   `gbrain\plugin\skills\correction-pipeline\SKILL.md`
 - **correction-pipeline** - When the user corrects a factual error, root-cause it immediately. Don't just note the correction — trace the error to its source, fix the source, and prevent recurrence. Every factual error is either...
   `gbrain\skills\correction-pipeline\SKILL.md`
 - **cron-scheduler** - Schedule management with staggering, quiet hours, and wake-up override. Validates schedules, prevents collisions, and gates delivery during quiet hours.
-  `gbrain\skills\cron-scheduler\SKILL.md`
-- **cron-scheduler** - Schedule management with staggering, quiet hours, and wake-up override. Validates schedules, prevents collisions, and gates delivery during quiet hours.
   `gbrain\plugin\skills\cron-scheduler\SKILL.md`
-- **cross-modal-review** - Quality gate via second model. Spawn a different AI model to review work before committing. Includes refusal routing: if one model refuses, switch silently to the next. Extended in v0.25.1 with struct...
-  `gbrain\skills\cross-modal-review\SKILL.md`
+- **cron-scheduler** - Schedule management with staggering, quiet hours, and wake-up override. Validates schedules, prevents collisions, and gates delivery during quiet hours.
+  `gbrain\skills\cron-scheduler\SKILL.md`
 - **cross-modal-review** - Quality gate via second model. Spawn a different AI model to review work before committing. Includes refusal routing: if one model refuses, switch silently to the next. Extended in v0.25.1 with struct...
   `gbrain\plugin\skills\cross-modal-review\SKILL.md`
+- **cross-modal-review** - Quality gate via second model. Spawn a different AI model to review work before committing. Includes refusal routing: if one model refuses, switch silently to the next. Extended in v0.25.1 with struct...
+  `gbrain\skills\cross-modal-review\SKILL.md`
 - **daily-digest**
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\daily-digest\SKILL.md`
 - **daily-task-manager** - Task lifecycle management with stable task IDs. Add, complete, defer, remove, and review tasks with deterministic action routing and fail-closed ambiguity handling. Maintains a running task list as a ...
-  `gbrain\skills\daily-task-manager\SKILL.md`
-- **daily-task-manager** - Task lifecycle management with stable task IDs. Add, complete, defer, remove, and review tasks with deterministic action routing and fail-closed ambiguity handling. Maintains a running task list as a ...
   `gbrain\plugin\skills\daily-task-manager\SKILL.md`
+- **daily-task-manager** - Task lifecycle management with stable task IDs. Add, complete, defer, remove, and review tasks with deterministic action routing and fail-closed ambiguity handling. Maintains a running task list as a ...
+  `gbrain\skills\daily-task-manager\SKILL.md`
 - **daily-task-prep** - Morning preparation. Calendar lookahead, meeting context loading, open threads from yesterday, active task review. Extends briefing with actionable prep.
   `gbrain\plugin\skills\daily-task-prep\SKILL.md`
 - **daily-task-prep** - Morning preparation. Calendar lookahead, meeting context loading, open threads from yesterday, active task review. Extends briefing with actionable prep.
@@ -799,9 +777,9 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **data-loss-gate** - Confirmation gate before any bulk delete, cleanup, or destructive operation that could result in data loss — shell-level (rm -rf, git rm, bulk sed) or brain-level (bulk forget, delete sweeps, purge-de...
   `gbrain\skills\data-loss-gate\SKILL.md`
 - **data-research** - Structured data research: search sources, extract structured data, archive raw sources, maintain canonical tracker pages, deduplicate. Parameterized via YAML recipes for investor updates, donations, c...
-  `gbrain\skills\data-research\SKILL.md`
-- **data-research** - Structured data research: search sources, extract structured data, archive raw sources, maintain canonical tracker pages, deduplicate. Parameterized via YAML recipes for investor updates, donations, c...
   `gbrain\plugin\skills\data-research\SKILL.md`
+- **data-research** - Structured data research: search sources, extract structured data, archive raw sources, maintain canonical tracker pages, deduplicate. Parameterized via YAML recipes for investor updates, donations, c...
+  `gbrain\skills\data-research\SKILL.md`
 - **db-repair** - Auto-fix gbrain's Postgres access so the brain stays available. When any gbrain command or MCP tool result carries a `GBRAIN_DB_ACCESS <reason>` marker (or an operator reports the brain database is do...
   `gbrain\skills\db-repair\SKILL.md`
 - **db-repair** - Auto-fix gbrain's Postgres access so the brain stays available. When any gbrain command or MCP tool result carries a `GBRAIN_DB_ACCESS <reason>` marker (or an operator reports the brain database is do...
@@ -811,17 +789,17 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **draft-in-voice** - Ghostwrite content in a specific person's voice from a VALIDATED voice profile — tweets, replies, short posts, launch copy, recruiting blurbs, emails. Loads the subject's voice profile (people/<slug>-...
   `gbrain\plugin\skills\draft-in-voice\SKILL.md`
 - **eiirp** - Everything In Its Right Place. The universal post-work organizer. After any significant work session, EIIRP runs a 7-phase audit: (1) inventory every output, (2) walk taxonomy to decide where each lan...
-  `gbrain\skills\eiirp\SKILL.md`
-- **eiirp** - Everything In Its Right Place. The universal post-work organizer. After any significant work session, EIIRP runs a 7-phase audit: (1) inventory every output, (2) walk taxonomy to decide where each lan...
   `gbrain\plugin\skills\eiirp\SKILL.md`
+- **eiirp** - Everything In Its Right Place. The universal post-work organizer. After any significant work session, EIIRP runs a 7-phase audit: (1) inventory every output, (2) walk taxonomy to decide where each lan...
+  `gbrain\skills\eiirp\SKILL.md`
 - **email-triage**
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\email-triage\SKILL.md`
 - **enrich** - Enrich brain pages with tiered enrichment protocol. Creates and updates person/company pages with compiled truth, timeline, and cross-links. Use when a new entity is mentioned or an existing page need...
-  `gbrain\plugin\skills\enrich\SKILL.md`
+  `gbrain\skills\enrich\SKILL.md`
 - **enrich**
   `gbrain\test\fixtures\openclaw-mixed-merge\skills\enrich\SKILL.md`
 - **enrich** - Enrich brain pages with tiered enrichment protocol. Creates and updates person/company pages with compiled truth, timeline, and cross-links. Use when a new entity is mentioned or an existing page need...
-  `gbrain\skills\enrich\SKILL.md`
+  `gbrain\plugin\skills\enrich\SKILL.md`
 - **example**
   `gbrain\test\fixtures\guards\check-retired-phrases.sh\bad-skills\skills\example\SKILL.md`
 - **executive-assistant**
@@ -829,9 +807,9 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **exempt-frontmatter** - Pure-infra skill that opts out via frontmatter
   `gbrain\test\fixtures\brain-first-skills\exempt-frontmatter\SKILL.md`
 - **fact-check** - Systematic claim-by-claim verification for any content before it ships. Modeled on professional fact-checking desks (The New Yorker, ProPublica, IFCN standards): extract every verifiable claim, check ...
-  `gbrain\plugin\skills\fact-check\SKILL.md`
-- **fact-check** - Systematic claim-by-claim verification for any content before it ships. Modeled on professional fact-checking desks (The New Yorker, ProPublica, IFCN standards): extract every verifiable claim, check ...
   `gbrain\skills\fact-check\SKILL.md`
+- **fact-check** - Systematic claim-by-claim verification for any content before it ships. Modeled on professional fact-checking desks (The New Yorker, ProPublica, IFCN standards): extract every verifiable claim, check ...
+  `gbrain\plugin\skills\fact-check\SKILL.md`
 - **flight-tracker**
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\flight-tracker\SKILL.md`
 - **frontmatter-guard** - Validate and auto-repair YAML frontmatter on brain pages. Catches malformed pages before they enter the brain (missing closing ---, nested quotes, slug mismatches, null bytes, empty frontmatter, YAML ...
@@ -839,19 +817,19 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **frontmatter-guard** - Validate and auto-repair YAML frontmatter on brain pages. Catches malformed pages before they enter the brain (missing closing ---, nested quotes, slug mismatches, null bytes, empty frontmatter, YAML ...
   `gbrain\plugin\skills\frontmatter-guard\SKILL.md`
 - **functional-area-resolver** - Compress an agent's routing file (RESOLVER.md or AGENTS.md) by converting granular skill-per-row tables into functional-area dispatchers. Each area lists sub-skills in a "(dispatcher for: ...)" clause...
-  `gbrain\skills\functional-area-resolver\SKILL.md`
-- **functional-area-resolver** - Compress an agent's routing file (RESOLVER.md or AGENTS.md) by converting granular skill-per-row tables into functional-area dispatchers. Each area lists sub-skills in a "(dispatcher for: ...)" clause...
   `gbrain\plugin\skills\functional-area-resolver\SKILL.md`
+- **functional-area-resolver** - Compress an agent's routing file (RESOLVER.md or AGENTS.md) by converting granular skill-per-row tables into functional-area dispatchers. Each area lists sub-skills in a "(dispatcher for: ...)" clause...
+  `gbrain\skills\functional-area-resolver\SKILL.md`
 - **gbrain** - Search and write the company knowledge brain. Use for any question about the org, people, projects, decisions, or history, and to persist durable knowledge beyond this scope's notebook.
   `gbrain\docs\integrations\qm-harness-snippets\SKILL.md`
 - **gbrain-advisor** - Proactive "make the most of gbrain" coaching. Runs `gbrain advisor` on a cadence and pings the user with the top high-leverage actions for their brain: version drift, pending migrations, stalled jobs,...
-  `gbrain\plugin\skills\gbrain-advisor\SKILL.md`
-- **gbrain-advisor** - Proactive "make the most of gbrain" coaching. Runs `gbrain advisor` on a cadence and pings the user with the top high-leverage actions for their brain: version drift, pending migrations, stalled jobs,...
   `gbrain\skills\gbrain-advisor\SKILL.md`
-- **gbrain-upgrade** - Keep gbrain current. When a `gbrain` invocation prints an `UPGRADE_AVAILABLE <old> <new>` marker (or `gbrain self-upgrade --check-only` reports an update), apply it per the configured self_upgrade.mod...
-  `gbrain\plugin\skills\gbrain-upgrade\SKILL.md`
+- **gbrain-advisor** - Proactive "make the most of gbrain" coaching. Runs `gbrain advisor` on a cadence and pings the user with the top high-leverage actions for their brain: version drift, pending migrations, stalled jobs,...
+  `gbrain\plugin\skills\gbrain-advisor\SKILL.md`
 - **gbrain-upgrade** - Keep gbrain current. When a `gbrain` invocation prints an `UPGRADE_AVAILABLE <old> <new>` marker (or `gbrain self-upgrade --check-only` reports an update), apply it per the configured self_upgrade.mod...
   `gbrain\skills\gbrain-upgrade\SKILL.md`
+- **gbrain-upgrade** - Keep gbrain current. When a `gbrain` invocation prints an `UPGRADE_AVAILABLE <old> <new>` marker (or `gbrain self-upgrade --check-only` reports an update), apply it per the configured self_upgrade.mod...
+  `gbrain\plugin\skills\gbrain-upgrade\SKILL.md`
 - **gift-advisor**
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\gift-advisor\SKILL.md`
 - **google-loops** - Set up and operate the Gmail/Calendar/Contacts connector and the open-loop engine: who is waiting on the user, what they promised, and the context needed to respond. Covers painless BYO OAuth setup (e...
@@ -859,23 +837,23 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **google-loops** - Set up and operate the Gmail/Calendar/Contacts connector and the open-loop engine: who is waiting on the user, what they promised, and the context needed to respond. Covers painless BYO OAuth setup (e...
   `gbrain\plugin\skills\google-loops\SKILL.md`
 - **idea-ingest** - Ingest links, articles, tweets, and ideas into the brain. Fetch content, save to brain with analysis, credit the author (people page only when they pass the notability gate), and cross-link. Use when ...
-  `gbrain\skills\idea-ingest\SKILL.md`
-- **idea-ingest** - Ingest links, articles, tweets, and ideas into the brain. Fetch content, save to brain with analysis, credit the author (people page only when they pass the notability gate), and cross-link. Use when ...
   `gbrain\plugin\skills\idea-ingest\SKILL.md`
+- **idea-ingest** - Ingest links, articles, tweets, and ideas into the brain. Fetch content, save to brain with analysis, credit the author (people page only when they pass the notability gate), and cross-link. Use when ...
+  `gbrain\skills\idea-ingest\SKILL.md`
 - **idea-lineage** - Trace one idea's evolution through the brain: first mention, best articulation, related concepts, reversals, contradictions, abandoned branches, and the current live version. Use for single-idea conce...
   `gbrain\plugin\skills\idea-lineage\SKILL.md`
 - **idea-lineage** - Trace one idea's evolution through the brain: first mention, best articulation, related concepts, reversals, contradictions, abandoned branches, and the current live version. Use for single-idea conce...
   `gbrain\skills\idea-lineage\SKILL.md`
 - **ingest** - Route content to specialized ingestion skills. Detects input type and delegates.
-  `gbrain\skills\ingest\SKILL.md`
-- **ingest** - Route content to specialized ingestion skills. Detects input type and delegates.
   `gbrain\plugin\skills\ingest\SKILL.md`
+- **ingest** - Route content to specialized ingestion skills. Detects input type and delegates.
+  `gbrain\skills\ingest\SKILL.md`
 - **investor-update-ingest**
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\investor-update-ingest\SKILL.md`
 - **lookup** - Look a person up.
-  `gbrain\test\fixtures\guards\check-skill-brain-first.sh\bad\skills\lookup\SKILL.md`
-- **lookup** - Look a person up.
   `gbrain\test\fixtures\guards\check-skill-brain-first.sh\good\skills\lookup\SKILL.md`
+- **lookup** - Look a person up.
+  `gbrain\test\fixtures\guards\check-skill-brain-first.sh\bad\skills\lookup\SKILL.md`
 - **maintain** - Brain health checks: back-link enforcement, citation audit, filing validation, stale info detection, orphan pages, and benchmarks. Use when asked to check brain health, run maintenance, or audit quali...
   `gbrain\plugin\skills\maintain\SKILL.md`
 - **maintain** - Brain health checks: back-link enforcement, citation audit, filing validation, stale info detection, orphan pages, and benchmarks. Use when asked to check brain health, run maintenance, or audit quali...
@@ -898,16 +876,16 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `gbrain\skills\meeting-ingestion\SKILL.md`
 - **meeting-prep**
   `gbrain\test\fixtures\openclaw-compact-resolver\skills\meeting-prep\SKILL.md`
-- **migrate** - Universal migration from Obsidian, Notion, Logseq, markdown, CSV, JSON, Roam
-  `gbrain\skills\migrate\SKILL.md`
 - **migrate**
   `gbrain\test\fixtures\openclaw-mixed-merge\skills\migrate\SKILL.md`
 - **migrate** - Universal migration from Obsidian, Notion, Logseq, markdown, CSV, JSON, Roam
   `gbrain\plugin\skills\migrate\SKILL.md`
-- **minion-orchestrator** - Unified Minions skill for both deterministic shell jobs and LLM subagent orchestration. Replaces the older `gbrain-jobs` routing intent. Use when: submitting gbrain jobs, shell/background tasks, spawn...
-  `gbrain\plugin\skills\minion-orchestrator\SKILL.md`
+- **migrate** - Universal migration from Obsidian, Notion, Logseq, markdown, CSV, JSON, Roam
+  `gbrain\skills\migrate\SKILL.md`
 - **minion-orchestrator** - Unified Minions skill for both deterministic shell jobs and LLM subagent orchestration. Replaces the older `gbrain-jobs` routing intent. Use when: submitting gbrain jobs, shell/background tasks, spawn...
   `gbrain\skills\minion-orchestrator\SKILL.md`
+- **minion-orchestrator** - Unified Minions skill for both deterministic shell jobs and LLM subagent orchestration. Replaces the older `gbrain-jobs` routing intent. Use when: submitting gbrain jobs, shell/background tasks, spawn...
+  `gbrain\plugin\skills\minion-orchestrator\SKILL.md`
 - **missing-brain-first** - External-lookup skill with NO brain-first compliance
   `gbrain\test\fixtures\brain-first-skills\missing-brain-first\SKILL.md`
 - **multi-pattern** - Skill that uses multiple external tools without compliance
@@ -925,15 +903,15 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **postgres-adopt** - Detect which gbrain engine is in use (PGLite vs Postgres), prefer Postgres for agent-harness installs, install/provision Postgres (Supabase discovery via SUPABASE_ACCESS_TOKEN, local Postgres, opt-in ...
   `gbrain\plugin\skills\postgres-adopt\SKILL.md`
 - **publish** - Share brain pages as beautiful password-protected HTML with zero LLM calls
-  `gbrain\plugin\skills\publish\SKILL.md`
-- **publish** - Share brain pages as beautiful password-protected HTML with zero LLM calls
   `gbrain\skills\publish\SKILL.md`
-- **query** - Look up brain pages in the OpenClaw reference fixture.
-  `gbrain\test\fixtures\openclaw-reference-minimal\skills\query\SKILL.md`
+- **publish** - Share brain pages as beautiful password-protected HTML with zero LLM calls
+  `gbrain\plugin\skills\publish\SKILL.md`
 - **query** - Look up brain pages in the generic agent-workspace fixture.
   `gbrain\test\fixtures\generic-agents-workspace\skills\query\SKILL.md`
 - **query** - Answer questions using the brain's knowledge with 3-layer search, synthesis, and citation propagation. Use when the user asks a question, wants a lookup, or needs information from the brain.
   `gbrain\skills\query\SKILL.md`
+- **query** - Look up brain pages in the OpenClaw reference fixture.
+  `gbrain\test\fixtures\openclaw-reference-minimal\skills\query\SKILL.md`
 - **query**
   `gbrain\test\fixtures\openclaw-mixed-merge\skills\query\SKILL.md`
 - **query** - Answer questions using the brain's knowledge with 3-layer search, synthesis, and citation propagation. Use when the user asks a question, wants a lookup, or needs information from the brain.
@@ -947,9 +925,9 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **remote-mcp** - Publish the user's own gbrain over MCP so other devices, desktop apps and cloud agents can reach it. `gbrain mcp expose` installs and signs in Tailscale, publishes the running `gbrain serve --http` on...
   `gbrain\skills\remote-mcp\SKILL.md`
 - **repo-architecture** - Where new brain files go. Decision protocol for filing brain pages by primary subject, not by format or source. Reference for all brain-writing skills.
-  `gbrain\skills\repo-architecture\SKILL.md`
-- **repo-architecture** - Where new brain files go. Decision protocol for filing brain pages by primary subject, not by format or source. Reference for all brain-writing skills.
   `gbrain\plugin\skills\repo-architecture\SKILL.md`
+- **repo-architecture** - Where new brain files go. Decision protocol for filing brain pages by primary subject, not by format or source. Reference for all brain-writing skills.
+  `gbrain\skills\repo-architecture\SKILL.md`
 - **reports** - Save and load timestamped reports. Keyword routing for fast lookup. Cron jobs save output as reports; the agent or user queries them by keyword. Includes the Actionability Gate: delivery-time link che...
   `gbrain\skills\reports\SKILL.md`
 - **reports** - Save and load timestamped reports. Keyword routing for fast lookup. Cron jobs save output as reports; the agent or user queries them by keyword. Includes the Actionability Gate: delivery-time link che...
@@ -959,9 +937,9 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **research-compendium** - Deep-research a topic end to end and produce a permanent, reusable knowledge asset: archive every primary source verbatim (gated by the user's privacy/retention posture), write one 1:1 summary per sou...
   `gbrain\plugin\skills\research-compendium\SKILL.md`
 - **resolve-before-asking** - Gate on identity questions to the user. Before any "who is X?" (or role / relationship question) reaches the user, exhaust the brain's lookup chain: think → search + page read → mounted sources → time...
-  `gbrain\plugin\skills\resolve-before-asking\SKILL.md`
-- **resolve-before-asking** - Gate on identity questions to the user. Before any "who is X?" (or role / relationship question) reaches the user, exhaust the brain's lookup chain: think → search + page read → mounted sources → time...
   `gbrain\skills\resolve-before-asking\SKILL.md`
+- **resolve-before-asking** - Gate on identity questions to the user. Before any "who is X?" (or role / relationship question) reaches the user, exhaust the brain's lookup chain: think → search + page read → mounted sources → time...
+  `gbrain\plugin\skills\resolve-before-asking\SKILL.md`
 - **retrieval-reflex** - When/what to retrieve — open the brain page for a salient entity before answering from memory.
   `gbrain\recipes\retrieval-reflex\skills\retrieval-reflex\SKILL.md`
 - **schema-author** - Evolve your brain's schema pack. Add page types, propose new ones from corpus scans, backfill page.type on existing pages, audit pack health. Triggers when an agent notices untyped pages, custom domai...
@@ -978,18 +956,18 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `gbrain\test\fixtures\openclaw-mixed-merge\skills\setup\SKILL.md`
 - **setup** - Add keyless GBrain memory to an existing agent, or connect a hosted brain while preserving identity and configuration
   `gbrain\plugin\skills\setup\SKILL.md`
+- **signal-detector** - Always-on ambient signal capture for the OpenClaw reference fixture.
+  `gbrain\test\fixtures\openclaw-reference-minimal\skills\signal-detector\SKILL.md`
 - **signal-detector** - Opt-in ambient signal capture. After explicit enablement, applies on substantive inbound messages to detect original thinking and entity mentions. Use an authorized sub-agent where supported; otherwis...
   `gbrain\plugin\skills\signal-detector\SKILL.md`
 - **signal-detector** - Opt-in ambient signal capture. After explicit enablement, applies on substantive inbound messages to detect original thinking and entity mentions. Use an authorized sub-agent where supported; otherwis...
   `gbrain\skills\signal-detector\SKILL.md`
-- **signal-detector** - Always-on ambient signal capture for the OpenClaw reference fixture.
-  `gbrain\test\fixtures\openclaw-reference-minimal\skills\signal-detector\SKILL.md`
 - **skill-autobench** - Author an eval for an existing skill from its REAL usage history, not its spec. Mine invocations from the brain's conversation archive (conversations/) and per-harness session transcripts — a user cor...
   `gbrain\skills\skill-autobench\SKILL.md`
 - **skill-creator** - Create new skills following the GBrain conformance standard. Generates SKILL.md with frontmatter, Contract, Phases, Output Format, and Anti-Patterns. Checks MECE against existing skills. Updates manif...
-  `gbrain\skills\skill-creator\SKILL.md`
-- **skill-creator** - Create new skills following the GBrain conformance standard. Generates SKILL.md with frontmatter, Contract, Phases, Output Format, and Anti-Patterns. Checks MECE against existing skills. Updates manif...
   `gbrain\plugin\skills\skill-creator\SKILL.md`
+- **skill-creator** - Create new skills following the GBrain conformance standard. Generates SKILL.md with frontmatter, Contract, Phases, Output Format, and Anti-Patterns. Checks MECE against existing skills. Updates manif...
+  `gbrain\skills\skill-creator\SKILL.md`
 - **skillify** - The meta skill. Turn any raw feature into a properly-skilled, tested, resolvable unit of agent capability. Idempotent: running on an existing skill improves it (bug fix, new input, quality pass) inste...
   `gbrain\skills\skillify\SKILL.md`
 - **skill-optimizer** - Self-evolving skill optimization via SkillOpt-paper-grounded text-space optimizer.
@@ -1003,13 +981,13 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **skillpack-harvest** - Lift a proven skill from a host repo (e.g. your OpenClaw fork) back into gbrain's bundle so other clients can scaffold it. Editorial workflow: the CLI does the file copy + privacy lint; this skill dri...
   `gbrain\skills\skillpack-harvest\SKILL.md`
 - **smoke-test** - Health smoke tests + auto-fix for gbrain installs (and OpenClaw services when present). Run after machine/container restarts or whenever something seems broken. Tests critical services, auto-fixes bou...
-  `gbrain\skills\smoke-test\SKILL.md`
-- **smoke-test** - Health smoke tests + auto-fix for gbrain installs (and OpenClaw services when present). Run after machine/container restarts or whenever something seems broken. Tests critical services, auto-fixes bou...
   `gbrain\plugin\skills\smoke-test\SKILL.md`
-- **soul-audit** - Re-run or deepen the agent's identity interview. Drives the SHARED bootstrap answer bank (state/interview.json) via `gbrain bootstrap interview --set/--show/--confirm`, then re-renders the identity fi...
-  `gbrain\plugin\skills\soul-audit\SKILL.md`
+- **smoke-test** - Health smoke tests + auto-fix for gbrain installs (and OpenClaw services when present). Run after machine/container restarts or whenever something seems broken. Tests critical services, auto-fixes bou...
+  `gbrain\skills\smoke-test\SKILL.md`
 - **soul-audit** - Re-run or deepen the agent's identity interview. Drives the SHARED bootstrap answer bank (state/interview.json) via `gbrain bootstrap interview --set/--show/--confirm`, then re-renders the identity fi...
   `gbrain\skills\soul-audit\SKILL.md`
+- **soul-audit** - Re-run or deepen the agent's identity interview. Drives the SHARED bootstrap answer bank (state/interview.json) via `gbrain bootstrap interview --set/--show/--confirm`, then re-renders the identity fi...
+  `gbrain\plugin\skills\soul-audit\SKILL.md`
 - **strategic-reading** - Read a book, article, transcript, or case study through the lens of a specific strategic problem you're facing. Produces an applied playbook that maps the source onto the problem and gives short/mediu...
   `gbrain\skills\strategic-reading\SKILL.md`
 - **strategic-reading** - Read a book, article, transcript, or case study through the lens of a specific strategic problem you're facing. Produces an applied playbook that maps the source onto the problem and gives short/mediu...
@@ -1023,9 +1001,9 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **typo-frontmatter** - Skill with typo in brain_first declaration
   `gbrain\test\fixtures\brain-first-skills\typo-frontmatter\SKILL.md`
 - **voice-note-ingest** - Ingest a voice note with exact-phrasing preservation (never paraphrased). Routes content to originals/, concepts/, people/, companies/, ideas/, personal/, or voice-notes/ based on a decision tree. The...
-  `gbrain\skills\voice-note-ingest\SKILL.md`
-- **voice-note-ingest** - Ingest a voice note with exact-phrasing preservation (never paraphrased). Routes content to originals/, concepts/, people/, companies/, ideas/, personal/, or voice-notes/ based on a decision tree. The...
   `gbrain\plugin\skills\voice-note-ingest\SKILL.md`
+- **voice-note-ingest** - Ingest a voice note with exact-phrasing preservation (never paraphrased). Routes content to originals/, concepts/, people/, companies/, ideas/, personal/, or voice-notes/ based on a decision tree. The...
+  `gbrain\skills\voice-note-ingest\SKILL.md`
 - **voice-persona-mars** - Route to Mars (introspective thought partner / demo showman voice persona). Used when the operator wants depth, meaning, or impressive social demos rather than logistics. Mars handles SOLO mode (philo...
   `gbrain\recipes\agent-voice\skills\voice-persona-mars\SKILL.md`
 - **voice-persona-venus** - Route to Venus (sharp executive-assistant voice persona). Used for logistics — calendar, tasks, recent messages, brain lookups — at sub-second phone-call latency. The default voice persona unless DEFA...
@@ -1409,9 +1387,9 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
 - **doubao-tts** - Generate Mandarin and multilingual narration with Volcengine Doubao Speech 2.0. Use when creating Chinese voiceovers, when the user prefers Doubao/Volcengine/火山引擎/豆包 TTS, or when narration needs chara...
   `openmontage\.agents\skills\doubao-tts\SKILL.md`
 - **elevenlabs** - Generate AI voiceovers, sound effects, and music using ElevenLabs APIs. Use when creating audio content for videos, podcasts, or games. Triggers include generating voiceovers, narration, dialogue, sou...
-  `openmontage\.claude\skills\elevenlabs\SKILL.md`
-- **elevenlabs** - Generate AI voiceovers, sound effects, and music using ElevenLabs APIs. Use when creating audio content for videos, podcasts, or games. Triggers include generating voiceovers, narration, dialogue, sou...
   `openmontage\.agents\skills\elevenlabs\SKILL.md`
+- **elevenlabs** - Generate AI voiceovers, sound effects, and music using ElevenLabs APIs. Use when creating audio content for videos, podcasts, or games. Triggers include generating voiceovers, narration, dialogue, sou...
+  `openmontage\.claude\skills\elevenlabs\SKILL.md`
 - **faceswap** - Swap faces in a video using AI via the HeyGen API. Use when: (1) Replacing a face in a video with another face, (2) Face swapping from a source image onto a target video, (3) Creating personalized vid...
   `openmontage\.claude\skills\faceswap\SKILL.md`
 - **fastapi** - FastAPI best practices and conventions. Use when working with FastAPI APIs, Pydantic models, dependencies, streaming responses including Server-Sent Events (SSE), and serving frontend apps. Keeps Fast...
@@ -1568,13 +1546,6 @@ Nicht in der Hermes-Bibliothek geladen; Zugriff ueber `Agenten/Werkzeuge/fundus-
   `ProjectAtlas\skills\codex-coding-plugin\SKILL.md`
 - **projectatlas** - Use ProjectAtlas before broad source reads, preferring the installed short atlas CLI for an exact checkout and MCP for registered worktree routing, compact session briefs, or federated graph evidence.
   `ProjectAtlas\plugins\projectatlas\skills\projectatlas\SKILL.md`
-
-## puter (2)
-
-- **playwright-cli** - Automate browser interactions, test web pages and work with Playwright tests.
-  `puter\node_modules\playwright-core\lib\tools\cli-client\skill\SKILL.md`
-- **playwright-trace** - Inspect Playwright trace files from the command line — list actions, view requests, console, errors, snapshots and screenshots.
-  `puter\node_modules\playwright-core\lib\tools\trace\SKILL.md`
 
 ## Scrapling (1)
 
