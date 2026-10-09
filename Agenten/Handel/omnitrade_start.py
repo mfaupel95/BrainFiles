@@ -51,8 +51,11 @@ LAEUFE = {
     "pine_rsi_meanrev_btc": ("pine_rsi_meanrev", "BTCUSDC"),
     "pine_bollinger_btc": ("pine_bollinger_breakout", "BTCUSDC"),
     "pine_donchian_btc": ("pine_donchian_20_10", "BTCUSDC"),
+    "rsi_noema_btc": ("rsi_noema", "BTCUSDC"),
 }
 INTERVALL = "1h"
+# Abweichendes Intervall je benanntem Lauf (sonst INTERVALL).
+INTERVALL_JE_LAUF = {"rsi_noema_btc": "15m"}
 STANDARD_SYMBOL = "BTCUSDC"
 
 # Programme in der Reihenfolge der Vorliebe: eigener Build zuerst (laufende
@@ -160,7 +163,8 @@ def befehl(name, exe, symbol=None, intervall=None):
     return [
         exe, "live", "--exchange", "okx", "--network", "testnet",
         "--symbol", sym, "--script", "strategien/%s.omni" % strategie,
-        "--interval", intervall or INTERVALL, "--initial-capital", str(KAPITAL_USD),
+        "--interval", intervall or INTERVALL_JE_LAUF.get(name, INTERVALL),
+        "--initial-capital", str(KAPITAL_USD),
         "--status-file", status,
     ]
 
