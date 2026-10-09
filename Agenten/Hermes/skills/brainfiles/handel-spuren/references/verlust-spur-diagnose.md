@@ -19,12 +19,30 @@ jeder kleine echte Ruecklauf gegen den riesigen Phantom-Peak misst.
 
 - **Erkennung:** `--wachen` zeigt "Ruecklauf X USD von Hoechststand Y". Ist Y
   absurde Gross (z.B. 639.977 bei einem Konto von ~900), ist es ein Phantom-Peak.
-- **Beleg:** Journal-Zeilen, bei denen `nominal_usd == margin_usd` steht, obwohl
-  es kein Geist-zu-Einstand ist; sie tragen Grund `verkauf_von_hand` o.ae.
-- **Fix:** die Blasenzeilen als `buchbereinigung` mit ECHTER Marge nachbuchen,
-  die Bahnkurve ohne den Phantom-Peak neu aufsetzen (Werkzeug
-  `xperp/geister_nachziehen.py`), UND an den Schreibstellen von
-  `verkauf_von_hand` die Marge statt des Nominalwerts buchen.
+- **Beleg, maschinell statt aus der Notiz:** alle `schliessen`/`kill_switch`-Zeilen
+  mit `nominal_usd == margin_usd` heraussuchen (das ist der Fingerabdruck des
+  Alt-Codes, der preis x Menge in BEIDE Felder schrieb). Eine datierte Notiz,
+  die konkrete Zeilen nennt, ist eine Hypothese: am 05.-08.10.2026 nannte die
+  Erinnerung drei `verkauf_von_hand`-Zeilen als Blase, gemessen war nur QUANT
+  wirklich nominal==margin, die anderen beiden Phantome sassen in NIGHT und
+  STRK. Immer gegen die JOURNALDATEI messen, nie gegen den Merkzettel.
+- **Korrektur je Zeile (Hausregel):** hat die Boerse einen EINDEUTIGEN Zeugen
+  fuer diese Position (`okxf.geschlossene_position(inst, seit_ms=...)` liefert
+  realizedPnl einer geschlossenen Position), wird der Erloes auf
+  `einsatz + realizedPnl` gezogen (QUANT: 224.93 - 32.30 = 192.63). Gehoert der
+  Boersenwert zu einer ANDEREN (kuerzeren) Position derselben Serie, gibt es
+  keinen Zeugen -> NEUTRAL buchen (Erloes = Einsatz). Ein Verkauf "zum
+  Einstand" ist bei einer Handschliessung der Verdacht, nicht die Zahl.
+- **Nach dem Schreiben sofort Q: nachziehen** (`wx.spiegele_journal([JOURNAL,
+  ZUSTAND], w['journal_zweitziel'])`) - die Bedingung-4-Kopie traegt sonst die
+  alten Phantom-Werte weiter und spiegelstand meldet Abweichung. Und einen
+  lokalen `.bak` im Spurordner NICHT als Beweis nutzen: der Dauerlauf schreibt
+  das Journal weiter, der `.bak` kann verschwinden; der dauerhafte Zeuge ist Q:.
+- **Kurve danach pruefen:** Peak muss auf den realen Wert fallen (gemessen
+  639.977 -> 690) und der Kill aufhoeren, Gewinner zu schliessen (0
+  kill_switch-Ereignisse danach). Der Code-Fix selbst (Marge statt Nominal an
+  den Schreibstellen von `verkauf_von_hand`) liegt in `_hand_erloes` - neue
+  Zeilen koennen den Fehler nicht mehr erzeugen, nur alte Zeilen tragen ihn.
 
 ### 2. Geister-Ausbuchung loescht echte LIVE-Positionen aus dem Buch
 
@@ -68,8 +86,17 @@ ohne dass ein Stop ausloest.
    Paar den Grund lesen (kill_switch? geist? verkauf_von_hand?).
 4. `schutz_stops(inst)` gegen Buch-Stop und -Menge abgleichen.
 5. Grundverteilung der Schliessen-Zeilen: ein Kill, der GEWINNER schliesst,
-   heisst Phantom-Peak aus Blasenzeilen mit Nominal-Marge (Beleg 06.10.2026:
-   drei `verkauf_von_hand`-Zeilen bauten den Hoechststand auf 639.977).
+   heisst Phantom-Peak aus Blasenzeilen mit Nominal-Marge (Beleg 05.-08.10.2026:
+   vier Zeilen mit `nominal_usd == margin_usd` - QUANT, NIGHT (2x), STRK -
+   bauten den Hoechststand auf 639.977; nur QUANT hatte einen Boersenzeugen
+   (realizedPnl -32.30), NIGHT/STRK wurden neutral gebucht).
+
+Fuer den Boersenzeugen (`okxf.geschlossene_position` / positions-history):
+OKX paginiert rueckwaerts - `after=<ts>` liefert AE...LTERE Eintraege,
+`before=<ts>` die Juengeren. Wer "seit 05.10." mit `after` abfragt, bekommt die
+Positionen vom 02./03.10. und denkt, die 06.10.-Position existiere nicht. Fuer
+die JUNGSTE geschlossene Position reicht die Hausfunktion; fuer alle Eintraege
+eines Fensters `before=<ende>`.
 
 ## Merksaetze
 

@@ -755,7 +755,26 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
         return 0
     behalten = [p for p in z["positionen"] if p in echte
                 or p.get("modus") != "live"]
+    unklar = []
     for p in geister:
+        erloes, quelle, anteil = _geist_erloes(p)
+        if quelle != "boerse":
+            # REGEL (Max, 09.10.2026): ohne Boersenbeleg wird eine Live-Position
+            # NICHT ausgebucht. Am 05.10.2026 hat genau dieser Weg sechs echte
+            # Positionen aus dem Buch geloescht (TRX, SOL, NIGHT, STRK, QUANT,
+            # XAG): die Boersenabfrage zeigte sie kurz nicht, und die neutrale
+            # Buchung (Einsatz zurueck) liess sie aus dem Buch verschwinden -
+            # an der Boerse blieb die Position offen und unbewacht.
+            # Ohne Beleg bleibt die Position als UNKLAR stehen. Eine Karteileiche
+            # blockiert hoechstens einen Platz; eine echte Position ohne Buch
+            # liefe unbewacht weiter.
+            unklar.append(p)
+            if not still:
+                print("  %s fehlt an der Boerse, aber KEIN Boersenbeleg "
+                      "(realizedPnl) auffindbar - bleibt als UNKLAR im Buch, "
+                      "wird NICHT ausgebucht (Regel Max 09.10.2026)"
+                      % (p.get("inst"), p.get("seite")))
+            continue
         # Die offene Order gehoert dazu: bliebe sie liegen, koennte sie
         # spaeter fuellen und eine Position ohne Buch erzeugen - dann haette
         # niemand einen Ausstieg im Blick. Sie traegt zwar einen
@@ -773,20 +792,12 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
             elif not still:
                 print("  offene Order zu %s bleibt liegen (Papierlauf storniert "
                       "nichts an der Boerse)" % p.get("inst"))
-        erloes, quelle, anteil = _geist_erloes(p)
         if not still:
-            print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden "
-                  "(nur eine offene Order, kein Bestand)"
-                  % (p.get("inst"), p.get("seite")))
-            if quelle == "boerse":
-                print("    Ergebnis von der Boerse: Einsatz %.2f -> zurueck "
-                      "%.2f (Anteil %.0f%%)"
-                      % (p.get("margin") or 0.0, erloes,
-                         round((anteil or 0.0) * 100)))
-            else:
-                print("    Kein Boersenergebnis auffindbar - NEUTRAL gebucht: "
-                      "Einsatz %.2f zurueck, kein erfundenes Ergebnis"
-                      % erloes)
+            print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden, "
+                  "Ergebnis von der Boerse: Einsatz %.2f -> zurueck %.2f "
+                  "(Anteil %.0f%%)"
+                  % (p.get("inst"), p.get("seite"), p.get("margin") or 0.0,
+                     erloes, round((anteil or 0.0) * 100)))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
                 inst=p.get("inst", ""),
                 pos_id=p.get("pos_id", ""), seite=p.get("seite", ""),
@@ -795,8 +806,8 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
                 nominal_usd="%.2f" % (p.get("nominal") or 0.0),
                 margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
                 grund="buchbereinigung_geist")
-    z["positionen"] = behalten
-    return len(geister)
+    z["positionen"] = behalten + unklar
+    return len(geister) - len(unklar)
 
 
 # Kontraktzahlen sind gebrochen (CRCL 1.1), aber nicht beliebig fein: unter
