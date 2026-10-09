@@ -35,6 +35,8 @@
   "pflicht_stop_prozent_min": 1.8,
   "pflicht_stop_prozent_max": 6.0,
   "ziel_r_vielfaches": 2.0,
+  "festes_ziel": false,
+  "_festes_ziel": "Auftrag Max 08.10.2026: kein festes Ziel auf den Trendspuren. Backtest PR #12/#15 (BTC/ETH/SOL/XAU, 4H, 2,7 Jahre, 5 Spuren, netto R): fester Stop + Regelausstieg ohne Ziel +55 R gegen -44 R mit 2R-Ziel, in beiden Stichprobenhaelften positiv. ziel_r_vielfaches bleibt nur Richtmarke im Buch (Dashboard, Replay); ausgeloest wird nur durch Stop und Regel. Mit true ist der alte Zustand zurueck.",
   "gebuehr_taker": 0.0005,
   "_gebuehr_quelle": "OKX taker 0,05 %/Seite (Hauswert wie swap/xperp)",
   "risikovorfilter": true,
