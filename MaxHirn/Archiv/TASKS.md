@@ -1,15 +1,9 @@
 ## Offen
-- [ ] **T-381 - trailofbits-skills uebernehmen? (83 SKILL.md, Security/Formal-Verifikation)**
-      Kontext: O:\Werkstatt\trailofbits-skills (Klon trailofbits/skills, HEAD 02.09.2026) - offizielles Trail-of-Bits-Skills-Marketplace mit 83 SKILL.md in plugins/ (trailmark, testing-handbook, variant-analysis, yara-rule-authoring, zeroize-audit, writing-lean-proofs, genotoxic u. a.). NICHT in Werkstatt/Repos, nicht im Fundus-Index (der deckt nur Werkstatt/Repos). Fund beim Skill-Scan 09.10.2026. Naechster Schritt: Entscheidung Max - Klon nach Werkstatt/Repos holen und Fundus-Index erweitern (halten/finden), einzelne Skills (z. B. security-Audit) nach Bedarf adaptieren. Angelegt: 2026-10-09
-      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
 
 - [ ] **T-382 - Werkstatt-Sammlungen security-skills-claude-code + skillspector pruefen**
       Kontext: O:\Werkstatt\security-skills-claude-code: 10 SKILL.md (Security-Phoenix-demo, HEAD 29.04.2026). O:\Werkstatt\skillspector: WERKZEUG, keine Sammlung - 1 SKILL.md in skills/, 24 in tests/ (Test-Fixtures). Beide nicht in Werkstatt/Repos. Fund beim Skill-Scan 09.10.2026. Naechster Schritt: Entscheidung Max - security-skills in den Fundus-Index; skillspector als Werkzeug pruefen (Analyse-Tool fuer Skills, passt zu T-100-Verdacht). Angelegt: 2026-10-09
       Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
 
-- [ ] **T-383 - Neue Einzel-Skills docker-cascade-repair + microsoft-foundry fehlen in Hausbibliothek**
-      Kontext: ~/.claude/skills/docker-cascade-repair (Repair von Docker-Daemon-Hang + MCP-Kaskaden-Fehlern, passt zu T-152) und ~/.agents/skills/microsoft-foundry (9 Unterordner) sind geladen, aber NICHT in Agenten/Hermes/skills - beide Hashes beim Skill-Scan 09.10.2026 als NEU markiert. Naechster Schritt: Entscheidung Max - docker-cascade-repair einzeln nach skill-library-sync-Muster uebernehmen (einzelner Fremd-Skill, Ausnahme vom Fremd-Baum-Verbot). Angelegt: 2026-10-09
-      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
 
 - [ ] **T-384 - Documents/GitHub: 21 Klone ausserhalb der Flotte - 6 nicht in Werkstatt/Repos**
       Kontext: C:\Users\faupe\Documents\GitHub haelt 21 git-Klone, die NICHT in Werkstatt/Repos liegen. Bekannte Repos (nautilus_trader, unsloth, financial-services, context7, onchainos-skills u. a.) und NEU/anders: OmniQuant (eigener Fork), OpenMobius-skill, awesome-trading-agents, data-mcp, fintool, moon-dev-ai-agents2. Fund beim Skill-Scan 09.10.2026 (23 SKILL.md). Naechster Schritt: Entscheidung Max - die 6 unbekannten nach Werkstatt/Repos verschieben (Hausmuster) oder loeschen; Duplikate der Flotte dort entfernen. Angelegt: 2026-10-09
@@ -1950,6 +1944,14 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-383 - Neue Einzel-Skills docker-cascade-repair + microsoft-foundry fehlen in Hausbibliothek**
+      Kontext: ~/.claude/skills/docker-cascade-repair (Repair von Docker-Daemon-Hang + MCP-Kaskaden-Fehlern, passt zu T-152) und ~/.agents/skills/microsoft-foundry (9 Unterordner) sind geladen, aber NICHT in Agenten/Hermes/skills - beide Hashes beim Skill-Scan 09.10.2026 als NEU markiert. Naechster Schritt: Entscheidung Max - docker-cascade-repair einzeln nach skill-library-sync-Muster uebernehmen (einzelner Fremd-Skill, Ausnahme vom Fremd-Baum-Verbot). Angelegt: 2026-10-09
+      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
+      
+- [x] **T-381 - trailofbits-skills uebernehmen? (83 SKILL.md, Security/Formal-Verifikation)**
+      Kontext: O:\Werkstatt\trailofbits-skills (Klon trailofbits/skills, HEAD 02.09.2026) - offizielles Trail-of-Bits-Skills-Marketplace mit 83 SKILL.md in plugins/ (trailmark, testing-handbook, variant-analysis, yara-rule-authoring, zeroize-audit, writing-lean-proofs, genotoxic u. a.). NICHT in Werkstatt/Repos, nicht im Fundus-Index (der deckt nur Werkstatt/Repos). Fund beim Skill-Scan 09.10.2026. Naechster Schritt: Entscheidung Max - Klon nach Werkstatt/Repos holen und Fundus-Index erweitern (halten/finden), einzelne Skills (z. B. security-Audit) nach Bedarf adaptieren. Angelegt: 2026-10-09
+      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
+      
 - [x] **T-202 - Docht-Ausstieg im Replay abbilden (Beruehrung ohne Schluss jenseits der Marke)**
       Kontext: Mit der Beruehrungsregel (T-177, erledigt 30.09.2026) geschieht der
       Ausstieg am Kurs der Marke, wenn die Kerze sie beruehrt - der AUSLOESER bleibt
