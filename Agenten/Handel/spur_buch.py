@@ -716,15 +716,19 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
             behalten.append(p)
             continue
         grund = None
+        # festes_ziel false (Auftrag Max 08.10.2026, Trendspuren): das Ziel ist
+        # nur noch Richtmarke im Buch, der Ausstieg kommt von Stop und Regel.
+        # Standard true - jede Spur ohne das Feld verhaelt sich wie bisher.
+        fest = w.get("festes_ziel", True)
         if p["seite"] == "long":
             if kurs <= p["stop"]:
                 grund = "stop"
-            elif kurs >= p["ziel"]:
+            elif fest and kurs >= p["ziel"]:
                 grund = "ziel"
         else:
             if kurs >= p["stop"]:
                 grund = "stop"
-            elif kurs <= p["ziel"]:
+            elif fest and kurs <= p["ziel"]:
                 grund = "ziel"
         if not grund and zusatz is not None:
             # ZUSATZ-AUSSTIEG (21.09.2026): Stop und Ziel haben Vorrang -
