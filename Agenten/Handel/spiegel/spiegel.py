@@ -730,15 +730,26 @@ def pruefe_ausstiege(z, w):
     z["positionen"] = behalten
 
 
-def kill_switch(z, w):
-    """Ruecklauf des Buches gegen die Grenze: dann alles flach."""
+def _kurse_holen(z):
+    """Aktuelle Kurse aller offenen Positionen, {(kette, token): preis}. Leer bei Lesefehler."""
+    if not z["positionen"]:
+        return {}
+    try:
+        return lesen.preise([(p["kette"], p["token"]) for p in z["positionen"]]) or {}
+    except lesen.Lesefehler:
+        return {}
+
+
+def kill_switch(z, w, kurse=None):
+    """Ruecklauf des Buches gegen die Grenze: dann alles flach.
+
+    `kurse` darf der Aufrufer mitgeben (dann kein zweiter Abruf); der Kill-Zweig
+    reicht dieselben Kurse an `flach_stellen` weiter.
+    """
     if not z["positionen"]:
         return False
-    try:
-        kurse = lesen.preise([(p["kette"], p["token"])
-                              for p in z["positionen"]])
-    except lesen.Lesefehler:
-        return False
+    if kurse is None:
+        kurse = _kurse_holen(z)
     if not kurse:
         return False
     wert = sum(_verkaeuflich(p["menge"], kurse[(p["kette"], p["token"])], w)
@@ -753,23 +764,40 @@ def kill_switch(z, w):
     return True
 
 
-def flach_stellen(z, w, grund):
+def flach_stellen(z, w, grund, kurse=None):
+    """Alle Kopien zuschreiben.
+
+    `kurse` = die Kurse, auf denen die Entscheidung beruht (Kill); ohne sie wird je
+    Position abgerufen. Fehlt der Kurs einer Position, BLEIBT sie im Buch: bis
+    09.10.2026 wurde sie mit Erloes 0 gebucht, also als Totalverlust - auch wenn der
+    Kurs eine Sekunde vorher noch da war und nur ein Abruf kurz scheiterte. Der
+    naechste Zyklus versucht es erneut.
+    """
+    behalten = []
     for p in list(z["positionen"]):
-        try:
-            kurs = lesen.preise([(p["kette"], p["token"])]).get(
-                (p["kette"], p["token"]))
-        except lesen.Lesefehler:
-            kurs = None
-        erloes = _verkaeuflich(p["menge"], kurs, w) if kurs else 0.0
+        schluessel = (p["kette"], p["token"])
+        if kurse is not None:
+            kurs = kurse.get(schluessel)
+        else:
+            try:
+                kurs = lesen.preise([schluessel]).get(schluessel)
+            except lesen.Lesefehler:
+                kurs = None
+        if not kurs:
+            print("  %s %s: kein Kurs - Kopie bleibt im Buch, naechster Zyklus "
+                  "versucht es erneut" % (p["symbol"], p["token"]), file=sys.stderr)
+            behalten.append(p)
+            continue
+        erloes = _verkaeuflich(p["menge"], kurs, w)
         print("  AUSSTIEG (%s): %s %s  G/V %+.2f USD"
               % (grund, p["symbol"], p["token"], erloes - p["einsatz_usd"]))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
                 kette=p["kette"], wallet=p["wallet"], token=p["token"],
-                symbol=p["symbol"], preis="" if not kurs else "%.10g" % kurs,
+                symbol=p["symbol"], preis="%.10g" % kurs,
                 menge="%.6f" % p["menge"], einsatz_usd="%.2f" % p["einsatz_usd"],
                 wert_usd="%.2f" % erloes, grund=grund,
                 pos_id=p.get("pos_id", ""))
-    z["positionen"] = []
+    z["positionen"] = behalten
 
 
 # --- Bilanz ----------------------------------------------------------------
@@ -1024,8 +1052,9 @@ def lauf(modus, stunden=24.0):
         return 0
 
     pruefe_ausstiege(z, w)
-    if kill_switch(z, w):
-        flach_stellen(z, w, "kill_switch")
+    kurse_kill = _kurse_holen(z)
+    if kill_switch(z, w, kurse_kill):
+        flach_stellen(z, w, "kill_switch", kurse_kill)
         schreibe_zustand(z)
         spiegeln(z, w)
         return 0
