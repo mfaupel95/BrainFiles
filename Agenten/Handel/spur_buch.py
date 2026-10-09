@@ -970,7 +970,15 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                     verstrichen = (datetime.now(timezone.utc) - seit).total_seconds() / 3600.0
                 except (ValueError, TypeError):
                     verstrichen = None     # unlesbarer Zeitstempel: wie ein neuer Kill
-            if verstrichen is not None and verstrichen >= frist_h:
+            # Opt-out (Auftrag Max 09.10.2026): `kill_wiederaufnahme: false` =
+            # kein Selbstanlauf. Die Frist laeuft weiter, hebt den Kill aber nicht
+            # auf; nur ein Mensch entfernt `kill_seit`/setzt den Zustand zurueck.
+            # Standard true (alle Papierspuren).
+            automatisch = bool(w.get("kill_wiederaufnahme", True))
+            if verstrichen is not None and verstrichen >= frist_h and not automatisch:
+                print("- Kill-Frist abgelaufen (%.0f h), aber kill_wiederaufnahme="
+                      "false: Spur bleibt gesperrt, Freigabe nur von Hand." % verstrichen)
+            if verstrichen is not None and verstrichen >= frist_h and automatisch:
                 print("- Kill-Frist abgelaufen (%.0f h) - Kill aufgehoben, der "
                       "Ruecklauf beginnt bei 0 (war %.2f USD)." % (verstrichen, ruecklauf))
                 z.pop("kill_seit", None)
@@ -985,7 +993,7 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                           "Frist: %.0f h." % (ruecklauf, frist_h))
                     z["kill_seit"] = jetzt()
                     z["kill_ruecklauf_usd"] = round(ruecklauf, 2)
-                else:
+                elif verstrichen < frist_h:
                     print("- Kill aktiv (%.2f USD Ruecklauf). Frist noch %.0f von "
                           "%.0f h." % (ruecklauf, frist_h - verstrichen, frist_h))
                 offen = kill_schliessen(z, w, quelle, preis_fuer, journal_pfad,

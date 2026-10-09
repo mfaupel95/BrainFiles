@@ -163,6 +163,41 @@ class FristTest(Basis):
         self.assertEqual(len(self.verkaeufe()), 6)            # die offene Position wurde gebucht
 
 
+class OptOutTest(Basis):
+    def test_ohne_wiederaufnahme_bleibt_die_spur_nach_der_frist_gesperrt(self):
+        self.w["kill_wiederaufnahme"] = False
+        self.schreibe_wachen()
+        ori = self.seit(200)
+        self.zustand(kill_seit=ori)
+        z = self.zyklus()
+        self.assertIn("bleibt gesperrt", self.ausgabe)
+        self.assertEqual(z["kill_seit"], ori)                 # Frist wird nicht neu gestartet
+        self.assertNotIn("kill_ab_runde", z)
+        self.assertEqual(z["positionen"], [])
+        z = self.zyklus()                                     # auch beim zweiten Mal
+        self.assertEqual(z["positionen"], [])
+
+    def test_ohne_wiederaufnahme_schliesst_der_kill_weiter_offene_positionen(self):
+        self.w["kill_wiederaufnahme"] = False
+        self.schreibe_wachen()
+        self.zustand(kill_seit=self.seit(200), positionen=[position()])
+        z = self.zyklus()
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(len(self.verkaeufe()), 6)
+
+    def test_standard_ist_wiederaufnahme(self):
+        self.zustand(kill_seit=self.seit(200))
+        z = self.zyklus()
+        self.assertIn("beginnt bei 0", self.ausgabe)
+        self.assertNotIn("kill_seit", z)
+
+    def test_wachen_der_live_faehigen_spuren_haben_den_opt_out(self):
+        for sp in ("moondev_listingarb", "moondev_marktlage", "moondev_signalwelle",
+                   "moondev_topmovers", "omnitrade_futures"):
+            with open(os.path.join(HANDEL, sp, "wachen.json"), encoding="utf-8") as f:
+                self.assertIs(json.load(f).get("kill_wiederaufnahme"), False, sp)
+
+
 class SchliessenTest(Basis):
     def test_kill_bucht_die_offene_position_zum_marktkurs(self):
         self.kurs = 98.0
