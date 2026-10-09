@@ -24,6 +24,11 @@
 # nichts von dem, was unten freigegeben ist.
 !*/
 
+# Arbeitsbaeume paralleler Agenten (git worktree add .worktrees/<name>, siehe
+# CLAUDE.md, Abschnitt Zweige). Muss NACH '!*/' stehen: sonst macht diese Zeile
+# den Ordner wieder sichtbar und er erscheint als 'untracked'.
+.worktrees/
+
 # --- 3) Der Kopf des Systems ------------------------------------------------
 # Die beiden Git-Steuerdateien zuerst: ohne diese Freigabe faengt die Regel in
 # Zeile 24 sie selbst mit ein, und ausgerechnet die Regeln waeren nicht
