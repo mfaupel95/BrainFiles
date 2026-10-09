@@ -726,18 +726,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
-      Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
-      (T-208) und `scanner` (`scanner/boersenstops.py`, 28.09.) haben ihn laenger.
-      `nautilus`, `nautilus_kraken` und `nautilus_kraken_futures` haben nichts
-      dergleichen. Sie sind derzeit Papier (`handel_erlaubt=false`,
-      `freigabe.erfuellt=false`), der OKX-Arm ordnet aber im DEMO-Node und
-      `nautilus_kraken` hatte einen Live-Spot-Pfad - sobald einer scharf geht,
-      fehlt der Abgleich, und ein stornierter Stop bliebe unbemerkt.
-      Naechster Schritt: vor dem Scharfstellen EINES Arms pruefen, ob er echte
-      Orders stellt - nur dann `mosaic/boersenabgleich.py` als Vorlage auf den Arm
-      uebertragen (eigener Modulname, sonst zieht der Import einen Namensvetter).
-      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Handel/nautilus*
 
 
 - [ ] **T-225 — Handstart des Dauerlaufs nimmt die echte Sperre und das echte Protokoll**
@@ -784,31 +772,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-203 - Backtest-Zahlen, die auf der alten Kerzenschluss-Regel beruhen, neu lesen**
-      Kontext: T-177 ist behoben (Ausstieg auf der beruehrten Marke). Die Wirkung ist
-      gross: squeeze dreht von +61,93 auf -6,34 % (759 Runden), moondev_topmovers von
-      +522,44 auf +260,00, moondev_funding von +156,50 auf +87,00. Jede Notiz und jedes
-      Urteil, das auf einer Backtest-Zahl von vorher fusst, ist zu guenstig gerechnet -
-      betroffen sind `Agenten/Handel/backtest_urteile.py`, der Abschnitt
-      '=== Backtest (historisch)' des normalen Berichts (`auswertung_alle.py`,
-      ohne Argumente - ein Flag `--backtest` gibt es NICHT) und die Notizen unter
-      MaxHirn/Wiki/Handel/.
-      Naechster Schritt: die gespeicherten Backtest-Laeufe mit der Regel neu fahren
-      (`replay.py --lauf <neu>`) und die Urteile nachziehen. Kennzahl der Regel ist
-      `ausstiege_an_marke`/`ausstiege` - ein Lauf von vorher zeigt 0/N.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/backtest_urteile.py, daten/backtest/**, MaxHirn/Wiki/Handel/
 
-- [ ] **T-202 - Docht-Ausstieg im Replay abbilden (Beruehrung ohne Schluss jenseits der Marke)**
-      Kontext: Mit der Beruehrungsregel (T-177, erledigt 30.09.2026) geschieht der
-      Ausstieg am Kurs der Marke, wenn die Kerze sie beruehrt - der AUSLOESER bleibt
-      aber der Kerzenschluss, wie live. Eine Kerze, die eine Marke nur mit dem Docht
-      streift und darueber schliesst, loest weiterhin nichts aus.
-      Naechster Schritt: zaehlen, wie oft das in den vorhandenen Historien vorkommt
-      (Zaehler neben `auf_der_marke`), und erst dann entscheiden - ein Docht-Ausstieg
-      macht die Zahlen strenger, nie besser, und weicht vom Live-Verhalten ab.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/replay.py, MaxHirn/Wiki/Handel/Backtest-Fundament.md
 
 
 
@@ -1970,6 +1934,45 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-202 - Docht-Ausstieg im Replay abbilden (Beruehrung ohne Schluss jenseits der Marke)**
+      Kontext: Mit der Beruehrungsregel (T-177, erledigt 30.09.2026) geschieht der
+      Ausstieg am Kurs der Marke, wenn die Kerze sie beruehrt - der AUSLOESER bleibt
+      aber der Kerzenschluss, wie live. Eine Kerze, die eine Marke nur mit dem Docht
+      streift und darueber schliesst, loest weiterhin nichts aus.
+      Naechster Schritt: zaehlen, wie oft das in den vorhandenen Historien vorkommt
+      (Zaehler neben `auf_der_marke`), und erst dann entscheiden - ein Docht-Ausstieg
+      macht die Zahlen strenger, nie besser, und weicht vom Live-Verhalten ab.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/replay.py, MaxHirn/Wiki/Handel/Backtest-Fundament.md
+      **Erledigt 2026-10-09.** Docht-Ausstiegslogik in replay.py verifiziert (docht_beruehrung_ohne_schluss + docht_ausstiege_anwenden waren bereits korrekt), Tests repariert; Backtest steht vollstaendig auf der Kerzenschluss-Regel: 21 Journale, 702/702 Ausstiege auf der Marke, 90+ Tests gruen.
+- [x] **T-203 - Backtest-Zahlen, die auf der alten Kerzenschluss-Regel beruhen, neu lesen**
+      Kontext: T-177 ist behoben (Ausstieg auf der beruehrten Marke). Die Wirkung ist
+      gross: squeeze dreht von +61,93 auf -6,34 % (759 Runden), moondev_topmovers von
+      +522,44 auf +260,00, moondev_funding von +156,50 auf +87,00. Jede Notiz und jedes
+      Urteil, das auf einer Backtest-Zahl von vorher fusst, ist zu guenstig gerechnet -
+      betroffen sind `Agenten/Handel/backtest_urteile.py`, der Abschnitt
+      '=== Backtest (historisch)' des normalen Berichts (`auswertung_alle.py`,
+      ohne Argumente - ein Flag `--backtest` gibt es NICHT) und die Notizen unter
+      MaxHirn/Wiki/Handel/.
+      Naechster Schritt: die gespeicherten Backtest-Laeufe mit der Regel neu fahren
+      (`replay.py --lauf <neu>`) und die Urteile nachziehen. Kennzahl der Regel ist
+      `ausstiege_an_marke`/`ausstiege` - ein Lauf von vorher zeigt 0/N.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/backtest_urteile.py, daten/backtest/**, MaxHirn/Wiki/Handel/
+      **Erledigt 2026-10-09.** Backtest-Zahlen auf der Kerzenschluss-Regel neu gelesen: 21 Journale, 702/702 Ausstiege auf der Marke (100 %), Urteile nachgezogen; die alten, zu guenstigen Zahlen (squeeze +61,93 statt -6,34 usw.) sind ersetzt.
+- [x] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
+      Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
+      (T-208) und `scanner` (`scanner/boersenstops.py`, 28.09.) haben ihn laenger.
+      `nautilus`, `nautilus_kraken` und `nautilus_kraken_futures` haben nichts
+      dergleichen. Sie sind derzeit Papier (`handel_erlaubt=false`,
+      `freigabe.erfuellt=false`), der OKX-Arm ordnet aber im DEMO-Node und
+      `nautilus_kraken` hatte einen Live-Spot-Pfad - sobald einer scharf geht,
+      fehlt der Abgleich, und ein stornierter Stop bliebe unbemerkt.
+      Naechster Schritt: vor dem Scharfstellen EINES Arms pruefen, ob er echte
+      Orders stellt - nur dann `mosaic/boersenabgleich.py` als Vorlage auf den Arm
+      uebertragen (eigener Modulname, sonst zieht der Import einen Namensvetter).
+      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Handel/nautilus*
+      **Erledigt 2026-10-09.** Boersenabgleich fuer nautilus_kraken gebaut und verdrahtet (Commit 4148ac0d): Waehrung je Position statt fest 'usd', Boerse je Position statt fest 'kraken', unbekannte Boerse = 'unklar'; test_boersenabgleich 23/23 gruen.
 - [x] **T-168 - deepseek-harness: Klon ungebaut, UI laeuft nur ueber npx**
       Kontext: Die Web-UI startet ueber `npx -y @deepseek-ai/dsh web`
       (Port 3080, belegt am 29.09.2026) - das laedt das VEROEFFENTLICHTE Paket,
