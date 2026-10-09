@@ -185,7 +185,7 @@ def config_fuer(bot: dict) -> dict:
             "ws_token": secrets.token_urlsafe(24),
             "CORS_origins": [],
             "username": "max",
-            "password": secrets.token_urlsafe(18),
+            "password": os.environ.get("FREQTRADE_API_PASSWORD") or secrets.token_urlsafe(18),
         },
         "telegram": {"enabled": False, "token": "", "chat_id": ""},
         "bot_name": f"freqtrade-{name}",
