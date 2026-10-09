@@ -691,6 +691,31 @@ def _ausstiegsgrund(p, kurs, jetzt, w):
     return None
 
 
+def _frist_ohne_kurs(p, jetzt):
+    """Ist die Frist einer Kopie abgelaufen, obwohl sie keinen Kurs hat?
+
+    Bis 09.10.2026 stand der Zweig "kein Kurs - Kopie bleibt" VOR der Frist: eine
+    Kopie, deren Token nie oder nicht mehr bewertet wurde (Pool leer, delisted),
+    blieb fuer immer im Buch und belegte einen Platz - das Sicherheitsnetz gegen
+    tote Positionen griff genau bei den toten nicht. Jetzt wird sie nach der Frist
+    mit Erloes 0 geschlossen (Totalverlust, Grund `frist_ohne_kurs`, damit sie im
+    Journal von einem regulaeren Stop-Verlust unterscheidbar bleibt).
+    """
+    return jetzt >= (_bis_zeit(p["frist"]) or jetzt)
+
+
+def _schliesse_ohne_kurs(p):
+    print("  AUSSTIEG (frist_ohne_kurs)%s: %s %s  G/V %+.2f USD auf %.0f USD "
+          "(kein Kurs seit Fristablauf, Erloes 0)"
+          % ("" if SCHREIBEN else " [nur Vorschau]", p["symbol"], p["token"],
+             -p["einsatz_usd"], p["einsatz_usd"]))
+    journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+            kette=p["kette"], wallet=p["wallet"], token=p["token"],
+            symbol=p["symbol"], preis="", menge="%.6f" % p["menge"],
+            einsatz_usd="%.2f" % p["einsatz_usd"], wert_usd="0.00",
+            grund="frist_ohne_kurs", pos_id=p.get("pos_id", ""))
+
+
 def pruefe_ausstiege(z, w):
     """Stop, Trailing, Frist - und der Kill-Switch ueber das ganze Buch."""
     offen = z["positionen"]
@@ -708,6 +733,9 @@ def pruefe_ausstiege(z, w):
         kurs = kurse.get((p["kette"], p["token"]))
         grund = None
         if kurs is None:
+            if _frist_ohne_kurs(p, jetzt):
+                _schliesse_ohne_kurs(p)
+                continue
             print("  %-10s %-28s kein Kurs - Kopie bleibt" % (p["symbol"],
                                                              p["token"]))
             behalten.append(p)

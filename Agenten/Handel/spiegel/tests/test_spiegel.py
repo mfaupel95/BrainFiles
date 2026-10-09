@@ -347,6 +347,24 @@ class Buch(Grundlage):
             self.assertTrue(sp.kill_switch(vier, WACHEN, kurse4))
 
 
+    def test_kein_kurs_nach_der_frist_schliesst_mit_erloes_null(self):
+        z = {"positionen": [kopie(token="TOT", frist="2000-01-01T00:00:00+00:00"),
+                            kopie(token="NEU")]}
+        with patch.object(sp.lesen, "preise", return_value={("solana", "ANDERER"): 1.0}):
+            sp.pruefe_ausstiege(z, WACHEN)
+        self.assertEqual([p["token"] for p in z["positionen"]], ["NEU"])   # NEU: Frist offen
+        zeile = self.journal()[-1]
+        self.assertEqual(zeile["grund"], "frist_ohne_kurs")
+        self.assertEqual(float(zeile["wert_usd"]), 0.0)
+
+    def test_kein_kurs_innerhalb_der_frist_bleibt_offen(self):
+        z = {"positionen": [kopie()]}
+        with patch.object(sp.lesen, "preise", return_value={}):
+            sp.pruefe_ausstiege(z, WACHEN)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(self.journal(), [])
+
+
 class Messung(Grundlage):
 
     def test_messen_rechnet_tiefe_und_nachlauf(self):
