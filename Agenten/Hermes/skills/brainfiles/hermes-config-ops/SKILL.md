@@ -179,7 +179,7 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - references/profil-kanalzugangsdaten.md — laden, wenn ein Bot-Token/Photon-Zugang einem Profil zugeordnet oder entfernt wird
 - references/profilflotte-audit.md — laden, wenn mehrere Profile auf einmal geprueft/repariert werden ("ein Bot antwortet nicht")
 - references/repo-bot.md — laden, wenn ein Bot fuer ein Fremd-Repo angelegt wird (Geschwisterprofil kopieren)
-- references/profil-ohne-repo.md — laden, wenn ein Profil OHNE Repo (Hausordner/Wartungsbot) angelegt wird
+- references/profil-ohne-repo.md — laden, wenn ein Profil OHNE Repo (Hausordner/Wartungsbot) angelegt wird; Vorlage `templates/profil-config-lean.yaml` (schlanke Config statt des vollen nous-Modellblocks)
 - references/modell-anmeldung.md — laden, wenn ein Profil keine Modell-Anmeldung hat ("/bot NAME antwortet nicht")
 - references/modellwechsel-flotte.md — laden, wenn ein Modellwechsel ueber viele Profile laeuft
 - references/desktop-multiplex.md — laden, wenn die Desktop-App nur das default-Profil zeigt oder multiplex-Probleme hat
