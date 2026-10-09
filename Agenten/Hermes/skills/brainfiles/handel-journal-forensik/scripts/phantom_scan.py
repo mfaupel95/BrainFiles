@@ -32,6 +32,13 @@ from collections import defaultdict
 
 SPUREN = {"xperp": "wachen_xperp"}
 
+# Alle Spuren, die ein handelsjournal.csv fuehren und damit auf Phantome
+# geprueft werden koennen. Wer die Liste erweitert, prueft die FFIFO-
+# Paarungsidee: runden_aus_journal muss es fuer die Spur geben, oder die
+# Zeilenliste ist nur eine Sicht.
+ALLE_SPUREN = None  # None = automatisch: Ordner unter Agenten/Handel mit handelsjournal.csv
+
+
 # Journal-Spalten der Haus-Spuren (xperp): zeit, modus, aktion, inst, pos_id,
 # seite, familie, preis, kontrakte, nominal_usd, margin_usd, hebel, grund
 AKTIONEN_SCHLIESSEN = {"schliessen", "verkauf", "VERKAUF", "AUSSTIEG", "verkauf_von_hand"}
@@ -67,10 +74,22 @@ def fifo_paarung(zeilen):
     return runden
 
 
+def spuren_mit_journal(root):
+    handel = os.path.join(root, "Agenten", "Handel")
+    aus = []
+    if not os.path.isdir(handel):
+        return aus
+    for name in sorted(os.listdir(handel)):
+        p = os.path.join(handel, name)
+        if os.path.isdir(p) and os.path.isfile(os.path.join(p, "handelsjournal.csv")):
+            aus.append(name)
+    return aus
+
+
 def phantom_zeilen(spur, boerse=False):
     hier = os.path.dirname(os.path.abspath(__file__))
     # Skill-Ordner: Agenten/Hermes/skills/brainfiles/<skill>/scripts.
-    # Spurordner liegt relativ zur BrainFiles-Wurzel (4 Ebenen hoch von hier
+    # Spurordner liegt relativ zur BrainFiles-Wurzel (6 Ebenen hoch von hier
     # inkl. scripts/, + Agenten/Handel/<spur>).
     root = os.path.abspath(os.path.join(hier, "..", "..", "..", "..", "..", ".."))
     spur_pfad = os.path.abspath(os.path.join(root, "Agenten", "Handel", spur))
@@ -131,11 +150,23 @@ def phantom_zeilen(spur, boerse=False):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--spur", default="xperp", choices=sorted(SPUREN))
+    ap.add_argument("--spur", default=None,
+                    help="Spurname unter Agenten/Handel (Default: alle "
+                         "mit handelsjournal.csv)")
     ap.add_argument("--boerse", action="store_true",
                     help="Boersenzeugen je Zeile abfragen (lesend)")
     args = ap.parse_args()
-    return phantom_zeilen(args.spur, boerse=args.boerse)
+    hier = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.abspath(os.path.join(hier, "..", "..", "..", "..", "..", ".."))
+    if args.spur:
+        return phantom_zeilen(args.spur, boerse=args.boerse)
+    rc = 0
+    for name in spuren_mit_journal(root):
+        print("\n=== %s ===" % name)
+        r = phantom_zeilen(name, boerse=False)
+        if r:
+            rc = r
+    return rc
 
 
 if __name__ == "__main__":
