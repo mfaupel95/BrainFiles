@@ -490,6 +490,14 @@ def mittel(xs):
     return sum(xs) / len(xs) if xs else None
 
 
+def stdabw(xs):
+    """Stichproben-Standardabweichung (n-1) oder None bei weniger als 2 Werten."""
+    if len(xs) < 2:
+        return None
+    m = sum(xs) / len(xs)
+    return (sum((x - m) ** 2 for x in xs) / (len(xs) - 1)) ** 0.5
+
+
 def median(xs):
     if not xs:
         return None
@@ -617,6 +625,7 @@ def pruefe(spur, takt="1H"):
         "ohne_basislinie": len([r for r in markt_paare if r["markt"] is None]),
         "fehlende_inst": sorted(fehlt),
         "mean_excess": mittel(excess),
+        "std_excess": stdabw(excess),
         "median_excess": median(excess),
         "n_excess": len(excess),
         "verzerrung": verz,
