@@ -318,6 +318,35 @@ class Buch(Grundlage):
                          ["herzschlag_alt", "herzschlag_alt"])
 
 
+    def test_flach_stellen_mit_kursen_ruft_die_boerse_nicht_noch_einmal(self):
+        z = {"positionen": [kopie(), kopie(token="T2")]}
+        kurse = {("solana", "T1"): 1.0, ("solana", "T2"): 1.0}
+        with patch.object(sp.lesen, "preise", side_effect=AssertionError("zweiter Abruf")):
+            sp.flach_stellen(z, WACHEN, "kill_switch", kurse)
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(len(self.journal()), 2)
+
+    def test_flach_stellen_ohne_kurs_bucht_keinen_totalverlust(self):
+        z = {"positionen": [kopie(), kopie(token="T2")]}
+        kurse = {("solana", "T1"): 1.0}                       # T2 ohne Kurs
+        sp.flach_stellen(z, WACHEN, "kill_switch", kurse)
+        self.assertEqual([p["token"] for p in z["positionen"]], ["T2"])
+        self.assertEqual(len(self.journal()), 1)
+
+    def test_kurzer_lesefehler_je_position_bucht_keinen_totalverlust(self):
+        z = {"positionen": [kopie()]}
+        with patch.object(sp.lesen, "preise", side_effect=sp.lesen.Lesefehler("netz")):
+            sp.flach_stellen(z, WACHEN, "herzschlag_alt")
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(self.journal(), [])
+
+    def test_kill_switch_nimmt_mitgegebene_kurse(self):
+        vier = {"positionen": [kopie(token="T%d" % i) for i in range(1, 5)]}
+        kurse4 = {("solana", "T%d" % i): 0.4 for i in range(1, 5)}
+        with patch.object(sp.lesen, "preise", side_effect=AssertionError("Abruf")):
+            self.assertTrue(sp.kill_switch(vier, WACHEN, kurse4))
+
+
 class Messung(Grundlage):
 
     def test_messen_rechnet_tiefe_und_nachlauf(self):

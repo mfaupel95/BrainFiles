@@ -313,6 +313,31 @@ class LiveTest(Basis):
         self.assertEqual(len(self.verkaeufe()), 5)            # nichts gebucht, was nicht verkauft ist
 
 
+class LivePositionTest(Basis):
+    def test_papierzyklus_laesst_live_positionen_im_buch_und_unverkauft(self):
+        self.zustand(positionen=[position(modus="live", stop_id="S1", menge=0.5)])
+        z = self.zyklus()                                    # modus papier -> live=False
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(z["positionen"][0]["modus"], "live")
+        self.assertEqual(len(self.verkaeufe()), 5)           # keine Verkaufszeile dazu
+        self.assertIn("kill_seit", z)                        # die Spur ist trotzdem gesperrt
+
+    def test_gemischtes_buch_schliesst_nur_die_papierposition(self):
+        self.zustand(positionen=[position(modus="live", stop_id="S1", menge=0.5, pos_id="L"),
+                                 position(pos_id="P", inst="ETH-USDT-SWAP")])
+        z = self.zyklus(kurse={INST: 100.0, "ETH-USDT-SWAP": 100.0})
+        self.assertEqual([p["pos_id"] for p in z["positionen"]], ["L"])
+        self.assertEqual(len(self.verkaeufe()), 6)
+
+    def test_live_zyklus_verkauft_die_live_position(self):
+        weg = FakeWeg()
+        z = {"positionen": [position(modus="live", stop_id="S1", menge=0.5)]}
+        offen = sb.kill_schliessen(z, self.w, lambda w: ({}, {INST: 97.0}, []), None,
+                                   self.jp, self.zp, live=True, weg=weg)
+        self.assertEqual(offen, 0)
+        self.assertEqual(weg.verkauft, [(INST, 0.5)])
+
+
 class LageTest(Basis):
     def test_ruecklauf_ohne_marke_ist_unveraendert(self):
         self.assertAlmostEqual(sb.wp.lage(self.w, self.jp, {})["ruecklauf_usd"], 50.0)

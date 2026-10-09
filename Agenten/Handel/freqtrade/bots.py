@@ -32,7 +32,8 @@ laufenden Bot.
 
 Zugangsdaten: die erzeugten Konfigurationen tragen eigene Zufallswerte je Bot
 (lokal, an 127.0.0.1 gebunden) und stehen NUR in der Datei - dieses Werkzeug
-gibt sie nie aus.
+gibt sie nie aus. Ausnahme API-Passwort: ist FREQTRADE_API_PASSWORD gesetzt
+(Benutzer-Umgebungsvariable), tragen alle Bots dieses, sonst Zufallswert.
 """
 
 from __future__ import annotations
@@ -185,7 +186,7 @@ def config_fuer(bot: dict) -> dict:
             "ws_token": secrets.token_urlsafe(24),
             "CORS_origins": [],
             "username": "max",
-            "password": secrets.token_urlsafe(18),
+            "password": os.environ.get("FREQTRADE_API_PASSWORD") or secrets.token_urlsafe(18),
         },
         "telegram": {"enabled": False, "token": "", "chat_id": ""},
         "bot_name": f"freqtrade-{name}",

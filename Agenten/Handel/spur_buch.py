@@ -40,6 +40,7 @@ import wachen_pruefung as wp  # noqa: E402
 import risikostufe  # noqa: E402
 import atomar  # noqa: E402  (Zustand atomar schreiben, laut lesen)
 import freigabefenster  # noqa: E402
+import kill_gemeinsam as kg  # noqa: E402  (Kill-Frist/Reset/Opt-out, eine Stelle)
 # pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
 # Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
 # eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
@@ -823,7 +824,7 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
 
 # --- Kill: Zwangsschluss mit Buchung -----------------------------------------
 
-KILL_GRUND = "kill_zwangsschluss"
+KILL_GRUND = kg.KILL_GRUND
 
 
 def kill_schliessen(z, w, quelle, preis_fuer, journal_pfad, zustand_pfad,
@@ -862,8 +863,26 @@ def kill_schliessen(z, w, quelle, preis_fuer, journal_pfad, zustand_pfad,
                 preis = None
             if preis and preis > 0:
                 kurse[inst] = preis
+    # LIVE-POSITIONEN GEHOEREN DER BOERSE (wie mosaic, Auftrag Max 09.10.2026):
+    # Ohne freie Live-Kette (`live` falsch) darf der Kill sie weder als Papier
+    # verbuchen noch aus dem Buch nehmen - sie stuenden sonst ungeschuetzt in der
+    # Boerse, im Buch fehlte sie. Der Verkauf ist eine Order und gehoert in die
+    # Freigabekette (sperren_live), nicht in einen Papierzyklus. Sie bleiben
+    # stehen, ihr Boersen-Stop schuetzt sie; sobald ein Live-Zyklus laeuft,
+    # schliesst der Kill sie mit echtem Verkauf.
+    zurueck = []
+    if not live:
+        zurueck = [p for p in z["positionen"] if p.get("modus") == "live"]
+        if zurueck:
+            z["positionen"] = [p for p in z["positionen"] if p.get("modus") != "live"]
+            print("  Kill: %d Live-Position(en) bleiben stehen (%s) - kein Verkauf "
+                  "ausserhalb der Live-Kette; der Boersen-Stop schuetzt sie, der "
+                  "naechste freie Live-Zyklus schliesst sie."
+                  % (len(zurueck), ", ".join(str(p.get("inst")) for p in zurueck)),
+                  file=sys.stderr)
     pruefe_ausstiege(z, kurse, w, journal_pfad, zustand_pfad=zustand_pfad,
                      live=live, weg=weg, zusatz=lambda p, w_: KILL_GRUND)
+    z["positionen"] = z["positionen"] + zurueck
     return len(z["positionen"])
 
 
@@ -959,43 +978,10 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         #      die Spur handelt weiter und der Kill greift erst bei einem NEUEN
         #      Rueckgang in Hoehe der Schwelle.
         if modus != "vorschau" and s.get("kill"):
-            kill_seit = z.get("kill_seit")
-            frist_h = float(w.get("kill_frist_stunden", 168))
-            verstrichen = None
-            if kill_seit:
-                try:
-                    seit = datetime.fromisoformat(kill_seit)
-                    if seit.tzinfo is None:
-                        seit = seit.replace(tzinfo=timezone.utc)
-                    verstrichen = (datetime.now(timezone.utc) - seit).total_seconds() / 3600.0
-                except (ValueError, TypeError):
-                    verstrichen = None     # unlesbarer Zeitstempel: wie ein neuer Kill
-            # Opt-out (Auftrag Max 09.10.2026): `kill_wiederaufnahme: false` =
-            # kein Selbstanlauf. Die Frist laeuft weiter, hebt den Kill aber nicht
-            # auf; nur ein Mensch entfernt `kill_seit`/setzt den Zustand zurueck.
-            # Standard true (alle Papierspuren).
-            automatisch = bool(w.get("kill_wiederaufnahme", True))
-            if verstrichen is not None and verstrichen >= frist_h and not automatisch:
-                print("- Kill-Frist abgelaufen (%.0f h), aber kill_wiederaufnahme="
-                      "false: Spur bleibt gesperrt, Freigabe nur von Hand." % verstrichen)
-            if verstrichen is not None and verstrichen >= frist_h and automatisch:
-                print("- Kill-Frist abgelaufen (%.0f h) - Kill aufgehoben, der "
-                      "Ruecklauf beginnt bei 0 (war %.2f USD)." % (verstrichen, ruecklauf))
-                z.pop("kill_seit", None)
-                z["kill_ab_runde"] = s.get("runden_gesamt", 0)
-                z["kill_aufgehoben"] = jetzt()
-                ruecklauf = 0.0
+            status, ruecklauf = kg.phase(z, w, ruecklauf, s.get("runden_gesamt", 0), jetzt)
+            if status == "frei":
                 faktor = groessenfaktor(ruecklauf, w)
             else:
-                if verstrichen is None:
-                    print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Offene "
-                          "Positionen werden zum Marktkurs geschlossen und gebucht. "
-                          "Frist: %.0f h." % (ruecklauf, frist_h))
-                    z["kill_seit"] = jetzt()
-                    z["kill_ruecklauf_usd"] = round(ruecklauf, 2)
-                elif verstrichen < frist_h:
-                    print("- Kill aktiv (%.2f USD Ruecklauf). Frist noch %.0f von "
-                          "%.0f h." % (ruecklauf, frist_h - verstrichen, frist_h))
                 offen = kill_schliessen(z, w, quelle, preis_fuer, journal_pfad,
                                         zustand_pfad, live=live, weg=weg)
                 if offen:
