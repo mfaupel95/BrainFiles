@@ -391,18 +391,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/omnitrade_futures/, Werkstatt/omnitrade/
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - der Signal-Gatter-Fix liegt in master (12 Tests gruen, t_df4b5161), aber dieser Punkt verlangt echte Papierrunden gegen den 28-Tage-Backtest - bleibt offen.**
-- [ ] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
-      Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
-      Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
-      deshalb auch ins Handel-.venv installiert (Import 1,8 s). Damit steht
-      dieselbe Version 1.231.0 an zwei Stellen, und `pip`-Aktualisierungen
-      laufen an einer Stelle vorbei.
-      Naechster Schritt: eine Datei `Agenten/Handel/nautilus/README-live-node.md`
-      (Abschnitt 'Zwei venv, ein Rad') verweist darauf; eine
-      Versionspruefung ergaenzen, die beim Start des Reiters beide Orte
-      vergleicht und bei Abweichung sagt, welcher nachgezogen werden muss.
-      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/.venv,
-      Agenten/Handel/nautilus/.venv
 
 - [ ] **T-341 — omnitrade_futures: kein Rust-Lauf laeuft, also null Signale**
       Kontext: Nach dem Pin-Fix (bde64285) zeigt die Spur jetzt auf die richtige
@@ -1350,27 +1338,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-097 — Indikatorschwellen der Prognose-Spuren liegen als Konstanten im Code**
-      Kontext: Gemessen 2026-09-25 beim Bau des Optimierers. Die vier
-      Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend) lesen aus
-      ihrer `wachen.json` NUR die Ausstiegs-Geometrie
-      (`pflicht_stop_prozent_min`, `pflicht_stop_prozent_max`,
-      `ziel_r_vielfaches`, `max_offene_positionen`). Ihre eigentlichen
-      Indikatorschwellen stehen als Konstanten im Code - `squeeze.signal()` ist
-      eine feste Regel ueber `ti.squeeze_momentum(k)`, und `supertrend` holt
-      sich `supertrend_n`/`supertrend_faktor` NICHT aus den Wachen (im
-      Gegensatz zu trendwende_btc, das beide liest). Das verstoesst gegen die
-      Hausregel "Zahlen gehoeren in die wachen.json, nicht in den Code" und
-      hat eine harte Folge: diese Parameter lassen sich nicht tunen, ohne Code
-      zu aendern - der Optimierer kann sie nicht anfassen.
-      Naechster Schritt: je Spur die Konstanten als Schluessel in die
-      wachen.json aufnehmen (Wert = der heutige Code-Default, damit sich NICHTS
-      verhaelt), die Spur lesend umstellen und mit einem Beleglauf zeigen, dass
-      die Ergebnisse vorher/nachher gleich sind. Danach in `spur_opt.json`
-      aufnehmen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/{squeeze,wavetrend,macd_mtf,supertrend}/handeln.py und wachen.json, spur_opt.json
-      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 
 
@@ -2164,6 +2131,41 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-097 — Indikatorschwellen der Prognose-Spuren liegen als Konstanten im Code**
+      Kontext: Gemessen 2026-09-25 beim Bau des Optimierers. Die vier
+      Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend) lesen aus
+      ihrer `wachen.json` NUR die Ausstiegs-Geometrie
+      (`pflicht_stop_prozent_min`, `pflicht_stop_prozent_max`,
+      `ziel_r_vielfaches`, `max_offene_positionen`). Ihre eigentlichen
+      Indikatorschwellen stehen als Konstanten im Code - `squeeze.signal()` ist
+      eine feste Regel ueber `ti.squeeze_momentum(k)`, und `supertrend` holt
+      sich `supertrend_n`/`supertrend_faktor` NICHT aus den Wachen (im
+      Gegensatz zu trendwende_btc, das beide liest). Das verstoesst gegen die
+      Hausregel "Zahlen gehoeren in die wachen.json, nicht in den Code" und
+      hat eine harte Folge: diese Parameter lassen sich nicht tunen, ohne Code
+      zu aendern - der Optimierer kann sie nicht anfassen.
+      Naechster Schritt: je Spur die Konstanten als Schluessel in die
+      wachen.json aufnehmen (Wert = der heutige Code-Default, damit sich NICHTS
+      verhaelt), die Spur lesend umstellen und mit einem Beleglauf zeigen, dass
+      die Ergebnisse vorher/nachher gleich sind. Danach in `spur_opt.json`
+      aufnehmen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/{squeeze,wavetrend,macd_mtf,supertrend}/handeln.py und wachen.json, spur_opt.json
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
+      Indikatorschwellen aus wachen.json gelesen, Code-Defaults = alte Werte, Regression identisch (squeeze 44=44, wavetrend 23=23, macd_mtf 11=11, supertrend 131=131), Code in master gemergt (Commit 3894778a via aac51bde)
+- [x] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
+      Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
+      Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
+      deshalb auch ins Handel-.venv installiert (Import 1,8 s). Damit steht
+      dieselbe Version 1.231.0 an zwei Stellen, und `pip`-Aktualisierungen
+      laufen an einer Stelle vorbei.
+      Naechster Schritt: eine Datei `Agenten/Handel/nautilus/README-live-node.md`
+      (Abschnitt 'Zwei venv, ein Rad') verweist darauf; eine
+      Versionspruefung ergaenzen, die beim Start des Reiters beide Orte
+      vergleicht und bei Abweichung sagt, welcher nachgezogen werden muss.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/.venv,
+      Agenten/Handel/nautilus/.venv
+      beide venvs gemessen (Produktion nautilus/.venv Python 3.13.15 nautilus_trader 1.231.0 vs Release-Kandidat nautilus_rc5/.venv 2.0.0rc5), README-live-node.md erstellt, Commits 569f1de+8634dff im nautilus-Repo
 - [x] **T-258 — nautilus-rust: Evidenzwerte sind hart eingetragen, kein Walk-Forward**
       Kontext: `quant-alpha` schreibt ein Demo-Buch mit festen Zahlen (`net_bps 3.5, se_bps 2.0,
       folds 5, positive_folds 2`), im Code selbst als Demo markiert; `quant-strategy` lehnt es deshalb
