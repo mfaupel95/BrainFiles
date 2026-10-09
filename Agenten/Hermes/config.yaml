@@ -1150,6 +1150,16 @@ mcp_servers:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
+  okx-agentkit:
+    args:
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\agent-trade-kit\packages\mcp\dist\index.js
+      - --demo
+      - --profile
+      - demo
+      - --modules
+      - market,swap,account
+    command: node
+    enabled: false
   pdf-vault:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
