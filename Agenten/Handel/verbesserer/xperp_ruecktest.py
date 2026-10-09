@@ -82,7 +82,7 @@ def kandidaten_schritt(werte, w, anzahl=6):
     """Die besten Werte je Richtung, die ihre Tore bestehen.
 
     1:1 die Filterkette aus handeln.kandidaten() - Vola-Tor, Familie aktiv,
-    Umsatz-Bezug der Familie, Hebel-Deckel >= max_hebel.
+    Umsatz-Bezug der Familie, Hebel-Deckel >= Hebel-Grenze der Familie.
     """
     aus = []
     for seite in ("long", "short"):
@@ -100,7 +100,7 @@ def kandidaten_schritt(werte, w, anzahl=6):
                 continue
             mae = x["mae_short"] if seite == "short" else x["mae_long"]
             deckel = auswahl.hebel_deckel(mae)
-            if deckel < w["max_hebel"]:
+            if deckel < wx.hebel_grenze(w, x["kategorie"]):
                 continue
             aus.append({"basis": x["basis"], "instId": x["instId"],
                         "seite": seite, "kategorie": x["kategorie"],
@@ -156,7 +156,12 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
     stop = okxf.auf_tick(instr, einstieg - vz * w["stop_atr_faktor"] * atr)
     ziel = okxf.auf_tick(instr, einstieg + vz * w["ziel_atr_faktor"] * atr)
 
-    g = bot.groesse(w, instr, einstieg, stop, seite, kandidat["deckel"])
+    smax = wx.stop_max_pct(w, kandidat["kategorie"])
+    if smax is not None and abs(einstieg - stop) / einstieg * 100.0 > smax:
+        return None
+    wf = wx.fuer_familie(w, kandidat["kategorie"])
+
+    g = bot.groesse(wf, instr, einstieg, stop, seite, kandidat["deckel"])
     if not g:
         return None
     if (sum(float(p.get("margin") or 0.0) for p in offene_positionen)
@@ -177,7 +182,7 @@ def pruefe_einstieg(kandidat, w, instr_je_basis, k4_je_inst, k1d_je_inst,
             lambda inst_id, n=300: _abgeschlossene_tageskerzen(
                 k1d_je_inst.get(inst_id, []), zeit_ms))
         pflicht = bot.pruefpflicht(
-            w, instr, k4, seite, einstieg, stop, ziel, g["hebel"],
+            wf, instr, k4, seite, einstieg, stop, ziel, g["hebel"],
             stop_atr_f=w["stop_atr_faktor"], ziel_atr_f=w["ziel_atr_faktor"],
             still=True)
     finally:

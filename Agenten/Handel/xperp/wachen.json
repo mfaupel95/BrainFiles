@@ -57,6 +57,9 @@
     },
     "rohstoff": {
       "aktiv": true,
+      "max_hebel": 10,
+      "stop_max_pct": 4.0,
+      "_hebel": "Auftrag Max 08.10.2026: XAU, XAG, CL, BZ immer mit 10x, Stop hoechstens 4 % des Kurses. 10x ist die Grenze der Familie (wachen_xperp.hebel_grenze) und bleibt an den Volatilitaets-Deckel gekoppelt: ein Wert, dessen 7-Tage-Ruecklauf 10x nicht traegt, faellt aus der Rangliste (kandidaten). Bei 10x liegt die Liquidation grob bei 9-9,5 % gegen die Position (isoliert, Wartung 0,5 %); 4 % Stop halten klaren Abstand, ein Wochenend-Gap kann den Stop trotzdem ueberspringen (_wochenende). OKX erlaubt fuer diese XPERP-Kontrakte bis 50x (instruments, lever=50, geprueft 08.10.2026). Das globale max_hebel (5) gilt weiter fuer alle anderen Familien.",
       "instCategory": "4",
       "vola_tor_pa": 0.6,
       "umsatz_bezug_usd": 1000000,
