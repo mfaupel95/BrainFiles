@@ -20,6 +20,7 @@
 - `20261007-spur-bewertung` — **Spur-Bewertung** — `topics/selbstverbessernde-spuren/spur-bewertung.md` — Metriken und Schwellwerte, nach denen der Verbesserer entscheidet, ob eine Spur schlecht, ineffizient oder verbesserungswürdig ist.
 - `20261007-verbesserer-ausloeser` — **Verbesserer-Auslöser** — `topics/selbstverbessernde-spuren/verbesserer-ausloeser.md` — Wann der Verbesserer aktiv wird — zeitgesteuert alle paar Tage oder ereignisgesteuert bei starkem Momentum.
 - `20261007-papier-experiment-zyklus` — **Papier-Experiment-Zyklus** — `topics/selbstverbessernde-spuren/papier-experiment-zyklus.md` — Wie Verbesserungsvorschläge auf Papier getestet, im Journal festgehalten und bei Erfolg in die Live-Spur übernommen werden.
+- `live-spur-aktuell` — **Spur-Aktueller-Stand** — `topics/selbstverbessernde-spuren/spur-aktuell.md` — Automatisch generierter Tagesstand aller Spuren mit Urteil (OK/BEOBACHTEN/VERBESSERN).
 
 ### llm-signalgeber
 - `20261006-llm-als-signal` — **LLM als Signalgeber** — `topics/llm-signalgeber/llm-als-signal.md` — Konzept: wie ein LLM Kursdaten interpretiert und daraus Handelssignale erzeugt.
