@@ -57,9 +57,24 @@ direkt geschlossen".
   `schliessen` (papier, `buchbereinigung_geist`) - der Preis ist der Einstand,
   NICHT ein Marktpreis. Echte Verkaeufe tragen `stop`/`ziel`/`limit_wartet` als
   Grund, nie `buchbereinigung_geist`.
-- **Regel:** Eine Geister-Ausbuchung auf eine Position mit `modus=live` ist der
-  Verdacht, nicht der Normalfall. Erst pruefen, ob die Boerse die Position
-  wirklich nicht mehr fuehrt (`/account/positions`), bevor das Buch ihr folgt.
+- **REGEL (Max, im Code):** `bueche_geister_aus` bucht NUR noch mit
+  Boersenbeleg aus - `_geist_erloes` muss quelle="boerse" (realizedPnl aus
+  positions-history) liefern. Liefert die Boerse keinen eindeutigen Zeugen,
+  bleibt die Position als UNKLAR im Buch (Meldung im Zyklus, KEINE
+  Journalzeile, KEIN Storno der offenen Order): eine Karteileiche blockiert
+  hoechstens einen Platz, eine echte Position ohne Buch liefe unbewacht
+  weiter. Ohne Beleg wird nie neutral ausgebucht - der Weg, der am 05.10.2026
+  sechs echte Live-Positionen geloescht hat, ist damit zu. kraken/abgleich.py
+  hatte diese Form schon ("ohne Zeugen bleibt die Position stehen und heisst
+  unklar") - xperp folgt jetzt demselben Muster. Testseite: Tests, die das
+  ALTE Verhalten einfroren ("ohne Boersensatz wird der Einsatz
+  zurueckgebucht"), beim Regelwechsel INVERTIEREN statt nur erweitern
+  (Unklar-Fall statt Geist-Fall; Umgebung stubbt `_geist_erloes` auf "boerse").
+  Ein Test, der das gefaehrliche Altverhalten gruen laesst, zementiert es ein.
+  Falle beim Umbau: der Test-Helfer `_pos()` hat in test_handeln_geister.py
+  KEINEN `zeit`-Parameter (dort per `update` setzen), in
+  test_abgleich_papier.py schon - vor dem Keyword-Argument die lokale
+  Definition pruefen.
 
 ### 3. Buch-Stop und Boersen-Stop sind nicht synchronisiert
 
