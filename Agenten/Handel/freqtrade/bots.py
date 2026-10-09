@@ -444,4 +444,4 @@ def haupt(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(haupt(sys.argv[1:]))
+    raise SystemExit(haupt(sys.argv[1:]))
