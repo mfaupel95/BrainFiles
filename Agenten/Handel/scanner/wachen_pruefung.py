@@ -272,7 +272,15 @@ def lage(w, journal_pfad, zustand):
     runden = runden_aus_journal(journal_pfad)
     papier = [r for r in runden if r["modus"] == "papier"]
     echt, stoer = teile_runden(runden)
-    hoch, rueck = drawdown(runden)
+    # Kill-Reset (09.10.2026): nach Ablauf der Kill-Frist setzt spur_buch
+    # `kill_ab_runde` auf die Zahl der bis dahin gebuchten Runden. Der Ruecklauf
+    # (und damit Halbierung und Kill) beginnt dann bei 0, statt fuer immer an dem
+    # Verlust zu haengen, der den Kill ausgeloest hat. Ohne das Feld: unveraendert.
+    try:
+        ab = max(0, int((zustand or {}).get("kill_ab_runde") or 0))
+    except (TypeError, ValueError):
+        ab = 0
+    hoch, rueck = drawdown(runden[ab:])
     frisch, alter = herzschlag_frisch(zustand, w.get("herzschlag_max_minuten", 30))
     # Bedingung 5 rechnet auf HANDELSRUNDEN: ein Herzschlag-Zwangsschluss
     # ist keine Handelsentscheidung und darf den Erwartungswert nicht ins
@@ -292,6 +300,7 @@ def lage(w, journal_pfad, zustand):
         "erste_runde": erste,
         "hoechststand_usd": hoch,
         "ruecklauf_usd": rueck,
+        "kill_ab_runde": ab,
         "halbierungsschwelle_usd": halbierungsschwelle(w),
         "halbierung_im_gewinn": hoch == 0 or halbierungsschwelle(w) <= hoch,
         "groessenfaktor": groessenfaktor(rueck, w),
