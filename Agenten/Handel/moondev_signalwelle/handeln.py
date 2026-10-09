@@ -9,8 +9,8 @@ auf keiner Haus-Boerse handelbar ist. Diese Spur ist das ehrliche
 Gegenstueck: dieselbe Grundidee (kurzfristige starke Bewegung als Signal),
 aber
 
-  * **Daten** ueber die oeffentliche CoinGecko-API (`Handel/moondev_daten.py`,
-    `price_change_percentage=1h,24h`) - keine Blackbox, keine Kanalgebuehr,
+  * **Daten** ueber die oeffentliche Binance /ticker/24hr-API (`Handel/moondev_daten.py`,
+    ``) - keine Blackbox, keine Kanalgebuehr,
   * **Regel** deterministisch im Haus (siehe `signal()`), nachrechenbar,
   * **Buch** ein Haus-Buch (`Handel/spur_buch.py`): Zustand, Journal, Kopie
     nach `Q:\\Handel_Journal\\moondev_signalwelle` (Bedingung 4), Ratsche,
@@ -69,21 +69,17 @@ def quelle(w):
     fehler = []
     aus = {}
     try:
-        maerkte = daten.maerkte(anzahl=int(w.get("anzahl_coins", 250)),
-                                sortierung="market_cap_desc",
-                                prozentfelder="1h,24h")
+        maerkte = daten.ticker_24hr()
     except Exception as e:                                     # noqa: BLE001
-        return {}, {}, ["CoinGecko: %s" % str(e)[:120]]
+        return {}, {}, ["Binance: %s" % str(e)[:120]]
     for m in maerkte:
-        symbol = (m.get("symbol") or "").upper()
+        symbol = m.get("symbol") or ""
         if not symbol:
             continue
         aus[symbol] = {
-            "name": m.get("name"),
-            "aenderung_1h": daten.zahl(m.get("price_change_percentage_1h_in_currency")),
-            "aenderung_24h": daten.zahl(m.get("price_change_percentage_24h")),
-            "volumen_24h": daten.zahl(m.get("total_volume")),
-            "kurs": daten.zahl(m.get("current_price")),
+            "aenderung_1h": daten.zahl(m.get("pct_change")),
+            "volumen_24h": daten.zahl(m.get("volume")),
+            "kurs": daten.zahl(m.get("price")),
         }
     kurse = {s: v["kurs"] for s, v in aus.items() if v["kurs"]}
     return aus, kurse, fehler

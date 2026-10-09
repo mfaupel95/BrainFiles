@@ -90,6 +90,40 @@ def binance_paare():
     return aus
 
 
+
+def ticker_24hr():
+    """Binance /ticker/24hr - Preis, Volumen, Aenderung fuer alle Spot-Paare.
+    
+    Rueckgabe: List von Dicts mit Feldern:
+      - symbol: Binance-Symbol (z.B. 'BTCUSDT', 'ETHUSDC')
+      - price: current_price
+      - volume: quote_volume (in USDT/USDC)
+      - pct_change: price_change_percentage_24h
+      - open: open_price
+      - high: high_price
+      - low: low_price
+    """
+    daten = hole_json("%s/ticker/24hr" % BINANCE)
+    aus = []
+    for d in daten:
+        symbol = d.get("symbol") or ""
+        # Nur USDT/USDC/FDUSD/TUSD-Paare
+        if not (symbol.endswith("USDT") or symbol.endswith("USDC") or 
+                symbol.endswith("FDUSD") or symbol.endswith("TUSD")):
+            continue
+        aus.append({
+            "symbol": symbol,
+            "price": d.get("lastPrice"),
+            "volume": d.get("quoteVolume"),
+            "pct_change": d.get("priceChangePercent"),
+            "open": d.get("openPrice"),
+            "high": d.get("highPrice"),
+            "low": d.get("lowPrice"),
+        })
+    return aus
+
+
+
 # --- OKX: offenes Interesse, Liquidationen, Kerzen -------------------------
 # Dieselben oeffentlichen Endpunkte, die der Haus-Handel schon kennt
 # (scanner/okx.py) - hier ohne Schluessel, ohne Order, nur lesend. Die drei
