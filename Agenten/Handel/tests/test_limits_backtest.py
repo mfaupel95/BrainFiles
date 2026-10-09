@@ -153,7 +153,8 @@ class KonfigTest(unittest.TestCase):
         import json
         w = json.load(open(os.path.join(HIER, "..", "klassik_ema", "wachen.json"), encoding="utf-8"))
         c = lim.konfig(w)
-        self.assertEqual((c["risiko"], c["max_pos"], c["halb"], c["kill"]), (5.0, 3, 15.0, 45.0))
+        self.assertEqual((c["risiko"], c["max_pos"], c["halb"], c["kill"]),
+                         (5.0, 3, 15.0, float(w["kill_switch_gesamt_usd"])))
         self.assertAlmostEqual(c["pct"], 2.5)
         self.assertTrue(c["vorfilter_an"])
 

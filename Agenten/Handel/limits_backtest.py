@@ -202,26 +202,28 @@ def portfolio(cfg, daten, regeln, start_ms=0):
 
     gv_sum = sum(x[1] for x in runden)
     dd = peak_ = 0.0
-    c = 0.0
+    c = tief = 0.0
     for _, gv, _n in runden:
         c += gv
         peak_ = max(peak_, c)
         dd = max(dd, peak_ - c)
-    return {"usd": gv_sum, "runden": len(runden), "einstiege": stats["einstiege"],
+        tief = min(tief, c)
+    return {"tief_usd": tief, "usd": gv_sum, "runden": len(runden), "einstiege": stats["einstiege"],
             "kills": stats["kills"], "erster_kill": stats["erster_kill"], "tot_ab": stats["tot_ab"],
             "ungebucht": stats["ungebucht_verworfen"], "max_dd_usd": dd,
             "blockiert": dict(blockiert), "letzte_runde": runden[-1][0] if runden else None}
 
 
-def lauf(a):
-    w = json.loads((HANDEL / a.spur / "wachen.json").read_text(encoding="utf-8"))
+def baue_daten(spur, anzahl, cache):
+    """(cfg, daten) einer Spur: Long-Signale und Ausgaenge je Instrument der Wache."""
+    w = json.loads((HANDEL / spur / "wachen.json").read_text(encoding="utf-8"))
     cfg = konfig(w)
-    ef, af = kr.REGELN[a.spur]
+    ef, af = kr.REGELN[spur]
     kn = int(w.get("kerzen_anzahl", 400))
     sp = cfg["pct"] / 100.0
     daten = {}
     for inst in w["instrumente"]:
-        k = fb.lade_kerzen(inst, w.get("kerzen_zeitrahmen", "4H"), a.anzahl, a.cache)
+        k = fb.lade_kerzen(inst, w.get("kerzen_zeitrahmen", "4H"), anzahl, cache)
         memo = {}
 
         def regel_aus(j, seite, k=k, w=w, kn=kn, fn=af, memo=memo):
@@ -231,7 +233,6 @@ def lauf(a):
             return memo[key]
 
         sigs = {i for i, s in fb.signale(k, ef, w) if s == "long"}                # nur_long
-
         ausg_memo = {}
 
         def ausgang(i, k=k, regel_aus=regel_aus, memo=ausg_memo):
@@ -243,7 +244,12 @@ def lauf(a):
             return memo[i]
 
         daten[inst] = {"k": k, "sigs": sigs, "ausgang": ausgang}
-        print("%s %s: %d Long-Signale" % (a.spur, inst, len(sigs)), flush=True)
+        print("%s %s: %d Long-Signale" % (spur, inst, len(sigs)), flush=True)
+    return cfg, daten
+
+
+def lauf(a):
+    cfg, daten = baue_daten(a.spur, a.anzahl, a.cache)
     aus = {"spur": a.spur, "cfg": {k_: v for k_, v in cfg.items()}, "ergebnis": {}}
     for name, regeln in VARIANTEN:
         aus["ergebnis"][name] = portfolio(cfg, daten, regeln)
@@ -263,6 +269,58 @@ def lauf(a):
         t0 += 14 * 86400 * 1000
     Path(a.aus).parent.mkdir(parents=True, exist_ok=True)
     Path(a.aus).write_text(json.dumps(aus))
+
+
+KILL_R = (9, 15, 20, 30, 40, 60)          # Schwelle als Vielfaches des Risikos je Position (9 = die alten 45 USD)
+
+
+def killraster(a):
+    """Kill-Schwelle in R-Vielfachen: Kill wie gemeint (Marktkurs, Reset), Rolling-Start."""
+    cfg, daten = baue_daten(a.spur, a.anzahl, a.cache)
+    regeln = dict(VARIANTEN)["G + Kill gemeint"]
+    erste = max(d["k"][0][0] for d in daten.values())
+    letzte = max(d["k"][-1][0] for d in daten.values())
+    aus = {"spur": a.spur, "risiko": cfg["risiko"], "raster": {}}
+    for r in KILL_R:
+        c = dict(cfg, kill=r * cfg["risiko"])
+        voll = portfolio(c, daten, regeln)
+        starts = []
+        t0 = erste + 150 * 86400 * 1000
+        while t0 < letzte - 30 * 86400 * 1000:
+            e = portfolio(c, daten, regeln, start_ms=t0)
+            starts.append({"tage_bis_kill": None if not e["erster_kill"] else (e["erster_kill"] - t0) / 86400000.0,
+                           "tief": e["tief_usd"], "usd": e["usd"], "kills": e["kills"],
+                           "rest": (letzte - t0) / 86400000.0})
+            t0 += 14 * 86400 * 1000
+        aus["raster"][str(r)] = {"voll": voll, "starts": starts}
+        print("  Schwelle %2d R: %+8.1f USD, Kills %d, max DD %.0f" % (r, voll["usd"], voll["kills"], voll["max_dd_usd"]), flush=True)
+    Path(a.aus).parent.mkdir(parents=True, exist_ok=True)
+    Path(a.aus).write_text(json.dumps(aus))
+
+
+def killraster_auswerten(muster):
+    erg = [json.loads(Path(f).read_text()) for f in sorted(glob.glob(muster))]
+    print("== Kill-Schwelle in Vielfachen des Risikos je Position (5 USD); Kill gemeint (Marktkurs, Reset), Halbierung 15 USD, Vorfilter an")
+    print("%-8s %9s %8s | Spur: %s" % ("Schwelle", "Summe USD", "Kills", " ".join("%-12s" % e["spur"].replace("klassik_", "")[:12] for e in erg)))
+    for r in KILL_R:
+        zeilen = []
+        for e in erg:
+            ra = e["raster"][str(r)]
+            zeilen.append("%+7.0f/%2dK" % (ra["voll"]["usd"], ra["voll"]["kills"]))
+        usd = sum(e["raster"][str(r)]["voll"]["usd"] for e in erg)
+        kills = sum(e["raster"][str(r)]["voll"]["kills"] for e in erg)
+        print("%2d R %4d USD %+8.0f %8d | %s" % (r, r * 5, usd, kills, "  ".join(zeilen)))
+    print("\n== Rolling-Start (frisches Buch): Anteil der Starts mit Kill binnen 365 Tagen / tiefster Stand (USD) im Median und im schlechtesten Fall")
+    print("%-8s | %s" % ("Schwelle", " ".join("%-26s" % e["spur"].replace("klassik_", "")[:12] for e in erg)))
+    for r in KILL_R:
+        spalten = []
+        for e in erg:
+            st_ = e["raster"][str(r)]["starts"]
+            n = len(st_)
+            kill365 = 100.0 * sum(1 for x in st_ if x["tage_bis_kill"] is not None and x["tage_bis_kill"] <= 365) / n
+            tiefs = sorted(x["tief"] for x in st_)
+            spalten.append("%3.0f%% | med %5.0f | min %5.0f" % (kill365, tiefs[n // 2], tiefs[0]))
+        print("%2d R     | %s" % (r, "  ".join(spalten)))
 
 
 def datum(ms):
@@ -324,8 +382,21 @@ def main(argv=None):
     p1.add_argument("--aus", required=True)
     p2 = sub.add_parser("auswerten")
     p2.add_argument("muster")
+    p3 = sub.add_parser("killraster")
+    p3.add_argument("--spur", required=True)
+    p3.add_argument("--anzahl", type=int, default=14000)
+    p3.add_argument("--cache", default=str(HANDEL / "daten" / "fib_bt"))
+    p3.add_argument("--aus", required=True)
+    p4 = sub.add_parser("killraster-auswerten")
+    p4.add_argument("muster")
     a = ap.parse_args(argv)
-    return lauf(a) if a.cmd == "lauf" else auswerten(a.muster)
+    if a.cmd == "lauf":
+        return lauf(a)
+    if a.cmd == "killraster":
+        return killraster(a)
+    if a.cmd == "killraster-auswerten":
+        return killraster_auswerten(a.muster)
+    return auswerten(a.muster)
 
 
 if __name__ == "__main__":

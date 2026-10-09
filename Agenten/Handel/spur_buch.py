@@ -821,6 +821,52 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
               **mae.felder(p))
 
 
+# --- Kill: Zwangsschluss mit Buchung -----------------------------------------
+
+KILL_GRUND = "kill_zwangsschluss"
+
+
+def kill_schliessen(z, w, quelle, preis_fuer, journal_pfad, zustand_pfad,
+                    live=False, weg=None):
+    """Offene Positionen zum Marktkurs schliessen UND buchen (Grund `kill_zwangsschluss`).
+
+    Vorher (bis 09.10.2026) leerte der Kill nur `z["positionen"]`: keine
+    Verkaufszeile, der gebuchte Ruecklauf blieb stehen, die Spur kam nie mehr
+    unter die Schwelle. Jetzt laeuft der Zwangsschluss ueber `pruefe_ausstiege`
+    wie jeder andere Ausstieg - Stop/Ziel vor Zwangsschluss, im Live-Betrieb mit
+    echtem Verkauf an der Boerse. Der Grund enthaelt "zwangsschluss": die Runde
+    zaehlt damit in der Kapitalkurve (Ruecklauf, Kill), aber nicht in den
+    Kennzahlen (stoerungen.ist_stoerung).
+
+    Fehlt der Kurs einer Position oder schlaegt der Verkauf fehl, bleibt sie im
+    Buch; der naechste Zyklus der Sperre versucht es erneut. Rueckgabe: Zahl der
+    Positionen, die noch offen sind.
+    """
+    if not z.get("positionen"):
+        return 0
+    try:
+        _daten, kurse, _fehler = quelle(w)
+    except Exception as e:                                         # noqa: BLE001
+        print("  Kill: Kurse nicht abrufbar (%s) - %d Position(en) bleiben, "
+              "naechster Zyklus versucht es erneut"
+              % (str(e)[:80], len(z["positionen"])), file=sys.stderr)
+        return len(z["positionen"])
+    if preis_fuer:
+        for p in z["positionen"]:
+            inst = p.get("inst")
+            if not inst or inst in kurse:
+                continue
+            try:
+                preis = preis_fuer(inst)
+            except Exception:                                      # noqa: BLE001
+                preis = None
+            if preis and preis > 0:
+                kurse[inst] = preis
+    pruefe_ausstiege(z, kurse, w, journal_pfad, zustand_pfad=zustand_pfad,
+                     live=live, weg=weg, zusatz=lambda p, w_: KILL_GRUND)
+    return len(z["positionen"])
+
+
 # --- Das Lauf-Geruest ------------------------------------------------------
 
 def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
@@ -894,43 +940,67 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         #
         # T-176 (29.09.2026): der Kill war ein DAUERSPERRER. Er leerte die
         # Positionen, aber die Kapitalkurve erholt sich nur durch neue
-        # Trades - genau die sperrt der Kill. Circulus vitiosus: der Kill
-        # verhindert die einzige Handlung, die ihn aufheben wuerde.
+        # Trades - genau die sperrt der Kill.
         #
-        # Der Kill ist jetzt ein Zwangsschluss mit Frist: Positionen werden
-        # flachgesetzt, aber nach `kill_frist_stunden` (Standard 7 Tage = 168 h)
-        # geht der Kill von selbst wieder auf. Die Frist steht im Zustand
-        # (`kill_seit`), damit sie einen Neustart uebersteht.
+        # Die Frist (`kill_frist_stunden`, Standard 168 h) allein half nicht,
+        # und das ist am 09.10.2026 mit dem echten Code nachgestellt worden
+        # (tests/test_kill_nach_frist.py): Der Kill loeschte die Positionen OHNE
+        # Buchung, der gebuchte Ruecklauf blieb stehen, nach der Frist lief ein
+        # Zyklus frei und im naechsten griff der Kill sofort wieder - die dabei
+        # eroeffnete Position wurde wieder ungebucht geloescht. Der Kill war
+        # faktisch dauerhaft (Backtest PR #20: vier von fuenf Klassikspuren
+        # stehen so binnen eines Jahres still).
+        #
+        # Jetzt (Auftrag Max 09.10.2026, Weg c):
+        #   1. Der Kill schliesst offene Positionen zum Marktkurs und BUCHT sie
+        #      (Grund `kill_zwangsschluss`, `kill_schliessen`).
+        #   2. Nach Ablauf der Frist beginnt der Ruecklauf bei 0
+        #      (`kill_ab_runde` im Zustand, gelesen von wachen_pruefung.lage):
+        #      die Spur handelt weiter und der Kill greift erst bei einem NEUEN
+        #      Rueckgang in Hoehe der Schwelle.
         if modus != "vorschau" and s.get("kill"):
             kill_seit = z.get("kill_seit")
             frist_h = float(w.get("kill_frist_stunden", 168))
+            verstrichen = None
             if kill_seit:
-                # Kill bereits aktiv: pruefen, ob die Frist abgelaufen ist
                 try:
-                    from datetime import datetime as _dt
-                    seit = _dt.fromisoformat(kill_seit)
+                    seit = datetime.fromisoformat(kill_seit)
+                    if seit.tzinfo is None:
+                        seit = seit.replace(tzinfo=timezone.utc)
                     verstrichen = (datetime.now(timezone.utc) - seit).total_seconds() / 3600.0
-                    if verstrichen < frist_h:
-                        print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). "
-                              "Frist noch %.0f von %.0f h - Alles flach."
-                              % (ruecklauf, verstrichen, frist_h))
-                        z["positionen"] = []
-                        schreibe_zustand(zustand_pfad, z)
-                        spiegeln(zustand_pfad, journal_pfad, z, w)
-                        return 0
-                    # Frist abgelaufen: Kill aufheben, weiterlaufen
-                    print("- Kill-Frist abgelaufen (%.0f h) - Kill aufgehoben."
-                          % verstrichen)
-                    z.pop("kill_seit", None)
                 except (ValueError, TypeError):
-                    # Unlesbarer Zeitstempel: Kill behandeln wie neu
-                    pass
+                    verstrichen = None     # unlesbarer Zeitstempel: wie ein neuer Kill
+            # Opt-out (Auftrag Max 09.10.2026): `kill_wiederaufnahme: false` =
+            # kein Selbstanlauf. Die Frist laeuft weiter, hebt den Kill aber nicht
+            # auf; nur ein Mensch entfernt `kill_seit`/setzt den Zustand zurueck.
+            # Standard true (alle Papierspuren).
+            automatisch = bool(w.get("kill_wiederaufnahme", True))
+            if verstrichen is not None and verstrichen >= frist_h and not automatisch:
+                print("- Kill-Frist abgelaufen (%.0f h), aber kill_wiederaufnahme="
+                      "false: Spur bleibt gesperrt, Freigabe nur von Hand." % verstrichen)
+            if verstrichen is not None and verstrichen >= frist_h and automatisch:
+                print("- Kill-Frist abgelaufen (%.0f h) - Kill aufgehoben, der "
+                      "Ruecklauf beginnt bei 0 (war %.2f USD)." % (verstrichen, ruecklauf))
+                z.pop("kill_seit", None)
+                z["kill_ab_runde"] = s.get("runden_gesamt", 0)
+                z["kill_aufgehoben"] = jetzt()
+                ruecklauf = 0.0
+                faktor = groessenfaktor(ruecklauf, w)
             else:
-                # Neuer Kill: Positionen flachsetzen, Frist starten
-                print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). "
-                      "Alles flach. Frist: %.0f h." % (ruecklauf, frist_h))
-                z["positionen"] = []
-                z["kill_seit"] = jetzt()
+                if verstrichen is None:
+                    print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Offene "
+                          "Positionen werden zum Marktkurs geschlossen und gebucht. "
+                          "Frist: %.0f h." % (ruecklauf, frist_h))
+                    z["kill_seit"] = jetzt()
+                    z["kill_ruecklauf_usd"] = round(ruecklauf, 2)
+                elif verstrichen < frist_h:
+                    print("- Kill aktiv (%.2f USD Ruecklauf). Frist noch %.0f von "
+                          "%.0f h." % (ruecklauf, frist_h - verstrichen, frist_h))
+                offen = kill_schliessen(z, w, quelle, preis_fuer, journal_pfad,
+                                        zustand_pfad, live=live, weg=weg)
+                if offen:
+                    print("  %d Position(en) noch offen (kein Kurs oder Verkauf "
+                          "fehlgeschlagen) - naechster Zyklus versucht es erneut." % offen)
                 schreibe_zustand(zustand_pfad, z)
                 spiegeln(zustand_pfad, journal_pfad, z, w)
                 return 0
