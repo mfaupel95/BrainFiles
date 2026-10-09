@@ -82,7 +82,7 @@ alle `grid_*`. `anwenden.py` prüft beim Anwenden jeden geänderten Wert erneut.
 - **Maß:** `netto_gv_je_runde` (USD je Runde nach Gebühren und Funding), im
   Walk-Forward mit `oos_training_tage`/`oos_test_tage`/`oos_schritt_tage` aus
   `konfig.json`. Auswahl und Prüfung nutzen dieselben Fenster („schwaches
-  Sieb“, wie Spur 1; ein echter Train/Test-Split ist Folgearbeit).
+  Sieb“, wie Spur 1; der Holdout-Block unten schließt die Lücke).
 - **Ein Kandidat wird nur vorgeschlagen, wenn:** (a) er die Basis im Aggregat
   schlägt, (b) in mehr als der Hälfte der Fenster, mindestens
   `overfit_min_fenster`, (c) mindestens `overfit_min_runden` Runden hat,
@@ -91,6 +91,56 @@ alle `grid_*`. `anwenden.py` prüft beim Anwenden jeden geänderten Wert erneut.
 - Die Datenlage (älteste XPERP seit Mai 2026, ~90 Testtage nach 60 Tagen
   Warmup) lässt oft nur wenige Fenster zu; die Fensterzahl steht im Bericht,
   und „kein Vorschlag“ ist ein regulärer Ausgang.
+
+## Verifikation und Freigabe (Atlas-Konsultation 2026-10-10)
+
+Das Sieb oben prüft auf denselben Fenstern, auf denen gesucht wurde: der
+Vorschlagende bewertet sich selbst. Der Atlas sagt dazu: der Prüfer muss vom
+Vorschlagenden getrennt sein ([verification-asymmetry § model-and-claims](https://agentic-atlas.dev/nodes/verification-asymmetry#model-and-claims)).
+Daraus folgt:
+
+- **Holdout als zweite deterministische Stufe.** Die letzten `holdout_tage`
+  Tage werden vor Suche und Walk-Forward abgeschnitten (wie Spur 1,
+  `ruecktest.holdout()` / `suche.py`) und pro Vorschlag genau einmal bewertet,
+  nie in die Suche zurückgespeist. Reihenfolge der Stufen: fünf Siebregeln,
+  dann Holdout, zuletzt Max ([verification-asymmetry § model-and-claims](https://agentic-atlas.dev/nodes/verification-asymmetry#model-and-claims)).
+  Reicht die Historie nach Abzug nicht, endet der Lauf mit
+  `grund="zu wenig Historie fuer Holdout"` statt still ohne Holdout.
+- **Holdout-Verschleiß.** Jede Wochenbewertung gibt dem Vorschlagenden
+  Information preis; der Atlas nennt den Mechanismus, aber kein Budget
+  ([verification-asymmetry § scope-and-boundaries-where-the-asymmetry-fails](https://agentic-atlas.dev/nodes/verification-asymmetry#scope-and-boundaries-where-the-asymmetry-fails)).
+  Entwurfsannahme, von Max zu bestätigen: der Bericht zählt die Holdout-
+  Auswertungen und meldet den Block nach `holdout_max_nutzungen` (Vorschlag 8)
+  als „verbraucht"; der Wert steht in `konfig.json`.
+- **Bestanden heißt „Vertrag erfüllt", nicht „besser".** Der Bericht legt neben
+  den Diff ([verification-asymmetry § scope-and-boundaries-where-the-asymmetry-fails](https://agentic-atlas.dev/nodes/verification-asymmetry#scope-and-boundaries-where-the-asymmetry-fails)):
+  Ergebnis je Fenster (nicht nur das Aggregat), Abstand zur Grenze je Regel,
+  das Holdout-Ergebnis und einen festen Absatz „Nicht geprüft" (Fensterzahl,
+  geteilte Daten, offene Positionen am Fensterende, nur Trend-Modus ohne
+  LLM-Filter).
+- **Verstöße bleiben benannte Ausgaben je Regel.** Das Sieb urteilt nicht und
+  korrigiert nicht; `anwenden.py` darf einen gescheiterten Vorschlag nicht
+  anpassen ([no-duck-left-behind § verification](https://agentic-atlas.dev/nodes/no-duck-left-behind#verification)).
+
+## Wiederherstellung je Stufe
+
+Vor dem Lauf festgelegt, welcher Zug je Stufe gilt
+([effect-discipline § implications-the-consequence-map](https://agentic-atlas.dev/nodes/effect-discipline#implications-the-consequence-map)):
+
+| Stufe | Zug | Wirkung nach außen |
+|---|---|---|
+| Merkmals-Cache | Wiederholen / verwerfen | nur Cache-Datei |
+| Suche, Sieb, Holdout | Verwerfen | keine |
+| Berichtsordner, `wachen.neu.json` | isoliert, liegt bis zur Freigabe unter `berichte/` | keine Wirkung auf Live |
+| Anwenden | Tor (`/ja`) davor, Denylist-Prüfung im Anwenden, Rücknahme danach | ändert `xperp/wachen.json` |
+
+Das Tor sitzt vor der unumkehrbaren Wirkung, nicht danach
+([effect-discipline § model-and-claims](https://agentic-atlas.dev/nodes/effect-discipline#model-and-claims)).
+**Rücknahme:** `anwenden.py` legt vor dem Schreiben ein zeitgestempeltes `.bak`
+an und stellt bei Fehlschlag beide Zieldateien daraus wieder her; für Spur 2
+gilt derselbe Pfad, und ein späteres Zurückrollen erfolgt aus diesem `.bak`
+bzw. per `git revert` des Anwende-Commits. Ein abgelehnter oder veralteter
+Vorschlag kostet nichts, weil er nie in der Live-Datei stand.
 
 ## Engine-Änderung: `trailing_aktiv`
 
@@ -126,6 +176,6 @@ Die Routine zeigt auf `verbesserer/.venv/Scripts/python.exe`.
 
 ## Nicht Teil dieser Spec
 
-Grid-Modus; LLM-Filter im Rücktest; echter Train/Test-Split; Bewertung offener
+Grid-Modus; LLM-Filter im Rücktest; vollständiger Train/Test-Split über den Holdout hinaus; Bewertung offener
 Positionen am Fensterende; Korrektur der 8h-Funding-Annahme im Live-Pfad
 (`handeln.buche_funding`, `bot.py:208`) – das ist ein eigener Live-Befund.
