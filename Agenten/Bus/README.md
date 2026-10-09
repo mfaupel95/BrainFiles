@@ -149,3 +149,7 @@ aus der Repo-Wurzel - Hermes-Sitzungen starten in `Agenten/Hermes`, also vorher
 `cd "$HERMES_HOME/../.."`. Nach Codeaenderungen muessen die jeweiligen Bot-Prozesse
 neu laden. Einen Handelsprozess mit offenem Live-Fenster nicht unangekuendigt
 neu starten.
+
+## Nachrichtentyp "signal" (Fremd-Werkzeuge)
+
+`fremd_signal.melden_signal(wer, signal)` prueft ein Signal mit `Handel/signal_schema.py` und schreibt es als `was="signal"` (gueltig) oder `was="signal_verworfen"` (Grund im Text) ins Journal. Beide bleiben fuer den Sprecher still. Ausgefuehrt wird nichts; das wachen.json-Gate in Handel/ entscheidet. Test: `python tests/test_fremd_signal.py`.
