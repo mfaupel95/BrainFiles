@@ -704,6 +704,16 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
     Faellt die Abfrage aus, wird NICHTS gebucht: ein Netzfehler darf das Buch
     nicht leeren.
 
+    REGEL (Max, 09.10.2026): ausgebucht wird NUR mit Boersenbeleg. Der Geist
+    braucht ein realisiertes Ergebnis von der Boerse (realizedPnl aus
+    /account/positions-history, siehe `_geist_erloes`). Fehlt dieser Beleg,
+    bleibt die Position als UNKLAR im Buch stehen und wird gemeldet - NICHT
+    neutral ausgebucht. Anlass: am 05.10.2026 hat die neutrale Buchung
+    (Einsatz zurueck, Erloes 0.00) sechs echte Live-Positionen aus dem Buch
+    geloescht, weil die Boersenabfrage sie kurz nicht zeigte; an der Boerse
+    blieben sie offen und unbewacht. Eine Karteileiche blockiert hoechstens
+    einen Platz, eine echte Position ohne Buch liefe unbewacht weiter.
+
     `stornieren=False` (Papierlauf): eine offene Order zu einem Geist wird
     NICHT storniert. Das waere ein echter Boerseneingriff - und der Grund,
     warum diese Funktion bis zum 01.10.2026 nur im Live-Zweig lief (T-277).
@@ -770,7 +780,7 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
             # liefe unbewacht weiter.
             unklar.append(p)
             if not still:
-                print("  %s fehlt an der Boerse, aber KEIN Boersenbeleg "
+                print("  %s (%s) fehlt an der Boerse, aber KEIN Boersenbeleg "
                       "(realizedPnl) auffindbar - bleibt als UNKLAR im Buch, "
                       "wird NICHT ausgebucht (Regel Max 09.10.2026)"
                       % (p.get("inst"), p.get("seite")))

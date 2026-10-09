@@ -125,7 +125,7 @@ class Umgebung:
             patch.object(h, "journal",
                          side_effect=lambda **k: self.journal.append(k)),
             patch.object(h, "_geist_erloes",
-                         side_effect=lambda p: (20.0, "neutral", 1.0)),
+                         side_effect=lambda p: (20.0, "boerse", 1.0)),
         ]
         for p in self._p:
             p.start()
@@ -155,6 +155,31 @@ class PapierGleichtAbTest(unittest.TestCase):
         self.assertEqual(u.storniert, [])                    # keine Boersenaktion
         self.assertEqual([j["grund"] for j in u.journal],
                          ["buchbereinigung_geist", "handanpassung"])
+
+    def test_geist_ohne_boersenbeleg_bleibt_im_papierlauf(self):
+        """Regel Max 09.10.2026: nur mit Boersenbeleg wird ausgebucht.
+
+        Vorher buchte der Abgleich eine fehlende Live-Position NEUTRAL aus
+        (Einsatz zurueck) - am 05.10.2026 verschwanden so sechs echte
+        Positionen aus dem Buch, waehrend sie an der Boerse offen blieben.
+        Ohne realizedPnl-Beleg bleibt die Position als UNKLAR stehen.
+        """
+        z = {"positionen": [_pos(XRP, kontrakte=704.0), _pos(ZEC, kontrakte=38.0)],
+             "wartende": []}
+        with Umgebung([_boerse(ZEC, 145)]) as u, \
+                patch.object(h, "_geist_erloes",
+                             side_effect=lambda p: (p.get("margin") or 0.0,
+                                                    "neutral", None)):
+            stand = h.buche_abgleich(z, WACHEN, live=False)
+        self.assertEqual(stand["geister"], 0, "ohne Beleg zaehlt kein Geist")
+        self.assertEqual(sorted(p["inst"] for p in z["positionen"]),
+                         sorted([XRP, ZEC]),
+                         "beide bleiben im Buch, keine Ausbuchung")
+        gruende = [j["grund"] for j in u.journal]
+        self.assertNotIn("buchbereinigung_geist", gruende,
+                         "ohne Beleg keine Geist-Ausbuchung")
+        self.assertEqual([g for g in gruende if g != "handanpassung"], [],
+                         "nur die legitime Groessen-Anpassung von ZEC ist erlaubt")
 
     def test_groesse_folgt_der_boerse_im_papierlauf(self):
         """ZEC: Buch 38, Boerse 145 - der Handgriff war ein Zukauf."""
