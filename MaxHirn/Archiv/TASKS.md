@@ -7,11 +7,6 @@
       Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
       Betrifft: Agenten/Hermes/scripts/dateischwund-wache-baum.py
 
-- [ ] **T-387 - Worktree-Fehler-Wache gebaut: zweige.py Lage-Pruefung + zweige-wache.py Cron (10.10.2026)**
-      Kontext: Am 10.10.2026 lagen zwei Worktrees im HAUPTBAUM statt unter `.worktrees/` (Agenten/.claude/worktrees/sweet-heisenberg-85efc5, init-4ede6f), einer detached HEAD (push-noema). Keine Wache meldete das. BEHOBEN: `zweige.py` weist jetzt drei Worktree-Fehlerklassen aus (Lage nicht unter .worktrees/, detached HEAD, verwaister Eintrag); neue `zweige-wache.py` (no_agent-Cron, alle 6h, meldet nur bei Auffaelligkeit, Ruhe 6h). Merge 21a703ca. Cron d8f8ceba4ba2.
-      Naechster Schritt: beobachten - die Wache meldet init-4ede6f (verwaister Eintrag im Hauptbaum) bis er aufgeraeumt ist. Aufraeumen: python Agenten/Werkzeuge/zweige.py --entfernen.
-      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
-      Betrifft: Agenten/Werkzeuge/zweige.py, Agenten/Hermes/scripts/zweige-wache.py
 
 - [ ] **T-386 - omniquant: Stop-Breite nicht kalibrierbar - 0 geschlossene Runden, offene Stops teils ueber dem Pflichtband**
       Kontext: Befund 10.10.2026. omniquant hat im Journal 0 geschlossene Runden - die Spur hat noch nie eine Runde geschlossen. Eine Stop-Breite laesst sich nicht kalibrieren, wenn keine Runde die Wirkung belegt. Die 10 offenen Positionen zeigen Stop-Breiten 6,4-13,5 % (NEAR-USDC 13,52, SUI 12,02, FIL 11,6, STX 11,98 - teils ueber stop_max_pct 12.0). Die Prognose rechnet den Stop gegen 20-Tage-Extrema (prognose.py:121-133), nicht gegen den Einstieg - daher die Streuung. Tore in prognose.weit.json: mindest_score 60, mindest_score_short 45, mindest_cr 1.0, stop_min_pct 5.0, stop_max_pct 12.0. NACHPRUEFUNG 10.10.2026: alle 10 offenen Positionen erfuellen die Tore (XPL 49,5 und MON 53,4 sind SHORT, Schwelle 45 - korrekt eroeffnet, kein Fehler), keine ueberlaeufig (2-5 Tage < 14), keine im Stop/Ziel gerissen. Nur NEAR-USDC ist live (Kraken-Futures), die uebrigen 9 Papier.
@@ -19,27 +14,17 @@
       Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
       Betrifft: Agenten/Handel/omniquant/, prognose.weit.json
 
-- [ ] **T-385 - omniquant: SICHERHEITSLUECKE NEAR-USDC - stop_setzen reichte fuer_ausstieg nicht durch (BEHOBEN 10.10.2026)**
-      Kontext: omniquant meldete seit 05.10.2026 jede Viertelstunde "SICHERHEITSLUECKE: Stop fehlte an der Boerse und liess sich nicht nachsetzen" fuer die live offene NEAR-USDC-Position (Kraken-Futures, 61 Kontrakte, stop_algo_id=null). Ursache: `kraken_perp.stop_setzen` rief `paar_fuer(inst)` OHNE `fuer_ausstieg=True` - das Einstiegs-Gate `ABLEITUNG_ERLAUBT` (prozesslokal, nur beim Einstieg via setze_ableitung gesetzt) blockierte den Nachsatz, sobald der Prozess neu startete. `markt_verkauf` und `schutzstop_vorhanden` reichten das Flag bereits korrekt durch (T-306). BEHOBEN: `stop_setzen(inst, kontrakte, stop_preis, fuer_ausstieg=True)` reicht das Flag durch; neuer Test `test_stop_setzen_umgeht_das_einstiegs_gate` in test_pf_ableitung.py, 122 omniquant-Tests gruen. Merge 5f2f7ec4. Greift beim naechsten omniquant-Zyklus (Dauerlauf importiert je Zyklus frisch).
-      Naechster Schritt: naechsten omniquant-Zyklus beobachten - NEAR-USDC muss einen Boersen-Stop bekommen (stop_algo_id gesetzt, keine SICHERHEITSLUECKE-Zeile mehr).
-      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
+- [ ] **T-385 - omniquant: SICHERHEITSLUECKE NEAR-USDC - Meldung gestoppt, aber Position ohne Journal-Ausstieg verschwunden**
+      Kontext: omniquant meldete seit 05.10.2026 jede Viertelstunde "SICHERHEITSLUECKE: Stop fehlte an der Boerse und liess sich nicht nachsetzen" fuer die live offene NEAR-USDC-Position (Kraken-Futures, 61 Kontrakte, stop_algo_id=null). Ursache: `kraken_perp.stop_setzen` rief `paar_fuer(inst)` OHNE `fuer_ausstieg=True` - das Einstiegs-Gate `ABLEITUNG_ERLAUBT` blockierte den Nachsatz. BEHOBEN: `stop_setzen(inst, kontrakte, stop_preis, fuer_ausstieg=True)` reicht das Flag durch; Test `test_stop_setzen_umgeht_das_einstiegs_gate`, 122 omniquant-Tests gruen. Merge 5f2f7ec4.
+      NACHPRUEFUNG 11.10.2026: Meldung seit 10.10. 18:13:56 nicht mehr aufgetreten (live_pf_ableitung jetzt True in wachen.json). ABER NEUER BEFUND: NEAR-USDC ist aus zustand.json (Basis) verschwunden OHNE Journal-Ausstieg - das Journal hat nur die Eroeffnen-Zeile vom 05.10. 02:51, keinen Verkauf. An der Boerse (Kraken-Futures offene_positionen) ist die Position nicht mehr offen. Die Stufen-Buecher (zustand.hoch/mittel.json) fuehren NEAR-USDC noch als Papier. Das ist ein Buchhaltungs-Geist: eine live offene Position lief 5+ Tage ohne Boersen-Stop und verschwand dann aus dem Buch ohne Ausstiegszeile.
+      Naechster Schritt: klaeren, wie NEAR-USDC geschlossen wurde (Hand? Liquidation? Abgleich?) - Kraken-Futures-History pruefen; Buchhaltungs-Geist dokumentieren.
+      Angelegt: 2026-10-10 · Zuletzt: 2026-10-11
       Betrifft: Agenten/Handel/omniquant/kraken_perp.py, live_perp.py, zustand.json (NEAR-USDC)
 
 - [ ] **T-384 - Documents/GitHub: 21 Klone ausserhalb der Flotte - 6 nicht in Werkstatt/Repos**
       Kontext: C:\Users\faupe\Documents\GitHub haelt 21 git-Klone, die NICHT in Werkstatt/Repos liegen. Bekannte Repos (nautilus_trader, unsloth, financial-services, context7, onchainos-skills u. a.) und NEU/anders: OmniQuant (eigener Fork), OpenMobius-skill, awesome-trading-agents, data-mcp, fintool, moon-dev-ai-agents2. Fund beim Skill-Scan 09.10.2026 (23 SKILL.md). Naechster Schritt: Entscheidung Max - die 6 unbekannten nach Werkstatt/Repos verschieben (Hausmuster) oder loeschen; Duplikate der Flotte dort entfernen. Angelegt: 2026-10-09
       Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
 
-- [ ] **T-379 - Profil-Skills versionieren: .gitignore-Freigabe fuer Agenten/Hermes/profiles/*/skills/**
-      Kontext: 08.10.2026, vormerken lassen (Max: "ja vormerken"). Die Skills unter
-      Agenten/Hermes/profiles/<bot>/skills/ (z. B. claude-code/productivity/protecting-irreplaceable-data)
-      sind git-ignoriert - nur Agenten/Hermes/skills/ ist versioniert. Eine dort gepflegte
-      Lehre (CR-Byte-Falle im Edit) hatte keine Git-Historie. Aufgabe: Whitelist-
-      Rueckausnahmen in .gitignore ergaenzen (!Agenten/Hermes/profiles/*/skills/**/*.md
-      plus Traverse-Regeln wie bei anderen Freigaben), git check-ignore -v gegenprobe,
-      status sauber, commit. Vorher pruefen, ob keine Secrets/Cache-Dateien in den
-      Skill-Ordnern liegen (find ... -name '*.json' -o -name '*.env').
-      Angelegt: 2026-10-08
-      Betrifft: .gitignore, Agenten/Hermes/profiles/*/skills/
 - [ ] **T-378 — BtcRegimeKurz abgelegt: Kante 1,2:1, nicht lebensfaehig**
       Kontext: Auftrag Max 05.10.2026 (BTC-Strategie fuer Seitwaerts-/Aufwaerts-Phasen,
       Haltung max 48 h, moeglichst kurz, hohe Fluktuation). Gebaut und gemessen:
@@ -1944,6 +1929,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-387 - Worktree-Fehler-Wache gebaut: zweige.py Lage-Pruefung + zweige-wache.py Cron (10.10.2026)**
+      Kontext: Am 10.10.2026 lagen zwei Worktrees im HAUPTBAUM statt unter `.worktrees/` (Agenten/.claude/worktrees/sweet-heisenberg-85efc5, init-4ede6f), einer detached HEAD (push-noema). Keine Wache meldete das. BEHOBEN: `zweige.py` weist jetzt drei Worktree-Fehlerklassen aus (Lage nicht unter .worktrees/, detached HEAD, verwaister Eintrag); neue `zweige-wache.py` (no_agent-Cron, alle 6h, meldet nur bei Auffaelligkeit, Ruhe 6h). Merge 21a703ca. Cron d8f8ceba4ba2.
+      Naechster Schritt: beobachten - die Wache meldet init-4ede6f (verwaister Eintrag im Hauptbaum) bis er aufgeraeumt ist. Aufraeumen: python Agenten/Werkzeuge/zweige.py --entfernen.
+      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
+      Betrifft: Agenten/Werkzeuge/zweige.py, Agenten/Hermes/scripts/zweige-wache.py
+      
+- [x] **T-379 - Profil-Skills versionieren: .gitignore-Freigabe fuer Agenten/Hermes/profiles/*/skills/**
+      Kontext: 08.10.2026, vormerken lassen (Max: "ja vormerken"). Die Skills unter
+      Agenten/Hermes/profiles/<bot>/skills/ (z. B. claude-code/productivity/protecting-irreplaceable-data)
+      sind git-ignoriert - nur Agenten/Hermes/skills/ ist versioniert. Eine dort gepflegte
+      Lehre (CR-Byte-Falle im Edit) hatte keine Git-Historie. Aufgabe: Whitelist-
+      Rueckausnahmen in .gitignore ergaenzen (!Agenten/Hermes/profiles/*/skills/**/*.md
+      plus Traverse-Regeln wie bei anderen Freigaben), git check-ignore -v gegenprobe,
+      status sauber, commit. Vorher pruefen, ob keine Secrets/Cache-Dateien in den
+      Skill-Ordnern liegen (find ... -name '*.json' -o -name '*.env').
+      Angelegt: 2026-10-08
+      Betrifft: .gitignore, Agenten/Hermes/profiles/*/skills/
+      
 - [x] **T-080 — Eine scharfe Spur, die dauerhaft sperrt, meldet sich nur einmal**
       Kontext: Der Ereignisfilter des Dauerlaufs meldet Sperrzeilen („--live
       angefordert, aber gesperrt: …“) jetzt mit Gedaechtnis je Spur — dieselbe
