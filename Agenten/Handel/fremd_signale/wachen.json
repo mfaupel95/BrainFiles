@@ -1,8 +1,8 @@
 {
   "_zweck": "Tor fuer Signale aus Fremd-Werkzeugen (kraken-cli, OKX Agent Trade Kit). Regeln: Hermes-Skill fremdrepos-signal, Pruefung: signal_schema.py, Tor: fremd_tor.py.",
   "_kein_live": "Dieses Tor laesst nur Papier und Demo durch. Live gibt es hier nicht; echtes Geld bewegt nur die Kette aus okx-live-anbinden.",
-  "_stand": "09.10.2026 angelegt, Tor ZU. Aufmachen = fremd_signale_erlaubt auf true, von Hand, nach Papier-/Demo-Nachweis.",
-  "fremd_signale_erlaubt": false,
+  "_stand": "09.10.2026 angelegt; 11.10.2026 auf Max' Ansage GEOEFFNET (nur paper/demo). Aufmachen = fremd_signale_erlaubt auf true, von Hand, nach Papier-/Demo-Nachweis.",
+  "fremd_signale_erlaubt": true,
   "modi_erlaubt": [
     "paper",
     "demo"
