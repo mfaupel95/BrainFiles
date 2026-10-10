@@ -69,6 +69,12 @@ AUSSCHLUSS = [
     # irgendwo im Fussnote-Block mitbringt).
     ("automatisierte_benachrichtigung", r"(notification|benachrichtigung|do-not-reply|"
                                        r"noreply|no-reply|nicht\s+antworten)"),
+    # Kaltakquise: ein einseitiger Verkaufs-Pitch ohne Auftrag, weder
+    # Newsletter noch Werbung. Gemessen 10.10.: 'Mein neuer Skill fuer deine
+    # eigene Website' (julian@ki-automatisierungs-community.de) sammelte 2,5
+    # Punkte ("heute zehn Minuten" + Antwort-Floskel) und waere ueber die
+    # Schwelle gerutscht, weil keines der Werbe-Muster griff.
+    ("kaltakquise", r"(ki-automatisierungs-community|von null bis online|website mit ki)"),
 ]
 
 DRINGEND_TEXT = [
