@@ -23,6 +23,37 @@ sys.path.insert(0, str(WURZEL))
 sys.path.insert(0, str(WURZEL.parent / "scanner"))
 import lauf  # noqa: E402
 
+# lauf.einmal() schreibt am Ende lauf_ergebnis.json nach lauf.WURZEL - und diese
+# Datei ist VERSIONIERT (Betriebslog des echten Laufs). Vier Testklassen rufen
+# einmal() auf; ohne Schutz ueberschrieb jeder Testlauf das Log mit Fake-Werten
+# (Instrumente 3/3 usw.) und zeigte es als Aenderung im Baum. Der Schutz greift
+# nur, solange WURZEL noch die echte ist: Tests, die WURZEL selbst auf einen
+# Temp-Ordner legen (TestErgebnisLog), laufen unveraendert.
+_ECHTE_WURZEL = lauf.WURZEL
+_ORIGINAL_SCHREIBEN = lauf._ergebnis_schreiben
+_schutz = None
+
+
+def _ergebnis_ins_temp(*args, **kwargs):
+    if lauf.WURZEL != _ECHTE_WURZEL:
+        return _ORIGINAL_SCHREIBEN(*args, **kwargs)
+    with TemporaryDirectory() as d:
+        lauf.WURZEL = Path(d)
+        try:
+            return _ORIGINAL_SCHREIBEN(*args, **kwargs)
+        finally:
+            lauf.WURZEL = _ECHTE_WURZEL
+
+
+def setUpModule():
+    global _schutz
+    _schutz = mock.patch.object(lauf, "_ergebnis_schreiben", _ergebnis_ins_temp)
+    _schutz.start()
+
+
+def tearDownModule():
+    _schutz.stop()
+
 
 class TestLaufAbbruch(unittest.TestCase):
     def test_kein_kerzencache_bricht_ab(self):
@@ -395,6 +426,28 @@ class TestLaufSpur3(unittest.TestCase):
 
         lauf.einmal("spur1", kerzen_holen=False)
         self.assertTrue(gesehen["gewichte_durchsuchbar"])
+
+
+class TestEchtesLogBleibtUnberuehrt(unittest.TestCase):
+    """Regression: ein Testlauf darf die versionierte lauf_ergebnis.json
+    nicht anfassen."""
+
+    def test_einmal_im_test_laesst_das_echte_log_in_ruhe(self):
+        datei = _ECHTE_WURZEL / "lauf_ergebnis.json"
+        vorher = datei.read_bytes() if datei.exists() else None
+        alt = lauf.KERZEN_DIR
+        try:
+            with TemporaryDirectory() as d:
+                lauf.KERZEN_DIR = Path(d) / "leer"
+                lauf.einmal("spur1", kerzen_holen=False)   # harter Abbruch
+                lauf._ergebnis_schreiben(
+                    {"kandidat": None, "fast_kandidat": None, "grund": "x"},
+                    eingang=3, nach_ausrichten=3)           # wie am Ende von einmal()
+        finally:
+            lauf.KERZEN_DIR = alt
+        nachher = datei.read_bytes() if datei.exists() else None
+        self.assertEqual(vorher, nachher)
+        self.assertEqual(lauf.WURZEL, _ECHTE_WURZEL)
 
 
 if __name__ == "__main__":
