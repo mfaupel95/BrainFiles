@@ -147,3 +147,14 @@ AUC auf ungesehenen Stunden (Zufall = 0,5), BTC-USDT 1H, OKX:
 | V3 | 20 000 / 5 x 2000 | Gradient Boosting, 3 % | 0,542 | 0,469 |
 - **Lesart:** Die `low`-Labels liegen in allen Läufen unter 0,5; die `high`-Labels streuen zwischen 0,44 und 0,55. Mehr Historie hilft, aber 0,54-0,55 ist schwach und wegen überlappender Stunden (Autokorrelation) statistisch weicher, als die Zahl wirkt. Kein belastbarer Vorteil.
 - **Entscheidung:** `intelligent-trading-bot` bleibt ruhende Quelle (Adapter fertig, Tor zu, kein Zeitplan). Lohnt sich nur mit grundlegend anderem Ansatz (andere Features/Labels, Gebühren und Funding in der Simulation).
+
+### Anderer Ansatz, einmal gerechnet (10.10.) - Ergebnis: negativ
+Skript `Werkstatt/okx_walkforward_itb.py` (alles vorab festgelegt: Features Renditen/Vol/Volumen/Abstand, Label = 24-h-Rendite > 0, logreg + LightGBM, expandierend mit 24-h-Embargo, feste Schwelle 0,55, Gebuehr 0,05 %/Seite, Funding 0,01 %/8 h). Daten: BTC-USDT 1H, 19 999 Stunden (06.2024-10.2026), rein ungesehene Prognosen.
+| Modell | Fenster | AUC | Rendite | Buy&Hold | Trades | MaxDD |
+|---|---|---|---|---|---|---|
+| logreg | Entwicklung | 0,470 | -40,1 % | -19,8 % | 406 | -48 % |
+| logreg | Endfenster (5000 h) | 0,525 | -17,7 % | +12,9 % | 83 | -25 % |
+| lgbm | Entwicklung | 0,474 | -42,4 % | -19,8 % | 516 | -54 % |
+| lgbm | Endfenster (5000 h) | 0,488 | -18,5 % | +12,9 % | 181 | -21 % |
+- **Urteil:** Kein Vorhersagevorteil (AUC 0,47-0,53) und mit Gebuehren/Funding klar verlustreich, in beiden Fenstern und beiden Modellen. Das Ergebnis ist eindeutig genug, dass weitere Varianten auf diesen Daten nicht lohnen.
+- **Folge:** `intelligent-trading-bot` als Signalquelle ruht endgueltig bis ein anderer Datenvorteil (z. B. Orderbuch, Funding-/OI-Daten, andere Maerkte) vorliegt. Adapter und Tor bleiben als Infrastruktur fuer kuenftige Quellen.
