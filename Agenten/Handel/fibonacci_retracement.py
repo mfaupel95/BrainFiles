@@ -24,7 +24,7 @@ FIB_LEVELS = {
     0.618: "61.8%%",
     0.764: "76.4%%",
 }
-SCHWELLE_EINSTIEG = 0.382   # bei 38.2% Retracement einsteigen
+SCHWELLE_EINSTIEG = 0.500   # bei 50% Retracement einsteigen
 SCHWELLE_ZIEL = 0.236       # bei 23.6% Ziel setzen
 SCHWELLE_STOP = 0.764       # bei 76.4% stoppen
 

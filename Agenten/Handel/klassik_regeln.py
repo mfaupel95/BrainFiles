@@ -748,10 +748,19 @@ def bauen(name, ordner=None):
             print("  %s: Regel nicht rechenbar (%s)" % (name, e), file=sys.stderr)
             return None
         # nur_long (Auftrag Max 09.10.2026): Short-Signale eroeffnen nichts.
-        # Der Ausstieg (Gegensignal/Kanal) rechnet ueber `aus`, nicht ueber
-        # diese Funktion, und bleibt davon unberuehrt. Standard: aus.
         if s == "short" and w.get("nur_long"):
             return None
+        # Fibonacci-Retracement-Filter (10.10.2026): wenn gesetzt, wird das
+        # Signal nur akzeptiert, wenn der Markt im richtigen Retracement-Level
+        # steht (Einstieg bei >=50% Retracement). Sonst kein Handel.
+        if s and w.get("fibonacci_filter"):
+            try:
+                import fibonacci_retracement as _fib
+                _fib_richtung, _, _fib_grund = _fib.signal(k, richtung=s)
+                if _fib_richtung != s:
+                    return None  # Fibonacci-Filter verwirft das Signal
+            except Exception:                                # noqa: BLE001
+                pass  # Filter defekt => Signal trotzdem durchlassen
         return s
 
     def ausstieg(p, w):
