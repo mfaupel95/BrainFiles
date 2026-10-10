@@ -15,6 +15,18 @@
   "oos_fenster_ziel": 12,
   "_oos_fenster_ziel": "Zielzahl an OOS-Testfenstern. Steuert, wieviel Historie lauf.py ueber die Aufwaermphase hinaus zieht (~540 Tageskerzen, davon 60 Holdout); die Overfitting-Sperre verlangt eine Mehrheit dieser Fenster.",
   "gebuehr_umstellung_datum": "2026-09-06",
+  "spur2": {
+    "_zweck": "Spur 2 (XPERP). Eigene Fenster, weil die aeltesten XPERP erst seit Mai 2026 laufen: nach 60 Tagen Warmup bleiben ca. 90 Tage. 90 Tage Rueckblick = 4 Testfenster a 15 Tage (Schritt 15) + 20 Tage Holdout. ENTWURFSWERTE - in Task 7 gegen den echten Cache messen.",
+    "such_budget": 60,
+    "such_tage": 90,
+    "test_tage": 15,
+    "schritt_tage": 15,
+    "holdout_tage": 20,
+    "holdout_min_runden": 6,
+    "holdout_max_nutzungen": 8,
+    "overfit_min_fenster": 3,
+    "overfit_min_runden": 20
+  },
   "llm": {
     "modus": "ollama",
     "_modus": "aus | ollama | cliproxy. Seit 2026-09-17 ollama mit qwen35-8k:latest (unter den lokalen Modellen gemessen die vertragstreueste Wahl), seitdem bleibt der Empfehlungsabschnitt nicht mehr leer.",

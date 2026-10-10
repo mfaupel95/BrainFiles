@@ -66,8 +66,10 @@ Jeder Wert ist um den heutigen Wert begrenzt:
 | `trailing_abstand_floor_pct` | 0.25 | 0.15 – 0.6 |
 | `trailing_min_hub_r` | 0.25 | 0.1 – 0.6 |
 | `trailing_max_halten_pct` | 5.0 | 3.0 – 8.0 |
-| `vola_tor_pa` (Krypto, `familien.krypto`) | 1.2 | 0.9 – 1.5 |
-| `min_umsatz_24h_usd` | 3 Mio | 2 – 6 Mio |
+
+`vola_tor_pa` und `min_umsatz_24h_usd` sind nicht im Suchraum: der Rücktest
+liest das Vola-Tor aus `auswahl.KATEGORIEN`, und die Krypto-Familie
+überschreibt den Umsatz-Bezug - eine Änderung hätte keine Wirkung.
 
 Zusatzbedingung: `ziel_atr_faktor / stop_atr_faktor ≥ 1.5`.
 
@@ -80,8 +82,8 @@ alle `grid_*`. `anwenden.py` prüft beim Anwenden jeden geänderten Wert erneut.
 ## Bewertung und Sieb
 
 - **Maß:** `netto_gv_je_runde` (USD je Runde nach Gebühren und Funding), im
-  Walk-Forward mit `oos_training_tage`/`oos_test_tage`/`oos_schritt_tage` aus
-  `konfig.json`. Auswahl und Prüfung nutzen dieselben Fenster („schwaches
+  Walk-Forward mit den Fenstern aus dem Block `spur2` in `konfig.json`
+  (`such_tage`, `test_tage`, `schritt_tage`, `holdout_tage`). Auswahl und Prüfung nutzen dieselben Fenster („schwaches
   Sieb“, wie Spur 1; der Holdout-Block unten schließt die Lücke).
 - **Ein Kandidat wird nur vorgeschlagen, wenn:** (a) er die Basis im Aggregat
   schlägt, (b) in mehr als der Hälfte der Fenster, mindestens
@@ -155,7 +157,9 @@ Laut, nie still. Fehlt Kerzen-, Funding- oder Merkmals-Cache oder tritt eine
 `FundingLuecke` auf, bricht der Lauf mit klarer Meldung ab: kein Vorschlag, kein
 Auffüllen mit 0.0. Offene Positionen am Fensterende werden nicht bewertet
 (Hinweis im Bericht, bekannte Lücke aus Spec A). Ein Lauf endet in jedem Fall
-mit einem Ordner unter `berichte/`.
+mit einem Ordner unter `berichte/`. Ein Abbruch schreibt einen Berichtsordner mit dem Grund, aber kein
+`commit.txt`. Instrumente ohne vollständigen Cache werden ausgelassen und im
+Bericht benannt; unter 3 verbleibenden Instrumenten Abbruch.
 
 ## Betrieb
 

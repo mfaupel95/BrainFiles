@@ -60,7 +60,13 @@ WURZEL = Path(__file__).resolve().parent
 # Zusaetzlich zur festen ``suche.DENYLIST`` gesperrt: jeder Schluessel, der mit
 # einem dieser Praefixe beginnt, ist ein harter Sicherheitsschalter und darf
 # nie von einem Vorschlag angefasst werden.
-_GESPERRTE_PRAEFIXE = ("freigabe", "drawdown", "kill_switch", "herzschlag")
+_GESPERRTE_PRAEFIXE = (
+    "freigabe", "drawdown", "kill_switch", "herzschlag",
+    # Spur 2 (XPERP): Deckel, Hebel, Risiko, LLM-Filter, Papierfaktor,
+    # Familien-Block, Grid und der Trailing-Hauptschalter sind nie Sache eines
+    # Vorschlags - auch dann nicht, wenn jemand sie in spuren.json freigibt.
+    "max_hebel", "max_margin", "max_offene_anlaeufe", "risiko_je_anlauf",
+    "llm_", "papier_faktor", "familien", "grid_", "trailing_aktiv")
 
 
 class _PatchFremd(Exception):
@@ -179,10 +185,11 @@ def _patch_fremde_pfade(patch_datei, bewertung_pfad, repo):
 
 
 def _wiederherstellen(bak, wachen_pfad, bewertung_pfad, repo):
-    """Beide Zieldateien aus ``bak`` zuruecckopieren und aus dem Index
+    """Die Zieldateien aus ``bak`` zuruecckopieren und aus dem Index
     nehmen. Best effort - Fehler beim Aufraeumen werden geschluckt, damit
     :func:`anwenden` immer sein Dict zurueckgibt."""
-    for pfad in (wachen_pfad, bewertung_pfad):
+    ziele = [p for p in (wachen_pfad, bewertung_pfad) if p is not None]
+    for pfad in ziele:
         quelle = bak / pfad.name
         if quelle.exists():
             try:
@@ -191,7 +198,7 @@ def _wiederherstellen(bak, wachen_pfad, bewertung_pfad, repo):
                 pass
     try:
         subprocess.run(
-            ["git", "reset", "--", str(wachen_pfad), str(bewertung_pfad)],
+            ["git", "reset", "--", *[str(p) for p in ziele]],
             cwd=repo, capture_output=True, text=True, check=False)
     except OSError:
         pass
@@ -252,8 +259,11 @@ def anwenden(ordner, spur, repo):
     ordner = Path(ordner)
     repo = Path(repo)
     wachen_pfad = Path(spur["wachen"]).resolve()
-    bewertung_pfad = Path(spur["bewertung_datei"]).resolve()
-    pfade = [str(wachen_pfad), str(bewertung_pfad)]
+    # Spur 2 (XPERP) hat keine Bewertungsdatei: nur wachen.json wird angefasst.
+    bewertung_pfad = (Path(spur["bewertung_datei"]).resolve()
+                      if spur.get("bewertung_datei") else None)
+    ziele = [p for p in (wachen_pfad, bewertung_pfad) if p is not None]
+    pfade = [str(p) for p in ziele]
 
     # 1. Arbeitsbaum
     ok, grund = baum_sauber(pfade, repo)
@@ -335,8 +345,8 @@ def anwenden(ordner, spur, repo):
     try:
         bak = WURZEL / "bak" / _zeitstempel()
         bak.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(wachen_pfad, bak / wachen_pfad.name)
-        shutil.copy2(bewertung_pfad, bak / bewertung_pfad.name)
+        for ziel in ziele:
+            shutil.copy2(ziel, bak / ziel.name)
     except Exception as fehler:  # noqa: BLE001
         return {"ok": False,
                 "grund": "Vorbereitung fehlgeschlagen: %s" % fehler,
@@ -361,6 +371,8 @@ def anwenden(ordner, spur, repo):
         patch_datei = ordner / "bewertung.patch"
         if (patch_datei.exists()
                 and patch_datei.read_text(encoding="utf-8").strip()):
+            if bewertung_pfad is None:
+                raise _PatchFremd(patch_datei.name)
             fremd = _patch_fremde_pfade(patch_datei, bewertung_pfad, repo)
             if fremd:
                 raise _PatchFremd(fremd[0])
@@ -368,8 +380,7 @@ def anwenden(ordner, spur, repo):
                            cwd=repo, check=True)
 
         # 6. genau die zwei Dateien stagen und committen
-        subprocess.run(["git", "add", str(wachen_pfad), str(bewertung_pfad)],
-                       cwd=repo, check=True)
+        subprocess.run(["git", "add", *pfade], cwd=repo, check=True)
         subprocess.run(["git", "commit", "-F", str(commit_datei)],
                        cwd=repo, check=True)
     except _PatchFremd as fehler:
