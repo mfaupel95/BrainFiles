@@ -6,7 +6,7 @@ Aufruf: python handeln.py --vorschau | --papier   (--live gibt es nicht)
 --vorschau  liest Journal und Buch, rechnet, schreibt NICHTS.
 --papier    schreibt das Papierbuch (fremd_signale/zustand.json).
 Startet nichts von selbst; der Dauerlauf kennt diese Spur nicht.
-Kurse: oeffentlich (Kraken-Ticker fuer "X/USD", OKX fuer "...-SWAP"), kein Schluessel.
+Kurse: oeffentlich (Kraken-Ticker fuer "X/USD", OKX fuer "...-SWAP" und Spot "BASE-USDC"), kein Schluessel.
 """
 import json
 import sys
@@ -32,6 +32,11 @@ def kurs(inst):
     if inst.endswith("-SWAP"):
         import okx
         return okx.letzter_kurs(inst)
+    if "-" in inst:  # OKX-Spot, z. B. BTC-USDC (oeffentlicher Ticker, User-Agent noetig)
+        req = urllib.request.Request("https://www.okx.com/api/v5/market/ticker?instId=" + inst,
+                                     headers={"User-Agent": "brainfiles/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return float(json.load(r)["data"][0]["last"])
     paar = inst.replace("/", "")
     url = "https://api.kraken.com/0/public/Ticker?pair=" + paar
     with urllib.request.urlopen(url, timeout=10) as r:
