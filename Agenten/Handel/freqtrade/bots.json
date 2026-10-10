@@ -1,6 +1,6 @@
 {
   "_zweck": "Zuordnung der Trading-Agenten aus Werkstatt/Repos/moon-dev-ai-agents zu Freqtrade-Bots. Ein Eintrag unter 'bots' ist ein startbarer Bot; ein Eintrag unter 'nicht_portierbar' ist eine Absage MIT Grund. Diese Tabelle ist die Wahrheit - wer einen Agenten vermisst, findet ihn hier wieder.",
-  "_stand": "2026-10-01",
+  "_stand": "2026-10-10",
   "_regel": "Freqtrade sieht ausschliesslich OHLCV-Kerzen des gehandelten Paares - plus, im Futures-Modus, die Funding-Rate und den Mark-Preis (beide laedt `download-data --trading-mode futures` als eigene Reihen mit). Portierbar ist deshalb genau das, was sich aus der Kerze ODER aus diesen beiden Reihen rechnen laesst. Alles andere braucht eine Fremdquelle, die im Haus archiviert sein muss - was nicht archiviert wurde, ist fuer einen Ruecklauf verloren (Zwangsschluesse zum Beispiel).",
   "_basis_geometrie": "Stop und Ziel kommen NICHT aus dem Bot-Repo, sondern aus den Haus-Zahlen der Feed-Spuren (Agenten/Handel/moondev_*/wachen.json): stop_prozent 6.0-8.0 und ziel_r_vielfaches 1.5. Ein Bot erbt die Zahlen der Regel, die er abbildet.",
 
@@ -55,6 +55,227 @@
         "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT", "LTC/USDT", "ATOM/USDT"
       ],
       "beschreibung": "Regime aus Leitkurs und Marktbreite. Die Breite kommt aus Boersenpaaren (informative Paare), nicht aus einem Marktranglisten-Abo. EIN Platz: das Signal ist EINE Marktlage-Wette."
+    },
+    {
+      "name": "klassik-sma",
+      "container": "freqtrade-klassik-sma",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_sma",
+      "port": 8084,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_sma, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-ema",
+      "container": "freqtrade-klassik-ema",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_ema",
+      "port": 8085,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_ema, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-macd",
+      "container": "freqtrade-klassik-macd",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_macd",
+      "port": 8086,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_macd, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-bollinger",
+      "container": "freqtrade-klassik-bollinger",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_bollinger",
+      "port": 8087,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_bollinger, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-donchian",
+      "container": "freqtrade-klassik-donchian",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_donchian",
+      "port": 8088,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_donchian, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-rsi",
+      "container": "freqtrade-klassik-rsi",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_rsi",
+      "port": 8089,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_rsi, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-rsi2",
+      "container": "freqtrade-klassik-rsi2",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_rsi2",
+      "port": 8090,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_rsi2, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-donchian-trend",
+      "container": "freqtrade-klassik-donchian-trend",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_donchian_trend",
+      "port": 8091,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_donchian_trend, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-sr-breaks",
+      "container": "freqtrade-klassik-sr-breaks",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_sr_breaks",
+      "port": 8092,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_sr_breaks, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-pmax",
+      "container": "freqtrade-klassik-pmax",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_pmax",
+      "port": 8093,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_pmax, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "klassik-supertrend",
+      "container": "freqtrade-klassik-supertrend",
+      "strategie": "HausSpur",
+      "hausspur": "klassik_supertrend",
+      "port": 8094,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
+      "regel": "Haus-Regel der Spur klassik_supertrend, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "macd-mtf",
+      "container": "freqtrade-macd-mtf",
+      "strategie": "HausSpur",
+      "hausspur": "macd_mtf",
+      "port": 8095,
+      "zeitrahmen": "1h",
+      "max_open_trades": 2,
+      "quelle": "Agenten/Handel/macd_mtf/handeln.py",
+      "regel": "Haus-Regel der Spur macd_mtf, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "squeeze",
+      "container": "freqtrade-squeeze",
+      "strategie": "HausSpur",
+      "hausspur": "squeeze",
+      "port": 8096,
+      "zeitrahmen": "1h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/squeeze/handeln.py",
+      "regel": "Haus-Regel der Spur squeeze, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "wavetrend",
+      "container": "freqtrade-wavetrend",
+      "strategie": "HausSpur",
+      "hausspur": "wavetrend",
+      "port": 8097,
+      "zeitrahmen": "1h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/wavetrend/handeln.py",
+      "regel": "Haus-Regel der Spur wavetrend, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "supertrend",
+      "container": "freqtrade-supertrend",
+      "strategie": "HausSpur",
+      "hausspur": "supertrend",
+      "port": 8098,
+      "zeitrahmen": "4h",
+      "max_open_trades": 3,
+      "quelle": "Agenten/Handel/supertrend/handeln.py",
+      "regel": "Haus-Regel der Spur supertrend, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "trendwende-btc",
+      "container": "freqtrade-trendwende-btc",
+      "strategie": "HausSpur",
+      "hausspur": "trendwende_btc",
+      "port": 8099,
+      "zeitrahmen": "1h",
+      "max_open_trades": 1,
+      "quelle": "Agenten/Handel/trendwende_btc/handeln.py",
+      "regel": "Haus-Regel der Spur trendwende_btc, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
+    },
+    {
+      "name": "orb",
+      "container": "freqtrade-orb",
+      "strategie": "HausSpur",
+      "hausspur": "orb",
+      "port": 8100,
+      "zeitrahmen": "15m",
+      "max_open_trades": 2,
+      "quelle": "Agenten/Handel/orb/handeln.py",
+      "regel": "Haus-Regel der Spur orb, importiert ueber Agenten/Handel/hausspur_regeln.py.",
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT"],
+      "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     }
   ],
 
@@ -121,6 +342,31 @@
       "agent": "phone_agent.py, tiktok_agent.py, clips_agent.py, shortvid_agent.py, stream_agent.py, tweet_agent.py, coingecko_agent.py (Medienteil)",
       "hindernis": "Medien und Veroeffentlichung",
       "grund": "Kein Handelsentscheid."
+    },
+    {
+      "agent": "prophet_signal (Haus-Spur)",
+      "hindernis": "Prophet-Modell als eigene Abhaengigkeit",
+      "grund": "Die Spur rechnet eine Modellprognose, keine Kerzenregel; das Freqtrade-Image hat Prophet nicht, und ein Nachtrainieren je Kerze waere eine andere Rechnung als im Haus (Stand 10.10.2026)."
+    },
+    {
+      "agent": "iv_wand, iv_waelle (Haus-Spuren)",
+      "hindernis": "Fremddaten: implizite Volatilitaet",
+      "grund": "Freqtrade sieht nur Kerzen, Mark-Preis und Funding; die IV-Reihe ist keine davon."
+    },
+    {
+      "agent": "liq_wand (Haus-Spur)",
+      "hindernis": "Fremddaten: Zwangsschluesse",
+      "grund": "Wie liquidation_agent: die Reihe steht in keiner Kerze."
+    },
+    {
+      "agent": "gitter (Haus-Spur)",
+      "hindernis": "Gitterleiter statt Ein-/Ausstiegssignal",
+      "grund": "Eine Leiter mit vielen gleichzeitigen Stufen passt nicht in das Ein-Signal-je-Kerze-Modell von HausSpur."
+    },
+    {
+      "agent": "mosaic, xperp, kraken, omniquant (Haus-Spuren)",
+      "hindernis": "eigene Live-Pfade, keine uebertragbare Signalregel",
+      "grund": "Diese Spuren sind Ausfuehrungs- bzw. Mehrquellen-Systeme mit eigenem Orderpfad; es gibt keine einzelne einstieg(k, w)-Regel, die HausSpur importieren koennte."
     }
   ],
 

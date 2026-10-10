@@ -14,6 +14,7 @@ erzeugt daraus die Konfigurationen und startet sie.
     python bots.py start  [name ...]      # Container starten (Probelauf)
     python bots.py stop   [name ...]      # Container beenden
     python bots.py status                 # was laeuft
+    python bots.py urteile                # Backtest-Urteile der HausSpur-Bots
 
 WARUM PYTHON UND KEIN SHELL-SKRIPT
 ----------------------------------
@@ -333,7 +334,63 @@ def cmd_backtest(argumente: list[str], timerange: str | None = None,
         if timerange:
             fenster += ["--timerange", timerange]
         rc |= einweglauf(fenster, f"backtesting {b['name']}")
+        if signal is None and b.get("hausspur"):
+            try:
+                urteil_merken(b["name"], urteil_aus_ergebnis(letztes_ergebnis(), b["strategie"]))
+            except (OSError, ValueError, KeyError, StopIteration) as e:
+                print(f"  ! Urteil {b['name']} nicht lesbar: {e}")
     return rc
+
+
+# --- Urteile (Backtest-Ergebnis je HausSpur-Bot) -----------------------------
+# Nicht versioniert, wie Agenten/Handel/backtest_urteile.json. Der Leitstand-
+# Reiter FreqTrade zeigt die Zeile neben dem laufenden Bot.
+URTEILE = HIER / "urteile.json"
+
+
+def urteil_aus_ergebnis(daten: dict, strategie: str) -> dict:
+    s = daten["strategy"][strategie]
+    return {"runden": int(s.get("total_trades", 0)),
+            "netto_prozent": round(float(s.get("profit_total", 0.0)) * 100, 2),
+            "max_ruecklauf_prozent": round(float(s.get("max_drawdown_account", 0.0)) * 100, 2),
+            "zeitraum": "%s..%s" % (str(s.get("backtest_start", ""))[:10],
+                                    str(s.get("backtest_end", ""))[:10])}
+
+
+def urteil_merken(name: str, urteil: dict, pfad: Path = URTEILE) -> None:
+    import datetime as _dt
+    try:
+        daten = json.loads(pfad.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        daten = {}
+    daten[name] = dict(urteil, stand=_dt.datetime.now(_dt.timezone.utc)
+                       .isoformat(timespec="seconds"))
+    pfad.write_text(json.dumps(daten, indent=2, ensure_ascii=False) + "\n",
+                    encoding="utf-8")
+
+
+def letztes_ergebnis() -> dict:
+    """Die Ergebnis-JSON des letzten Backtests (Zip aus backtest_results)."""
+    import zipfile
+    ordner = USER_DATA / "backtest_results"
+    zeiger = json.loads((ordner / ".last_result.json").read_text(encoding="utf-8"))
+    zip_pfad = ordner / zeiger["latest_backtest"]
+    with zipfile.ZipFile(zip_pfad) as z:
+        name = next(n for n in z.namelist()
+                    if n.endswith(".json") and "_config" not in n and "_market" not in n)
+        return json.loads(z.read(name))
+
+
+def cmd_urteile() -> int:
+    try:
+        daten = json.loads(URTEILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print("  noch keine Urteile - erst 'python bots.py backtest'")
+        return 1
+    for name, u in sorted(daten.items()):
+        print(f"  {name:24} {u['runden']:5d} Runden  {u['netto_prozent']:+8.2f} %  "
+              f"Ruecklauf {u['max_ruecklauf_prozent']:6.2f} %  {u['zeitraum']}")
+    return 0
 
 
 def cmd_start(argumente: list[str]) -> int:
@@ -463,6 +520,8 @@ def haupt(argv: list[str]) -> int:
         return cmd_stop(rest)
     if befehl == "status":
         return cmd_status()
+    if befehl == "urteile":
+        return cmd_urteile()
     print(f"Unbekannter Befehl '{befehl}'. Siehe --help.")
     return 2
 

@@ -78,5 +78,56 @@ class Strategie(unittest.TestCase):
         self.assertIn("OperationalException", text)
 
 
+HANDEL = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(HANDEL))
+import hausspur_regeln as hr                                   # noqa: E402
+
+
+class Manifest(unittest.TestCase):
+    def setUp(self):
+        self.alle = bots.bots()
+        self.haus = [b for b in self.alle if b.get("hausspur")]
+
+    def test_siebzehn_hausspuren(self):
+        self.assertEqual(sorted(b["hausspur"] for b in self.haus), sorted(hr.ALLE))
+
+    def test_ports_und_container_eindeutig(self):
+        ports = [b["port"] for b in self.alle]
+        self.assertEqual(len(ports), len(set(ports)))
+        self.assertEqual(sorted(b["port"] for b in self.haus), list(range(8084, 8101)))
+        self.assertEqual(len({b["container"] for b in self.alle}), len(self.alle))
+
+    def test_zeitrahmen_und_paare_wie_wachen(self):
+        for b in self.haus:
+            self.assertEqual(b["zeitrahmen"], hr.zeitrahmen(b["hausspur"]), b["name"])
+            self.assertEqual(b["whitelist"], hr.paare(b["hausspur"]), b["name"])
+            self.assertEqual(b["strategie"], "HausSpur")
+            self.assertEqual(b["max_open_trades"], len(b["whitelist"]))
+
+
+ERGEBNIS = {"strategy": {"HausSpur": {
+    "total_trades": 42, "profit_total": -0.0312, "max_drawdown_account": 0.081,
+    "backtest_start": "2024-10-01 00:00:00", "backtest_end": "2026-10-01 00:00:00"}}}
+
+
+class Urteile(unittest.TestCase):
+    def test_aus_ergebnis(self):
+        u = bots.urteil_aus_ergebnis(ERGEBNIS, "HausSpur")
+        self.assertEqual(u, {"runden": 42, "netto_prozent": -3.12,
+                             "max_ruecklauf_prozent": 8.1,
+                             "zeitraum": "2024-10-01..2026-10-01"})
+
+    def test_merken_ergaenzt(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "urteile.json"
+            bots.urteil_merken("a", {"runden": 1}, p)
+            bots.urteil_merken("b", {"runden": 2}, p)
+            daten = json.loads(p.read_text(encoding="utf-8"))
+            self.assertEqual(set(daten), {"a", "b"})
+            self.assertIn("stand", daten["a"])
+
+
 if __name__ == "__main__":
     unittest.main()
