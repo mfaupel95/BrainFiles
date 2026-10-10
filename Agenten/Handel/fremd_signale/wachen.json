@@ -10,7 +10,15 @@
   "quellen_erlaubt": [
     "kraken-cli",
     "agent-trade-kit",
-    "intelligent-trading-bot"
+    "intelligent-trading-bot",
+    "moon-dev-ai-agents",
+    "jev-trader",
+    "nautilus_trader",
+    "fomo-robinhood-radar",
+    "Harvard-Algorithmic-Trading-with-AI",
+    "ziplime",
+    "tradememory-protocol",
+    "OpenTerminalUI"
   ],
   "instrumente_erlaubt": [
     "BTC-USDC",
