@@ -164,7 +164,10 @@ Spec `Werkstatt/spec-verbesserer-spur2-schleife-2026-10-09.md`, Plan
   „Vertrag erfüllt", nicht „live besser"; der Bericht zeigt Fenster, Abstand je
   Regel, Holdout und einen Absatz „Nicht geprüft".
 - **Fenster:** Block `spur2` in `verbesserer/konfig.json` (90 Tage Rückblick,
-  15er-Fenster, 20 Tage Holdout) — Entwurfswerte, gegen den echten Cache zu messen.
+  15er-Fenster, 20 Tage Holdout), am 10.10.2026 gemessen: erster Lauf rund 7 Minuten,
+  danach Merkmals-Cache-Treffer. **Funding-Grenze:** OKX liefert Funding nur ca.
+  94 Tage zurück; Instrumente, deren Funding nach dem Simulationsstart beginnt,
+  werden ausgelassen und im Bericht genannt (78 von 233).
 - **Holdout-Verschleiß:** `holdout_max_nutzungen` 8; Zähler in
   `verbesserer/xperp_holdout_nutzung.json` (Datei löschen = zurücksetzen), der
   Bericht meldet den Block danach als „verbraucht".

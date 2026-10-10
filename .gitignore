@@ -260,6 +260,9 @@ Agenten/Handel/stand/
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
+# Laufzeitzustand von Spur 2 (Merkmals-Cache ~23 MB, Holdout-Zaehler): nie versionieren.
+Agenten/Handel/verbesserer/xperp_merkmale.json
+Agenten/Handel/verbesserer/xperp_holdout_nutzung.json
 !Agenten/Handel/verbesserer/requirements.txt
 !Agenten/Handel/verbesserer/tests/*.py
 !Agenten/Handel/verbesserer/tests/fixtures/*.csv

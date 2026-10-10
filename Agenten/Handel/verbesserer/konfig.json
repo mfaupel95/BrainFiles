@@ -16,7 +16,7 @@
   "_oos_fenster_ziel": "Zielzahl an OOS-Testfenstern. Steuert, wieviel Historie lauf.py ueber die Aufwaermphase hinaus zieht (~540 Tageskerzen, davon 60 Holdout); die Overfitting-Sperre verlangt eine Mehrheit dieser Fenster.",
   "gebuehr_umstellung_datum": "2026-09-06",
   "spur2": {
-    "_zweck": "Spur 2 (XPERP). Eigene Fenster, weil die aeltesten XPERP erst seit Mai 2026 laufen: nach 60 Tagen Warmup bleiben ca. 90 Tage. 90 Tage Rueckblick = 4 Testfenster a 15 Tage (Schritt 15) + 20 Tage Holdout. ENTWURFSWERTE - in Task 7 gegen den echten Cache messen.",
+    "_zweck": "Spur 2 (XPERP). Eigene Fenster, weil die aeltesten XPERP erst seit Mai 2026 laufen: nach 60 Tagen Warmup bleiben ca. 90 Tage. 90 Tage Rueckblick = 4 Testfenster a 15 Tage (Schritt 15) + 20 Tage Holdout. Am 10.10.2026 gegen den echten Cache gemessen: OKX liefert Funding nur ca. 94 Tage zurueck, daher nehmen nur Instrumente mit Funding ab Simulationsstart teil (78 von 233); 4 Fenster, ein Lauf rund 7 Minuten.",
     "such_budget": 60,
     "such_tage": 90,
     "test_tage": 15,
