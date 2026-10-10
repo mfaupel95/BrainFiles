@@ -82,7 +82,7 @@ def kandidaten_schritt(werte, w, anzahl=6):
     """Die besten Werte je Richtung, die ihre Tore bestehen.
 
     1:1 die Filterkette aus handeln.kandidaten() - Vola-Tor, Familie aktiv,
-    Umsatz-Bezug der Familie, Hebel-Deckel >= Hebel-Grenze der Familie.
+    Umsatz-Bezug der Familie, Hebel-Deckel >= wx.hebel_mindest().
     """
     aus = []
     for seite in ("long", "short"):
@@ -100,7 +100,7 @@ def kandidaten_schritt(werte, w, anzahl=6):
                 continue
             mae = x["mae_short"] if seite == "short" else x["mae_long"]
             deckel = auswahl.hebel_deckel(mae)
-            if deckel < wx.hebel_grenze(w, x["kategorie"]):
+            if deckel < wx.hebel_mindest(w, x["kategorie"]):
                 continue
             aus.append({"basis": x["basis"], "instId": x["instId"],
                         "seite": seite, "kategorie": x["kategorie"],

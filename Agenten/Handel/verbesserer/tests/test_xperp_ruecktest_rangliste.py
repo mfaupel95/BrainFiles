@@ -85,6 +85,15 @@ class TestKandidatenSchritt(unittest.TestCase):
             rt.kandidaten_schritt([self._wert(mae_long=0.5, mae_short=0.5)],
                                   self.W), [])
 
+    def test_familie_mit_hoeherer_grenze_laesst_ab_globalem_hebel_zu(self):
+        # Wie live (handeln.kandidaten): rohstoff max_hebel 10 ist Obergrenze,
+        # zugelassen wird ab dem globalen max_hebel 5 (Auftrag Max 10.10.2026).
+        w = dict(self.W, familien={"rohstoff": {"max_hebel": 10}})
+        aus = rt.kandidaten_schritt(
+            [self._wert(kategorie="rohstoff", mae_long=0.13, mae_short=0.13)], w)
+        self.assertTrue(aus)
+        self.assertTrue(all(5 <= a["deckel"] < 10 for a in aus))
+
     def test_inaktive_familie_schliesst_aus(self):
         w = dict(self.W, familien={"krypto": {"aktiv": False}})
         self.assertEqual(rt.kandidaten_schritt([self._wert()], w), [])
