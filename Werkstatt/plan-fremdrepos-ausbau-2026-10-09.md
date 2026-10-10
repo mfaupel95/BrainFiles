@@ -114,3 +114,18 @@ Ein Fremd-Werkzeug liefert nur ein **Signal** oder eine **Papier-Order** im Form
 - Demo-Key (Max). Danach `okx-agentkit` einschalten und gegen die Demo-Umgebung testen.
 - Topic-Delegierung: Zuordnung in der Hermes-Konfiguration (`dm_topics`) noch nicht angefasst.
 - Naechste Repos: intelligent-trading-bot (Signalpipeline auf OKX umbauen), tradememory-protocol (Journal).
+
+## Phase 0 – Rest der Handels-Rolle (10.10., nur gelesen)
+| Repo | Stack | Lizenz | Börsen (Treffer) | Papier/Test | UI | Eignung |
+|---|---|---|---|---|---|---|
+| Harvard-Algorithmic-Trading-with-AI | Ordner backtest/implement/research, kein Paket | keine Lizenzdatei | Hyperliquid (11) | – | – | **Niedrig**: Lehrmaterial (RBI-Methode), kein ausführbares System; als Ideenquelle für Strategien nutzbar |
+| fomo-robinhood-radar | Python, pyproject | MIT | Robinhood Chain (527), Coinbase | Beobachtung von Wallets, kein Handel | Site + Telegram-Bot | **Niedrig für Handel**: Wallet-Radar auf Robinhood Chain, kein Börsenanschluss an OKX/Kraken; eher Signalquelle. Enthält Datenbanken (`fomo_agent.db`) im Klon – nicht versionieren |
+| osiris | Next.js, Docker | MIT | OKX (33) am Rand | Live-Demo | Dashboard (Web) | **Niedrig**: allgemeines Lage-Dashboard (Flüge, Erdbeben, News); kein Handelssystem. Als UI-Rahmen höchstens Anregung |
+| auto-prediction (TraderAlice, Mirror) | TS/pnpm, Alice-Harness | – | Prognosemärkte (Polymarket, Kalshi u. a.) | Fixtures | `apps/studio` | **Eigenes Thema**: Forschung zu semantischer Arbitrage; kein Anschluss an Krypto-Börsen. Fork `mfaupel95/Auto-Prediction` angelegt, lokal ohne origin |
+
+### Gesamtbild Handels-Rolle (11 Repos)
+- **Anschlussreif:** agent-trade-kit (OKX), kraken-cli (Kraken Papier) – beide umgesetzt (Phase 1/2).
+- **Umbau nötig:** intelligent-trading-bot (Binance -> OKX), danach als Signalquelle über `fremd_signal`.
+- **Zusatz/Journal:** tradememory-protocol (Handelsgedächtnis, Wartungsmodus).
+- **Keine Anbindung sinnvoll:** Harvard, fomo-robinhood-radar, osiris, jev-trader (DEX), ziplime (EULA).
+- **Nächster sinnvoller Schritt:** intelligent-trading-bot auf OKX-Demo umschreiben (Datenabruf + Signal-Ausgabe im Schema), erst nach Demo-Key.
