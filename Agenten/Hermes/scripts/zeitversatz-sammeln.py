@@ -38,7 +38,7 @@ def main() -> int:
     umgebung.pop("PYTHONHOME", None)
     umgebung.pop("PYTHONPATH", None)
     lauf = subprocess.run([python, str(WERKZEUG), *sys.argv[1:]],
-                          cwd=str(HANDEL), capture_output=True, text=True,
+                          cwd=str(HANDEL), capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
                           encoding="utf-8", errors="replace", env=umgebung,
                           timeout=600)
     aus = (lauf.stdout or "").strip()

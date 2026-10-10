@@ -124,7 +124,8 @@ def index_lock() -> tuple[float, bool] | None:
             ["powershell", "-NoProfile", "-Command",
              "(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'git.exe' "
              "-and $_.CommandLine -notmatch 'fsmonitor' } | Measure-Object).Count"],
-            capture_output=True, text=True, timeout=30)
+            capture_output=True, text=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
         echte = int(ps.stdout.strip() or 0)
     except Exception:
         echte = -1
@@ -177,7 +178,8 @@ def _prozess_kommandos() -> list[str]:
         ps = subprocess.run(
             ["powershell", "-NoProfile", "-Command",
              "Get-CimInstance Win32_Process | ForEach-Object { $_.CommandLine }"],
-            capture_output=True, text=True, timeout=60)
+            capture_output=True, text=True, timeout=60, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
         return [z for z in ps.stdout.splitlines() if z.strip()]
     except Exception:
         return []
@@ -224,7 +226,8 @@ def _schritt_ausfuehren(name: str, basis: Path, darf_loeschen: bool) -> int | No
               else ["npm", "cache", "clean", "--force"])
     vorher = frei_gb("C:") or 0.0
     try:
-        subprocess.run(befehl, capture_output=True, text=True, timeout=600, shell=False)
+        subprocess.run(befehl, capture_output=True, text=True, timeout=600, shell=False, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
     except Exception:
         return None
     nachher = frei_gb("C:") or 0.0

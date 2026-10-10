@@ -63,7 +63,7 @@ def hole_2004(seit_tage: int = 1) -> list:
     try:
         r = subprocess.run(
             ["powershell", "-NoProfile", "-Command", ps],
-            capture_output=True, text=True, timeout=60
+            capture_output=True, text=True, timeout=60, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
         if r.returncode != 0 or not r.stdout.strip():
             return []

@@ -44,7 +44,7 @@ def _ohne_python_leck(env: dict) -> dict:
 def _ps(argumente: list[str], frist: int = 120) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", *argumente],
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         timeout=frist, env=_ohne_python_leck(os.environ),
     )
 
