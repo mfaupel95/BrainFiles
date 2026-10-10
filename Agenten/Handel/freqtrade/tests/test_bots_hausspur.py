@@ -39,8 +39,38 @@ class Config(unittest.TestCase):
 class Mounts(unittest.TestCase):
     def test_haus_nur_lesend_bei_hausspur(self):
         m = bots.mounts(HAUSBOT)
-        self.assertIn(f"{bots.HAUS.resolve().as_posix()}:/agenten:ro", m)
+        handel = (bots.HAUS / "Handel").resolve().as_posix()
+        self.assertIn(f"{handel}:/agenten/Handel:ro", m)
+        self.assertIn(f"{(bots.HAUS / 'Bus').resolve().as_posix()}:/agenten/Bus:ro", m)
         self.assertNotIn("/agenten", " ".join(bots.mounts(MOONBOT)))
+
+    def test_nicht_ganz_agenten(self):
+        """Review I1: Hermes/.env & Co. duerfen nicht im Fremd-Image landen."""
+        text = " ".join(bots.mounts(HAUSBOT))
+        self.assertNotIn(f"{bots.HAUS.resolve().as_posix()}:/agenten:ro", text)
+
+    def test_fremde_handelsordner_ueberdeckt(self):
+        """Review I1: ai4trade/.env, OpenAlice/sealing.key liegen unter Handel/.
+
+        Eigener Baum statt des echten: OpenAlice/ ist unversioniert und fehlt
+        in einem frischen Klon - die Regel muss trotzdem greifen.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for o in ("ai4trade", "OpenAlice", "freqtrade", "klassik_ema",
+                      "scanner", "xperp", ".venv", "__pycache__"):
+                (Path(d) / "Handel" / o).mkdir(parents=True)
+            (Path(d) / "Bus").mkdir()
+            with patch.object(bots, "HAUS", Path(d)), \
+                    patch.object(bots, "bots", lambda: [HAUSBOT]):
+                text = " ".join(bots.mounts(HAUSBOT)) + " "
+        for geheim in ("ai4trade", "OpenAlice", "freqtrade"):
+            self.assertIn(f"type=tmpfs,destination=/agenten/Handel/{geheim} ", text)
+        for noetig in ("klassik_ema", "scanner", "xperp", ".venv", "__pycache__"):
+            self.assertNotIn(f"destination=/agenten/Handel/{noetig} ", text)
+
+    def test_download_ohne_haus(self):
+        self.assertNotIn("/agenten", " ".join(bots._daten_fenster(["BTC/USDT:USDT"], "4h", True)))
 
     def test_start_mit_speichergrenze_und_mount(self):
         aufrufe = []
@@ -59,13 +89,40 @@ class Mounts(unittest.TestCase):
         run = [a for a in aufrufe if a and a[0] == "run"][0]
         self.assertIn("--memory", run)
         self.assertEqual(run[run.index("--memory") + 1], "700m")
-        self.assertIn(f"{bots.HAUS.resolve().as_posix()}:/agenten:ro", run)
+        self.assertIn(f"{(bots.HAUS / 'Handel').resolve().as_posix()}:/agenten/Handel:ro", run)
         self.assertIn("127.0.0.1:8085:8085", run)
+
+
+class BacktestUrteil(unittest.TestCase):
+    """Review I2: ein gescheiterter Lauf darf kein fremdes Urteil erben."""
+
+    def _lauf(self, rc, zeiger_vorher, zeiger_nachher, timerange=None):
+        gemerkt = []
+        zeiger = iter([zeiger_vorher, zeiger_nachher])
+        with patch.object(bots, "einweglauf", lambda f, b: rc), \
+                patch.object(bots, "ausgewaehlt", lambda a: [HAUSBOT]), \
+                patch.object(bots, "_letzter_zeiger", lambda: next(zeiger)), \
+                patch.object(bots, "letztes_ergebnis", lambda: ERGEBNIS), \
+                patch.object(bots, "urteil_merken", lambda n, u: gemerkt.append(n)):
+            bots.cmd_backtest(["klassik-ema"], timerange)
+        return gemerkt
+
+    def test_erfolg_wird_gemerkt(self):
+        self.assertEqual(self._lauf(0, "a.zip", "b.zip"), ["klassik-ema"])
+
+    def test_gescheitert_nicht(self):
+        self.assertEqual(self._lauf(1, "a.zip", "b.zip"), [])
+
+    def test_kein_neues_ergebnis_nicht(self):
+        self.assertEqual(self._lauf(0, "a.zip", "a.zip"), [])
+
+    def test_teilzeitraum_nicht(self):
+        self.assertEqual(self._lauf(0, "a.zip", "b.zip", timerange="20260101-"), [])
 
 
 class Daten(unittest.TestCase):
     def test_download_nennt_boerse_und_modus(self):
-        f = bots._daten_fenster(["BTC/USDT:USDT"], "4h", True, True)
+        f = bots._daten_fenster(["BTC/USDT:USDT"], "4h", True)
         self.assertEqual(f[f.index("--exchange") + 1], "binance")
         self.assertEqual(f[f.index("--trading-mode") + 1], "futures")
 

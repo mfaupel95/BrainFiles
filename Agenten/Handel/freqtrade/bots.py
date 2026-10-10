@@ -106,11 +106,33 @@ def mount_pfad() -> str:
     return USER_DATA.resolve().as_posix()
 
 
+# Unter Handel/ gebraucht: die Spurordner (aus bots.json) plus diese beiden -
+# klassik_regeln und die handeln.py laden okx/wachen_pruefung aus scanner/ und
+# die Indikatoren aus xperp/. Alles andere unter Handel/ wird im Container mit
+# einem leeren tmpfs ueberdeckt (Review I1, 10.10.2026: dort liegen fremde
+# Zugaenge wie ai4trade/.env und OpenAlice/sealing.key, und das Image ist fremd).
+HAUS_HILFSORDNER = ("scanner", "xperp")
+
+
+def _noetige_ordner() -> set[str]:
+    return {b["hausspur"] for b in bots() if b.get("hausspur")} | set(HAUS_HILFSORDNER)
+
+
 def mounts(bot: dict) -> list[str]:
-    """Die -v-Argumente fuer docker: user_data immer, Agenten/ bei HausSpur."""
+    """Die docker-Mount-Argumente: user_data immer; bei HausSpur zusaetzlich
+    Handel/ und Bus/ nur lesend, mit allen nicht gebrauchten Handel-Ordnern
+    ueberdeckt. Nie ganz Agenten/ - dort liegen Hermes-Zugaenge."""
     m = ["-v", f"{mount_pfad()}:{IM_CONTAINER}"]
-    if bot.get("hausspur"):
-        m += ["-v", f"{HAUS.resolve().as_posix()}:{HAUS_IM_CONTAINER}:ro"]
+    if not bot.get("hausspur"):
+        return m
+    handel = HAUS / "Handel"
+    m += ["-v", f"{handel.resolve().as_posix()}:{HAUS_IM_CONTAINER}/Handel:ro",
+          "-v", f"{(HAUS / 'Bus').resolve().as_posix()}:{HAUS_IM_CONTAINER}/Bus:ro"]
+    noetig = _noetige_ordner()
+    for ordner in sorted(p.name for p in handel.iterdir() if p.is_dir()):
+        if ordner in noetig or ordner.startswith((".", "__")):
+            continue
+        m += ["--mount", f"type=tmpfs,destination={HAUS_IM_CONTAINER}/Handel/{ordner}"]
     return m
 
 
@@ -261,12 +283,12 @@ def cmd_configs(argumente: list[str]) -> int:
     return schreibe_configs(ausgewaehlt(argumente))
 
 
-def _daten_fenster(paare: list[str], zeitrahmen: str, futures: bool = False,
-                   haus: bool = False) -> list[str]:
+def _daten_fenster(paare: list[str], zeitrahmen: str, futures: bool = False) -> list[str]:
     # 740 Tage: zwei Jahre Backtest plus Anlauf (startup_candle_count).
+    # Kein Haus-Mount: download-data braucht keinen Haus-Code (Review I1).
     return [
         "run", "--rm",
-        *mounts({"hausspur": haus}),
+        *mounts({}),
         IMAGE,
         "download-data", "--userdir", IM_CONTAINER,
         # Ausdruecklich: ohne user_data/config.json (frischer Klon, Arbeitsbaum)
@@ -295,7 +317,7 @@ def cmd_daten(argumente: list[str]) -> int:
     rc = 0
     for (tf, futures), paare in sorted(gruppen.items()):
         print(f"{len(paare)} Paare, {tf}, {'futures' if futures else 'spot'}")
-        rc |= einweglauf(_daten_fenster(paare, tf, futures, futures),
+        rc |= einweglauf(_daten_fenster(paare, tf, futures),
                          f"download-data {tf}")
     return rc
 
@@ -336,8 +358,16 @@ def cmd_backtest(argumente: list[str], timerange: str | None = None,
         ]
         if timerange:
             fenster += ["--timerange", timerange]
-        rc |= einweglauf(fenster, f"backtesting {b['name']}")
-        if signal is None and b.get("hausspur"):
+        vorher = _letzter_zeiger()
+        lauf_rc = einweglauf(fenster, f"backtesting {b['name']}")
+        rc |= lauf_rc
+        # Urteil nur aus EIGENEM, vollem Lauf (Review I2): alle HausSpur-Bots
+        # teilen den Strategienamen - ein gescheiterter Lauf wuerde sonst still
+        # das Ergebnis des vorigen Bots erben. Ein --timerange ist kein 2-J.-Urteil.
+        if signal is None and timerange is None and b.get("hausspur"):
+            if lauf_rc != 0 or _letzter_zeiger() in (None, vorher):
+                print(f"  ! Urteil {b['name']} nicht gemerkt: kein neues Ergebnis (rc {lauf_rc})")
+                continue
             try:
                 urteil_merken(b["name"], urteil_aus_ergebnis(letztes_ergebnis(), b["strategie"]))
             except (OSError, ValueError, KeyError, StopIteration) as e:
@@ -372,12 +402,21 @@ def urteil_merken(name: str, urteil: dict, pfad: Path = URTEILE) -> None:
                     encoding="utf-8")
 
 
+def _letzter_zeiger() -> str | None:
+    """Dateiname des letzten Backtest-Ergebnisses laut .last_result.json."""
+    try:
+        zeiger = json.loads((USER_DATA / "backtest_results" / ".last_result.json")
+                            .read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return zeiger.get("latest_backtest") if isinstance(zeiger, dict) else None
+
+
 def letztes_ergebnis() -> dict:
     """Die Ergebnis-JSON des letzten Backtests (Zip aus backtest_results)."""
     import zipfile
     ordner = USER_DATA / "backtest_results"
-    zeiger = json.loads((ordner / ".last_result.json").read_text(encoding="utf-8"))
-    zip_pfad = ordner / zeiger["latest_backtest"]
+    zip_pfad = ordner / _letzter_zeiger()
     with zipfile.ZipFile(zip_pfad) as z:
         name = next(n for n in z.namelist()
                     if n.endswith(".json") and "_config" not in n and "_market" not in n)
