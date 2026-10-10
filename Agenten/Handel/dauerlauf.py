@@ -480,6 +480,8 @@ SPUREN = {
     # Sprachmodell, kein Wallet, kein Live.
     "moondev_sniper": {"ordner": "moondev_sniper", "waehrung": "USD",
                        "skript": "handeln.py"},
+    "fib_retrace": {"ordner": "fib_retrace", "waehrung": "USD",
+                    "skript": "handeln.py"},
 }
 
 # Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe

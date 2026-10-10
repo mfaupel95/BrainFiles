@@ -115,6 +115,7 @@ INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic",
                    # Prophet-Signal (02.10.2026): EMA30-Trend + Saisonalitaet als
                    # Kursregel (prophet_regeln.py), schreibt dieselbe Journalform.
                    "prophet_signal",
+                   "fib_retrace",
                    # Schattenarm squeeze_eth (03.10.2026, Auftrag Max
                    # "Schattenarm"): dieselbe Regel fest auf ETH, damit sich
                    # fragegt, ob sie Coin-spezifisch ist. Schreibt dieselbe

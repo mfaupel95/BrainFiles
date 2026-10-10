@@ -1056,6 +1056,12 @@ Agenten/Handel/klassik_supertrend/handelsjournal.csv
 !Agenten/Handel/prophet_signal/*.py
 !Agenten/Handel/prophet_signal/*.md
 !Agenten/Handel/prophet_signal/wachen.json
+# fib_retrace: Fibonacci-Retracement-Papierspur
+!Agenten/Handel/fib_retrace/*.py
+!Agenten/Handel/fib_retrace/*.md
+!Agenten/Handel/fib_retrace/wachen.json
+!Agenten/Handel/fib_retrace/tests/*.py
+# fibonacci_retracement.py (Werkzeug, keine Spur)
 Agenten/Handel/prophet_signal/zustand.json
 Agenten/Handel/prophet_signal/handelsjournal.csv
 
