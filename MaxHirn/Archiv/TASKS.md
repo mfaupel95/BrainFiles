@@ -1,6 +1,12 @@
 ## Offen
 
 
+- [ ] **T-387 - Worktree-Fehler-Wache gebaut: zweige.py Lage-Pruefung + zweige-wache.py Cron (10.10.2026)**
+      Kontext: Am 10.10.2026 lagen zwei Worktrees im HAUPTBAUM statt unter `.worktrees/` (Agenten/.claude/worktrees/sweet-heisenberg-85efc5, init-4ede6f), einer detached HEAD (push-noema). Keine Wache meldete das. BEHOBEN: `zweige.py` weist jetzt drei Worktree-Fehlerklassen aus (Lage nicht unter .worktrees/, detached HEAD, verwaister Eintrag); neue `zweige-wache.py` (no_agent-Cron, alle 6h, meldet nur bei Auffaelligkeit, Ruhe 6h). Merge 21a703ca. Cron d8f8ceba4ba2.
+      Naechster Schritt: beobachten - die Wache meldet init-4ede6f (verwaister Eintrag im Hauptbaum) bis er aufgeraeumt ist. Aufraeumen: python Agenten/Werkzeuge/zweige.py --entfernen.
+      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
+      Betrifft: Agenten/Werkzeuge/zweige.py, Agenten/Hermes/scripts/zweige-wache.py
+
 - [ ] **T-386 - omniquant: Stop-Breite nicht kalibrierbar - 0 geschlossene Runden, offene Stops teils ueber dem Pflichtband**
       Kontext: Befund 10.10.2026. omniquant hat im Journal 0 geschlossene Runden - die Spur hat noch nie eine Runde geschlossen. Eine Stop-Breite laesst sich nicht kalibrieren, wenn keine Runde die Wirkung belegt. Die 10 offenen Positionen zeigen Stop-Breiten 6,4-13,5 % (NEAR-USDC 13,52, SUI 12,02, FIL 11,6, STX 11,98 - teils ueber stop_max_pct 12.0). Die Prognose rechnet den Stop gegen 20-Tage-Extrema (prognose.py:121-133), nicht gegen den Einstieg - daher die Streuung. Tore in prognose.weit.json: mindest_score 60, mindest_score_short 45, mindest_cr 1.0, stop_min_pct 5.0, stop_max_pct 12.0. NACHPRUEFUNG 10.10.2026: alle 10 offenen Positionen erfuellen die Tore (XPL 49,5 und MON 53,4 sind SHORT, Schwelle 45 - korrekt eroeffnet, kein Fehler), keine ueberlaeufig (2-5 Tage < 14), keine im Stop/Ziel gerissen. Nur NEAR-USDC ist live (Kraken-Futures), die uebrigen 9 Papier.
       Naechster Schritt: Entscheidung Max - (a) Stop-Breite unveraendert lassen, bis >=8 geschlossene Runden vorliegen (Empfehlung), oder (b) stop_max_pct senken, damit keine offene Position ueber dem Band liegt.
