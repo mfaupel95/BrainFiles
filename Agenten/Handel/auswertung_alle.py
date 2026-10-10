@@ -328,6 +328,8 @@ def runden_fuer(spur, z=None, gebuehr=None, stand=None):
         return runden_spot(z, gebuehr, einsatz_feld="eur", stand=stand)
     if spur in ("orb", "orbk"):
         return runden_orbk(z)
+    if spur == "omniquant":
+        return runden_omniquant(z, stand=stand)
     if spur in INDIKATOR_SPUREN or spur in BOT_SPUREN:
         return runden_indikator(z, stand=stand)
     if spur in NAUTILUS_SPUREN:
@@ -810,6 +812,38 @@ def runden_nautilus(zeilen_, stand=None):
 
     return _paare(zeilen_, {"eroeffnen"}, {"schliessen"},
                   ("einsatz_usd", "einsatz_eur"), ergebnis, "USD", stand=stand)
+
+
+def runden_omniquant(zeilen_, stand=None):
+    """omniquant: EINSTIEG/eroeffnen (Einstieg) und AUSSTIEG/schliessen (Ausstieg).
+
+    Die Spur schreibt im Papierzweig EINSTIEG/AUSSTIEG (handeln.py), im
+    Live-Zweig eroeffnen/schliessen (live_perp.py). Einsatz steht in
+    `einsatz_usd`, der Erloes in `wert_usd` - der G/V ist die Differenz,
+    dieselbe Rechnung wie bei den Indikator-Spuren.
+
+    WARUM ES DIESE FUNKTION GIBT (T-389, 11.10.2026): omniquant stand in
+    BOT_SPUREN und fiel damit in runden_indikator, der kauf/verkauf paart.
+    Die Spur schreibt aber EINSTIEG/AUSSTIEG und eroeffnen/schliessen -
+    die Auswertung meldete 0 Runden trotz 37 EINSTIEG- und 20 AUSSTIEG-Zeilen.
+    Eine Auswertung, die eine ganze Spur still auf null setzt, macht jede
+    Verbesserung unsichtbar.
+
+    buchbereinigung-Zeilen (schliessen mit grund=buchbereinigung) zaehlen
+    NICHT als Runde: sie sind Buchhaltung, keine Handelsentscheidung
+    (stoerungen.ist_stoerung erkennt den Grund). Der reale Verlust einer
+    nachgebuchten Position steht in zustand.json `verluste_usd`, nicht hier.
+    """
+    def ergebnis(ein, aus):
+        einsatz = zahl(ein.get("einsatz_usd"))
+        erloes = zahl(aus.get("wert_usd"))
+        if not einsatz or erloes is None:
+            return None, None
+        return erloes - einsatz, 0.0
+
+    zeilen_ = [r for r in zeilen_ if (r.get("grund") or "") != "buchbereinigung"]
+    return _paare(zeilen_, {"EINSTIEG", "eroeffnen"}, {"AUSSTIEG", "schliessen"},
+                  "einsatz_usd", ergebnis, "USD", stand=stand)
 
 
 def runden_orbk(zeilen_):
