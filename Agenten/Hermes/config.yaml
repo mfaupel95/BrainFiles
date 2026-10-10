@@ -707,6 +707,8 @@ display:
   long_running_notifications: true
   tool_progress: all
   message_reactions: true
+  in_app_tips: false
+  in_app_tours: false
 dashboard:
   theme: midnight
   font: ibm-plex-mono

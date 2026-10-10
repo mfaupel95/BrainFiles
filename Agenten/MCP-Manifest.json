@@ -41,7 +41,7 @@
       "enabled": true,
       "agent": "hermes",
       "type": "stdio",
-      "command": "Werkstatt\\Repos\\kraken-cli\\target\\release\\kraken.exe",
+      "command": "O:\\Werkstatt\\Repos\\kraken-cli\\target\\release\\kraken.exe",
       "args": [
         "mcp"
       ],
@@ -49,19 +49,14 @@
     },
     {
       "name": "okx-agentkit",
-      "enabled": false,
+      "enabled": true,
       "agent": "hermes",
       "type": "stdio",
-      "command": "node",
+      "command": "Agenten\\MCP-Server\\okx-agentkit\\start-demo.cmd",
       "args": [
-        "Werkstatt\\Repos\\agent-trade-kit\\packages\\mcp\\dist\\index.js",
-        "--demo",
-        "--profile",
-        "demo",
-        "--modules",
-        "market,swap,account"
+        "--read-only"
       ],
-      "description": "OKX Agent Trade Kit (Fork mfaupel95/agent-trade-kit), nur DEMO (simulierter Handel). Aus, bis in ~/.okx/config.toml ein Profil demo (demo = true, Demo-API-Key) existiert; dann hier und in Hermes enabled: true. Nie --live. Nur Hermes."
+      "description": "OKX Agent Trade Kit (Fork mfaupel95/agent-trade-kit), nur DEMO und nur LESEND (--read-only). Starter start-demo.cmd bildet OKX_DEMO_API_* im Kindprozess auf die erwarteten Namen ab; der Live-Schluessel greift nie. Schreibend im Demo erst nach Entscheidung (--read-only entfernen). Nur Hermes."
     },
     {
       "name": "desktop-commander",

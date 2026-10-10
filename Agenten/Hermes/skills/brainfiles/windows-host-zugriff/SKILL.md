@@ -362,6 +362,17 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   Leere. `ast.parse(text)` wirft `SyntaxError` MIT `lineno`. Nach jeder
   Massenaenderung alle angefassten `.py` einmal durchparsen; „0 kaputte Dateien" ist
   der Beleg.
+- **Ein Regex, das in Aufruf-Argumente einfuegt, braucht echtes Klammer-Matching —
+  sonst landet die Einfuegung NACH der schliessenden Klammer oder verschluckt sie.**
+  Ein `re.sub` auf `subprocess.run(...)` mit einem naiven `[^)]*`-Muster findet die
+  ERSTE schliessende Klammer, nicht die zum Aufruf gehoerende: das eingefuegte
+  `creationflags=...` steht dann ausserhalb des Aufrufs (kompiliert als Tupel,
+  wirkt aber nicht) oder die schliessende Klammer fehlt ganz (SyntaxError erst beim
+  naechsten Lauf). Nach JEDEM solchen Massen-Patch: (1) `ast.parse` ueber alle
+  Dateien, (2) die eingefuegte Zeile visuell pruefen, dass sie VOR der schliessenden
+  Klammer steht, (3) nach dem Muster `else 0,` + Nicht-Klammer-Zeile suchen (fehlende
+  Klammer). Ein zeilenbasiertes Einfuegen (Flag in die Zeile mit `capture_output=True`
+  legen) ist robuster als ein Aufruf-Regex, weil es die Klammerposition nie anfasst.
 - **Skript unter 5.1 auf Syntax prüfen:** `[Parser]::ParseFile($p,[ref]$null,[ref]$err)`
   und bei Treffern Zeile und Meldung ausgeben. Häufigste Ursache: `\"` ist in einem doppelt-quotierten
   PowerShell-String **kein** Escape — die Zeichenkette endet zu früh und der Rest
@@ -586,6 +597,24 @@ einen DAEMON ohne eigenes Fenster ist der Wechsel gefahrlos; eine sichtbare
 GUI (Tk-Hauptfenster) hat den eigenen Konflikt oben (`-WindowStyle Hidden`
 versteckt auch das Fenster) — dort die Konsole getrennt regeln statt das
 Fenster zu verstecken.
+
+**Zweiter Fix, wenn der Elternprozess fensterlos BLEIBEN muss (Gateway,
+Cron-no_agent, pythonw-Dienst): `creationflags=subprocess.CREATE_NO_WINDOW`
+an JEDEN `subprocess.run`/`Popen` eines Konsolenprogramms.** Der Gateway
+laeuft als pythonw und kann nicht auf Konsolen-Subsystem umgestellt werden —
+dann bekommt jedes Kind (tasklist, powershell, cmd, python, hermes) sein
+eigenes sichtbares Fenster, und ein Dauertakt (Cron-Wache, die je Lauf eine
+Prozessabfrage macht) poppt je Takt auf. Das Flag ist Windows-spezifisch und
+gehoert mit Portabilitaets-Guard: `creationflags=subprocess.CREATE_NO_WINDOW
+if os.name == "nt" else 0`. **Jede Wache, die als no_agent-Cron laeuft und
+subprocess aufruft, braucht es** — auch wenn der Aufruf nur `sys.executable`
+(startet ein Python-Kind) oder `powershell` ist, nicht nur tasklist. Nach dem
+Patch die Wachen neu starten, die ihr Modul cachen (SkillsBot, Bus); no_agent-
+Cron-Wachen lesen ihre Skripte je Lauf frisch und brauchen keinen Neustart.
+Einen Test, der `CREATE_NO_WINDOW` als Design-Regel VERBIETET („rein lesend,
+keine Fenstersteuerung"), praezisieren statt umgehen: das Flag ist jetzt
+Pflicht, weil das Modul auch aus dem fensterlosen Gateway laeuft — die Regel
+wird von „verboten" zu „muss vorhanden sein" gedreht.
 
 ## Eine Datei erscheint immer wieder (Desktop, Arbeitsverzeichnis): den SCHREIBER belegen
 

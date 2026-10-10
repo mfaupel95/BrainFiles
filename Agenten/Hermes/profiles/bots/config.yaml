@@ -71,3 +71,5 @@ _config_version: 50
 onboarding:
   seen:
     tool_progress_prompt: true
+command_allowlist:
+  - script execution via -e/-c flag
