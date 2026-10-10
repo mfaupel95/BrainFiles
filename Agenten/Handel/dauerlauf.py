@@ -195,7 +195,14 @@ TIMEOUT_S = 700
 SPUREN = {
     "xperp":   {"ordner": "xperp",   "waehrung": "USD"},
     "scanner": {"ordner": "scanner", "waehrung": "USD"},
-    "swap":    {"ordner": "swap",    "waehrung": "USD"},
+    # SWAP AUS seit 10.10.2026 (Hermes, Auftrag Max "alles sinnvolle"): 12
+    # Runden, 17 % Treffer, netto -3.90 %, verfehlt eigenes Freigabe-Bar
+    # ">=8 Runden, netto positiv". handel_erlaubt war seit 27.09. false; jetzt
+    # ganz aus dem Dauerlauf. Journal bleibt als Vergleichsbuch stehen.
+    # WIEDER ANSCHALTEN: die Zeile hier re-einkommentieren, swap aus
+    # AUTO_FREIGABE wieder aufnehmen, und in swap/zustand.json "letzter_lauf"
+    # auf jetzt setzen.
+    # "swap":    {"ordner": "swap",    "waehrung": "USD"},
     # SPIEGEL AUS seit 21.09.2026 (Max: "spiegel Spuren erstmal deaktivieren").
     # Die drei Arme laufen nicht mehr; ihre Buecher bleiben als
     # Vergleichsgrundlage stehen, wachsen aber nicht weiter.
@@ -294,12 +301,18 @@ SPUREN = {
     # Live-Zweig wie spiegel. Kein eigenes venv.
     "macd_mtf": {"ordner": "macd_mtf", "waehrung": "USD",
                "skript": "handeln.py"},
-    "squeeze": {"ordner": "squeeze", "waehrung": "USD",
-               "skript": "handeln.py"},
+    # SQUEEZE AUS seit 10.10.2026 (Hermes, Auftrag Max "alles sinnvolle"):
+    # Parameter-Suche (optimieren.py, 9 Kandidaten) fand keinen Kandidaten - die
+    # Spur ist von keinem Stop/Ziel-Wert behebbar, Live netto -0.72 % (15 Runden).
+    # Haupt- und Schattenarm (squeeze_eth) gehen zusammen raus.
+    # WIEDER ANSCHALTEN: beide Zeilen re-einkommentieren und in
+    # squeeze/zustand.json "letzter_lauf" auf jetzt setzen.
+    # "squeeze": {"ordner": "squeeze", "waehrung": "USD",
+    #             "skript": "handeln.py"},
+    # "squeeze_eth": {"ordner": "squeeze", "waehrung": "USD",
+    #                 "skript": "squeeze_eth.py"},
     # Schattenarm squeeze_eth (03.10.2026, Auftrag Max "Schattenarm"):
     # dieselbe Regel fest auf ETH, Hauptarm unveraendert als Vergleich.
-    "squeeze_eth": {"ordner": "squeeze", "waehrung": "USD",
-                    "skript": "squeeze_eth.py"},
     "supertrend": {"ordner": "supertrend", "waehrung": "USD",
                   "skript": "handeln.py"},
     "wavetrend": {"ordner": "wavetrend", "waehrung": "USD",
@@ -508,7 +521,7 @@ TAKT_MAX_MINUTEN = 15
 # Der Orderweg auf Kraken Futures ist gebaut (omniquant/kraken_perp.py +
 # live_perp.py, Hebel 6 als Sizing-Regel). Bindende Grenze ist die freie
 # Margin im flex-Konto (mindest_guthaben_usd 31).
-AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "swap", "kraken",
+AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
                  "trendwende_btc", "liq_wand", "omniquant",
                  "moondev_marktlage", "nautilus_kraken",
