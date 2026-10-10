@@ -1337,16 +1337,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-25
 
 
-- [ ] **T-080 — Eine scharfe Spur, die dauerhaft sperrt, meldet sich nur einmal**
-      Kontext: Der Ereignisfilter des Dauerlaufs meldet Sperrzeilen („--live
-      angefordert, aber gesperrt: …“) jetzt mit Gedaechtnis je Spur — dieselbe
-      Zeile kommt einmal statt in jedem Zyklus. Das ist gewollt (Rauschen), laesst
-      aber den Dauerfall offen: eine scharfe Spur, die wochenlang an Guthaben oder
-      einem anderen Tor haengt, faellt nur im Tagesbericht auf.
-      Naechster Schritt: pruefen, ob `sperrgruende.py` oder `spuren_stand.py` von
-      einer Wache taeglich aufgerufen werden soll (Muster stille-spuren-wache).
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Hermes/scripts/
 
 
 
@@ -1382,26 +1372,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-075 — kraken_rest.guthaben() scheitert sporadisch mit EGeneral:Permission denied**
-      Kontext: `kraken_rest.py` laedt `../kraken/kraken.py` ueber
-      spec_from_file_location. Derselbe Aufruf `guthaben("ZEUR")` liefert in EINEM
-      Prozess ueber den normalen Import 0,7059 und ueber den spec-Weg
-      'EGeneral:Permission denied'; in einer Serie von 12 Aufrufen fielen alle 12
-      (beide Wege), Minuten spaeter gingen wieder alle. Nicht die Ursache: Key
-      (unveraendert), Uhr (1,3 s), nonce_pool (beide Wege laden dieselbe Datei
-      `kraken/.kraken_nonce`), venv, cwd, oeffentliche IP (Terminal und Host
-      identisch).
-      Naechster Schritt: den von kraken.py benutzten nonce bzw. die Antwort im
-      Fehlerfall mitschreiben (Header/Statuscode) und gegen den erfolgreichen Fall
-      stellen - dies ist der einzige verbleibende Unterschied.
-      Werkzeug vorhanden (25.09.2026): `Agenten/Handel/kraken_abweisungs_sonde.py`
-      haelt genau das fest (Status, content-type, Header, Rohkoerper) und laeuft als
-      Cron `kraken-abweisung-wache` alle 30 min; sie deckt den signierten Spot-Weg
-      ueber die Haus-kraken.py ab. Beim naechsten Auftreten zuerst dort nachsehen
-      (cache/kraken-abweisungen.jsonl), statt eine neue Sonde zu bauen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/nautilus_kraken/kraken_rest.py,
-      Agenten/Handel/kraken/kraken.py
 
 
 - [ ] **T-074 — nautilus_kraken (Spot) hat noch nicht gekauft - drei gemessene Tore**
@@ -1933,6 +1903,38 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-080 — Eine scharfe Spur, die dauerhaft sperrt, meldet sich nur einmal**
+      Kontext: Der Ereignisfilter des Dauerlaufs meldet Sperrzeilen („--live
+      angefordert, aber gesperrt: …“) jetzt mit Gedaechtnis je Spur — dieselbe
+      Zeile kommt einmal statt in jedem Zyklus. Das ist gewollt (Rauschen), laesst
+      aber den Dauerfall offen: eine scharfe Spur, die wochenlang an Guthaben oder
+      einem anderen Tor haengt, faellt nur im Tagesbericht auf.
+      Naechster Schritt: pruefen, ob `sperrgruende.py` oder `spuren_stand.py` von
+      einer Wache taeglich aufgerufen werden soll (Muster stille-spuren-wache).
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/dauerlauf.py, Agenten/Hermes/scripts/
+      sperrgrund-wache.py gebaut und an Cron angebunden; commits 59e21518/49bf3f3a
+- [x] **T-075 — kraken_rest.guthaben() scheitert sporadisch mit EGeneral:Permission denied**
+      Kontext: `kraken_rest.py` laedt `../kraken/kraken.py` ueber
+      spec_from_file_location. Derselbe Aufruf `guthaben("ZEUR")` liefert in EINEM
+      Prozess ueber den normalen Import 0,7059 und ueber den spec-Weg
+      'EGeneral:Permission denied'; in einer Serie von 12 Aufrufen fielen alle 12
+      (beide Wege), Minuten spaeter gingen wieder alle. Nicht die Ursache: Key
+      (unveraendert), Uhr (1,3 s), nonce_pool (beide Wege laden dieselbe Datei
+      `kraken/.kraken_nonce`), venv, cwd, oeffentliche IP (Terminal und Host
+      identisch).
+      Naechster Schritt: den von kraken.py benutzten nonce bzw. die Antwort im
+      Fehlerfall mitschreiben (Header/Statuscode) und gegen den erfolgreichen Fall
+      stellen - dies ist der einzige verbleibende Unterschied.
+      Werkzeug vorhanden (25.09.2026): `Agenten/Handel/kraken_abweisungs_sonde.py`
+      haelt genau das fest (Status, content-type, Header, Rohkoerper) und laeuft als
+      Cron `kraken-abweisung-wache` alle 30 min; sie deckt den signierten Spot-Weg
+      ueber die Haus-kraken.py ab. Beim naechsten Auftreten zuerst dort nachsehen
+      (cache/kraken-abweisungen.jsonl), statt eine neue Sonde zu bauen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/nautilus_kraken/kraken_rest.py,
+      Agenten/Handel/kraken/kraken.py
+      kraken-Sonde nutzt Haus-Nonce-Standard; commit f4a9e748
 - [x] **T-380 - puter self-hosted: Standort und Betrieb entscheiden**
       Kontext: 08.10.2026 - Parallelsitzung hat HeyPuter/puter (Fork mfaupel95/puter) an die Wurzel geklont
       und den Docker-Stack gestartet (puter-selfhosted/, Port 80, 6 Container, restart unless-stopped).
