@@ -57,9 +57,10 @@ def lade_carry(argv: list[str]) -> tuple[list[dict], list[str], str]:
     env.pop("PYTHONHOME", None)
     env.pop("PYTHONPATH", None)
     r = subprocess.run(
-        [sys.executable, str(CARRY), "--json", *argv],
-        capture_output=True, text=True, timeout=120, env=env,
-        cwd=str(WURZEL / "Agenten" / "Handel"),
+            [sys.executable, str(CARRY), "--json", *argv],
+            capture_output=True, text=True, timeout=120, env=env,
+            cwd=str(WURZEL / "Agenten" / "Handel"),
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
     )
     if r.returncode != 0:
         return [], ["carry.py exit %d: %s" % (r.returncode, r.stderr.strip())], r.stdout
