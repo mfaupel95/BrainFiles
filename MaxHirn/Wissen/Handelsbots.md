@@ -130,7 +130,12 @@ demselben Fenster wie im Haus (`kerzen_anzahl`), Futures, Hebel 1.
 - **Urteil:** `python bots.py backtest <bot>` schreibt Runden, Netto % und
   Rücklauf nach `freqtrade/urteile.json`. Der Leitstand-Reiter **FreqTrade**
   (Strg+8) zeigt es neben jedem Bot. Viele Bots heißt nicht viel Kante: erster
-  Probelauf `klassik-ema`, 4h, 21 Monate: 227 Runden, −25,7 %.
+  Probelauf `klassik-ema`, 4h, 21 Monate: 227 Runden, −30,5 %. Das Ziel läuft
+  über `custom_roi`, damit der Backtest zum Zielpreis schließt wie das Haus;
+  mit `custom_exit` waren es geschönte −25,7 % (Ziel erst zum Kerzenschluss).
+- **Container sieht nur** `Agenten/Handel` und `Agenten/Bus` (read-only); alle
+  Handel-Ordner, die keine Spur braucht, sind per tmpfs überdeckt — dort liegen
+  fremde Zugänge.
 - **Schnellere Strategien (Phase B)** ersetzen eine Spur erst, wenn
   `freqtrade/gleichheit.py` auf derselben Kerzenreihe keine Abweichung zum
   Adapter meldet.
