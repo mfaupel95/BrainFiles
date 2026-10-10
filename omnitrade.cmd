@@ -63,7 +63,7 @@ set "DASHPY=%ROOT%Agenten\Handel\dashboard\.venv\Scripts\python.exe"
 if not exist "%DASHPY%" (
   echo Dashboard-venv fehlt. Einmal anlegen:
   echo   python -m venv "%ROOT%Agenten\Handel\dashboard\.venv"
-  echo   "%ROOT%Agenten\Handel\dashboard\.venv\Scripts\pip.exe" install -r "%ROOT%Agenten\Handel\dashboardequirements.txt"
+  echo   "%ROOT%Agenten\Handel\dashboard\.venv\Scripts\pip.exe" install -r "%ROOT%Agenten\Handel\dashboard\requirements.txt"
   exit /b 1
 )
 set "DASH_ARGS="
