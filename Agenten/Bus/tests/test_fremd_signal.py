@@ -14,6 +14,9 @@ import journal       # noqa: E402
 import auffaellig    # noqa: E402
 
 TOT = 1
+OFFEN = {"fremd_signale_erlaubt": True, "modi_erlaubt": ["paper", "demo"],
+         "quellen_erlaubt": ["kraken-cli"], "instrumente_erlaubt": ["BTC/USD"],
+         "size_pct_max": 0.5}
 JETZT = 1_728_432_100
 
 
@@ -29,7 +32,8 @@ def test_gueltiges_signal_wird_als_signal_journalisiert():
     ereignis._merkzustand_zuruecksetzen()
     with tempfile.TemporaryDirectory() as w:
         ok, grund = fremd_signal.melden_signal("fremd/kraken-cli", sig(),
-                                               jetzt=JETZT, port=TOT, wurzel=w)
+                                               jetzt=JETZT, port=TOT, wurzel=w,
+                                               wache=OFFEN)
         assert ok and grund == "ok", grund
         zeilen = journal.lesen(wurzel=w)
         assert len(zeilen) == 1 and zeilen[0]["was"] == "signal", zeilen
@@ -40,7 +44,8 @@ def test_live_signal_wird_verworfen_und_so_vermerkt():
     ereignis._merkzustand_zuruecksetzen()
     with tempfile.TemporaryDirectory() as w:
         ok, grund = fremd_signal.melden_signal(
-            "fremd/kraken-cli", sig(mode="live"), jetzt=JETZT, port=TOT, wurzel=w)
+            "fremd/kraken-cli", sig(mode="live"), jetzt=JETZT, port=TOT, wurzel=w,
+            wache=OFFEN)
         assert not ok and "mode" in grund, grund
         z = journal.lesen(wurzel=w)
         assert len(z) == 1 and z[0]["was"] == "signal_verworfen", z
@@ -52,8 +57,42 @@ def test_stales_signal_wird_verworfen():
     with tempfile.TemporaryDirectory() as w:
         ok, grund = fremd_signal.melden_signal(
             "fremd/kraken-cli", sig(ts_utc=JETZT - 999), jetzt=JETZT,
-            port=TOT, wurzel=w)
+            port=TOT, wurzel=w, wache=OFFEN)
         assert not ok and "stale" in grund, grund
+
+
+def test_ohne_wache_ist_das_tor_zu():
+    # Auslieferungszustand: fremd_signale/wachen.json hat das Tor zu
+    ereignis._merkzustand_zuruecksetzen()
+    with tempfile.TemporaryDirectory() as w:
+        ok, grund = fremd_signal.melden_signal("fremd/kraken-cli", sig(),
+                                               jetzt=JETZT, port=TOT, wurzel=w)
+        assert not ok and "Tor" in grund, grund
+        z = journal.lesen(wurzel=w)
+        assert z[0]["was"] == "signal_verworfen" and "Tor" in z[0]["text"], z
+
+
+def test_kaputte_wache_schliesst_das_tor():
+    ereignis._merkzustand_zuruecksetzen()
+    with tempfile.TemporaryDirectory() as w:
+        ok, grund = fremd_signal.melden_signal("fremd/kraken-cli", sig(),
+                                               jetzt=JETZT, port=TOT, wurzel=w,
+                                               wache="kaputt")
+        assert not ok and "Tor" in grund, grund
+
+
+def test_tor_regeln_greifen_ueber_den_bus(
+):
+    ereignis._merkzustand_zuruecksetzen()
+    with tempfile.TemporaryDirectory() as w:
+        ok, grund = fremd_signal.melden_signal(
+            "fremd/kraken-cli", sig(source="moon-dev"), jetzt=JETZT, port=TOT,
+            wurzel=w, wache=OFFEN)
+        assert not ok and "source" in grund, grund
+        ok, grund = fremd_signal.melden_signal(
+            "fremd/kraken-cli", sig(size_pct=0.9), jetzt=JETZT, port=TOT,
+            wurzel=w, wache=OFFEN)
+        assert not ok and "Deckel" in grund, grund
 
 
 def test_muell_wirft_nie():

@@ -152,4 +152,4 @@ neu starten.
 
 ## Nachrichtentyp "signal" (Fremd-Werkzeuge)
 
-`fremd_signal.melden_signal(wer, signal)` prueft ein Signal mit `Handel/signal_schema.py` und schreibt es als `was="signal"` (gueltig) oder `was="signal_verworfen"` (Grund im Text) ins Journal. Beide bleiben fuer den Sprecher still. Ausgefuehrt wird nichts; das wachen.json-Gate in Handel/ entscheidet. Test: `python tests/test_fremd_signal.py`.
+`fremd_signal.melden_signal(wer, signal)` schickt ein Signal durch das Tor `Handel/fremd_tor.py` (Schema + `fremd_signale/wachen.json`, Tor ist ab Werk zu) und schreibt es als `was="signal"` (durchgelassen) oder `was="signal_verworfen"` (Grund im Text) ins Journal. Beide bleiben fuer den Sprecher still. Ausgefuehrt wird nichts; das wachen.json-Gate in Handel/ entscheidet. Test: `python tests/test_fremd_signal.py`.
