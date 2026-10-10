@@ -429,10 +429,35 @@ def pruefe_ausstiege(handeln, w, z):
     offen = [p for p in z.get("positionen", []) if p.get("modus") == "live"]
     if not offen:
         return
-    # VOR jeder Ausstiegsentscheidung: steht die Position noch unter Schutz?
-    # Ein Ausstieg am Stop, den die Boerse nicht mehr fuehrt, ist ein
-    # Market-Verkauf ohne Notausstieg - der Zustand wird sonst als getaetigt
-    # gemeldet, waehrend das Risiko ungedeckt bleibt (T-323).
+    # Vor jedem Stop-/Exit-Pfad den gebuchten Bestand mit der Boerse abgleichen.
+    # Fehlt die Position oder weicht die Menge ab, ist das Buch ein Geister-/
+    # Teilbestand: nicht blind eine neue Stop- oder Market-Order senden.
+    aktiv = []
+    for p in list(offen):
+        try:
+            boersen_pos = kraken_perp.offene_positionen(
+                p["inst"], fuer_ausstieg=True) or []
+        except Exception as e:                               # noqa: BLE001
+            _fehler(handeln, p["inst"],
+                    "Live-Bestand nicht abgleichbar (%s: %s) - keine Order gesendet"
+                    % (type(e).__name__, e))
+            continue
+        seite = "short" if p.get("seite") == "short" else "long"
+        passend = [q for q in boersen_pos
+                   if str(q.get("side", "")).lower() == seite]
+        menge = sum(float(q.get("size") or 0) for q in passend)
+        erwartet = float(p.get("kontrakte") or 0)
+        if erwartet <= 0 or abs(menge - erwartet) > 1e-9:
+            _fehler(handeln, p["inst"],
+                    "GEISTERPOSITION/Bestandsabweichung: Buch %s %g, Boerse %s %g; "
+                    "keine automatische Ausbuchung oder Order"
+                    % (seite, erwartet, seite, menge))
+            continue
+        aktiv.append(p)
+    offen = aktiv
+    if not offen:
+        return
+    # VOR jeder Ausstiegsentscheidung pruefen, ob die volle Menge geschuetzt ist.
     for p in list(offen):
         stopdeckung_pruefen(handeln, p)
     # Die Marktliste wird auf BEIDEN Wegen gebraucht. Sie war nur im
