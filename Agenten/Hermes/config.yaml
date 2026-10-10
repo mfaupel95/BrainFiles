@@ -1142,21 +1142,16 @@ mcp_servers:
   kraken-papier:
     args:
       - mcp
-    command: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
+    command: O:\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
   okx-agentkit:
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\okx-agentkit\start-demo.cmd
     args:
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\agent-trade-kit\packages\mcp\dist\index.js
-      - --demo
-      - --profile
-      - demo
-      - --modules
-      - market,swap,account
-    command: node
-    enabled: false
+      - --read-only
+    enabled: true
   pdf-vault:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js

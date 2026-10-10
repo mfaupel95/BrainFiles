@@ -26,7 +26,7 @@ mcp_servers:
   # Binary: Werkstatt/Repos/kraken-cli/target/release/kraken.exe (selbst kompiliert).
   # Signal-Ausgabe: nur nach Papier-/Demo-Nachweis in Handel/ promoten.
   kraken-native:
-    command: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
+    command: O:\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
     args:
       - mcp
       - -s

@@ -370,15 +370,10 @@ known_plugin_toolsets:
 mcp_servers:
   # OKX Agent Trade Kit, nur DEMO. Aus, bis ~/.okx/config.toml ein Profil demo (demo = true) hat. Nie --live.
   okx-agentkit:
-    command: node
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\okx-agentkit\start-demo.cmd
     args:
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\agent-trade-kit\packages\mcp\dist\index.js
-      - --demo
-      - --profile
-      - demo
-      - --modules
-      - market,swap,account
-    enabled: false
+      - --read-only
+    enabled: true
   affinity:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.canva.affinity\server\index.js
