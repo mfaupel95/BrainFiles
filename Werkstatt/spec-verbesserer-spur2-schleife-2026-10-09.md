@@ -62,7 +62,7 @@ Jeder Wert ist um den heutigen Wert begrenzt:
 | `ziel_atr_faktor` | 3.0 | 2.0 – 4.5 |
 | `einstieg_atr_abschlag` | 0.25 | 0.0 – 0.5 |
 | `trailing_trigger_r` | 1.0 | 0.5 – 2.0 |
-| `trailing_stop_prozent` | 0.4 | 0.2 – 1.0 |
+| `trailing_stop_prozent` | 1.5 (bis 09.10.2026: 0.4) | 0.75 – 3.0, Schritt 0.25 (nachgezogen 10.10.2026, vorher 0.2 – 1.0) |
 | `trailing_abstand_floor_pct` | 0.25 | 0.15 – 0.6 |
 | `trailing_min_hub_r` | 0.25 | 0.1 – 0.6 |
 | `trailing_max_halten_pct` | 5.0 | 3.0 – 8.0 |

@@ -53,7 +53,7 @@ Eingabeklassen, die die Spec nahelegt, aber keine Aufgabe von sich aus pruefen w
 - Consumes: bestehende `rt.pruefe_ausstieg_1h(p, kerze_1h, w)`, `rt.simuliere(...)`, `rt.rangliste_schritt(...)`.
 - Produces: `pruefe_ausstieg_1h` zieht nur nach, wenn `w.get("trailing_aktiv", True)` wahr ist (fehlender Schluessel = an, damit alle Bestandstests unveraendert bleiben). `simuliere(..., end_ms, werte_cache=None)`: ist `werte_cache` ein dict `{stand_ms: werte}`, kommt die Rangliste je Schritt von dort (`werte_cache[stand]`, fehlender Stand = `KeyError`, laut); `None` = Verhalten wie bisher.
 
-- [ ] **Schritt 1: Fehlschlagenden Test schreiben**
+- [x] **Schritt 1: Fehlschlagenden Test schreiben**
 
 Datei `Agenten/Handel/verbesserer/tests/test_xperp_engine_schalter.py`:
 
@@ -188,12 +188,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
+- [x] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
 
 Lauf: `cd Agenten/Handel && "$PY" -m unittest verbesserer.tests.test_xperp_engine_schalter -v` (bzw. `cd Agenten/Handel/verbesserer && "$PY" tests/test_xperp_engine_schalter.py`)
 Erwartet: `test_aus_zieht_den_stop_nicht_nach` FAIL (Stop wird nachgezogen), beide Cache-Tests ERROR (`unexpected keyword argument 'werte_cache'`).
 
-- [ ] **Schritt 3: Minimal implementieren**
+- [x] **Schritt 3: Minimal implementieren**
 
 In `xperp_ruecktest.py`, `pruefe_ausstieg_1h`: den Block
 
@@ -254,11 +254,11 @@ ersetzen durch
                                       ctval_je_inst=ctval_je_inst)
 ```
 
-- [ ] **Schritt 4: Test laufen lassen, Erfolg pruefen**
+- [x] **Schritt 4: Test laufen lassen, Erfolg pruefen**
 
 Lauf wie Schritt 2. Erwartet: alle 5 Tests PASS. Danach die Engine-Bestandstests: `cd Agenten/Handel && "$PY" -m unittest discover -s verbesserer/tests -p "test_xperp_ruecktest*.py"` -> alle gruen.
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add Agenten/Handel/verbesserer/xperp_ruecktest.py Agenten/Handel/verbesserer/tests/test_xperp_engine_schalter.py
@@ -285,7 +285,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
   - `speichern(pfad, hash_, matrix)`, `laden(pfad, hash_) -> dict[int, list] | None`
   - `hole_oder_baue(pfad, universum, k4_je_inst, k1d_je_inst, ctval, stand_liste) -> (matrix, aus_cache: bool)`
 
-- [ ] **Schritt 1: Fehlschlagenden Test schreiben**
+- [x] **Schritt 1: Fehlschlagenden Test schreiben**
 
 Datei `Agenten/Handel/verbesserer/tests/test_xperp_merkmale.py`:
 
@@ -418,12 +418,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
+- [x] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
 
 Lauf: `cd Agenten/Handel/verbesserer && "$PY" tests/test_xperp_merkmale.py`
 Erwartet: `ModuleNotFoundError: No module named 'xperp_merkmale'`.
 
-- [ ] **Schritt 3: Modul schreiben**
+- [x] **Schritt 3: Modul schreiben**
 
 Datei `Agenten/Handel/verbesserer/xperp_merkmale.py`:
 
@@ -534,11 +534,11 @@ def hole_oder_baue(pfad, universum, k4_je_inst, k1d_je_inst, ctval,
     return matrix, False
 ```
 
-- [ ] **Schritt 4: Test laufen lassen, Erfolg pruefen**
+- [x] **Schritt 4: Test laufen lassen, Erfolg pruefen**
 
 Lauf wie Schritt 2. Erwartet: alle Tests PASS.
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add Agenten/Handel/verbesserer/xperp_merkmale.py Agenten/Handel/verbesserer/tests/test_xperp_merkmale.py
@@ -568,7 +568,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
   - `abstieg(basis, bewerte, grenzen, budget) -> {"basis_ev","bestes","bestes_ev","auswertungen"}`; `bewerte(werte) -> ev`.
   - `entscheide(basis, bewerte, holdout, grenzen, konf) -> dict` mit `kandidat`, `fast_kandidat`, `grund`, `regeln`, `basis_ev`, `kandidat_ev`, `holdout_basis`, `holdout_kandidat`, `auswertungen`, `basis_werte`; `holdout(werte) -> kennzahlen`.
 
-- [ ] **Schritt 1: Fehlschlagenden Test schreiben**
+- [x] **Schritt 1: Fehlschlagenden Test schreiben**
 
 Datei `Agenten/Handel/verbesserer/tests/test_xperp_suche.py`:
 
@@ -861,12 +861,12 @@ if __name__ == "__main__":
 
 Hinweis fuer den Ausfuehrer: In `TestEntscheide._lauf` ist `besser` (Stop 1.25) der einzige Nachbar, der das Aggregat der Basis (1.0) uebertrifft; alle anderen Nachbarn liefern die Basiswerte (1.0) und gewinnen nicht (strikt groesser verlangt).
 
-- [ ] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
+- [x] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
 
 Lauf: `cd Agenten/Handel/verbesserer && "$PY" tests/test_xperp_suche.py`
 Erwartet: `ModuleNotFoundError: No module named 'xperp_suche'`.
 
-- [ ] **Schritt 3: Modul schreiben**
+- [x] **Schritt 3: Modul schreiben**
 
 Datei `Agenten/Handel/verbesserer/xperp_suche.py`:
 
@@ -1076,11 +1076,11 @@ def entscheide(basis, bewerte, holdout, grenzen, konf):
     return res
 ```
 
-- [ ] **Schritt 4: Test laufen lassen, Erfolg pruefen**
+- [x] **Schritt 4: Test laufen lassen, Erfolg pruefen**
 
 Lauf wie Schritt 2. Erwartet: alle Tests PASS. Schlaegt `test_budget_deckelt_die_auswertungen` fehl, ist die Budget-Pruefung im Nachbarn-Loop zu korrigieren (nur NEUE Saetze kosten Budget).
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add Agenten/Handel/verbesserer/xperp_suche.py Agenten/Handel/verbesserer/tests/test_xperp_suche.py
@@ -1104,7 +1104,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 - Consumes: `anwenden.anwenden(ordner, spur, repo)` (Rueckgabe `{"ok","grund","commit"}`), `anwenden.denylist_ok(schluessel)`.
 - Produces: `spuren.json["spur2"]` mit `wachen` (`../xperp/wachen.json`), `berichte`, `aenderbar["wachen.json"]` (8 Schluessel mit `[lo, hi]`), **ohne** `bewertung_datei`. `konfig.json["spur2"]` mit `such_budget`, `such_tage`, `test_tage`, `schritt_tage`, `holdout_tage`, `holdout_min_runden`, `holdout_max_nutzungen`, `overfit_min_fenster`, `overfit_min_runden`. `anwenden.anwenden` toleriert eine Spur ohne `bewertung_datei`.
 
-- [ ] **Schritt 1: Fehlschlagenden Test schreiben**
+- [x] **Schritt 1: Fehlschlagenden Test schreiben**
 
 Datei `Agenten/Handel/verbesserer/tests/test_xperp_anwenden.py`:
 
@@ -1273,12 +1273,12 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
+- [x] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
 
 Lauf: `cd Agenten/Handel/verbesserer && "$PY" tests/test_xperp_anwenden.py`
 Erwartet: `KeyError: 'spur2'` in `TestKonfig`, Denylist-Tests FAIL (`max_hebel` u. a. nicht gesperrt), `TestAnwendenSpur2` ERROR (`KeyError: 'bewertung_datei'`).
 
-- [ ] **Schritt 3: Konfiguration eintragen**
+- [x] **Schritt 3: Konfiguration eintragen**
 
 `spuren.json` - den Schluss
 
@@ -1337,7 +1337,7 @@ ersetzen durch
   },
 ```
 
-- [ ] **Schritt 4: `anwenden.py` anpassen**
+- [x] **Schritt 4: `anwenden.py` anpassen**
 
 (a) `_GESPERRTE_PRAEFIXE`:
 
@@ -1450,11 +1450,11 @@ durch
 
 Docstring von `_wiederherstellen` von „Beide Zieldateien" auf „Die Zieldateien" aendern. Danach `grep -n "bewertung_pfad" Agenten/Handel/verbesserer/anwenden.py` - jede verbleibende Stelle muss `None` vertragen.
 
-- [ ] **Schritt 5: Test laufen lassen, Erfolg pruefen**
+- [x] **Schritt 5: Test laufen lassen, Erfolg pruefen**
 
 Lauf wie Schritt 2. Erwartet: alle PASS. Dann die Bestandstests, die `anwenden`, Konfiguration und Denylist beruehren: `cd Agenten/Handel && "$PY" -m unittest discover -s verbesserer/tests -p "test_anwenden.py"` und `-p "test_konfig.py"` -> gruen.
 
-- [ ] **Schritt 6: Spec nachziehen**
+- [x] **Schritt 6: Spec nachziehen**
 
 In `Werkstatt/spec-verbesserer-spur2-schleife-2026-10-09.md`:
 - Tabelle „Suchraum": die Zeilen `vola_tor_pa` und `min_umsatz_24h_usd` streichen; unter der Tabelle einen Satz ergaenzen: „`vola_tor_pa` und `min_umsatz_24h_usd` sind nicht im Suchraum: der Ruecktest liest das Vola-Tor aus `auswahl.KATEGORIEN`, und die Krypto-Familie ueberschreibt den Umsatz-Bezug - eine Aenderung haette keine Wirkung."
@@ -1462,7 +1462,7 @@ In `Werkstatt/spec-verbesserer-spur2-schleife-2026-10-09.md`:
 - Abschnitt „Fehlerverhalten": ergaenzen „Ein Abbruch schreibt einen Berichtsordner mit dem Grund, aber kein `commit.txt`. Instrumente ohne vollstaendigen Cache werden ausgelassen und im Bericht benannt; unter 3 verbleibenden Instrumenten Abbruch."
 Gezielt per Edit, danach `git diff` ansehen (LF bleibt).
 
-- [ ] **Schritt 7: Commit**
+- [x] **Schritt 7: Commit**
 
 ```bash
 git add Agenten/Handel/verbesserer/spuren.json Agenten/Handel/verbesserer/konfig.json Agenten/Handel/verbesserer/anwenden.py Agenten/Handel/verbesserer/tests/test_xperp_anwenden.py Werkstatt/spec-verbesserer-spur2-schleife-2026-10-09.md
@@ -1488,7 +1488,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
   - Hilfsfunktionen, die Tests patchen: `_daten_laden(universum, tage, kerzen_holen, cache_dir)` und `_instrumente()`.
   - CLI: `python xperp_lauf.py [--ohne-kerzen-abruf]`, Exitcode 0 bei Vorschlag/Kein-Vorschlag, 1 bei Abbruch.
 
-- [ ] **Schritt 1: Fehlschlagenden Test schreiben**
+- [x] **Schritt 1: Fehlschlagenden Test schreiben**
 
 Datei `Agenten/Handel/verbesserer/tests/test_xperp_lauf.py`:
 
@@ -1722,12 +1722,12 @@ if __name__ == "__main__":
 
 Hinweis fuer den Ausfuehrer: `lauf.einmal` ruft `rt.simuliere` positionell mit den 10 Argumenten `(universum, k4, k1h, k1d, saetze, umsatz, instr_je_basis, w, start_ms, end_ms)` plus `werte_cache=` - die Fakes oben lesen `a[7]` (= `w`), `a[8]` (= `start_ms`), `a[9]` (= `end_ms`). Der Orchestrator **muss** daher genau positionell aufrufen.
 
-- [ ] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
+- [x] **Schritt 2: Test laufen lassen, Fehlschlag pruefen**
 
 Lauf: `cd Agenten/Handel/verbesserer && "$PY" tests/test_xperp_lauf.py`
 Erwartet: `ModuleNotFoundError: No module named 'xperp_lauf'`.
 
-- [ ] **Schritt 3: Modul schreiben**
+- [x] **Schritt 3: Modul schreiben**
 
 Datei `Agenten/Handel/verbesserer/xperp_lauf.py`:
 
@@ -2073,11 +2073,11 @@ if __name__ == "__main__":
 
 Hinweis fuer den Ausfuehrer: `commit_text` und `bericht_text` setzen voraus, dass `res["kandidat_ev"]["fenster"]` genauso viele Eintraege hat wie `ctx["fenster"]` (stimmt, weil beide aus `bewerte_fenster` mit derselben Fensterliste kommen).
 
-- [ ] **Schritt 4: Test laufen lassen, Erfolg pruefen**
+- [x] **Schritt 4: Test laufen lassen, Erfolg pruefen**
 
 Lauf wie Schritt 2. Erwartet: alle Tests PASS. Haeufige Stolperer: (a) `test_zu_wenig_historie...` nutzt `such_tage=30` -> `fenster_grenzen` liefert `[]`; (b) bei `test_verbrauchter_holdout...` zaehlt der Zaehler erst nach der Holdout-Auswertung - mit `holdout_max_nutzungen=1` meldet schon der erste Lauf „verbraucht", der zweite erst recht.
 
-- [ ] **Schritt 5: Commit**
+- [x] **Schritt 5: Commit**
 
 ```bash
 git add Agenten/Handel/verbesserer/xperp_lauf.py Agenten/Handel/verbesserer/tests/test_xperp_lauf.py
@@ -2098,7 +2098,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 - Consumes: `Agenten/Handel/verbesserer/xperp_lauf.py` (CLI, Exitcode), Muster von `Routinen/verbesserer.ps1`.
 - Produces: eine PowerShell-Routine, die wie `verbesserer.ps1` loggt und den Exitcode weitergibt; eine Wissensnotiz.
 
-- [ ] **Schritt 1: Routine schreiben**
+- [x] **Schritt 1: Routine schreiben**
 
 Datei `Agenten/Routinen/verbesserer-spur2.ps1` (CRLF-Zeilenenden; Struktur 1:1 wie `verbesserer.ps1`):
 
@@ -2129,15 +2129,15 @@ try {
 
 Nach dem Schreiben pruefen: `file Agenten/Routinen/verbesserer-spur2.ps1` muss „CRLF line terminators" nennen (sonst mit `unix2dos` bzw. `sed -i 's/$/\r/'` angleichen). Syntaxpruefung: `powershell -NoProfile -Command "$null = [scriptblock]::Create((Get-Content -Raw Agenten/Routinen/verbesserer-spur2.ps1)); 'ok'"` -> `ok`.
 
-- [ ] **Schritt 2: Wissensnotiz ergaenzen**
+- [x] **Schritt 2: Wissensnotiz ergaenzen**
 
 Vorher melden: `python Agenten/Werkzeuge/bereiche.py --aufrufer handel --pfad MaxHirn/Wissen/Verbesserer.md` (Exitcode 1 = fremder Bereich -> als BEFUND in den Abschlussbericht, nicht blockieren). `MaxHirn/Wissen/Verbesserer.md` frisch lesen, Zeilenenden pruefen (`file`), dann gezielt einen Abschnitt „Spur 2 (XPERP)" anhaengen bzw. den Punkt „TP6: Ausweitung auf Spur 2" ersetzen. Inhalt, knapp: Zweck; Aufruf `xperp_lauf.py`; Suchraum (8 Schluessel) und warum `vola_tor_pa`/`min_umsatz_24h_usd` fehlen; Stufen Sieb a-e -> Holdout -> `/ja`; `holdout_max_nutzungen` 8 und Zaehlerdatei `verbesserer/xperp_holdout_nutzung.json` (loeschen = zuruecksetzen); Rücknahme (`.bak`, `git revert` des Anwende-Commits); Abbruch-Verhalten; Verweis auf die Spec. Kein neuer `INDEX.md`-Eintrag noetig (keine neue Notiz).
 
-- [ ] **Schritt 3: Gesamtlauf der Verbesserer-Tests**
+- [x] **Schritt 3: Gesamtlauf der Verbesserer-Tests**
 
 Lauf: `cd Agenten/Handel && "$PY" -m unittest discover -s verbesserer/tests` -> alle gruen (Basislinie + die neuen Dateien). Zusaetzlich die xperp-Suite, weil `xperp_ruecktest.py` geaendert wurde: `cd Agenten/Handel/xperp && ../scanner/.venv/Scripts/python.exe -m unittest discover -s tests` (Spec nennt 170 Tests) -> gruen.
 
-- [ ] **Schritt 4: Commit**
+- [x] **Schritt 4: Commit**
 
 ```bash
 git add Agenten/Routinen/verbesserer-spur2.ps1 MaxHirn/Wissen/Verbesserer.md
@@ -2154,9 +2154,9 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 Dieser Task ist **kein** Unit-Test-Task: Es gibt in diesem Rechner noch keinen XPERP-Kerzen-Cache (`verbesserer/xperp_kerzen/` fehlt), die Entwurfswerte in `konfig.json["spur2"]` sind deshalb ungemessen. Er braucht Netz zu OKX, mehrere Minuten bis Stunden und Max' Okay fuer den Abruf.
 
-- [ ] **Schritt 1: Cache holen (einmalig, langsam)** - `cd Agenten/Handel/verbesserer && .venv/Scripts/python.exe xperp_ruecktest.py --tage 180 --kerzen-holen` (legt `xperp_kerzen/` an; Ausgabe ist der Leistungsbericht der heutigen Wache - als Plausibilitaetscheck des Caches ansehen).
-- [ ] **Schritt 2: Historie messen** - Fuer `4H`-Reihen die Spanne je Instrument ausgeben (frueheste/letzte Zeit, Median in Tagen). Passt `such_tage` 90 / `holdout_tage` 20 / `test_tage` 15? Ergibt `fenster_grenzen` mindestens 3 Fenster, und haben die Fenster plausibel Runden (Basis: `overfit_min_runden` 20 im Aggregat)? Sonst die Werte im Block `spur2` anpassen und im Plan/Spec vermerken - **Max entscheidet**, weil sie bestimmen, wie streng das Sieb ist.
-- [ ] **Schritt 3: Lauf zeitnehmen** - `.venv/Scripts/python.exe xperp_lauf.py --ohne-kerzen-abruf` zweimal: erster Lauf baut den Merkmals-Cache (20-35 min erwartet), der zweite muss ihn wiederverwenden (deutlich kuerzer). Dauer je Auswertung notieren und `such_budget` entsprechend setzen (Ziel: ein Lauf unter ca. 2 Stunden).
+- [x] **Schritt 1: Cache holen (einmalig, langsam)** - `cd Agenten/Handel/verbesserer && .venv/Scripts/python.exe xperp_ruecktest.py --tage 180 --kerzen-holen` (legt `xperp_kerzen/` an; Ausgabe ist der Leistungsbericht der heutigen Wache - als Plausibilitaetscheck des Caches ansehen).
+- [x] **Schritt 2: Historie messen** - Fuer `4H`-Reihen die Spanne je Instrument ausgeben (frueheste/letzte Zeit, Median in Tagen). Passt `such_tage` 90 / `holdout_tage` 20 / `test_tage` 15? Ergibt `fenster_grenzen` mindestens 3 Fenster, und haben die Fenster plausibel Runden (Basis: `overfit_min_runden` 20 im Aggregat)? Sonst die Werte im Block `spur2` anpassen und im Plan/Spec vermerken - **Max entscheidet**, weil sie bestimmen, wie streng das Sieb ist.
+- [x] **Schritt 3: Lauf zeitnehmen** - `.venv/Scripts/python.exe xperp_lauf.py --ohne-kerzen-abruf` zweimal: erster Lauf baut den Merkmals-Cache (20-35 min erwartet), der zweite muss ihn wiederverwenden (deutlich kuerzer). Dauer je Auswertung notieren und `such_budget` entsprechend setzen (Ziel: ein Lauf unter ca. 2 Stunden).
 - [ ] **Schritt 4: Bericht lesen** - `berichte/<datum>-spur2/bericht.md` mit Max durchgehen: Fenster-Tabelle, Siebregeln, Holdout, „Nicht geprueft". Ist der Bericht fuer ein ehrliches `/ja` brauchbar? Anpassungswuensche als eigene Tasks aufnehmen.
 - [ ] **Schritt 5: Aufgabenplaner** - Die Routine wie `verbesserer.ps1` registrieren (Vorlage und Zeitpunkt in `MaxHirn/Wissen/Routinen.md` nachsehen). Das ist ein Eingriff in den Aufgabenplaner: erst nach Max' ausdruecklichem Okay.
 - [ ] **Schritt 6: Abschluss** - PR vom Zweig `claude/verbesserer-spur2-schleife` eroeffnen (Tests gruen, Spec/Plan/Wissensnotiz konsistent); Merge erst nach Freigabe (Wurzel-`CLAUDE.md`, Abschnitt Zweige).

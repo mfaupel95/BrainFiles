@@ -31,7 +31,7 @@ SCHRITT = {
     "ziel_atr_faktor": 0.25,
     "einstieg_atr_abschlag": 0.05,
     "trailing_trigger_r": 0.25,
-    "trailing_stop_prozent": 0.1,
+    "trailing_stop_prozent": 0.25,
     "trailing_abstand_floor_pct": 0.05,
     "trailing_min_hub_r": 0.05,
     "trailing_max_halten_pct": 1.0,
