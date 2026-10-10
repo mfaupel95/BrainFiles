@@ -691,7 +691,8 @@ def _bot_fragen(name, text, frist=BOT_FRIST_S):
             [exe, "-p", name, "chat", "-q", text, "-Q"],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
             encoding="utf-8", errors="replace", env=_hermes_umgebung(),
-            cwd=WURZEL)
+            cwd=WURZEL,
+            creationflags=subprocess.CREATE_NO_WINDOW)
     except OSError as e:
         raise SkillsBotFehler("Bot %s nicht startbar: %s" % (name, e))
     try:
