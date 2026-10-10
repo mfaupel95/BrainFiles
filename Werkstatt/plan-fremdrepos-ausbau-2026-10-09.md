@@ -129,3 +129,10 @@ Ein Fremd-Werkzeug liefert nur ein **Signal** oder eine **Papier-Order** im Form
 - **Zusatz/Journal:** tradememory-protocol (Handelsgedächtnis, Wartungsmodus).
 - **Keine Anbindung sinnvoll:** Harvard, fomo-robinhood-radar, osiris, jev-trader (DEX), ziplime (EULA).
 - **Nächster sinnvoller Schritt:** intelligent-trading-bot auf OKX-Demo umschreiben (Datenabruf + Signal-Ausgabe im Schema), erst nach Demo-Key.
+
+## intelligent-trading-bot auf OKX – Walk-forward (10.10.)
+Lauf: BTC-USDT 1H von OKX, 9000 Kerzen, rollierend 4 x 1000 ungesehene Stunden (27.04.-10.10.2026), Zweig `claude/okx-collector` im Fork-Klon, Config `configs/config-okx-walk-forward.json`.
+- **Vorhersagegüte ungesehen:** AUC high_30 = 0,438, low_30 = 0,430 (Zufall = 0,5). Das Modell ist schlechter als Raten; precision/recall nahe 0.
+- **Simulation:** beste Kombination +37,6 % bei 5 Trades (2 gewinnbringend), Buy&Hold im selben Fenster +4,7 %. Die Zahl ist die beste von 100 Rasterpunkten, auf denselben ungesehenen Daten gewählt, also optimistisch und bei 5 Trades nicht belastbar.
+- **Urteil:** kein Beleg für einen Vorteil. Adapter `adapter_itb` bleibt technisch fertig, das Tor bleibt zu; kein Zeitplan für diese Quelle, solange kein stabiler Out-of-sample-Nutzen gezeigt ist.
+- **Nächste Schritte (nur wenn gewollt):** andere Labels/Horizonte, mehr Historie, Gebühren und Funding in die Simulation, Mehrfach-Fenster; erst danach Routine.
