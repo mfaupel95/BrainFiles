@@ -1248,7 +1248,7 @@ mcp_servers:
   algolia:
     url: https://mcp.algolia.com/mcp
     auth: oauth
-    enabled: true
+    enabled: false
   postman:
     url: https://mcp.postman.com/minimal
     auth: oauth
