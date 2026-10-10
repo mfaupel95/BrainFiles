@@ -304,8 +304,11 @@ class EinbauTest(unittest.TestCase):
         Zusicherung, die ohne echten Boersezugriff auskommt - und sie greift
         genau dann, wenn jemand die zwei Stufen vertauscht."""
         quelle = open(os.path.join(_XPERR, "handeln.py"), encoding="utf-8").read()
-        i_verkauf = quelle.find("stand[\"verkaeufe\"] = buche_verkaeufe_aus_boerse")
-        i_geist = quelle.find("stand[\"geister\"] = bueche_geister_aus")
+        # Seit a37b8802 laufen die Stufen ueber `_abgleich_stufe(name, fn, ...)`;
+        # gesucht wird deshalb das Paar Stufenname + Funktion, nicht die Zuweisung.
+        abgleich = quelle[quelle.find("def buche_abgleich("):]
+        i_verkauf = abgleich.find("\"verkaeufe\", buche_verkaeufe_aus_boerse")
+        i_geist = abgleich.find("\"geister\", bueche_geister_aus")
         self.assertTrue(i_verkauf > 0, "der Verkauf-Aufruf fehlt ganz")
         self.assertTrue(i_geist > 0, "der Geist-Aufruf fehlt ganz")
         self.assertLess(i_verkauf, i_geist,
