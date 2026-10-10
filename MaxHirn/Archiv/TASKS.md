@@ -2472,6 +2472,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Bericht aufnehmen; rein lesend, wie der uebrige Bericht.
       Angelegt: 2026-09-25
       Betrifft: Agenten/Handel/okx_bot_waechter/, MaxHirn/Wiki/Werkzeuge/okx-bot-waechter.md
+      **Erledigt 08.10.2026.** grid_historie.py in okx_bot_waechter gebaut (Commit 72049740): je Grid Seite, Laufzeit, Netzgewinn, Richtungsgewinn, Stop vorhanden ja/nein, Marktbewegung waehrend der Lebensdauer; in den Bericht aufgenommen (waechter.py --historie); rein lesend. Tests tests/test_grid_historie.py 18/18 gruen (scanner/.venv).
       
 - [x] **T-036 — Codex über OmniRoute: Provider „codex" hat im Router keine aktiven Credentials**
       Kontext: Am 07.09.2026 war `MaxHirn/.codex/config.toml` in dreifacher Hinsicht
