@@ -113,5 +113,58 @@ class Grenzen(unittest.TestCase):
         self.assertLessEqual(m["stop"], 12.0)
 
 
+def orb_tag(ausbruch_bei=5, richtung=1, tag_ms=1_760_054_400_000):
+    """Ein UTC-Tag in 15-min-Kerzen; Range 100..110, Ausbruch an Kerze `ausbruch_bei`.
+
+    tag_ms = 2025-10-10 00:00 UTC. Vorlauf: 300 Kerzen vom Vortag, damit
+    mindest_kerzen erfuellt ist.
+    """
+    k = []
+    for i in range(-300, 96):
+        ts = tag_ms + i * 900_000
+        o, h, l, c = 105.0, 110.0, 100.0, 105.0
+        if i == ausbruch_bei:
+            c = 112.0 if richtung > 0 else 98.0
+            h, l = max(h, c), min(l, c)
+        k.append([ts, o, h, l, c, 10.0])
+    return k
+
+
+class Orb(unittest.TestCase):
+    PAAR = "ETH/USDT:USDT"
+
+    def test_erster_ausbruch_long(self):
+        k = orb_tag(5, +1)
+        s = hr.signale(k, "orb", paar=self.PAAR, ab=300)
+        idx = 300 + 5
+        self.assertEqual(s[idx]["einstieg"], "long")
+        self.assertTrue(all(x["einstieg"] is None for x in s[300:idx]))
+        self.assertAlmostEqual(s[idx]["stop"], (112.0 - 100.0) / 112.0 * 100.0)
+        w = hr.wachen("orb")
+        self.assertAlmostEqual(s[idx]["ziel"], w["ziel_k"] * 10.0 / 112.0 * 100.0)
+
+    def test_short(self):
+        k = orb_tag(7, -1)
+        s = hr.signale(k, "orb", paar=self.PAAR, ab=300)
+        self.assertEqual(s[307]["einstieg"], "short")
+
+    def test_nur_ein_einstieg_je_tag(self):
+        k = orb_tag(5, +1)
+        k[300 + 9][4] = 113.0                     # zweiter Ausbruch spaeter
+        s = hr.signale(k, "orb", paar=self.PAAR, ab=300)
+        self.assertIsNone(s[309]["einstieg"])
+
+    def test_kein_einstieg_kurz_vor_schluss(self):
+        k = orb_tag(93, +1)                       # 23:15 UTC
+        s = hr.signale(k, "orb", paar=self.PAAR, ab=300)
+        self.assertIsNone(s[393]["einstieg"])
+
+    def test_session_ende(self):
+        k = orb_tag(5, +1)
+        s = hr.signale(k, "orb", paar=self.PAAR, ab=300)
+        self.assertEqual(s[-1]["aus_long"], "session_ende")
+        self.assertIsNone(s[-2]["aus_long"])
+
+
 if __name__ == "__main__":
     unittest.main()

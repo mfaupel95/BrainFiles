@@ -173,7 +173,83 @@ def _trendwende() -> Spur:
 
 
 def _orb() -> Spur:
-    raise KeyError("orb folgt in Task 2")
+    """ORB wie orb/handeln.py, auf Kerzen statt Netzabruf.
+
+    Range = die ersten ZWEI M15-Kerzen ab 00:00 UTC (opening_range in
+    handeln.py nimmt `im_fenster[:2]`). Ein Trade je Tag: nur die ERSTE
+    Kerze, die ausserhalb schliesst. range_ok kommt aus wachen_orb.py -
+    dieselbe Pruefung wie im Haus.
+    """
+    orb = str(HANDEL / "orb")
+    scanner = str(HANDEL / "scanner")          # wachen_orb importiert wachen_pruefung
+    for p in (scanner, orb):
+        if p not in sys.path:
+            sys.path.append(p)
+    wo = _lade(HANDEL / "orb" / "wachen_orb.py", "hausspur_wachen_orb")
+
+    def _tag(ts):
+        return datetime.fromtimestamp(ts / 1000, timezone.utc)
+
+    def _heute(k):
+        tag = _tag(k[-1][0]).date()
+        i = len(k) - 1
+        while i > 0 and _tag(k[i - 1][0]).date() == tag:
+            i -= 1
+        heute = k[i:]
+        if _tag(heute[0][0]).hour != 0 or _tag(heute[0][0]).minute != 0:
+            return None                    # Tagesanfang fehlt im Fenster
+        return heute
+
+    def _range(k, w):
+        heute = _heute(k)
+        if not heute or len(heute) < 3:
+            return None
+        hoch = max(heute[0][2], heute[1][2])
+        tief = min(heute[0][3], heute[1][3])
+        if not wo.range_ok(hoch - tief, w.get("_paar") or w.get("instrument_aktiv"), w):
+            return None
+        return heute, hoch, tief
+
+    def einstieg(k, w):
+        r = _range(k, w)
+        if not r:
+            return None
+        heute, hoch, tief = r
+        jetzt = _tag(heute[-1][0])
+        schluss_min = 24 * 60 - int(w.get("letzter_einstieg_min_vor_schluss", 60))
+        if jetzt.hour * 60 + jetzt.minute >= schluss_min:
+            return None
+        for z in heute[2:-1]:
+            if z[4] > hoch or z[4] < tief:
+                return None                # heute schon ausgebrochen
+        c = heute[-1][4]
+        if c > hoch:
+            return "long"
+        if c < tief:
+            return "short"
+        return None
+
+    def stop(k, w):
+        r = _range(k, w)
+        c = float(k[-1][4])
+        if not r:
+            return STOP_VORGABE
+        _, hoch, tief = r
+        abstand = (c - tief) if c >= hoch else (hoch - c)
+        return max(abstand, 1e-9) / c * 100.0
+
+    def ziel(k, w, _seite, stop_pct):
+        r = _range(k, w)
+        if not r:
+            return 2.0 * stop_pct
+        _, hoch, tief = r
+        return float(w.get("ziel_k", 1.5)) * (hoch - tief) / float(k[-1][4]) * 100.0
+
+    def ausstieg(k, _seite, _w):
+        t = _tag(k[-1][0])
+        return "session_ende" if (t.hour, t.minute) == (23, 45) else None
+
+    return Spur("orb", einstieg, ausstieg, stop, ziel)
 
 
 def _baue(name: str) -> Spur:
