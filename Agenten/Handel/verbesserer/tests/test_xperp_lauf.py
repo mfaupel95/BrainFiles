@@ -249,6 +249,57 @@ class TestBasisPruefsumme(Basis):
         self.assertFalse((ordner / "basis.sha256").exists())
 
 
+class TestFundingAbdeckung(Basis):
+    """OKX liefert Funding-Historie nur ca. 3 Monate zurueck: ein Instrument,
+    dessen erster Satz nach dem Simulationsstart liegt, wuerde mitten im Lauf
+    eine FundingLuecke werfen (echter Befund aus Task 7)."""
+
+    def test_filter_laesst_nur_ausreichende_historie_durch(self):
+        uni = [{"instId": "A-X"}, {"instId": "B-X"}, {"instId": "C-X"}]
+        saetze = {"A-X": [[100, 0.0], [900, 0.0]], "B-X": [[500, 0.0]],
+                  "C-X": []}
+        bleibt, fehlt = lauf.mit_funding_ab(uni, saetze, 200)
+        self.assertEqual([x["instId"] for x in bleibt], ["A-X"])
+        self.assertEqual(fehlt, ["B-X", "C-X"])
+
+    def test_genau_am_start_reicht(self):
+        bleibt, fehlt = lauf.mit_funding_ab(
+            [{"instId": "A-X"}], {"A-X": [[200, 0.0]]}, 200)
+        self.assertEqual(len(bleibt), 1)
+        self.assertEqual(fehlt, [])
+
+    def test_lauf_laesst_spaetes_funding_aus_und_nennt_es(self):
+        uni4 = UNI + [{"instId": "D-X", "basis": "D", "kategorie": "krypto"}]
+
+        def daten(u, t, h, d):
+            k, k1h, k1d, s, fehlt = _daten(u, t, h, d)
+            for z in (k, k1h, k1d):
+                z["D-X"] = z["A-X"]
+            s["D-X"] = [[ENDE, 0.0]]            # beginnt erst am Ende
+            return k, k1h, k1d, s, fehlt
+
+        with mock.patch.object(lauf.xk, "laden_universum",
+                               return_value=uni4),                 mock.patch.object(lauf, "_daten_laden", side_effect=daten):
+            ordner, status = self.einmal()
+        self.assertEqual(status, "vorschlag")
+        b = (ordner / "bericht.md").read_text("utf-8")
+        self.assertIn("D-X", b)
+        self.assertIn("Funding", b)
+
+    def test_zu_wenige_instrumente_mit_funding_bricht_ab(self):
+        def daten(u, t, h, d):
+            k, k1h, k1d, s, fehlt = _daten(u, t, h, d)
+            s["B-X"] = [[ENDE, 0.0]]
+            s["C-X"] = [[ENDE, 0.0]]
+            return k, k1h, k1d, s, fehlt
+
+        with mock.patch.object(lauf, "_daten_laden", side_effect=daten):
+            ordner, status = self.einmal()
+        self.assertEqual(status, "abbruch")
+        self.assertIn("Funding", (ordner / "bericht.md").read_text("utf-8"))
+        self.assertFalse((ordner / "commit.txt").exists())
+
+
 class TestZaehler(unittest.TestCase):
     def test_lesen_ohne_datei_und_mit_kaputter_datei(self):
         d = Path(mkdtemp())

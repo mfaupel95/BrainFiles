@@ -93,6 +93,23 @@ def _instrumente():
             for i in rt.okxf.instrumente(kategorie=None)}
 
 
+def mit_funding_ab(universum, saetze_je_inst, start_ms):
+    """(bleibt, fehlt): Instrumente, deren Funding-Historie spaetestens bei
+    ``start_ms`` beginnt, und die Namen der uebrigen. OKX liefert Funding nur
+    ca. 3 Monate zurueck; simuliert die Engine ein Instrument vor seinem
+    ersten Satz, wirft sie eine FundingLuecke (nie mit 0.0 aufgefuellt) - der
+    Lauf bricht dann ab. Besser: solche Instrumente gar nicht erst nehmen und
+    im Bericht benennen."""
+    bleibt, fehlt = [], []
+    for x in universum:
+        s = saetze_je_inst.get(x["instId"]) or []
+        if s and s[0][0] <= start_ms:
+            bleibt.append(x)
+        else:
+            fehlt.append(x["instId"])
+    return bleibt, fehlt
+
+
 # --- Holdout-Zaehler ------------------------------------------------------------
 
 def zaehler_lesen(pfad):
@@ -294,6 +311,18 @@ def einmal(*, kerzen_holen=True, jetzt=None, konf=None, spur=None,
                         % (konf["overfit_min_fenster"], len(fenster))}
         _kopf(ordner, datum, res["grund"], hinweise)
         return ordner, "kein_vorschlag"
+
+    universum, ohne_funding = mit_funding_ab(
+        universum, saetze, ende - konf["such_tage"] * xs.TAG_MS)
+    if ohne_funding:
+        hinweise.append(
+            "%d Instrument(e) ausgelassen, deren Funding-Historie erst nach "
+            "dem Simulationsstart beginnt (OKX liefert nur ca. 3 Monate): %s%s"
+            % (len(ohne_funding), ", ".join(ohne_funding[:10]),
+               " ..." if len(ohne_funding) > 10 else ""))
+    if len(universum) < MIN_INSTRUMENTE:
+        return _abbruch(ordner, "weniger als %d Instrumente mit ausreichender "
+                                "Funding-Historie" % MIN_INSTRUMENTE, hinweise)
 
     ctval = xm.ctval_je_inst(universum, instr_je_basis)
     matrix, _aus_cache = xm.hole_oder_baue(
