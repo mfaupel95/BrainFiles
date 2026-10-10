@@ -21,6 +21,40 @@ MINDEST_KERZEN = 120
 GEBUEHR_PCT = kosten.GEBUEHR_PCT
 
 
+def _spot_gebuehr_pct(inst, tag):
+    return GEBUEHR_PCT
+
+
+def _spot_pruefe_ausstieg(position, kerze):
+    """Stop am Tagestief vor Ziel am Tageshoch - die heutige, feste Regel."""
+    hoch, tief = kerze[2], kerze[3]
+    if tief <= position["stop"]:
+        return "stop", position["stop"]
+    if hoch >= position["ziel"]:
+        return "ziel", position["ziel"]
+    return None
+
+
+def _spot_laufende_kosten(position, tag):
+    return 0.0
+
+
+def _spot_in_basiswaehrung(betrag, inst, tag):
+    return betrag
+
+
+# Default-Kostenmodell: eine Waehrung, keine laufenden Kosten, Gebuehr aus
+# kosten.GEBUEHR_PCT - reproduziert exakt das bisherige simuliere()-Verhalten.
+# Spur 3 (Kraken) und spaeter Spur 2 (XPERP) liefern eigene Modelle mit
+# denselben vier Schluesseln.
+SPOT_MODELL = {
+    "gebuehr_pct": _spot_gebuehr_pct,
+    "pruefe_ausstieg": _spot_pruefe_ausstieg,
+    "laufende_kosten": _spot_laufende_kosten,
+    "in_basiswaehrung": _spot_in_basiswaehrung,
+}
+
+
 def merkmals_matrix(kerzen_je_inst):
     aus = {}
     for inst, kerzen in kerzen_je_inst.items():
@@ -29,6 +63,51 @@ def merkmals_matrix(kerzen_je_inst):
             reihe[t] = bewertung.roh_komponenten(kerzen[: t + 1])
         aus[inst] = reihe
     return aus
+
+
+def ausrichten(kerzen_je_inst, min_anteil=0.9):
+    """Richtet alle Kerzenreihen auf gemeinsame Kalendertage aus.
+
+    Tag = ts // 86400000 (ts = kerze[0]). Ein Instrument mit weniger als
+    min_anteil der Tage des laengsten faellt mit Hinweis heraus (junges Listing
+    soll nicht die ganze Watchlist kuerzen); erst danach wird die Schnittmenge
+    der Tage der verbleibenden Instrumente gebildet und jede Reihe auf diese
+    Tage gefiltert - eine Kerze je Tag (die spaetere bei Doppeltagen),
+    aufsteigend. Idempotent: schon ausgerichtete Reihen kommen unveraendert
+    zurueck. hinweise gehen in den Lauf-Bericht.
+
+    -> (ausgerichtet: dict inst->kerzen, hinweise: list[str])
+    """
+    if not kerzen_je_inst:
+        return {}, []
+    hinweise = []
+    tage_je = {inst: {k[0] // 86400000 for k in kerzen}
+               for inst, kerzen in kerzen_je_inst.items()}
+    max_tage = max(len(t) for t in tage_je.values())
+    behalten = {}
+    for inst, tage in tage_je.items():
+        if len(tage) < min_anteil * max_tage:
+            hinweise.append(
+                "%s verworfen: %d von %d Tagen (< %d%%)"
+                % (inst, len(tage), max_tage, int(min_anteil * 100)))
+            continue
+        behalten[inst] = tage
+    if not behalten:
+        return {}, hinweise
+    schnitt = set.intersection(*behalten.values())
+    aus = {}
+    for inst, tage in behalten.items():
+        luecken = len(tage) - len(schnitt)
+        if luecken:
+            hinweise.append("%s: %d Tage ausserhalb der Schnittmenge entfernt"
+                            % (inst, luecken))
+        je_tag = {}
+        for k in sorted(kerzen_je_inst[inst], key=lambda k: k[0]):
+            tag = k[0] // 86400000
+            if tag in schnitt:
+                je_tag[tag] = k  # Doppeltag: die spaetere Kerze gewinnt
+        aus[inst] = [je_tag[t] for t in sorted(je_tag)]
+    return aus, hinweise
 
 
 # --- Kandidaten-Simulation (TP2 Teil 2) ----------------------------------
@@ -62,15 +141,18 @@ def _sizing(art, score, vola, max_pro_trade_usd):
     return round(max_pro_trade_usd * f, 2)
 
 
-def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag):
+def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag, modell=None):
     """Geschlossene Runden im Fenster [start_tag, end_tag).
 
     Bildet handeln.py nach: je Tag zuerst pruefe_ausstiege (Stop am Tagestief
     schlaegt Ziel am Tageshoch), dann pruefe_einstiege (Abklingzeit nach Stop,
     Deckel fuer offene Positionen und gebundenes Kapital). Ausfuehrung zum
-    Triggerpreis - konservativ und eindeutig. gv ist netto nach GEBUEHR_PCT je
-    Seite. Am end_tag noch offene Positionen zaehlen nicht.
+    Triggerpreis - konservativ und eindeutig. gv ist netto nach Gebuehr und
+    laufenden Kosten. Am end_tag noch offene Positionen zaehlen nicht.
+    `modell` (Default `SPOT_MODELL`) liefert Gebuehr, Ausstiegslogik,
+    laufende Kosten und Waehrungsumrechnung - austauschbar fuer andere Spuren.
     """
+    modell = modell or SPOT_MODELL
     g = kandidat["gates"]
     gewichte = kandidat.get("gewichte")
     sizing = kandidat.get("sizing", "flach")
@@ -86,26 +168,31 @@ def simuliere(matrix, kerzen_je_inst, kandidat, start_tag, end_tag):
         behalten = []
         for p in offen:
             kerze = kerzen_je_inst[p["inst"]][t]
-            hoch, tief = kerze[2], kerze[3]
-            if tief <= p["stop"]:
-                grund, trigger = "stop", p["stop"]
-                frei_ab[p["inst"]] = t + g["abklingzeit_tage"]
-            elif hoch >= p["ziel"]:
-                grund, trigger = "ziel", p["ziel"]
-            else:
+            ausstieg = modell["pruefe_ausstieg"](p, kerze)
+            if ausstieg is None:
                 behalten.append(p)
                 continue
-            erloes = p["einsatz"] * trigger / p["einstieg_kurs"] * (1.0 - GEBUEHR_PCT)
-            einsatz_mit_gebuehr = p["einsatz"] * (1.0 + GEBUEHR_PCT)
+            grund, trigger = ausstieg
+            if grund == "stop":
+                frei_ab[p["inst"]] = t + g["abklingzeit_tage"]
+            # kalendertag, nicht der Array-Index t: ein Modell wie
+            # kraken_modell schluesselt FX-/Gebuehrkurse nach echtem Datum,
+            # nicht nach der Position im Fenster [start_tag, end_tag).
+            kalendertag = kerze[0] // 86400000
+            gebuehr = modell["gebuehr_pct"](p["inst"], kalendertag)
+            erloes = p["einsatz"] * trigger / p["einstieg_kurs"] * (1.0 - gebuehr)
+            einsatz_mit_gebuehr = p["einsatz"] * (1.0 + gebuehr)
+            laufend = modell["laufende_kosten"](p, kalendertag)
+            gv = erloes - einsatz_mit_gebuehr - laufend
             runden.append({
                 "inst": p["inst"],
                 "einstieg_tag": p["einstieg_tag"],
                 "ausstieg_tag": t,
                 "einstieg_kurs": p["einstieg_kurs"],
                 "ausstieg_kurs": trigger,
-                "einsatz": p["einsatz"],
-                "erloes": erloes,
-                "gv": erloes - einsatz_mit_gebuehr,
+                "einsatz": modell["in_basiswaehrung"](p["einsatz"], p["inst"], kalendertag),
+                "erloes": modell["in_basiswaehrung"](erloes, p["inst"], kalendertag),
+                "gv": modell["in_basiswaehrung"](gv, p["inst"], kalendertag),
                 "grund": grund,
                 "score": p["score"],
                 "vola_pa": p["vola_pa"],
@@ -232,7 +319,7 @@ def kennzahlen(runden):
     }
 
 
-def walk_forward(kerzen_je_inst, kandidat, konfig):
+def walk_forward(kerzen_je_inst, kandidat, konfig, modell=None):
     """Rollende OOS-Fenster: je Fenster nur den Testabschnitt simulieren,
     danach alle OOS-Runden zusammen auswerten.
 
@@ -240,7 +327,8 @@ def walk_forward(kerzen_je_inst, kandidat, konfig):
     um oos_schritt_tage, solange das Testfenster noch in die Historie passt.
     Die Merkmals-Matrix wird einmal berechnet und in jedem Fenster genutzt.
     """
-    laenge = min(len(k) for k in kerzen_je_inst.values())
+    kerzen_je_inst, _hinweise = ausrichten(kerzen_je_inst)
+    laenge = min((len(k) for k in kerzen_je_inst.values()), default=0)
     matrix = merkmals_matrix(kerzen_je_inst)
 
     fenster = []
@@ -248,7 +336,7 @@ def walk_forward(kerzen_je_inst, kandidat, konfig):
     start = konfig["oos_training_tage"]
     while start + konfig["oos_test_tage"] <= laenge:
         bis = start + konfig["oos_test_tage"]
-        runden = simuliere(matrix, kerzen_je_inst, kandidat, start, bis)
+        runden = simuliere(matrix, kerzen_je_inst, kandidat, start, bis, modell)
         fenster.append({
             "von_tag": start,
             "bis_tag": bis,
@@ -262,3 +350,19 @@ def walk_forward(kerzen_je_inst, kandidat, konfig):
         "gesamt": kennzahlen(alle_runden),
         "fenster_anzahl": len(fenster),
     }
+
+
+def holdout(kerzen_je_inst, kandidat, holdout_tage, modell=None):
+    """Ein einzelner OOS-Block ueber die letzten ``holdout_tage`` Tage.
+
+    Erwartet bereits ausgerichtete Reihen (alle gleich lang; ``suche`` richtet
+    einmal aus). Rechnet ``simuliere()`` ueber ``[L - holdout_tage, L)`` mit
+    ``L = min(len(k))`` und gibt ``kennzahlen()`` zurueck. ``kennzahlen([])``
+    ist sicher (n = 0), ein leerer Block scheitert also sauber an der
+    ``holdout_min_runden``-Pruefung in ``suche``.
+    """
+    laenge = min((len(k) for k in kerzen_je_inst.values()), default=0)
+    matrix = merkmals_matrix(kerzen_je_inst)
+    runden = simuliere(matrix, kerzen_je_inst, kandidat,
+                       laenge - holdout_tage, laenge, modell)
+    return kennzahlen(runden)

@@ -61,6 +61,15 @@ for p in (HIER, BUS):
 import ereignis                                               # noqa: E402
 import lesen                                                  # noqa: E402
 
+# pos_kennung liegt im Handel-Ordner. Der eigene Spurenordner ist beim
+# Start sys.path[0], darum wird der Ordner ANGEHAENGT (nicht vorne
+# eingefuegt - ein Eintrag vorne koennte ein gleichnamiges Spurenmodul
+# verdecken, siehe Handel/grid.py neben gitter/grid.py).
+_handel_ordner = os.path.dirname(HIER)  # Agenten/Handel/, nicht der Spurenordner
+if _handel_ordner not in sys.path:
+    sys.path.append(_handel_ordner)
+import pos_kennung                                              # noqa: E402
+
 
 def _spiegelquelle():
     """scanner/wachen_pruefung.py per Dateipfad laden.
@@ -115,7 +124,7 @@ ABLEHNUNGEN = _buch_datei(os.path.join(HIER, "ablehnungen.csv"))
 
 SPALTEN = ["zeit", "modus", "aktion", "kette", "wallet", "token", "symbol",
            "preis", "menge", "einsatz_usd", "wert_usd", "marktkap_usd",
-           "slippage_pct", "gebuehr_pct", "grund"]
+           "slippage_pct", "gebuehr_pct", "grund", "pos_id"]
 
 # Das Ablehnungsprotokoll ist eine EIGENE Datei, nicht das Journal. Die Leser
 # des Journals zaehlen Zeilen als Buchungen (bilanz() rechnet jede
@@ -192,11 +201,15 @@ def journal(**felder):
     if not SCHREIBEN:
         return
     neu = not os.path.exists(JOURNAL)
+    # Altjournal ohne `pos_id` behaelt seine Spalten, die Kennung wird dann
+    # nicht geschrieben (pos_kennung.spalten), sonst wuerde jede Zeile die
+    # Spalten verschieben (siehe pos_kennung.spalten).
+    spalten = SPALTEN if neu else pos_kennung.spalten(JOURNAL, SPALTEN)
     with open(JOURNAL, "a", newline="", encoding="utf-8") as f:
-        s = csv.DictWriter(f, fieldnames=SPALTEN, extrasaction="ignore")
+        s = csv.DictWriter(f, fieldnames=spalten, extrasaction="ignore")
         if neu:
             s.writeheader()
-        s.writerow({k: felder.get(k, "") for k in SPALTEN})
+        s.writerow({k: felder.get(k, "") for k in spalten})
 
 
 # --- Ablehnungsprotokoll ----------------------------------------------------
@@ -586,6 +599,7 @@ def _kopie(sig, w, z):
         "hoechster_kurs": kauf,
         "frist": _plus_stunden(w["haltedauer_stunden"]),
         "eroeffnet": _heute(), "eroeffnet_zeit": _jetzt(),
+        "pos_id": pos_kennung.neu(_jetzt()),
     }, None
 
 
@@ -634,7 +648,7 @@ def eroeffne(z, sig, w):
             einsatz_usd="%.2f" % p["einsatz_usd"],
             marktkap_usd="%.0f" % p["marktkap_usd"],
             slippage_pct=w["slippage_pct"], gebuehr_pct=w["gebuehr_pct"],
-            grund="kopie")
+            grund="kopie", pos_id=p["pos_id"])
     return None
 
 
@@ -677,6 +691,31 @@ def _ausstiegsgrund(p, kurs, jetzt, w):
     return None
 
 
+def _frist_ohne_kurs(p, jetzt):
+    """Ist die Frist einer Kopie abgelaufen, obwohl sie keinen Kurs hat?
+
+    Bis 09.10.2026 stand der Zweig "kein Kurs - Kopie bleibt" VOR der Frist: eine
+    Kopie, deren Token nie oder nicht mehr bewertet wurde (Pool leer, delisted),
+    blieb fuer immer im Buch und belegte einen Platz - das Sicherheitsnetz gegen
+    tote Positionen griff genau bei den toten nicht. Jetzt wird sie nach der Frist
+    mit Erloes 0 geschlossen (Totalverlust, Grund `frist_ohne_kurs`, damit sie im
+    Journal von einem regulaeren Stop-Verlust unterscheidbar bleibt).
+    """
+    return jetzt >= (_bis_zeit(p["frist"]) or jetzt)
+
+
+def _schliesse_ohne_kurs(p):
+    print("  AUSSTIEG (frist_ohne_kurs)%s: %s %s  G/V %+.2f USD auf %.0f USD "
+          "(kein Kurs seit Fristablauf, Erloes 0)"
+          % ("" if SCHREIBEN else " [nur Vorschau]", p["symbol"], p["token"],
+             -p["einsatz_usd"], p["einsatz_usd"]))
+    journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
+            kette=p["kette"], wallet=p["wallet"], token=p["token"],
+            symbol=p["symbol"], preis="", menge="%.6f" % p["menge"],
+            einsatz_usd="%.2f" % p["einsatz_usd"], wert_usd="0.00",
+            grund="frist_ohne_kurs", pos_id=p.get("pos_id", ""))
+
+
 def pruefe_ausstiege(z, w):
     """Stop, Trailing, Frist - und der Kill-Switch ueber das ganze Buch."""
     offen = z["positionen"]
@@ -694,6 +733,9 @@ def pruefe_ausstiege(z, w):
         kurs = kurse.get((p["kette"], p["token"]))
         grund = None
         if kurs is None:
+            if _frist_ohne_kurs(p, jetzt):
+                _schliesse_ohne_kurs(p)
+                continue
             print("  %-10s %-28s kein Kurs - Kopie bleibt" % (p["symbol"],
                                                              p["token"]))
             behalten.append(p)
@@ -711,19 +753,31 @@ def pruefe_ausstiege(z, w):
                 kette=p["kette"], wallet=p["wallet"], token=p["token"],
                 symbol=p["symbol"], preis="%.10g" % kurs,
                 menge="%.6f" % p["menge"], einsatz_usd="%.2f" % p["einsatz_usd"],
-                wert_usd="%.2f" % erloes, grund=grund)
+                wert_usd="%.2f" % erloes, grund=grund,
+                pos_id=p.get("pos_id", ""))
     z["positionen"] = behalten
 
 
-def kill_switch(z, w):
-    """Ruecklauf des Buches gegen die Grenze: dann alles flach."""
+def _kurse_holen(z):
+    """Aktuelle Kurse aller offenen Positionen, {(kette, token): preis}. Leer bei Lesefehler."""
+    if not z["positionen"]:
+        return {}
+    try:
+        return lesen.preise([(p["kette"], p["token"]) for p in z["positionen"]]) or {}
+    except lesen.Lesefehler:
+        return {}
+
+
+def kill_switch(z, w, kurse=None):
+    """Ruecklauf des Buches gegen die Grenze: dann alles flach.
+
+    `kurse` darf der Aufrufer mitgeben (dann kein zweiter Abruf); der Kill-Zweig
+    reicht dieselben Kurse an `flach_stellen` weiter.
+    """
     if not z["positionen"]:
         return False
-    try:
-        kurse = lesen.preise([(p["kette"], p["token"])
-                              for p in z["positionen"]])
-    except lesen.Lesefehler:
-        return False
+    if kurse is None:
+        kurse = _kurse_holen(z)
     if not kurse:
         return False
     wert = sum(_verkaeuflich(p["menge"], kurse[(p["kette"], p["token"])], w)
@@ -738,22 +792,40 @@ def kill_switch(z, w):
     return True
 
 
-def flach_stellen(z, w, grund):
+def flach_stellen(z, w, grund, kurse=None):
+    """Alle Kopien zuschreiben.
+
+    `kurse` = die Kurse, auf denen die Entscheidung beruht (Kill); ohne sie wird je
+    Position abgerufen. Fehlt der Kurs einer Position, BLEIBT sie im Buch: bis
+    09.10.2026 wurde sie mit Erloes 0 gebucht, also als Totalverlust - auch wenn der
+    Kurs eine Sekunde vorher noch da war und nur ein Abruf kurz scheiterte. Der
+    naechste Zyklus versucht es erneut.
+    """
+    behalten = []
     for p in list(z["positionen"]):
-        try:
-            kurs = lesen.preise([(p["kette"], p["token"])]).get(
-                (p["kette"], p["token"]))
-        except lesen.Lesefehler:
-            kurs = None
-        erloes = _verkaeuflich(p["menge"], kurs, w) if kurs else 0.0
+        schluessel = (p["kette"], p["token"])
+        if kurse is not None:
+            kurs = kurse.get(schluessel)
+        else:
+            try:
+                kurs = lesen.preise([schluessel]).get(schluessel)
+            except lesen.Lesefehler:
+                kurs = None
+        if not kurs:
+            print("  %s %s: kein Kurs - Kopie bleibt im Buch, naechster Zyklus "
+                  "versucht es erneut" % (p["symbol"], p["token"]), file=sys.stderr)
+            behalten.append(p)
+            continue
+        erloes = _verkaeuflich(p["menge"], kurs, w)
         print("  AUSSTIEG (%s): %s %s  G/V %+.2f USD"
               % (grund, p["symbol"], p["token"], erloes - p["einsatz_usd"]))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
                 kette=p["kette"], wallet=p["wallet"], token=p["token"],
-                symbol=p["symbol"], preis="" if not kurs else "%.10g" % kurs,
+                symbol=p["symbol"], preis="%.10g" % kurs,
                 menge="%.6f" % p["menge"], einsatz_usd="%.2f" % p["einsatz_usd"],
-                wert_usd="%.2f" % erloes, grund=grund)
-    z["positionen"] = []
+                wert_usd="%.2f" % erloes, grund=grund,
+                pos_id=p.get("pos_id", ""))
+    z["positionen"] = behalten
 
 
 # --- Bilanz ----------------------------------------------------------------
@@ -1008,8 +1080,9 @@ def lauf(modus, stunden=24.0):
         return 0
 
     pruefe_ausstiege(z, w)
-    if kill_switch(z, w):
-        flach_stellen(z, w, "kill_switch")
+    kurse_kill = _kurse_holen(z)
+    if kill_switch(z, w, kurse_kill):
+        flach_stellen(z, w, "kill_switch", kurse_kill)
         schreibe_zustand(z)
         spiegeln(z, w)
         return 0

@@ -1,0 +1,10 @@
+{
+  "lauf_ts": "2026-10-09T22:17:27.711602+00:00",
+  "instrumente_eingang": 33,
+  "instrumente_nach_ausrichten": 33,
+  "kandidat_gefunden": false,
+  "holdout_bestanden": null,
+  "fast_kandidat": null,
+  "vorschlag_erzeugt": false,
+  "grund": "nur 5 OOS-Runden (>= 20 noetig)"
+}

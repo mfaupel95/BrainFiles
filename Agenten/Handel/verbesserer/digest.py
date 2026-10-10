@@ -30,7 +30,7 @@ _MARKE = re.compile(r"\n?[ \t]*(?:LEHREN:|##[ \t]*Lehren\b)[ \t]*:?", re.IGNOREC
 
 # --- Prompt ---------------------------------------------------------------
 
-def _prompt(befund, basis_wf, kandidat_wf, aenderungen):
+def _prompt(befund, basis_wf, kandidat_wf, aenderungen, fast_kandidat=None):
     """Deutscher, knapper Prompt: nennt die Befunde, netto_gv_je_runde
     vorher/nachher, die geaenderten Schluessel und - falls die Basis unter
     20 Runden hat - den ausdruecklichen 'nicht anfassen'-Hinweis."""
@@ -67,6 +67,11 @@ def _prompt(befund, basis_wf, kandidat_wf, aenderungen):
         zeilen.append(
             "Wichtig: Die Basis hat nur %s Runden (< 20). Rate ausdruecklich "
             "dazu, die Parameter vorerst nicht anzufassen." % b.get("n", 0))
+    if fast_kandidat:
+        zeilen.append(
+            "Hinweis: Ein Kandidat schlug die Basis in der Suche, fiel aber im "
+            "Holdout durch - deshalb kein Vorschlag. Nur annotieren, nicht "
+            "anwenden.")
     return "\n".join(zeilen)
 
 
@@ -121,7 +126,8 @@ def _trenne(text):
 
 # --- oeffentliche API ---------------------------------------------------
 
-def erzeuge(befund, basis_wf, kandidat_wf, aenderungen, llm_konf, ruf=None):
+def erzeuge(befund, basis_wf, kandidat_wf, aenderungen, llm_konf, ruf=None,
+            fast_kandidat=None):
     """``{"empfehlungen": str, "lehren": str, "uebersprungen": str | None}``.
 
     ``modus == "aus"`` oder jeder Fehler im Aufruf -> ``uebersprungen``
@@ -136,8 +142,8 @@ def erzeuge(befund, basis_wf, kandidat_wf, aenderungen, llm_konf, ruf=None):
                 "uebersprungen": "LLM-Modus aus"}
     ruf = ruf or _ruf_http
     try:
-        text = ruf(_prompt(befund, basis_wf, kandidat_wf, aenderungen),
-                   llm_konf)
+        text = ruf(_prompt(befund, basis_wf, kandidat_wf, aenderungen,
+                           fast_kandidat), llm_konf)
         # Eine fehlgeformte ``ruf``-Rueckgabe (z. B. ein roher JSON-Rumpf
         # statt des extrahierten Textes) gilt als Fehlschlag: der leere Fall
         # bleibt leer, alles andere Nicht-String loest die except-Zweig aus.

@@ -97,7 +97,7 @@ import re
 import sys
 import time
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 if HIER not in sys.path:
@@ -119,6 +119,17 @@ except Exception:                          # noqa: BLE001
 MIN_RUNDE_PROBE = 1.0     # eine Runde unter 1 h ist primaer als Takt zu lesen
 STREU_ANTEIL = 0.5        # ein Instrument ueber 50 % der Runden = Befund
 PREIS_ANTEIL = 0.5        # mehr als die Haelfte der Mehrfachkoeufe gleich = Befund
+# Nur Gruppen der letzten N Tage alarmeren (Anlass 10.10.2026: der Scanner-
+# Alarm wertete Altbestand aus der Fehlerzeit - ein behobener Fehler
+# alarmierte weiter. Ein aktueller Fehler hat frische Gruppen.) Das Fenster
+# misst die AKTUALITAET des Fehlers, nicht die Historie: liegt der letzte
+# identische Preis mehr als 14 Tage zurueck, verzerrt er die heutige
+# Statistik nicht mehr (der Scanner-Fix kam am 03.10., der letzte
+# Fehlvorfall am 21.09.).
+PREIS_FENSTER_TAGE = 14
+# Wenn mehr als dieser Anteil der Runden aelter als PREIS_FENSTER_TAGE ist,
+# spricht die Statistik ueber Altbestand, nicht ueber die heutige Spur.
+ALT_ANTEIL = 0.8
 
 
 # ---------------------------------------------------------------- Spur holen
@@ -335,20 +346,30 @@ def score_von(zeile):
     return None
 
 
-def alarm_preis(runden):
+def alarm_preis(runden, fenster_tage=PREIS_FENSTER_TAGE):
     """SCHEIN-Preis: gleicher Einstiegspreis je (Instrument, Tag).
 
     Geprueft wird NUR, wo dieselbe Position an einem Tag mehrfach eroeffnet
     wurde - zwischen zwei Tagen kann der Preis gleich sein (Wochenende, illiquider
     Markt), an einem Tag zweimal nicht. Der Anteil ist der Anteil der
     (Instrument, Tag)-Gruppen, in denen JEDER Kauf denselben Preis trug.
+
+    Zeitfenster (PREIS_FENSTER_TAGE, Standard 30): Nur Gruppen zaehlen,
+    deren Einstieg innerhalb der letzten N Tage liegt. Anlass 10.10.2026:
+    der Scanner-Alarm wertete den Altbestand aus der Fehlerzeit (letzter
+    identischer Preis 21.09., Fix 03.10. via marktkurs()) - ein behobener
+    Fehler alarmierte weiter. Ein HEUTIGER Fehler schlaegt dagegen sofort
+    wieder an, weil seine Gruppen frisch sind.
     """
+    grenze = datetime.now(timezone.utc) - timedelta(days=int(fenster_tage or 0))
     gruppen = defaultdict(list)
     for ein, _aus in runden:
         z = _zeit(ein)
         p = preis(ein)
         _f, inst = instanzfeld(ein)
         if z is None or p is None or not inst:
+            continue
+        if fenster_tage and z < grenze:
             continue
         gruppen[(inst, z.date())].append(p)
     mehrfach = [v for v in gruppen.values() if len(v) >= 2]
@@ -490,6 +511,14 @@ def mittel(xs):
     return sum(xs) / len(xs) if xs else None
 
 
+def stdabw(xs):
+    """Stichproben-Standardabweichung (n-1) oder None bei weniger als 2 Werten."""
+    if len(xs) < 2:
+        return None
+    m = sum(xs) / len(xs)
+    return (sum((x - m) ** 2 for x in xs) / (len(xs) - 1)) ** 0.5
+
+
 def median(xs):
     if not xs:
         return None
@@ -582,7 +611,32 @@ def pruefe(spur, takt="1H"):
     a_preis = alarm_preis(paare)
     verz = verzerrung(markt_paare)
 
+    # Datenabdeckung: wie viel der Statistik spricht ueber die HEUTIGE Spur?
+    # Anlass 10.10.2026: 182 von 190 Scanner-Kaeufen stammten aus der Zeit
+    # vor dem Preis-Fix (03.10.) - die Statistik (+7,48 % Excess) beschrieb
+    # Altbestand, nicht den heutigen Code. Die beiden Zahlen machen das
+    # sichtbar, und der Befund darunter sagt es aus.
+    grenze = datetime.now(timezone.utc) - timedelta(days=PREIS_FENSTER_TAGE)
+    n_neu = n_alt = 0
+    for ein, _aus in paare:
+        z = _zeit(ein)
+        if z is None:
+            continue
+        if z >= grenze:
+            n_neu += 1
+        else:
+            n_alt += 1
+
     befunde = []
+    if n_alt and n_neu == 0:
+        befunde.append("Statistik ist ALT (alle %d Runden aelter als %d Tage) - "
+                       "misst die Vergangenheit, nicht die heutige Spur"
+                       % (n_alt, PREIS_FENSTER_TAGE))
+    elif n_alt and n_neu and n_alt / (n_alt + n_neu) > ALT_ANTEIL:
+        befunde.append("Statistik ueberwiegend ALT (%d von %d Runden aelter als "
+                       "%d Tage, Anteil > %d%%)" % (
+                           n_alt, n_alt + n_neu, PREIS_FENSTER_TAGE,
+                           int(ALT_ANTEIL * 100)))
     if a_takt.get("scheint"):
         befunde.append("Haltedauer im Aufrufertakt (Median %.2f h bei %.2f h Takt)"
                        % (a_takt["median"], a_takt["takt_h"]))
@@ -609,6 +663,8 @@ def pruefe(spur, takt="1H"):
     return {
         "spur": spur,
         "n": len(paare),
+        "n_neu": n_neu,
+        "n_alt": n_alt,
         "roh": roh,
         "basislinie_n": len([r for r in markt_paare if r["markt"] is not None]),
         # `fehlt` zaehlt je INSTRUMENT, nicht je Runde - ohne diese Umrechnung
@@ -617,6 +673,7 @@ def pruefe(spur, takt="1H"):
         "ohne_basislinie": len([r for r in markt_paare if r["markt"] is None]),
         "fehlende_inst": sorted(fehlt),
         "mean_excess": mittel(excess),
+        "std_excess": stdabw(excess),
         "median_excess": median(excess),
         "n_excess": len(excess),
         "verzerrung": verz,
@@ -646,10 +703,10 @@ def text(ergebnisse, min_runden=8):
     zeilen_.append("Aufrufertakt %.0f min. Base line: BUY & HOLD desselben "
                    "Instruments aus den gespeicherten Kerzen." % TAKT_MINUTEN)
     zeilen_.append("")
-    zeilen_.append("%-22s %4s %8s %8s %9s %9s %7s %7s %s"
-                   % ("spur", "n", "mean%", "treff%", "excess%", "nBasis",
-                      "<1h", ">=1h", "Befund"))
-    zeilen_.append("-" * 118)
+    zeilen_.append("%-22s %4s %5s %8s %8s %9s %9s %7s %7s %s"
+                   % ("spur", "n", "nNeu", "mean%", "treff%", "excess%",
+                      "nBasis", "<1h", ">=1h", "Befund"))
+    zeilen_.append("-" * 122)
     for e in ergebnisse:
         if e["n"] == 0:
             zeilen_.append("%-22s %4s  %s" % (e["spur"], "-", e.get("grund", "")))
@@ -659,8 +716,8 @@ def text(ergebnisse, min_runden=8):
         v = e.get("verzerrung") or {}
         kurz_e = (v.get("kurz") or {}).get("excess")
         lang_e = (v.get("lang") or {}).get("excess")
-        zeilen_.append("%-22s %4d %8s %7.0f%% %9s %9d %7s %7s %s%s"
-                       % (e["spur"], e["n"],
+        zeilen_.append("%-22s %4d %5d %8s %7.0f%% %9s %9d %7s %7s %s%s"
+                       % (e["spur"], e["n"], e.get("n_neu") or 0,
                           _fmt(roh.get("mean"), prozent=True),
                           100 * (roh.get("treffer") or 0),
                           _fmt(e.get("mean_excess"), prozent=True),
@@ -670,6 +727,9 @@ def text(ergebnisse, min_runden=8):
                           zu_klein))
     zeilen_.append("")
     zeilen_.append("Lesehilfe:")
+    zeilen_.append("  nNeu      Runden mit Einstieg in den letzten %d Tagen -"
+                   % PREIS_FENSTER_TAGE)
+    zeilen_.append("            darunter leidet die Statistik, wenn sie ALT ist")
     zeilen_.append("  mean%     Rundenergebnis ohne Basislinie (brutto, ohne Gebuehr)")
     zeilen_.append("  treff%    Anteil der Runden mit Gewinn - allein KEIN Edge")
     zeilen_.append("  excess%   Rundenergebnis minus Marktbewegung im selben Fenster")

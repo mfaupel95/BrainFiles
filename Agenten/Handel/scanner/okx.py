@@ -405,10 +405,15 @@ def letzte_fuellung(inst, seite="sell"):
     return treffer[0]
 
 
-def markt_kauf(inst, usdt):
-    """Market-Kauf ueber einen festen USDT-Betrag. Gibt ordId zurueck."""
+def markt_kauf(inst, usd):
+    """Market-Kauf ueber einen festen Betrag in der Quote-Waehrung des Paares.
+
+    T-311: Der Parameter hieß `usdt`, war aber ein Nominal in der Quote des
+    Paares (tgtCcy quote_ccy). Auf dem EEA-Konto heisst die Quote USDC, nicht
+    USDT - der Name war falsch und verwirrte bei der USDC-Umstellung.
+    """
     body = {"instId": inst, "tdMode": "cash", "side": "buy",
-            "ordType": "market", "sz": str(usdt), "tgtCcy": "quote_ccy"}
+            "ordType": "market", "sz": str(usd), "tgtCcy": "quote_ccy"}
     d = _roh("/api/v5/trade/order", "POST", body, signiert=True)
     return d[0]["ordId"]
 

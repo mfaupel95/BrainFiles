@@ -94,6 +94,23 @@ an Spuren.
    ist eine Aussage ueber den Boersen-Stop und das Freigabefenster, nicht
    ueber die Performance; eine Spur mit sauberem Excess bleibt abgeschaltet,
    wenn ihr Schalter das sagt.
+
+   **Ein Audit ueber das GESAMTE Journal misst Altbestand - die
+   Datenabdeckung gehoert an die Seite der Zahl.** Ein Echtheits-Alarm
+   (identischer Einstiegspreis je (Instrument, Tag)) und der Excess rechnen
+   ueber alle Runden seit Spurbeginn; liegt der letzte Fehlvorfall VOR einem
+   Fix, meldet der Alarm einen behobenen Fehler weiter und die tolle Zahl
+   beschreibt die Vergangenheit (gemessen 10.10.2026: 182 von 190
+   Scanner-Kaeufen stammten aus der Zeit vor dem Preis-Fix, der Excess
+   +7,48 % war Altbestand, kein heutiger Edge). Drei Bausteine gehoeren in
+   jedes solche Werkzeug: (1) Alarme mit Zeitfenster
+   (`PREIS_FENSTER_TAGE`, Standard 14) - ein Vorfall, dessen letzter Fall
+   aelter ist als das Fenster, kann die heutige Statistik nicht verzerren,
+   ein frischer Fehler schlaegt sofort wieder an; (2) eine `nNeu`-Spalte
+   (Runden mit Einstieg in den letzten N Tagen), damit sichtbar ist, wie
+   viel der Zahl aktuell ist; (3) ein "Statistik ALT"-Befund bei >80 %
+   Altbestand statt stiller Gesamtzahl. Vor jeder "Spur ist gut/kaputt"-
+   Aussage erst zaehlen: wie viele Runden sind juenger als das Fenster?
 2. **Pruefbarkeit aus den Journalfeldern ableiten, nicht aus der Idee.**
    `handelsjournal.csv` traegt: zeit, modus, aktion, kette, wallet, token,
    symbol, preis, menge, einsatz_usd, wert_usd, marktkap_usd, slippage_pct,
@@ -489,6 +506,15 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
 - **Auswahl nach Ergebnis ist die verfuehrerischste Regel** (nur Vorbilder mit
   belegter Bilanz kopieren). Ohne Zeithalbierung und Mindestzahl Runden je
   Wallet ist das Nachschau-Auswahl — im selben Datensatz kippt sie nach hinten.
+- **Ein Audit mit Zeitfenster braucht Tests in zwei Schichten.** Die
+  Kern-Logik (z. B. Preis-Gleichheit) mit explizitem `fenster_tage=0`
+  pruefen - sonst wandert ein festes Testdatum in das Fenster und der Test
+  schlaegt je nach Laufzeitpunkt anders aus (gemessen: Daten vom 19.09.
+  lagen bei einem 30-Tage-Fenster am 10.10. noch drin). Die Fensterfaelle
+  selbst mit RELATIVEN Daten bauen (jetzt − 60 Tage = still, heute = Alarm),
+  nie mit festen Kalenderdaten - ein festes Datum ist eine Uhrzeitbombe,
+  die genau dann schlaegt, wenn der Test alt genug ist, um ausserhalb des
+  Fensters zu liegen.
 - **Ein Auswertungswerkzeug schreibt nie in einen Spurenordner.** Test auf
   Tempjournalen mit bekanntem Ausgang, dazu ein Modulwaechter (`setUpModule`
   merkt Dateiliste und Groessen der Spurenordner, `tearDownModule` vergleicht)

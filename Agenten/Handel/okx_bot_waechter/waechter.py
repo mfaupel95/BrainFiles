@@ -26,6 +26,7 @@ ein Bericht. Je Bot kann `scharf: false` den Stopp zurueckhalten.
 Aufruf (aus diesem Ordner):
     python waechter.py                 # Bericht
     python waechter.py --kurz          # je Bot eine Zeile
+    python waechter.py --historie      # + geschlossene Grids (T-076)
     python waechter.py --anwenden      # stoppt, wenn Tor und Lage es hergeben
 """
 import json
@@ -287,6 +288,7 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     anwenden = "--anwenden" in argv
     kurz = "--kurz" in argv
+    historie = "--historie" in argv
     w = lade_wachen()
     lage, fehler = sammle(w)
 
@@ -327,6 +329,20 @@ def main(argv=None):
             print("Kein Bot ausserhalb seiner letzten kaufbaren Grenze.")
 
     schreibe_zustand(lage, fehler)
+    if historie:
+        try:
+            import grid_historie as gh
+            gh_alle = gh.zeilen()
+            if not gh_alle:
+                print("Historie: keine geschlossenen Contract-Grids.")
+            else:
+                z = gh.summen(gh_alle)
+                print("Historie: %d geschlossene Grids (Netz %+.2f / Richtung %+.2f / "
+                      "Gesamt %+.2f / Einsatz %.2f, %d OHNE Stop)"
+                      % (z["n"], z["netz"], z["richtung"], z["gesamt"],
+                         z["invest"], z["ohne_stop"]))
+        except Exception as e:
+            print("Historie-FEHLER: %s: %s" % (type(e).__name__, str(e)[:160]))
     return 0 if not fehler else 1
 
 

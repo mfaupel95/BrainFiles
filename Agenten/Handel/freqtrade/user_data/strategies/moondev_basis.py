@@ -82,6 +82,10 @@ class MoonDevBasis(IStrategy):
     # Signal-Ausstieg (trading-agent -174 %, topmovers -313 %, marktlage-regime
     # -42 %), waehrend die Geometrie aus Stop und Ziel positiv abschloss.
     # Aus (False) heisst: nur Stop, Ziel und die Schutzschicht entscheiden.
+    # ENTSCHEIDUNG Max 08.10.2026: trading-agent und marktlage-regime laufen
+    # mit signal_ausstieg=false (in config.trading-agent.json / config.marktlage-
+    # regime.json gesetzt, Bots neu gestartet). Der Default hier bleibt True,
+    # damit ein fehlender Config-Eintrag die Regel nicht still umstellt.
     signal_ausstieg: bool = True
 
     process_only_new_candles = True

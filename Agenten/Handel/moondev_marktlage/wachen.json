@@ -34,6 +34,8 @@
   "max_gesamt_usd": 150.0,
   "_kill_switch": "kill_switch_gesamt_usd = 3 * buch_risiko. Papier: die Ratsche greift vorher.",
   "kill_switch_gesamt_usd": 27.0,
+  "_kill_wiederaufnahme": "Live-faehige Spur: nach dem Kill KEIN Selbstanlauf (Max 09.10.2026). Die Frist laeuft ab, hebt aber nichts auf; Freigabe nur von Hand (kill_seit aus dem Zustand entfernen).",
+  "kill_wiederaufnahme": false,
   "stop_prozent": 6.0,
   "pflicht_stop_prozent_min": 5.0,
   "pflicht_stop_prozent_max": 12.0,
@@ -59,5 +61,8 @@
   "_kraken_quote_vermerk": "Kraken-Quote des Orderwegs: EUR ist Vorgabe, USDC waehlbar. Siehe Agenten/Handel/kraken_paare.py.",
   "_kraken_gesperrt": "30.09.2026: Kraken-Handel nur noch fuer omnitrade (Auftrag Max). handel_erlaubt und freigabe.erfuellt auf false.",
   "trigger_modus": "signal",
-  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": trigger_modus=signal. Der Dauerlauf legt einen Auftrag nur in die Queue, wenn sich die Signalrichtung AENDERT - nicht alle 15 Minuten. Die Ausfuehrung uebernimmt der signal-executor (Cron 50921798e27a, jede Minute) unabhaengig vom Dauerlauf. Ohne diese Trennung hat eine Spur bei erfuelltem Signal bis zu 96 gleiche Einstiege am Tag gebucht - das war die Quelle der Ueberhandelung, nicht ein falsches Signal. WIRKT NUR, WEIL DIESE SPUR DAS BUCH UEBER spur_buch FUEHRT; Spuren mit eigenem handeln.py (xperp, scanner, mosaic, kraken, nautilus-Arme) brauchen dieselbe Aenderung an eigener Stelle."
+  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": trigger_modus=signal. Der Dauerlauf legt einen Auftrag nur in die Queue, wenn sich die Signalrichtung AENDERT - nicht alle 15 Minuten. Die Ausfuehrung uebernimmt der signal-executor (Cron 50921798e27a, jede Minute) unabhaengig vom Dauerlauf. Ohne diese Trennung hat eine Spur bei erfuelltem Signal bis zu 96 gleiche Einstiege am Tag gebucht - das war die Quelle der Ueberhandelung, nicht ein falsches Signal. WIRKT NUR, WEIL DIESE SPUR DAS BUCH UEBER spur_buch FUEHRT; Spuren mit eigenem handeln.py (xperp, scanner, mosaic, kraken, nautilus-Arme) brauchen dieselbe Aenderung an eigener Stelle.",
+  "moeglich": [
+    "perp"
+  ]
 }

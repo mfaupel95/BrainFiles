@@ -385,6 +385,30 @@ def funding(inst):
         return None
 
 
+def funding_historie(inst, seiten=5):
+    """Historische Funding-Saetze, aufsteigend als [[ts_ms, satz], ...].
+
+    OKX-Endpunkt /api/v5/public/funding-rate-history, 100 Zeilen je Anfrage,
+    rueckwaerts geblaettert ueber 'after=<aeltester Zeitstempel>' (wie
+    kerzen_lang()). Gegen die echte OKX-Antwort geprueft am 08.10.2026:
+    Felder fundingTime/fundingRate, 'after' liefert die naechstaeltere Seite,
+    'before' dagegen nur die bereits gelesene (Ueberlappung).
+    """
+    alle, vor = {}, ""
+    for _ in range(seiten):
+        p = "/api/v5/public/funding-rate-history?" + urllib.parse.urlencode(
+            {"instId": inst, "limit": 100})
+        if vor:
+            p += "&after=" + vor
+        d = _mit_wiederholung(p)
+        if not d:
+            break
+        for r in d:
+            alle[int(r["fundingTime"])] = float(r["fundingRate"])
+        vor = str(min(alle))
+    return [[ts, alle[ts]] for ts in sorted(alle)]
+
+
 def rubik_basis():
     """Der Host fuer die Rubik-Statistikabrufe - siehe RUBIK_BASIS oben.
 

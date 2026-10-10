@@ -18,6 +18,11 @@ Was diese Sonde deshalb tut - fuenf Wege je Lauf:
   5. roh_*           nur IM FEHLERFALL: derselbe Aufruf noch einmal mit
                      vollstaendiger Erfassung (HTTP-Status, Content-Type,
                      cloudflare-Header, Rohkoerper) - das ist der Zeuge.
+                     Scheitert ein Zeuge mit ``EAPI:Invalid nonce``,
+                     wiederholt die Sonde wie der Haus-Standard (``kraken.py``)
+                     mit vorgeschobenem nonce-Pool (bis zu drei Versuche) -
+                     ein fremdes Werkzeug auf demselben Schluessel darf den
+                     Zeugen nicht faelschen.
 
 Die Unterscheidung, auf die es ankommt:
 
@@ -109,7 +114,7 @@ def _lade(pfad, name):
 # --- kleine Helfer ----------------------------------------------------------
 
 def _jetzt():
-    return datetime.now().astimezone().replace(microsecond=0).isoformat()
+    return datetime.now().astimezone().isoformat()
 
 
 def _header_auswahl(kopf):
@@ -202,34 +207,83 @@ def privat_futures(futures):
 
 # --- der Zeuge: dieselbe Anfrage noch einmal, diesmal mit allen Details ----
 
+def _nonce_fuer(pool, versuch):
+    """Nonce wie der Haus-Standard (kraken.py._roh_privat): Versuch 0 aus dem
+    geteilten Pool, ab Versuch 1 mit vorwaerts() vorgeschoben. vorwaerts()
+    schreibt den Wert IN die gemeinsame Datei - die Monotonie bleibt erhalten
+    und der naechste normale Aufruf ist nicht wieder zu niedrig."""
+    if versuch == 0:
+        return pool.monotone_nonce()
+    return pool.vorwaerts(versuch)
+
+
+def _ist_nonce_befund(ergebnis):
+    """Antwortet Kraken mit einem Nonce-Befund?
+
+    "EAPI:Invalid nonce" heisst NICHT, dass unsere nonce nicht steigt: ein
+    fremdes Werkzeug auf demselben Schluessel (die offizielle kraken-cli)
+    setzt einen hoeheren Wert, und Kraken vergleicht gegen den HOECHSTEN.
+    Der Haus-Standard wiederholt so einen Aufruf bis zu dreimal - ohne das
+    Schieben bliebe der Zeuge ein Nonce-Artefakt statt der echten Abweisung.
+    """
+    anfang = (ergebnis or {}).get("anfang") or ""
+    return "nonce" in anfang.lower()
+
+
 def _roh_spot(kraken, pool):
-    """Signierter POST /0/private/Balance mit vollstaendiger Erfassung."""
+    """Signierter POST /0/private/Balance mit vollstaendiger Erfassung.
+
+    Bis zu drei Versuche: scheitert der Aufruf mit "EAPI:Invalid nonce"
+    (fremdes Werkzeug hat den Schluessel-Nonce hochgesetzt), schiebt der
+    naechste Versuch den geteilten Zaehler mit vorwaerts() vor - identisch
+    zum Haus-Pfad kraken.py._roh_privat. Ein echter Befund (Permission
+    denied, Lockout, HTTP-Fehler) wird NIE wiederholt.
+    """
     schluessel = kraken._variable("KRAKEN_SPOT_API_KEY")
     geheim = kraken._variable("KRAKEN_SPOT_API_SECRET")
     if not (schluessel and geheim):
         return {"fehler": "kein SPOT-Schluessel gesetzt"}
-    nonce = str(pool.monotone_nonce())
     pfad = "/0/private/Balance"
-    formular = urllib.parse.urlencode({"nonce": nonce})
-    roh = (nonce + formular).encode()
-    nachricht = pfad.encode() + hashlib.sha256(roh).digest()
-    sig = base64.b64encode(
-        hmac.new(base64.b64decode(geheim), nachricht, hashlib.sha512).digest()
-    ).decode()
-    kopf = {"User-Agent": UA, "API-Key": schluessel, "API-Sign": sig,
-            "Content-Type": "application/x-www-form-urlencoded"}
-    return _roh_aufruf(kraken.BASIS + pfad, kopf, formular.encode())
+    for versuch in range(3):
+        nonce = str(_nonce_fuer(pool, versuch))
+        formular = urllib.parse.urlencode({"nonce": nonce})
+        roh = (nonce + formular).encode()
+        nachricht = pfad.encode() + hashlib.sha256(roh).digest()
+        sig = base64.b64encode(
+            hmac.new(base64.b64decode(geheim), nachricht, hashlib.sha512).digest()
+        ).decode()
+        kopf = {"User-Agent": UA, "API-Key": schluessel, "API-Sign": sig,
+                "Content-Type": "application/x-www-form-urlencoded"}
+        ergebnis = _roh_aufruf(kraken.BASIS + pfad, kopf, formular.encode())
+        ergebnis["versuche"] = versuch + 1
+        if not _ist_nonce_befund(ergebnis) or versuch == 2:
+            return ergebnis
+    return ergebnis  # pragma: no cover - der letzte Versuch kehrt immer zurueck
 
 
-def _roh_futures(futures):
-    """Signierter GET /accounts mit vollstaendiger Erfassung."""
+def _roh_futures(futures, pool):
+    """Signierter GET /accounts mit vollstaendiger Erfassung.
+
+    Nutzt den gemeinsamen nonce-Pool (Nanosekunden, Haus-Standard seit
+    22.09.2026) statt futures._nonce() (Millisekunden). Die Einheit muss
+    mindestens so gross sein, die groesste, die ein Werkzeug auf denselben
+    Schluessel sendet - sonst ist jeder Wert darunter ungueltig. Wie der
+    Spot-Zeuge wiederholt auch dieser Weg einen "Invalid nonce"-Befund mit
+    vorgeschobenem Pool (bis zu drei Versuche); ein echter Befund wird nie
+    wiederholt.
+    """
     if not futures.schluessel_vorhanden():
         return {"fehler": "kein FUTURES-Schluessel gesetzt"}
     pfad = "/accounts"
-    nonce = futures._nonce()
-    kopf = {"User-Agent": UA, "APIKey": futures._env(futures.KEY_NAME),
-            "Nonce": nonce, "Authent": futures._signatur(pfad, "", nonce)}
-    return _roh_aufruf(futures.BASIS + pfad, kopf, None)
+    for versuch in range(3):
+        nonce = str(_nonce_fuer(pool, versuch))
+        kopf = {"User-Agent": UA, "APIKey": futures._env(futures.KEY_NAME),
+                "Nonce": nonce, "Authent": futures._signatur(pfad, "", nonce)}
+        ergebnis = _roh_aufruf(futures.BASIS + pfad, kopf, None)
+        ergebnis["versuche"] = versuch + 1
+        if not _ist_nonce_befund(ergebnis) or versuch == 2:
+            return ergebnis
+    return ergebnis  # pragma: no cover - der letzte Versuch kehrt immer zurueck
 
 
 def _roh_aufruf(url, kopf, daten):
@@ -337,7 +391,7 @@ def lauf(melden=True, module=None):
         if not wege["privat_spot"].get("ok"):
             zeile["zeuge"]["roh_spot"] = _roh_spot(kraken, pool)
         if not wege["privat_futures"].get("ok"):
-            zeile["zeuge"]["roh_futures"] = _roh_futures(futures)
+            zeile["zeuge"]["roh_futures"] = _roh_futures(futures, pool)
         zeile["wege_voll"] = wege
         war_stoerung = bool(stand.get("stoerung_seit"))
         stand["stoerung_seit"] = stand.get("stoerung_seit") or zeile["zeit"]

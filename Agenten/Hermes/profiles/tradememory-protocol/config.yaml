@@ -1,0 +1,10 @@
+model:
+  default: meituan/longcat-2.5-preview:free
+  provider: nous
+_config_version: 50
+terminal:
+  backend: local
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\tradememory-protocol
+platforms:
+  photon:
+    enabled: false

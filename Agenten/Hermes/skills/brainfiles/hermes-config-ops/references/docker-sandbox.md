@@ -218,6 +218,55 @@ laeuft dann am Host und sieht die ganze Wurzel, ohne `mount_cwd` und ohne
 `docker_volumes`. Der Docker-Backend ist die Wahl, wenn Kommandos **isoliert**
 laufen sollen - dann braucht es beide Eintraege.
 
+### Backend waehlen: `local` oder `docker` - die Windows-Binaries entscheiden
+
+Die Frage ist nicht, ob Docker gerade erreichbar ist, sondern **was die Arbeit
+ausfuehren muss**. Der Container ist Linux; alles, was ein Windows-Programm
+braucht, laeuft dort nicht:
+
+    file Agenten/Handel/scanner/.venv/Scripts/python.exe
+    -> PE32+ executable for MS Windows (console), x86-64
+
+Die Spur-venvs sind Windows-EXEs, `Agenten/Routinen/handel-tests.ps1` sucht
+`.venv\Scripts\python.exe`, und die `Routinen/*.ps1` sind PowerShell. Im Container
+ist davon nichts ausfuehrbar - also entscheidet die **Arbeitslast**, nicht die
+Verfuegbarkeit:
+
+| Arbeitslast | Backend |
+|---|---|
+| BrainFiles selbst: Spur-venvs, `.ps1`-Routinen, Git an der Wurzel | `local` |
+| reines Python/Node ohne Windows-Programme, isolierte Laeufe | `docker` |
+
+`local` laeuft als derselbe Benutzer **ohne Rueckfrage bei destruktiven
+Kommandos** - das ist die eigentliche Kostenstelle, nicht „der Agent loescht
+alles". Sie wird mit einer Sicherung bezahlt, nicht mit einem Container (`.git`
+an der Wurzel, die drei Kopien, `Wissen/Schutzregeln.md`), und die greift
+unabhaengig vom Backend.
+
+**Wenn „Docker faellt staendig aus" als Argument kommt: erst messen.** Gemessen
+am 08.10.2026: **10** Docker-Abstuerze in 30 Tagen, **alle an einem Tag** (der
+Commit-Erschoepfungstag mit 31 App-Abstuerzen), an den uebrigen 29 Tagen null.
+Die Wahrnehmung stimmt nicht mit der Rate ueberein - jeder Ausfall trifft, weil
+er das Terminal mitnimmt, aber er ist selten. Messweg:
+
+    # Abstuerze (Application Error) je Tag, 30 Tage
+    Get-WinEvent -FilterHashtable @{LogName='Application';
+      ProviderName='Application Error'; StartTime=(Get-Date).AddDays(-30)} \
+      -MaxEvents 5000 | Where-Object { $_.Message -match 'docker' } |
+      Group-Object { $_.TimeCreated.ToString('yyyy-MM-dd') }
+
+    # Wie oft hat eine Wache geheilt? Agenten/Hermes/cron/output/<job-id>/
+    #   '**Status:** silent (empty output)' = gesund, nichts gesendet
+    #   Statuszeile FEHLT                   = gemeldet (Heilung/Erholung)
+
+Der zweite Punkt ist der wichtigere: die Wache schreibt fuer **jeden** Lauf eine
+Datei, auch die stillen. „Wie viele Meldungen" ist deshalb eine Zaehlung ueber
+`Status`, nicht ueber die Dateizahl (50 Laeufe, 49 still, 1 gemeldet).
+
+Der Docker-Pfad laesst sich vollstaendig einrichten und **liegen lassen** -
+er ist dann nicht kaputt, nur nicht aktiv, und ein spaeterer Wechsel kostet
+keine zweite Einrichtung.
+
 Einen `docker_volumes`-Eintrag erkennt man an zwei Regeln: er ist ein
 **roher `-v`-Spec** und braucht deshalb den **Doppelpunkt** (ohne ihn: `Docker
 volume '...' missing colon, skipping`), und ein Nicht-String wird ebenso
@@ -225,3 +274,45 @@ verworfen. Der gebundene Pfad ist der einzige Weg an den `cwd` heran -
 `_existing_host_mount()` vergleicht ueber `_host_path_key` und findet einen
 Mount nur, wenn **derselbe Host-Pfad** dort noch einmal steht.
 
+### Nachgemessen am 06.10.2026: der Container-Test ist BLOCKIERT
+
+Der Eintrag steht in der Config, aber der Beleg am echten Container fehlt - der
+Docker-Daemon ist beschaedigt und kann **keinen** Container mehr starten:
+
+    docker run ... -> Exit 125
+      write /var/lib/desktop-containerd/daemon/io.containerd.metadata.v1.bolt/meta.db:
+      read-only file system
+    docker image ls -> rpc error: ... input/output error (Content-Blob)
+
+**Die Gegenprobe, die den Verdacht entkraeftet:** derselbe `docker run` **ohne
+jeden Volume-Eintrag** scheitert exakt gleich. Der Schaden liegt also nicht am
+`docker_volumes`-Eintrag. Wer hier „der Eintrag hat es kaputtgemacht" liest,
+liest eine unbelegte Ursache.
+
+Was sich trotzdem belegen laesst:
+
+- Der Spec ist formal gueltig: `_split_volume_spec` (in
+  `tools/environments/docker.py`, NICHT in `remote_common`) zerlegt beide
+  Schreibweisen zu `('C:\Users\...\BrainFiles', '/brainfiles')`.
+- Der Host-Pfad existiert.
+- Der Eintrag selbst: `git diff --numstat` 2/0, `terminal` 12 -> 13 Schluessel,
+  `yaml.safe_load` liest ihn zurueck, CRLF 1377 -> 1379, bareLF 0.
+
+**Beleg erbracht am 06.10.2026** (nach einem Neustart von Docker Desktop, der
+den read-only-Metadaten-Store geheilt hat):
+
+    docker run -d --name probeBF -v 'C:\Users\faupe\Documents\BrainFiles:/brainfiles' \
+        nikolaik/python-nodejs:python3.11-nodejs20 sleep infinity
+    docker exec probeBF ls /brainfiles
+    -> AENDERUNGSPLAN-TASKS-2026-10-04.md  AGENTS.md  Agenten  MaxHirn  Modelle  Werkstatt ...
+    docker exec probeBF ls -d /brainfiles/.git && cd /brainfiles && git log --oneline -1
+    -> /brainfiles/.git / 0c68b4d2 Wiki-Lektion 5: ...
+    docker exec probeBF sh -c 'touch /brainfiles/.__probe && rm /brainfiles/.__probe'
+    -> schreiben-OK
+
+**Image-Falle beim Nachstellen:** `nousresearch/hermes-sandbox:desktop` startet in
+dieser Umgebung nicht - der Container endet sofort mit Exit 255 und
+`exec /usr/bin/sleep: exec format error` (Architektur). Fuer die Mount-Gegenprobe
+ein passendes Image nehmen (`nikolaik/python-nodejs:python3.11-nodejs20`); die
+Bindung selbst wird von Docker angelegt und ist am `hermes-sandbox`-Image mit
+`docker inspect --format '{{range .Mounts}}...'` genauso zu sehen.

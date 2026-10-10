@@ -37,7 +37,8 @@ def main():
     try:
         lauf = subprocess.run(
             [python, WERKZEUG, "--wache"], cwd=HANDEL, env=umgebung,
-            capture_output=True, text=True, timeout=240)
+            capture_output=True, text=True, timeout=240, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
     except subprocess.TimeoutExpired:
         print("Stille-Spuren-Wache: Pruefung lief in die Zeitgrenze (240 s).")
         return 0

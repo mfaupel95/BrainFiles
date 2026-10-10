@@ -254,7 +254,7 @@ def kandidaten_aus(werte, w, anzahl=6):
                 continue
             mae = x["mae_short"] if seite == "short" else x["mae_long"]
             deckel = auswahl.hebel_deckel(mae)
-            if deckel < w["max_hebel"]:
+            if deckel < wx.hebel_grenze(w, x["kategorie"]):
                 continue
             # Ohne handelbaren Zwilling gibt es keinen Vorschlag: der
             # gewoehnliche Perpetual desselben Basiswerts ist auf diesem Konto
@@ -333,11 +333,17 @@ def anlauf(w, kandidat):
     stop = okxf.auf_tick(instr, einstieg - vz * w["stop_atr_faktor"] * atr)
     ziel = okxf.auf_tick(instr, einstieg + vz * w["ziel_atr_faktor"] * atr)
 
-    g = bot.groesse(w, instr, einstieg, stop, seite, kandidat["deckel"])
+    # Hebel und Stopweite je Familie (Auftrag Max 08.10.2026), wie xperp.
+    smax = wx.stop_max_pct(w, kandidat["kategorie"])
+    if smax is not None and abs(einstieg - stop) / einstieg * 100.0 > smax:
+        return None
+    wf = wx.fuer_familie(w, kandidat["kategorie"])
+
+    g = bot.groesse(wf, instr, einstieg, stop, seite, kandidat["deckel"])
     if not g:
         return None
 
-    p = bot.pruefpflicht(w, instr, k, seite, einstieg, stop, ziel,
+    p = bot.pruefpflicht(wf, instr, k, seite, einstieg, stop, ziel,
                          g["hebel"], still=True)
     return {"instr": instr, "inst": instr["instId"], "basis": kandidat["basis"],
             "seite": seite, "kategorie": kandidat["kategorie"],

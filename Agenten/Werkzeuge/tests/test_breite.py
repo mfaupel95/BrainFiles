@@ -478,6 +478,9 @@ class KennzahlenTest(unittest.TestCase):
         self.assertEqual((k["min"], k["min_tag"]), (0.0, "2026-09-01"))
         self.assertEqual((k["max"], k["max_tag"]), (100.0, "2026-09-04"))
         self.assertEqual(k["n_ueber_90"], 2)
+        # Hochphasen-Tage: 90.0 und 100.0 >= 60 (0.0 und 10.0 nicht)
+        self.assertEqual(k["n_ueber_60"], 2)
+        self.assertEqual(k["n_unter_60"], 2)
 
     def test_tagesrauschen_und_zehn_punkte(self):
         """Die Frage hinter der Meldeschwelle von 10 Punkten."""

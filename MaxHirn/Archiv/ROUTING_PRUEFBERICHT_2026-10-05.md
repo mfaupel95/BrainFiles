@@ -221,7 +221,7 @@ Vollstaendigkeit der Statusfuehrung.
 | T-150 | 103 | PARALLEL | 18 Commits Rueckstand im Hermes-Checkout, Update nicht wiederholt | blocked | echter Blocker: Hermes-Update 18 Commits Rueckstand - detached starten, braucht ein geschlossenes Desktop. |
 | T-142 | 104 | PARALLEL | Der Grund im Journal der Feed-Spuren ist ein Platzhalter | blocked | echter Blocker: dieselbe Ursache wie T-178, aus Sicht des Wachen-Feldes. |
 | T-143 | 105 | PARALLEL | Der Funding-Ruecklauf endet an der eigenen Ratsche | blocked | echter Blocker: Funding-Ruecklauf endet an der eigenen Ratsche - Entscheidung. |
-| T-144 | 106 | PARALLEL | Die Signalwelle rechnet im Ruecklauf auf kleinerem Universum | blocked | echter Blocker: Signalwelle rechnet auf kleinerem Universum - Universum aufziehen oder Vermerk; Entscheidung Max. |
+| T-144 | 106 | PARALLEL | Die Signalwelle rechnet im Ruecklauf auf kleinerem Universum | blocked | echter Blocker: Signalwelle rechnet auf kleinerem Universum (37 einzigartige Instrumente in 111 Transaktionen, gezaehlt 2026-10-07) - Universum aufziehen oder Vermerk; Entscheidung Max. |
 | T-145 | 107 | PARALLEL | CoinGecko antwortet von diesem Rechner mit HTTP 403 | blocked | echter Blocker: CoinGecko antwortet HTTP 403 - Abzug aus einem anderen Netz. |
 | T-141 | 108 | PARALLEL | Braucht ein Werkzeug TCP 9900? Der Gateway lauscht nur noch auf dem Control-Pipe | blocked | echter Blocker: TCP 9900 / Control-Pipe: Peer-Aufruf aus einer Bot-Sitzung fahren. |
 | T-140 | 109 | PARALLEL | Gateway-Wache laeuft nur 08:15: ein abends gescheitertes Update faellt erst am Morgen auf | blocked | echter Blocker: zweiter Wache-Lauf am Abend - Entscheidung Max. |

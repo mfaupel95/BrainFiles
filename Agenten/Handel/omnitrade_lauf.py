@@ -128,9 +128,10 @@ def pid_lebt(pid, name=None):
         return False
     try:
         aus = subprocess.run(
-            [_tasklist(), "/FI", "PID eq %d" % pid, "/NH"],
-            capture_output=True, timeout=30,
-        )
+                    [_tasklist(), "/FI", "PID eq %d" % pid, "/NH"],
+                    capture_output=True, timeout=30,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
     except Exception:
         return False
     # tasklist schreibt in der Konsolencodepage (nicht UTF-8) - die PID ist

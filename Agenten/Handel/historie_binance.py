@@ -52,10 +52,13 @@ class HistorieKaputt(Exception):
 # WLFI XLM ZRO FF 2Z
 #
 # Was hier FEHLT und auch fehlen bleibt, ist Absicht: CL, BZ, CRCL, XAU, XAG,
-# QQQ, META, MSTR, UNITREE, VVV, CARDS, CASHCAT, FARTCOIN, BTW, BP, GRASS,
+# META, MSTR, UNITREE, VVV, CARDS, CASHCAT, FARTCOIN, BTW, BP, GRASS,
 # OKB, XDC, DRV-Marktplaetze sind Aktien-ETPs oder Pump-Token ohne
 # belastbare USDT-Historie. Sie bekommen KEIN Ersatzinstrument - eine
 # Basislinie aus einem aehnlichen Markt waere eine erfundene.
+# 07.10.2026 (T-338): QQQ ist seit dem 07.10.2026 EXPLIZIT EINGESCHLOSSEN -
+# Binance fuehrt QQQBUSDT (gemessen an /api/v3/klines am 07.10.2026), die
+# Rotation QQQ/BTC/Cash (T-210) ist damit auf eigenen Daten messbar.
 PAARE = {
     "BTC-USDC": "BTCUSDT", "BTC-USDT": "BTCUSDT", "BTC-USDT-SWAP": "BTCUSDT",
     "XBT/USD": "BTCUSDT", "BTC/USD": "BTCUSDT", "BTC_USDT": "BTCUSDT",
@@ -79,6 +82,10 @@ PAARE = {
     "RENDER": "RENDERUSDT", "STX": "STXUSDT", "TRX": "TRXUSDT",
     "WLFI": "WLFIUSDT", "XLM": "XLMUSDT", "ZRO": "ZROUSDT",
     "FF": "FFUSDT", "2Z": "2ZUSDT",
+    # 07.10.2026 (T-338): QQQ explizit eingeschlossen - Binance fuehrt das
+    # Paar QQQBUSDT (gemessen), der Aktien-ETP-Ausschluss oben ist fuer QQQ
+    # aufgehoben. Gespeichert wird damit QQQBUSDT_1D.json.
+    "QQQ": "QQQBUSDT",
 }
 
 _BASIS = "https://api.binance.com"

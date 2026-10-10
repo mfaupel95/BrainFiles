@@ -40,6 +40,7 @@ KAPITAL_USD = 500
 
 # name -> (Strategie ohne .omni, Symbol). Intervall je Lauf 1h (Standard).
 LAEUFE = {
+    "ema_cross_btc": ("ema_cross_20_50", "BTCUSDC"),
     "adx_macd_btc": ("adx_macd", "BTCUSDC"),
     "adx_macd_eth": ("adx_macd", "ETHUSDC"),
     "rsi30_stop5_btc": ("rsi30_stop5", "BTCUSDC"),
@@ -50,8 +51,20 @@ LAEUFE = {
     "pine_rsi_meanrev_btc": ("pine_rsi_meanrev", "BTCUSDC"),
     "pine_bollinger_btc": ("pine_bollinger_breakout", "BTCUSDC"),
     "pine_donchian_btc": ("pine_donchian_20_10", "BTCUSDC"),
+    "rsi_noema_btc": ("rsi_noema", "BTCUSDC"),
 }
 INTERVALL = "1h"
+# Abweichendes Intervall je benanntem Lauf (sonst INTERVALL).
+INTERVALL_JE_LAUF = {
+    "rsi_noema_btc": "15m",
+    "ema_cross_btc": "1d",
+    "adx_macd_btc": "1d",
+    "adx_macd_eth": "1d",
+    "pine_sma_cross_btc": "1d",
+    "pine_ema_cross_btc": "1d",
+    "pine_macd_cross_btc": "1d",
+    "pine_donchian_btc": "1d",
+}
 STANDARD_SYMBOL = "BTCUSDC"
 
 # Programme in der Reihenfolge der Vorliebe: eigener Build zuerst (laufende
@@ -84,6 +97,13 @@ def statusdatei(name, symbol=None):
     if paar is None:
         return None
     strategie, sym = paar
+    # Der ema_cross-Lauf ist der ETABLIERTE Hauptlauf des Hauses: er schreibt
+    # `status/live.json` (Standard der Bruecke, des omnitrade.cmd-Status und der
+    # Handelszentrale-Kopfzeile), nicht `live_<strategie>_<symbol>.json`. Sonst
+    # bliebe die alte live.json als Leiche stehen und die Wache meldete ewig
+    # "kein Lebenszeichen", obwohl der Lauf laeuft (Befund 07.10.2026).
+    if strategie == "ema_cross_20_50" and sym == "BTCUSDC":
+        return os.path.join(OMNI, "status", "live.json")
     return os.path.join(OMNI, "status", "live_%s_%s.json" % (strategie, sym))
 
 
@@ -142,11 +162,19 @@ def zustand(name, symbol=None):
 
 def befehl(name, exe, symbol=None, intervall=None):
     strategie, sym = aufloesen(name, symbol)
+    # Der Statusdatei-Pfad kommt aus `statusdatei()` - nur dort steht die
+    # Ausnahme, dass ema_cross_20_50/BTCUSDC die Standard-Datei `live.json`
+    # schreibt (Handelszentrale-Kopf, omnitrade.cmd-Status und Lauf-Wache
+    # lesen diesen Standard). Inline gebaut, wuerde der Lauf eine zweite
+    # Datei `live_ema_cross_20_50_BTCUSDC.json` schreiben und die alte
+    # live.json bliebe als Leiche liegen (Befund 07.10.2026).
+    status = statusdatei(name, symbol)
     return [
         exe, "live", "--exchange", "okx", "--network", "testnet",
         "--symbol", sym, "--script", "strategien/%s.omni" % strategie,
-        "--interval", intervall or INTERVALL, "--initial-capital", str(KAPITAL_USD),
-        "--status-file", "status/live_%s_%s.json" % (strategie, sym),
+        "--interval", intervall or INTERVALL_JE_LAUF.get(name, INTERVALL),
+        "--initial-capital", str(KAPITAL_USD),
+        "--status-file", status,
     ]
 
 

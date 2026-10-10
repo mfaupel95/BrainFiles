@@ -38,8 +38,10 @@ import itertools
 import json
 import os
 import sys
+import types
 
 import historie_binance
+import historie_okx
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 
@@ -117,7 +119,8 @@ NICHT_NACHRECHENBAR = {
     "nautilus_kraken": "Einstiege haengen an Quote-Ticks, die es nur live gibt",
     "nautilus_kraken_futures": "Einstiege haengen an Quote-Ticks",
     "scanner": "keine Kerzen-Naht (Kern-Spur, eigener Zyklus)",
-    "xperp": "keine stuendliche Kerzen-Naht (Kern-Spur, eigener Zyklus)",
+    # xperp war hier bis 06.10.2026 - jetzt ueber Familie E fahrbar
+    # (OKX-Kerzen ueber historie_okx, Signal ueber bot.py)
     "swap": "keine Kerzen-Naht (Kern-Spur, eigener Zyklus)",
     "kraken": "keine Kerzen-Naht (Kern-Spur, eigener Zyklus)",
     "spiegel": "ausser Betrieb seit 21.09.2026",
@@ -1795,6 +1798,446 @@ def lade_reihen(inst, takt):
             % (inst, takt, e)) from e
 
 
+def lade_reihen_okx(inst, takt):
+    """OKX-Kerzen fuer Familie E (xperp) - dieselbe Ausnahme wie lade_reihen.
+
+    historie_okx.lade() liefert [] bei fehlender Datei, aber wirft
+    HistorieKaputt bei unlesbarer Datei. Beide Faelle werden hier in die
+    Sprache des Replays uebersetzt.
+    """
+    try:
+        return historie_okx.lade(inst, takt)
+    except historie_okx.HistorieKaputt as e:
+        raise RuntimeError(
+            "Historie unlesbar fuer %s/%s: %s - laeuft der Nachfueller "
+            "(historie_okx.py --auffuellen)? Das ist KEIN 'Historie fehlt'."
+            % (inst, takt, e)) from e
+
+
+# --- Familie E: xperp (OKX-Futures, bot.py, familien) -----------------------
+#
+# xperp ist die einzige Spur, die ihr Signal nicht in handeln.py, sondern in
+# bot.py berechnet (zeige_lage/zeige_trend/zeige_grid), und ihre Kerzen nicht
+# aus Binance, sondern aus der OKX-Futures-API holt (historie_okx). Die
+# wachen.json traegt `familien` (krypto/aktie/rohstoff) statt `instrumente`.
+#
+# Die Familie E wickelt die drei bot.py-Methoden ein:
+#   lage  -> bot.zeige_lage(w, inst):  das Signal (z["signal"]), keine Order
+#   trend -> bot.zeige_trend(w, inst, sammle=orders): EINE Order mit
+#            Limit/Stop/Ziel aus den wachen-Faktoren (einstieg_atr_abschlag,
+#            stop_atr_faktor, ziel_atr_faktor)
+#   grid  -> bot.zeige_grid(w, inst, sammle=orders): eine Leiter von
+#            Long-Stufen mit gemeinsamem Boden-Stop
+# `sammle` ist die von bot.py GEBaUTE Naht fuer programmatischen Zugriff -
+# die Orders kommen aus bot.py, nicht aus einer Nachbildung. Die
+# Replay-Schleife entscheidet nur, wann eine Order gefuellt wird und wann
+# eine Position geschlossen wird. bot_methode ist ueber das CLI waehlbar
+# (Vorgabe "trend", der Live-Pfad der Spur).
+#
+# FILL-MODELL: bot.py legt LIMIT-Orders (der Long-Einstieg liegt
+# einstieg_atr_abschlag unter dem Markt). Eine Order wird erst gebucht, wenn
+# eine Kerze das Limit beruehrt (Long: Tief <= Limit) - wie im Betrieb, wo
+# handeln.py wartende Auftraege fuehrt, sobald die Boerse fuellt. Nach
+# order_gueltig_kerzen (wachen-Feld, Vorgabe ORDER_GUELTIG_KERZEN = 24 =
+# 4 Tage bei 4H) verfaellt eine ungefuellte Order. Ein Instant-Fill zum
+# Limitpreis waere die in T-096 dokumentierte Falle (besser als live
+# moeglich).
+#
+# OKX-Unterschiede, die hier (und nur hier) behandelt werden:
+#   - instIds tragen ein Ablaufdatum (RE-USD_UM_XPERP-310620); Kerzen liegen
+#     unter dem VOLLEN instId - Basisnamen werden ueber die Metadaten
+#     aufgeloest, nicht ueber eine Rate-Tabelle.
+#   - Positionsgroessen und Tick-Raster (ctVal/lotSz/minSz/tickSz) kommen aus
+#     historie_okx.instrument_meta() - einer DATEI, nicht aus der API.
+#   - bot.py rechnet auf 4H-Kerzen (bot.BAR), nicht auf dem wachen-Takt.
+#   - Der Hebel-Deckel (hebel_deckel) will Tageskerzen; die kommen aus der
+#     gleichen 4H-Reihe VERDICHTET ueber die Test-Seam `tages_kerzen_quelle`
+#     (eine Seam, die bot.py fuer genau diese Ersetzung vorsieht).
+#   - Der 24h-Umsatz (Tor in zeige_lage) ist aus den Kerzen geschaetzt, nicht
+#     von einem Ticker: volCcy24h = Summe (Volumen x Schlusskurs) der letzten
+#     24 Stunden der Reihe. Es gibt keine historischen Ticker.
+#   - CVD faehrt ueber die Naht `indikatoren.cvd_quelle`: die Komponente
+#     faellt im Replay aus (keine Taker-Volumen-Historie in den Kerzen) -
+#     das Signal bleibt also vollstaendig, nur "kein CVD" steht im Grund.
+#
+# ZWEI ANGEFUEGTE, DOKUMENTIERTE GRENZEN (T-096 legt sie offen):
+#   1. Funding ist nicht in den Kerzen (funding() -> None): die Pruefpflicht
+#      rechnet ohne Funding-Kosten, und das Journal fuehrt keinen
+#      Funding-Beitrag. Live zahlt eine gehaltene XPERP-Position alle 8 h.
+#   2. Der Kill-Switch (kill_switch_gesamt_usd) wird NICHT abgebildet -
+#      wie in allen uebrigen Familien. Ein Lauf kann also ueber den Deckel
+#      hinaus weiterhandeln, den die lebende Wache haette schliessen lassen.
+#
+# Geschrieben wird ausschliesslich unter daten/backtest/<spur>/<lauf>/
+# (buch_ordner biegt journal_zweitziel um). Der echte Spurenordner bleibt
+# unberuehrt.
+
+SPUREN_TEIL_E = ("xperp",)
+
+# Wie viele Kerzen eine ungefuellte Limit-Order liegen bleibt (Vorgabe,
+# ueberschreibbar ueber wachen-Feld order_gueltig_kerzen - 24 4H-Kerzen
+# sind 4 Tage).
+ORDER_GUELTIG_KERZEN = 24
+
+
+def _bot_modul():
+    """bot.py der xperp-Spur ueber den PFAD laden - xperp kurz auf sys.path.
+
+    bot.py importiert seinerseits okxf, indikatoren, auswahl, historie, cvd
+    - alles Module aus dem xperp-ORDNER, die ueber sys.path gefunden werden
+    muessen. Wird bot.py als Skript gestartet, ist der eigene Ordner
+    sys.path[0]; im Replay-Prozess ist er es nicht. Der Ordner wird also
+    NUR waehrend des Ladens eingefuegt und danach wieder entfernt - im
+    Speicher bleiben die Modulobjekte, der Suchpfad des Replays bleibt
+    unberuehrt. Das ist die Lehre aus spur_modul(): eine Reihenfolge der
+    Eintraege entscheidet, welche Fassung geladen wird.
+    """
+    pfad = os.path.join(HIER, "xperp", "bot.py")
+    if not os.path.isfile(pfad):
+        raise FileNotFoundError("xperp/bot.py nicht gefunden: %s" % pfad)
+    xperp = os.path.join(HIER, "xperp")
+    drin = xperp in sys.path
+    if not drin:
+        sys.path.insert(0, xperp)
+    try:
+        s = importlib.util.spec_from_file_location("bt_xperp_bot", pfad)
+        m = importlib.util.module_from_spec(s)
+        s.loader.exec_module(m)
+        return m
+    finally:
+        if not drin:
+            try:
+                sys.path.remove(xperp)
+            except ValueError:
+                pass
+
+
+def _okxf_ersatz(okx, stand, metas, bhist, takt="4H"):
+    """Ein okxf-Ersatz, der die HISTORISCHEN Kerzen liefert - kein Netz.
+
+    bot.py's zeige_* rufen okxf.instrument(), okxf.kerzen(), okxf.tickers()
+    und okxf.funding(). Alle vier werden hier aus dem Bestand beantwortet;
+    `stand` ist ein veraenderliches Dict, das die Schleife je Schritt auf
+    den aktuellen Zeitstempel stellt - so sieht der Bot nie die Zukunft.
+
+    Die reinen Rechenfunktionen (auf_tick, kontrakte_aus_nominal) bleiben
+    die ECHTEN aus xperp/okxf.py (uebergeben als `okx`): sie brauchen kein
+    Netz und sind die eine Wahrheit der Kontraktgroessen. taker_volumen
+    (fuer die CVD) liefert bewusst eine leere Liste - die Replay-Kerzen
+    tragen kein Taker-Volumen (deshalb faellt CVD ueber die cvd_quelle-Naht
+    komplett aus; diese Funktion ist nur der Rueckfall dafuer).
+    """
+
+    def instrument(wert):
+        w = str(wert).upper()
+        for iid in metas:
+            if iid.upper() == w:
+                return metas[iid]
+        for iid in metas:
+            if iid.upper().split("-")[0] == w:
+                return metas[iid]
+        raise okx.OKXFehler("kein XPERP-Kontrakt zu %r im Replay-Bestand" % wert)
+
+    def kerzen(inst, bar="1H", anzahl=300):
+        iid = instrument(inst)["instId"]
+        basis = bhist.get(iid) or []
+        bis = stand.get("bis_ms")
+        if bis:
+            basis = [r for r in basis if r[0] <= bis]
+        if bar.upper() == "1D":
+            basis = verdichten(basis, "1D")
+        return basis[-int(anzahl):]
+
+    def tickers(inst_type="FUTURES"):
+        aus = {}
+        for iid, reihen in bhist.items():
+            bis = stand.get("bis_ms")
+            letzte = [r for r in reihen if r[0] <= bis][-6:]   # 24 h bei 4H
+            # OKX volCcy24h ist das 24h-Volumen in der BASIS-Waehrung
+            # (Kontrakte x ctVal); zeige_lage multipliziert es mit dem Kurs,
+            # um den USD-Umsatz des Umsatz-Tors zu bekommen. Aus den Kerzen
+            # geschaetzt - es gibt keine historischen Ticker.
+            ctval = float((metas.get(iid) or {}).get("ctVal") or 1.0)
+            aus[iid] = {"volCcy24h": "%.4f" % sum(
+                (r[5] or 0.0) * ctval for r in letzte)}
+        return aus
+
+    def funding(inst):
+        # Keine Funding-Historie in den Kerzen; pruefpflicht() behandelt
+        # None als "nicht abrufbar" und laesst Funding aus der Rechnung.
+        return None
+
+    def taker_volumen(inst, period="4H"):
+        return []
+
+    return types.SimpleNamespace(
+        instrument=instrument, kerzen=kerzen, tickers=tickers,
+        funding=funding, taker_volumen=taker_volumen,
+        auf_tick=okx.auf_tick, kontrakte_aus_nominal=okx.kontrakte_aus_nominal,
+        OKXFehler=okx.OKXFehler, KRYPTO=okx.KRYPTO, AKTIE=okx.AKTIE,
+        ROHSTOFF=okx.ROHSTOFF)
+
+
+def instrument_id(wert, metas):
+    """Voller instId zu einem Namen, aus den Metadaten - die eine Tabelle."""
+    w = str(wert).upper()
+    for iid in metas:
+        if iid.upper() == w:
+            return iid
+    for iid in metas:
+        if iid.upper().split("-")[0] == w:
+            return iid
+    raise KeyError("kein XPERP-Kontrakt zu %r im Replay-Bestand" % wert)
+
+
+def _insts_okx(w):
+    """Voll-InstIds aus der wachen.json - netzfrei ueber die Metadaten-Datei.
+
+    Ein `instrumente`-Feld (voller instId) hat Vorrang: historie_okx.instid()
+    laesst volle XPERP-InstIds unveraendert durch, kein Netz. Fehlt es, werden
+    die AKTIVEN familien ueber ihre instCategory auf die _instrumente.json
+    abgebildet - die beim --auffuellen mitgeschriebene Kontraktliste, keine
+    Live-Abfrage.
+    """
+    liste = _instrumente(w)
+    if liste:
+        return sorted({historie_okx.instid(str(x)) for x in liste})
+    datei = historie_okx.alle_instrumente()
+    if not datei:
+        raise RuntimeError(
+            "keine Instrument-Metadaten-Datei (%s) - erst "
+            "'python historie_okx.py --auffuellen'"
+            % os.path.join(historie_okx.ORDNER, "_instrumente.json"))
+    kats = {f.get("instCategory")
+            for f in (w.get("familien") or {}).values()
+            if f.get("aktiv") and f.get("instCategory")}
+    return sorted(iid for iid, m in datei.items()
+                  if m.get("instCategory") in kats)
+
+
+def _bot_orders(bot, w, inst, methode, metas, puffer):
+    """Die Orders EINES Schritts aus der gewaehlten bot.py-Methode.
+
+    Rueckgabe: Liste von {"seite", "einstieg", "stop", "ziel", "kontrakte",
+    "nominal"} - leer, wenn die Methode keine Order vorschlaegt (Signal
+    "kein", zu kleine Position, Grid-Abbruch).
+
+    bot.py's zeige_* drucken fuer den Menschen; im Replay geht diese
+    Ausgabe in den Puffer und wird verworfen. `sammle` ist die gebaute Naht
+    fuer die maschinenlesbare Order.
+    """
+    sammle = []
+    if methode == "trend":
+        bot.zeige_trend(w, inst, sammle=sammle)
+    elif methode == "grid":
+        bot.zeige_grid(w, inst, sammle=sammle)
+    else:  # "lage": Signal rechnen, keine Order erzeugen (CLI-Wahrheit)
+        bot.zeige_lage(w, inst)
+        return []
+    orders = []
+    for eintrag in sammle:
+        meta = metas[instrument_id(inst, metas)]
+        ctval = float(meta.get("ctVal") or 1.0)
+        for seite, kontrakte, einstieg, ziel, stop in eintrag["orders"]:
+            einstieg, ziel, stop = (float(einstieg), float(ziel),
+                                    float(stop))
+            orders.append({
+                "seite": "long" if seite == "buy" else "short",
+                "einstieg": einstieg, "ziel": ziel, "stop": stop,
+                "kontrakte": float(kontrakte),
+                "nominal": float(kontrakte) * ctval * einstieg})
+    return orders
+
+
+def lauf_e(spur, gebuehr_pct, lauf, bis_ms=None, max_kerzen=None, fenster=None,
+           wachen_patch=None, methode="trend", bot=None):
+    """Familie E: xperp ueber OKX-Futures-Kerzen, Signal aus bot.py.
+
+    Rueckgabe wie lauf_a: (runden, Zahl der offenen Positionen).
+
+    Die Spur entscheidet (bot.zeige_lage/zeige_trend/zeige_grid), der Replay
+    liefert Zeit und Daten:
+    - OKX-Kerzen kommen aus historie_okx.lade()
+    - Die Instrumente kommen aus historie_okx (Metadata-Datei, familien)
+    - Kontraktgroessen aus historie_okx.instrument_meta() (Datei, kein Netz)
+    - Die Orders kommen aus bot.py (sammle-Naht), gefuellt am Limit
+    - Ausstiege ueber Stop/Ziel an den Kerzen (Beruehrungsregel T-177)
+
+    `bot` ist die Test-Naht (ein vorbereitetes bot-Modul); ohne Angabe wird
+    xperp/bot.py ueber den Pfad geladen.
+    """
+    import contextlib
+    import io
+    import pos_kennung
+
+    if bot is None:
+        bot = _bot_modul()
+    ordner = buch_ordner(spur, lauf)
+    w = wachen_von(spur)
+    if wachen_patch:
+        w.update(wachen_patch)
+    if w.get("mindest_kerzen") is None:
+        # bot.py holt in hole() 300 Kerzen - das ist seine Anforderung.
+        w["mindest_kerzen"] = 300
+
+    insts = _insts_okx(w)
+    if not insts:
+        raise RuntimeError(
+            "keine Instrumente fuer %s - die wachen.json traegt weder "
+            "instrumente noch familien" % spur)
+
+    takt = getattr(bot, "BAR", "4H")
+    alle = {}
+    metas = {}
+    for inst in insts:
+        reihen = lade_reihen_okx(inst, takt)
+        if not reihen:
+            continue
+        if bis_ms:
+            reihen = [r for r in reihen if r[0] <= bis_ms]
+        if max_kerzen:
+            reihen = reihen[-int(max_kerzen):]
+        if reihen:
+            alle[inst] = reihen
+            metas[inst] = historie_okx.instrument_meta(inst)
+
+    if not alle:
+        raise RuntimeError(
+            "keine Historie fuer %s - erst 'python historie_okx.py "
+            "--auffuellen --instrumente %s --takte 4H'"
+            % (spur, ",".join(insts[:5])))
+
+    laenge = min(len(k) for k in alle.values())
+    brauch = bedarf(w)
+    if laenge < brauch:
+        zu_klein = ["%s (%d Kerzen)" % (i, len(k)) for i, k in alle.items()]
+        raise HistorieFehlt(mangel_text(spur, w, [], zu_klein, max_kerzen))
+
+    runden, gesammelt = [], []
+    zustand_ts = {"ts": None}
+    stand = {"bis_ms": None}
+    kerzen_jetzt = {}
+    huelle = Beruehrungsjournal(
+        kerzen_jetzt,
+        lambda **f: gesammelt.append(dict(f, _kerzen_ts=zustand_ts["ts"])))
+    puffer = io.StringIO()
+    ersatz = _okxf_ersatz(bot.okxf, stand, metas, alle, takt)
+    alt_okxf = bot.okxf
+    alt_tages = bot.tages_kerzen_quelle
+    alt_cvd = getattr(bot.indikatoren, "cvd_quelle", None)
+    bot.okxf = ersatz
+    # Tageskerzen fuer den Hebel-Deckel: aus der 4H-Reihe verdichtet, ueber
+    # die Seam, die bot.py dafuer vorsieht. NUR Kerzen bis zum aktuellen
+    # Stand - die Zukunft bleibt unsichtbar.
+    bot.tages_kerzen_quelle = lambda inst, n=300: verdichten(
+        [r for r in (alle.get(instrument_id(inst, metas)) or [])
+         if r[0] <= (stand.get("bis_ms") or 10 ** 15)], "1D")[-int(n):]
+    # CVD faellt aus (keine Taker-Historie in Kerzen) - Signal bleibt ganz.
+    bot.indikatoren.cvd_quelle = lambda inst: bot.indikatoren.cvd.leer(
+        "Replay: keine Taker-Volumen-Historie")
+    zurueck_kennung = kennung_fest()
+    gueltig_kerzen = int(w.get("order_gueltig_kerzen", ORDER_GUELTIG_KERZEN))
+    z = {"positionen": [], "modus": "papier", "letzter_lauf": None,
+         "verluste_usd": 0.0}
+    wartend = []          # ungefuellte Limit-Orders: {inst, seite, ...,
+                          # einstieg, stop, ziel, nominal, gelegt_i}
+    try:
+        for i in range(int(w["mindest_kerzen"]), laenge):
+            ts_schritt = max(k[i][0] for k in alle.values())
+            zustand_ts["ts"] = ts_schritt
+            stand["bis_ms"] = ts_schritt
+            for inst, alle_kerzen in alle.items():
+                k = alle_kerzen[max(0, i + 1 - (fenster or 300)):i + 1]
+                kerzen_jetzt[inst] = k[-1]
+                zeit = dt.datetime.fromtimestamp(
+                    ts_schritt / 1000.0, dt.timezone.utc).isoformat(
+                    timespec="seconds")
+                # 1) Offene Limits fuehlen: beruehrt eine Kerze das Limit,
+                #    wird die Order jetzt gebucht (wie live, wo die Boerse
+                #    die wartende Order fuellt). Verfall nach
+                #    order_gueltig_kerzen.
+                erfuellt, rest = [], []
+                for a in wartend:
+                    if a["inst"] != inst:
+                        rest.append(a)
+                        continue
+                    kerze = k[-1]
+                    if (a["seite"] == "long" and _zahl(kerze[3]) <= a["einstieg"]) \
+                            or (a["seite"] == "short"
+                                and _zahl(kerze[2]) >= a["einstieg"]):
+                        erfuellt.append(a)
+                    elif i - a["gelegt_i"] < gueltig_kerzen:
+                        rest.append(a)
+                wartend = rest
+                for a in erfuellt:
+                    pos = dict(a, inst=inst,
+                               pos_id=pos_kennung.neu(zeit), ts=k[-1][0])
+                    z["positionen"].append(pos)
+                    huelle(zeit=zeit, modus="papier", aktion="kauf",
+                           inst=inst, pos_id=pos["pos_id"],
+                           seite=pos["seite"],
+                           preis="%.6f" % pos["einstieg"],
+                           einsatz_usd="%.2f" % pos["nominal"],
+                           stop="%.6f" % pos["stop"],
+                           ziel="%.6f" % pos["ziel"],
+                           grund="limit_gefuellt")
+                # 2) Ausstiege: Stop/Ziel an der Kerze (Beruehrungsregel).
+                for p in list(z["positionen"]):
+                    if p.get("inst") != inst:
+                        continue
+                    marke = beruehrte_marke(
+                        k[-1], p.get("seite"), p.get("stop"), p.get("ziel"))
+                    if marke is None:
+                        continue
+                    kurs = _zahl(p.get("stop")) if marke == "stop" \
+                        else _zahl(p.get("ziel"))
+                    vz = 1 if p.get("seite") == "long" else -1
+                    gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
+                    erloes = p["nominal"] + gv
+                    huelle(zeit=zeit, modus="papier", aktion="verkauf",
+                           inst=inst, pos_id=p.get("pos_id", ""),
+                           seite=p.get("seite"),
+                           preis=_preis_text(kurs, "%.6f" % kurs),
+                           einsatz_usd="%.2f" % erloes,
+                           stop="%.6f" % p.get("stop", 0),
+                           ziel="%.6f" % p.get("ziel", 0),
+                           grund=marke)
+                    z["positionen"].remove(p)
+                    runden.append({
+                        "inst": inst, "seite": p["seite"],
+                        "einstieg": p["einstieg"], "ausstieg": kurs,
+                        "nominal": p["nominal"],
+                        "brutto_pct": (kurs - p["einstieg"]) / p["einstieg"]
+                        * 100.0 * vz,
+                        "netto_pct": (kurs - p["einstieg"]) / p["einstieg"]
+                        * 100.0 * vz - 2 * gebuehr_pct,
+                        "gv_brutto": p["nominal"] * (kurs - p["einstieg"])
+                        / p["einstieg"] * vz / 100.0,
+                        "gv_netto": p["nominal"] * ((kurs - p["einstieg"])
+                        / p["einstieg"] * vz - 2 * gebuehr_pct / 100.0),
+                        "ein_ts": p.get("ts"), "aus_ts": k[-1][0],
+                        "stunden": (k[-1][0] - p.get("ts", k[-1][0]))
+                        / 3600000.0})
+                # 3) Neue Orders: nur wenn das Instrument weder Position
+                #    noch offenes Limit hat (Live: ein Anlauf je Wert).
+                if any(p.get("inst") == inst for p in z["positionen"]):
+                    continue
+                if any(a["inst"] == inst for a in wartend):
+                    continue
+                with contextlib.redirect_stdout(puffer):
+                    orders = _bot_orders(bot, w, inst, methode, metas, puffer)
+                for o in orders:
+                    wartend.append(dict(o, inst=inst, gelegt_i=i))
+    finally:
+        bot.okxf = alt_okxf
+        bot.tages_kerzen_quelle = alt_tages
+        if alt_cvd is not None:
+            bot.indikatoren.cvd_quelle = alt_cvd
+        zurueck_kennung()
+    _journal_schreiben(ordner, gesammelt)
+    return runden, len(z["positionen"])
+
+
 def kerzenlaenge(spur, w=None):
     """Laenge der KUERZESTEN Reihe - so weit reicht ein Abschnitt.
 
@@ -1902,6 +2345,12 @@ def main():
                     help="Feed-Spur ueber den Marktquerschnitt (Familie B)")
     ap.add_argument("--familie-c", action="store_true",
                     help="Spur mit eigenem lauf() (moondev_funding)")
+    ap.add_argument("--familie-e", action="store_true",
+                    help="Spur mit bot.py und OKX-Kerzen (xperp)")
+    ap.add_argument("--bot-methode", default="trend",
+                    choices=("lage", "trend", "grid"),
+                    help="bot.py-Methode fuer Familie E (xperp): lage, "
+                         "trend (Vorgabe), grid")
     ap.add_argument("--takt", default="1D", choices=("1D", "1H"))
     ap.add_argument("--mindest-symbole", type=int, default=30,
                     help="ab so vielen Reihen zaehlt ein Zeitpunkt als Schritt")
@@ -1923,6 +2372,26 @@ def main():
                            setzen=setzen_aus(a.setzen))
         print(json.dumps({"spur": a.spur, "kennzahlen": k, "zeilen": zeilen},
                          indent=2, ensure_ascii=False))
+        return
+    if a.familie_e or a.spur in SPUREN_TEIL_E:
+        # Familie E wird am SPURNAMEN erkannt, nicht an einem Schalter: die
+        # Fahrweise ist eine Eigenschaft der Spur. Ein Schalter waere eine
+        # zweite Wahrheit - und `--spur xperp` ohne ihn liefe genau in den
+        # Fehler, den dieser Abschnitt behebt.
+        runden, offen = lauf_e(a.spur, geb, a.lauf, max_kerzen=mk,
+                               fenster=a.fenster,
+                               methode=a.bot_methode,
+                               wachen_patch=setzen_aus(a.setzen))
+        print(json.dumps(
+            {"spur": a.spur, "runden": len(runden), "offen": offen,
+             "bot_methode": a.bot_methode,
+             "gebuehr_pct": geb, "gebuehr_quelle": geb_quelle,
+             "fenster": (a.fenster if a.fenster is not None
+                         else int(wachen_von(a.spur).get("mindest_kerzen") or 300)),
+             "kerzenquelle": "okx",
+             "kennzahlen": kennzahlen(os.path.join(
+                 buch_ordner(a.spur, a.lauf), "handelsjournal.csv"))},
+            indent=2, ensure_ascii=False))
         return
     if a.feed:
         k, zeilen = lauf_feed(a.spur, gebuehr_fuer(a.spur), a.lauf,

@@ -12,13 +12,24 @@ es zufaellig in einer Sitzung, die den omnitrade-Stand pruefen wollte. Es gab
 KEINE Wache dafuer, obwohl der konfig-doktor `LAUFZEIT-JUNCTION-*` als KRITISCH
 kennt - nur rief ihn niemand auf.
 
-ZWEI ZEUGEN, ABSICHTLICH
+DREI ZEUGEN, ABSICHTLICH
 ------------------------
 1. DIREKTER VERWEIS-TEST (schnell, ohne Fremdprozess): fuer jeden erwarteten
    Verweis wird geprueft, dass er existiert, ein Reparse-Punkt ist und das Ziel
    ERREICHBAR ist. Das faengt den Vorfall oben in Millisekunden und funktioniert
    auch, wenn der Doktor selbst defekt ist.
-2. KONFIG-DOKTOR (`Agenten/Routinen/konfig-doktor.ps1 -Kurz -OhneExtern`):
+2. ZIEL- UND SCHREIBTEST (07.10.2026): Zeuge 1 prueft nur, DASS ein Verweis da
+   ist. Ein Verweis auf das FALSCHE Ziel oder ein Verweis, den die Werkzeuge
+   nicht durchlaufen, kam darin nicht vor. Beides ist vorgekommen:
+   `HERMES_WRITE_SAFE_ROOT` stand nur auf BrainFiles, der Schreibpruefer loeste
+   den Reparse-Punkt auf `O:\\` auf und lehnte JEDEN Schreibzugriff in die Repos
+   ab - lesen ging, schreiben nicht. Und die Bots legen ihre `.env` aus einer
+   Vorlage an, in der der Wert noch fehlt; faellt er dort heraus, faellt die
+   Sandbox auf den Standard zurueck und die Repos sind wieder zu.
+   Deshalb: Ziel gegen den Erwartungswert vergleichen, einen echten Schreibtest
+   durch den BrainFiles-Pfad fahren, und pruefen, dass JEDE Hermes-`.env` den
+   Werkstatt-Pfad traegt.
+3. KONFIG-DOKTOR (`Agenten/Routinen/konfig-doktor.ps1 -Kurz -OhneExtern`):
    breiter Blick (Regelpaare, Junction-Modul, Plattenplatz, Ballast). Gemeldet
    wird NUR KRITISCH - WARNUNGEN und HINWEISE sind fuer eine Wache Rauschen.
 
@@ -62,6 +73,12 @@ VERWEISE = {
     "Modelle": "O:\\Modelle",
 }
 
+# Verweise, die zusaetzlich einen Schreibtest bekommen. Nur die, in die
+# Werkzeuge wirklich schreiben: in die Repos unter Werkstatt. `Modelle` ist
+# reiner Lesestoff - dort waere eine Probedatei nur Ballast.
+SCHREIBTEST = ("Werkstatt",)
+
+HERMES_HOME = HIER.parent                    # Agenten/Hermes
 DOKTOR_FRIST_S = 180.0      # der Kurz-Lauf braucht ~8 s; 180 s ist Luft
 WIEDERHOLUNG_H = 12         # derselbe Befund hoechstens alle 12 h melden
 
@@ -105,18 +122,31 @@ dieselbe Feststellung. Ziffernfolgen werden als GANZE FOLGE ersetzt."""
 
 # --- Zeuge 1: die Verweise selbst ------------------------------------------
 
+def _ist_verweis(p) -> bool:
+    """Ist der Pfad ein Reparse-Punkt (Junction ODER Symlink)?
+
+    WICHTIG: `os.path.islink` liefert fuer eine Windows-JUNCTION False. Wer nur
+    darauf prueft, haelt jede Junction fuer einen echten Ordner und ueberspringt
+    still jede weitere Pruefung. Verlaesslich ist nur das Datei-Attribut
+    FILE_ATTRIBUTE_REPARSE_POINT (0x400)."""
+    try:
+        st = os.lstat(str(p))
+    except OSError:
+        return False
+    attrs = getattr(st, "st_file_attributes", 0)
+    return bool(attrs & 0x400) or os.path.islink(str(p))
+
+
 def verweis_lage(wurzel, name: str, ziel: str) -> str:
     """'' wenn gesund, sonst ein Klartext-Befund. Nie werfen."""
     p = Path(wurzel) / name
     if not p.exists():
         return "%s fehlt ganz (erwartet: Verweis auf %s)" % (name, ziel)
     try:
-        st = os.lstat(str(p))
+        os.lstat(str(p))
     except OSError as e:
         return "%s nicht lesbar (%s)" % (name, e)
-    attrs = getattr(st, "st_file_attributes", 0)
-    ist_verweis = bool(attrs & 0x400) or os.path.islink(str(p))
-    if not ist_verweis:
+    if not _ist_verweis(p):
         try:
             anzahl = sum(1 for _ in os.scandir(str(p)))
         except OSError:
@@ -132,7 +162,133 @@ def verweis_lage(wurzel, name: str, ziel: str) -> str:
     return ""
 
 
-# --- Zeuge 2: der Doktor ----------------------------------------------------
+# --- Zeuge 2: Ziel, Schreibtest, .env-Lage ----------------------------------
+
+def _normalisiert(pfad: str) -> str:
+    """Vergleichsform eines Windows-Pfads: ohne \\\\?\\-Praefix, ohne Schraegstrich
+am Ende, klein geschrieben."""
+    s = str(pfad).strip().strip('"').strip("'")
+    if s.startswith("\\\\?\\"):
+        s = s[4:]
+    s = s.replace("/", "\\")
+    while len(s) > 3 and s.endswith("\\"):
+        s = s[:-1]
+    return s.lower()
+
+
+def ziel_lage(wurzel, name: str, ziel: str) -> str:
+    """Zeigt der Verweis auf das ERWARTETE Ziel? '' wenn gesund. Nie werfen.
+
+    Zeuge 1 fragt nur, ob ueberhaupt ein Verweis da ist. Ein Verweis auf ein
+    anderes Laufwerk ist genauso kaputt, sieht aber gesund aus."""
+    p = Path(wurzel) / name
+    if not p.exists():
+        return ""                      # fehlt ganz - Zeuge 1 meldet das schon
+    try:
+        if not _ist_verweis(p):
+            return ""                  # echter Ordner - Zeuge 1 meldet das schon
+        tatsaechlich = os.readlink(str(p))
+    except OSError as e:
+        return "%s: Ziel nicht lesbar (%s)" % (name, e)
+    if _normalisiert(tatsaechlich) != _normalisiert(ziel):
+        return ("%s zeigt auf %s statt auf %s"
+                % (name, tatsaechlich, ziel))
+    return ""
+
+
+def schreibtest(wurzel, name: str, ziel: str) -> str:
+    """Ein echter Schreibtest DURCH den BrainFiles-Pfad. '' wenn gesund.
+
+    Der Pfad geht bewusst ueber den Verweis, nicht direkt ueber das Ziel: nur so
+    zeigt sich, ob ein Werkzeug, das den Reparse-Punkt aufloest, danach noch
+    innerhalb seiner Sandbox liegt. Genau daran scheiterte das Schreiben in die
+    Repos, waehrend Lesen und Terminal weiterkamen."""
+    p = Path(wurzel) / name
+    if not p.exists() or not _ist_verweis(p):
+        return ""                      # nichts zu testen - Zeuge 1 meldet es
+    probe = p / ".wache-schreibtest.tmp"
+    try:
+        probe.write_text("wache", encoding="utf-8")
+    except OSError as e:
+        return ("%s ist nicht beschreibbar (%s) - Werkzeuge mit Schreib-Sandbox "
+                "koennen dort nichts anlegen" % (name, e))
+    try:
+        probe.unlink()
+    except OSError:
+        return ("%s: Schreibtest-Restdatei liess sich nicht loeschen (%s)"
+                % (name, probe))
+    if probe.exists():
+        return "%s: Schreibtest-Restdatei blieb liegen (%s)" % (name, probe)
+    return ""
+
+
+def env_lage(hermes_home: Path) -> str:
+    """Kann jedes Repo-Bot-Profil in die Repos schreiben? '' wenn gesund.
+
+    Geprueft werden nur die Profile, die wirklich Repos bedienen: ihr `SOUL.md`
+    nennt `Werkstatt`. Ein Profil ohne diesen Bezug braucht den Pfad nicht - es
+    mitzuzaehlen erzeugt 27 Meldungen statt 17 und macht die Wache zum
+    Dauer-Alarm, den niemand mehr liest. Dazu die Haupt-`.env`, die alle erben.
+
+    Jedes Profil fuehrt `HERMES_WRITE_SAFE_ROOT` selbst. Fehlt der Werkstatt-Pfad,
+    faellt die Sandbox auf den Standard zurueck (nur BrainFiles): der
+    Schreibpruefer loest den Reparse-Punkt auf `O:\\` auf und lehnt JEDEN
+    Schreibzugriff in die Repos ab - lesen geht, schreiben nicht."""
+    if not hermes_home.is_dir():
+        return "Hermes-Verzeichnis nicht gefunden (%s)" % hermes_home
+    werkstatt = _normalisiert(VERWEISE.get("Werkstatt", r"O:\Werkstatt"))
+    brainfiles = _normalisiert(str(WURZEL))
+
+    zu_pruefen = []
+    haupt = hermes_home / ".env"
+    if haupt.is_file():
+        zu_pruefen.append(haupt)
+    for soul in sorted(hermes_home.glob("profiles/*/SOUL.md")):
+        try:
+            if "werkstatt" not in soul.read_text(encoding="utf-8",
+                                                 errors="replace").lower():
+                continue
+        except OSError:
+            continue
+        env = soul.parent / ".env"
+        if env.is_file():
+            zu_pruefen.append(env)
+
+    if not zu_pruefen:
+        return "keine .env gefunden (%s)" % hermes_home
+
+    fehlend = []
+    for p in zu_pruefen:
+        try:
+            inhalt = p.read_text(encoding="utf-8", errors="replace")
+        except OSError as e:
+            fehlend.append("%s (nicht lesbar: %s)" % (p.relative_to(hermes_home), e))
+            continue
+        wert = ""
+        for zeile in inhalt.splitlines():
+            if zeile.startswith("HERMES_WRITE_SAFE_ROOT="):
+                wert = zeile.split("=", 1)[1]
+                break
+        rel = p.relative_to(hermes_home)
+        if not wert:
+            fehlend.append("%s (kein Eintrag)" % rel)
+            continue
+        norm = _normalisiert(wert)
+        fehlt = []
+        if werkstatt not in norm:
+            fehlt.append("Werkstatt")
+        if brainfiles not in norm:
+            fehlt.append("BrainFiles")
+        if fehlt:
+            fehlend.append("%s (ohne %s)" % (rel, ", ".join(fehlt)))
+    if not fehlend:
+        return ""
+    return ("HERMES_WRITE_SAFE_ROOT unvollstaendig in %d von %d .env: %s - "
+            "diese Repo-Bots koennen nicht in die Repos schreiben"
+            % (len(fehlend), len(zu_pruefen), "; ".join(fehlend)))
+
+
+# --- Zeuge 3: der Doktor ----------------------------------------------------
 
 def doktor_kurz(doktor, wurzel) -> tuple:
     """(kritisch, meldung, fehler). `kritisch=None` heisst 'nicht ermittelbar'."""
@@ -180,6 +336,18 @@ def main(argv=None) -> int:
         text = verweis_lage(WURZEL, name, ziel)
         if text:
             befunde.append(text)
+            continue                   # kaputter Verweis: Ziel/Schreibtest sagen nichts
+        text = ziel_lage(WURZEL, name, ziel)
+        if text:
+            befunde.append(text)
+        if name in SCHREIBTEST:
+            text = schreibtest(WURZEL, name, ziel)
+            if text:
+                befunde.append(text)
+
+    text = env_lage(HERMES_HOME)
+    if text:
+        befunde.append(text)
 
     kritisch, kurz, doktor_fehler = doktor_kurz(DOKTOR, WURZEL)
     if doktor_fehler:

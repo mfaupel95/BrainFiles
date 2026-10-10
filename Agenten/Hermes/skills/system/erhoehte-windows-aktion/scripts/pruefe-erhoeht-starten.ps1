@@ -43,7 +43,7 @@ Write-Host '--- 4) Was steht im Log? ---'
 if (Test-Path -LiteralPath $log) {
     $inhalt = Get-Content -LiteralPath $log -Raw
     $hatZiel = $inhalt -match 'ZIEL LAEUFT'
-    $hatFehl = $inhalt -match 'gewollter Fehler'
+    $hatFehl = $inhalt -match 'gewollter\s+Fehler'
     $hatCode = $inhalt -match 'EXITCODE=7'
     "Zielausgabe: $hatZiel | Fehlerstrom: $hatFehl | Exitcode: $hatCode"
     if (-not ($hatZiel -and $hatFehl -and $hatCode)) { 'MECHANIK UNVOLLSTAENDIG'; $fehlerzahl++ } else { 'MECHANIK OK' }

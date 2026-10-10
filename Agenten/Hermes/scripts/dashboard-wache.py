@@ -64,6 +64,7 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+import os
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -164,7 +165,7 @@ def _ps(skript, frist=60):
     try:
         p = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", skript],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             timeout=frist)
     except (OSError, subprocess.SubprocessError):
         return ""

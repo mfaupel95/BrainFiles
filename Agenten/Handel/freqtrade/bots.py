@@ -32,7 +32,8 @@ laufenden Bot.
 
 Zugangsdaten: die erzeugten Konfigurationen tragen eigene Zufallswerte je Bot
 (lokal, an 127.0.0.1 gebunden) und stehen NUR in der Datei - dieses Werkzeug
-gibt sie nie aus.
+gibt sie nie aus. Ausnahme API-Passwort: ist FREQTRADE_API_PASSWORD gesetzt
+(Benutzer-Umgebungsvariable), tragen alle Bots dieses, sonst Zufallswert.
 """
 
 from __future__ import annotations
@@ -444,4 +445,4 @@ def haupt(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(haupt(sys.argv[1:]))
+    raise SystemExit(haupt(sys.argv[1:]))

@@ -53,15 +53,32 @@ def _iso(zeitpunkt):
 
 
 def fuelungen(order_id, seit, frist_s=15):
-    """Fuellungen dieser Orderkennung, bis sie da sind (begrenztes Warten)."""
+    """Fuellungen dieser Orderkennung, bis sie da sind (begrenztes Warten).
+
+    T-312 (01.10.2026): /fills antwortet sporadisch mit authenticationError,
+    waehrend /accounts und /openpositions durchgehen. Vorher propagierte die
+    Exception aus `lauf()` und der Notausstieg wurde nie erreicht - die
+    Position blieb ohne Schutz offen. Jetzt wird der Fehler protokolliert und
+    als leere Liste zurueckgegeben; der Aufrufer behandelt das als
+    'Fuellung nicht lesbar' und sichert ab.
+    """
+    letzter_fehler = None
     ende = time.time() + frist_s
     while time.time() < ende:
-        daten = kf._roh("/fills?lastFillTime=%s" % _iso(seit))
+        try:
+            daten = kf._roh("/fills?lastFillTime=%s" % _iso(seit))
+        except Exception as fehler:                  # noqa: BLE001
+            letzter_fehler = fehler
+            time.sleep(1)
+            continue
         meine = [f for f in (daten.get("fills") or [])
                  if f.get("order_id") == order_id]
         if meine:
             return meine
         time.sleep(1)
+    if letzter_fehler:
+        print("  /fills nicht lesbar (letzter Fehler: %s) - als 'keine "
+              "Fuellung' behandelt." % letzter_fehler)
     return []
 
 
@@ -160,35 +177,59 @@ def lauf(kontrakte, anwenden):
     # Kauf), nicht die Fuellung.
     kauf_fills = fuelungen(kauf_id, start)
     if not kauf_fills:
-        print("KEINE Fuellung gelesen - die Position kann trotzdem offen sein.")
+        # T-312: die Position kann trotzdem offen sein. Der Verkauf darf
+        # NICHT vom Fill-Polling abhaengen - reduceOnly schliesst nur die
+        # eigene Position und ist der sicherste Weg. Erst wenn auch der
+        # Verkauf scheitert, greift der Schutz-Stop.
+        print("KEINE Kauf-Fuellung gelesen - die Position kann trotzdem offen sein.")
         print("Order pruefen: %s" % kauf_id)
-        print(notausstieg(l["kurs"], kontrakte,
-                          "Fill-Polling lieferte nichts fuer %s" % kauf_id))
-        return 1
-    kauf_preis = sum(float(f["price"]) * float(f["size"]) for f in kauf_fills)
-    kauf_menge = sum(float(f["size"]) for f in kauf_fills)
-    kauf_preis = kauf_preis / kauf_menge if kauf_menge else 0.0
-    print("Kauf  gefuellt: %s Kontrakte @ %s" % (kauf_menge, kauf_preis))
+        kauf_preis = l["kurs"]   # letzter BEKANNTER Kurs, nicht die Fuellung
+        kauf_menge = float(kontrakte)
+        try:
+            verkauf_id = kf._order_aufgeben({"orderType": "mkt", "symbol": SYMBOL,
+                                             "side": "sell", "size": kontrakte,
+                                             "reduceOnly": "true"})
+        except Exception as fehler:                  # noqa: BLE001
+            print("VERKAUF GESCHEITERT: %s" % fehler)
+            print(notausstieg(kauf_preis, kontrakte,
+                              "Kauf-Fuellung unlesbar, Verkauf abgelehnt"))
+            return 1
+        print("Verkauf gesendet (Kauf-Fuellung unlesbar): %s" % verkauf_id)
+        verkauf_fills = fuelungen(verkauf_id, start)
+        if not verkauf_fills:
+            print("KEINE Verkaufsfuellung - Position pruefen! %s" % verkauf_id)
+            print(notausstieg(kauf_preis, kontrakte,
+                              "Kauf-Fuellung unlesbar, Verkaufsfuellung unlesbar"))
+            return 1
+        verkauf_menge = sum(float(f["size"]) for f in verkauf_fills)
+        verkauf_preis = (sum(float(f["price"]) * float(f["size"]) for f in verkauf_fills)
+                         / verkauf_menge if verkauf_menge else 0.0)
+        print("Verkauf gefuellt: %s Kontrakte @ %s" % (verkauf_menge, verkauf_preis))
+    else:
+        kauf_preis = sum(float(f["price"]) * float(f["size"]) for f in kauf_fills)
+        kauf_menge = sum(float(f["size"]) for f in kauf_fills)
+        kauf_preis = kauf_preis / kauf_menge if kauf_menge else 0.0
+        print("Kauf  gefuellt: %s Kontrakte @ %s" % (kauf_menge, kauf_preis))
 
-    try:
-        verkauf_id = kf._order_aufgeben({"orderType": "mkt", "symbol": SYMBOL,
-                                         "side": "sell", "size": kontrakte,
-                                         "reduceOnly": "true"})
-    except Exception as fehler:                      # noqa: BLE001
-        print("VERKAUF GESCHEITERT: %s" % fehler)
-        print(notausstieg(kauf_preis, kontrakte, "Verkauf abgelehnt"))
-        return 1
-    print("Verkauf gesendet: %s" % verkauf_id)
-    verkauf_fills = fuelungen(verkauf_id, start)
-    if not verkauf_fills:
-        print("KEINE Verkaufsfuellung - Position pruefen! %s" % verkauf_id)
-        print(notausstieg(kauf_preis, kontrakte,
-                          "Verkaufsfuellung nicht lesbar fuer %s" % verkauf_id))
-        return 1
-    verkauf_menge = sum(float(f["size"]) for f in verkauf_fills)
-    verkauf_preis = (sum(float(f["price"]) * float(f["size"]) for f in verkauf_fills)
-                     / verkauf_menge if verkauf_menge else 0.0)
-    print("Verkauf gefuellt: %s Kontrakte @ %s" % (verkauf_menge, verkauf_preis))
+        try:
+            verkauf_id = kf._order_aufgeben({"orderType": "mkt", "symbol": SYMBOL,
+                                             "side": "sell", "size": kontrakte,
+                                             "reduceOnly": "true"})
+        except Exception as fehler:                  # noqa: BLE001
+            print("VERKAUF GESCHEITERT: %s" % fehler)
+            print(notausstieg(kauf_preis, kontrakte, "Verkauf abgelehnt"))
+            return 1
+        print("Verkauf gesendet: %s" % verkauf_id)
+        verkauf_fills = fuelungen(verkauf_id, start)
+        if not verkauf_fills:
+            print("KEINE Verkaufsfuellung - Position pruefen! %s" % verkauf_id)
+            print(notausstieg(kauf_preis, kontrakte,
+                              "Verkaufsfuellung nicht lesbar fuer %s" % verkauf_id))
+            return 1
+        verkauf_menge = sum(float(f["size"]) for f in verkauf_fills)
+        verkauf_preis = (sum(float(f["price"]) * float(f["size"]) for f in verkauf_fills)
+                         / verkauf_menge if verkauf_menge else 0.0)
+        print("Verkauf gefuellt: %s Kontrakte @ %s" % (verkauf_menge, verkauf_preis))
 
     brutto = (verkauf_preis - kauf_preis) * min(kauf_menge, verkauf_menge)
     print()

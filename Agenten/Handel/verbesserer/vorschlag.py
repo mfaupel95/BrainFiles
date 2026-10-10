@@ -339,6 +339,32 @@ def _abschnitt_warnungen(ergebnis):
     ]
 
 
+def _abschnitt_holdout(ergebnis):
+    """Holdout-Zahlen (F4) als Beleg im Bericht - fuer den bestandenen wie
+    den abgelehnten (``fast_kandidat``) Fall. Leer, wenn kein Holdout lief."""
+    hb, hk = ergebnis.get("holdout_basis"), ergebnis.get("holdout_kandidat")
+    if hb is None and hk is None:
+        return []
+    z = ["## Holdout", ""]
+    if hb is not None:
+        z.append("- Basis: netto_gv_je_runde %s, n = %s" % (
+            _zahl4(hb.get("netto_gv_je_runde")), hb.get("n", "?")))
+    if hk is not None:
+        z.append("- Kandidat: netto_gv_je_runde %s, n = %s" % (
+            _zahl4(hk.get("netto_gv_je_runde")), hk.get("n", "?")))
+    return z
+
+
+def _abschnitt_ausrichtung(hinweise):
+    """Ausrichtungs-Hinweise (F7) als Beleg im Bericht - die Spec verlangt
+    das woertlich ("hinweise ... gehen in den Lauf-Bericht")."""
+    if not hinweise:
+        return []
+    z = ["## Ausrichtung", ""]
+    z += ["- %s" % h for h in hinweise]
+    return z
+
+
 def _abschnitt_schluessel(aenderungen, alt_text):
     z = ["## Geaenderte Schluessel", ""]
     if aenderungen:
@@ -350,7 +376,8 @@ def _abschnitt_schluessel(aenderungen, alt_text):
     return z
 
 
-def _bericht_voll(ordner, ergebnis, spur_name, aenderungen, alt_text):
+def _bericht_voll(ordner, ergebnis, spur_name, aenderungen, alt_text,
+                  hinweise=None):
     z = ["# Verbesserungsvorschlag - %s" % spur_name, "",
          "Datum: %s" % _heute(), "",
          "Grund: %s" % ergebnis.get("grund", ""), "",
@@ -363,34 +390,49 @@ def _bericht_voll(ordner, ergebnis, spur_name, aenderungen, alt_text):
     z += [""]
     z += _abschnitt_warnungen(ergebnis)
     z += [""]
+    holdout = _abschnitt_holdout(ergebnis)
+    if holdout:
+        z += holdout + [""]
+    ausrichtung = _abschnitt_ausrichtung(hinweise)
+    if ausrichtung:
+        z += ausrichtung + [""]
     z += _abschnitt_schluessel(aenderungen, alt_text)
     z += [""]
     (ordner / "bericht.md").write_text("\n".join(z), encoding="utf-8",
                                        newline="\n")
 
 
-def _bericht_baseline(ordner, ergebnis, spur_name, grund, mit_delta):
-    b = ergebnis["basis_wf"]
+def _bericht_baseline(ordner, ergebnis, spur_name, grund, mit_delta,
+                      hinweise=None):
+    b = ergebnis.get("basis_wf")
     z = ["# Kein Vorschlag - %s" % spur_name, "",
          "Datum: %s" % _heute(), "",
          "Grund: %s" % grund, ""]
-    if mit_delta and ergebnis.get("kandidat_wf"):
+    if mit_delta and b is not None and ergebnis.get("kandidat_wf"):
         z += ["OOS netto_gv_je_runde: %.4f -> %.4f" % (
             b["gesamt"]["netto_gv_je_runde"],
             ergebnis["kandidat_wf"]["gesamt"]["netto_gv_je_runde"]), ""]
-    z += ["## Baseline-Kennzahlen", "",
-          "| Fenster | netto_gv_je_runde | n | max_drawdown |",
-          "|---|---|---|---|"]
-    for fen in b.get("fenster", []):
-        kk = fen["kennzahlen"]
-        z.append("| %s-%s | %s | %s | %s |" % (
-            fen["von_tag"], fen["bis_tag"], _zahl4(kk.get("netto_gv_je_runde")),
-            kk.get("n", "?"), _zahl4(kk.get("max_drawdown"))))
-    g = b["gesamt"]
-    z.append("| Aggregat | %s | %s | %s |" % (
-        _zahl4(g.get("netto_gv_je_runde")), g.get("n", "?"),
-        _zahl4(g.get("max_drawdown"))))
-    z.append("")
+    if b is not None:
+        z += ["## Baseline-Kennzahlen", "",
+              "| Fenster | netto_gv_je_runde | n | max_drawdown |",
+              "|---|---|---|---|"]
+        for fen in b.get("fenster", []):
+            kk = fen["kennzahlen"]
+            z.append("| %s-%s | %s | %s | %s |" % (
+                fen["von_tag"], fen["bis_tag"],
+                _zahl4(kk.get("netto_gv_je_runde")),
+                kk.get("n", "?"), _zahl4(kk.get("max_drawdown"))))
+        g = b["gesamt"]
+        z.append("| Aggregat | %s | %s | %s |" % (
+            _zahl4(g.get("netto_gv_je_runde")), g.get("n", "?"),
+            _zahl4(g.get("max_drawdown"))))
+        z.append("")
+    holdout = _abschnitt_holdout(ergebnis)
+    if holdout:
+        z += holdout + [""]
+    ausrichtung = _abschnitt_ausrichtung(hinweise)
+    if ausrichtung:
+        z += ausrichtung + [""]
     (ordner / "bericht.md").write_text("\n".join(z), encoding="utf-8",
                                        newline="\n")
 
@@ -404,16 +446,19 @@ def _aufloesen(pfad):
     return p if p.is_absolute() else (HIER / p).resolve()
 
 
-def kein_vorschlag(ordner, ergebnis, spur_name):
+def kein_vorschlag(ordner, ergebnis, spur_name, hinweise=None):
     """Nur ``ordner/bericht.md`` mit dem Grund und der Baseline-Kennzahltabelle -
-    sonst nichts."""
+    sonst nichts. ``basis_wf`` kann ``None`` sein (z. B. "zu wenig Historie
+    fuer Holdout") - dann faellt die Tabelle weg, der Grund steht trotzdem im
+    Bericht. ``hinweise`` (Ausrichtung, F7) und Holdout-Zahlen (F4) werden
+    mitgeschrieben, wenn vorhanden."""
     ordner = Path(ordner)
     ordner.mkdir(parents=True, exist_ok=True)
     _bericht_baseline(ordner, ergebnis, spur_name, ergebnis.get("grund", ""),
-                      mit_delta=False)
+                      mit_delta=False, hinweise=hinweise)
 
 
-def baue(ordner, ergebnis, spur, konfig):
+def baue(ordner, ergebnis, spur, konfig, hinweise=None):
     """Vorschlagsartefakte in ``ordner`` schreiben.
 
     * ``kandidat is None`` -> wie ``kein_vorschlag``.
@@ -432,7 +477,8 @@ def baue(ordner, ergebnis, spur, konfig):
     kandidat = ergebnis.get("kandidat")
     if kandidat is None:
         _bericht_baseline(ordner, ergebnis, spur_name,
-                          ergebnis.get("grund", ""), mit_delta=False)
+                          ergebnis.get("grund", ""), mit_delta=False,
+                          hinweise=hinweise)
         return
 
     aenderungen = {k: v for k, v in (ergebnis.get("aenderungen") or {}).items()
@@ -449,7 +495,8 @@ def baue(ordner, ergebnis, spur, konfig):
         grund = ("bester Kandidat aendert nur die Sizing-Kurve "
                  "(flach -> %s); dafuer gibt es in Spur 1 noch keinen "
                  "Anwendungspfad — nur als Hinweis vermerkt." % neu_sizing)
-        _bericht_baseline(ordner, ergebnis, spur_name, grund, mit_delta=True)
+        _bericht_baseline(ordner, ergebnis, spur_name, grund, mit_delta=True,
+                          hinweise=hinweise)
         return
 
     alt_text = None
@@ -458,7 +505,8 @@ def baue(ordner, ergebnis, spur, konfig):
                   newline="") as f:
             alt_text = f.read()
 
-    _bericht_voll(ordner, ergebnis, spur_name, aenderungen, alt_text)
+    _bericht_voll(ordner, ergebnis, spur_name, aenderungen, alt_text,
+                  hinweise=hinweise)
     (ordner / "bewertung.patch").write_text(patch, encoding="utf-8",
                                             newline="\n")
     (ordner / "commit.txt").write_text(

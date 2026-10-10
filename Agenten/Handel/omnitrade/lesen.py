@@ -204,13 +204,14 @@ def lauf(datei, jetzt_ms=None, prozess_pruefen=True):
     except (TypeError, ValueError):
         aus["kurs"] = None
     if prozess_pruefen:
-        if lage.get("state") != "running":
-            aus["fehler"] = "Zustand ist %r, nicht running" % lage.get("state")
-        elif not _lebt(aus["pid"]):
-            aus["fehler"] = ("PID %s aus der Statusdatei lebt nicht (Leiche mit "
-                             "state=running)" % aus["pid"])
-        else:
-            aus["laeuft"] = True
+        # Die Entscheidung kommt aus omnitrade_lauf.beurteile() - ZWEI Zeugen:
+        # PID lebt UND Statusdatei ist frisch genug. Eine Leiche mit
+        # state=running und toter PID faellt durch die PID-Pruefung; eine
+        # haengende Datei mit lebender PID faellt durch die Alterspruefung.
+        urteil = lauf_modul.beurteile(lage, lebt=_lebt)
+        aus["laeuft"] = urteil["laeuft"]
+        if not urteil["laeuft"]:
+            aus["fehler"] = urteil["grund"]
     else:
         aus["laeuft"] = lage.get("state") == "running"
     aus["verkauf"] = letzter_verkauf(lage)

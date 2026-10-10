@@ -261,7 +261,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: true
-_config_version: 49
+_config_version: 50
 a2a_agents:
   omniroute:
     auth:
@@ -368,12 +368,19 @@ known_plugin_toolsets:
   webhook:
     - homeassistant
 mcp_servers:
+  # OKX Agent Trade Kit, nur DEMO. Aus, bis ~/.okx/config.toml ein Profil demo (demo = true) hat. Nie --live.
+  okx-agentkit:
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\okx-agentkit\start-demo.cmd
+    args:
+      - --read-only
+    enabled: true
   affinity:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.canva.affinity\server\index.js
     command: node
     env:
       SSE_URL: http://localhost:6767/sse
+    enabled: false
   archiv:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\archiv_mcp.py
@@ -390,7 +397,7 @@ mcp_servers:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp\dist\index.js
     command: node
     env:
-      MCP_DXT: 'true'
+      MCP_DXT: "true"
       NODE_ENV: production
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
   kraken:
@@ -428,10 +435,10 @@ mcp_servers:
       - from windows_mcp.__main__ import main; main()
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.cursortouch.windows-mcp\.venv\Scripts\python.exe
     env:
-      ANONYMIZED_TELEMETRY: 'false'
+      ANONYMIZED_TELEMETRY: "false"
       MODE: local
-      WINDOWS_MCP_DEBUG: 'false'
-      WINDOWS_MCP_PROFILE_SNAPSHOT: 'true'
+      WINDOWS_MCP_DEBUG: "false"
+      WINDOWS_MCP_PROFILE_SNAPSHOT: "true"
       WINDOWS_MCP_SCREENSHOT_BACKEND: auto
   projectatlas:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe

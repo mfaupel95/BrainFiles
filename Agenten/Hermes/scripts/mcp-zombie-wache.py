@@ -50,6 +50,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+import os
 
 MAX_JE_GRUPPE = 6          # je Server-Gruppe; Normalbetrieb 1-3 je Client
 GESAMT = 24                # MCP-Server gesamt
@@ -81,7 +82,8 @@ def _powershell(skript: str) -> str | None:
     try:
         p = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", skript],
-            capture_output=True, text=True, timeout=90)
+            capture_output=True, text=True, timeout=90, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
     except Exception:                              # noqa: BLE001
         return None
     return (p.stdout or "").strip()
@@ -170,7 +172,8 @@ def _docker_laeuft() -> bool | None:
     """True/False; None = nicht feststellbar (kein Docker auf diesem Rechner)."""
     try:
         p = subprocess.run(["docker", "version", "--format", "{{.Server.Version}}"],
-                           capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
     except Exception:                              # noqa: BLE001
         return None
     return bool((p.stdout or "").strip()) and p.returncode == 0

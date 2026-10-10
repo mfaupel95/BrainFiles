@@ -17,7 +17,7 @@ use nautilus_model::{
 };
 use nautilus_trading::examples::strategies::EmaCross;
 use quant_signal::RankedBook;
-use quant_strategy::evidence::{EvidenceGate, Verdict, min_evidence_t};
+use quant_strategy::evidence::{EvidenceGate, Verdict, MIN_EVIDENCE_T};
 
 /// Bildet den t-Wert aus den gemessenen Werten des Produzenten.
 fn t_stat(book: &RankedBook) -> f64 {
@@ -92,7 +92,7 @@ fn main() -> Result<()> {
         book.evidence.folds,
         book.evidence.positive_folds
     );
-    println!("  t = {:.2} (Huerde {:.1})", t, min_evidence_t());
+    println!("  t = {:.2} (Huerde {:.1})", t, MIN_EVIDENCE_T);
 
     // 2. Die Engine entscheidet. Kein Modell, kein Score — nur die Zahl.
     match EvidenceGate::decide(&book.evidence) {

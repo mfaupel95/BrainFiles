@@ -108,6 +108,8 @@ class BelegeTest(TempWurzel):
         # einmal echt gekauft. Dann ist die Herkunft nicht belegbar.
         ordner = spur_anlegen(self.basis, "s", {"positionen": [pos()]})
         pfad = os.path.join(ordner, "zustand.json")
+        alt = os.path.getmtime(pfad) - mn.SCHONFRIST_S - 60
+        os.utime(pfad, (alt, alt))
         b = mn.datei_lauf("s", pfad, False)
         self.assertEqual(b["grund"], "")
         with open(os.path.join(ordner, "handelsjournal.csv"), "a",
@@ -118,14 +120,15 @@ class BelegeTest(TempWurzel):
         self.assertIn("live-Zeile", b["grund"])
 
     def test_juriger_zustand_wird_nicht_angefasst(self):
+        # Frisch angelegt (Alter ~0 s < SCHONFRIST_S): dort laeuft ein Zyklus,
+        # der Lauf darf die Datei nicht anfassen.
         ordner = spur_anlegen(self.basis, "s", {"positionen": [pos()]})
         pfad = os.path.join(ordner, "zustand.json")
-        alt = os.path.getmtime(pfad) - mn.SCHONFRIST_S - 60
-        os.utime(pfad, (alt, alt))
         b = mn.datei_lauf("s", pfad, True)
         self.assertEqual(b["geaendert"], 0)
+        self.assertIn("laeuft ein Zyklus", b["grund"])
         z = json.load(open(pfad, encoding="utf-8"))
-        self.assertIsNone(z["positionen"][0]["modus"])
+        self.assertIsNone(z["positionen"][0].get("modus"))
 
     def test_buch_modus_fehlt_heisst_papier(self):
         ordner = spur_anlegen(self.basis, "s", {"positionen": [pos()]})
@@ -173,7 +176,7 @@ class SchreibenTest(TempWurzel):
         b = mn.datei_lauf("s", pfad, True)
         self.assertTrue(os.path.isfile(b["sicherung"]))
         alt = json.load(open(b["sicherung"], encoding="utf-8"))
-        self.assertIsNone(alt["positionen"][0]["modus"])
+        self.assertIsNone(alt["positionen"][0].get("modus"))
 
     def test_idempotent(self):
         ordner = spur_anlegen(self.basis, "s", {"positionen": [pos()]})
@@ -212,14 +215,16 @@ class EchtesBuchTest(unittest.TestCase):
                              b["datei"].replace("zustand", "handelsjournal")
                              .replace(".json", ".csv"))))
 
-    def test_die_zwei_benoannten_positionen_sind_dabei(self):
-        """Der Befund der Karte: GENIUS (signalwelle) und BTC (marktlage)."""
+    def test_die_zwei_benoannten_positionen_sind_nicht_mehr_kandidaten(self):
+        """Der Befund der Karte: GENIUS (signalwelle) und BTC (marktlage) tragen
+        jetzt modus=papier (belegt an der Boerse nicht offen) - sie duerfen in
+        keinem Buch mehr als Kandidat ohne Herkunftsfeld auftauchen."""
         gefunden = set()
         for b in mn.lauf():
             for inst, _ in b.get("betroffen", []) or []:
                 gefunden.add((b["spur"], inst))
-        self.assertIn(("moondev_signalwelle", "GENIUS"), gefunden)
-        self.assertIn(("moondev_marktlage", "BTC"), gefunden)
+        self.assertNotIn(("moondev_signalwelle", "GENIUS"), gefunden)
+        self.assertNotIn(("moondev_marktlage", "BTC"), gefunden)
 
 
 if __name__ == "__main__":

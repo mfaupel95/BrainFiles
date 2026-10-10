@@ -129,6 +129,14 @@ Fertige Wahrheitstabelle fuer Fensterstile: `scripts/probe-stiller-start.ps1`.
   `git status --porcelain` (erste Spalte = vorgemerkt = fremd) und
   `git diff --cached --numstat` lesen. Sind fremde Pfade drin, mit eigenem
   `GIT_INDEX_FILE` (`git read-tree HEAD` + `git add <eigene>`) committen.
+- **PowerShell-JSON-Zeitstempel sind `/Date(ms)/`, kein ISO.** `ConvertTo-Json`
+  serialisiert `DateTime` als `/Date(1791388881211)/`; `datetime.fromisoformat()`
+  wirft darauf, und ein Waechter, der die Zeit in einer Schleife parst, ueberspringt
+  JEDES Ereignis still — Exit 0, leere Ausgabe, nie eine Meldung. Der Waechter
+  "laeuft", misst aber nichts. Fix: das ISO-Format schon in PowerShell erzeugen
+  (`@{n='TimeCreated';e={$_.TimeCreated.ToString('o')}}` im `Select-Object`),
+  nicht nachtraeglich in Python. Gegenprobe: Erstlauf ohne Merkdatei MUSS melden;
+  meldet er nichts, ist der Parser schuld, nicht der Markt.
 - **Die Uhr der Sandbox geht falsch.** Datum/Zeit fuer Notizen und Commits vom
   Host (`Get-Date`) oder aus `git log -1 --format=%ci` nehmen — sonst gilt
   eigene Arbeit als "ruhend" und wird als fremde committet.

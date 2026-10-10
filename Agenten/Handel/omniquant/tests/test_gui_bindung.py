@@ -106,5 +106,84 @@ class FormTest(unittest.TestCase):
                              "gui.py liest wieder %s" % feld)
 
 
+class TimerTest(unittest.TestCase):
+    """T-345: der 15-s-Timer darf im Leitstand nicht doppelt laufen.
+
+    OmniquantGui startet seinen Timer nur mit eigener_timer=True (Standalone).
+    Der OmniquantReiter uebergibt False - der Leitstand-Takt (5 s) ruft
+    _planer() ueber refresh() auf. Zwei Timer auf dieselbe Datei waeren eine
+    stille Last.
+    """
+
+    class _FakeRoot:
+        """Root ohne Tk: zeichnet after()-Aufrufe auf, tut sonst nichts."""
+
+        def __init__(self):
+            self.after_calls = []
+            self.title_calls = []
+            self.configure_calls = []
+            self.geometry_calls = []
+            self.minsize_calls = []
+
+        def after(self, ms, fn):
+            self.after_calls.append((ms, fn))
+            return "id-%d" % len(self.after_calls)
+
+        def title(self, s):
+            self.title_calls.append(s)
+
+        def configure(self, **kw):
+            self.configure_calls.append(kw)
+
+        def geometry(self, s):
+            self.geometry_calls.append(s)
+
+        def minsize(self, w, h):
+            self.minsize_calls.append((w, h))
+
+    def _gui_ohne_tk(self, root, eigener_timer):
+        """OmniquantGui ohne echte Tk-Widgets: _baue/refresh_daten gemockt."""
+        orig_baue = gui.OmniquantGui._baue
+        orig_refresh = gui.OmniquantGui.refresh_daten
+        gui.OmniquantGui._baue = lambda self: None
+        gui.OmniquantGui.refresh_daten = lambda self: None
+        try:
+            return gui.OmniquantGui(root, eigener_timer=eigener_timer)
+        finally:
+            gui.OmniquantGui._baue = orig_baue
+            gui.OmniquantGui.refresh_daten = orig_refresh
+
+    def test_standalone_startet_den_timer(self):
+        root = self._FakeRoot()
+        self._gui_ohne_tk(root, eigener_timer=True)
+        self.assertTrue(any(ms == gui.REFRESH_MS for ms, _ in root.after_calls),
+                        "Standalone muss den 15-s-Timer starten")
+
+    def test_leitstand_startet_keinen_timer(self):
+        root = self._FakeRoot()
+        self._gui_ohne_tk(root, eigener_timer=False)
+        self.assertFalse(root.after_calls,
+                         "Im Leitstand darf kein eigener Timer laufen (T-345)")
+
+    def test_planer_plant_nur_bei_eigenem_timer(self):
+        # _planer() ruft refresh_daten() -> _zeige() (echte Widgets) - mocken.
+        orig_refresh = gui.OmniquantGui.refresh_daten
+        gui.OmniquantGui.refresh_daten = lambda self: None
+        try:
+            root = self._FakeRoot()
+            g = self._gui_ohne_tk(root, eigener_timer=False)
+            root.after_calls.clear()
+            g._planer()  # darf keinen after() nachlegen
+            self.assertFalse(root.after_calls)
+
+            root2 = self._FakeRoot()
+            g2 = self._gui_ohne_tk(root2, eigener_timer=True)
+            root2.after_calls.clear()
+            g2._planer()
+            self.assertTrue(any(ms == gui.REFRESH_MS for ms, _ in root2.after_calls))
+        finally:
+            gui.OmniquantGui.refresh_daten = orig_refresh
+
+
 if __name__ == "__main__":
     unittest.main()

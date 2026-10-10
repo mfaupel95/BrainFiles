@@ -62,13 +62,22 @@ Anforderung (~25 statt ~14.700 Tokens je Anfrage). Ein Symlink des Fremd-Baums i
    die Hermes-Kopien vollständig), jeden Fund einer Zeile der Tabelle oben
    zuordnen. *Fertig, wenn* kein Fund aus einem Fremd-Baum stammt und jede der
    beiden Zielablagen einzeln aufgelistet ist.
-2. **Drift prüfen.** Je Bestandsskill `Get-FileHash` auf Vault und Kopie, Ergebnis
-   auf `gleich` / `abweichend` / `fehlt`. *Fertig, wenn* kein Bestandsskill ohne
-   Urteil bleibt.
+2. **Drift prüfen — mit dem Werkzeug, nicht mit dem Auge.**
+   `python Agenten/Hermes/scripts/skill-abgleich.py` bestimmt je Datei die
+   **Richtung** (`gleich` / `rueckstand` / `kopie_weiter` / `beidseitig` / `zu_jung`),
+   nicht nur gleich/ungleich. Ein reiner Hash-Vergleich genuegt hier nicht — er
+   sagt nur *dass* etwas abweicht, nie *wer* weiter ist. *Fertig, wenn* kein
+   Bestandsskill ohne Urteil bleibt und der Lauf mit Code 0 endet.
 3. **Sichern.** Jede Kopie, die ersetzt wird, vorher nach
    `Agenten/Hermes/.sicherung/skills-import-<JJJJMMTT>/<name>/` kopieren.
    *Fertig, wenn* jede ersetzte Datei dort liegt.
-4. **Richtung prüfen, dann kopieren.** Bei jeder *abweichenden* Kopie zuerst
+4. **Richtung prüfen, dann kopieren.** `skill-abgleich.py` erledigt das: es
+   **sperrt** jede Kopie, die weiter ist als die Quelle oder juenger als 10
+   Minuten, und laesst sie unangetastet (Exit 1). Geschrieben wird nur
+   nachweislicher Rueckstand — mit `--anwenden`. Mit `--zusammenfuehren` wird
+   der Inhalt, den die Kopie voraus hat, zuerst in die Quelle nachgezogen
+   (Sicherung `.bak-<JJJJMMTT>`), erst dann kopiert.
+   Von Hand gilt derselbe Schritt: bei jeder *abweichenden* Kopie zuerst
    `Compare-Object` in **beide** Richtungen. Zeilen, die nur in der Quelle stehen,
    sind verpasster Nachzug. Zeilen, die nur in der Kopie stehen, sind Inhalt, den
    die Quelle nie bekommen hat — den **zuerst in die Quelle nachziehen**, sonst
@@ -204,6 +213,31 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
    JEDES Aufraeumen rot, obwohl nichts kaputt ist. Auf die REGEL pruefen (jeder Eintrag
    einer Klasse fehlt in der geladenen Liste UND steht in der Schlusszeile), dann haelt
    der Test auch die naechste Ausmistung aus.
+
+## Vor dem Ersetzen: Richtung und Historie lesen
+
+Ein Abgleich ist die einzige Stelle im Haus, an der ein Werkzeug Inhalt **loeschen**
+kann, und zwar still. Zwei Pruefungen, bevor irgendetwas kopiert wird:
+
+1. **Beide Richtungen vergleichen, nie nur den Hash.** Ein Hash sagt nur *dass*
+   etwas abweicht, nicht *wer* weiter ist. `Compare-Object` in beide Richtungen:
+   Zeilen nur in der Quelle = verpasster Nachzug; Zeilen nur in der Kopie = Inhalt,
+   den die Quelle nie bekam. Der zweite Fall ist der gefaehrliche.
+2. **`git log` der Zieldatei lesen, nicht nur den Arbeitsbaum.** Steht die Kopie in
+   Git, verraet die Historie, ob die Abweichung *Nacharbeit* war (dann gehoert sie
+   zuerst in die Quelle) oder *Rueckstand* (dann wird sie ersetzt). Ohne diesen Blick
+   sieht beides gleich aus.
+
+**Belegter Fall (07.10.2026).** Der Abgleich setzte drei Hermes-Kopien auf den alten
+Vault-Stand zurueck. In `rueckschau/sitzungen_auswerten.py` verschwanden dabei 15.678
+Bytes (23.949 -> 8.271): die Option `--umwege` und die zweite Quelle `state.db` —
+also genau die Arbeit, die einen Tag vorher als **T-229 erledigt** belegt worden war.
+Auch `skill/SKILL.md` verlor eine Regel. Die Hashes waren vorher wie nachher sauber,
+kein Fehler, keine Meldung. Der Skill `rueckschau` beschrieb danach Optionen, die
+sein eigenes Skript nicht mehr hatte.
+
+**Regel.** Eine Abweichung ist erst dann ein Rueckstand, wenn die Historie es sagt.
+Ist die Kopie weiter als die Quelle: **erst die Quelle nachziehen, dann kopieren.**
 
 ## Fallen
 

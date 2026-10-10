@@ -57,7 +57,7 @@ class EinheitAusBuchTest(unittest.TestCase):
 
     def test_andere_spuren_bleiben_in_der_tabelle(self):
         self.assertEqual(aw.einheit_fuer("nautilus_kraken", {}), "EUR")
-        self.assertEqual(aw.einheit_fuer("scanner", {}), "USD")
+        self.assertEqual(aw.einheit_fuer("scanner", {}), "USDC")
         self.assertEqual(aw.einheit_fuer("gitter", {}), "USD")
 
 

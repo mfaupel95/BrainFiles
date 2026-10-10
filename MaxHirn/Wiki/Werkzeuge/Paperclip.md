@@ -188,8 +188,31 @@ und `environments`). Blockiert wird nur bei `status: fail` oder der Prüfung
   können Paperclip-Agenten nicht arbeiten — im Haus wären OmniRoute (127.0.0.1:20128) oder
   Ollama die Wege.
 - **Kein Autostart.** Der Start-Wrapper existiert, eine geplante Aufgabe (Hausmuster) fehlt.
-- **`.env` im Home ist eine Falle** für jedes Werkzeug, das dort gestartet wird — sie enthält
+- **`.env` im Home ist eine Falle** für jedes Werkzeug, das dort gestartert wird — sie enthält
   Schlüssel und überschreibt nichts ahnende Prozesse. Absichtlich nicht angefasst.
+
+## Funktionstest 06.10.2026 (T-253/T-254)
+
+Durchlauf im Trockenmodus (keine echten Orders, keine Live-Aktionen):
+
+| Schritt | Ergebnis |
+|---|---|
+| `paperclipai --version` | `2026.916.1` |
+| `paperclipai doctor` | 10 passed, 2 warnings (Port 3100 belegt, key file permissions 666) |
+| Server-Start (`paperclipai run` aus `~/.paperclip`) | HTTP 200 nach ~3 Minuten |
+| `GET /api/companies` | 1 Company (`maks.sound`, `9a5aa980-...`) |
+| `GET /api/companies/.../environments` | 1 Environment (`Local`, `131b9d1a-...`) |
+| `POST .../adapters/claude_local/test-environment` | `status: fail` — `claude_hello_probe_auth_required` |
+
+**Einziger offener Punkt:** Der Claude-ACP-Server ist vorhanden und konfiguriert
+(`claude_oauth_token_configured`, `claude_acp_command_resolvable`), aber es fehlt eine
+Claude-Login-Sitzung auf dem Host. Das ist keine Paperclip-Fehler, sondern eine
+Umgebungsvoraussetzung — `claude login` im Terminal wäre der nächste Schritt.
+
+**Nicht getestet (erfordert Max' Entscheidung):**
+- Board-Anmeldung der CLI (`paperclipai connect --persona board`)
+- LLM-Provider-Eintrag (OmniRoute oder Ollama)
+- Autostart (geplante Aufgabe für den Wrapper)
 
 ## Aufrufbeispiele
 

@@ -194,6 +194,7 @@ command_allowlist:
   - script execution via heredoc
 plugins:
   enabled:
+    - okx-a2a
     - everything-claude-code
     - homeassistant
     - one-skill-to-rule-them-all
@@ -222,7 +223,9 @@ onboarding:
     tool_progress_prompt: true
 telemetry:
   shared_metrics:
-    enabled: false
+    enabled: true
+    send: false
+    offer_version: 2
 updates:
   pre_update_backup: quick
   backup_keep: 5
@@ -235,7 +238,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: false
-_config_version: 49
+_config_version: 50
 a2a_agents:
   omniroute:
     auth:
@@ -348,15 +351,18 @@ mcp_servers:
     command: node
     env:
       SSE_URL: http://localhost:6767/sse
+    enabled: false
   archiv:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\archiv_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\.venv\Scripts\python.exe
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv
   blender:
     args:
       - -c
       - from blmcp import main; main()
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.blender.blender-mcp\.venv\Scripts\python.exe
+    enabled: false
   desktop-commander:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp\dist\index.js
@@ -364,10 +370,12 @@ mcp_servers:
     env:
       MCP_DXT: "true"
       NODE_ENV: production
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
   kraken:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\kraken_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
@@ -382,6 +390,7 @@ mcp_servers:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.revolut-engineering.revolut-x-api\dist\index.js
     command: node
+    enabled: false
   tooluniverse:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src\run_stdio.py
@@ -390,6 +399,7 @@ mcp_servers:
       PYTHONIOENCODING: utf-8
       PYTHONPATH: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src
       TOOLUNIVERSE_STDIO_MODE: '1'
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp
   windows-mcp:
     args:
       - -c

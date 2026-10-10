@@ -1,0 +1,75 @@
+/* dashboard/static/style.css */
+:root {
+  --base:    #1e1e2e;
+  --mantle:  #181825;
+  --crust:   #11111b;
+  --surface0: #313244;
+  --surface1: #45475a;
+  --overlay0: #6c7086;
+  --text:    #cdd6f4;
+  --subtext: #bac2de;
+  --blue:    #89b4fa;
+  --green:   #a6e3a1;
+  --yellow:  #f9e2af;
+  --red:     #f38ba8;
+  --mauve:   #cba6f7;
+  --sky:     #89dceb;
+  --font:    "JetBrains Mono", "Cascadia Code", monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--base);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+nav {
+  background: var(--mantle);
+  padding: 0.5rem 1rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  border-bottom: 1px solid var(--surface0);
+}
+
+nav a {
+  color: var(--subtext);
+  text-decoration: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+nav a:hover, nav a.aktiv { background: var(--surface0); color: var(--text); }
+
+main { padding: 1rem 1.5rem; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+th { background: var(--mantle); color: var(--subtext); text-align: left; padding: 0.4rem 0.6rem; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--surface0); }
+tr:hover td { background: var(--surface0); }
+
+.status-ok     { color: var(--green); }
+.status-veraltet { color: var(--yellow); }
+.status-nicht_konfiguriert { color: var(--overlay0); }
+.status-fehler { color: var(--red); }
+
+.btn { background: var(--surface0); color: var(--text); border: none; padding: 0.3rem 0.8rem;
+       border-radius: 4px; cursor: pointer; font-family: var(--font); font-size: 13px; }
+.btn:hover { background: var(--surface1); }
+.btn-rot { background: var(--red); color: var(--base); }
+.btn-rot:hover { opacity: 0.85; }
+
+pre.log { background: var(--mantle); padding: 0.75rem; border-radius: 6px;
+          overflow: auto; max-height: 400px; font-size: 12px; }
+
+h1 { font-size: 1.1rem; color: var(--blue); margin-bottom: 0.75rem; }
+h2 { font-size: 0.95rem; color: var(--subtext); margin: 1rem 0 0.5rem; }
+
+.befund { background: var(--mantle); border-left: 3px solid var(--yellow);
+          padding: 0.6rem 1rem; margin-bottom: 0.5rem; border-radius: 0 4px 4px 0; }
+.status-unbekannt { color: var(--peach, var(--yellow)); }

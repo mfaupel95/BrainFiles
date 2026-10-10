@@ -24,6 +24,11 @@
 # nichts von dem, was unten freigegeben ist.
 !*/
 
+# Arbeitsbaeume paralleler Agenten (git worktree add .worktrees/<name>, siehe
+# CLAUDE.md, Abschnitt Zweige). Muss NACH '!*/' stehen: sonst macht diese Zeile
+# den Ordner wieder sichtbar und er erscheint als 'untracked'.
+.worktrees/
+
 # --- 3) Der Kopf des Systems ------------------------------------------------
 # Die beiden Git-Steuerdateien zuerst: ohne diese Freigabe faengt die Regel in
 # Zeile 24 sie selbst mit ein, und ausgerechnet die Regeln waeren nicht
@@ -35,6 +40,9 @@
 !/*.md
 !MaxHirn/*.md
 !MaxHirn/Wissen/**/*.md
+# KB-Datenpipeline: Metriken-JSON (geschrieben von kb-metriken-sync.ps1,
+# gelesen vom Cloud-Agenten taeglich). Bewusst JSON, kein Markdown.
+!MaxHirn/Wissen/KB/data/*.json
 !MaxHirn/Wiki/**/*.md
 !MaxHirn/.claude/skills/**
 !MaxHirn/.claude/agents/**
@@ -107,10 +115,25 @@ Agenten/Handel/stand/
 # Ohne diese Zeile faengt die Regel in Zeile 20 sie mit ein, und eine
 # Aenderung an der Live-Verdrahtung waere ohne ihren Nachweis im Verlauf.
 !Agenten/Handel/scanner/tests/*.py
+# scanner_quant (07.10.2026): Quant-Urteil + Scanner-Kopie. Nur Text und Tests;
+# berichte/ bleibt ausserhalb (Laufzeitstand).
+!Agenten/Handel/scanner_quant/
+!Agenten/Handel/scanner_quant/*.py
+!Agenten/Handel/scanner_quant/*.md
+!Agenten/Handel/scanner_quant/*.json
+!Agenten/Handel/scanner_quant/tests/
+!Agenten/Handel/scanner_quant/tests/*.py
 !Agenten/Handel/xperp/*.py
 !Agenten/Handel/xperp/*.md
 !Agenten/Handel/xperp/*.json
 !Agenten/Handel/xperp/tests/*.py
+# Web-Dashboard (FastAPI/HTMX), Spec Werkstatt/spec-dashboard-web-2026-10-10.md
+!Agenten/Handel/dashboard/*.py
+!Agenten/Handel/dashboard/*.txt
+!Agenten/Handel/dashboard/*/*.py
+!Agenten/Handel/dashboard/templates/*.html
+!Agenten/Handel/dashboard/static/*.css
+!Agenten/Handel/tests/test_dashboard/*.py
 # Der OKX-Bot-Waechter ist ein WERKZEUG, kein Handelsbuch: Code, Wachen,
 # Doku und Tests gehoeren in den Verlauf. Zustand, Protokoll und Vorschlaege
 # bleiben draussen (Sperrliste unten) - ein Vorschlag traegt einen echten
@@ -177,6 +200,9 @@ Agenten/Handel/stand/
 !Agenten/Handel/kopier/*.md
 !Agenten/Handel/kopier/wachen.json
 !Agenten/Handel/kopier/tests/*.py
+# Fremd-Signal-Tor (Wache fuer Signale aus kraken-cli/agent-trade-kit): Wache in den Verlauf.
+!Agenten/Handel/fremd_signale/wachen.json
+!Agenten/Handel/fremd_signale/*.py
 !Agenten/Handel/orb/*.py
 !Agenten/Handel/orb/*.md
 !Agenten/Handel/orb/*.json
@@ -249,6 +275,9 @@ Agenten/Handel/stand/
 !Agenten/Handel/verbesserer/*.py
 !Agenten/Handel/verbesserer/*.md
 !Agenten/Handel/verbesserer/*.json
+# Laufzeitzustand von Spur 2 (Merkmals-Cache ~23 MB, Holdout-Zaehler): nie versionieren.
+Agenten/Handel/verbesserer/xperp_merkmale.json
+Agenten/Handel/verbesserer/xperp_holdout_nutzung.json
 !Agenten/Handel/verbesserer/requirements.txt
 !Agenten/Handel/verbesserer/tests/*.py
 !Agenten/Handel/verbesserer/tests/fixtures/*.csv
@@ -272,6 +301,7 @@ Agenten/Bus/skillsbot.ziel.json
 !Agenten/MCP-Server/mail/**
 !Agenten/MCP-Server/kraken/**
 !Agenten/MCP-Server/archiv/**
+!Agenten/MCP-Server/okx/**
 
 # --- 6) Konfiguration, die Verhalten steuert --------------------------------
 !MaxHirn/.mcp.json
@@ -332,6 +362,9 @@ Agenten/Handel/kraken/berichte/**
 # Hand und oben freigegeben, diese drei schreibt jeder Lauf.
 Agenten/Handel/xperp/zustand.json
 Agenten/Handel/xperp/handelsjournal.csv
+# carry.py: kein Orderweg, aber Zustand + Ergebnis je Lauf
+Agenten/Handel/carry/zustand.json
+Agenten/Handel/carry/handelsjournal.csv
 Agenten/Handel/xperp/berichte/**
 
 # SWAP-Spur: dieselbe Aufteilung wie bei den Spuren 1-3. wachen.json ist
@@ -479,6 +512,7 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Hermes/profiles/
 !Agenten/Hermes/profiles/*/
 !Agenten/Hermes/profiles/*.md
+!Agenten/Hermes/profiles/mcp-abweichungen.yaml
 # dann die Dateien
 !Agenten/Hermes/profiles/*/config.yaml
 !Agenten/Hermes/profiles/*/profile.yaml
@@ -624,6 +658,12 @@ Agenten/Hermes/automatik/spez/inventar.md
 # Fehlerquelle statt eine Loesung. Die Tests gehoeren in dieselbe Freigabe.
 !Agenten/Werkzeuge/zweige.py
 !Agenten/Werkzeuge/tests/test_zweige.py
+# MCP-Bloecke der Profile aus der Haupt-Config erzeugen (07.10.2026), Tests inklusive.
+!Agenten/Werkzeuge/mcp-profile-sync.py
+!Agenten/Werkzeuge/tests/test_mcp_profile_sync.py
+# MCP-Manifest: Quelle fuer den Abgleich Hermes <-> Claude Desktop (mcp-sync-check.ps1).
+# Enthaelt Pfade und Argumente, KEINE Schluessel - vor dem ersten Commit pruefen.
+!Agenten/MCP-Manifest.json
 !Agenten/Werkzeuge/marktdaten.py
 !Agenten/Werkzeuge/fenster_design.py
 !Agenten/Werkzeuge/hermes-gateway-task-deaktivieren.ps1
@@ -884,6 +924,7 @@ Agenten/Handel/nautilus/
 !Agenten/Handel/nautilus-rust/Cargo.toml
 !Agenten/Handel/nautilus-rust/Cargo.lock
 !Agenten/Handel/nautilus-rust/*.md
+!Agenten/Handel/nautilus-rust/*.ps1
 !Agenten/Handel/nautilus-rust/*/Cargo.toml
 !Agenten/Handel/nautilus-rust/*/src/*.rs
 !Agenten/Handel/docs/
@@ -1032,6 +1073,7 @@ Agenten/Handel/prophet_signal/handelsjournal.csv
 # Platte und die Regel im AGENTS.md verweist ins Leere.
 !Agenten/BEREICHE.json
 !Agenten/Werkzeuge/bereiche.py
+!.githooks/pre-commit
 !Agenten/FREMD.md
 !Agenten/Werkzeuge/fremd.py
 !Agenten/Werkzeuge/bestand.py

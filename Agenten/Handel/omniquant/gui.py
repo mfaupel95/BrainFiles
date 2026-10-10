@@ -132,8 +132,9 @@ def kurs_fmt(wert):
 class OmniquantGui:
     """Tk-Ansicht der Papierspur. Kein Schreibzugriff auf Spurdateien."""
 
-    def __init__(self, root):
+    def __init__(self, root, eigener_timer=True):
         self.root = root
+        self.eigener_timer = eigener_timer
         self.q_kurse = queue.Queue()
         self.q_chart = queue.Queue()
         self.kurse = {}          # inst -> kurs (Stand des letzten Worker-Laufs)
@@ -151,7 +152,8 @@ class OmniquantGui:
         root.minsize(840, 560)
         self._baue()
         self.refresh_daten()
-        root.after(REFRESH_MS, self._planer)
+        if eigener_timer:
+            root.after(REFRESH_MS, self._planer)
 
     # ---------- Aufbau ----------
     def _baue(self):
@@ -339,7 +341,12 @@ class OmniquantGui:
         self.q_kurse.put(neu)
 
     def _planer(self):
-        """Naechster Refresh; wertet abgelieferte Kurse/Charts aus."""
+        """Naechster Refresh; wertet abgelieferte Kurse/Charts aus.
+
+        Im Leitstand (eigener_timer=False) plant er den naechsten Timer NICHT
+        selbst - der Leitstand-Takt (5 s) ruft ihn ueber refresh() auf. Sonst
+        liefen zwei Timer auf dieselbe Datei (T-345).
+        """
         try:
             while True:
                 neu = self.q_kurse.get_nowait()
@@ -348,7 +355,8 @@ class OmniquantGui:
             pass
         self._chart_ergebnis()
         self.refresh_daten()
-        self.root.after(REFRESH_MS, self._planer)
+        if self.eigener_timer:
+            self.root.after(REFRESH_MS, self._planer)
 
     # ---------- Chart ----------
     def _gewaehlt(self, _event=None):
@@ -603,7 +611,9 @@ class OmniquantReiter(ttk.Frame):
     def __init__(self, eltern, leitstand):
         super().__init__(eltern)
         self.ls = leitstand
-        self._gui = OmniquantGui(self)
+        # eigener_timer=False: der Leitstand-Takt (5 s) ruft _planer() ueber
+        # refresh() auf - sonst liefen zwei Timer auf dieselbe Datei (T-345).
+        self._gui = OmniquantGui(self, eigener_timer=False)
 
     # Stubs fuer Fenster-Aufrufe aus OmniquantGui.__init__
     def title(self, s=None):
@@ -622,13 +632,13 @@ class OmniquantReiter(ttk.Frame):
             super().configure(**kwargs)
 
     # Leitstand-Interface (OmniquantGui hat eigenen 15-s-Timer)
+    # Leitstand-Interface (der 15-s-Timer ist im Leitstand abgeschaltet)
     def refresh(self):
-        # F5 auf diesem Reiter soll etwas tun: die Daten neu lesen. Der
-        # Kurs-Worker laeuft weiter (OmniquantGui.startet ihn bei jedem
-        # refresh_daten selbst und beendet seinen Vorgaenger), der Chart
-        # wird dadurch neu aufgebaut.
+        # Der Leitstand-Takt (5 s) ruft _planer() - das wertet die
+        # Kurs-/Chart-Queues aus UND liest die Daten neu. refresh_daten()
+        # allein wuerde den Chart nie zeichnen (T-345).
         try:
-            self._gui.refresh_daten()
+            self._gui._planer()
         except Exception:                       # noqa: BLE001
             # Ein Fehler darf den Leitstand nicht mitnehmen - der Timer
             # des Reiters laeuft weiter und der Naechste ist wieder da.
