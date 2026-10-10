@@ -14,7 +14,7 @@ Vertrag steht im Hermes-Skill `fremdrepos-signal`; Code dazu fehlte (dessen "Nae
 
 ## Was NICHT drin ist
 - Keine bestehende Spur und keine bestehende `wachen.json` geaendert; keine Ausfuehrung, kein Orderweg.
-- Keine Verbindung zwischen Tor und Bus (Signale werden geprueft und journalisiert, nicht automatisch durchs Tor geschickt).
+- Das Tor ist mit dem Bus verbunden: `melden_signal` schickt jedes Signal durchs Tor; ohne Wache oder bei zu = verworfen und so journalisiert. Es wird weiterhin nichts ausgefuehrt.
 - Kein Stop im Signal: die Stop-Pflicht greift in der Ausfuehrungsspur, die es fuer Fremd-Signale noch nicht gibt.
 
 ## Tests (alle gruen)
