@@ -749,6 +749,21 @@ Agenten/Hermes/profiles/*/pairing/**
 Agenten/Hermes/profiles/*/home/**
 Agenten/Hermes/profiles/*/workspace/**
 Agenten/Hermes/profiles/*/skills/**
+# Profil-Skills (T-379, 11.10.2026): gepflegte Lehren in Bot-Profilen bekommen
+# Git-Historie. NUR SKILL.md (2529 Dateien, 23,7 MB) - die uebrigen .md
+# (README/Hilfsdateien, 88,5 MB gesamt) blaehen nur auf. Cache-Ordner bleiben
+# gesperrt (spaetere Regel gewinnt).
+!Agenten/Hermes/profiles/*/skills/
+!Agenten/Hermes/profiles/*/skills/**/
+!Agenten/Hermes/profiles/*/skills/**/SKILL.md
+Agenten/Hermes/profiles/*/skills/**/.sicherung-junctions/
+Agenten/Hermes/profiles/*/skills/**/.hub/
+Agenten/Hermes/profiles/*/skills/**/.curator_backups/
+Agenten/Hermes/profiles/*/skills/**/.archive/
+Agenten/Hermes/profiles/*/skills/.usage.json
+Agenten/Hermes/profiles/*/skills/.curator_ledger.jsonl
+Agenten/Hermes/profiles/*/skills/.curator_state
+Agenten/Hermes/profiles/*/skills/.locks/
 Agenten/Hermes/state-snapshots/**
 Agenten/Hermes/cache/**
 Agenten/Hermes/logs/**
