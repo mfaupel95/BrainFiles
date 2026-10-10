@@ -73,15 +73,17 @@ class TorTest(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("stale", grund)
 
-    def test_mitgelieferte_wachen_json_hat_das_tor_zu(self):
+    def test_mitgelieferte_wachen_json_ist_sicher(self):
+        # Tor am 11.10.2026 auf Max' Ansage geoeffnet; geprueft werden die Garantien, nicht der Zustand.
         p = os.path.join(HIER, "..", "fremd_signale", "wachen.json")
         with open(p, encoding="utf-8") as f:
             w = json.load(f)
-        self.assertIs(w["fremd_signale_erlaubt"], False)
+        self.assertIsInstance(w["fremd_signale_erlaubt"], bool)
         self.assertNotIn("live", w["modi_erlaubt"])
-        ok, grund = ft.entscheide(sig(), w, JETZT)
+        self.assertTrue(set(w["modi_erlaubt"]) <= {"paper", "demo"})
+        self.assertTrue(0 < w["pflicht_stop_prozent_min"] <= w["stop_prozent"] <= w["pflicht_stop_prozent_max"])
+        ok, _ = ft.entscheide(sig(mode="live"), w, JETZT)
         self.assertFalse(ok)
-        self.assertIn("Tor", grund)
 
     def test_laden_schliesst_bei_kaputter_datei(self):
         self.assertIsNone(ft.lade(os.path.join(HIER, "gibt_es_nicht.json")))
