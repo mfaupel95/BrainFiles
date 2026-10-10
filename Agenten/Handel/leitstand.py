@@ -8,7 +8,7 @@ drei Stellen, und keine davon liegt in diesem Rahmen:
 Der Rahmen selbst schreibt nur leitstand_zustand.json, ueber
 leitstand_bedienung.Zustand.
 
-Tastatur: Strg+1..7 Reiter, F5 sichtbaren Reiter auffrischen, Strg+Plus/Minus
+Tastatur: Strg+1..8 Reiter, F5 sichtbaren Reiter auffrischen, Strg+Plus/Minus
 Schrift. Notaus, Freigeben und Urteile eintragen haben bewusst KEIN Kuerzel.
 
 Aufruf:  python leitstand.py
@@ -23,6 +23,7 @@ import leitstand_stil as stil
 from leitstand_backtests import BacktestReiter
 from leitstand_bedienung import Zustand, lage_gueltig, virtueller_schirm
 from leitstand_freigaben import FreigabenReiter
+from leitstand_freqtrade import FreqtradeReiter
 from leitstand_markt import MarktReiter
 from leitstand_nautilus import NautilusReiter
 from leitstand_prozesse import ProzessReiter
@@ -43,6 +44,7 @@ KUERZEL = {
     "<Control-Key-5>": ("reiter", 4),
     "<Control-Key-6>": ("reiter", 5),
     "<Control-Key-7>": ("reiter", 6),
+    "<Control-Key-8>": ("reiter", 7),
     "<F5>": ("auffrischen", None),
     "<Control-plus>": ("schrift", 1),
     "<Control-KP_Add>": ("schrift", 1),
@@ -56,7 +58,7 @@ KUERZEL = {
 # weiterlaeuft. Sie gehoeren in TAKT_SICHTBAR: nur der sichtbare Reiter taktet,
 # kein Netz im Hintergrund.
 TAKT_IMMER = {"Freigaben"}         # Titel "Freigaben (n)" und Blinken auch im Hintergrund
-TAKT_SICHTBAR = {"Markt", "Omniquant", "Nautilus", "Prozesse"}
+TAKT_SICHTBAR = {"Markt", "Omniquant", "Nautilus", "Prozesse", "FreqTrade"}
 
 
 class UeberwachenReiter(ttk.Frame):
@@ -83,7 +85,8 @@ REITER = [("Überwachen", UeberwachenReiter),
           ("Markt", MarktReiter),
           ("Omniquant", OmniquantReiter),
           ("Nautilus", NautilusReiter),
-          ("Prozesse", ProzessReiter)]
+          ("Prozesse", ProzessReiter),
+          ("FreqTrade", FreqtradeReiter)]
 
 
 def pid_aus_datei(pfad):

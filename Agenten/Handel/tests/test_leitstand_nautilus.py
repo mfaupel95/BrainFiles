@@ -153,9 +153,11 @@ class ReiterMitAttrappe(unittest.TestCase):
 
 class Verdrahtung(unittest.TestCase):
     def test_der_reiter_haengt_am_rahmen(self):
-        self.assertIs(lst.REITER[-1][1], ln.NautilusReiter)
-        self.assertEqual(lst.REITER[-1][0], "Nautilus")
-        self.assertEqual(lst.KUERZEL["<Control-Key-6>"], ("reiter", len(lst.REITER) - 1))
+        # Ueber den Titel, nicht ueber die Position: seit Prozesse (7) und
+        # FreqTrade (8, 10.10.2026) ist Nautilus nicht mehr der letzte Reiter.
+        i = [t for t, _k in lst.REITER].index("Nautilus")
+        self.assertIs(lst.REITER[i][1], ln.NautilusReiter)
+        self.assertEqual(lst.KUERZEL["<Control-Key-%d>" % (i + 1)], ("reiter", i))
 
     def test_alle_reiter_haben_die_schnittstelle(self):
         for titel, klasse in lst.REITER:
