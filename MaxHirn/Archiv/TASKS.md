@@ -1,6 +1,12 @@
 ## Offen
 
 
+- [ ] **T-388 - Dateischwund-Wache auf den ganzen Baum erweitert: dateischwund-wache-baum.py (10.10.2026)**
+      Kontext: Die bestehenden Wachen deckten nur Agenten/Hermes/scripts (dateischwund-wache.py) und Agenten/Handel (dateischwund-wache-handel.py) ab. Der T-100-Fall (versionierte Datei verschwindet, fremdarbeit-einziehen committet die Loeschung) kann ueberall passieren. BEHOBEN: neue dateischwund-wache-baum.py prueft die VERSIONIERTE TEXTEbene des ganzen Baums (git ls-files, ~2844 Dateien, Laufzeit 1,2s - kein rglob ueber .venv/daten). Git-Soll + Merkliste + Leer-Erkennung, meldet nur bei Auffaelligkeit, Ruhe 6h. Merge 23a0c844. Cron 6f11866c3c05 (alle 15m, no_agent). Gegenprobe: versionierte Datei geloescht -> Git-Soll-Befund.
+      Naechster Schritt: beobachten. Nicht-versionierte Dateien in kritischen Ordnern bleiben den beiden Einzel-Wachen ueberlassen (Arbeitsteilung).
+      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
+      Betrifft: Agenten/Hermes/scripts/dateischwund-wache-baum.py
+
 - [ ] **T-387 - Worktree-Fehler-Wache gebaut: zweige.py Lage-Pruefung + zweige-wache.py Cron (10.10.2026)**
       Kontext: Am 10.10.2026 lagen zwei Worktrees im HAUPTBAUM statt unter `.worktrees/` (Agenten/.claude/worktrees/sweet-heisenberg-85efc5, init-4ede6f), einer detached HEAD (push-noema). Keine Wache meldete das. BEHOBEN: `zweige.py` weist jetzt drei Worktree-Fehlerklassen aus (Lage nicht unter .worktrees/, detached HEAD, verwaister Eintrag); neue `zweige-wache.py` (no_agent-Cron, alle 6h, meldet nur bei Auffaelligkeit, Ruhe 6h). Merge 21a703ca. Cron d8f8ceba4ba2.
       Naechster Schritt: beobachten - die Wache meldet init-4ede6f (verwaister Eintrag im Hauptbaum) bis er aufgeraeumt ist. Aufraeumen: python Agenten/Werkzeuge/zweige.py --entfernen.
