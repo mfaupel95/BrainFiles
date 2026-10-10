@@ -36,6 +36,8 @@ Journal-Forensik (FIFO-Paarung, Kapitalkurve, Boersenzeugen, Geister-Regel).
 - Verdacht auf Geister-Positionen: Journal zeigt Positionen, die Boerse nicht
 - nach einem Boersen-/Handgriff-Abgleich verschwinden Buchpositionen
 - Vor einer Live-Empfehlung kapitalrelevanter Zahlen (excess, kill, ratsche)
+- "Journal leert sich / weniger Runden" - die GEGENrichtung: erst pruefen, ob
+  es die dokumentierte Bereinigung ist, bevor Datenverlust angenommen wird
 
 ## Prerequisites
 
@@ -223,6 +225,17 @@ Danach die volle Spur-Suite (hier 184) und Bedingung 4 (Q: byte-gleich).
 - **Datum/Uhrzeit:** Die Session kann ueber Tage laufen - vor einer
   Zustandsaussage die Hostzeit pruefen (`Get-Date`), nicht den
   Sitzungsbeginn.
+- **"Journal leert sich" ist meist die dokumentierte Bereinigung, kein
+  Datenverlust.** `spur_buch.journal()` schreibt ausschliesslich mit `"a"`
+  (append) - ein Journal leert sich nie von selbst. Ein "leeres" Journal
+  (nur Kopfzeile, 80-254 B) ist eine Spur, die nie gehandelt hat, kein
+  Defekt. "Weniger Runden" in der Auswertung heisst: Phantom-Zeilen wurden
+  in `handelsjournal.verworfen-*.csv` verschoben (dokumentierte Forensik).
+  Diagnose-Reihenfolge, bevor ein Befund gemeldet wird: (1) existieren
+  `.verworfen-*.csv`-Dateien? (2) schreibt die Spur das Journal nur mit
+  `"a"`? (3) ist die Q:-Spiegelung byte-gleich? Erst wenn alle drei nein
+  sind, ist es ein echter Verlust. Die einzigen `"w"`-Schreiber sind
+  `replay.py` (Backtest-Ordner) und Tests (Temp-Ordner) - nie echte Spuren.
 
 ## Verification
 
