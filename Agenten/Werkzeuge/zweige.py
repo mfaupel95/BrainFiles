@@ -255,6 +255,26 @@ def worktrees(wurzelverz):
                              "sauber": True, "in_master": True,
                              "geaendert": 0, "klasse": BEHALTEN})
             continue
+        # VERWAIST-ERKENNUNG (10.10.2026): der Ordner kann weg sein, obwohl
+        # `os.path.isdir` True meldet - unter MSYS/git-bash loest Python den
+        # Pfad anders auf als nativ (gemessen 10.10.2026: init-4ede6f war
+        # nativ weg, isdir sagte True). Der robuste Zeuge ist `git -C <pfad>`
+        # selbst: schlaegt es fehl, ist der Eintrag verwaist. `git worktree
+        # prune` bereinigt solche Eintraege NICHT immer - also melden.
+        # ZWEI unabhaengige Zeugen, weil MSYS/git-bash Pfade anders aufloest
+        # als nativ (gemessen 10.10.2026: init-4ede6f war nativ weg, isdir
+        # sagte True). Einer von beiden schlaegt fehl -> verwaist.
+        probe = subprocess.run(["git", "-C", pfad, "rev-parse", "--git-dir"],
+                                capture_output=True, text=True, encoding="utf-8",
+                                errors="replace", timeout=TIMEOUT_S)
+        if probe.returncode != 0 or not os.path.isdir(pfad):
+            ergebnis.append({
+                "pfad": pfad, "zweig": zweig, "haupt": False, "kurz": "",
+                "sauber": True, "geaendert": 0, "in_master": False,
+                "lage_ok": False, "detached": zweig is None, "verwaist": True,
+                "klasse": BEHALTEN,
+            })
+            continue
         st = subprocess.run(["git", "-C", pfad, "status", "--porcelain"],
                             capture_output=True, text=True, encoding="utf-8",
                             errors="replace", timeout=TIMEOUT_S)
@@ -268,10 +288,20 @@ def worktrees(wurzelverz):
             anc = git("merge-base", "--is-ancestor", sha, "master",
                       cwd=wurzelverz, erlaube_fehler=True)
         in_master = bool(anc and anc.returncode == 0)
+        # LAGE-PRUEFUNG (10.10.2026): ein Worktree gehoert unter `.worktrees/`
+        # neben der Wurzel, NIE in den Hauptbaum hinein. Gemessen 10.10.2026:
+        # `Agenten/.claude/worktrees/sweet-heisenberg-85efc5` lag im Hauptbaum
+        # und blieb unentdeckt, bis er aufgeraeumt wurde. Ein Worktree im
+        # Hauptbaum ist ein Fehler, auch wenn er sauber ist.
+        wt_root = os.path.join(wurzelverz, ".worktrees")
+        lage_ok = _pfad_norm(pfad).startswith(_pfad_norm(wt_root))
+        # detached HEAD: ein Worktree ohne Zweig (branch-Zeile fehlt) ist
+        # ebenfalls ein Fehler - er gehoert zu einem Zweig.
+        detached = zweig is None
         ergebnis.append({
             "pfad": pfad, "zweig": zweig, "haupt": False, "kurz": sha[:8],
             "sauber": geaendert == 0, "geaendert": geaendert,
-            "in_master": in_master,
+            "in_master": in_master, "lage_ok": lage_ok, "detached": detached,
             "klasse": ENTFERNEN if (in_master and geaendert == 0) else BEHALTEN,
         })
     return ergebnis
@@ -347,6 +377,14 @@ def bericht(befunde, entwfernt=False):
             z.append("  %-46s %s  in master: %s | geaendert: %d -> %s"
                      % (w["pfad"], w.get("kurz"), "ja" if w["in_master"] else "NEIN",
                         w["geaendert"], w["klasse"]))
+            if not w.get("lage_ok", True):
+                z.append("      FEHLER: Worktree liegt NICHT unter .worktrees/ "
+                         "(gehoert neben die Wurzel, nicht in den Hauptbaum)")
+            if w.get("detached"):
+                z.append("      FEHLER: detached HEAD - Worktree gehoert zu einem Zweig")
+            if w.get("verwaist"):
+                z.append("      FEHLER: verwaister Worktree-Eintrag - Ordner fehlt, "
+                         "git registriert ihn noch (prune hat ihn nicht bereinigt)")
     if entwfernt:
         z.append("")
         z.append("ENTFERNT (%d): %s" % (len(befunde.get("entfernt", [])),
