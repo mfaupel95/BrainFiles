@@ -233,6 +233,7 @@ class AusstiegPrueftZuerstDieDeckungTest(unittest.TestCase):
 
         with mock.patch.object(lp, "stopdeckung_pruefen", deckung), \
                 mock.patch.object(lp, "markte_laden", lambda: 0), \
+                mock.patch.object(kp, "offene_positionen", return_value=[{"side": "long", "size": 61}]), \
                 mock.patch.object(kp, "letzter_kurs", kurs), \
                 mock.patch.object(
                     kp, "schutzstop_vorhanden",
@@ -240,6 +241,38 @@ class AusstiegPrueftZuerstDieDeckungTest(unittest.TestCase):
             lp.pruefe_ausstiege(_HandelnAttrappe(), {}, z)
         self.assertEqual(reihenfolge[0], "deckung",
                          "ohne Deckung ist die Kursabfrage verfrueht")
+
+    def test_geisterposition_wird_gemeldet_ohne_neuen_stop_oder_ausstieg(self):
+        p = _p()
+        z = {"positionen": [p]}
+        h = _HandelnAttrappe()
+        with mock.patch.object(kp, "offene_positionen", return_value=[]), \
+                mock.patch.object(lp, "stopdeckung_pruefen") as deckung, \
+                mock.patch.object(kp, "letzter_kurs", return_value=5.0) as kurs, \
+                mock.patch.object(kp, "markt_verkauf") as verkauf:
+            lp.pruefe_ausstiege(h, {}, z)
+        deckung.assert_not_called()
+        kurs.assert_not_called()
+        verkauf.assert_not_called()
+        self.assertEqual(z["positionen"], [p])
+        self.assertTrue(any("GEISTERPOSITION" in (r.get("grund") or "")
+                            for r in h.zeilen))
+
+    def test_mengenabweichung_wird_gemeldet_und_nicht_gehandelt(self):
+        p = _p()
+        h = _HandelnAttrappe()
+        z = {"positionen": [p]}
+        with mock.patch.object(kp, "offene_positionen",
+                               return_value=[{"side": "long", "size": 60}]), \
+                mock.patch.object(lp, "stopdeckung_pruefen") as deckung, \
+                mock.patch.object(kp, "letzter_kurs") as kurs, \
+                mock.patch.object(kp, "markt_verkauf") as verkauf:
+            lp.pruefe_ausstiege(h, {}, z)
+        deckung.assert_not_called()
+        kurs.assert_not_called()
+        verkauf.assert_not_called()
+        self.assertTrue(any("Boerse long 60" in (r.get("grund") or "")
+                            for r in h.zeilen))
 
     def test_papierpositionen_werden_nicht_geprueft(self):
         """Nur `modus: live` - eine Papierposition hat keinen Boersen-Stop."""
