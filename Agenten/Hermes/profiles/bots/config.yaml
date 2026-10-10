@@ -72,4 +72,5 @@ onboarding:
   seen:
     tool_progress_prompt: true
 command_allowlist:
+  - force kill processes (taskkill /F)
   - script execution via -e/-c flag

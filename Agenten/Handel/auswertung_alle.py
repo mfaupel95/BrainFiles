@@ -336,7 +336,28 @@ def runden_fuer(spur, z=None, gebuehr=None, stand=None):
     return []
 
 
-def kennzahlen_fuer(spur, von=None, bis=None):
+# AB WANN EIN JOURNAL ETWAS BELEGT. Der Scanner nahm bis zum 03.10.2026 als
+# Einstieg den Preis des Vortagesberichts statt des Marktkurses (Befund
+# scanner/BEFUND-einstiegspreis-20261003.md): Ziel lag beim Kauf schon im
+# Markt, ein Instrument wurde alle 15 Minuten neu gekauft und im "Ziel"
+# verkauft. Die Runden davor messen den Rechenfehler, nicht das Signal
+# (t = 15,3 bei Haltedauer-Median 0,0 Tage). Gilt der EINSTIEG vor diesem
+# Zeitpunkt, zaehlt die Runde nicht - auch wenn sie danach ausstieg, denn
+# der falsche Einstiegspreis steckt dann in ihrem Ergebnis. Zeitpunkt = Commit
+# 5c8dc582 (02.10.2026 22:23:13 UTC); der Dauerlauf startet das Skript je
+# Zyklus neu, die Wirkung setzte also binnen Minuten ein.
+# `--alles` schaltet den Filter ab (Vergleich mit den alten Zahlen).
+GUELTIG_AB = {"scanner": "2026-10-02T22:23:13+00:00"}
+
+
+def _vor_fix(r, grenze):
+    """Gehoert die Runde in die Fehlerzeit? Ohne lesbare Einstiegszeit: ja -
+    ihre Unschuld ist nicht belegbar (gleiche Linie wie zeitfenster)."""
+    d = zeitfenster.parse(r.get("einstieg_zeit"))
+    return d is None or d < grenze
+
+
+def kennzahlen_fuer(spur, von=None, bis=None, nur_gueltige=True):
     """Die Kennzahlen EINER Spur - Zuordnung Spur -> Rechenweg an EINER Stelle.
 
     Der Weg stand bis zum 15.09.2026 nur in `main()`. Ein zweiter Aufrufer
@@ -345,6 +366,10 @@ def kennzahlen_fuer(spur, von=None, bis=None):
     `main()` und `befehle.py` rufen jetzt beide diese Funktion.
 
     von/bis mit Vorgabe None: ohne Angabe bleibt alles wie vorher.
+
+    nur_gueltige: Runden, deren Einstieg vor `GUELTIG_AB[spur]` liegt, werden
+    nicht mitgerechnet, aber AUSGEWIESEN (`paarung["vor_fix"]`, `"vor_fix_ergebnis"`).
+    Nur Spuren in GUELTIG_AB sind betroffen; alle anderen rechnen unveraendert.
 
     DAS FENSTER SCHNEIDET RUNDEN, NICHT ZEILEN. Eine Runde gehoert in das
     Fenster ihres AUSSTIEGS - dort faellt ihr Ergebnis an. Der Schnitt
@@ -365,6 +390,12 @@ def kennzahlen_fuer(spur, von=None, bis=None):
     stand = {}
     runden = runden_fuer(spur, z, stand=stand)
     runden = [r for r in runden if zeitfenster.im_fenster(r, von, bis)]
+    if nur_gueltige and spur in GUELTIG_AB:
+        grenze = zeitfenster.parse(GUELTIG_AB[spur])
+        alt = [r for r in runden if _vor_fix(r, grenze)]
+        runden = [r for r in runden if not _vor_fix(r, grenze)]
+        stand["vor_fix"] = len(alt)
+        stand["vor_fix_ergebnis"] = sum(r["ergebnis"] for r in alt)
     k = kennzahlen(runden, einheit_fuer(spur),
                    gebuehr=gebuehr_fuer(spur),
                    brutto=spur not in GEBUEHR_SCHON_DRIN)
@@ -605,6 +636,10 @@ def paarung_text(p):
                      % p["ohne_kennung"])
     if p.get("offen"):
         teile.append("%d Position(en) offen" % p["offen"])
+    if p.get("vor_fix"):
+        teile.append("%d Runde(n) mit Einstieg vor dem Preisfix NICHT mitgezaehlt "
+                     "(Scheinergebnis %+.2f; --alles zeigt sie)"
+                     % (p["vor_fix"], p.get("vor_fix_ergebnis") or 0.0))
     return "; ".join(teile) or "vollstaendig gepaart"
 
 
@@ -669,6 +704,7 @@ def _paare(zeilen_, einstieg_namen, ausstieg_namen, einsatz_feld, ergebnis_fn,
             "inst": schluessel, "einsatz": einsatz, "ergebnis": ergebnis,
             "kosten": kosten, "grund": (r.get(grund_feld) or "").strip() or None,
             "halten": tage(ein.get("zeit"), r.get("zeit")),
+            "einstieg_zeit": ein.get("zeit") or "",
             # Die Zeit der Runde ist die ihres AUSSTIEGS - dort faellt das
             # Ergebnis an. Der Name `zeit` ist der der Journalspalte, damit
             # zeitfenster.im_fenster() die Runde ohne Sonderfall liest.
@@ -1107,6 +1143,8 @@ def main():
                         % risikostufe.STANDARD)
     p.add_argument("--tage", type=int,
                    help="nur die letzten N Tage auswerten")
+    p.add_argument("--alles", action="store_true",
+                   help="auch Runden vor dem Preisfix (GUELTIG_AB) mitrechnen")
     p.add_argument("--seit", help="Fensteranfang, JJJJ-MM-TT")
     p.add_argument("--bis", help="Fensterende, JJJJ-MM-TT (einschliesslich)")
     a = p.parse_args()
@@ -1129,7 +1167,7 @@ def main():
     for spur in spuren:
         # Ein Weg fuer beide Aufrufer: hier stand die Zuordnung Spur ->
         # Rechenweg bis 15.09.2026 ein zweites Mal (siehe kennzahlen_fuer).
-        k = kennzahlen_fuer(spur, von=von, bis=bis)
+        k = kennzahlen_fuer(spur, von=von, bis=bis, nur_gueltige=not a.alles)
         zahlen[spur] = k
         zeige(spur, k)
 

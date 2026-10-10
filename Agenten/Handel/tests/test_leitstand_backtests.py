@@ -68,7 +68,8 @@ class Replay(unittest.TestCase):
         self.assertEqual(lbt.replay_spuren(),
                          list(replay.SPUREN_TEIL_A)
                          + list(replay.MEHRZEITRAHMEN)
-                         + list(replay.EIGENE_RECHNUNG))
+                         + list(replay.EIGENE_RECHNUNG)
+                         + list(replay.SPUREN_TEIL_E))
         for spur in ("mosaic", "gitter"):
             self.assertIn(spur, lbt.replay_spuren())
         for spur, _grund in lbt.nicht_nachrechenbar():

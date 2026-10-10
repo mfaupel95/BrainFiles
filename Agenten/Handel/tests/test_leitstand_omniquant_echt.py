@@ -74,7 +74,7 @@ class EchterReiter(unittest.TestCase):
         self.assertIsInstance(vorher, dict)
 
     def test_rahmen_kann_den_reiter_bauen(self):
-        # Der ganze Leitstand mit allen sechs Reitern - ohne Netz und ohne
+        # Der ganze Leitstand mit allen sieben Reitern - ohne Netz und ohne
         # laufenden Node. Genau das ist der Weg, den Max startet.
         import datetime as dt
         from unittest.mock import patch as pa

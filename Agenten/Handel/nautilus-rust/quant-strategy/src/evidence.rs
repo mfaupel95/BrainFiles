@@ -85,4 +85,17 @@ mod tests {
         };
         assert!(matches!(EvidenceGate::decide(&ev), Verdict::Refuse { .. }));
     }
+
+    #[test]
+    fn admits_book_at_exact_floor() {
+        // t = 2.0 genau an der Grenze -> Admit (>=, nicht >).
+        let ev = BookEvidence {
+            net_bps: 6.0,
+            n: 84,
+            se_bps: 3.0,
+            folds: 2,
+            positive_folds: 2,
+        };
+        assert!(matches!(EvidenceGate::decide(&ev), Verdict::Admit));
+    }
 }

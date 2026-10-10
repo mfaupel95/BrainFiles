@@ -201,6 +201,9 @@ Agenten/Handel/stand/
 !Agenten/Handel/kopier/*.md
 !Agenten/Handel/kopier/wachen.json
 !Agenten/Handel/kopier/tests/*.py
+# Fremd-Signal-Tor (Wache fuer Signale aus kraken-cli/agent-trade-kit): Wache in den Verlauf.
+!Agenten/Handel/fremd_signale/wachen.json
+!Agenten/Handel/fremd_signale/*.py
 !Agenten/Handel/orb/*.py
 !Agenten/Handel/orb/*.md
 !Agenten/Handel/orb/*.json

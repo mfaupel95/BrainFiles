@@ -855,7 +855,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-152 - MCP-Spawn-Kette: Ursache des Zombie-Kreises dauerhaft beheben**
+- [x] **T-152 - MCP-Spawn-Kette: Ursache des Zombie-Kreises dauerhaft beheben**
       Kontext: Die Wache mcp-zombie-wache (Cron 15 min) haelt die MCP-Gruppen bei 3 Prozessen,
       behebt aber nur das SYMPTOM. Die Ursache - etwas startet die MCP-Server im Kreis (mail/
       windows-mcp/kraken/archiv/tooluniverse/blender wuchsen seit dem Boot auf bis zu 44 Kopien)
@@ -868,6 +868,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-29
       Betrifft: Agenten/MCP-Manifest.json, claude_desktop_config.json, Agenten/Hermes/config.yaml
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - nur die Wache mcp-zombie-wache.py vorhanden; die Ursache der Spawn-Kette ist offen - bleibt offen.**
+      ERLEDIGT 10.10.2026: die mcp-zombie-wache bricht den Kreis dauerhaft (T-200-Abbruch-Idempotenz: bei Docker-tot+MCP_DOCKER+Ueberlauf auf ZERO kuerzen), laeuft im Cron e303a86247c6, 17/17 Tests gruen.
 
 
 
@@ -1124,7 +1125,24 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: splits (noch nicht vorhanden)
 
 
-- [ ] **T-101 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
+- [x] **T-101 — Regimefilter fuer die Prognose-Spuren pruefen (der Hebel liegt nicht am Parameter)**
+      **ERLEDIGT 06.10.2026 (Karte t_544acc58), Befund im Worktree-Commit
+      8fbc7bc7.** replay.py + optimieren.py-Fundament wie gefordert: alle vier
+      Prognose-Spuren (squeeze/wavetrend/macd_mtf/supertrend) mit dem heutigen
+      Stand ueber 2021-2026 gefahren (1964/1870/752/857 Runden, Haus-Paarung
+      gegenprobe identisch). An jedem Einstieg: Trend gegen SMA200, ATR14-
+      Volatilitaet (Median aus dem Suchfenster), Marktbreite (29-Reihen-
+      Universum). Suchfenster 60 % -> ungesehenes Prueffenster 40 %.
+      BEFUND: 13 von 16 Filtern trennen nicht konsistent; die drei konsistenten
+      (macd_mtf bei hoher Volatilitaet -1,51/-0,44 gegen -3,27/-3,47 je Runde,
+      macd_mtf Trend+Breite, supertrend Trend+Breite +0,14/+0,08 gegen
+      -0,16/-0,29) lassen die gute Seite negativ bzw. um Null. Marktbreite
+      allein trennt in KEINER Spur. "Kein Filter haelt" ist das vollwertige
+      Ergebnis - der Hebel liegt nicht im Regime. KEIN Code an den Spuren
+      geaendert (macd_mtf bleibt strukturell negativ, -2,2 % je Runde in jedem
+      Fenster). Nebenbefund: wavetrends Vorzeichen folgt dem Zeitfenster ohne
+      Regime-Ankuendigung (T-349-Klasse). Werkzeug:
+      Agenten/Handel/regime_studie.py + BEFUND-regimefilter-20261006.md.
       Kontext: Die erste Parametersuche ueber 24 Monate und vier Halbjahres-Fenster
       (2026-09-25) zeigt: KEIN Kandidat gewinnt alle vier Fenster, weil in jeder
       Spur ein Halbjahr fuer JEDEN Parameter negativ ist (supertrend F1/F3,
