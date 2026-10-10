@@ -3,5 +3,20 @@
 {% set seite = "reparatur" %}
 {% block inhalt %}
 <h1>Reparatur</h1>
-<p>Wird in Task 6 implementiert.</p>
+{% if not befunde %}
+<p style="color:var(--green)">Keine Befunde — alles in Ordnung.</p>
+{% else %}
+{% for b in befunde %}
+<div class="befund">
+  <strong>{{ b.titel }}</strong><br>
+  {{ b.beschreibung }}
+  {% if b.behebbar %}
+  <br><button class="btn"
+    hx-post="/api/repair/{{ b.id }}"
+    hx-on::after-request="location.reload()"
+    hx-swap="none">Beheben</button>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
 {% endblock %}

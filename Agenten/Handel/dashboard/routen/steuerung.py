@@ -1,6 +1,5 @@
 # dashboard/routen/steuerung.py
 from pathlib import Path
-from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -8,17 +7,11 @@ from fastapi.templating import Jinja2Templates
 
 from dashboard.quellen import prozesse as _prozesse
 from dashboard.quellen import spuren as _spuren
+from dashboard.schutz import gleiche_herkunft
 
 router = APIRouter()
 _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 _PROZESSE = ("dauerlauf", "omnitrade")
-
-
-def gleiche_herkunft(request: Request) -> None:
-    """CSRF-Schutz: schreibende Aufrufe nur von der eigenen Seite (Origin == Host)."""
-    origin = request.headers.get("origin")
-    if origin and urlparse(origin).netloc != request.headers.get("host", ""):
-        raise HTTPException(status_code=403, detail="fremde Herkunft")
 
 
 def _bekannt(name: str) -> str:
