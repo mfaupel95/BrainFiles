@@ -7,19 +7,26 @@ Schreibt nicht in wachen.json und handelt nie live - der Prozess selbst
 entscheidet das (kein offenes Freigabefenster = Papierhandel).
 """
 
+import datetime as dt
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 from tkinter import messagebox, ttk
+import tkinter as tk
+import psutil
 
+import dauerlauf
 import handelszentrale as hz
 import leitstand_stil as stil
 
 HIER = Path(__file__).resolve().parent
 WURZEL = HIER.parent.parent          # BrainFiles/
 _PY = HIER / "scanner" / ".venv" / "Scripts" / "python.exe"
+_NAUTILUS_PY = HIER / "nautilus" / ".venv" / "Scripts" / "python.exe"
 _CREATE_NEW_CONSOLE = 0x00000010
+_KRAKEN_NODE = HIER / "nautilus_kraken" / "run_kraken_paper_node.py"
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +73,126 @@ class _OmnitradetLauf:
             pass
 
 
+class _KrakenQuoteNode:
+    """Eigenstaendiger, read-only Kraken-Quote-Node fuer Spot oder Futures."""
+
+    read_only = True
+
+    def __init__(self, produkt, symbol):
+        self.produkt = produkt
+        self.symbol = symbol
+        self.name = "Kraken Paper-Node (%s)" % produkt.upper()
+        self._prozess = None
+        self._pid_pfad = HIER / ("nautilus_kraken_node_%s.pid" % produkt)
+
+    def _pid(self):
+        try:
+            return int(self._pid_pfad.read_text(encoding="ascii").strip().split()[0])
+        except (OSError, ValueError, IndexError):
+            return None
+
+    def _persistiert_ist_eigener_node(self, pid):
+        """PID nur akzeptieren, wenn exe, Skript und Produkt uebereinstimmen."""
+        try:
+            proc = psutil.Process(pid)
+            exe = os.path.normcase(os.path.realpath(proc.exe()))
+            erwartet_exe = os.path.normcase(os.path.realpath(str(_NAUTILUS_PY)))
+            cmd = [os.path.normcase(os.path.realpath(a)) if os.path.exists(a) else a
+                   for a in proc.cmdline()]
+            skript = os.path.normcase(os.path.realpath(str(_KRAKEN_NODE)))
+            return (exe == erwartet_exe and skript in cmd
+                    and proc.environ().get("KRAKEN_PRODUKT") == self.produkt)
+        except (psutil.Error, OSError, PermissionError):
+            return False
+
+    def laeuft(self):
+        if self._prozess is not None and self._prozess.poll() is None:
+            return True
+        pid = self._pid()
+        return (pid is not None and hz.prozess_lebt(pid) is True
+                and self._persistiert_ist_eigener_node(pid))
+
+    def starten(self):
+        if self.laeuft():
+            return
+        env = os.environ.copy()
+        env["KRAKEN_PRODUKT"] = self.produkt
+        env["KRAKEN_SYMBOL"] = self.symbol
+        # Niemals einen Order-Client aktivieren: der Reiter ist Quotes/Papier.
+        env["NAUTILUS_MIT_ORDER"] = ""
+        # Quote-only child: keine Kraken-Schluessel aus der Parent-Shell erben.
+        for key in ("KRAKEN_SPOT_API_KEY", "KRAKEN_SPOT_API_SECRET",
+                    "KRAKEN_FUTURES_DEMO_API_KEY", "KRAKEN_FUTURES_DEMO_API_SECRET"):
+            env.pop(key, None)
+        self._prozess = subprocess.Popen(
+            [str(_NAUTILUS_PY), str(_KRAKEN_NODE)], cwd=str(HIER), env=env,
+            creationflags=_CREATE_NEW_CONSOLE, close_fds=True,
+        )
+        self._pid_pfad.parent.mkdir(parents=True, exist_ok=True)
+        self._pid_pfad.write_text("%d\n" % self._prozess.pid, encoding="ascii")
+
+    def stoppen(self):
+        pid = self._prozess.pid if self._prozess is not None else self._pid()
+        if pid is None or not hz.prozess_lebt(pid):
+            self._pid_pfad.unlink(missing_ok=True)
+            return
+        subprocess.run(
+            [os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
+                          "System32", "taskkill.exe"),
+             "/F", "/PID", str(pid)],
+            capture_output=True, check=False,
+        )
+        self._pid_pfad.unlink(missing_ok=True)
+
+
+def spuren_status(jetzt=None):
+    """Rein lesende Statuszeilen fuer jede Spur aus dauerlauf.SPUREN (Basis).
+
+    Die Spurliste ist die eine Wahrheit. Fehlende oder unlesbare Dateien
+    bleiben sichtbar als 'unbekannt', statt still aus der Tabelle zu fallen.
+    """
+    jetzt = jetzt or dt.datetime.now(dt.timezone.utc)
+    zeilen = []
+    for spur in dauerlauf.SPUREN:
+        beschreibung = dauerlauf.SPUREN[spur]
+        ordner = HIER / beschreibung.get("ordner", spur)
+        suffix = ".futures" if beschreibung.get("skript") == "handeln_futures.py" else ""
+        zustand = hz.lade_json(str(ordner / ("zustand%s.json" % suffix)))
+        wachen = hz.lade_json(str(ordner / ("wachen%s.json" % suffix)))
+        lage, alter, grenze = hz.herzschlag_lage(spur, zustand, wachen, jetzt)
+        positionen = hz.positionen_aus(zustand)
+        zeilen.append({
+            "spur": spur,
+            "modus": str(zustand.get("modus") or "-"),
+            "herzschlag": lage,
+            "alter_minuten": alter,
+            "positionen": len(positionen),
+            "handel_erlaubt": wachen.get("handel_erlaubt"),
+        })
+    return zeilen
+
+
+def filter_spuren(zeilen, auswahl):
+    """Statusfilter fuer die Nautilus-Familie oder die ganze Flotte."""
+    if auswahl == "Nautilus":
+        return [z for z in zeilen if z["spur"].startswith("nautilus")]
+    return list(zeilen)
+
+
+def formatiere_spuren_status(zeilen):
+    """Monospace-Statusmatrix aus der dauerlauf.SPUREN-Liste."""
+    aus = ["SPUR                 MODUS     HERZSCHLAG       POSITIONEN  HANDEL_ERLAUBT",
+           "-" * 76]
+    for z in zeilen:
+        live = "true" if z.get("handel_erlaubt") else "false"
+        alter = z.get("alter_minuten")
+        lage = ("%s (%d min)" % (z["herzschlag"], alter)
+                if alter is not None else z["herzschlag"])
+        aus.append("%-20s %-9s %-17s %10d  %s" %
+                   (z["spur"], z["modus"], lage, z["positionen"], live))
+    return "\n".join(aus)
+
+
 class _PythonDauerlauf:
     """Python 24/7-Bot (dauerlauf.py) - analysiert, meldest, haelt Freigaben."""
     name = "Python-Dauerlauf"
@@ -101,7 +228,9 @@ class _PythonDauerlauf:
             )
 
 
-PROZESSE = [_OmnitradetLauf(), _PythonDauerlauf()]
+PROZESSE = [_OmnitradetLauf(), _PythonDauerlauf(),
+            _KrakenQuoteNode("spot", "BTC/EUR"),
+            _KrakenQuoteNode("futures", "PF_SOLUSD")]
 
 
 # ---------------------------------------------------------------------------
@@ -160,10 +289,39 @@ class ProzessReiter(ttk.Frame):
             z = _ProzessZeile(self, p)
             z.pack(fill="x", pady=4)
             self._zeilen.append(z)
+        ttk.Separator(self, orient="horizontal").pack(fill="x", pady=(10, 8))
+        filterzeile = ttk.Frame(self)
+        filterzeile.pack(fill="x", pady=(0, 4))
+        ttk.Label(filterzeile, text="Handelsspuren — nur Status; gesteuert vom Dauerlauf",
+                  style="Titel.TLabel", anchor="w").pack(side="left")
+        self._spur_filter = tk.StringVar(value="Nautilus")
+        self._spur_auswahl = ttk.Combobox(filterzeile, textvariable=self._spur_filter,
+                                          values=("Nautilus", "Alle"),
+                                          state="readonly", width=12)
+        self._spur_auswahl.pack(side="right")
+        self._spur_auswahl.bind("<<ComboboxSelected>>", lambda _e: self._zeige_spuren())
+        tabelle = ttk.Frame(self)
+        tabelle.pack(fill="both", expand=True)
+        self._spur_text = tk.Text(tabelle, height=18, wrap="none", state="disabled",
+                                  font=stil.MONO)
+        scroll = ttk.Scrollbar(tabelle, orient="vertical", command=self._spur_text.yview)
+        self._spur_text.configure(yscrollcommand=scroll.set)
+        self._spur_text.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+        self._zeige_spuren()
+
+    def _zeige_spuren(self):
+        text = formatiere_spuren_status(filter_spuren(
+            spuren_status(), self._spur_filter.get()))
+        self._spur_text.configure(state="normal")
+        self._spur_text.delete("1.0", "end")
+        self._spur_text.insert("1.0", text)
+        self._spur_text.configure(state="disabled")
 
     def refresh(self):
         for z in self._zeilen:
             z.refresh()
+        self._zeige_spuren()
 
     def titel_zusatz(self):
         return " \u25cf" if any(z._p.laeuft() for z in self._zeilen) else ""
