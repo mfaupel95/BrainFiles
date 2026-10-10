@@ -4,7 +4,7 @@
   "_stand": "09.10.2026 angelegt, Tor ZU. Aufmachen = fremd_signale_erlaubt auf true, von Hand, nach Papier-/Demo-Nachweis.",
   "fremd_signale_erlaubt": false,
   "modi_erlaubt": ["paper", "demo"],
-  "quellen_erlaubt": ["kraken-cli", "agent-trade-kit"],
+  "quellen_erlaubt": ["kraken-cli", "agent-trade-kit", "intelligent-trading-bot"],
   "instrumente_erlaubt": ["BTC/USD", "ETH/USD", "SOL/USD", "BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP"],
   "size_pct_max": 0.25,
   "_papier": "Werte fuer fremd_papier.py (Papierbuch). Stop ist Pflicht; Rahmen wie die Klassik-Spuren: 5 USD Risiko je Position, 3 Positionen.",

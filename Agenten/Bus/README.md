@@ -153,3 +153,5 @@ neu starten.
 ## Nachrichtentyp "signal" (Fremd-Werkzeuge)
 
 `fremd_signal.melden_signal(wer, signal)` schickt ein Signal durch das Tor `Handel/fremd_tor.py` (Schema + `fremd_signale/wachen.json`, Tor ist ab Werk zu) und schreibt es als `was="signal"` (durchgelassen) oder `was="signal_verworfen"` (Grund im Text) ins Journal. Beide bleiben fuer den Sprecher still. Ausgefuehrt wird nichts; das wachen.json-Gate in Handel/ entscheidet. Test: `python tests/test_fremd_signal.py`.
+
+`adapter_itb.py` uebersetzt die letzte Zeile der `signals.csv` von intelligent-trading-bot (kaufen = long, verkaufen = flat) und meldet sie ueber `fremd_signal` (also durchs Tor); je Kerze hoechstens einmal, ts_utc = Kerzenschluss. Test: `python tests/test_adapter_itb.py`.
