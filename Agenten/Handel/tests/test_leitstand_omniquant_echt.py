@@ -84,10 +84,11 @@ class EchterReiter(unittest.TestCase):
                                uhr=lambda: dt.datetime(2026, 10, 4, 22, 0),
                                herz=lambda: "Dauerlauf läuft nicht")
             self.root.update()
-        self.assertEqual(len(ls.titel), 7)
-        self.assertEqual(ls.titel[4], "Omniquant")
-        self.assertEqual(ls.titel[5], "Nautilus")
-        self.assertEqual(ls.titel[6], "Prozesse")
+        # Der Rahmen baut ALLE Reiter aus lst.REITER; feste Zahl und Position
+        # sind seit Prozesse/FreqTrade veraltet - geprueft wird die Zusage selbst.
+        self.assertEqual(ls.titel, [t for t, _k in lst.REITER])
+        self.assertIn("Omniquant", ls.titel)
+        self.assertIn("Nautilus", ls.titel)
 
 
 if __name__ == "__main__":

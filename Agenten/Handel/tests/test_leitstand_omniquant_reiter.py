@@ -127,10 +127,9 @@ class Interface(Basis):
 class Verdrahtung(unittest.TestCase):
     def test_omniquant_haengt_am_rahmen(self):
         self.assertIn(OmniquantReiter, [k for _, k in lst.REITER])
-        self.assertEqual(lst.REITER[-3][0], "Omniquant")
-        self.assertEqual(lst.REITER[-2][0], "Nautilus")
-        self.assertEqual(lst.REITER[-1][0], "Prozesse")
-        self.assertEqual(lst.KUERZEL["<Control-Key-5>"], ("reiter", len(lst.REITER) - 3))
+        # Ueber den Titel, nicht ueber die Position (Prozesse, FreqTrade kamen dazu).
+        i = [t for t, _k in lst.REITER].index("Omniquant")
+        self.assertEqual(lst.KUERZEL["<Control-Key-%d>" % (i + 1)], ("reiter", i))
 
     def test_wer_einen_hintergrundprozess_haelt_sagt_es(self):
         # `abbrechbar()` ist OPTIONAL: der Rahmen nutzt

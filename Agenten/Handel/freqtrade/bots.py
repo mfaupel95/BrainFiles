@@ -14,6 +14,7 @@ erzeugt daraus die Konfigurationen und startet sie.
     python bots.py start  [name ...]      # Container starten (Probelauf)
     python bots.py stop   [name ...]      # Container beenden
     python bots.py status                 # was laeuft
+    python bots.py urteile                # Backtest-Urteile der HausSpur-Bots
 
 WARUM PYTHON UND KEIN SHELL-SKRIPT
 ----------------------------------
@@ -57,6 +58,12 @@ IMAGE = "freqtradeorg/freqtrade:stable"
 # Im Container heisst das Benutzerverzeichnis immer gleich (Mountpunkt).
 IM_CONTAINER = "/freqtrade/user_data"
 
+# Haus-Code fuer HausSpur-Bots: Agenten/ read-only im Container. Die Regeln
+# werden importiert, nicht in die Strategie kopiert (Spec 10.10.2026).
+HAUS = HIER.parent.parent
+HAUS_IM_CONTAINER = "/agenten"
+SPEICHER = "700m"
+
 
 # --- Manifest ---------------------------------------------------------------
 
@@ -97,6 +104,36 @@ def mount_pfad() -> str:
     Shell-Aufrufer schon an der Uebersetzung gescheitert.
     """
     return USER_DATA.resolve().as_posix()
+
+
+# Unter Handel/ gebraucht: die Spurordner (aus bots.json) plus diese beiden -
+# klassik_regeln und die handeln.py laden okx/wachen_pruefung aus scanner/ und
+# die Indikatoren aus xperp/. Alles andere unter Handel/ wird im Container mit
+# einem leeren tmpfs ueberdeckt (Review I1, 10.10.2026: dort liegen fremde
+# Zugaenge wie ai4trade/.env und OpenAlice/sealing.key, und das Image ist fremd).
+HAUS_HILFSORDNER = ("scanner", "xperp")
+
+
+def _noetige_ordner() -> set[str]:
+    return {b["hausspur"] for b in bots() if b.get("hausspur")} | set(HAUS_HILFSORDNER)
+
+
+def mounts(bot: dict) -> list[str]:
+    """Die docker-Mount-Argumente: user_data immer; bei HausSpur zusaetzlich
+    Handel/ und Bus/ nur lesend, mit allen nicht gebrauchten Handel-Ordnern
+    ueberdeckt. Nie ganz Agenten/ - dort liegen Hermes-Zugaenge."""
+    m = ["-v", f"{mount_pfad()}:{IM_CONTAINER}"]
+    if not bot.get("hausspur"):
+        return m
+    handel = HAUS / "Handel"
+    m += ["-v", f"{handel.resolve().as_posix()}:{HAUS_IM_CONTAINER}/Handel:ro",
+          "-v", f"{(HAUS / 'Bus').resolve().as_posix()}:{HAUS_IM_CONTAINER}/Bus:ro"]
+    noetig = _noetige_ordner()
+    for ordner in sorted(p.name for p in handel.iterdir() if p.is_dir()):
+        if ordner in noetig or ordner.startswith((".", "__")):
+            continue
+        m += ["--mount", f"type=tmpfs,destination={HAUS_IM_CONTAINER}/Handel/{ordner}"]
+    return m
 
 
 # --- Docker -----------------------------------------------------------------
@@ -154,7 +191,7 @@ def config_fuer(bot: dict) -> dict:
     port = int(bot["port"])
     name = bot["name"]
     basis_exchange = _basis_exchange()
-    return {
+    cfg = {
         "max_open_trades": int(bot.get("max_open_trades", 3)),
         "stake_currency": "USDT",
         "stake_amount": "unlimited",
@@ -199,6 +236,12 @@ def config_fuer(bot: dict) -> dict:
         # ein Backtest-Lauf sie ueberschreiben kann, ohne die Datei zu aendern.
         "moondev": {"signal_ausstieg": bool(bot.get("signal_ausstieg", True))},
     }
+    if bot.get("hausspur"):
+        cfg["trading_mode"] = "futures"
+        cfg["margin_mode"] = "isolated"
+        cfg["hausspur"] = {"name": bot["hausspur"],
+                           "pfad": f"{HAUS_IM_CONTAINER}/Handel"}
+    return cfg
 
 
 def schreibe_configs(ziele: list[dict]) -> int:
@@ -240,37 +283,42 @@ def cmd_configs(argumente: list[str]) -> int:
     return schreibe_configs(ausgewaehlt(argumente))
 
 
-def _daten_fenster(paare: list[str], zeitrahmen: str) -> list[str]:
+def _daten_fenster(paare: list[str], zeitrahmen: str, futures: bool = False) -> list[str]:
+    # 740 Tage: zwei Jahre Backtest plus Anlauf (startup_candle_count).
+    # Kein Haus-Mount: download-data braucht keinen Haus-Code (Review I1).
     return [
         "run", "--rm",
-        "-v", f"{mount_pfad()}:{IM_CONTAINER}",
+        *mounts({}),
         IMAGE,
         "download-data", "--userdir", IM_CONTAINER,
+        # Ausdruecklich: ohne user_data/config.json (frischer Klon, Arbeitsbaum)
+        # kennt download-data sonst keine Boerse und bricht ab.
+        "--exchange", "binance",
         "-p", *paare,
         "-t", zeitrahmen,
-        "--days", "400",
+        *(["--trading-mode", "futures"] if futures else []),
+        "--days", "740",
     ]
 
 
 def cmd_daten(argumente: list[str]) -> int:
-    """Kerzen laden, die der Backtest der Bots braucht.
+    """Kerzen laden, die der Backtest der Bots braucht - je Zeitrahmen und Modus.
 
-    Alle Pairlisten zusammen, damit kein Bot ohne Daten dasteht.
+    Alle Pairlisten einer Gruppe zusammen, damit kein Bot ohne Daten dasteht.
+    HausSpur-Bots laufen im Futures-Modus und brauchen eigene Reihen.
     """
-    paare: list[str] = []
-    zeitrahmen: set[str] = set()
+    gruppen: dict[tuple[str, bool], list[str]] = {}
     for b in ausgewaehlt(argumente):
-        for p in b["whitelist"]:
-            if p not in paare:
-                paare.append(p)
-        zeitrahmen.add(b.get("zeitrahmen", "1h"))
-        for p in b.get("breite_paare", []):
-            if p not in paare:
-                paare.append(p)
-    print(f"{len(paare)} Paare, Zeitrahmen {sorted(zeitrahmen)}, 400 Tage")
+        schluessel = (b.get("zeitrahmen", "1h"), bool(b.get("hausspur")))
+        liste = gruppen.setdefault(schluessel, [])
+        for p in [*b["whitelist"], *b.get("breite_paare", [])]:
+            if p not in liste:
+                liste.append(p)
     rc = 0
-    for tf in sorted(zeitrahmen):
-        rc |= einweglauf(_daten_fenster(paare, tf), f"download-data {tf}")
+    for (tf, futures), paare in sorted(gruppen.items()):
+        print(f"{len(paare)} Paare, {tf}, {'futures' if futures else 'spot'}")
+        rc |= einweglauf(_daten_fenster(paare, tf, futures),
+                         f"download-data {tf}")
     return rc
 
 
@@ -300,7 +348,7 @@ def cmd_backtest(argumente: list[str], timerange: str | None = None,
         print(f"\n══ Backtest {b['name']} ({b['strategie']}){hinweis} ══")
         fenster = [
             "run", "--rm",
-            "-v", f"{mount_pfad()}:{IM_CONTAINER}",
+            *mounts(b),
             IMAGE,
             "backtesting", "--userdir", IM_CONTAINER,
             "--config", f"{IM_CONTAINER}/{cfg_pfad.name}",
@@ -310,8 +358,81 @@ def cmd_backtest(argumente: list[str], timerange: str | None = None,
         ]
         if timerange:
             fenster += ["--timerange", timerange]
-        rc |= einweglauf(fenster, f"backtesting {b['name']}")
+        vorher = _letzter_zeiger()
+        lauf_rc = einweglauf(fenster, f"backtesting {b['name']}")
+        rc |= lauf_rc
+        # Urteil nur aus EIGENEM, vollem Lauf (Review I2): alle HausSpur-Bots
+        # teilen den Strategienamen - ein gescheiterter Lauf wuerde sonst still
+        # das Ergebnis des vorigen Bots erben. Ein --timerange ist kein 2-J.-Urteil.
+        if signal is None and timerange is None and b.get("hausspur"):
+            if lauf_rc != 0 or _letzter_zeiger() in (None, vorher):
+                print(f"  ! Urteil {b['name']} nicht gemerkt: kein neues Ergebnis (rc {lauf_rc})")
+                continue
+            try:
+                urteil_merken(b["name"], urteil_aus_ergebnis(letztes_ergebnis(), b["strategie"]))
+            except (OSError, ValueError, KeyError, StopIteration) as e:
+                print(f"  ! Urteil {b['name']} nicht lesbar: {e}")
     return rc
+
+
+# --- Urteile (Backtest-Ergebnis je HausSpur-Bot) -----------------------------
+# Nicht versioniert, wie Agenten/Handel/backtest_urteile.json. Der Leitstand-
+# Reiter FreqTrade zeigt die Zeile neben dem laufenden Bot.
+URTEILE = HIER / "urteile.json"
+
+
+def urteil_aus_ergebnis(daten: dict, strategie: str) -> dict:
+    s = daten["strategy"][strategie]
+    return {"runden": int(s.get("total_trades", 0)),
+            "netto_prozent": round(float(s.get("profit_total", 0.0)) * 100, 2),
+            "max_ruecklauf_prozent": round(float(s.get("max_drawdown_account", 0.0)) * 100, 2),
+            "zeitraum": "%s..%s" % (str(s.get("backtest_start", ""))[:10],
+                                    str(s.get("backtest_end", ""))[:10])}
+
+
+def urteil_merken(name: str, urteil: dict, pfad: Path = URTEILE) -> None:
+    import datetime as _dt
+    try:
+        daten = json.loads(pfad.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        daten = {}
+    daten[name] = dict(urteil, stand=_dt.datetime.now(_dt.timezone.utc)
+                       .isoformat(timespec="seconds"))
+    pfad.write_text(json.dumps(daten, indent=2, ensure_ascii=False) + "\n",
+                    encoding="utf-8")
+
+
+def _letzter_zeiger() -> str | None:
+    """Dateiname des letzten Backtest-Ergebnisses laut .last_result.json."""
+    try:
+        zeiger = json.loads((USER_DATA / "backtest_results" / ".last_result.json")
+                            .read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return zeiger.get("latest_backtest") if isinstance(zeiger, dict) else None
+
+
+def letztes_ergebnis() -> dict:
+    """Die Ergebnis-JSON des letzten Backtests (Zip aus backtest_results)."""
+    import zipfile
+    ordner = USER_DATA / "backtest_results"
+    zip_pfad = ordner / _letzter_zeiger()
+    with zipfile.ZipFile(zip_pfad) as z:
+        name = next(n for n in z.namelist()
+                    if n.endswith(".json") and "_config" not in n and "_market" not in n)
+        return json.loads(z.read(name))
+
+
+def cmd_urteile() -> int:
+    try:
+        daten = json.loads(URTEILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print("  noch keine Urteile - erst 'python bots.py backtest'")
+        return 1
+    for name, u in sorted(daten.items()):
+        print(f"  {name:24} {u['runden']:5d} Runden  {u['netto_prozent']:+8.2f} %  "
+              f"Ruecklauf {u['max_ruecklauf_prozent']:6.2f} %  {u['zeitraum']}")
+    return 0
 
 
 def cmd_start(argumente: list[str]) -> int:
@@ -330,7 +451,8 @@ def cmd_start(argumente: list[str]) -> int:
         docker(["rm", "-f", name])
         fenster = [
             "run", "-d", "--name", name, "--restart", "unless-stopped",
-            "-v", f"{mount_pfad()}:{IM_CONTAINER}",
+            "--memory", SPEICHER,
+            *mounts(b),
             "-p", f"127.0.0.1:{b['port']}:{b['port']}",
             IMAGE,
             "trade",
@@ -440,6 +562,8 @@ def haupt(argv: list[str]) -> int:
         return cmd_stop(rest)
     if befehl == "status":
         return cmd_status()
+    if befehl == "urteile":
+        return cmd_urteile()
     print(f"Unbekannter Befehl '{befehl}'. Siehe --help.")
     return 2
 

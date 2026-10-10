@@ -137,6 +137,11 @@ sich aus der Vergangenheit schätzen, die künftige Rendite nicht.
 - `kursdaten.py` — Abruf über yfinance, lokaler Cache unter `daten/`
 - `daten/*.csv` — zwischengespeicherte Kurse (12 h gültig, danach neuer Abruf)
 - `.venv/` — eigene Python-Umgebung, an ihren Pfad gebunden
+- `hausspur_regeln.py` — 17 Haus-Spuren als eine Signal-Schnittstelle für die
+  Freqtrade-Strategie `freqtrade/user_data/strategies/HausSpur.py` (seit
+  10.10.2026, Bots in `freqtrade/bots.json`, Urteile über `bots.py backtest`)
+- `leitstand_freqtrade.py` — Leitstand-Reiter FreqTrade (Strg+8): alle Bots,
+  Zustand, Runden, Backtest-Urteil; nur lesend über `freqtrade_bridge.py`
 
 Der Cache ist Absicht: yfinance ist eine inoffizielle Schnittstelle und kann ohne
 Vorwarnung ausfallen. Liegen die Daten lokal, läuft die Simulation weiter und sagt

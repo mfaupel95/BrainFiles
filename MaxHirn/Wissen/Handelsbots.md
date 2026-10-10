@@ -113,6 +113,36 @@ Die Bot-Werte stehen in `KONFIG` oben im Skript und lassen sich alle aus
 `dca_get_order_details` ablesen. Verwandt: [[Verbindungen]] (OKX Agent Trade
 Kit als MCP-Server), [[Marktlage-August-2026]], [[Projekte]].
 
+## Haus-Spuren als Freqtrade-Bots (seit 10.10.2026)
+
+17 Haus-Spuren laufen zusätzlich zu den drei Moon-Dev-Bots als
+Freqtrade-Dry-Run-Bots: 11 × `klassik_*`, `macd_mtf`, `squeeze`, `wavetrend`,
+`supertrend`, `trendwende_btc`, `orb` (Ports 8084–8100, Liste in
+`Agenten/Handel/freqtrade/bots.json`). Grundlage ist **eine** Strategie
+`HausSpur`, die die Regel nicht nachbaut, sondern über
+`Agenten/Handel/hausspur_regeln.py` aus dem Haus importiert. `Agenten/` hängt
+dafür nur lesend unter `/agenten` im Container. Gerechnet wird je Kerze auf
+demselben Fenster wie im Haus (`kerzen_anzahl`), Futures, Hebel 1.
+
+- **Bot ergänzen:** Spur in `ALLE` von `hausspur_regeln.py`, Eintrag in
+  `bots.json`; der Test `Manifest` in `freqtrade/tests/test_bots_hausspur.py`
+  prüft Zeitrahmen und Paare gegen die `wachen.json`.
+- **Urteil:** `python bots.py backtest <bot>` schreibt Runden, Netto % und
+  Rücklauf nach `freqtrade/urteile.json`. Der Leitstand-Reiter **FreqTrade**
+  (Strg+8) zeigt es neben jedem Bot. Viele Bots heißt nicht viel Kante: erster
+  Probelauf `klassik-ema`, 4h, 21 Monate: 227 Runden, −30,5 %. Das Ziel läuft
+  über `custom_roi`, damit der Backtest zum Zielpreis schließt wie das Haus;
+  mit `custom_exit` waren es geschönte −25,7 % (Ziel erst zum Kerzenschluss).
+- **Container sieht nur** `Agenten/Handel` und `Agenten/Bus` (read-only); alle
+  Handel-Ordner, die keine Spur braucht, sind per tmpfs überdeckt — dort liegen
+  fremde Zugänge.
+- **Schnellere Strategien (Phase B)** ersetzen eine Spur erst, wenn
+  `freqtrade/gleichheit.py` auf derselben Kerzenreihe keine Abweichung zum
+  Adapter meldet.
+
+Spec und Plan: `Werkstatt/spec-freqtrade-hausspuren-2026-10-10.md`,
+`Werkstatt/plan-freqtrade-hausspuren-2026-10-10.md`.
+
 ## Grenze
 
 **Überholt seit 01.09.2026.** Bis dahin galt: Das Auslösen von Geldbewegungen
