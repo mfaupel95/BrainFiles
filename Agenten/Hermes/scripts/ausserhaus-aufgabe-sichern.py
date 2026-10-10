@@ -20,6 +20,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+import os
 
 NAME = "MaxHirn-Ausserhaus-Kopie"
 HIER = Path(__file__).resolve()
@@ -40,7 +41,7 @@ def _powershell(argumente: list[str], frist: int = 60) -> subprocess.CompletedPr
 
     return subprocess.run(
         ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", *argumente],
-        capture_output=True,
+        capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         text=True,
         encoding="utf-8",
         errors="replace",

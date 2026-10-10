@@ -121,6 +121,20 @@ def daten_holen(w):
     return quelle(w)
 
 
+def preis_fuer(inst):
+    """Der Kurs EINES Symbols - fuer Positionen, die aus dem Feed gefallen sind.
+
+    T-160: CoinGecko sortiert nach Marktkapitalisierung; ein grosser Coin,
+    der aus den Top-100 faellt, verliert sonst seinen Kurs und die Position
+    friert ein. Ueber `daten.symbol_kurs` (Binance, dann CoinGecko mit
+    ID-Cache) bleibt der Kurs erhalten - `spur_buch.zyklus` ruft das nur
+    fuer verwaiste Positionen auf. Wichtig gerade hier: Listingarb kauft
+    bewusst Coins, die es NICHT auf Binance gibt - dafuer ist der
+    CoinGecko-Weg mit ID-Cache da.
+    """
+    return daten.symbol_kurs(inst)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -142,7 +156,7 @@ def main():
     # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen
     # ist es nur so lange richtig, wie Ordner und Spurname gleich heissen.
     return buch.zyklus(HIER, daten_holen, signal, a.modus,
-                       "handel/moondev_listingarb")
+                       "handel/moondev_listingarb", preis_fuer=preis_fuer)
 
 
 if __name__ == "__main__":

@@ -75,7 +75,7 @@ import sys
 
 # VORGABEN - Hauswerte, keine Messung. Jede Spur kann sie ueberschreiben.
 VORGABE_TRIGGER_R = 1.0        # so weit gegen den Stop, dann erst nachziehen
-VORGABE_HALTEN_PCT = 0.40      # Stop so weit hinter dem Hochstand
+VORGABE_HALTEN_PCT = 1.50      # Stop so weit hinter dem Hochstand (Max 09.10.2026; vorher 0,40)
 VORGABE_ABSTAND_FLOOR_PCT = 0.25   # Mindestabstand Stop<->Kurs (Marktrauschen)
 VORGABE_MIN_HUB_R = 0.25       # Mindestgewinn, um eine Verlegung zu rechtfertigen
 VORGABE_MIN_HALTUNG_S = 120    # nicht haufiger als alle zwei Minuten
@@ -185,13 +185,19 @@ def kandidat(p, kurs, w, liq=None, jetzt=None):
 
     # 3) Wohin? Hinter den Hochstand, um `halten_pct`.
     ziel = hoch - vz * abs(hoch) * v["halten_pct"] / 100.0
-    # 4) Nie weiter als max_halten_pct hinter den Hochstand - sonst laeuft
-    #    der Stop bei einem Rücksetzer sofort in den Rauscher.
+    # 4) Nie weiter als max_halten_pct hinter den Hochstand. Der Stop liegt
+    #    also HOECHSTENS so weit weg: long -> nicht unter `grenze` (max),
+    #    short -> nicht ueber `grenze` (min).
+    #    BIS 09.10.2026 STAND HIER min/max VERTAUSCHT: der Stop nahm den
+    #    TIEFEREN Wert (long), also immer `grenze` - ein eingestelltes
+    #    halten_pct unter max_halten_pct (0,4 % in xperp) war wirkungslos, der
+    #    Stop lag real 5 % hinter dem Hochstand (Hoch 112 -> Stop 106,4 statt
+    #    111,55). Gefunden beim Backtest (trailing_backtest.py).
     grenze = hoch - vz * abs(hoch) * v["max_halten_pct"] / 100.0
     if vz > 0:
-        ziel = min(ziel, grenze)
-    else:
         ziel = max(ziel, grenze)
+    else:
+        ziel = min(ziel, grenze)
     # 5) Mindestabstand zum Kurs (Marktrauschen).
     floor = abs(kurs) * v["floor_pct"] / 100.0
     if vz > 0:
@@ -250,7 +256,8 @@ def erst_hoch(p, kurs):
 
 # --- Der Weg zur Boerse -----------------------------------------------------
 
-def nachziehen(p, kurs, weg, w, liq=None, jetzt=None, tick=None, trocken=False):
+def nachziehen(p, kurs, weg, w, liq=None, jetzt=None, tick=None, trocken=False,
+              deckung_pruefen=None):
     """Den Stop an der BOERSE aendern. Gibt (neu, grund) zurueck.
 
     `weg` ist das Boersen-Modul der Spur. Es braucht ZWEI Faehigkeiten, die
@@ -258,7 +265,28 @@ def nachziehen(p, kurs, weg, w, liq=None, jetzt=None, tick=None, trocken=False):
     marke, falls der Weg gehebelt handelt. Fehlt `stop_nachziehen`, sagt
     dieser Weg das laut, statt einen Stop zu stornieren und neu zu setzen -
     das Fenster OHNE Schutz dazwischen ist der Grund.
+
+    `deckung_pruefen` (optional) ist eine Funktion (p) -> dict mit
+    gedeckt/soll/fehlt. Sie wird als ERSTE Bedingung abgefragt (Referenz
+    trailing-stop-gehebelt.md Abschnitt 5.1: 'erst zusammenfuehren, dann
+    trailingen'). Eine Position, deren Schutz-Menge an der Boerse die
+    Buchmenge nicht deckt, ist nicht trailingbar: der engste Stop feuert
+    zuerst, die uebrigen bleiben als Waisen zurueck. Bei Unterdeckung bricht
+    dieser Weg ab, statt einen aufgeteilten Stop weiter zu verschieben.
     """
+    if deckung_pruefen is not None:
+        try:
+            d = deckung_pruefen(p)
+        except Exception as e:                                   # noqa: BLE001
+            return None, ("Deckungspruefung fehlgeschlagen (%s) - der alte "
+                          "Stop %.6f bleibt stehen" % (e, float(p.get("stop") or 0)))
+        fehlt = float((d or {}).get("fehlt") or 0.0)
+        if fehlt > 1e-6:
+            return None, ("Position nicht voll gedeckt (geschuetzt %.2f von "
+                          "%.2f, fehlt %.2f) - erst mit stopdeckung.py "
+                          "zusammenfuehren, dann trailingen"
+                          % (float(d.get("gedeckt") or 0.0),
+                             float(d.get("soll") or 0.0), fehlt))
     k, grund = kandidat(p, kurs, w, liq=liq, jetzt=jetzt)
     if k is None:
         return None, grund

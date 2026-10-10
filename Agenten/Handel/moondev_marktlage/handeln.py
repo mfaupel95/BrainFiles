@@ -90,6 +90,18 @@ def daten_holen(w):
     return quelle(w)
 
 
+def preis_fuer(inst):
+    """Der Kurs EINES Symbols - fuer Positionen, die aus dem Feed gefallen sind.
+
+    T-160: die Markt-Breite wird aus den Top-100 gerechnet; ein Coin, der
+    daraus faellt, verliert sonst seinen Kurs und die offene Position friert
+    ein. Ueber `daten.symbol_kurs` (Binance, dann CoinGecko mit ID-Cache)
+    bleibt der Kurs ueber den Symbolwechsel hinweg erhalten - `spur_buch.zyklus`
+    ruft das nur fuer verwaiste Positionen auf.
+    """
+    return daten.symbol_kurs(inst)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -113,7 +125,7 @@ def main():
     # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen
     # ist es nur so lange richtig, wie Ordner und Spurname gleich heissen.
     r = buch.zyklus(HIER, daten_holen, signal, a.modus,
-                    "handel/moondev_marktlage")
+                    "handel/moondev_marktlage", preis_fuer=preis_fuer)
     if a.modus == "vorschau":
         # Der gemeinsame Papier-Kern kann die LIVE-Sperren nicht beurteilen -
         # sie liegen im eigenen Live-Zweig. Der Dauerlauf liest aber genau

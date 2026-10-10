@@ -1,5 +1,12 @@
 # Agenten/Handel — Karte für Agenten
 
+**Git im geteilten Arbeitsbaum (seit 08.10.2026):** Nie `git stash` — der
+Stash friert Arbeit ein, während andere Sitzungen weiter committen; das
+spätere `stash pop` konfligiert dann gegen Zwischencommits (Fall
+„Vault-Schutzschicht": 7 Konflikte). Eigenen Arbeitsschritt sofort committen
+statt stashen. Vollständig in [../../CLAUDE.md](../../CLAUDE.md), Abschnitt
+„Bereichs-Besitz".
+
 **Diese Datei sagt, was NICHT zu lesen ist.** Der Ordner ist klein, aber er
 enthält zwei Brocken, die jede Sitzung teuer machen, wenn man sie versehentlich
 mitliest. Wer hier arbeitet, liest zuerst das hier.

@@ -1,0 +1,28 @@
+{% extends "basis.html" %}
+{% block titel %}Training{% endblock %}
+{% set seite = "training" %}
+{% block inhalt %}
+<h1>Training (Verbesserer)</h1>
+<select id="spur-sel">{% for s in spuren %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+<button class="btn" id="run-btn" style="margin-left:0.5rem">Training starten</button>
+<pre class="log" id="log-out" style="margin-top:1rem"></pre>
+<script>
+document.getElementById('run-btn').addEventListener('click', function() {
+  const spur = document.getElementById('spur-sel').value;
+  const log = document.getElementById('log-out');
+  log.textContent = '';
+  fetch('/api/training/run', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: 'spur=' + encodeURIComponent(spur)})
+    .then(r => { if (!r.ok) { log.textContent = 'Fehler ' + r.status; throw new Error(r.status); } })
+    .then(() => {
+      const es = new EventSource('/api/training/log/' + encodeURIComponent(spur));
+      es.onmessage = e => {
+        log.textContent += e.data;
+        log.scrollTop = log.scrollHeight;
+        if (e.data.includes('[FERTIG]')) es.close();
+      };
+      es.onerror = () => es.close();
+    });
+});
+</script>
+{% endblock %}

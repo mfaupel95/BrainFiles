@@ -1,0 +1,36 @@
+model:
+  default: meituan/longcat-2.5-preview:free
+  provider: nous
+_config_version: 50
+terminal:
+  backend: local
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\kraken-cli
+platforms:
+  photon:
+    enabled: false
+# Executor-Slot explizit gesetzt (Cost Relocation: nie vom Elternprofil erben).
+# OKX und Kraken tragen verschiedene Worlds - kein geteiltes Profil (LLM Dispatch).
+delegation:
+  provider: nous
+  model: deepseek/deepseek-v4-flash-0731
+  fallback_providers:
+    - provider: nous
+      model: deepseek/deepseek-v4-flash-0731
+    - provider: anthropic
+      model: claude-opus-5
+  child_timeout_seconds: 300
+  max_iterations: 50
+  reasoning_effort: medium
+mcp_servers:
+  # Kraken native MCP - nur sichere Service-Gruppen, kein live trading, kein dangerous.
+  # Binary: Werkstatt/Repos/kraken-cli/target/release/kraken.exe (selbst kompiliert).
+  # Signal-Ausgabe: nur nach Papier-/Demo-Nachweis in Handel/ promoten.
+  kraken-native:
+    command: O:\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
+    args:
+      - mcp
+      - -s
+      - market,paper,workspace
+    env:
+      KRAKEN_PAPER_MODE: "true"
+    enabled: true

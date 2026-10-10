@@ -33,7 +33,7 @@ class TorTest(unittest.TestCase):
 
     def stand(self, spur, **d):
         sat = {"_zeit": 1.0, "spuren": {spur: {
-            "n": 20, "n_basis": 20, "n_excess": 20, "mean_excess": 1.0,
+            "n": 40, "n_basis": 40, "n_excess": 40, "mean_excess": 1.0,
             "befunde": [], "mean": 1.0, "treffer": 0.5}}}
         sat["spuren"][spur].update(d)
         with open(self.merk, "w", encoding="utf-8") as fh:
@@ -102,6 +102,43 @@ class TorTest(unittest.TestCase):
         netto = d["mean_excess"] - tor.gebuehr_pro_runde(w)
         self.assertGreater(netto, 0)
         tor.MIN_RUNDEN = alt
+
+    # 9 - Konfidenz: positives Mittel, aber Streuung zu gross
+    def test_streuung_frisst_die_konfidenz(self):
+        self.stand("laut", mean_excess=1.0, std_excess=10.0)   # SE = 1.58 %
+        ok, g = tor.pruefe("laut", WACHE)
+        self.assertFalse(ok)
+        self.assertTrue(any("Konfidenzgrenze" in x for x in g), g)
+
+    # 10 - enge Streuung passiert
+    def test_enge_streuung_passiert(self):
+        self.stand("ruhig", mean_excess=1.0, std_excess=1.0)
+        ok, g = tor.pruefe("ruhig", WACHE)
+        self.assertTrue(ok, g)
+
+    # 11 - Bonferroni: mehr geprueftes Spuren verschaerfen z
+    def test_mehr_spuren_verschaerfen_die_grenze(self):
+        # SE = 0.15 -> z-Grenze 0.9/0.15 = 6: bei 1 Spur (z~1.64) offen,
+        # bei 40 Spuren (z~3.23) offen, bei 400 Spuren (z~3.72) auch -
+        # also einen Grenzfall waehlen: netto 0.9, SE 0.3 -> z-Grenze 3.0
+        self.stand("grenzfall", mean_excess=1.0, std_excess=0.3 * 40 ** 0.5)
+        ok1, _ = tor.pruefe("grenzfall", WACHE)
+        self.assertTrue(ok1)                      # z(1 Spur) = 1.64 < 3.0
+        with open(self.merk, encoding="utf-8") as fh:
+            sat = json.load(fh)
+        for i in range(60):
+            sat["spuren"]["x%d" % i] = dict(sat["spuren"]["grenzfall"])
+        with open(self.merk, "w", encoding="utf-8") as fh:
+            json.dump(sat, fh)
+        ok2, g = tor.pruefe("grenzfall", WACHE)
+        self.assertFalse(ok2)                     # z(61 Spuren) = 3.34 > 3.0
+        self.assertTrue(any("Konfidenzgrenze" in x for x in g), g)
+
+    # 12 - aelterer Auditstand ohne std: Bedingung entfaellt
+    def test_ohne_std_keine_konfidenzbedingung(self):
+        self.stand("alt")
+        ok, g = tor.pruefe("alt", WACHE)
+        self.assertTrue(ok, g)
 
 
 if __name__ == "__main__":

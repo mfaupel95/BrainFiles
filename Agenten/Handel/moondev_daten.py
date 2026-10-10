@@ -65,7 +65,64 @@ def maerkte(vs="usd", anzahl=100, seiten=1, sortierung="market_cap_desc",
         "sparkline": "false",
         "price_change_percentage": prozentfelder,
     }
-    return hole_json("%s/coins/markets?%s" % (COINGECKO, urllib.parse.urlencode(felder)))
+    aus = hole_json("%s/coins/markets?%s" % (COINGECKO, urllib.parse.urlencode(felder)))
+    # Nebenbei den ID-Cache fuellen (T-160): `/simple/price` will die
+    # CoinGecko-ID, nicht das Ticker-Kuerzel - und hier kommen beide gemeinsam.
+    for m in aus if isinstance(aus, list) else []:
+        sym = str(m.get("symbol") or "").upper()
+        if sym and m.get("id"):
+            _SYMBOL_IDS.setdefault(sym, m["id"])
+    return aus
+
+
+def maerkte_binance(vs="usd", anzahl=100, sortierung="market_cap_desc"):
+    """Binance /ticker/24hr + /klines - ersetzt CoinGecko.
+
+    Rueckgabe: Liste von Dicts mit den gleichen Feldern wie maerkte():
+    symbol, name, current_price, price_change_percentage_1h_in_currency,
+    price_change_percentage_24h, total_volume
+
+    Binance ist oeffentlich, ohne API-Key, mit 1200 req/min (vs. CoinGecko
+    10-30/min). 1h-Aenderung wird aus 2 Kerzen berechnet.
+    """
+    # 1. Alle Ticker 24h (1 Aufruf)
+    ticker = hole_json("%s/ticker/24hr" % BINANCE)
+
+    # 2. Nur USDT-Paare, dann nach Volumen (in USD) sortieren
+    usdt = [t for t in ticker if t.get("symbol", "").endswith("USDT")]
+    for t in usdt:
+        t["_vol_usd"] = float(t.get("volume", 0)) * float(t.get("lastPrice", 0))
+    usdt.sort(key=lambda x: x["_vol_usd"], reverse=True)
+
+    # 3. Top-N auswaehlen
+    aus = []
+    for t in usdt[:anzahl]:
+        symbol = t.get("symbol", "")
+        base = symbol[:-4]  # USDT-Endung entfernen
+
+        # 1h-Aenderung aus Ticker (open24h vs lastPrice) - 1 Aufruf statt 50
+        try:
+            open_24h = float(t.get("openPrice", 0))
+            last = float(t.get("lastPrice", 0))
+            change_1h = ((last - open_24h) / open_24h * 100) if open_24h > 0 else 0.0
+        except Exception:
+            change_1h = 0.0
+
+        aus.append(
+            {
+                "symbol": base,
+                "name": base,
+                "current_price": float(t.get("lastPrice", 0)),
+                "price_change_percentage_1h_in_currency": change_1h,
+                "price_change_percentage_24h": float(
+                    t.get("priceChangePercent", 0)
+                ),
+                "total_volume": float(t.get("volume", 0))
+                * float(t.get("lastPrice", 0)),
+            }
+        )
+
+    return aus
 
 
 def binance_paare():
@@ -230,6 +287,91 @@ def okx_liquidationen(uly="BTC-USDT", grenze=100):
             for z in aus:
                 z["usd"] = z["kontrakte"] * ctval * z["preis"]
     return aus
+
+
+# Ticker -> CoinGecko-ID, gefuellt von JEDEM maerkte()-Aufruf (ohne extra
+# Anfrage: das Feld `id` kommt mit). `/simple/price` will die ID ("bitcoin"),
+# nicht das Ticker-Kuerzel ("btc") - ohne diese Map schlaegt der Einzelkurs
+# fehl, obwohl der Coin bekannt ist (gemessen 07.10.2026).
+_SYMBOL_IDS = {}
+
+
+def symbol_kurs(symbol, vs="usd"):
+    """Der Kurs EINES Symbols - fuer Positionen, die aus dem Feed gefallen sind.
+
+    WOHER (T-160, nachgefahren 07.10.2026): `quelle()` baut `kurse` aus den
+    AKTUELLEN Feed-Kandidaten - faellt ein Symbol aus dem Feed, bekommt seine
+    offene Position keinen Kurs mehr. `spur_buch.zyklus(preis_fuer=...)` ruft
+    diese Funktion NUR fuer solche verwaisten Positionen auf: ein Positionskurs
+    darf nicht am Feed haengen.
+
+    Reihenfolge bewusst so:
+      1. Binance - oeffentlich, 1200 req/min, deckt die meisten grossen Coins.
+         Kein Rate-Limit-Thema wie bei CoinGecko (429 gemessen 07.10.2026).
+      2. CoinGecko `/simple/price` mit der ID aus dem Cache (`maerkte()` fuellt
+         ihn nebenbei) - noetig fuer Coins, die es NICHT auf Binance gibt
+         (genau das Thema der Listingarb-Spur).
+      3. Ohne gecachte ID einmal `/search` fragen und cachen; scheitert auch
+         das (Drosselung, unbekanntes Symbol), kommt None heraus - dann
+         bleibt die Position offen und der Grund steht auf stderr. Nie ein
+         geratener Preis.
+    """
+    sym = str(symbol or "").strip().upper()
+    if not sym:
+        return None
+    kurs = binance_symbol_kurs(sym)
+    if kurs:
+        return kurs
+    cid = _SYMBOL_IDS.get(sym)
+    if not cid:
+        try:
+            suche = hole_json("%s/search?query=%s" % (COINGECKO,
+                                                      urllib.parse.quote(sym)))
+            for c in (suche.get("coins") or []):
+                if str(c.get("symbol") or "").upper() == sym:
+                    cid = c.get("id")
+                    _SYMBOL_IDS[sym] = cid
+                    break
+        except Exception:                                      # noqa: BLE001
+            cid = None
+    if not cid:
+        return None
+    # Achtung: der Endpunkt will `vs_currencies` im PLURAL - `vs_currency`
+    # (singular, wie bei /coins/markets) liefert HTTP 422 (gemessen 07.10.).
+    felder = {"ids": cid, "vs_currencies": vs}
+    try:
+        daten = hole_json("%s/simple/price?%s" % (COINGECKO,
+                                                  urllib.parse.urlencode(felder)))
+    except Exception:                                          # noqa: BLE001
+        return None
+    if isinstance(daten, dict) and daten.get(cid):
+        return zahl(daten[cid].get(vs))
+    return None
+
+
+def binance_symbol_kurs(symbol, quote="USDT"):
+    """Der Kurs EINES Symbols an Binance (Ticker) - oder None.
+
+    Derselbe Grund wie `symbol_kurs` (T-160): die Position muss ihren Kurs
+    behalten, auch wenn ihr Symbol aus der Top-Liste gefallen ist. Kein
+    Rate-Limit-Thema (1200 req/min).
+
+    FALSCHES Symbol (HTTP 400/404) ist ein BEFUND ("gibt es hier nicht"), kein
+    Fehler - sonst wuerde der Rueckfall auf CoinGecko nie erreicht (der erste
+    symbol_kurs-Testlauf scheiterte genau daran, 07.10.2026). Netz- und
+    Zeitueberschreitungsfehler werden dagegen DURCHGEREICHT: wer den Zyklus
+    nicht reissen will, fängt sie oben - ein stiller None versteckt einen
+    toten Feed.
+    """
+    url = "%s/ticker/price?symbol=%s%s" % (BINANCE,
+                                           urllib.parse.quote(str(symbol or "").upper()),
+                                           quote)
+    try:
+        ticker = hole_json(url)
+    except urllib.error.HTTPError:
+        return None        # Paar unauffindbar (Delisting) - ein Befund, kein Fehler
+    p = zahl(ticker.get("price"))
+    return p if p and p > 0 else None
 
 
 def zahl(wert):

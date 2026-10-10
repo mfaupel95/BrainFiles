@@ -50,15 +50,15 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **Bus-Suite:** `cd Agenten/Bus && python tests/test_ende_zu_ende.py` - Ausgabe endet mit "Ende-zu-Ende bestanden".
 - **MCP-Abgleich:** `Agenten/mcp-sync-check.ps1` (eingebunden in systempruefung.ps1).
 - **Einzelner Test:** Bus-Tests sind direkt ausfuehrbare Skripte (`cd Agenten/Bus && python tests/test_journal.py`, kein unittest/pytest). Handel-Tests nutzen unittest, z. B. `cd Agenten/Handel && scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_handelszentrale*.py"`. Handel-Tests laufen ueber `Agenten/Routinen/handel-tests.ps1`; Unterordner (`gitter/`, `kopier/`, `scanner/`, `xperp/`, ...) haben eigene `tests/`.
+- **Werkzeug-Tests:** `Agenten/Werkzeuge/tests/` (zweige, bereiche, fremd, ...) sind unittest, aus der Wurzel: `python -m unittest discover -s Agenten/Werkzeuge/tests -p "test_zweige.py" -v` oder direkt `python Agenten/Werkzeuge/tests/test_zweige.py`. Die Tests bauen echte temporaere Git-Repos (kein Mock).
 - **xperp (Spur 2, OKX-Perpetuals):** Live-Pfad `Agenten/Handel/xperp/handeln.py` (`--vorschau` | `--papier` | `--live` | `--wachen`); gerechnet wird nur in `bot.py`, `handeln.py` holt die Zahlen von dort. Tests liegen zweifach: `test_*.py` neben dem Code und in `tests/`, beide unittest: `cd Agenten/Handel/xperp && ../scanner/.venv/Scripts/python.exe -m unittest discover -s tests` bzw. `-m unittest test_deckel`. Der Trailing-Stop lebt in `Agenten/Handel/trailing.py`, die Verdrahtung in `xperp/handeln.py` (nur aktiv mit `trailing_aktiv` in der Wache).
 - **Handel (Wurzel-Wrapper):** `omnitrade.cmd` (Stand; `start` = Live-Lauf im OKX-DEMO, nur einer zur Zeit; `ui` = Fenster) und `omnitrade-auswertung.cmd` (rein lesend). Detailwissen: `Agenten/Handel/README.md`, `MaxHirn/Wissen/Omnitrade.md`.
-- **Regeldatei-Paare:** `CLAUDE.md`=`AGENTS.md` in der Wurzel, in `MaxHirn/` und in `Werkstatt/` muessen identisch bleiben - wer eine aendert, aendert beide. Maschinell geprueft werden nur die Paare in `MaxHirn/` (`Agenten/Routinen/wissen-index-pruefen.ps1`); das Wurzel-Paar war am 03.10.2026 auseinandergelaufen (Zweig-Abschnitt in `AGENTS.md` noch Stand 16.09.2026) und wurde angeglichen.
+- **Regeldatei-Paare:** `CLAUDE.md`=`AGENTS.md` in der Wurzel, in `MaxHirn/` und in `Werkstatt/` muessen identisch bleiben - wer eine aendert, aendert beide. Maschinell geprueft werden die Paare in `MaxHirn/` (`Agenten/Routinen/wissen-index-pruefen.ps1`) und seit 09.10.2026 alle drei Paare taeglich durch den Konfig-Doktor (Block 16 der Systempruefung, Modul regelpaare); das Wurzel-Paar war am 03.10.2026 auseinandergelaufen (Zweig-Abschnitt in `AGENTS.md` noch Stand 16.09.2026) und wurde angeglichen.
 - **Bereichs-Besitz (seit 04.10.2026):** Drei Sitzungen teilen sich denselben
   Arbeitsbaum, und JEDE darf ueberall schreiben - deshalb gewinnt der Schnellere, und
-  der geteilte Git-Index ist nur das spaeteste Symptom. Die Hausloesung ist Regelwerk,
-  nicht Isolation: **eigene Git-Zweige je Sitzung wurden gemessen verworfen** (sie
-  machen es schlimmer - fremde Aenderungen kommen als Branch-Differenz zurueck statt als
-  erkennbar ruhende Datei, und der Zweig-Overkill kostet den Ueberblick). Der Besitz
+  der geteilte Git-Index ist nur das spaeteste Symptom. Die Hausloesung ist
+  Regelwerk plus eigene Zweige (seit 08.10.2026, siehe Abschnitt
+  Zweige; die frueher verworfene Zweig-Variante gilt nicht mehr). Der Besitz
   steht in `Agenten/BEREICHE.json`, geprueft mit `python Agenten/Werkzeuge/bereiche.py
   --register`: `handel` = `Agenten/Handel/`, `bot` = `Agenten/Bus/`,
   `Agenten/Hermes/skills/`, `Agenten/Hermes/profiles/`, `Agenten/MCP-Manifest.json`,
@@ -67,29 +67,40 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
   still und die Regel wuerde umgangen. Wer in einen fremden Bereich schreibt, meldet
   das als BEFUND (`--aufrufer <bereich> --pfad <pfad>`, Exitcode 1 bei Konflikt), es
   wird nicht blockiert.
+  Seit 09.10.2026 gibt es zusaetzlich den Commit-Hook `.githooks/pre-commit`
+  (einmalig je Klon `git config core.hooksPath .githooks`): wer sich per
+  `BRAINFILES_BEREICH=handel|bot|wissen` ausweist, kann nicht in fremde Bereiche
+  committen; ohne die Variable wird nichts blockiert.
+- **Kein `git stash` im geteilten Arbeitsbaum (seit 08.10.2026).** Der Stash
+  friert Arbeit ein, während andere Sitzungen weiter committen; ein späteres
+  `stash pop` konfligiert gegen Zwischencommits (Fall „Vault-Schutzschicht":
+  7 Konflikte gegen 14 Zwischencommits). Eigenes sofort committen statt
+  stashen. Pop doch nötig: bei Konflikt ist OURS der aktuelle Repo-Stand,
+  THEIRS der ältere Stash - Seiten per Datum vergleichen (Stash-Datum gegen
+  die Commits, die die Datei seither berührt haben), nur übernehmen, was im
+  Repo noch fehlt; Stash erst nach Verifikation droppen.
 
-## Zweige (Stand 29.09.2026)
+## Zweige (Stand 08.10.2026)
 
-- `master` ist der Arbeitszweig: hier wird committet, gepusht und gemergt. Ein
-  Zweig, der getrennt laeuft und liegen bleibt, kostet Ueberblick, ohne etwas
-  zu sichern - darum wurde `telegram-bus` am 16.09.2026 hinein gefuehrt und
-  geloescht (lokal und auf GitHub, Standardzweig ist wieder `master`).
-- **Ausnahme, seit 29.09.2026: kurzlebige PR-Zweige.** Verlangt ein Ablauf
-  (z. B. `<create-pr-command>`) ausdruecklich eine PR, darf dafuer ein Zweig
-  angelegt werden - erzeugen, pushen, PR eroeffnen, nach dem Mergen SOFORT
-  loeschen (lokal `git branch -d <zweig>` und `git push origin --delete
-  <zweig>`). Kein PR-Zweig bleibt laenger als bis zum Merge liegen; ohne
-  konkreten PR-Anlass gilt weiter nur `master`. Grund der Lockerung: gefuehlt
-  ging Arbeit verloren - Ursache war aber kein Zweig, sondern uncommittete
-  Arbeit, die zu lange im Baum stand (siehe Zwischenstand-Takt unten).
+- **Jeder Agent arbeitet auf einem eigenen Zweig, der von `master` abzweigt**
+  (`git switch -c <agent>/<thema> master`, z. B. `claude/gold-hebel`). Ein
+  Arbeitsbaum haelt nur einen Zweig - parallele Agenten brauchen deshalb je einen
+  eigenen Arbeitsbaum unter `.worktrees/` (`git worktree add .worktrees/<name> -b
+  <zweig> master`), nie `git switch` im geteilten Hauptbaum.
+- **Gemergt wird erst, wenn die PR abgeschlossen ist:** Tests gruen, PR eroeffnet
+  und freigegeben. Vorher nichts nach `master` schieben. Gemergt wird per PR; nach
+  dem Merge Zweig und Arbeitsbaum loeschen (lokal `git branch -d <zweig>`,
+  `git worktree remove`, `git push origin --delete <zweig>`). Ein Zweig mit
+  offener Arbeit bleibt bis dahin stehen und ist kein Altlast-Verdacht.
+- `master` ist der Integrationszweig: nur abgeschlossene, getestete Arbeit, dazu
+  die Routinen (kb-sync, Fremdarbeit-Einziehen) und reine Pflege-Commits ohne
+  eigenen Zweig (Notizen, Index, TASKS-Vermerke).
 - `zwischenstand` ist keine Arbeit, sondern die automatische Sicherung der
-  Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig, seit 29.09.2026
-  stuendlich statt taeglich). Nie dort committen, nie anfassen; Aufraeumen,
-  wenn er stoert: `git update-ref -d refs/heads/zwischenstand` (Regeln in
-  MaxHirn/Wissen/Routinen.md).
-- Sonst keine weiteren Zweige anlegen. Ist doch einer entstanden: auf `master`
-  zusammenfuehren (`git branch -f master <zweig>`, wenn master ein Vorfahre
-  ist, sonst `git merge`) und loeschen.
+  Routine `zwischenstand.ps1` (Commit direkt auf diesen Zweig, stuendlich). Nie
+  dort committen, nie anfassen; Aufraeumen, wenn er stoert: `git update-ref -d
+  refs/heads/zwischenstand` (Regeln in MaxHirn/Wissen/Routinen.md).
+- Uncommittete Arbeit bleibt das eigentliche Verlustrisiko, nicht der Zweig:
+  oft committen, auf dem eigenen Zweig auch halbfertig.
 
 ## Umgebung
 

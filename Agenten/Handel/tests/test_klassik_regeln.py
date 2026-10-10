@@ -86,14 +86,14 @@ class Regeln(unittest.TestCase):
                                                "mitte", "sma5"), name)
 
     def test_bauen_signal_zu_wenig_kerzen(self):
-        _q, signal, _a = kr.bauen("klassik_sma")
+        _q, signal, _a, _p = kr.bauen("klassik_sma")
         self.assertIsNone(signal({"kerzen": kerzen([100.0] * 30)}, {}))
 
     def test_quelle_meldet_fehler_statt_zu_raten(self):
         alt = kr._kerzen
         kr._kerzen = lambda *a: (_ for _ in ()).throw(RuntimeError("weg"))
         try:
-            quelle, _s, _a = kr.bauen("klassik_ema")
+            quelle, _s, _a, _p = kr.bauen("klassik_ema")
             daten, kurse, fehler = quelle({"instrumente": ["BTC-USDT-SWAP"]})
         finally:
             kr._kerzen = alt
@@ -187,7 +187,7 @@ class BauenVertrag(unittest.TestCase):
     W = {"kerzen_anzahl": 400, "kerzen_zeitrahmen": "4H"}
 
     def test_ausstieg_ist_abschaltbar(self):
-        _q, _s, ausstieg = kr.bauen("klassik_ema")
+        _q, _s, ausstieg, _p = kr.bauen("klassik_ema")
         p = {"inst": "BTC-USDT-SWAP", "seite": "long"}
         self.assertIsNone(ausstieg(p, {"ausstieg_bei_regel": False}))
 
@@ -196,7 +196,7 @@ class BauenVertrag(unittest.TestCase):
         alt = kr._kerzen
         kr._kerzen = lambda *a, **k: kerzen([100.0] * 60)
         try:
-            _q, _s, ausstieg = kr.bauen("klassik_ema")
+            _q, _s, ausstieg, _p = kr.bauen("klassik_ema")
             self.assertIsNone(ausstieg({"inst": "BTC-USDT-SWAP"}, self.W))
         finally:
             kr._kerzen = alt
@@ -205,7 +205,7 @@ class BauenVertrag(unittest.TestCase):
         alt = kr._kerzen
         kr._kerzen = lambda *a, **k: kerzen([100.0] * 10)
         try:
-            _q, _s, ausstieg = kr.bauen("klassik_ema")
+            _q, _s, ausstieg, _p = kr.bauen("klassik_ema")
             p = {"inst": "BTC-USDT-SWAP", "seite": "long"}
             self.assertIsNone(ausstieg(p, self.W))
         finally:
@@ -214,10 +214,29 @@ class BauenVertrag(unittest.TestCase):
     def test_signal_und_ausstieg_kommen_aus_derselben_regel(self):
         for name in kr.REGELN:
             with self.subTest(spur=name):
-                quelle, signal, ausstieg = kr.bauen(name)
+                quelle, signal, ausstieg, preis_fuer = kr.bauen(name)
                 self.assertTrue(callable(quelle))
                 self.assertTrue(callable(signal))
                 self.assertTrue(callable(ausstieg))
+                self.assertTrue(callable(preis_fuer))
+
+    def test_preis_fuer_liefert_kurs_fuer_ein_gestrichenes_symbol(self):
+        """T-121: eine Position auf einem nicht mehr im Plan stehenden Symbol
+        bekommt ueber preis_fuer wieder einen Kurs - sonst bleibt sie still
+        im Buch und belegt ihren Platz (Befund 29.09.2026)."""
+        alt = kr._kerzen
+        kr._cache.clear()
+        try:
+            kr._kerzen = lambda *a, **k: kerzen([100.0] * 260)
+            _q, _s, _a, preis_fuer = kr.bauen("klassik_ema")
+            if preis_fuer is None:
+                self.skipTest("preis_fuer nicht vorhanden")
+            preis = preis_fuer("GESTRICHEN-USDT-SWAP")
+            self.assertIsNotNone(preis)
+            self.assertGreater(preis, 0.0)
+        finally:
+            kr._kerzen = alt
+            kr._cache.clear()
 
     def test_quelle_verwirft_die_laufende_kerze(self):
         """OKX liefert die laufende Kerze mit - sie darf nie in die Rechnung."""
@@ -225,7 +244,7 @@ class BauenVertrag(unittest.TestCase):
         alt = kr._kerzen
         kr._cache.clear()
         try:
-            quelle, _s, _a = kr.bauen("klassik_ema")
+            quelle, _s, _a, _p = kr.bauen("klassik_ema")
             kr._kerzen = lambda *a, **k: roh[:-1]      # so liefert es der Kern
             daten, kurse, _f = quelle({"instrumente": ["BTC-USDT-SWAP"]})
         finally:

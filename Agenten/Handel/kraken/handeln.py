@@ -676,6 +676,15 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0, lage=None):
                  reserviert, waehrung))
     plaetze_belegt = len(z["positionen"]) + (1 if offener_beleg else 0)
     eingesetzt = sum(p["eur"] for p in z["positionen"]) + reserviert
+    if offener_beleg:
+        # T-102: ein offener Beleg ist eine beschlossene, noch nicht
+        # ausgefuehrte Kaufentscheidung. Die Spur hat nur EINE Belegdatei
+        # (T-283) - ein zweiter `schreibe()` wuerde den ersten ueberschreiben
+        # und in Fehlerzeilen stuerzen. Deshalb KEIN neuer Beleg in diesem
+        # Zyklus, unabhaengig davon, wie viele Plaetze frei sind.
+        print("  offener Beleg %s fuer %s - kein neuer Beleg in diesem Zyklus"
+              % (offener_beleg.get("kennung"), offener_beleg.get("paar")))
+        return z
     if faktor != 1.0:
         print("  (Drawdown-Ratsche aktiv: Positionsgroesse x %.2f)" % faktor)
     for v in vs:

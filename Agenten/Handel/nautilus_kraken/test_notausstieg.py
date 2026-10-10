@@ -97,16 +97,39 @@ class NotausstiegTest(unittest.TestCase):
             rc = fp.lauf(1, True)
         return rc, buf.getvalue()
 
-    def test_keine_fuellung_setzt_trotzdem_einen_stop(self):
-        kf = _Kf()
+    def test_keine_fuellung_und_verkauf_scheitert_setzt_stop(self):
+        # T-312: bei unlesbarer Kauf-Fuellung wird der Verkauf (reduceOnly)
+        # versucht. Scheitert auch der, greift der Schutz-Stop.
+        kf = _Kf(sells_moeglich=False)
         rc, txt = self._fuehre(kf, _PollingSchlaegtFehl.fuelungen)
         self.assertEqual(rc, 1)
-        self.assertIn("KEINE Fuellung gelesen", txt)
+        self.assertIn("KEINE Kauf-Fuellung gelesen", txt)
+        self.assertIn("VERKAUF GESCHEITERT", txt)
         self.assertEqual(len(kf.stops), 1,
                          "kein Schutz-Stop gesetzt:\n%s" % txt)
         self.assertTrue(kf.stops[0][3], "Stop muss echt sein, nicht Trockenlauf")
         # Der Stop haengt am LETZTEN BEKANNTEN Kurs (0.04), nicht an 0.
         self.assertAlmostEqual(kf.stops[0][2], 0.04 * 0.985, places=6)
+
+    def test_keine_fuellung_aber_verkauf_geht_durch(self):
+        # T-312: der Verkauf haengt NICHT am Fill-Polling. Bei unlesbarer
+        # Kauf-Fuellung wird er trotzdem versucht; gelingt er, bleibt keine
+        # Position offen und kein Stop noetig.
+        kf = _Kf()
+        zaehler = {"n": 0}
+
+        def fills(order_id, seit, frist_s=15):
+            zaehler["n"] += 1
+            if zaehler["n"] == 1:      # Kauf-Fuellung unlesbar
+                return []
+            return [{"order_id": order_id, "price": "0.0500", "size": "1"}]
+
+        rc, txt = self._fuehre(kf, fills)
+        self.assertEqual(rc, 0)
+        self.assertIn("KEINE Kauf-Fuellung gelesen", txt)
+        self.assertIn("Verkauf gesendet (Kauf-Fuellung unlesbar)", txt)
+        self.assertEqual(len(kf.stops), 0,
+                         "kein Stop noetig, wenn der Verkauf durchging")
 
     def test_verkauf_abgelehnt_setzt_stop_mit_fuellungskurs(self):
         kf = _Kf(sells_moeglich=False)
@@ -139,7 +162,7 @@ class NotausstiegTest(unittest.TestCase):
     def test_gegenprobe_ohne_fix_bleibt_der_pfad_offen(self):
         """Der Weg 'keine Fuellung' hat OHNE die Absicherung keinen Stop."""
         quelle = open(fp.__file__, encoding="utf-8").read()
-        block = quelle.split("KEINE Fuellung gelesen")[1].split("return 1")[0]
+        block = quelle.split("KEINE Kauf-Fuellung gelesen")[1].split("return 1")[0]
         self.assertIn("notausstieg", block,
                       "der Pfad ohne Fuellung ruft die Absicherung nicht")
 

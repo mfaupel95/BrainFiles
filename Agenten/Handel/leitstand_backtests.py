@@ -43,14 +43,15 @@ _TEXT = re.compile(r"^[A-Za-z0-9](?!.*\.\.)[A-Za-z0-9_./-]{0,39}$")
 # --- Replay: reine Funktionen -----------------------------------------------
 
 def replay_spuren():
-    """Alle Spuren, die der Replay fahren kann - Familie A UND D.
+    """Alle Spuren, die der Replay fahren kann - Familie A, D und E.
 
-    Familie D (mosaic, gitter) braucht KEINEN eigenen Schalter: der Replay
-    erkennt sie am Spurnamen (replay.MEHRZEITRAHMEN/EIGENE_RECHNUNG). Hier
-    steht nur die Liste, damit das Fenster sie anbietet.
+    Familie D (mosaic, gitter) und Familie E (xperp) brauchen KEINEN eigenen
+    Schalter: der Replay erkennt sie am Spurnamen (replay.MEHRZEITRAHMEN/
+    EIGENE_RECHNUNG/SPUREN_TEIL_E). Hier steht nur die Liste, damit das
+    Fenster sie anbietet.
     """
     return (list(replay.SPUREN_TEIL_A) + list(replay.MEHRZEITRAHMEN)
-            + list(replay.EIGENE_RECHNUNG))
+            + list(replay.EIGENE_RECHNUNG) + list(replay.SPUREN_TEIL_E))
 
 
 def nicht_nachrechenbar():
@@ -125,8 +126,8 @@ class ReplayBereich(ttk.Frame):
         self.reiter = reiter
         g = dict(REPLAY_VORGABEN,
                  **_als_dict(_als_dict(reiter.zustand.get("werte")).get("replay")))
-        if g["spur"] not in replay.SPUREN_TEIL_A:
-            g["spur"] = REPLAY_VORGABEN["spur"]
+        if g["spur"] not in replay_spuren():
+                    g["spur"] = REPLAY_VORGABY_VORGABEN["spur"]
         self.w_spur = tk.StringVar(value=g["spur"])
         self.w_kerzen = tk.StringVar(value=str(g["max_kerzen"]))
         self.w_gebuehr = tk.StringVar(value=str(g["gebuehr"]))

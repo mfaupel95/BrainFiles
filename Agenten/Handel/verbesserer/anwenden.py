@@ -46,6 +46,7 @@ Commit erzeugt. Die Reihenfolge steht fest:
 Nur Standardbibliothek; Git wird als Kommando aufgerufen.
 """
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -59,7 +60,13 @@ WURZEL = Path(__file__).resolve().parent
 # Zusaetzlich zur festen ``suche.DENYLIST`` gesperrt: jeder Schluessel, der mit
 # einem dieser Praefixe beginnt, ist ein harter Sicherheitsschalter und darf
 # nie von einem Vorschlag angefasst werden.
-_GESPERRTE_PRAEFIXE = ("freigabe", "drawdown", "kill_switch", "herzschlag")
+_GESPERRTE_PRAEFIXE = (
+    "freigabe", "drawdown", "kill_switch", "herzschlag",
+    # Spur 2 (XPERP): Deckel, Hebel, Risiko, LLM-Filter, Papierfaktor,
+    # Familien-Block, Grid und der Trailing-Hauptschalter sind nie Sache eines
+    # Vorschlags - auch dann nicht, wenn jemand sie in spuren.json freigibt.
+    "max_hebel", "max_margin", "max_offene_anlaeufe", "risiko_je_anlauf",
+    "llm_", "papier_faktor", "familien", "grid_", "trailing_aktiv")
 
 
 class _PatchFremd(Exception):
@@ -178,10 +185,11 @@ def _patch_fremde_pfade(patch_datei, bewertung_pfad, repo):
 
 
 def _wiederherstellen(bak, wachen_pfad, bewertung_pfad, repo):
-    """Beide Zieldateien aus ``bak`` zuruecckopieren und aus dem Index
+    """Die Zieldateien aus ``bak`` zuruecckopieren und aus dem Index
     nehmen. Best effort - Fehler beim Aufraeumen werden geschluckt, damit
     :func:`anwenden` immer sein Dict zurueckgibt."""
-    for pfad in (wachen_pfad, bewertung_pfad):
+    ziele = [p for p in (wachen_pfad, bewertung_pfad) if p is not None]
+    for pfad in ziele:
         quelle = bak / pfad.name
         if quelle.exists():
             try:
@@ -190,7 +198,7 @@ def _wiederherstellen(bak, wachen_pfad, bewertung_pfad, repo):
                 pass
     try:
         subprocess.run(
-            ["git", "reset", "--", str(wachen_pfad), str(bewertung_pfad)],
+            ["git", "reset", "--", *[str(p) for p in ziele]],
             cwd=repo, capture_output=True, text=True, check=False)
     except OSError:
         pass
@@ -211,6 +219,39 @@ def _ablegen(ordner, unterordner):
     return ziel
 
 
+def _kandidat_hash(ordner):
+    """Stabiler Identifikator des Kandidaten: sha256 ueber wachen.neu.json
+    (die eigentliche Aenderung), sonst ueber bewertung.patch, sonst None."""
+    for name in ("wachen.neu.json", "bewertung.patch"):
+        datei = Path(ordner) / name
+        if datei.exists():
+            return hashlib.sha256(datei.read_bytes()).hexdigest()[:16]
+    return None
+
+
+def _anwendungslog(ordner, entscheidung, grund=""):
+    """T-373: einen Eintrag an ``verbesserer/anwendungslog.json`` anhaengen
+    (Append-JSON-Lines). Der Funnel ist nach dem Digest-Schritt blind -
+    anwenden.py weiss, ob ein Vorschlag angewendet wurde, schreibt das aber
+    nicht zurueck. Abwaertskompatibel: neue Datei, kein Umbau bestehender
+    Logik. ``lauf_ts`` kommt aus dem Ordnernamen (``<datum>-<spur>``)."""
+    name = Path(ordner).name
+    # Ordnername ist "<datum>-<spur>", das Datum selbst hat Bindestriche
+    # (2026-10-07-spur1). Die ersten 10 Zeichen sind das Datum.
+    lauf_ts = name[:10] if len(name) >= 10 else name
+    eintrag = {
+        "lauf_ts": lauf_ts,
+        "anwendung_ts": datetime.now(timezone.utc).isoformat(),
+        "kandidat_hash": _kandidat_hash(ordner),
+        "entscheidung": entscheidung,
+        "grund_optional": grund or "",
+    }
+    ziel = WURZEL / "anwendungslog.json"
+    with open(ziel, "a", encoding="utf-8") as f:
+        f.write(json.dumps(eintrag, ensure_ascii=False) + "\n")
+    return eintrag
+
+
 def anwenden(ordner, spur, repo):
     """Vorschlag aus ``ordner`` anwenden. Rueckgabe
     ``{"ok": bool, "grund": str, "commit": str | None}``.
@@ -218,8 +259,11 @@ def anwenden(ordner, spur, repo):
     ordner = Path(ordner)
     repo = Path(repo)
     wachen_pfad = Path(spur["wachen"]).resolve()
-    bewertung_pfad = Path(spur["bewertung_datei"]).resolve()
-    pfade = [str(wachen_pfad), str(bewertung_pfad)]
+    # Spur 2 (XPERP) hat keine Bewertungsdatei: nur wachen.json wird angefasst.
+    bewertung_pfad = (Path(spur["bewertung_datei"]).resolve()
+                      if spur.get("bewertung_datei") else None)
+    ziele = [p for p in (wachen_pfad, bewertung_pfad) if p is not None]
+    pfade = [str(p) for p in ziele]
 
     # 1. Arbeitsbaum
     ok, grund = baum_sauber(pfade, repo)
@@ -287,6 +331,22 @@ def anwenden(ordner, spur, repo):
                                           % (key, neu_obj[key], lo, hi)),
                                 "commit": None}
 
+    # 2b2. Basis-Pruefsumme (Spur 2): hat sich wachen.json seit dem Lauf
+    #      geaendert - auch an einem Whitelist-Schluessel, den der Vorschlag
+    #      gar nicht anfasst -, wuerde das byteweise Ueberschreiben diese
+    #      Aenderung still zuruecksetzen. Vorschlaege ohne Pruefsumme (Spur 1,
+    #      Spur 3) bleiben unveraendert.
+    basis_datei = ordner / "basis.sha256"
+    if hat_wachen_neu and basis_datei.exists():
+        soll = basis_datei.read_text(encoding="utf-8").strip()
+        ist = hashlib.sha256(wachen_pfad.read_bytes()).hexdigest()
+        if ist != soll:
+            return {"ok": False,
+                    "grund": ("wachen.json hat sich seit dem Lauf geaendert "
+                              "(Basis-Pruefsumme) - /nein und neuen Lauf "
+                              "abwarten"),
+                    "commit": None}
+
     # 2c. commit.txt frueh pruefen - vor jeder Aenderung am Arbeitsbaum.
     commit_datei = ordner / "commit.txt"
     if (not commit_datei.exists()
@@ -301,8 +361,8 @@ def anwenden(ordner, spur, repo):
     try:
         bak = WURZEL / "bak" / _zeitstempel()
         bak.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(wachen_pfad, bak / wachen_pfad.name)
-        shutil.copy2(bewertung_pfad, bak / bewertung_pfad.name)
+        for ziel in ziele:
+            shutil.copy2(ziel, bak / ziel.name)
     except Exception as fehler:  # noqa: BLE001
         return {"ok": False,
                 "grund": "Vorbereitung fehlgeschlagen: %s" % fehler,
@@ -327,6 +387,8 @@ def anwenden(ordner, spur, repo):
         patch_datei = ordner / "bewertung.patch"
         if (patch_datei.exists()
                 and patch_datei.read_text(encoding="utf-8").strip()):
+            if bewertung_pfad is None:
+                raise _PatchFremd(patch_datei.name)
             fremd = _patch_fremde_pfade(patch_datei, bewertung_pfad, repo)
             if fremd:
                 raise _PatchFremd(fremd[0])
@@ -334,8 +396,7 @@ def anwenden(ordner, spur, repo):
                            cwd=repo, check=True)
 
         # 6. genau die zwei Dateien stagen und committen
-        subprocess.run(["git", "add", str(wachen_pfad), str(bewertung_pfad)],
-                       cwd=repo, check=True)
+        subprocess.run(["git", "add", *pfade], cwd=repo, check=True)
         subprocess.run(["git", "commit", "-F", str(commit_datei)],
                        cwd=repo, check=True)
     except _PatchFremd as fehler:
@@ -355,6 +416,7 @@ def anwenden(ordner, spur, repo):
     # ``{"ok": True}`` mit dem echten Hash (soweit ermittelbar) - nur der
     # Grund vermerkt die misslungene Ablage.
     try:
+        _anwendungslog(ordner, "angewendet")
         _ablegen(ordner, "erledigt")
         kurz = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],

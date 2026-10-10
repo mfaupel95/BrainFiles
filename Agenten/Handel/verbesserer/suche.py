@@ -36,6 +36,11 @@ DENYLIST = frozenset({
     "handel_erlaubt", "freigabe", "drawdown_halbierung_prozent",
     "kill_switch_gesamt_usd", "herzschlag_max_minuten", "journal_zweitziel",
     "max_pro_trade_usd", "max_gesamt_usd", "max_offene_positionen",
+    # Spur 3 (Kraken) nennt dieselben Deckel mit EUR-Endung (teils
+    # historisch falsch "_usd", siehe kraken/wachen.json-Kommentar) - zweite
+    # Verteidigungslinie zusaetzlich zur Whitelist in spuren.json.
+    "max_pro_trade_eur", "max_gesamt_eur", "drawdown_halbierung_usd",
+    "kill_switch_gesamt_eur",
 })
 
 # Schrittweiten je durchsuchbarem Gate. Ein Nachbar bewegt genau ein Gate um
@@ -60,15 +65,29 @@ _SIZING_WERTE = ("flach", "score-linear", "vola-invers")
 _WATCHLIST_MIN = 3
 
 
-def basis_kandidat(wachen, chance_g, risiko_g):
+_DECKEL_FELDER_DEFAULT = {
+    "max_pro_trade_usd": "max_pro_trade_usd",
+    "max_gesamt_usd": "max_gesamt_usd",
+}
+
+
+def basis_kandidat(wachen, chance_g, risiko_g, deckel_felder=None):
     """Start-Kandidat aus ``wachen.json`` plus den Gewichtskonstanten.
 
     Die Stop-Grenzen heissen in ``wachen.json`` ``pflicht_stop_prozent_min`` /
     ``pflicht_stop_prozent_max``; im Kandidat und in ``grenzen`` heissen sie
-    ``stop_min`` / ``stop_max`` (dieselbe Umbenennung nimmt der Orchestrator in
-    Task 9 aus ``spuren.json`` vor). Die uebrigen Gates und die Deckel werden
-    unveraendert uebernommen.
+    ``stop_min`` / ``stop_max`` (dieselbe Umbenennung nimmt der Orchestrator
+    aus ``spuren.json`` vor). Die uebrigen Gates werden unveraendert
+    uebernommen.
+
+    ``deckel_felder`` mappt die candidate-internen Deckel-Schluessel
+    (``max_pro_trade_usd``/``max_gesamt_usd`` - eine Namenskonvention fuer
+    "Geld-Deckel", nicht woertlich US-Dollar) auf den tatsaechlichen
+    ``wachen.json``-Feldnamen der Spur. Default liest dieselben Namen
+    (Spur 1); Spur 3 (Kraken, EUR) uebergibt z. B. ``{"max_pro_trade_usd":
+    "max_pro_trade_eur", "max_gesamt_usd": "max_gesamt_eur"}``.
     """
+    deckel_felder = deckel_felder or _DECKEL_FELDER_DEFAULT
     gates = {
         "mindest_score": wachen["mindest_score"],
         "max_volatilitaet_pa": wachen["max_volatilitaet_pa"],
@@ -77,8 +96,8 @@ def basis_kandidat(wachen, chance_g, risiko_g):
         "stop_max": wachen["pflicht_stop_prozent_max"],
         "abklingzeit_tage": wachen["abklingzeit_tage"],
         "max_offene_positionen": wachen["max_offene_positionen"],
-        "max_gesamt_usd": wachen["max_gesamt_usd"],
-        "max_pro_trade_usd": wachen["max_pro_trade_usd"],
+        "max_gesamt_usd": wachen[deckel_felder["max_gesamt_usd"]],
+        "max_pro_trade_usd": wachen[deckel_felder["max_pro_trade_usd"]],
     }
     return {
         "gates": gates,
@@ -121,7 +140,8 @@ def _renormiert(gruppe):
     return {name: wert / summe for name, wert in gruppe.items()}
 
 
-def nachbarn(kandidat, grenzen):
+def nachbarn(kandidat, grenzen, gewichte_durchsuchbar=True,
+             watchlist_aenderbar=True):
     """Deterministische bounded Nachbarschaft von ``kandidat``.
 
     * Je durchsuchbarem Gate ein Nachbar mit ``+Schritt`` und einer mit
@@ -164,7 +184,10 @@ def nachbarn(kandidat, grenzen):
     # kann ein ohnehin hohes Gewicht knapp ueber 0,5 heben - solche Nachbarn
     # liegen nicht mehr im Rahmen und werden verworfen, damit jeder von
     # nachbarn() gelieferte Kandidat im_rahmen() erfuellt.
-    for gruppe in ("chance", "risiko"):
+    #
+    # gewichte_durchsuchbar=False (Spur 3): bewertung.py ist mit Spur 1
+    # geteilt, ein Kraken-Befund darf dessen Live-Scoring nicht mitaendern.
+    for gruppe in ("chance", "risiko") if gewichte_durchsuchbar else ():
         namen = list(kandidat["gewichte"][gruppe])
         for name in namen:
             for richtung in (_GEWICHT_SCHRITT, -_GEWICHT_SCHRITT):
@@ -187,8 +210,11 @@ def nachbarn(kandidat, grenzen):
         raus.append(nb)
 
     # --- watchlist (nur Drops) ------------------------------------------
+    # watchlist_aenderbar=False: das Live-Universum ist der ganze Markt
+    # (wachen.json universum.modus "alle"), die Watchlist dort nur Rueckfall.
+    # Ein Drop waere ein Vorschlag, den der Live-Scanner nie liest.
     liste = kandidat["watchlist"]
-    if len(liste) - 1 >= _WATCHLIST_MIN:
+    if watchlist_aenderbar and len(liste) - 1 >= _WATCHLIST_MIN:
         for inst in liste:
             nb = copy.deepcopy(kandidat)
             nb["watchlist"] = [x for x in liste if x != inst]
@@ -287,7 +313,8 @@ def _aenderungen(kandidat, basis):
     return aus
 
 
-def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
+def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None, holdout_fn=None,
+          gewichte_durchsuchbar=None, watchlist_aenderbar=True):
     """Koordinatenabstieg von ``basis`` aus mit Overfitting-Sperre.
 
     Von ``basis`` aus wird wiederholt die Nachbarschaft (``nachbarn``)
@@ -301,18 +328,56 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
     Kandidat gilt nur, wenn er das Aggregat schlaegt UND in einer **Mehrheit**
     der Einzelfenster besser ist (mehr als ``fenster_anzahl // 2`` und
     mindestens ``overfit_min_fenster`` als Boden) UND das Aggregat
-    ``>= overfit_min_runden`` OOS-Runden hat. Auswahl und Pruefung teilen sich
-    dieselbe Kennzahl ueber dieselben Fenster - ein echter Train/Test-Split
-    fehlt, die Sperre ist entsprechend schwach. Sonst ``kandidat=None`` mit
+    ``>= overfit_min_runden`` OOS-Runden hat. Sonst ``kandidat=None`` mit
     ``grund``.
 
+    Mit ``holdout_tage > 0`` kommt eine weitere Sperre hinzu: die letzten
+    ``holdout_tage`` Tage werden vor Suche und Walk-Forward abgeschnitten, und
+    der Sieger muss die Basis auf diesem nie gesehenen Block schlagen
+    (``netto_gv_je_runde`` hoeher, ``n >= holdout_min_runden``). Sonst
+    ``kandidat=None``, ``grund="Holdout nicht bestanden"`` und ``fast_kandidat``
+    gesetzt. Reicht ``L - holdout_tage`` nicht fuer ``oos_training_tage`` plus
+    ``overfit_min_fenster`` Testfenster: ``grund="zu wenig Historie fuer
+    Holdout"``.
+
     Rueckgabe: ``{"kandidat", "basis_wf", "kandidat_wf", "auswertungen",
-    "grund", "aenderungen"}``. ``bewerte`` ersetzt ``ruecktest.walk_forward``
-    (fuer Tests); ohne wird es traege importiert.
+    "grund", "aenderungen", "holdout_basis", "holdout_kandidat",
+    "fast_kandidat"}``. ``bewerte`` ersetzt ``ruecktest.walk_forward`` und
+    ``holdout_fn`` ersetzt ``ruecktest.holdout`` (fuer Tests); ohne werden sie
+    traege importiert.
     """
+    if gewichte_durchsuchbar is None:
+        gewichte_durchsuchbar = konfig.get("gewichte_durchsuchbar", True)
+
     if bewerte is None:
         import ruecktest
         bewerte = ruecktest.walk_forward
+
+    holdout_tage = konfig.get("holdout_tage", 0)
+    kerzen_holdout = kerzen_je_inst
+    zu_wenig_historie = False
+    if holdout_tage > 0:
+        import ruecktest
+        if holdout_fn is None:
+            holdout_fn = ruecktest.holdout
+        kerzen_je_inst, _hinw = ruecktest.ausrichten(kerzen_je_inst)
+        kerzen_holdout = kerzen_je_inst
+        laenge = min((len(k) for k in kerzen_je_inst.values()), default=0)
+        noetig = (konfig["oos_training_tage"]
+                  + konfig["overfit_min_fenster"] * konfig["oos_test_tage"])
+        if laenge - holdout_tage < noetig:
+            zu_wenig_historie = True
+        else:
+            kerzen_je_inst = {inst: k[:laenge - holdout_tage]
+                              for inst, k in kerzen_je_inst.items()}
+
+    if zu_wenig_historie:
+        return {
+            "kandidat": None, "basis_wf": None, "kandidat_wf": None,
+            "auswertungen": 0, "grund": "zu wenig Historie fuer Holdout",
+            "aenderungen": {}, "holdout_basis": None, "holdout_kandidat": None,
+            "fast_kandidat": None,
+        }
 
     budget = konfig["such_budget"]
 
@@ -324,7 +389,8 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
     while auswertungen < budget:
         bester_nb = None
         bester_nb_wf = None
-        for kand in nachbarn(bestes, grenzen):
+        for kand in nachbarn(bestes, grenzen, gewichte_durchsuchbar,
+                              watchlist_aenderbar):
             if auswertungen >= budget:
                 break
             kand_wf = bewerte(kerzen_je_inst, kand, konfig)
@@ -366,6 +432,23 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
         grund = (f"Vorschlag: schlaegt Basis im Aggregat und in {k_fenster} "
                  f"Fenstern ({n_runden} OOS-Runden)")
 
+    # Zusaetzliche Sperre: der Sieger muss einen Block bestehen, den die Suche
+    # nie gesehen hat. Kandidat und Basis auf demselben Holdout.
+    holdout_basis = None
+    holdout_kandidat = None
+    fast_kandidat = None
+    if kandidat is not None and holdout_tage > 0:
+        holdout_basis = holdout_fn(kerzen_holdout, basis, holdout_tage)
+        holdout_kandidat = holdout_fn(kerzen_holdout, kandidat, holdout_tage)
+        bestanden = (holdout_kandidat["netto_gv_je_runde"]
+                     > holdout_basis["netto_gv_je_runde"]
+                     and holdout_kandidat["n"]
+                     >= konfig.get("holdout_min_runden", 0))
+        if not bestanden:
+            fast_kandidat = kandidat
+            kandidat = None
+            grund = "Holdout nicht bestanden"
+
     return {
         "kandidat": kandidat,
         "basis_wf": basis_wf,
@@ -373,4 +456,7 @@ def suche(basis, kerzen_je_inst, konfig, grenzen, bewerte=None):
         "auswertungen": auswertungen,
         "grund": grund,
         "aenderungen": _aenderungen(kandidat, basis) if kandidat is not None else {},
+        "holdout_basis": holdout_basis,
+        "holdout_kandidat": holdout_kandidat,
+        "fast_kandidat": fast_kandidat,
     }

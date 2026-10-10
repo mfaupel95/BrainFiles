@@ -142,6 +142,11 @@ python historie_probe.py --okx                    # zweite Boerse als Gegenprobe
 Feed-Spuren (Marktquerschnitt) fahren mit `--feed` bzw. `--familie-c`, siehe
 `references/backtest-fundament.md`.
 
+Familie E (xperp) faehrt ueber OKX-Futures-Kerzen (`historie_okx.py`) und
+`bot.py`; die Methode waehlt `--bot-methode {lage,trend,grid}` (Vorgabe
+`trend`). Aufruf, Anforderungen, OKX-Unterschiede und Ausstiegslogik:
+`references/backtest-fundament.md`, Abschnitt "Familie E".
+
 **Vor jedem Lauf die Fahrbarkeits-Landkarte pruefen, nicht einzelne Spuren.**
 Jede Spur muss in GENAU EINER von zwei Listen stehen: fahrbar oder mit Grund
 vermerkt (`replay.NICHT_NACHRECHENBAR`). Eine Spur in keiner der beiden Listen

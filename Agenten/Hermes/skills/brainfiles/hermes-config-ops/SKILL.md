@@ -149,6 +149,20 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
     `/workspace`, was in `/workspace/..`, funktioniert `git`) und das Ergebnis in
     den Bericht — als Faehigkeit oder als Grenze, nicht als Nebensatz
     (references/docker-sandbox.md, Abschnitt *Was der Fix kostet*).
+17. **Den Terminal-Backend nach der ARBEITSLAST waehlen, nicht nach der
+    Verfuegbarkeit.** Der Docker-Backend ist Linux: die Spur-venvs sind
+    Windows-EXEs (`PE32+`), `Routinen/*.ps1` sind PowerShell — im Container
+    laeuft davon nichts. Ein Baum, dessen Arbeit in diesen Programmen steckt,
+    gehoert auf `local`; `docker` ist die Wahl fuer reine Python/Node-Laeufe, die
+    isoliert laufen sollen. Die Kosten von `local` sind nicht „der Agent loescht
+    alles", sondern derselbe Benutzer ohne Rueckfrage bei destruktiven Kommandos
+    — das faengt die Sicherung ab, nicht der Container. Kommt „Docker faellt
+    staendig aus" als Argument, erst die Rate messen (Event-Log je Tag plus
+    `cron/output/<job-id>/`, wo `**Status:** silent` = gesund): Wahrnehmung und
+    Rate gehen weit auseinander (references/docker-sandbox.md, Abschnitt
+    *Backend waehlen*).
+
+17. **Ein Eintrag in einer Auswahlliste ist kein Beleg, dass das Modell existiert.**
 
 ## Index — references laden, wenn ...
 
@@ -165,7 +179,7 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 - references/profil-kanalzugangsdaten.md — laden, wenn ein Bot-Token/Photon-Zugang einem Profil zugeordnet oder entfernt wird
 - references/profilflotte-audit.md — laden, wenn mehrere Profile auf einmal geprueft/repariert werden ("ein Bot antwortet nicht")
 - references/repo-bot.md — laden, wenn ein Bot fuer ein Fremd-Repo angelegt wird (Geschwisterprofil kopieren)
-- references/profil-ohne-repo.md — laden, wenn ein Profil OHNE Repo (Hausordner/Wartungsbot) angelegt wird
+- references/profil-ohne-repo.md — laden, wenn ein Profil OHNE Repo (Hausordner/Wartungsbot) angelegt wird; Vorlage `templates/profil-config-lean.yaml` (schlanke Config statt des vollen nous-Modellblocks)
 - references/modell-anmeldung.md — laden, wenn ein Profil keine Modell-Anmeldung hat ("/bot NAME antwortet nicht")
 - references/modellwechsel-flotte.md — laden, wenn ein Modellwechsel ueber viele Profile laeuft
 - references/desktop-multiplex.md — laden, wenn die Desktop-App nur das default-Profil zeigt oder multiplex-Probleme hat

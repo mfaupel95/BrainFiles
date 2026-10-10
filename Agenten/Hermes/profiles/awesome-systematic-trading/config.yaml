@@ -250,7 +250,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: true
-_config_version: 49
+_config_version: 50
 a2a_agents:
   omniroute:
     auth:
@@ -363,10 +363,12 @@ mcp_servers:
     command: node
     env:
       SSE_URL: http://localhost:6767/sse
+    enabled: false
   archiv:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\archiv_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\.venv\Scripts\python.exe
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv
   blender:
     args:
       - -c
@@ -378,12 +380,14 @@ mcp_servers:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp\dist\index.js
     command: node
     env:
-      MCP_DXT: 'true'
-      NODE_ENV: development
+      MCP_DXT: "true"
+      NODE_ENV: production
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
   kraken:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\kraken_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
+    cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
@@ -398,6 +402,7 @@ mcp_servers:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.revolut-engineering.revolut-x-api\dist\index.js
     command: node
+    enabled: false
   tooluniverse:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src\run_stdio.py
@@ -413,10 +418,10 @@ mcp_servers:
       - from windows_mcp.__main__ import main; main()
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.cursortouch.windows-mcp\.venv\Scripts\python.exe
     env:
-      ANONYMIZED_TELEMETRY: 'false'
+      ANONYMIZED_TELEMETRY: "false"
       MODE: local
-      WINDOWS_MCP_DEBUG: 'false'
-      WINDOWS_MCP_PROFILE_SNAPSHOT: 'true'
+      WINDOWS_MCP_DEBUG: "false"
+      WINDOWS_MCP_PROFILE_SNAPSHOT: "true"
       WINDOWS_MCP_SCREENSHOT_BACKEND: auto
   projectatlas:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe

@@ -1,7 +1,8 @@
 # Spuren historisch nachrechnen (Backtest-Fundament)
 
 Werkzeuge: `Agenten/Handel/historie_binance.py` (Daten; hiess bis 29.09.2026
-`historie.py`), `replay.py` (Walk, Familien A/B/C), `optimieren.py`
+`historie.py`), `historie_okx.py` (OKX-Futures-Kerzen fuer Familie E),
+`replay.py` (Walk, Familien A-E), `optimieren.py`
 (Parametersuche), `historie_probe.py --okx` (Gegenprobe gegen eine zweite
 Boerse), `moondev_historie.py` (Marktquerschnitt der Feed-Spuren), `auswertung_alle.py`
 (Abschnitt "Backtest (historisch)"). Doku: `MaxHirn/Wiki/Handel/Backtest-Fundament.md`,
@@ -39,23 +40,31 @@ python replay.py --spur moondev_funding --familie-c --lauf ganz
 python historie_probe.py --okx                # zweite Boerse als Gegenprobe
 ```
 
-Datenquelle ist Binance (offen, kein Schluessel, 1H ab 2017). Sie ist ein
-**Proxy** fuer die Boerse der Spur: jedes Ergebnis traegt `kerzenquelle: binance`
-und wird nie als OKX- oder Krakenkurs ausgegeben. Abrufrate gemessen ~1000
-Kerzen/s (1000 je Seite, ~0,25 s Pause) - 20 Instrumente x (1H+4H) sind rund
-21 Minuten, kein Nebenbei-Lauf.
+Datenquelle ist fuer die meisten Spuren Binance (offen, kein Schluessel, 1H ab
+2017). Sie ist ein **Proxy** fuer die Boerse der Spur: jedes Ergebnis traegt
+`kerzenquelle: binance` und wird nie als OKX- oder Krakenkurs ausgegeben.
+Abrufrate gemessen ~1000 Kerzen/s (1000 je Seite, ~0,25 s Pause) - 20
+Instrumente x (1H+4H) sind rund 21 Minuten, kein Nebenbei-Lauf. **Ausnahme
+Familie E (xperp):** die laedt die Kerzen ueber `historie_okx.py` von der
+OKX-Futures-API und traegt `kerzenquelle: okx`.
 
 ## Die wichtigste Regel: die Spur selbst fahren, nie nachbauen
 
 Der Replay baut KEINE zweite Umsetzung. Er laedt das Spurenmodul ueber den PFAD
 (`importlib.util.spec_from_file_location`, eindeutiger Modulname - ueber
 `sys.path` gewaenne der zuletzt eingefuegte Ordner) und ruft die Funktionen der
-Spur. Zwei Familien, zwei Anschluesse:
+Spur. Fuenf Familien, fuenf Anschluesse:
 
 | Familie | Buch | Anschluss |
 |---|---|---|
 | **A** | im Modul (`lade_wachen`, `journal`, `pruefe_einstieg`, `pruefe_ausstiege`) | Datennaht setzen, `pruefe_*` je Schritt rufen |
 | **B** | `spur_buch.zyklus(ordner, quelle, signal, modus, ereignis_name)` | eigene `quelle(w)` unterlegen, `zyklus` je Schritt rufen |
+| **C** | eigenes `lauf(modus)` + eigener Datensatz (moondev_funding) | eigene Quelle unterlegen, `lauf` je Schritt rufen |
+| **D** | Mehrzeitrahmen (mosaic) bzw. eigene Rechnung (gitter, `walk()`) | Kerzen + Uhr liefern, die Spur entscheidet und bucht |
+| **E** | Signal in `bot.py` (xperp), Kerzen von OKX-Futures | `bot.py` ueber den Pfad laden, `zeige_lage/trend/grid` je Schritt rufen |
+
+Die Familie erkennt der Replay am **SPURNAMEN** - kein Schalter, der vergessen
+werden kann (Familie E zusaetzlich ueber `--familie-e`).
 
 `spur_buch.zyklus` nimmt `quelle` und `signal` **als Argumente** - der sauberste
 Anschluss, den das Haus hat. Buchpfade kommen aus `pfade(ordner)`, deshalb
@@ -427,8 +436,8 @@ liegen als Konstanten vor und laufen sonst auseinander:
 ```python
 import dauerlauf, replay, auswertung_alle as aa
 fahrbar = (set(replay.SPUREN_TEIL_A) | set(replay.SPUREN_TEIL_B)
-           | set(replay.SPUREN_TEIL_C) | set(replay.MEHRZEITRAHMEN)
-           | set(replay.EIGENE_RECHNUNG))
+           | set(replay.SPUREN_TEIL_C) | set(replay.SPUREN_TEIL_E)
+           | set(replay.MEHRZEITRAHMEN) | set(replay.EIGENE_RECHNUNG))
 luecke = [s for s in dauerlauf.SPUREN
           if s not in fahrbar and s not in replay.NICHT_NACHRECHENBAR]
 fehlt_auswertung = [s for s in dauerlauf.SPUREN if s not in set(aa.SPUREN)]
@@ -479,8 +488,52 @@ frei nicht abrufbar.
 - Onchain-/Wallet-Historie fremder Sammlungen reicht nur wenige Tage zurueck.
 - Einstiege an Quote-Ticks gibt es nur live.
 - Spuren ohne Kerzen-Naht (die Kern-Spuren mit Kontostand und Ranglisten) -
-  eigener Umbau, eigenes Teilprojekt.
+  eigener Umbau, eigenes Teilprojekt. **Ausnahme: xperp hat seit dem 07.10.2026
+  mit Familie E einen eigenen Weg** (OKX-Futures-Kerzen + `bot.py`); die
+  uebrigen Kern-Spuren (scanner, swap, kraken) weiterhin nicht.
 - Aktien/Rohstoffe: nur Tageskerzen, also nur auf Tagesbasis nachrechenbar.
+
+## Familie E: xperp (bot.py + OKX-Futures, 06./07.10.2026)
+
+xperp war bis dahin nicht nachrechenbar (keine Kerzen-Naht, T-091). Seit dem
+07.10.2026 faehrt es als Familie E: Kerzen von der OKX-Futures-API
+(`historie_okx.py`), Signal aus `xperp/bot.py`. Die Spur entscheidet, der
+Replay liefert Zeit und Daten.
+
+```bash
+cd Agenten/Handel
+python historie_okx.py --auffuellen --instrumente RE,BTC --takte 1H,4H   # Kerzen + _instrumente.json
+python replay.py --spur xperp --lauf test --max-kerzen 320               # bot-methode trend (Vorgabe)
+python replay.py --spur xperp --lauf lage  --bot-methode lage  --max-kerzen 320
+python replay.py --spur xperp --lauf grid  --bot-methode grid  --max-kerzen 320
+```
+
+- **`--bot-methode {lage,trend,grid}`** (Vorgabe `trend`, der Live-Pfad):
+  `lage` rechnet nur das Signal und erzeugt KEINE Order (0 Runden sind dort
+  ein gueltiges Ergebnis); `trend` legt EINE Order mit Limit/Stop/Ziel aus den
+  Wachen-Faktoren; `grid` eine Leiter von Long-Stufen mit gemeinsamem
+  Boden-Stop. Die Wahl steht im Ergebnis (`bot_methode`).
+- **Anforderungen:** `historie_okx.py --auffuellen` (XPERP-Kontrakte laufen
+  erst seit Mai 2026 - Datengrenze, kein Fehler), die Kontrakt-Metadaten
+  `_instrumente.json` (ctVal/lotSz/tickSz, sonst KeyError statt Attrappen),
+  `bot.py` ueber den Pfad (`replay._bot_modul`, xperp nur waehrend des Ladens
+  auf `sys.path`), Instrumente aus den `familien` der wachen.json (kein
+  `instrumente`-Feld), `mindest_kerzen` faellt auf 300 zurueck.
+- **OKX-Unterschiede:** instIds tragen ein Ablaufdatum, Kerzen liegen unter
+  dem VOLLEN instId; `bot.py` rechnet auf 4H (`bot.BAR`); der Hebel-Deckel
+  bekommt Tageskerzen aus derselben 4H-Reihe verdichtet; der 24h-Umsatz ist
+  aus den Kerzen geschaetzt; **CVD faellt aus** (keine Taker-Historie).
+- **Zwei dokumentierte Grenzen (T-096):** Funding ist nicht in den Kerzen
+  (`funding() -> None`, live zahlt eine XPERP-Position alle 8 h) und der
+  Kill-Switch wird nicht abgebildet (wie in allen Familien).
+- **Ausstiegslogik:** Fill am Limit (eine Order wird erst gebucht, wenn eine
+  Kerze das Limit beruehrt; nach `order_gueltig_kerzen`, Vorgabe 24 = 4 Tage
+  bei 4H, verfaellt sie), Ausstiege ueber Stop/Ziel an der Kerze (dieselbe
+  Beruehrungsregel T-177 wie in allen Familien), ein Anlauf je Instrument.
+
+Tests: `tests/test_replay_familie_e.py` (Mechanik mit Bot-Stub + echte
+`bot.py` unter dem okxf-Ersatz, kein Netz) und `tests/test_historie_okx.py`.
+Der Leitstand bietet xperp seit dem 07.10.2026 in der Replay-Liste an.
 
 ## Bericht
 

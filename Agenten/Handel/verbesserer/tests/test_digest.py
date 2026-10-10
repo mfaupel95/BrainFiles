@@ -66,3 +66,22 @@ class TestDigest(unittest.TestCase):
             vorher = w.read_bytes()
             digest.erzeuge(BEFUND, BASIS, KAND, {}, {"modus": "aus"})
             self.assertEqual(w.read_bytes(), vorher)
+
+    def test_fast_kandidat_im_prompt(self):
+        gesehen = {}
+
+        def ruf(prompt, konf):
+            gesehen["prompt"] = prompt
+            return "1. ok\n\nLEHREN: ok."
+        digest.erzeuge(BEFUND, BASIS, None, {}, {"modus": "ollama"},
+                       ruf=ruf, fast_kandidat={"gates": {}})
+        self.assertIn("Holdout", gesehen["prompt"])
+
+    def test_ohne_fast_kandidat_kein_holdout_hinweis(self):
+        gesehen = {}
+
+        def ruf(prompt, konf):
+            gesehen["prompt"] = prompt
+            return "1. ok\n\nLEHREN: ok."
+        digest.erzeuge(BEFUND, BASIS, KAND, {}, {"modus": "ollama"}, ruf=ruf)
+        self.assertNotIn("Holdout", gesehen["prompt"])

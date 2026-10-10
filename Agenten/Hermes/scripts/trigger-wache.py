@@ -61,8 +61,9 @@ def _pid_und_prozess():
         return None, False
     try:
         r = subprocess.run(
-            ["tasklist.exe", "/FI", "PID eq %d" % pid, "/NH"],
-            capture_output=True, text=True, timeout=30)
+                    ["tasklist.exe", "/FI", "PID eq %d" % pid, "/NH"],
+                    capture_output=True, text=True, timeout=30,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         # tasklist liefert eine Zeile je vergebener PID - der NAME muss python
         # sein, sonst ist die PID wiederverwendet (pid-lebt-Lektion).
         lebt = "python" in r.stdout.lower()

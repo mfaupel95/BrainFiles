@@ -19,14 +19,29 @@ pruefen. Die Schritte 1-8 gelten, wenn kein passendes Quellprofil existiert.
 
 1. `hermes profile create <name> --no-alias` (ohne `--clone`, damit keine
    fremde Modellkennung und keine Kanalzeilen mitkommen).
-2. **Ein frisches Profil ist NICHT fertig** - es hat eine 45-Zeilen-`config.yaml`
-   ohne `providers`- und `terminal`-Block, `SOUL.md` ist die eingebaute
-   Standard-Identitaet, und **`profile.yaml` fehlt ganz** (ohne sie kennt `/bots`
-   das Profil nicht). Der `--clone`-Weg liefert dagegen eine 1700-Zeilen-Config.
-3. `providers.omniroute` byte-genau aus einem bestehenden Bot-Profil einsetzen
-   (nicht abtippen - die `auto/*`-Modellliste ist 1700 Zeilen), dazu
-   `model.provider=omniroute`, `model.default=auto/best-coding` (per
-   `hermes -p <name> config set`, danach Kommentar-Schluss zurueckholen).
+2. **Ein frisches Profil ist NICHT fertig, aber seine Form haengt von der
+   Hermes-Version ab — erst die echte `config.yaml` lesen, nicht die Form
+   raten.** In einer Version kam es als 45-Zeilen-Config ohne `providers`- und
+   `terminal`-Block; in einer neueren kam es bereits mit einem vollen
+   `providers: nous`-Block (komplette Modellliste) und einem gesetzten
+   `model.provider: nous` + `model.default` (dort `inclusionai/ling-3.0-flash-fin:free`)
+   daher. In beiden Faellen gilt: `SOUL.md` ist die eingebaute
+   Standard-Identitaet, `profile.yaml` fehlt ganz (ohne sie kennt `/bots` das
+   Profil nicht), und `model.default`/`terminal.cwd`/`fallback_providers` sind
+   auf die Hauswerte zu setzen. Der `--clone`-Weg liefert dagegen eine
+   1700-Zeilen-Config.
+3. **Die erzeugte Config durch die schlanke Haus-Vorlage ersetzen, nicht
+   editieren.** `hermes profile create` bringt je nach Version einen vollen
+   `providers: nous`-Modellblock (~430 Zeilen) mit — der gehoert nicht in ein
+   Bot-Profil. Vorlage: `templates/profil-config-lean.yaml` (Hausstandard
+   `nous/deepseek-v4-flash-0731`, Ollama-Fallback, Delegation, photon aus).
+   Inhalt nach `Agenten/Hermes/cache/scratch/` schreiben und per `cp` ueber
+   `profiles/<name>/config.yaml` legen — `write_file` verweigert das
+   Ueberschreiben nach einem offset/limit-Read. Danach mit
+   `hermes -p <name> config get model.default` belegen, dass Hermes die YAML
+   parst. (Aeltere Notiz: `providers.omniroute` + `auto/best-coding` — der
+   Router faellt als Traeger aus, sobald seine Combo auf einen toten Zweig
+   zeigt; Hausstandard ist seit 21.09.2026 nous.)
 4. `terminal:`-Block mit `backend: local` und dem gewuenschten `cwd` ergaenzen.
    Die Bloecke VOR dem Schreiben mit `yaml.safe_load` parsen und Assertions
    setzen (`rest == vorher` ausserhalb der beiden Bloecke).
@@ -73,6 +88,32 @@ pruefen. Die Schritte 1-8 gelten, wenn kein passendes Quellprofil existiert.
    auf den Root-Store braucht in dieser Umgebung Erhoehung; `New-Item` unter
    `C:\Program Files\PowerShell\7\pwsh.exe` laeuft ohne UAC durch, unter
    `powershell.exe` 5.1 endet er mit "Administratorrechte erforderlich".
+
+   **Fehlt der Symlink, ist das KEIN Beweis, dass das Profil den Provider nicht
+   erreicht — im Log nachsehen, nicht raten.** Ein frisches Profil ohne
+   `auth.json` antwortete ueber `nous/deepseek-v4-flash-0731` (Beleg:
+   `profiles/<name>/logs/agent.log` traegt `provider=nous model=deepseek/...`,
+   keine Ollama-Treffer). Der Symlink ist Rotation-Sicherheit, kein
+   Zugangs-Tor. Vor jeder Aussage "Profil hat keine Anmeldung" die
+   Fehlschlagspur im Log lesen (Regel 9 im SKILL.md).
+
+#### Einem Profil eine EIGENE Erinnerung geben (Recherche-/Rollen-Bot)
+
+Ein Profil, das dauerhaft eigene Fakten haelt (z.B. ein Recherche-Agent, der
+seine Themen-Erinnerung ueber Sitzungen hinweg aufbaut), bekommt sie NICHT
+ueber die Memory-Werkzeuge des Hauptprofils — die schreiben in den Store des
+AKTIVEN Profils. Die eingebaute Erinnerung eines Profils liegt als zwei
+Dateien unter `profiles/<name>/memories/` und wird direkt geschrieben:
+
+- `MEMORY.md` — die Arbeits-Notizen des Profils (Vault-Aufbau, Werkzeuge,
+  Regeln, Selbstbeschreibung).
+- `USER.md` — wer der Nutzer ist und wie er angesprochen wird (Sprache, Stil).
+
+Beide mit `§`-Zeilen getrennt, wie die des Hauptprofils. Ein frisches Profil
+hat den Ordner leer (oder gar nicht) — die Dateien einfach anlegen. Danach mit
+`hermes -p <name> chat -q "<Frage, die nur aus der Erinnerung beantwortbar ist>"`
+belegen, dass die Erinnerung wirklich geladen wird (die Antwort muss die
+gespeicherte Tatsache wiedergeben, nicht raten).
 
 Beleg-Pflicht (nichts davon ist durch "Datei steht da" bewiesen):
 `hermes -p <name> chat -q "Fuehre pwd aus und nenne Modell und Arbeitsverzeichnis." -Q -t terminal`

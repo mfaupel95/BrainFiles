@@ -85,6 +85,18 @@ def daten_holen(w):
     return quelle(w)
 
 
+def preis_fuer(inst):
+    """Der Kurs EINES Symbols - fuer Positionen, die aus dem Feed gefallen sind.
+
+    T-160: die Top-Movers wechseln taeglich; faellt ein gehaltenes Symbol aus
+    der Liste, verliert die Position sonst ihren Kurs und friert im Buch ein.
+    Ueber `daten.symbol_kurs` (Binance zuerst, dann CoinGecko mit ID-Cache)
+    bleibt der Kurs erhalten - `spur_buch.zyklus` ruft das nur fuer verwaiste
+    Positionen auf.
+    """
+    return daten.symbol_kurs(inst)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -106,7 +118,7 @@ def main():
     # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen
     # ist es nur so lange richtig, wie Ordner und Spurname gleich heissen.
     return buch.zyklus(HIER, daten_holen, signal, a.modus,
-                       "handel/moondev_topmovers")
+                       "handel/moondev_topmovers", preis_fuer=preis_fuer)
 
 
 if __name__ == "__main__":

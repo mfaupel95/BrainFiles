@@ -21,6 +21,10 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
 - „X soll laufen / dauerhaft laufen / starten / im Hintergrund“
 - „starte Y neu, wenn es abstuerzt“, „warum ist X wieder aus“
 - Eine Komponente soll nicht an eine Agentensitzung gebunden sein
+- **Ein Lauf steht laut Wache, aber der Waechter startet ihn nicht neu** —
+  zuerst pruefen, ob der Lauf in der vom Waechter durchlaufenen
+  REGISTRIERUNG steht (nur dort wird wiederbelebt); die Regeln dazu in
+  `references/waechter-registrierung-und-pfade.md`
 - **„geh die Cronjobs durch und repariere sie“ / „welche Wache laeuft noch“** —
   Triagerunde ueber `cron/jobs.json`, `cron/executions.db` und
   `cron_incidents`. Vollstaendige Runde mit den Fehlerklassen (roter Job,

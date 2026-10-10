@@ -221,6 +221,55 @@ class TestVorschlag(unittest.TestCase):
             text = (ordner / "bericht.md").read_text("utf-8")
             self.assertIn("kein besserer Kandidat gefunden", text)
 
+    def test_kein_vorschlag_basis_wf_none_kein_absturz(self):
+        # F4 "zu wenig Historie fuer Holdout": suche() liefert basis_wf=None.
+        # Der Bericht muss trotzdem entstehen, nicht abstuerzen (Review-Fund C1).
+        with TemporaryDirectory() as d:
+            ordner = Path(d) / "v"
+            ergebnis = {
+                "basis_wf": None, "kandidat_wf": None,
+                "grund": "zu wenig Historie fuer Holdout",
+            }
+            vorschlag.kein_vorschlag(ordner, ergebnis, "Scanner/OKX")
+            text = (ordner / "bericht.md").read_text("utf-8")
+            self.assertIn("zu wenig Historie fuer Holdout", text)
+
+    def test_kein_vorschlag_zeigt_holdout_zahlen_bei_fast_kandidat(self):
+        # F4: Sieger gewann die Suche, scheiterte am Holdout - die Zahlen
+        # muessen im Bericht stehen, nicht nur im LLM-Prompt (Review-Fund I1).
+        with TemporaryDirectory() as d:
+            ordner = Path(d) / "v"
+            ergebnis = {
+                "basis_wf": {"gesamt": {"netto_gv_je_runde": 0.2, "n": 60,
+                             "max_drawdown": 1.0}, "fenster": []},
+                "kandidat_wf": None,
+                "grund": "Holdout nicht bestanden",
+                "holdout_basis": {"n": 12, "netto_gv_je_runde": 0.1},
+                "holdout_kandidat": {"n": 12, "netto_gv_je_runde": -0.3},
+                "fast_kandidat": {"gates": {}},
+            }
+            vorschlag.kein_vorschlag(ordner, ergebnis, "Scanner/OKX")
+            text = (ordner / "bericht.md").read_text("utf-8")
+            self.assertIn("Holdout", text)
+            self.assertIn("0.1", text)
+            self.assertIn("-0.3", text)
+
+    def test_bericht_zeigt_ausrichtungs_hinweise(self):
+        # F7: hinweise aus ausrichten() muessen laut Spec in den Bericht,
+        # nicht nur nach stderr (Review-Fund I2).
+        with TemporaryDirectory() as d:
+            ordner = Path(d) / "v"
+            ergebnis = {
+                "basis_wf": {"gesamt": {"netto_gv_je_runde": -0.1, "n": 30,
+                             "max_drawdown": 2.0}, "fenster": []},
+                "grund": "kein besserer Kandidat gefunden",
+            }
+            vorschlag.kein_vorschlag(ordner, ergebnis, "Scanner/OKX",
+                                     hinweise=["XYZ-USDT verworfen: 5 von 20 "
+                                              "Tagen (< 90%)"])
+            text = (ordner / "bericht.md").read_text("utf-8")
+            self.assertIn("XYZ-USDT verworfen", text)
+
 
 if __name__ == "__main__":
     unittest.main()

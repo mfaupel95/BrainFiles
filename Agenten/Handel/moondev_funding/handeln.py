@@ -53,6 +53,7 @@ for p in (os.path.join(HANDEL, os.pardir, "Bus"),
 
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
+import kill_gemeinsam as kg  # noqa: E402  # Kill-Frist/Reset/Opt-out
 
 # ratschen.py ueber den PFAD laden, nicht ueber sys.path: die Datei liegt eine
 # Ebene hoeher und heisst wie kein Paket.
@@ -305,7 +306,7 @@ def pruefe_einstieg(inst, daten, z, w, faktor):
             grund="moondev_funding")
 
 
-def pruefe_ausstiege(z, kurse, w, nur=None):
+def pruefe_ausstiege(z, kurse, w, nur=None, erzwinge=None):
     """Bestehende Positionen gegen Stop und Ziel pruefen.
 
     `kurse` ist {Symbol: mark_price}. Der G/V laeuft auf den NOMINALWERT -
@@ -338,6 +339,8 @@ def pruefe_ausstiege(z, kurse, w, nur=None):
                 grund = "stop"
             elif kurs <= p["ziel"]:
                 grund = "ziel"
+        if erzwinge and not grund:
+            grund = erzwinge       # Kill: Zwangsschluss zum Kurs, Stop/Ziel haben Vorrang
         if not grund:
             behalten.append(p)
             continue
@@ -406,13 +409,23 @@ def lauf(modus):
     ruecklauf = s.get("ruecklauf_usd", 0.0)
     faktor = groessenfaktor(ruecklauf, w)
 
-    if s.get("kill"):
-        print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach."
-              % ruecklauf)
-        z["positionen"] = []
-        schreibe_zustand(z)
-        spiegeln(z, w)
-        return
+    if s.get("kill") and modus != "vorschau":
+        status, ruecklauf = kg.phase(z, w, ruecklauf, s.get("runden_gesamt", 0), _jetzt)
+        if status == "frei":
+            faktor = groessenfaktor(ruecklauf, w)
+        else:
+            # Zwangsschluss zum Marktkurs MIT Buchung (bis 09.10.2026 ungebucht
+            # geleert, Spur danach fuer immer gesperrt).
+            _d, kurse_kill, fehler_kill = hole_kurse(w, z)
+            for f in fehler_kill:
+                print("Uebersprungen (%s)" % f, file=sys.stderr)
+            pruefe_ausstiege(z, kurse_kill, w, erzwinge=kg.KILL_GRUND)
+            if z.get("positionen"):
+                print("  %d Position(en) noch offen (kein Kurs) - naechster Zyklus "
+                      "versucht es erneut." % len(z["positionen"]))
+            schreibe_zustand(z)
+            spiegeln(z, w)
+            return
 
     daten, kurse, fehler = hole_kurse(w, z)
     for f in fehler:

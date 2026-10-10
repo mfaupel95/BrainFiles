@@ -128,6 +128,23 @@ class AuskunftTest(ZustandZuruecksetzen):
             kp.paar_fuer("MAGIC-USDT")
         self.assertIn("keinen Markt", str(c.exception))
 
+    def test_stop_setzen_umgeht_das_einstiegs_gate(self):
+        """T-306-Regel fuer den Nachsatz: eine OFFENE abgeleitete Position
+        muss ihren Schutz-Stop nachsetzen koennen, auch wenn der Prozess neu
+        gestartet ist und `ABLEITUNG_ERLAUBT` (prozesslokal, nur beim
+        Einstieg gesetzt) wieder False ist. Ohne `fuer_ausstieg` wuerde
+        `stop_setzen` hier mit 'live_pf_ableitung=false' scheitern - genau
+        die SICHERHEITSLUECKE, die omniquant seit 05.10.2026 fuer NEAR-USDC
+        jede Viertelstunde meldete."""
+        kp.merke_maerkte({"PF_NEARUSD"})
+        kp.setze_ableitung(False)          # frischer Prozess: Gate zu
+        # paar_fuer ohne Ausstieg scheitert am Gate (Gegenprobe):
+        with self.assertRaises(ValueError) as c:
+            kp.paar_fuer("NEAR-USDC")
+        self.assertIn("live_pf_ableitung=false", str(c.exception))
+        # stop_setzen reicht fuer_ausstieg durch und kommt durch:
+        self.assertEqual("PF_NEARUSD", kp.paar_fuer("NEAR-USDC", fuer_ausstieg=True))
+
 
 class BasisUmbenennungTest(ZustandZuruecksetzen):
     """Die Basen, die am Zielmarkt ANDERS heissen (05.10.2026, gemessen).

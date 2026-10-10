@@ -195,6 +195,21 @@ class NurEinBelegJeZyklusTest(TorTest):
         self.assertEqual(self.stub.ausgestellt, [],
                          "ein reservierter Platz darf nicht doppelt verplant werden")
 
+    def test_offener_beleg_verhindert_neuen_beleg_auch_bei_platz(self):
+        """T-102: ein offener Beleg blockiert einen neuen Beleg in DIESEM
+        Zyklus - auch wenn Plaetze frei sind. Die Spur hat nur EINE
+        Belegdatei (T-283); ein zweiter `schreibe()` wuerde den ersten
+        ueberschreiben und in Fehlerzeilen stuerzen."""
+        self.stub.offen = {"kennung": "ALT", "paar": "ETHEUR", "seite": "buy",
+                           "erstellt": "2026-10-01T11:25:51+00:00",
+                           "gueltig_bis": "2026-10-01T11:35:51+00:00",
+                           "zusatz": {"eur": 50.0}}
+        w = dict(W, order_ueber="mcp", max_offene_positionen=4)
+        z = {"positionen": [], "letzte_stops": {}}
+        h.pruefe_einstiege(z, [dict(V), dict(self.V2)], w, live=True)
+        self.assertEqual(self.stub.ausgestellt, [],
+                         "bei offenem Beleg darf kein neuer Beleg entstehen")
+
     def test_offener_beleg_reserviert_kapital(self):
         """Der reservierte Einsatz zaehlt gegen max_gesamt_eur."""
         self.stub.offen = {"kennung": "ALT", "paar": "ETHEUR", "seite": "buy",

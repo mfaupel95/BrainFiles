@@ -86,6 +86,25 @@ with open(PFAD, "wb") as f:
 re.compile(r"- \[[ x]\] \*\*T-067.*?(?=\r?\n- \[[ x]\] \*\*|\Z)", re.S)
 ```
 
+   **Und zwischen Kastenstellung und `**` darf MEHR als ein Leerzeichen stehen.**
+   Die Hausform ist nicht stabil: es gibt `- [ ] **T-338` und daneben
+   `- [ ]   **T-336` (drei Leerzeichen, von fremder Hand). Ein Anker mit genau
+   EINEM Leerzeichen ueberspringt den Block mit der abweichenden Einrueckung -
+   und die Grenze rutscht auf den NAECHSTEN Treffer, sodass der ausgeschnittene
+   Bereich den fremden Nachbarn mitnimmt. Regel: `[ \t]*` zwischen Klammer und
+   `**` zulassen, und den Treffer gegen die BLOCKZAHL pruefen, nicht nur gegen
+   `len(matches) == 1`.
+
+```python
+# findet beide Einrueckungen
+re.compile(r"(?m)^- \[[ x?]\][ \t]*\*\*(T-\d+)")
+```
+
+   **Und die Kastenstellung im Anker ist `[ x?]`, nicht `[ x]`.** Wartende
+   Eintraege (`- [?]`, „Wartet auf: Max") fallen sonst aus jeder Suche - wer
+   nach „den offenen mit Entscheidungsbedarf" sucht, uebersieht genau die
+   Eintraege, die darauf warten.
+
 4. **Nach JEDEM Schreiben die Nummernmenge vergleichen.**
 
 ```python
@@ -242,6 +261,13 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   Wartestatus `- [?]` („Wartet auf: Max") - wird ueber den Byte-Weg nach Schritt 2
   bis 5 geschlossen; die Meldung dieses Werkzeugs lautet dann irrefuehrend „ist
   schon abgehakt" und meint „nicht `- [ ]`", nicht „bereits erledigt".
+  **Und es findet nur Eintraege unter `## Offen`.** Eine parallele Sitzung kann
+  einen Task in einem EIGENEN `## T-NNN`-Abschnitt NACH `## Erledigt` anlegen
+  (am Dateiende) — dann meldet erledigen.py „steht nicht in '## Offen'" und
+  verweigert. Das ist kein fehlender Eintrag, sondern ein falsch platzierter:
+  ueber den Byte-Weg schliessen (`- [ ]` -> `- [x]`), ohne ihn zu verschieben —
+  das Aufraeumen der Struktur ist ein eigener Auftrag, nicht Teil des
+  Schliessens.
 
 Die Nummer gehoert MIT Praefix: `erledigen.py 206` meldet „206 kommt 0x vor“ —
 das liest sich wie ein fehlender Eintrag, ist aber die falsche Argumentform
@@ -532,6 +558,21 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   Blockzahl, die niemand nachvollziehen konnte. Symptom ist eine ZAHL, die nicht
   stimmt; die Ursache ist Struktur. Nach jedem Umbau deshalb zaehlen und die
   Zaun-Zeilen einzeln ansehen, bevor Zahlen diskutiert werden.
+- **Der `## Offen`-Abschnitt sammelt erledigte Eintraege an — die Zahl der
+  Bloecke ist NICHT die Zahl der offenen Aufgaben.** Gemessen: 143 Bloecke im
+  Abschnitt, davon 22 mit `- [x]` (fertig, aber nie nach `## Erledigt` gezogen).
+  Wer die Blockzahl als „so viele offene Punkte" berichtet, gibt eine zu hohe
+  Zahl weiter und uebersieht, dass Aufraeumarbeit ansteht. Richtig zaehlen:
+
+```python
+# je Kastenstellung getrennt, im Offen-Bereich
+print(bereich.count("- [ ] "), bereich.count("- [x]"), bereich.count("- [?]"))
+```
+
+  Beim Zusammenfassen fuer Max die ECHTEN offenen nennen und die liegen
+  gebliebenen `- [x]` als eigenen Aufraeumpunkt anbieten - nicht mitzaehlen und
+  nicht stillschweigend nach `## Erledigt` schieben (das ist ein eigener Auftrag,
+  weil dabei Nummern und Abschnitte gegenprueft werden muessen).
 - **Der erste Treffer eines Abschnittsnamens ist nicht die Ueberschrift — und
   derselbe Abschnittsname kann DREIMAL vorkommen.** `## Erledigt` steht zweimal
   (echte Ueberschrift plus eine Erwaehnung im Regeltext weiter oben);
@@ -578,6 +619,46 @@ grep -oE "Angelegt:? ?[0-9.-]+" MaxHirn/Archiv/TASKS.md | sort | uniq -c
   Zeilenzahl des alten plus eigene Zeilen sein**, und `git diff --numstat` muss
   reine Insertions zeigen (eine Zeile Loeschung ist die Kopfzeile, die mit
   `[ ]` auf `[x]` wechselt - mehr Loeschungen bedeuten Fremdtext).
+
+## Überholte Tasks systematisch finden
+
+Ein Task, der eine Zahl oder einen Zustand nennt („Kraken 0,71 EUR frei",
+„Provider codex hat keine aktiven Keys"), kann überholt sein — die Zahl hat sich
+geändert, ohne dass jemand den Task geschlossen hat. Die Prüfung ist die
+Messung gegen die Wirklichkeit, **nicht das Alter**: ein Task, der 100 Tage alt
+ist, kann noch aktuell sein; ein Task, der eine Woche alt ist, kann überholt sein.
+
+**Verfahren:**
+1. Alle offenen Blöcke mit Zahlen extrahieren (Muster: `\b\d{2,7}\s*(?:Einträge|Dateien|Zeilen|GB|MB|Tests|Runden|Commits)`).
+2. Jede genannte Zahl gegen die aktuelle Wirklichkeit messen (API-Aufruf,
+   `git ls-files`, `Get-ChildItem`, Datenbankabfrage).
+3. Stimmt die Zahl nicht mehr: Task als überholt schließen, mit Beleg
+   („gemessen heute: X, Task sagte Y").
+4. Stimmt die Zahl: Task bleibt offen, auch wenn er alt ist.
+
+**Fallen:**
+- **Ein relativer Pfad ohne Kontext ist kein Befund.** Die meisten Blöcke
+  nennen `wachen.json` ohne Spur-Ordner — ein Pfad-Check ohne den
+  übergeordneten Ordner erzeugt Dutzende Fehlalarme. Erst die Verengung auf
+  *genannte Zahlen gegen die Wirklichkeit* liefert belastbare Treffer.
+- **Das Alter sortiert, es beweist nicht.** Eine Liste nach `Angelegt`-Datum
+  sortiert zeigt die aeltesten zuerst, aber „alt" heißt nicht „überholt".
+  Die Reihenfolge ist ein Kandidaten-Filter, kein Ergebnis.
+- **Ein Beleg gehört VOR die Strukturzeilen (`Angelegt`/`Betrifft`), nicht
+  hinter sie.** Der Block endet mit `Betrifft:`, ein Anhängen danach landet
+  außerhalb der Struktur. Einfügestelle: vor der ERSTEN `Angelegt`-Zeile
+  innerhalb des Blocks.
+- **Die Gegenprobe für die Einfügestelle muss INNERHALB des Blocks sein.**
+  `neu.index("BELEG") < neu.index("Angelegt")` über die ganze Datei findet
+  das erste Vorkommen — das kann ein fremder Block sein. Richtig: den neuen
+  Block extrahieren und darin prüfen.
+- **`Assert` ist PowerShell-Syntax, nicht Python.** Ein Python-Skript mit
+  `Assert ma, "..."` bricht mit `SyntaxError: invalid syntax` ab. In Python
+  heißt es `assert` (klein). Bei Fehlversuchen mit `Assert` zuerst die Syntax
+  prüfen, nicht den Logikfehler suchen.
+- **`erledigen.py` nimmt nur `- [ ]` an.** Ein Eintrag in anderer Kastenstellung
+  (`- [?]`, `- [!]`) wird über den Byte-Weg geschlossen. Die Meldung
+  „ist schon abgehakt" meint „nicht `- [ ]`", nicht „bereits erledigt".
 
 ## Block verschieben (Offen -> Erledigt)
 

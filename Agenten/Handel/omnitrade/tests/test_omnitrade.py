@@ -26,8 +26,9 @@ HANDEL = os.path.dirname(SPUR)
 # Reihenfolge: zuletzt eingefuegt = vorne. SPUR MUSS vorne stehen, sonst
 # gewinnt scanner/handeln.py gegen das handeln.py dieser Spur.
 for p in (os.path.join(HANDEL, "scanner"), HANDEL, SPUR):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+    while p in sys.path:
+        sys.path.remove(p)
+    sys.path.insert(0, p)
 
 import handeln as h      # noqa: E402
 import lesen as l        # noqa: E402
@@ -168,6 +169,14 @@ class LaufTest(unittest.TestCase):
         e = l.lauf(self._datei(alter_ms=10 * 3600 * 1000))
         self.assertFalse(e["ok"])
         self.assertIn("veraltet", e["fehler"])
+
+    def test_haengende_datei_mit_lebender_pid_zaehlt_nicht(self):
+        # PID lebt, aber die Datei ist zu alt - der Lauf haengt.
+        # Genau dieser Fall wurde durch die Alterspruefung in beurteile() abgedeckt.
+        e = l.lauf(self._datei(alter_ms=2 * 3600 * 1000))  # 2h alt bei 1h-Intervall
+        self.assertTrue(e["ok"])
+        self.assertFalse(e["laeuft"])
+        self.assertIn("haengt", e["fehler"])
 
     def test_fehlende_datei_wirft_nicht(self):
         e = l.lauf(os.path.join(self.tmp, "gibtsnicht.json"))

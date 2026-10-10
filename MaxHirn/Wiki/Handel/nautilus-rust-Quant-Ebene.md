@@ -3,7 +3,7 @@ id: 20260930-nautilus-rust-quant-ebene
 title: 'nautilus-rust — die Quant-Ebene als Lehrstueck (5 Crates, 826 Zeilen)'
 tags: [handel, werkzeuge, rust, atlas]
 created: 2026-09-30
-updated: 2026-09-30
+updated: 2026-10-08
 related: [20260930-omnitrade-spur, 20260924-backtest-fundament]
 summary: 'Agenten/Handel/nautilus-rust: fuenf kleine Rust-Crates mit einer harten Ebenen-Grenze (Modell ohne nautilus, Ausfuehrung ohne candle). Gebaut, 20 Tests gruen, drei Programme laufen — das Evidence-Gate lehnt das Demo-Buch korrekt ab. Ein ProjectAtlas ist hier nicht moeglich (kein eigenes .git).'
 ---
@@ -17,7 +17,7 @@ Die Seite beschreibt, was dort wirklich steht — nicht, was ein Setup-Guide
 behauptet. Anlass: eine Vorlage („OMNITRADE-RUST-GUIDE.md", Claude Haiku,
 29.09.2026) beschrieb den Workspace im Kern richtig, aber vier Abschnitte darin
 waren **Entwuerfe ohne Datei** (PyO3, HTTP-API, Docker, Zentrale-Anschluss). Die
-geprueffte Fassung liegt unter `Werkstatt/OMNITRADE-RUST-GUIDE.md`
+geprueffte Fassung liegt unter `Werkstatt/Ablage/Guides/OMNITRADE-RUST-GUIDE.md`
 (Sicherung der Vorlage daneben, `.bak-20260930`).
 
 ## Die fuenf Crates und ihre Grenze

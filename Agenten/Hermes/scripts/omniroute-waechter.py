@@ -40,6 +40,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+import os
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -80,7 +81,8 @@ def aufgaben_zustand():
           "$i.LastRunTime.ToString('yyyy-MM-dd HH:mm:ss') }" % AUFGABE)
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
-                           capture_output=True, text=True, timeout=60)
+                           capture_output=True, text=True, timeout=60, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
     except (OSError, subprocess.SubprocessError) as e:
         return None, "Zustand nicht lesbar: %s" % e
     aus = (r.stdout or "").strip()
@@ -96,7 +98,8 @@ def starten(frist=660):
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
                             "-File", str(WRAPPER)],
-                           capture_output=True, text=True, timeout=frist)
+                           capture_output=True, text=True, timeout=frist, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
     except subprocess.TimeoutExpired:
         return "Startversuch nach %d s abgebrochen (Wrapper antwortet nicht)." % frist
     except (OSError, subprocess.SubprocessError) as e:

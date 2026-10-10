@@ -139,9 +139,62 @@ class EinbauTest(unittest.TestCase):
         self.assertEqual(z0["grund"], "verkauf_von_hand")
         self.assertAlmostEqual(float(z0["preis"]), 0.0537, places=6)
         self.assertAlmostEqual(float(z0["kontrakte"]), 8033.0, places=2)
-        self.assertAlmostEqual(float(z0["margin_usd"]), 0.0537 * 8033.0, places=2)
+        # margin_usd = was von der Margin zurueckkommt (Einsatz + Ergebnis),
+        # NICHT Kurs * Menge. Bis 07.10.2026 stand hier die falsche Erwartung
+        # 0.0537 * 8033 - sie galt nur, weil Hebel und Kontraktgroesse 1 waren.
+        erwartet = 469.0 + 469.0 * (0.0537 - 0.05433) / 0.05433
+        self.assertAlmostEqual(float(z0["margin_usd"]), erwartet, places=2)
+        self.assertAlmostEqual(float(z0["nominal_usd"]), 469.0, places=2)
         # Die Position ist ganz weg an der Boerse und muss auch aus dem Buch.
         self.assertEqual([p for p in z["positionen"] if p["pos_id"] == "p1"], [])
+
+    def _hand_verkauf(self, pos, kurs, menge, boerse=0.0, bezeugt=True):
+        """Eine Handschliessung durch die Buchung schicken, Journalzeile zurueck."""
+        z = {"positionen": [dict(pos)]}
+        zeilen = []
+        self.h.journal = lambda **kw: zeilen.append(kw)
+        eintrag = {"pos_id": pos["pos_id"], "inst": pos["inst"],
+                   "buch": pos["kontrakte"], "boerse": boerse,
+                   "differenz": menge, "aktion": "verkauf",
+                   "verkauf": ({"menge": menge, "kurs": kurs, "anzahl": 1,
+                                "erloes": kurs * menge, "erste": 1,
+                                "letzte": 2} if bezeugt else None)}
+        with _setze_plan([eintrag]):
+            self.h.buche_verkaeufe_aus_boerse(z, live=True, still=True)
+        self.assertEqual(len(zeilen), 1)
+        return zeilen[0]
+
+    # XAU vom 05.10.2026: 96 Kontrakte @ 4150,2, Nominal 398,42, Hebel 5.
+    XAU = {"pos_id": "x1", "inst": "XAU-USD_UM_XPERP-310502", "seite": "short",
+           "kontrakte": 96.0, "einstieg": 4150.2, "nominal": 398.42,
+           "margin": 79.68, "hebel": 5, "modus": "live",
+           "eroeffnet_zeit": "2026-10-05T06:20:56+00:00"}
+
+    def test_hebel_und_kontraktgroesse_ruinieren_das_journal_nicht(self):
+        """Der Fall, der +438.540 USD in die Auswertung brachte: die Zeile
+        trug Kurs * Kontrakte = 398.419 als Margin. Richtig sind rund 80 USD."""
+        z0 = self._hand_verkauf(self.XAU, 4150.2, 96.0)     # Kurs unveraendert
+        self.assertAlmostEqual(float(z0["margin_usd"]), 79.68, places=2)
+        self.assertAlmostEqual(float(z0["nominal_usd"]), 398.42, places=2)
+        self.assertLess(float(z0["margin_usd"]), 1000.0)
+
+    def test_short_gewinn_und_verlust_haben_das_richtige_vorzeichen(self):
+        fallend = self._hand_verkauf(self.XAU, 4108.7, 96.0)   # -1 % = Short-Gewinn
+        steigend = self._hand_verkauf(self.XAU, 4191.7, 96.0)  # +1 % = Short-Verlust
+        self.assertAlmostEqual(float(fallend["margin_usd"]),
+                               79.68 + 398.42 * 0.01, places=1)
+        self.assertAlmostEqual(float(steigend["margin_usd"]),
+                               79.68 - 398.42 * 0.01, places=1)
+
+    def test_ohne_zeugen_geht_die_margin_neutral_zurueck(self):
+        z0 = self._hand_verkauf(self.XAU, 0.0, 96.0, bezeugt=False)
+        self.assertEqual(z0["grund"], "verkauf_ohne_zeuge_neutral")
+        self.assertAlmostEqual(float(z0["margin_usd"]), 79.68, places=2)
+
+    def test_teilverkauf_bucht_nur_den_verkauften_anteil(self):
+        z0 = self._hand_verkauf(self.XAU, 4150.2, 48.0, boerse=48.0)
+        self.assertAlmostEqual(float(z0["margin_usd"]), 79.68 / 2, places=2)
+        self.assertAlmostEqual(float(z0["nominal_usd"]), 398.42 / 2, places=2)
 
     def test_teilverkauf_bucht_die_differenz_und_laesst_den_rest(self):
         z = {"positionen": [{
@@ -251,8 +304,11 @@ class EinbauTest(unittest.TestCase):
         Zusicherung, die ohne echten Boersezugriff auskommt - und sie greift
         genau dann, wenn jemand die zwei Stufen vertauscht."""
         quelle = open(os.path.join(_XPERR, "handeln.py"), encoding="utf-8").read()
-        i_verkauf = quelle.find("stand[\"verkaeufe\"] = buche_verkaeufe_aus_boerse")
-        i_geist = quelle.find("stand[\"geister\"] = bueche_geister_aus")
+        # Seit a37b8802 laufen die Stufen ueber `_abgleich_stufe(name, fn, ...)`;
+        # gesucht wird deshalb das Paar Stufenname + Funktion, nicht die Zuweisung.
+        abgleich = quelle[quelle.find("def buche_abgleich("):]
+        i_verkauf = abgleich.find("\"verkaeufe\", buche_verkaeufe_aus_boerse")
+        i_geist = abgleich.find("\"geister\", bueche_geister_aus")
         self.assertTrue(i_verkauf > 0, "der Verkauf-Aufruf fehlt ganz")
         self.assertTrue(i_geist > 0, "der Geist-Aufruf fehlt ganz")
         self.assertLess(i_verkauf, i_geist,

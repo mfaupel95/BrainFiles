@@ -70,7 +70,8 @@ MERK = os.path.join(WURZEL, "Agenten", "Hermes", "cache", "moondev-agenten-wache
 def _powershell(skript: str) -> str:
     try:
         p = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", skript],
-                           capture_output=True, text=True, timeout=90)
+                                   capture_output=True, text=True, timeout=90,
+                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except Exception:                                          # noqa: BLE001
         return ""
     return (p.stdout or "").strip()

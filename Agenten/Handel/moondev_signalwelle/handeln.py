@@ -68,12 +68,17 @@ def signal(d, w):
 def quelle(w):
     fehler = []
     aus = {}
+    # Binance als Hauptquelle (1200 req/min, kein API-Key), CoinGecko als Fallback
     try:
-        maerkte = daten.maerkte(anzahl=int(w.get("anzahl_coins", 250)),
-                                sortierung="market_cap_desc",
-                                prozentfelder="1h,24h")
+        maerkte = daten.maerkte_binance(anzahl=int(w.get("anzahl_coins", 250)))
     except Exception as e:                                     # noqa: BLE001
-        return {}, {}, ["CoinGecko: %s" % str(e)[:120]]
+        fehler.append("Binance: %s" % str(e)[:120])
+        try:
+            maerkte = daten.maerkte(anzahl=int(w.get("anzahl_coins", 250)),
+                                    sortierung="market_cap_desc",
+                                    prozentfelder="1h,24h")
+        except Exception as e2:                                 # noqa: BLE001
+            return {}, {}, fehler + ["CoinGecko: %s" % str(e2)[:120]]
     for m in maerkte:
         symbol = (m.get("symbol") or "").upper()
         if not symbol:
@@ -94,6 +99,17 @@ def daten_holen(w):
     if quelle_override:
         return quelle_override(w)
     return quelle(w)
+
+
+def preis_fuer(inst):
+    """Der Kurs EINES Symbols - fuer Positionen, die aus dem Feed gefallen sind.
+
+    T-160: die Binance-Top-Mover wechseln staendig; eine offene Position darf
+    ihren Kurs nicht daran verlieren. Ueber `daten.binance_symbol_kurs` bleibt
+    der Kurs ueber den Symbolwechsel hinweg erhalten - `spur_buch.zyklus` ruft
+    das nur fuer verwaiste Positionen auf.
+    """
+    return daten.binance_symbol_kurs(inst)
 
 
 def main():
@@ -117,7 +133,7 @@ def main():
     # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur
     # die Meldung gehoert, entscheidet diese Datei.
     return buch.zyklus(HIER, daten_holen, signal, a.modus,
-                       "handel/moondev_signalwelle")
+                       "handel/moondev_signalwelle", preis_fuer=preis_fuer)
 
 
 if __name__ == "__main__":

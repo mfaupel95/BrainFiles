@@ -78,5 +78,55 @@ class TestRaum(unittest.TestCase):
             self.assertIn(feld, suche.DENYLIST)
 
 
+class TestGewichteSchalter(unittest.TestCase):
+    def setUp(self):
+        self.basis = suche.basis_kandidat(
+            WACHEN, bewertung.CHANCE_GEWICHTE, bewertung.RISIKO_GEWICHTE)
+
+    def test_gewichte_durchsuchbar_false_erzeugt_keine_gewichts_nachbarn(self):
+        nb = suche.nachbarn(self.basis, GRENZEN, gewichte_durchsuchbar=False)
+        for kandidat in nb:
+            self.assertEqual(kandidat["gewichte"], self.basis["gewichte"])
+
+    def test_gewichte_durchsuchbar_false_laesst_andere_nachbarn_unberuehrt(self):
+        mit = suche.nachbarn(self.basis, GRENZEN, gewichte_durchsuchbar=True)
+        ohne = suche.nachbarn(self.basis, GRENZEN, gewichte_durchsuchbar=False)
+        # Gate-/Sizing-/Watchlist-Nachbarn sind identisch; nur die
+        # Gewichts-Nachbarn fehlen bei ohne.
+        gates_mit = [n["gates"] for n in mit if n["gewichte"] == self.basis["gewichte"]]
+        self.assertEqual(gates_mit, [n["gates"] for n in ohne])
+
+    def test_default_ist_true_bestandsverhalten(self):
+        self.assertEqual(suche.nachbarn(self.basis, GRENZEN),
+                         suche.nachbarn(self.basis, GRENZEN,
+                                        gewichte_durchsuchbar=True))
+
+
+class TestDeckelMapping(unittest.TestCase):
+    def test_default_liest_usd_feldnamen(self):
+        basis = suche.basis_kandidat(
+            WACHEN, bewertung.CHANCE_GEWICHTE, bewertung.RISIKO_GEWICHTE)
+        self.assertEqual(basis["gates"]["max_pro_trade_usd"], 50)
+        self.assertEqual(basis["gates"]["max_gesamt_usd"], 200)
+
+    def test_eur_mapping_liest_eur_feldnamen_in_dieselben_gate_schluessel(self):
+        wachen_eur = {**WACHEN, "max_pro_trade_eur": 50, "max_gesamt_eur": 200}
+        del wachen_eur["max_pro_trade_usd"], wachen_eur["max_gesamt_usd"]
+        basis = suche.basis_kandidat(
+            wachen_eur, bewertung.CHANCE_GEWICHTE, bewertung.RISIKO_GEWICHTE,
+            deckel_felder={"max_pro_trade_usd": "max_pro_trade_eur",
+                           "max_gesamt_usd": "max_gesamt_eur"})
+        # candidate-interner Schluessel bleibt "_usd", Wert kommt aus "_eur".
+        self.assertEqual(basis["gates"]["max_pro_trade_usd"], 50)
+        self.assertEqual(basis["gates"]["max_gesamt_usd"], 200)
+
+
+class TestDenylistEurErweiterung(unittest.TestCase):
+    def test_eur_deckel_in_denylist(self):
+        for feld in ("max_pro_trade_eur", "max_gesamt_eur",
+                     "drawdown_halbierung_usd", "kill_switch_gesamt_eur"):
+            self.assertIn(feld, suche.DENYLIST)
+
+
 if __name__ == "__main__":
     unittest.main()

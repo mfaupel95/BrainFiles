@@ -424,6 +424,34 @@ Lauf.
   `pruefe_ausstiege(z, live=False)` echte Positionen stehen laesst und nur
   meldet — vorher pruefen, nicht annehmen.
 
+## Kraken Futures (futures.kraken.com) — Einheiten, die man nicht raten darf
+
+Der Ticker `/derivatives/api/v3/tickers` ist oeffentlich (kein Schluessel) und
+traegt Funding UND offenes Interesse — aber in Einheiten, die eine
+Cross-Venue-Rechnung (z. B. ein Carry-Scanner) still falsch machen, wenn man
+sie aus der Doku oder dem Namen raet. Gemessen 07.10.2026 an PF_XBTUSD:
+
+- **`fundingRate` ist ein ABSOLUTER Betrag in der Kontraktwaehrung, keine
+  Rate.** BTC meldete 2,19 auf ~83.400 = 0,0026 % — als Bruch gelesen waere
+das 219 % je Zyklus und ein „extremes Funding", das es nicht gibt. Die
+vergleichbare Zahl ist **`relativeFundingRate`** (Rate relativ zum Spot,
+~2,6e-05). Fuer einen Funding-Vergleich IMMER `relativeFundingRate` nehmen,
+nie `fundingRate`.
+- **Kraken nennt KEIN Funding-Intervall.** Die API-Doku und Nautilus
+  ("does not specify a fixed funding period") geben es nicht her; die
+  historische Funding-API (`/derivatives/api/v3/historicalfundingrates`)
+  antwortet fuer PF_-Symbole mit 404. Eine annualisierte Kraken-Funding-Zahl
+  ist damit GERATEN — als relative Rate JE ZYKLUS ausweisen und die
+  Jahreszahl weglassen, statt ein Intervall zu erfinden. (OKX nennt sein
+  Intervall: 3 Zyklen/Tag, annualisierbar.)
+- **`openInterest` ist in KONTRakten (je 1 Einheit der Basis), nicht in
+  USD.** BTC 2.309 Kontrakte = ~192 Mio USD, nicht "2.309 USD". Ein
+  Duenn-Check muss Kontrakte x Preis rechnen, sonst gilt jeder PF_-Markt als
+  duenn.
+- **`fundingRateCoefficient: 8` in `/derivatives/api/v3/instruments` ist
+  KEIN Intervall in Stunden** — es ist ein Koeffizient der Funding-Formel.
+  Nicht als Periodenlaenge deuten.
+
 ## Credentials: Stufe-0-Weg (nie Werte durch die Konversation)
 
 Schluesseldateien (`MaxHirn\Wissen\OKX_API.env` und Co.) sind Stufe 0 — nie

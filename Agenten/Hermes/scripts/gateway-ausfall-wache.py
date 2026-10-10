@@ -35,6 +35,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+import os
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -97,7 +98,8 @@ def waechter_zustand():
           "$i.LastRunTime.ToString('yyyy-MM-dd HH:mm:ss') }" % AUFGABE)
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
-                           capture_output=True, text=True, timeout=60)
+                           capture_output=True, text=True, timeout=60, creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
     except (OSError, subprocess.SubprocessError):
         return None
     aus = (r.stdout or "").strip()

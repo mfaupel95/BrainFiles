@@ -154,3 +154,8 @@ laeuft (Syntax unter 5.1, verbotene Aufrufe, Log-Mechanik samt Exitcode):
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/pruefe-erhoeht-starten.ps1
 # Erwartet: SYNTAX OK / sauber: ... / MECHANIK OK / ERGEBNIS: bestanden (Exit 0)
 ```
+
+**Real-Lauf bestaetigt 2026-10-07 (Karte t_4aa83567):** der Wrapper wurde mit einem
+harmlosen Zielskript echt unter UAC gefahren — Wrapper-Exit 0, Ziel-Exit 0, Log mit
+Admin=True, UAC-Dialog von Max bestaetigt (00:28:45-00:28:51). Protokoll:
+`Agenten/Hermes/kanban/boards/wartung/attachments/t_02601aee/protokoll-abschluss-t_02601aee.md`

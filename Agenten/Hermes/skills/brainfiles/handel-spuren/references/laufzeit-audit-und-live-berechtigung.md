@@ -204,6 +204,42 @@ gesperrt - das ist kein Widerspruch, sondern der Unterschied zwischen einer
 Messung und einer Freigabe. Der Excess gehoert in die Begruendung, nicht in
 die Spalte "darf".
 
+## "War das ein Bug eines Waechters?" - erst die Live-Flags pruefen
+
+Meldet Max einen unerwarteten Verkauf ("Position direkt nach dem Oeffnen mit
+Verlust verkauft"), ist die erste Frage NICHT der Waechter-Code, sondern ob
+die Spur zu dem Zeitpunkt LIVE war. Ein `schliessen` mit `modus=live` und
+`grund=stop` ist die normale Schutzlogik, kein fehlgeleiteter Waechter.
+
+Reihenfolge der Diagnose:
+
+1. **Die Journalzeile mit `modus` und `grund` lesen** - nicht nur die Aktion.
+   `modus=live` + `grund=stop` = die Spur hat den Stop ausgefuehrt, weil der
+   Kurs ihn beruehrte. `modus=papier` + `grund=stop` = nur im Buch gebucht,
+   die echte Position steht noch.
+2. **Die Wachen-Flags pruefen, bevor man "Bug" sagt:** `handel_erlaubt`,
+   `freigabe.erfuellt`, `trailing_aktiv` in `wachen.json`. Sind alle true,
+   war die Spur scharf und der Stop-Ausstieg ist erwartetes Verhalten.
+   Eine Annahme "die Spur war doch Papier" ist ein Fehlschluss - die Flags
+   sind die Wahrheit, nicht das Gefuehl.
+3. **Die Herkunft der Position ansehen.** Eine von Hand auf OKX eroeffnete
+   Position wird als `fremdposition_uebernommen` / `herkunft=boerse_handgriff`
+   ins Buch geholt und bekommt einen Stop aus der ATR-Rechnung
+   (`stop_atr_faktor`). Sie ist damit dem Spur-Stop-Regime unterworfen - ein
+   Kursfall unter diesen Stop schliesst sie, auch wenn Max sie selbst
+   eroeffnet hat. Das ist die Schutzlogik, nicht ein Bug.
+4. **Die Kennungsluecke als eigener Befund nennen.** Der wiederholte Vermerk
+   `trailing nicht ausgefuehrt: keine Boersen-Stop-Kennung in der Position`
+   heisst: der Stop liegt nur hausintern im Buch, nicht als echter
+   OKX-Algo-Stop an der Boerse. Ausgeloest hat ihn der Kursfall, aber der
+   Schutz war nicht dort, wo er hingehört. Der Fix ist, beim Uebernehmen
+   sofort einen echten Boersen-Stop zu setzen (`okxf.schutz_stop_setzen`),
+   nicht den Waechter-Code zu verdaechtigen.
+
+Merksatz: **Ein Live-Stop-Ausstieg ist kein Waechter-Bug.** Die Frage ist
+immer zuerst "war die Spur live und hat der Stop gegriffen", dann "warum
+fehlte die Boersen-Stop-Kennung".
+
 ## Was in diesem Ablauf NICHT geaendert wird
 
 - **`handel_erlaubt`, `freigabe.erfuellt`, Freigabefenster.** Ein Audit liest

@@ -714,7 +714,8 @@ try {
 # ---------------------------------------------------------------------------
 # 13) Arbeitszweig: eine Linie (master), und ist sie veroeffentlicht?
 # ---------------------------------------------------------------------------
-# AGENTS.md, Abschnitt "Zweige": master ist der EINZIGE Arbeitszweig. Zweimal
+# CLAUDE.md, Abschnitt "Zweige" (08.10.2026): Agenten arbeiten auf eigenen Zweigen in
+# eigenen Arbeitsbaeumen (.worktrees/); der HAUPTBAUM bleibt auf master. Zweimal
 # ist daneben einer entstanden (telegram-bus 16.09., berichtsschicht
 # 17./18.09.) - beide Male lagen Commits herum, die master nicht hatte und die
 # GitHub nicht kannte. Nicht der Zweig ist der Fehler, sondern dass es
@@ -855,6 +856,26 @@ try {
     }
   }
 } catch { Notiz "  ! Fremd-Grenze-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
+# 16) Konfig-Doktor: rein lesend, hier nur die Zaehlzeile (-Kurz). Den vollen
+# Bericht schreibt konfig-doktor.ps1 ohne -Kurz nach Werkstatt\.
+# Exit 0 = nichts KRITISCH, 1 = mind. ein KRITISCH, 2 = Doktor selbst defekt.
+try {
+  Notiz "`n--- 16) Konfig-Doktor ---"
+  $doktor = Join-Path $PSScriptRoot 'konfig-doktor.ps1'
+  if (-not (Test-Path -LiteralPath $doktor)) {
+    Entscheiden "Konfig-Doktor nicht geprueft: Agenten\Routinen\konfig-doktor.ps1 fehlt."
+  } else {
+    # Continue: unter 'Stop' wirft schon eine stderr-Zeile des Kindes (NativeCommandError)
+    $altEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { $dAus = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $doktor -Kurz 2>&1 | Out-String).Trim(); $dCode = $LASTEXITCODE }
+    finally { $ErrorActionPreference = $altEAP }
+    if ($dCode -eq 2) { Entscheiden "Konfig-Doktor selbst defekt: $dAus" }
+    elseif ($dCode -eq 1) { Entscheiden "$dAus - Bericht: konfig-doktor.ps1 ohne -Kurz laufen lassen." }
+    else { Info $dAus }
+  }
+} catch { Notiz "  ! Konfig-Doktor abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
 # Bericht schreiben

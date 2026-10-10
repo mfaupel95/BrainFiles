@@ -195,6 +195,54 @@ def wochenende_sperrt(w, jetzt=None):
     return wt in (5, 6)                        # Samstag, Sonntag
 
 
+# --- Hebel und Stopweite je Familie (Auftrag Max 08.10.2026) ---------------
+
+def hebel_grenze(w, kategorie):
+    """Hebel-Obergrenze einer Familie; ohne eigenen Wert gilt max_hebel.
+
+    Auftrag Max 08.10.2026: Rohstoffe (XAU, XAG, CL, BZ) mit 10x. Der Wert
+    steht in familien.<name>.max_hebel der wachen.json, nicht im Code. Seit
+    10.10.2026 ("darf auch weniger, aber so hoch wie moeglich") ist er eine
+    OBERGRENZE: der Hebel ist min(Grenze, Volatilitaets-Deckel) in
+    bot.groesse(); zugelassen wird ab hebel_mindest(). Vorher musste der
+    Deckel die 10 erreichen - in 60 Tagen Ruecktest schaffte das kein
+    Rohstoff, die Familie handelte praktisch nicht mehr.
+    """
+    fam = (w.get("familien") or {}).get(kategorie) or {}
+    return float(fam.get("max_hebel", w["max_hebel"]))
+
+
+def hebel_mindest(w, kategorie):
+    """Kleinster Volatilitaets-Deckel, mit dem ein Wert noch Kandidat wird.
+
+    Das globale max_hebel (5) fuer alle Familien - fuer Krypto/Aktie
+    unveraendert, fuer Rohstoffe der Stand vor dem 10x-Auftrag. Ein Wert,
+    dessen 7-Tage-Ruecklauf nicht einmal den traegt, faellt aus der Rangliste.
+    """
+    return float(w["max_hebel"])
+
+
+def stop_max_pct(w, kategorie):
+    """Hoechste Stopweite einer Familie in % des Kurses, oder None (keine Grenze).
+
+    Beim 10x-Hebel liegt die Liquidation grob bei 9-9,5 % gegen die Position
+    (isoliert, Wartungsmarge 0,5 %). Ein Stop weiter als diese Grenze liegt
+    zu nah an der Liquidation, um noch zu schuetzen - der Anlauf entfaellt.
+    """
+    fam = (w.get("familien") or {}).get(kategorie) or {}
+    v = fam.get("stop_max_pct")
+    return None if v is None else float(v)
+
+
+def fuer_familie(w, kategorie):
+    """Kopie der Wachen mit der Hebel-Grenze der Familie als max_hebel.
+
+    Fuer bot.groesse() und bot.pruefpflicht(), die max_hebel aus den Wachen
+    lesen. Die Originaldatei wird nie veraendert.
+    """
+    return dict(w, max_hebel=hebel_grenze(w, kategorie))
+
+
 # --- Sperre schliessen (einziger Schreibzugriff auf wachen.json) ----------
 
 def sperre_zu(grund):

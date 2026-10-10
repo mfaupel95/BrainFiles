@@ -79,6 +79,7 @@ _handel_ordner = os.path.dirname(          # Handel/, nicht der Spurenordner
 if _handel_ordner not in sys.path:
     sys.path.append(_handel_ordner)
 import pos_kennung
+import tracking as _tracking
 # signal_wechsel liegt ebenfalls im Handel-Ordner - darum NACH dem
 # sys.path-Eintrag, nicht bei den uebrigen Standardimporten oben. Dort
 # wuerde der Import mit ModuleNotFoundError abbrechen, weil der eigene
@@ -802,6 +803,19 @@ def pruefe_ausstiege(z, live):
                 "%.4f" % p.get("mfe_pct", 0.0),
                 "%.4f" % p.get("mae_pct", 0.0), _haltetage(p),
                 p.get("pos_id", ""))
+        _tracking.track_zyklus_abgeschlossen(
+            spur_name="scanner",
+            instrument=p["inst"],
+            richtung="long",
+            einstieg_kurs=p["einstieg"],
+            ausstieg_kurs=kurs,
+            ergebnis_pct=round((kurs - p["einstieg"]) / p["einstieg"] * 100, 4),
+            ergebnis_eur=round(gv, 2),
+            haltedauer_stunden=float(_haltetage(p) or 0) * 24,
+            ausstiegsgrund=grund.split(" ")[0],
+            is_paper=not live,
+            risikostufe=risikostufe.stufe(),
+        )
         if grund.startswith("stop"):
             z["letzte_stops"][p["inst"]] = _heute()
         elif grund == "ziel":
@@ -979,6 +993,17 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                 "%.6f" % v["stop"], "%.6f" % v["ziel"],
                 "score %.1f" % v["score"], "", "", "",
                 _pos["pos_id"])
+        _tracking.track_position_eroeffnet(
+            spur_name="scanner",
+            instrument=v["inst"],
+            richtung="long",
+            einstieg_kurs=v["einstieg"],
+            stop_kurs=v["stop"],
+            ziel_kurs=v["ziel"],
+            nominal_eur=usd,
+            is_paper=not live,
+            risikostufe=risikostufe.stufe(),
+        )
     protokolliere("bewertet", bewertet)
 
 

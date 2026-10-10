@@ -116,8 +116,13 @@ class BuchTest(unittest.TestCase):
     def test_leere_quelle_bucht_nichts(self):
         h.quelle_override = lambda w_: ({}, {}, ["Boerse weg"])
         buch.zyklus(self.tmp.name, h.daten_holen, h.signal, "papier", "test")
-        self.assertFalse(os.path.exists(os.path.join(self.tmp.name,
-                                                    "handelsjournal.csv")))
+        # Seit 02.10.2026 ("alle duerfen auch journal fuehren") legt der Kern
+        # das Journal schon im ersten Zyklus an - mit Kopfzeile, null Buchungen.
+        import csv
+        pfad = os.path.join(self.tmp.name, "handelsjournal.csv")
+        self.assertTrue(os.path.exists(pfad))
+        with open(pfad, newline="", encoding="utf-8") as f:
+            self.assertEqual([r for r in csv.reader(f) if r], [buch.SPALTEN])
 
 
 if __name__ == "__main__":

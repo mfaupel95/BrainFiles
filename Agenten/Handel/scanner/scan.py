@@ -96,6 +96,23 @@ def lauf(kurz=False):
         print("%-10s | %5.1f | %6.1f | %6.1f | %5.2f | %7.2f | %s"
               % (z["inst"], z["score"], z["chance"], z["risiko"],
                  z["verhaeltnis"], vola, "JA" if durch else "-"))
+        if durch:
+            try:
+                import sys as _sys                          # noqa: PLC0415
+                _handel = str(HIER.parent)
+                if _handel not in _sys.path:
+                    _sys.path.insert(0, _handel)
+                import tracking as _tracking                # noqa: PLC0415
+                _tracking.track_signal_ausgewaehlt(
+                    spur_name="scanner",
+                    instrument=z["inst"],
+                    richtung="long",
+                    is_paper=False,
+                    risikostufe=risikostufe.stufe(),
+                    signal_score=float(z["score"]),
+                )
+            except Exception:                               # noqa: BLE001
+                pass
 
     bericht = {
         "datum": heute,

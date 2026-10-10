@@ -128,3 +128,32 @@ Commit loeschte sie ein ZWEITES Mal, ohne dass die Meldung das Wort 'Loeschung' 
 MERKSATZ: `git diff --cached --numstat` vor dem Commit und `git show HEAD --stat` danach sind
 die beiden Blicke, die den geteilten Index beherrschbar machen. Ohne sie faellt es erst auf,
 wenn jemand die Datei vermisst.
+
+## 5. Drei Statusmeldungen, die nicht stimmen (07.10.2026)
+
+Beim Abarbeiten von T-302/T-249/T-254 kamen drei Werkzeugmeldungen, die je
+etwas anderes behaupteten als die Messung. Alle drei sind harmlos, aber jede
+haette eine falsche Entscheidung ausloesen koennen.
+
+**(a) `hermes gateway status` meldet 'Gateway is not running', waehrend er laeuft.**
+Gemessen: `gateway_state.json` trug `gateway_state: running` mit PID 70456, der
+Prozess war da, und alle Plattformen (a2a, telegram, photon, webhook) standen auf
+`connected`. Die Statusabfrage ist unzuverlaessig. Wahrheit sind ZWEI Zeugen:
+`gateway_state.json` UND der Prozess (Namensmuster aus Teilen bauen, eigenen PID
+ausschliessen). Nicht die Statuszeile.
+
+**(b) `paperclipai doctor` meldet 'Port 3100 is already in use' als Warnung.**
+Das ist der NORMALFALL, wenn die Instanz laeuft - die Meldung liest sich wie ein
+Konflikt, ist aber der Beleg fuer einen gesunden Dienst. Wer sie als Fehler liest,
+startet einen zweiten Prozess gegen dieselbe Datenbank.
+
+**(c) Der Router fuehrt KEIN `gh/`-Praefix - nur `github/`.** Und selbst `github/`
+loest nicht auf, solange der `github`-Provider in OmniRoute auf `is_active=0` steht.
+Gemessen gegen `/v1/models` (1831 Modelle live): 64 von 106 Eintraegen der
+Hauptconfig waren tot, darunter ALLE 62 `gh/*` und `github/*`.
+
+**MERKSATZ:** Ein Eintrag in einer Auswahlliste ist kein Beleg, dass das Modell
+existiert. Wer eine Liste kuerzt oder erweitert, prueft jeden Namen gegen die
+LIVE-Quelle (`/v1/models` beim Router) - nicht gegen die Liste selbst, die ihre
+eigene Nutzung waere. Und eine Statusmeldung ohne zweiten Zeugen ist eine
+Behauptung, keine Messung.

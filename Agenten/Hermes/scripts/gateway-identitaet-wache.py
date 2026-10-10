@@ -97,7 +97,8 @@ def _lebt(pid):
             return False
     try:
         r = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except (OSError, subprocess.SubprocessError):
         return False
     return str(pid) in (r.stdout or "")

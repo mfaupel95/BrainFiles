@@ -4,6 +4,7 @@
   "_status": "Papier-Modus, Kraken-Futures-Quote-Feed (PF_SOLUSD), kein Orderpfad.",
   "symbol": "PF_SOLUSD",
   "paar": "PF_SOLUSD",
+  "boerse": "kraken",
   "waehrung": "USD",
   "produkt": "futures",
   "max_risiko_pro_trade": 50,

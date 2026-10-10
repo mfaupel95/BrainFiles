@@ -1,5 +1,5 @@
 model:
-  default: meituan/longcat-2.5-preview:free
+  default: inclusionai/ling-3.0-flash-fin:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -494,73 +494,9 @@ providers:
       auto/llama: {}
       auto/gemini: {}
       hermes-free-local: {}
-      gh/claude-fable-5: {}
-      github/claude-fable-5: {}
-      gh/claude-opus-5: {}
-      github/claude-opus-5: {}
-      gh/claude-opus-4.8-fast: {}
-      github/claude-opus-4.8-fast: {}
-      gh/claude-opus-4.8: {}
-      github/claude-opus-4.8: {}
-      gh/claude-opus-4.7: {}
-      github/claude-opus-4.7: {}
-      gh/claude-opus-4.6: {}
-      github/claude-opus-4.6: {}
-      gh/claude-sonnet-4.6: {}
-      github/claude-sonnet-4.6: {}
-      gh/claude-opus-4.5: {}
-      github/claude-opus-4.5: {}
-      gh/claude-sonnet-5: {}
-      github/claude-sonnet-5: {}
-      gh/claude-sonnet-4.5: {}
-      github/claude-sonnet-4.5: {}
-      gh/claude-haiku-4.5: {}
-      github/claude-haiku-4.5: {}
-      gh/gemini-3.1-pro-preview: {}
-      github/gemini-3.1-pro-preview: {}
-      gh/gemini-3.7-flash: {}
-      github/gemini-3.7-flash: {}
-      gh/gemini-3.6-flash: {}
-      github/gemini-3.6-flash: {}
-      gh/gemini-3.5-flash: {}
-      github/gemini-3.5-flash: {}
-      gh/gpt-5.6-sol: {}
-      github/gpt-5.6-sol: {}
-      gh/gpt-5.6-terra: {}
-      github/gpt-5.6-terra: {}
-      gh/gpt-5.6-luna: {}
-      github/gpt-5.6-luna: {}
-      gh/gpt-5.5: {}
-      github/gpt-5.5: {}
-      gh/gpt-5.4: {}
-      github/gpt-5.4: {}
-      gh/gpt-5.4-mini: {}
-      github/gpt-5.4-mini: {}
-      gh/gpt-5.4-nano: {}
-      github/gpt-5.4-nano: {}
-      gh/gpt-5.3-codex: {}
-      github/gpt-5.3-codex: {}
-      gh/gpt-5-mini: {}
-      github/gpt-5-mini: {}
-      gh/gpt-4o-2024-11-20: {}
-      github/gpt-4o-2024-11-20: {}
-      gh/gpt-4o-mini: {}
-      github/gpt-4o-mini: {}
-      gh/gpt-4-0125-preview: {}
-      github/gpt-4-0125-preview: {}
-      gh/kimi-k2.7-code: {}
-      github/kimi-k2.7-code: {}
-      gh/mai-code-1-flash: {}
-      github/mai-code-1-flash: {}
-      gh/mai-code-1.1-flash: {}
-      github/mai-code-1.1-flash: {}
-      gh/mai-code-1-flash-picker: {}
-      github/mai-code-1-flash-picker: {}
-      mlx-qwen/maglun/Qwen3.8-27B-MLX-Mixed-3.80bpw: {}
       ollama-local/embeddinggemma: {}
       ollama-local/nomic-embed-text: {}
       ollama-local/bge-m3: {}
-      auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
 fallback_providers:
   # Ein Eintrag, der dem Hauptmodell entspricht, taugt nicht als Rueckfall - er
@@ -586,6 +522,10 @@ fallback_providers:
     base_url: http://127.0.0.1:20128/v1
   - provider: nous
     model: google/gemini-3.1-flash-lite
+  - provider: openrouter
+    model: thinkingmachines/inkling:free
+  - provider: nous
+    model: inclusionai/ling-3.0-flash-sante:free
 toolsets:
   - hermes-cli
 database:
@@ -719,7 +659,7 @@ auxiliary:
     provider: nous
     model: 'qwen/qwen3-vl-235b-a22b-instruct'
   # Die folgenden Aufgaben sind Einzeiler. "auto" erbt das HAUPTmodell
-  # (meituan/longcat-2.5-preview:free) und zahlt pro Session mit. Umgestellt auf
+  # (inclusionai/ling-3.0-flash-fin:free) und zahlt pro Session mit. Umgestellt auf
   # google/gemini-3.1-flash-lite (am 04.10.2026 am Nous-Endpoint gemessen: 1,4 s,
   # sauberer Inhalt). kanban_decomposer braucht echtes JSON-Graf und laeuft auf
   # inception/mercury-2.5 (1,7 s) - das ist der bestaetigte Triage-Schnellwert.
@@ -767,11 +707,13 @@ display:
   long_running_notifications: true
   tool_progress: all
   message_reactions: true
+  in_app_tips: false
+  in_app_tours: false
 dashboard:
   theme: midnight
   font: ibm-plex-mono
 tts:
-  provider: gemini
+  provider: piper
   edge:
     voice: en-US-AriaNeural
   gemini:
@@ -791,7 +733,7 @@ voice:
     instructions: german
     voice: cinder
   auto_tts: true
-  voice_chat_mode: gpt-live
+  voice_chat_mode: chained
 context:
   engine: compressor
 memory:
@@ -830,16 +772,13 @@ delegation:
 moa:
   presets:
     default:
-      # Fuenf Berater aus fuenf Modellfamilien, alle am 04.10.2026 am Nous-Endpoint
-      # mit einem echten Aufruf geprueft (Antwort Inhalt, nicht nur HTTP 200):
-      #   anthropic/claude-opus-5              1.000.000
-      #   openai/gpt-6-astra                   1.050.000
-      #   google/gemini-3.1-pro-preview       1.048.576
-      #   deepseek/deepseek-v4-pro             1.048.576
-      #   qwen/qwen3-30b-a3b                   der guenstige fuenfte gegen die vier Grossen
+      # Berater (Stand 07.10.2026, in den Presets "default" und "Hermes Oktober 26"):
+      # ling-3.0-flash-fin:free, qwen3-235b-a22b-thinking-2507, longcat-2.5-preview:free,
+      # deepseek-v4-pro, nemotron-3.5-lightning:free - kostenpflichtig sind nur die
+      # Nous-Modelle deepseek-v4-pro und qwen3-235b-thinking (Fenster je Modell nicht neu gemessen).
       reference_models:
         - provider: nous
-          model: nvidia/nemotron-3-ultra-550b-a55b
+          model: inclusionai/ling-3.0-flash-fin:free
           enabled: true
         - provider: nous
           model: qwen/qwen3-235b-a22b-thinking-2507
@@ -854,11 +793,11 @@ moa:
           model: nvidia/nemotron-3.5-lightning:free
           enabled: true
       # Der Aggregator IST das handelnde Modell: er laeuft in jedem Werkzeugschritt
-      # und traegt fast die ganzen Kosten. Deshalb meituan/longcat-2.5-preview:free (1.000.000) -
+      # und traegt fast die ganzen Kosten. Deshalb inclusionai/ling-3.0-flash-fin:free (= Hauptmodell) -
       # nicht der guenstigste Berater.
       aggregator:
         provider: nous
-        model: google/gemma-4-26b-a4b-it
+        model: inclusionai/ling-3.0-flash-fin:free
       degraded_reference_policy: loud
       fanout: user_turn
       enabled: true
@@ -950,13 +889,13 @@ moa:
       fanout: user_turn
   aggregator:
     provider: nous
-    model: google/gemma-4-26b-a4b-it
+    model: inclusionai/ling-3.0-flash-fin:free
   degraded_reference_policy: loud
   enabled: true
   fanout: user_turn
   reference_models:
     - provider: nous
-      model: nvidia/nemotron-3-ultra-550b-a55b
+      model: inclusionai/ling-3.0-flash-fin:free
       enabled: true
     - provider: nous
       model: qwen/qwen3-235b-a22b-thinking-2507
@@ -992,6 +931,7 @@ command_allowlist:
 plugins:
   enabled:
     - a2a-platform
+    - crypto-prices
     - disk-cleanup
     - drain
     - email-platform
@@ -1002,6 +942,7 @@ plugins:
     - nous
     - okx-a2a
     - one-skill-to-rule-them-all
+    - rss-reader
     - self-hosted
   disabled: []
 security:
@@ -1021,7 +962,7 @@ gateway:
       platform: telegram
       chat_id: '7648512088'
       profile: default
-      enabled: false
+      enabled: true
   platforms:
     a2a:
       enabled: true
@@ -1061,7 +1002,7 @@ desktop:
   renderer_max_old_space_mb: 4096
 local_runtime:
   enabled: true
-_config_version: 49
+_config_version: 50
 a2a_agents:
   omniroute:
     auth:
@@ -1176,8 +1117,6 @@ mcp_servers:
     env:
       SSE_URL: http://localhost:6767/sse
     enabled: false
-    # T-159: Server deaktiviert, Port 6767 nicht aktiv. Eintrag bleibt als
-    # Referenz, wird aber nicht gestartet. Entfernen wenn nicht mehr benoetigt.
   archiv:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\archiv\archiv_mcp.py
@@ -1195,17 +1134,26 @@ mcp_servers:
     command: node
     env:
       MCP_DXT: "true"
-      NODE_ENV: development
+      NODE_ENV: production
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.wonderwhy-er.desktopcommandermcp
   kraken:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\kraken_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken
+  kraken-papier:
+    args:
+      - mcp
+    command: O:\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
+  okx-agentkit:
+    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\okx-agentkit\start-demo.cmd
+    args:
+      - --read-only
+    enabled: true
   pdf-vault:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
@@ -1291,6 +1239,14 @@ mcp_servers:
       exclude:
         - hello
         - download_usage_data
+  algolia:
+    url: https://mcp.algolia.com/mcp
+    auth: oauth
+    enabled: false
+  postman:
+    url: https://mcp.postman.com/minimal
+    auth: oauth
+    enabled: false
 platform_toolsets:
   cli:
     - a2a
@@ -1373,6 +1329,19 @@ platforms:
     enabled: true
   telegram:
     enabled: true
+    extra:
+      dm_topics:
+        - chat_id: '7648512088'
+          topics:
+            - name: Allgemein
+              icon_color: 7322096
+            - name: Handel
+              icon_color: 9367192
+              skill: brainfiles/fremdrepos-signal
+            - name: Markt
+              icon_color: 16766590
+            - name: Wissen
+              icon_color: 13338331
 cron:
   catch_up_missed: false
 _left_core_scoped:
