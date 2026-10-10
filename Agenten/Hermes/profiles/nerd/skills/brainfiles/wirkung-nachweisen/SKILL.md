@@ -442,6 +442,16 @@ Prozess neu starten (`dauerprozess-bewachen`), eine Spur erst anbinden
   wirkt, und laesst die Wirkung unbemerkt. Regel: Aktion fahren, DANN den
   Ziel-Abruf lesen, und das Urteil aus DESSEN Ergebnis bilden; den Exitcode daneben
   nennen, nie als Beweis — in keiner der beiden Richtungen.
+- **Ein Alarm, der aufhoert zu feuern, ist kein Beweis fuer den Fix — das
+  ueberwachte Objekt kann verschwunden sein.** Eine Sicherheitsluecken-Meldung
+  stoppte, nachdem der Fix gesetzt war; die Ursache war aber nicht, dass die
+  Bedingung sich loeste, sondern dass die Position aus dem Buch verschwand (ohne
+  Journal-Ausstieg) und an der Boerse nicht mehr offen war — ein SCHLIMMERER
+  Zustand, den die Stille verbarg. Wenn ein Alarm nach einem Fix still wird,
+  pruefen, ob die Bedingung wirklich aufgeloest ist ODER ob das ueberwachte Objekt
+  weg ist (Position geschlossen/entfernt, Datei geloescht, Prozess beendet). Die
+  Abwesenheit des Alarms ist keine Wirkung: den Gegenstand selbst befragen
+  (Boerse/Journal/Datei), nicht die Meldung.
 - **Ein Audit-Tor, das nur eine Richtung kennt, laesst die andere durch.** Wer eine
   Menge gegen eine Quelle prueft (Dateien, Aufgaben, Positionen), prueft in der
   Regel "ist alles da, was da sein soll". Der zweite Teil — "liegt dort etwas, das
