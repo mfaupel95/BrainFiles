@@ -1,6 +1,11 @@
 ## Offen
 
 
+- [ ] **T-385 - omniquant: SICHERHEITSLUECKE NEAR-USDC - stop_setzen reichte fuer_ausstieg nicht durch (BEHOBEN 10.10.2026)**
+      Kontext: omniquant meldete seit 05.10.2026 jede Viertelstunde "SICHERHEITSLUECKE: Stop fehlte an der Boerse und liess sich nicht nachsetzen" fuer die live offene NEAR-USDC-Position (Kraken-Futures, 61 Kontrakte, stop_algo_id=null). Ursache: `kraken_perp.stop_setzen` rief `paar_fuer(inst)` OHNE `fuer_ausstieg=True` - das Einstiegs-Gate `ABLEITUNG_ERLAUBT` (prozesslokal, nur beim Einstieg via setze_ableitung gesetzt) blockierte den Nachsatz, sobald der Prozess neu startete. `markt_verkauf` und `schutzstop_vorhanden` reichten das Flag bereits korrekt durch (T-306). BEHOBEN: `stop_setzen(inst, kontrakte, stop_preis, fuer_ausstieg=True)` reicht das Flag durch; neuer Test `test_stop_setzen_umgeht_das_einstiegs_gate` in test_pf_ableitung.py, 122 omniquant-Tests gruen. Merge 5f2f7ec4. Greift beim naechsten omniquant-Zyklus (Dauerlauf importiert je Zyklus frisch).
+      Naechster Schritt: naechsten omniquant-Zyklus beobachten - NEAR-USDC muss einen Boersen-Stop bekommen (stop_algo_id gesetzt, keine SICHERHEITSLUECKE-Zeile mehr).
+      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
+      Betrifft: Agenten/Handel/omniquant/kraken_perp.py, live_perp.py, zustand.json (NEAR-USDC)
 
 - [ ] **T-384 - Documents/GitHub: 21 Klone ausserhalb der Flotte - 6 nicht in Werkstatt/Repos**
       Kontext: C:\Users\faupe\Documents\GitHub haelt 21 git-Klone, die NICHT in Werkstatt/Repos liegen. Bekannte Repos (nautilus_trader, unsloth, financial-services, context7, onchainos-skills u. a.) und NEU/anders: OmniQuant (eigener Fork), OpenMobius-skill, awesome-trading-agents, data-mcp, fintool, moon-dev-ai-agents2. Fund beim Skill-Scan 09.10.2026 (23 SKILL.md). Naechster Schritt: Entscheidung Max - die 6 unbekannten nach Werkstatt/Repos verschieben (Hausmuster) oder loeschen; Duplikate der Flotte dort entfernen. Angelegt: 2026-10-09
