@@ -221,15 +221,15 @@ class RueckwaertsTest(unittest.TestCase):
             auswertung_alle.SPUREN = gespeichert
 
     def test_gegenprobe_ratsche_ohne_eintrag(self):
-        """Nimmt man squeeze aus der Pruefliste, muss die Regel greifen."""
+        """Nimmt man scanner aus der Pruefliste, muss die Regel greifen."""
         gespeichert = pruefe_ratschen.SPUREN
         try:
             pruefe_ratschen.SPUREN = [x for x in gespeichert
-                                      if x[0] != "squeeze"]
+                                      if x[0] != "scanner"]
             geprueft = set(x[0] for x in pruefe_ratschen.SPUREN) | set(RUHT)
             fehlen = {s for s in dauerlauf.SPUREN
                       if fuehrt_ratsche(s) and s not in geprueft}
-            self.assertIn("squeeze", fehlen,
+            self.assertIn("scanner", fehlen,
                           "ohne den Eintrag muss die Regel greifen")
         finally:
             pruefe_ratschen.SPUREN = gespeichert
