@@ -153,9 +153,10 @@ class ReiterMitAttrappe(unittest.TestCase):
 
 class Verdrahtung(unittest.TestCase):
     def test_der_reiter_haengt_am_rahmen(self):
-        self.assertIs(lst.REITER[-1][1], ln.NautilusReiter)
-        self.assertEqual(lst.REITER[-1][0], "Nautilus")
-        self.assertEqual(lst.KUERZEL["<Control-Key-6>"], ("reiter", len(lst.REITER) - 1))
+        self.assertIs(lst.REITER[-2][1], ln.NautilusReiter)
+        self.assertEqual(lst.REITER[-2][0], "Nautilus")
+        self.assertEqual(lst.REITER[-1][0], "Prozesse")
+        self.assertEqual(lst.KUERZEL["<Control-Key-6>"], ("reiter", len(lst.REITER) - 2))
 
     def test_alle_reiter_haben_die_schnittstelle(self):
         for titel, klasse in lst.REITER:

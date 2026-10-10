@@ -74,7 +74,7 @@ class EchterReiter(unittest.TestCase):
         self.assertIsInstance(vorher, dict)
 
     def test_rahmen_kann_den_reiter_bauen(self):
-        # Der ganze Leitstand mit allen sechs Reitern - ohne Netz und ohne
+        # Der ganze Leitstand mit allen sieben Reitern - ohne Netz und ohne
         # laufenden Node. Genau das ist der Weg, den Max startet.
         import datetime as dt
         from unittest.mock import patch as pa
@@ -84,9 +84,10 @@ class EchterReiter(unittest.TestCase):
                                uhr=lambda: dt.datetime(2026, 10, 4, 22, 0),
                                herz=lambda: "Dauerlauf läuft nicht")
             self.root.update()
-        self.assertEqual(len(ls.titel), 6)
+        self.assertEqual(len(ls.titel), 7)
         self.assertEqual(ls.titel[4], "Omniquant")
         self.assertEqual(ls.titel[5], "Nautilus")
+        self.assertEqual(ls.titel[6], "Prozesse")
 
 
 if __name__ == "__main__":
