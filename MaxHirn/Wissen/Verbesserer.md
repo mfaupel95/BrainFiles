@@ -147,3 +147,34 @@ Vollständiger Entwurf mit Abnahmekriterien:
 `../Werkstatt/Ablage/Plaene/spec-selbstverbessernder-handelsagent-2026-09-06.md` und
 `../Werkstatt/Ablage/Plaene/spec-verbesserer-stufe-1-5-2026-10-04.md` (Werkstatt ist
 Durchgangsware — diese Notiz ist die dauerhafte Fassung).
+
+## Spur 2 (XPERP) — wöchentliche Schleife (10.10.2026)
+
+Eigener Lauf `Agenten/Handel/verbesserer/xperp_lauf.py` (Routine
+`Agenten/Routinen/verbesserer-spur2.ps1`, getrennt von Spur 1 wegen der Laufzeit).
+Spec `Werkstatt/spec-verbesserer-spur2-schleife-2026-10-09.md`, Plan
+`Werkstatt/plan-verbesserer-spur2-schleife-2026-10-10.md`.
+
+- **Suchraum:** acht Schlüssel der `xperp/wachen.json` (Stop, Ziel,
+  Einstiegsabschlag, fünf Trailing-Werte), Grenzen in `spuren.json`.
+  `vola_tor_pa` und `min_umsatz_24h_usd` fehlen mit Absicht: der Rücktest liest
+  sie nicht, eine Änderung hätte keine Wirkung.
+- **Stufen:** Koordinatenabstieg → Sieb a–e (gleiche Fenster wie die Suche) →
+  Holdout (letzte 20 Tage, nie in der Suche) → Max per `/ja`. Bestanden heißt
+  „Vertrag erfüllt", nicht „live besser"; der Bericht zeigt Fenster, Abstand je
+  Regel, Holdout und einen Absatz „Nicht geprüft".
+- **Fenster:** Block `spur2` in `verbesserer/konfig.json` (80 Tage Rückblick,
+  15er-Fenster, 20 Tage Holdout), am 10.10.2026 gemessen: erster Lauf rund 7 Minuten,
+  danach Merkmals-Cache-Treffer. **Funding-Grenze:** OKX liefert Funding nur ca.
+  94 Tage zurück; Instrumente, deren Funding nach dem Simulationsstart beginnt,
+  werden ausgelassen und im Bericht genannt (78 von 233).
+- **Holdout-Verschleiß:** `holdout_max_nutzungen` 8; Zähler in
+  `verbesserer/xperp_holdout_nutzung.json` (Datei löschen = zurücksetzen), der
+  Bericht meldet den Block danach als „verbraucht".
+- **Abbruch:** fehlender Cache, `FundingLuecke` oder kein OKX-Instrumentenstamm
+  schreiben einen Bericht mit Grund, nie ein `commit.txt`; Exitcode 1.
+- **Rücknahme:** `anwenden.py` legt vor dem Schreiben ein `.bak` an
+  (`verbesserer/bak/<zeit>/`), danach `git revert` des Anwende-Commits.
+  Die Denylist (u. a. `max_hebel`, `llm_*`, `familien`, `trailing_aktiv`,
+  `handel_erlaubt`) gilt beim Anwenden erneut; eine seit dem Lauf geänderte Wache
+  (z. B. Kill-Switch) wird nicht überschrieben.

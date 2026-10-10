@@ -56,15 +56,27 @@ def _wert(basis, kategorie, mae):
 
 
 class KandidatenTest(unittest.TestCase):
-    def test_rohstoff_braucht_deckel_10_krypto_nur_5(self):
-        # Rueckblick-Ruecklauf, bei dem der Deckel zwischen 5 und 10 liegt
+    def test_rohstoff_mit_deckel_zwischen_5_und_10_kommt_durch(self):
+        # Auftrag Max 10.10.2026: "darf auch weniger, aber so hoch wie
+        # moeglich" - 10x ist Obergrenze, zugelassen wird ab dem globalen
+        # max_hebel (5); der Hebel selbst ist dann min(10, Deckel).
         mae = 0.13
         deckel = h.auswahl.hebel_deckel(mae)
         self.assertTrue(5 <= deckel < 10, deckel)
         werte = [_wert("XAU", "rohstoff", mae), _wert("BTC", "krypto", mae)]
         basen = [k["basis"] for k in h.kandidaten(werte, WACHEN)]
         self.assertIn("BTC", basen)
-        self.assertNotIn("XAU", basen)
+        self.assertIn("XAU", basen)
+
+    def test_rohstoff_unter_globalem_hebel_faellt_weiter_raus(self):
+        mae = 0.25
+        self.assertLess(h.auswahl.hebel_deckel(mae), WACHEN["max_hebel"])
+        basen = [k["basis"] for k in h.kandidaten([_wert("XAU", "rohstoff", mae)], WACHEN)]
+        self.assertEqual(basen, [])
+
+    def test_hebel_mindest_ist_globaler_hebel_fuer_alle_familien(self):
+        for fam in ("rohstoff", "krypto", "aktie", "unbekannt"):
+            self.assertEqual(wx.hebel_mindest(WACHEN, fam), float(WACHEN["max_hebel"]), fam)
 
     def test_rohstoff_mit_tragfaehigem_deckel_kommt_durch(self):
         mae = 0.05

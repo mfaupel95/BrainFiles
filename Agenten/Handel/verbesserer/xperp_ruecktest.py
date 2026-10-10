@@ -82,7 +82,7 @@ def kandidaten_schritt(werte, w, anzahl=6):
     """Die besten Werte je Richtung, die ihre Tore bestehen.
 
     1:1 die Filterkette aus handeln.kandidaten() - Vola-Tor, Familie aktiv,
-    Umsatz-Bezug der Familie, Hebel-Deckel >= Hebel-Grenze der Familie.
+    Umsatz-Bezug der Familie, Hebel-Deckel >= wx.hebel_mindest().
     """
     aus = []
     for seite in ("long", "short"):
@@ -100,7 +100,7 @@ def kandidaten_schritt(werte, w, anzahl=6):
                 continue
             mae = x["mae_short"] if seite == "short" else x["mae_long"]
             deckel = auswahl.hebel_deckel(mae)
-            if deckel < wx.hebel_grenze(w, x["kategorie"]):
+            if deckel < wx.hebel_mindest(w, x["kategorie"]):
                 continue
             aus.append({"basis": x["basis"], "instId": x["instId"],
                         "seite": seite, "kategorie": x["kategorie"],
@@ -230,6 +230,8 @@ def pruefe_ausstieg_1h(p, kerze_1h, w):
         if tief <= p["ziel"]:
             return "ziel", p["ziel"]
 
+    if not w.get("trailing_aktiv", True):
+        return None, None
     trailing_modul.erst_hoch(p, schluss)
     kand, _grund = trailing_modul.kandidat(p, schluss, w, liq=p.get("liq"))
     if kand is not None:
@@ -298,13 +300,15 @@ def _ergebnis(p, kurs, w):
 
 def simuliere(universum, k4_je_inst, k1h_je_inst, k1d_je_inst,
               saetze_je_inst, umsatz_je_inst, instr_je_basis, w,
-              start_ms, end_ms):
+              start_ms, end_ms, werte_cache=None):
     """4H-Aussentakt (Rangliste/Einstieg), 1H-Innenaufloesung (Ausstieg,
     Trailing, Funding). Gibt die abgeschlossenen Runden zurueck.
 
     Entscheidungen zum Zeitpunkt t sehen nur ABGESCHLOSSENE 4H-Kerzen
     (ts <= t - 4H): die Kerze mit ts == t laeuft erst und ihr Schlusskurs ist
     noch nicht bekannt. Zum Ende offene Positionen werden nicht bewertet.
+    ``werte_cache`` ({stand_ms: Rangliste}) ersetzt die Rangliste je Schritt
+    durch vorgerechnete Werte; ein fehlender Stand ist ein KeyError (laut).
     """
     from datetime import datetime, timezone
 
@@ -320,9 +324,12 @@ def simuliere(universum, k4_je_inst, k1h_je_inst, k1d_je_inst,
         stand = t - SCHRITT_MS
         jetzt_dt = datetime.fromtimestamp(t / 1000, tz=timezone.utc)
 
-        werte = rangliste_schritt(universum, k4_je_inst, k1d_je_inst,
-                                  umsatz_je_inst, stand,
-                                  ctval_je_inst=ctval_je_inst)
+        if werte_cache is not None:
+            werte = werte_cache[stand]
+        else:
+            werte = rangliste_schritt(universum, k4_je_inst, k1d_je_inst,
+                                      umsatz_je_inst, stand,
+                                      ctval_je_inst=ctval_je_inst)
         for kand in kandidaten_schritt(werte, w):
             if len(offene) >= w["max_offene_anlaeufe"]:
                 break

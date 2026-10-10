@@ -217,7 +217,7 @@ def kandidaten(werte, w, anzahl=6):
                 continue
             mae = x["mae_short"] if seite == "short" else x["mae_long"]
             deckel = auswahl.hebel_deckel(mae)
-            if deckel < wx.hebel_grenze(w, x["kategorie"]):
+            if deckel < wx.hebel_mindest(w, x["kategorie"]):
                 continue
             aus.append({"basis": x["basis"], "instId": x["instId"],
                         "seite": seite, "kategorie": x["kategorie"],
