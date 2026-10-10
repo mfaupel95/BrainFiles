@@ -15,7 +15,7 @@ zwei Namen, weil die Agenten verschiedene Dateien lesen. Wer eine ändert,
 | `Austausch/` | Übergaben von einem Agenten an den nächsten. Eine Datei je Auftrag, Dateiname beginnt mit dem Datum. |
 | `Projekte/` | Laufende Arbeit, die länger als eine Sitzung dauert. |
 | `Ausgabe/` | Fertiges, das ein Mensch abholt — Berichte, Auswertungen, Exporte. |
-| `Worktrees/` | Git-Arbeitsbäume für parallele Zweige. |
+| `Worktrees/` | Altbestand. Neue Git-Arbeitsbäume gehören nach `.worktrees/` in der Wurzel (Zweigregel 08.10.2026). |
 | `Repos/` | Geklonte Fremd-Repositories. Aus Git reproduzierbar, nicht gesichert. |
 | `Sitzungen/` | Ablagen einzelner Sitzungen. Durchgangsware. |
 | `Protokolle/` | Ausgaben einzelner Läufe, die als Beleg aufgehoben werden. |

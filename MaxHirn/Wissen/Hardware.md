@@ -1204,3 +1204,10 @@ importieren **beide** Wege `pydantic_core 2.46.4` - das `tools`-Python und
 - **Luecke:** Lauf 22:30 am 04.10. endete mit 267014 (vom Planer beendet), das Protokoll hat nur die Kopfzeile. Aufgabe: Limit 3 h, MultipleInstances=IgnoreNew; der 20:00-Lauf lief vermutlich noch, als 22:30 startete. Naechster Lauf 05.10. 20:00. Archiv-Stand seit 04.10. nicht mehr nachgezogen.
 - **Q: (SanDisk Portable SSD, exFAT, Disk 3):** Platte Healthy, Volume meldet Warning / Full Repair Needed. Ereignis 11 (Controllerfehler) und viele 153 am 12.09. - passt zu Kabel/Port-Problem. Zuverlaessigkeitszaehler ohne Adminrechte nicht lesbar.
 - **Offen:** `chkdsk Q: /scan` mit Admin, danach ggf. `/f` - vorher mit H: abgleichen. Nicht ohne Max' Freigabe reparieren.
+
+### Nachtrag 09.10.2026 - Q: geprueft, Dateisystem sauber
+
+- `chkdsk Q:` (nur lesend, Volume `musik_lib`, exFAT): keine Probleme, 0 KB in fehlerhaften Sektoren, 568.360 Dateien, 107.691 Ordner, 120 GB frei. Das Warning "Full Repair Needed" ist ein gesetztes Dirty-Bit nach dem Controllerfehler vom 12.09., kein Dateisystemschaden. `chkdsk /scan` geht auf exFAT nicht (Momentaufnahmefehler), `/f` ist nicht noetig.
+- Q: ist das Original der Musikbibliothek (1,63 TB) und hat KEINE Kopie: `robocopy /L` gegen H: ergab 568.358 von 568.360 Dateien als fehlend. H: ist eine andere Ablage.
+- Platz fuer eine Vollkopie fehlt: G: 504 GB, H: 488 GB, J: 185 GB frei. G:, H: und I: liegen alle auf der einen Seagate (Disk 2) - Sicherung und Zweitablage haengen an derselben Platte.
+- Offen: Q: braucht eine zweite Platte (ab 2 TB) oder eine Teilsicherung. Dirty-Bit loest sich beim naechsten sauberen Auswerfen/Anmelden; sonst `chkdsk Q: /f` - jetzt gefahrlos, weil nichts zu reparieren ist.

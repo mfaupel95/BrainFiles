@@ -52,7 +52,7 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 - **Einzelner Test:** Bus-Tests sind direkt ausfuehrbare Skripte (`cd Agenten/Bus && python tests/test_journal.py`, kein unittest/pytest). Handel-Tests nutzen unittest, z. B. `cd Agenten/Handel && scanner/.venv/Scripts/python.exe -m unittest discover -s tests -p "test_handelszentrale*.py"`. Handel-Tests laufen ueber `Agenten/Routinen/handel-tests.ps1`; Unterordner (`gitter/`, `kopier/`, `scanner/`, `xperp/`, ...) haben eigene `tests/`.
 - **xperp (Spur 2, OKX-Perpetuals):** Live-Pfad `Agenten/Handel/xperp/handeln.py` (`--vorschau` | `--papier` | `--live` | `--wachen`); gerechnet wird nur in `bot.py`, `handeln.py` holt die Zahlen von dort. Tests liegen zweifach: `test_*.py` neben dem Code und in `tests/`, beide unittest: `cd Agenten/Handel/xperp && ../scanner/.venv/Scripts/python.exe -m unittest discover -s tests` bzw. `-m unittest test_deckel`. Der Trailing-Stop lebt in `Agenten/Handel/trailing.py`, die Verdrahtung in `xperp/handeln.py` (nur aktiv mit `trailing_aktiv` in der Wache).
 - **Handel (Wurzel-Wrapper):** `omnitrade.cmd` (Stand; `start` = Live-Lauf im OKX-DEMO, nur einer zur Zeit; `ui` = Fenster) und `omnitrade-auswertung.cmd` (rein lesend). Detailwissen: `Agenten/Handel/README.md`, `MaxHirn/Wissen/Omnitrade.md`.
-- **Regeldatei-Paare:** `CLAUDE.md`=`AGENTS.md` in der Wurzel, in `MaxHirn/` und in `Werkstatt/` muessen identisch bleiben - wer eine aendert, aendert beide. Maschinell geprueft werden nur die Paare in `MaxHirn/` (`Agenten/Routinen/wissen-index-pruefen.ps1`); das Wurzel-Paar war am 03.10.2026 auseinandergelaufen (Zweig-Abschnitt in `AGENTS.md` noch Stand 16.09.2026) und wurde angeglichen.
+- **Regeldatei-Paare:** `CLAUDE.md`=`AGENTS.md` in der Wurzel, in `MaxHirn/` und in `Werkstatt/` muessen identisch bleiben - wer eine aendert, aendert beide. Maschinell geprueft werden die Paare in `MaxHirn/` (`Agenten/Routinen/wissen-index-pruefen.ps1`) und seit 09.10.2026 alle drei Paare taeglich durch den Konfig-Doktor (Block 16 der Systempruefung, Modul regelpaare); das Wurzel-Paar war am 03.10.2026 auseinandergelaufen (Zweig-Abschnitt in `AGENTS.md` noch Stand 16.09.2026) und wurde angeglichen.
 - **Bereichs-Besitz (seit 04.10.2026):** Drei Sitzungen teilen sich denselben
   Arbeitsbaum, und JEDE darf ueberall schreiben - deshalb gewinnt der Schnellere, und
   der geteilte Git-Index ist nur das spaeteste Symptom. Die Hausloesung ist
@@ -66,6 +66,10 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
   still und die Regel wuerde umgangen. Wer in einen fremden Bereich schreibt, meldet
   das als BEFUND (`--aufrufer <bereich> --pfad <pfad>`, Exitcode 1 bei Konflikt), es
   wird nicht blockiert.
+  Seit 09.10.2026 gibt es zusaetzlich den Commit-Hook `.githooks/pre-commit`
+  (einmalig je Klon `git config core.hooksPath .githooks`): wer sich per
+  `BRAINFILES_BEREICH=handel|bot|wissen` ausweist, kann nicht in fremde Bereiche
+  committen; ohne die Variable wird nichts blockiert.
 - **Kein `git stash` im geteilten Arbeitsbaum (seit 08.10.2026).** Der Stash
   friert Arbeit ein, während andere Sitzungen weiter committen; ein späteres
   `stash pop` konfligiert gegen Zwischencommits (Fall „Vault-Schutzschicht":

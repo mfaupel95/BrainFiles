@@ -75,7 +75,7 @@ import sys
 
 # VORGABEN - Hauswerte, keine Messung. Jede Spur kann sie ueberschreiben.
 VORGABE_TRIGGER_R = 1.0        # so weit gegen den Stop, dann erst nachziehen
-VORGABE_HALTEN_PCT = 0.40      # Stop so weit hinter dem Hochstand
+VORGABE_HALTEN_PCT = 1.50      # Stop so weit hinter dem Hochstand (Max 09.10.2026; vorher 0,40)
 VORGABE_ABSTAND_FLOOR_PCT = 0.25   # Mindestabstand Stop<->Kurs (Marktrauschen)
 VORGABE_MIN_HUB_R = 0.25       # Mindestgewinn, um eine Verlegung zu rechtfertigen
 VORGABE_MIN_HALTUNG_S = 120    # nicht haufiger als alle zwei Minuten
@@ -185,13 +185,19 @@ def kandidat(p, kurs, w, liq=None, jetzt=None):
 
     # 3) Wohin? Hinter den Hochstand, um `halten_pct`.
     ziel = hoch - vz * abs(hoch) * v["halten_pct"] / 100.0
-    # 4) Nie weiter als max_halten_pct hinter den Hochstand - sonst laeuft
-    #    der Stop bei einem Rücksetzer sofort in den Rauscher.
+    # 4) Nie weiter als max_halten_pct hinter den Hochstand. Der Stop liegt
+    #    also HOECHSTENS so weit weg: long -> nicht unter `grenze` (max),
+    #    short -> nicht ueber `grenze` (min).
+    #    BIS 09.10.2026 STAND HIER min/max VERTAUSCHT: der Stop nahm den
+    #    TIEFEREN Wert (long), also immer `grenze` - ein eingestelltes
+    #    halten_pct unter max_halten_pct (0,4 % in xperp) war wirkungslos, der
+    #    Stop lag real 5 % hinter dem Hochstand (Hoch 112 -> Stop 106,4 statt
+    #    111,55). Gefunden beim Backtest (trailing_backtest.py).
     grenze = hoch - vz * abs(hoch) * v["max_halten_pct"] / 100.0
     if vz > 0:
-        ziel = min(ziel, grenze)
-    else:
         ziel = max(ziel, grenze)
+    else:
+        ziel = min(ziel, grenze)
     # 5) Mindestabstand zum Kurs (Marktrauschen).
     floor = abs(kurs) * v["floor_pct"] / 100.0
     if vz > 0:

@@ -148,12 +148,42 @@ class SchutzTest(unittest.TestCase):
     def test_liquidationsmarke_wird_verweigert(self):
         w = tr.neu()
         p = long_position()
-        k, g = tr.kandidat(p, 110.0, w, liq=108.0)
+        # Hoch 110, Abstand 1,5 % -> Ziel-Stop 108,35. Liquidation bei 109 liegt darueber.
+        k, g = tr.kandidat(p, 110.0, w, liq=109.0)
         self.assertIsNone(k, "ein Stop unter der Liquidation ist kein Schutz")
         self.assertIn("Liquidationsmarke", g)
         # Oberhalb der Marke ist er erlaubt.
         k2, g2 = tr.kandidat(p, 110.0, w, liq=90.0)
         self.assertIsNotNone(k2, g2)
+
+    def test_abstand_hinter_dem_hoch_ist_halten_pct_nicht_max_halten(self):
+        """Regression 09.10.2026: min/max war vertauscht, der Stop lag immer
+        max_halten_pct (5 %) hinter dem Hoch, egal was halten_pct sagte."""
+        w = tr.neu()
+        w["trailing_stop_prozent"] = 1.5
+        k, g = tr.kandidat(long_position(), 112.0, w)
+        self.assertIsNotNone(k, g)
+        self.assertAlmostEqual(k["stop"], 112.0 * (1 - 0.015), places=6)
+
+    def test_max_halten_pct_begrenzt_den_abstand_nach_oben(self):
+        """Ein halten_pct ueber max_halten_pct wird auf max_halten_pct gekappt."""
+        w = tr.neu()
+        w["trailing_stop_prozent"] = 8.0
+        w["trailing_max_halten_pct"] = 5.0
+        k, g = tr.kandidat(long_position(), 120.0, w)
+        self.assertIsNotNone(k, g)
+        self.assertAlmostEqual(k["stop"], 120.0 * 0.95, places=6)
+
+    def test_short_abstand_hinter_dem_tief(self):
+        w = tr.neu()
+        w["trailing_stop_prozent"] = 1.5
+        p = long_position(einstieg=100.0, stop=105.0, seite="short")
+        k, g = tr.kandidat(p, 90.0, w)
+        self.assertIsNotNone(k, g)
+        self.assertAlmostEqual(k["stop"], 90.0 * 1.015, places=6)
+
+    def test_vorgabe_ist_1_5_prozent(self):
+        self.assertEqual(tr.VORGABE_HALTEN_PCT, 1.5)
 
     def test_hub_zu_klein_wird_verweigert(self):
         """Eine Verlegung um einen Tick kostet eine Order und bringt

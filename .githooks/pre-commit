@@ -1,0 +1,10 @@
+#!/bin/sh
+# Besitz-Register durchsetzen (Agenten/BEREICHE.json): eine Sitzung, die sich
+# per BRAINFILES_BEREICH=handel|bot|wissen ausweist, kann nicht in fremde
+# Bereiche committen. Ohne die Variable passiert nichts.
+# Einmalig je Klon:  git config core.hooksPath .githooks
+ROOT=$(git rev-parse --show-toplevel) || exit 0
+PY=python3
+command -v python3 >/dev/null 2>&1 || PY=python
+command -v "$PY" >/dev/null 2>&1 || exit 0
+exec "$PY" "$ROOT/Agenten/Werkzeuge/bereiche.py" --staged

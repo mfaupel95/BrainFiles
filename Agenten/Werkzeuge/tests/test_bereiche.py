@@ -237,5 +237,68 @@ class AufrufTest(unittest.TestCase):
             self.assertIn(besitzer, ausgabe)
 
 
+class StagedTest(unittest.TestCase):
+    """Pre-commit-Modus (--staged) gegen ein echtes, temporaeres Git-Repo."""
+
+    def setUp(self):
+        import subprocess
+        self.sp = subprocess
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self._git("init", "-q")
+        os.makedirs(os.path.join(self.tmp, "Agenten"))
+        shutil.copy(_REGISTER, os.path.join(self.tmp, "Agenten", "BEREICHE.json"))
+        for rel in ("Agenten/Handel/x.py", "MaxHirn/Wissen/y.md",
+                    "Agenten/Routinen/z.ps1"):
+            f = os.path.join(self.tmp, rel.replace("/", os.sep))
+            os.makedirs(os.path.dirname(f), exist_ok=True)
+            with open(f, "w", encoding="utf-8") as fh:
+                fh.write("x\n")
+        self._alt_env = os.environ.pop("BRAINFILES_BEREICH", None)
+        self.addCleanup(self._env_zurueck)
+
+    def _env_zurueck(self):
+        os.environ.pop("BRAINFILES_BEREICH", None)
+        if self._alt_env is not None:
+            os.environ["BRAINFILES_BEREICH"] = self._alt_env
+
+    def _git(self, *a):
+        self.sp.run(["git", "-C", self.tmp] + list(a), check=True,
+                    capture_output=True)
+
+    def _lauf(self, aufrufer=None):
+        import contextlib
+        import io
+        err = io.StringIO()
+        argv = ["--staged", "--wurzel", self.tmp]
+        if aufrufer:
+            argv += ["--aufrufer", aufrufer]
+        with contextlib.redirect_stderr(err):
+            code = bg.main(argv)
+        return code, err.getvalue()
+
+    def test_fremder_bereich_wird_verweigert(self):
+        self._git("add", "MaxHirn/Wissen/y.md")
+        code, err = self._lauf("handel")
+        self.assertEqual(code, 1, err)
+        self.assertIn("wissen", err)
+
+    def test_eigener_und_freier_bereich_passiert(self):
+        self._git("add", "Agenten/Handel/x.py", "Agenten/Routinen/z.ps1")
+        code, err = self._lauf("handel")
+        self.assertEqual(code, 0, err)
+
+    def test_ohne_aufrufer_wird_nicht_blockiert(self):
+        self._git("add", "MaxHirn/Wissen/y.md")
+        code, _ = self._lauf(None)
+        self.assertEqual(code, 0)
+
+    def test_aufrufer_aus_umgebungsvariable(self):
+        self._git("add", "MaxHirn/Wissen/y.md")
+        os.environ["BRAINFILES_BEREICH"] = "handel"
+        code, _ = self._lauf(None)
+        self.assertEqual(code, 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

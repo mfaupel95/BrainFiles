@@ -172,12 +172,13 @@ def prozesse():
     for such in ("ollama", "python", "hermes", "gateway", "skillsbot"):
         try:
             proc = subprocess.run(
-                ["tasklist", "/FI", f"IMAGENAME eq {such}*", "/NH", "/FO", "CSV"],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=20,
+                            ["tasklist", "/FI", f"IMAGENAME eq {such}*", "/NH", "/FO", "CSV"],
+                            capture_output=True,
+                            text=True,
+                            encoding="utf-8",
+                            errors="replace",
+                            timeout=20,
+                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
             zeilen = [z for z in proc.stdout.splitlines() if z.strip()]
             if len(zeilen) > 1:

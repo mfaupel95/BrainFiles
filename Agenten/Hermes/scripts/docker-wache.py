@@ -51,7 +51,8 @@ WIEDERHOLUNG_S = 6 * 3600
 def _run(cmd, frist):
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=frist,
-                           encoding="utf-8", errors="replace")
+                           encoding="utf-8", errors="replace",
+                           creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except (subprocess.TimeoutExpired, OSError) as e:
         return None, f"{type(e).__name__}: {e}"

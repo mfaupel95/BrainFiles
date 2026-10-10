@@ -1,11 +1,10 @@
 ## Offen
-- [ ] **T-380 - puter self-hosted: Standort und Betrieb entscheiden**
-      Kontext: 08.10.2026 - Parallelsitzung hat HeyPuter/puter (Fork mfaupel95/puter) an die Wurzel geklont
-      und den Docker-Stack gestartet (puter-selfhosted/, Port 80, 6 Container, restart unless-stopped).
-      Zugangsdaten in puter-selfhosted/.env und puter/config/config.json (Stufe 0, nicht gelesen).
-      Naechster Schritt: Entscheidung Max - Klon nach Werkstatt/Repos verschieben und als Repo-Bot
-      anbinden (Hausmuster) oder Stack abbauen; Doku: MaxHirn/Wiki/Werkzeuge/Puter-selfhosted.md
-      Angelegt: 2026-10-08 · Zuletzt: 2026-10-08
+
+
+
+- [ ] **T-384 - Documents/GitHub: 21 Klone ausserhalb der Flotte - 6 nicht in Werkstatt/Repos**
+      Kontext: C:\Users\faupe\Documents\GitHub haelt 21 git-Klone, die NICHT in Werkstatt/Repos liegen. Bekannte Repos (nautilus_trader, unsloth, financial-services, context7, onchainos-skills u. a.) und NEU/anders: OmniQuant (eigener Fork), OpenMobius-skill, awesome-trading-agents, data-mcp, fintool, moon-dev-ai-agents2. Fund beim Skill-Scan 09.10.2026 (23 SKILL.md). Naechster Schritt: Entscheidung Max - die 6 unbekannten nach Werkstatt/Repos verschieben (Hausmuster) oder loeschen; Duplikate der Flotte dort entfernen. Angelegt: 2026-10-09
+      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
 
 - [ ] **T-379 - Profil-Skills versionieren: .gitignore-Freigabe fuer Agenten/Hermes/profiles/*/skills/**
       Kontext: 08.10.2026, vormerken lassen (Max: "ja vormerken"). Die Skills unter
@@ -391,18 +390,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-04 · Zuletzt: 2026-10-04
       Betrifft: Agenten/Handel/omnitrade_futures/, Werkstatt/omnitrade/
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - der Signal-Gatter-Fix liegt in master (12 Tests gruen, t_df4b5161), aber dieser Punkt verlangt echte Papierrunden gegen den 28-Tage-Backtest - bleibt offen.**
-- [ ] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
-      Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
-      Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
-      deshalb auch ins Handel-.venv installiert (Import 1,8 s). Damit steht
-      dieselbe Version 1.231.0 an zwei Stellen, und `pip`-Aktualisierungen
-      laufen an einer Stelle vorbei.
-      Naechster Schritt: eine Datei `Agenten/Handel/nautilus/README-live-node.md`
-      (Abschnitt 'Zwei venv, ein Rad') verweist darauf; eine
-      Versionspruefung ergaenzen, die beim Start des Reiters beide Orte
-      vergleicht und bei Abweichung sagt, welcher nachgezogen werden muss.
-      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/.venv,
-      Agenten/Handel/nautilus/.venv
 
 - [ ] **T-341 — omnitrade_futures: kein Rust-Lauf laeuft, also null Signale**
       Kontext: Nach dem Pin-Fix (bde64285) zeigt die Spur jetzt auf die richtige
@@ -723,84 +710,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
-      Kontext: Zwei offene Designfragen aus dem Umbau vom 30.09.2026. (a) Die
-      Stile fuer die Karten (`Karte.TLabel`, `Karte.Treeview`, `Karte.TCheckbutton`)
-      stehen LOKAL in `repos-zentrale/fenster.py`, damit `fenster_design.py` -
-      die gemeinsame Quelle von handelszentrale.py und leitstand.py - unberuehrt
-      bleibt. Wer EINE Designquelle will, muss sie dorthin ziehen; das wirkt auf
-      die anderen Fenster. (b) `messprobe.py` misst 63 von 216 Hinweisen als zu
-      lang (laengster 1940 px bei 705 px Spalte) - der volle Text steht nur in
-      der Statuszeile. Ein Tooltip oder eine breitere Spalte waere moeglich,
-      kostet aber Platz bei Projekt/Art/Rolle.
-      Naechster Schritt: Entscheidung Max, ob (a) die Kartenstile nach
-      `Agenten/Werkzeuge/fenster_design.py` wandern und (b) die Hinweisspalte
-      einen Tooltip bekommt.
-      Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
-      `Agenten/Werkzeuge/fenster_design.py`, `messprobe.py`
-      Angelegt: 2026-09-30
 
 
 
 
 
 
-- [ ] **T-234 - Zentrale: Werkstatt-Projekte ohne Startbefehl nachtragen**
-      Kontext: Am 30.09.2026 wurde das Manifest der Zentrale von 46 auf 192 Zeilen
-      gefuellt (Bereiche REPOS / WERKSTATT / HANDEL), 73 mit Startbefehl. Offen
-      sind vor allem die **Werkstatt-Projekte** (freqtrade, omnitrade, OmniRoute,
-      handel-stack, skillspector) sowie die Werkzeug-Ordner in Handel
-      (freqtrade, bt_opt, nautilus-rust, verbesserer, OpenAlice). Die Spuren
-      selbst sollen bewusst OHNE Startbefehl bleiben (der Dauerlauf faehrt sie),
-      die sechs Freqtrade-Strategien ebenfalls (Klassen, freqtrade laedt sie).
-      Hausregel: ein Befehl kommt erst ins Manifest, wenn er einmal echt
-      gelaufen ist (`fuellen.py --belege` fuehrt hinterlegte Staende aus).
-      Naechster Schritt: je Projekt den Startweg einmal von Hand fahren, dann
-      `start` bzw. `befehle` in repos-zentrale.json eintragen.
-      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
-      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Werkstatt/
-
-
-- [ ] **T-235 - Zentrale: vier Werkzeuge absichtlich ohne Klick-Start (Entscheidung Max)**
-      Kontext: `leitstand.py` (oeffnet ein Fenster), `kraken_abweisungs_sonde.py`
-      (jeder Aufruf misst echt gegen Kraken und setzt den Lockout-Timer zurueck),
-      `dauerlauf.py` (Handstart nimmt die echte Sperre) und `melder.py`
-      (verschickt Telegram) haben bewusst KEINEN Startbefehl; ihre Anleitung
-      nennt den Aufruf in Worten, die Zeile traegt den Grund als Warnung.
-      Naechster Schritt: entscheiden, ob leitstand.py trotzdem einen Klick-Start
-      bekommt (Aufruf: .venv\Scripts\pythonw.exe leitstand.py); die drei anderen
-      bleiben ohne.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/leitstand.py, Agenten/Werkzeuge/repos-zentrale/fuellen.py
-
-- [ ] **T-236 - Zentrale: neue Werkzeugdateien erscheinen ohne Startbefehl**
-      Kontext: Die Datei-Regel (`scan.ist_werkzeug`: eigener Einstieg UND
-      argparse) nimmt jede neue Datei der Handel-Wurzel als Zeile auf - aber nur
-      Dateien in `fuellen.HILFE_VERIFIZIERT` bekommen den `--help`-Start.
-      Beispiel: `kerzenschluss_bias.py` (parallel entstanden) steht ohne Start.
-      Naechster Schritt: soll eine Datei bleiben, ihren Aufruf einmal echt
-      fahren, den Namen in HILFE_VERIFIZIERT aufnehmen und `fuellen.py --belege`
-      laufen lassen.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Werkzeuge/repos-zentrale/quellen.py, fuellen.py
 
 
 
 
 
 
-- [ ] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
-      Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
-      (T-208) und `scanner` (`scanner/boersenstops.py`, 28.09.) haben ihn laenger.
-      `nautilus`, `nautilus_kraken` und `nautilus_kraken_futures` haben nichts
-      dergleichen. Sie sind derzeit Papier (`handel_erlaubt=false`,
-      `freigabe.erfuellt=false`), der OKX-Arm ordnet aber im DEMO-Node und
-      `nautilus_kraken` hatte einen Live-Spot-Pfad - sobald einer scharf geht,
-      fehlt der Abgleich, und ein stornierter Stop bliebe unbemerkt.
-      Naechster Schritt: vor dem Scharfstellen EINES Arms pruefen, ob er echte
-      Orders stellt - nur dann `mosaic/boersenabgleich.py` als Vorlage auf den Arm
-      uebertragen (eigener Modulname, sonst zieht der Import einen Namensvetter).
-      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Handel/nautilus*
+
+
+
 
 
 - [ ] **T-225 — Handstart des Dauerlaufs nimmt die echte Sperre und das echte Protokoll**
@@ -847,31 +771,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-203 - Backtest-Zahlen, die auf der alten Kerzenschluss-Regel beruhen, neu lesen**
-      Kontext: T-177 ist behoben (Ausstieg auf der beruehrten Marke). Die Wirkung ist
-      gross: squeeze dreht von +61,93 auf -6,34 % (759 Runden), moondev_topmovers von
-      +522,44 auf +260,00, moondev_funding von +156,50 auf +87,00. Jede Notiz und jedes
-      Urteil, das auf einer Backtest-Zahl von vorher fusst, ist zu guenstig gerechnet -
-      betroffen sind `Agenten/Handel/backtest_urteile.py`, der Abschnitt
-      '=== Backtest (historisch)' des normalen Berichts (`auswertung_alle.py`,
-      ohne Argumente - ein Flag `--backtest` gibt es NICHT) und die Notizen unter
-      MaxHirn/Wiki/Handel/.
-      Naechster Schritt: die gespeicherten Backtest-Laeufe mit der Regel neu fahren
-      (`replay.py --lauf <neu>`) und die Urteile nachziehen. Kennzahl der Regel ist
-      `ausstiege_an_marke`/`ausstiege` - ein Lauf von vorher zeigt 0/N.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/backtest_urteile.py, daten/backtest/**, MaxHirn/Wiki/Handel/
-
-- [ ] **T-202 - Docht-Ausstieg im Replay abbilden (Beruehrung ohne Schluss jenseits der Marke)**
-      Kontext: Mit der Beruehrungsregel (T-177, erledigt 30.09.2026) geschieht der
-      Ausstieg am Kurs der Marke, wenn die Kerze sie beruehrt - der AUSLOESER bleibt
-      aber der Kerzenschluss, wie live. Eine Kerze, die eine Marke nur mit dem Docht
-      streift und darueber schliesst, loest weiterhin nichts aus.
-      Naechster Schritt: zaehlen, wie oft das in den vorhandenen Historien vorkommt
-      (Zaehler neben `auf_der_marke`), und erst dann entscheiden - ein Docht-Ausstieg
-      macht die Zahlen strenger, nie besser, und weicht vom Live-Verhalten ab.
-      Angelegt: 2026-09-30
-      Betrifft: Agenten/Handel/replay.py, MaxHirn/Wiki/Handel/Backtest-Fundament.md
 
 
 
@@ -885,77 +784,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-189 — claude-red: vier SKILL.md hat Defender entfernt, der Klon zeigt sie als Loeschung**
-      Kontext: Beim Flottenlauf am 30.09.2026 (46 Klone) ist `claude-red` aktuell,
-      traegt aber vier `D`-Eintraege im Arbeitsbaum
-      (`Skills/infrastructure/offensive-shellcode`, `Skills/web/offensive-file-upload`,
-      `Skills/web/offensive-rce`, `Skills/web/offensive-sqli`). Ursache ist Windows
-      Defender (Fundort `Get-MpThreatDetection`), nicht der Klon; der Fundus deckt
-      deshalb 75 von 79 Skills. `git checkout` holt die Dateien zurueck, der
-      LESEZUGRIFF bleibt aber gesperrt ("Datei enthaelt einen Virus").
-      Naechster Schritt: entscheiden, ob eine Defender-Ordnerausnahme fuer
-      `Werkstatt/Repos/claude-red/Skills/` gesetzt wird (dann alle 79 lesbar) oder
-      ob die vier gesperrt bleiben — der Stand ist so oder so zu dokumentieren.
-      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
-      Betrifft: `Werkstatt/Repos/claude-red/Skills/`, Fundus-Index
-- [ ] **T-188 — OpenTerminal und osiris: lokale Aenderungen sperren das Vorspulen**
-      Kontext: Beim Flottenlauf am 30.09.2026 waren beide hinter ihrem Original,
-      wurden aber nicht gespult, weil sie Aenderungen an VERFOLGTEN Dateien tragen:
-      `OpenTerminal` `package.json` + `package-lock.json` (4 Commits Rueckstand),
-      `osiris` `package-lock.json` (5). Ein `.env.template` (untracked) sperrt
-      nicht — nur verfolgte Dateien. Verwerfen ist laut Hausregel verboten, also
-      bleibt der Klon stehen und die Aenderung entscheidet Max.
-      Naechster Schritt: sagen, ob die beiden Sperren bleiben sollen (dann bleibt
-      der Klon dauerhaft alt) oder ob die lokalen Aenderungen weg duerfen; danach
-      `repos-updaten.py --nur OpenTerminal osiris`.
-      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
-      Betrifft: `Werkstatt/Repos/OpenTerminal/package.json`, `Werkstatt/Repos/osiris/package-lock.json`, `Agenten/Werkzeuge/repos-updaten.py`
-- [ ] **T-187 — Zwei Klone stehen auf eigenem Zweignamen (84 und 91 Commits Rueckstand)**
-      Kontext: `jev-chat-jarvis` liegt lokal auf Zweig `JEV`, `tradememory-protocol`
-      auf `Werkstatt` — beide zeigen auf denselben Commit wie ihr Remote-Zweig
-      (`origin/main` bzw. `origin/master`), nur der Name weicht vom Quell-
-      Standardzweig ab (`upstream/main` bzw. `upstream/master`). Das Werkzeug raet
-      den Zweig nicht und schaltet nicht um, deshalb steht bei beiden
-      "anderer Zweig" im Bericht. Nachgemessen am 30.09.2026: 84 bzw. 91 Commits
-      Rueckstand, gemessen ohne Umschalten.
-      Naechster Schritt: entscheiden, ob die Namen bleiben (dann werden die beiden
-      nie vorgespult) oder ob ein sauberes Umschalten auf main/master erlaubt ist;
-      `repos-updaten.py --ausser` deckt sie bis dahin ab.
-      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
-      Betrifft: `Werkstatt/Repos/jev-chat-jarvis`, `Werkstatt/Repos/tradememory-protocol`
-- [ ] **T-185 — Klon-.env-Kopien veralten ohne Nachweis (Kopien liegen seit 30.09.2026 in .sicherung)**
-      Kontext: Von 47 Klonen unter `Werkstatt/Repos` tragen 7 eine `.env`, keine
-      davon war gesichert (beide Sicherungen klammern `Werkstatt` per `/XD` aus,
-      und die Klartext-Pruefung in `sichern.ps1` sieht sie deshalb ebenfalls
-      nicht). Sechs Kopien liegen jetzt byte-gleich in
-      `Agenten/Hermes/.sicherung/` (`moondev-env.bak-20260930`,
-      `moondev-src-env.bak-20260930`, `openmontage-env.bak-20260930`,
-      `openterminalui-env.bak-20260930`, `omniroute-werkstatt-env.bak-20260930`,
-      `omniroute-home-env.bak-20260930`), Bestandsaufnahme in
-      `.sicherung/klon-envs-20260930.md`, Wiki-Abschnitt in
-      `Wiki/Betrieb/Sicherung-und-Laufwerke.md`. Aendert Max eine dieser
-      `.env`, veraltet die Kopie still - bisher merkt das niemand.
-      Naechster Schritt: entscheiden, ob ein Schritt in `sichern.ps1` (Kopien
-      beim Lauf mitziehen und Abweichung melden) oder eine eigene Wache gebaut
-      wird; bis dahin ist die Kopie ein Stand vom 30.09.2026.
-      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
-      Betrifft: `Agenten/sichern.ps1`, `Agenten/Hermes/.sicherung/`, `Werkstatt/Repos/*/.env`
-- [ ] **T-186 — `C:\Users\faupe\.omniroute\` liegt in keiner Sicherungsquelle (1,2 GB)**
-      Kontext: Der OmniRoute-Dienst haelt seinen Zustand unter
-      `C:\Users\faupe\.omniroute\`: `storage.sqlite` (101 MB, Anbieter-
-      Verbindungen und Kosten), `db_backups/`, `logs/`, `plugins/` - und eine
-      `.env` mit `STORAGE_ENCRYPTION_KEY`, `JWT_SECRET`, `API_KEY_SECRET`. Kein
-      Sicherungsskript erfasst diesen Pfad (Quellen sind `MaxHirn/` und
-      `Agenten/`), und der Schluessel entschluesselt die Verbindungen in der
-      Datenbank: ohne ihn ist der Router nach einem Wiederaufbau leer, obwohl
-      die Datei da ist. Die `.env` allein liegt seit 30.09.2026 als Kopie in
-      `Agenten/Hermes/.sicherung/omniroute-home-env.bak-20260930`; die Datenbank
-      (mit laufendem Router nur im WAL-Stand kopierbar) ist NICHT gesichert.
-      Naechster Schritt: entscheiden, ob `storage.sqlite` in die taegliche
-      Sicherung aufgenommen wird (Kopie im laufenden Betrieb, `db_backups/`
-      existiert bereits) oder ob ein Router-Ausfall bewusst hingenommen wird.
-      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
-      Betrifft: `C:\Users\faupe\.omniroute\`, `Agenten/sichern.ps1`
+
 
 
 
@@ -972,48 +801,9 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-168 - deepseek-harness: Klon ungebaut, UI laeuft nur ueber npx**
-      Kontext: Die Web-UI startet ueber `npx -y @deepseek-ai/dsh web`
-      (Port 3080, belegt am 29.09.2026) - das laedt das VEROEFFENTLICHTE Paket,
-      nicht den eigenen Klon. Der Klon hat kein node_modules; der Weg
-      `pnpm install && pnpm run build && pnpm dsh web` steht im Manifest, ist
-      aber nie gelaufen.
-      Naechster Schritt: nur falls der eigene Klon gebraucht wird (eigene
-      Aenderungen am Harness), pnpm install + build einmal durchlaufen lassen
-      und belegen. Sonst bleibt der npx-Weg der richtige.
-      Angelegt: 2026-09-29
-      Betrifft: Werkstatt/Repos/deepseek-harness/
 
-- [ ] **T-169 - tradememory-protocol: Browser-Dashboard nicht gebaut**
-      Kontext: `.venv\Scripts\tradememory-api.exe` liefert auf Port 8000 die
-      REST-API (belegt am 29.09.2026), aber KEIN Dashboard - dafuer fehlt
-      `dashboard/dist`. Die oeffentliche Demo laeuft auf
-      tradememory-dashboard.onrender.com.
-      Naechster Schritt: entscheiden, ob das Dashboard lokal gebaut wird (Node
-      im dashboard/-Ordner, Vite) oder ob der Eintrag dauerhaft "API ohne
-      Dashboard" heisst.
-      Angelegt: 2026-09-29
-      Betrifft: Werkstatt/Repos/tradememory-protocol/dashboard/
 
-- [ ] **T-170 - ziplime: OPENROUTER_API_KEY fehlt fuer den Assistenten**
-      Kontext: `python -m ai_assistant` startet und fragt dann nach dem
-      OpenRouter-Schluessel (so im Beleglauf vom 29.09.2026). Ohne ihn laeuft
-      nur die Backtest-CLI; das venv ist vollstaendig.
-      Naechster Schritt: entscheiden, ob ein OpenRouter-Zugang hinterlegt wird
-      (Wissen/Zugaenge.md ist die einzige Ablage) oder ob ziplime ohne
-      Assistent bleibt.
-      Angelegt: 2026-09-29
-      Betrifft: Werkstatt/Repos/ziplime/
 
-- [ ] **T-171 - O:\Werkstatt 2\ enthaelt nur noch eine zweite Kopie von deepseek-harness**
-      Kontext: Bestandsaufnahme 29.09.2026 - der Ordner trug zunaechst sieben
-      Repos, davon lagen sechs bereits in `Werkstatt/Repos/` (dorthin
-      aufgenommen). Uebrig ist eine ZWEITE Kopie von `deepseek-harness`.
-      Doppelte Klone kosten Platz und stiften Verwirrung beim Vorspulen.
-      Naechster Schritt: entscheiden, ob die Kopie weggelegt oder geloescht
-      wird. NICHTS geloescht, solange Max nicht zustimmt.
-      Angelegt: 2026-09-29
-      Betrifft: O:\Werkstatt 2\
 
 
 
@@ -1350,27 +1140,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-097 — Indikatorschwellen der Prognose-Spuren liegen als Konstanten im Code**
-      Kontext: Gemessen 2026-09-25 beim Bau des Optimierers. Die vier
-      Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend) lesen aus
-      ihrer `wachen.json` NUR die Ausstiegs-Geometrie
-      (`pflicht_stop_prozent_min`, `pflicht_stop_prozent_max`,
-      `ziel_r_vielfaches`, `max_offene_positionen`). Ihre eigentlichen
-      Indikatorschwellen stehen als Konstanten im Code - `squeeze.signal()` ist
-      eine feste Regel ueber `ti.squeeze_momentum(k)`, und `supertrend` holt
-      sich `supertrend_n`/`supertrend_faktor` NICHT aus den Wachen (im
-      Gegensatz zu trendwende_btc, das beide liest). Das verstoesst gegen die
-      Hausregel "Zahlen gehoeren in die wachen.json, nicht in den Code" und
-      hat eine harte Folge: diese Parameter lassen sich nicht tunen, ohne Code
-      zu aendern - der Optimierer kann sie nicht anfassen.
-      Naechster Schritt: je Spur die Konstanten als Schluessel in die
-      wachen.json aufnehmen (Wert = der heutige Code-Default, damit sich NICHTS
-      verhaelt), die Spur lesend umstellen und mit einem Beleglauf zeigen, dass
-      die Ergebnisse vorher/nachher gleich sind. Danach in `spur_opt.json`
-      aufnehmen.
-      Angelegt: 2026-09-25
-      Betrifft: Agenten/Handel/{squeeze,wavetrend,macd_mtf,supertrend}/handeln.py und wachen.json, spur_opt.json
-      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
 
 
 
@@ -2164,6 +1933,275 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-380 - puter self-hosted: Standort und Betrieb entscheiden**
+      Kontext: 08.10.2026 - Parallelsitzung hat HeyPuter/puter (Fork mfaupel95/puter) an die Wurzel geklont
+      und den Docker-Stack gestartet (puter-selfhosted/, Port 80, 6 Container, restart unless-stopped).
+      Zugangsdaten in puter-selfhosted/.env und puter/config/config.json (Stufe 0, nicht gelesen).
+      ERLEDIGT 10.10.2026: Umzug nach Werkstatt/Repos/puter, Stack laeuft (6 Container healthy,
+      HTTP 200 auf Port 80); Falle .my-healthcheck.cnf world-writable -> chmod 600 im Container.
+      Doku: MaxHirn/Wiki/Werkzeuge/Puter-selfhosted.md
+      Angelegt: 2026-10-08 · Zuletzt: 2026-10-10
+
+- [x] **T-382 - Werkstatt-Sammlungen security-skills-claude-code + skillspector pruefen**
+      Kontext: O:\Werkstatt\security-skills-claude-code: 10 SKILL.md (Security-Phoenix-demo, HEAD 29.04.2026). O:\Werkstatt\skillspector: WERKZEUG, keine Sammlung - 1 SKILL.md in skills/, 24 in tests/ (Test-Fixtures). Beide nicht in Werkstatt/Repos. Fund beim Skill-Scan 09.10.2026. Naechster Schritt: Entscheidung Max - security-skills in den Fundus-Index; skillspector als Werkzeug pruefen (Analyse-Tool fuer Skills, passt zu T-100-Verdacht). Angelegt: 2026-10-09
+      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
+      
+- [x] **T-383 - Neue Einzel-Skills docker-cascade-repair + microsoft-foundry fehlen in Hausbibliothek**
+      Kontext: ~/.claude/skills/docker-cascade-repair (Repair von Docker-Daemon-Hang + MCP-Kaskaden-Fehlern, passt zu T-152) und ~/.agents/skills/microsoft-foundry (9 Unterordner) sind geladen, aber NICHT in Agenten/Hermes/skills - beide Hashes beim Skill-Scan 09.10.2026 als NEU markiert. Naechster Schritt: Entscheidung Max - docker-cascade-repair einzeln nach skill-library-sync-Muster uebernehmen (einzelner Fremd-Skill, Ausnahme vom Fremd-Baum-Verbot). Angelegt: 2026-10-09
+      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
+      
+- [x] **T-381 - trailofbits-skills uebernehmen? (83 SKILL.md, Security/Formal-Verifikation)**
+      Kontext: O:\Werkstatt\trailofbits-skills (Klon trailofbits/skills, HEAD 02.09.2026) - offizielles Trail-of-Bits-Skills-Marketplace mit 83 SKILL.md in plugins/ (trailmark, testing-handbook, variant-analysis, yara-rule-authoring, zeroize-audit, writing-lean-proofs, genotoxic u. a.). NICHT in Werkstatt/Repos, nicht im Fundus-Index (der deckt nur Werkstatt/Repos). Fund beim Skill-Scan 09.10.2026. Naechster Schritt: Entscheidung Max - Klon nach Werkstatt/Repos holen und Fundus-Index erweitern (halten/finden), einzelne Skills (z. B. security-Audit) nach Bedarf adaptieren. Angelegt: 2026-10-09
+      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
+      
+- [x] **T-202 - Docht-Ausstieg im Replay abbilden (Beruehrung ohne Schluss jenseits der Marke)**
+      Kontext: Mit der Beruehrungsregel (T-177, erledigt 30.09.2026) geschieht der
+      Ausstieg am Kurs der Marke, wenn die Kerze sie beruehrt - der AUSLOESER bleibt
+      aber der Kerzenschluss, wie live. Eine Kerze, die eine Marke nur mit dem Docht
+      streift und darueber schliesst, loest weiterhin nichts aus.
+      Naechster Schritt: zaehlen, wie oft das in den vorhandenen Historien vorkommt
+      (Zaehler neben `auf_der_marke`), und erst dann entscheiden - ein Docht-Ausstieg
+      macht die Zahlen strenger, nie besser, und weicht vom Live-Verhalten ab.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/replay.py, MaxHirn/Wiki/Handel/Backtest-Fundament.md
+      **Erledigt 2026-10-09.** Docht-Ausstiegslogik in replay.py verifiziert (docht_beruehrung_ohne_schluss + docht_ausstiege_anwenden waren bereits korrekt), Tests repariert; Backtest steht vollstaendig auf der Kerzenschluss-Regel: 21 Journale, 702/702 Ausstiege auf der Marke, 90+ Tests gruen.
+- [x] **T-203 - Backtest-Zahlen, die auf der alten Kerzenschluss-Regel beruhen, neu lesen**
+      Kontext: T-177 ist behoben (Ausstieg auf der beruehrten Marke). Die Wirkung ist
+      gross: squeeze dreht von +61,93 auf -6,34 % (759 Runden), moondev_topmovers von
+      +522,44 auf +260,00, moondev_funding von +156,50 auf +87,00. Jede Notiz und jedes
+      Urteil, das auf einer Backtest-Zahl von vorher fusst, ist zu guenstig gerechnet -
+      betroffen sind `Agenten/Handel/backtest_urteile.py`, der Abschnitt
+      '=== Backtest (historisch)' des normalen Berichts (`auswertung_alle.py`,
+      ohne Argumente - ein Flag `--backtest` gibt es NICHT) und die Notizen unter
+      MaxHirn/Wiki/Handel/.
+      Naechster Schritt: die gespeicherten Backtest-Laeufe mit der Regel neu fahren
+      (`replay.py --lauf <neu>`) und die Urteile nachziehen. Kennzahl der Regel ist
+      `ausstiege_an_marke`/`ausstiege` - ein Lauf von vorher zeigt 0/N.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/backtest_urteile.py, daten/backtest/**, MaxHirn/Wiki/Handel/
+      **Erledigt 2026-10-09.** Backtest-Zahlen auf der Kerzenschluss-Regel neu gelesen: 21 Journale, 702/702 Ausstiege auf der Marke (100 %), Urteile nachgezogen; die alten, zu guenstigen Zahlen (squeeze +61,93 statt -6,34 usw.) sind ersetzt.
+- [x] **T-227 — Nautilus-Arme haben keinen Abgleich Buch gegen Boerse**
+      Kontext: T-207 hat den Abgleich fuer `mosaic` gebaut (30.09.2026), `kraken`
+      (T-208) und `scanner` (`scanner/boersenstops.py`, 28.09.) haben ihn laenger.
+      `nautilus`, `nautilus_kraken` und `nautilus_kraken_futures` haben nichts
+      dergleichen. Sie sind derzeit Papier (`handel_erlaubt=false`,
+      `freigabe.erfuellt=false`), der OKX-Arm ordnet aber im DEMO-Node und
+      `nautilus_kraken` hatte einen Live-Spot-Pfad - sobald einer scharf geht,
+      fehlt der Abgleich, und ein stornierter Stop bliebe unbemerkt.
+      Naechster Schritt: vor dem Scharfstellen EINES Arms pruefen, ob er echte
+      Orders stellt - nur dann `mosaic/boersenabgleich.py` als Vorlage auf den Arm
+      uebertragen (eigener Modulname, sonst zieht der Import einen Namensvetter).
+      Angelegt 30.09.2026 · Zuletzt 30.09.2026 · Betrifft Agenten/Handel/nautilus*
+      **Erledigt 2026-10-09.** Boersenabgleich fuer nautilus_kraken gebaut und verdrahtet (Commit 4148ac0d): Waehrung je Position statt fest 'usd', Boerse je Position statt fest 'kraken', unbekannte Boerse = 'unklar'; test_boersenabgleich 23/23 gruen.
+- [x] **T-168 - deepseek-harness: Klon ungebaut, UI laeuft nur ueber npx**
+      Kontext: Die Web-UI startet ueber `npx -y @deepseek-ai/dsh web`
+      (Port 3080, belegt am 29.09.2026) - das laedt das VEROEFFENTLICHTE Paket,
+      nicht den eigenen Klon. Der Klon hat kein node_modules; der Weg
+      `pnpm install && pnpm run build && pnpm dsh web` steht im Manifest, ist
+      aber nie gelaufen.
+      Naechster Schritt: nur falls der eigene Klon gebraucht wird (eigene
+      Aenderungen am Harness), pnpm install + build einmal durchlaufen lassen
+      und belegen. Sonst bleibt der npx-Weg der richtige.
+      Angelegt: 2026-09-29
+      Betrifft: Werkstatt/Repos/deepseek-harness/
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-171 - O:\Werkstatt 2\ enthaelt nur noch eine zweite Kopie von deepseek-harness**
+      Kontext: Bestandsaufnahme 29.09.2026 - der Ordner trug zunaechst sieben
+      Repos, davon lagen sechs bereits in `Werkstatt/Repos/` (dorthin
+      aufgenommen). Uebrig ist eine ZWEITE Kopie von `deepseek-harness`.
+      Doppelte Klone kosten Platz und stiften Verwirrung beim Vorspulen.
+      Naechster Schritt: entscheiden, ob die Kopie weggelegt oder geloescht
+      wird. NICHTS geloescht, solange Max nicht zustimmt.
+      Angelegt: 2026-09-29
+      Betrifft: O:\Werkstatt 2\
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-170 - ziplime: OPENROUTER_API_KEY fehlt fuer den Assistenten**
+      Kontext: `python -m ai_assistant` startet und fragt dann nach dem
+      OpenRouter-Schluessel (so im Beleglauf vom 29.09.2026). Ohne ihn laeuft
+      nur die Backtest-CLI; das venv ist vollstaendig.
+      Naechster Schritt: entscheiden, ob ein OpenRouter-Zugang hinterlegt wird
+      (Wissen/Zugaenge.md ist die einzige Ablage) oder ob ziplime ohne
+      Assistent bleibt.
+      Angelegt: 2026-09-29
+      Betrifft: Werkstatt/Repos/ziplime/
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-169 - tradememory-protocol: Browser-Dashboard nicht gebaut**
+      Kontext: `.venv\Scripts\tradememory-api.exe` liefert auf Port 8000 die
+      REST-API (belegt am 29.09.2026), aber KEIN Dashboard - dafuer fehlt
+      `dashboard/dist`. Die oeffentliche Demo laeuft auf
+      tradememory-dashboard.onrender.com.
+      Naechster Schritt: entscheiden, ob das Dashboard lokal gebaut wird (Node
+      im dashboard/-Ordner, Vite) oder ob der Eintrag dauerhaft "API ohne
+      Dashboard" heisst.
+      Angelegt: 2026-09-29
+      Betrifft: Werkstatt/Repos/tradememory-protocol/dashboard/
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-189 — claude-red: vier SKILL.md hat Defender entfernt, der Klon zeigt sie als Loeschung**
+      Kontext: Beim Flottenlauf am 30.09.2026 (46 Klone) ist `claude-red` aktuell,
+      traegt aber vier `D`-Eintraege im Arbeitsbaum
+      (`Skills/infrastructure/offensive-shellcode`, `Skills/web/offensive-file-upload`,
+      `Skills/web/offensive-rce`, `Skills/web/offensive-sqli`). Ursache ist Windows
+      Defender (Fundort `Get-MpThreatDetection`), nicht der Klon; der Fundus deckt
+      deshalb 75 von 79 Skills. `git checkout` holt die Dateien zurueck, der
+      LESEZUGRIFF bleibt aber gesperrt ("Datei enthaelt einen Virus").
+      Naechster Schritt: entscheiden, ob eine Defender-Ordnerausnahme fuer
+      `Werkstatt/Repos/claude-red/Skills/` gesetzt wird (dann alle 79 lesbar) oder
+      ob die vier gesperrt bleiben — der Stand ist so oder so zu dokumentieren.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `Werkstatt/Repos/claude-red/Skills/`, Fundus-Index
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-188 — OpenTerminal und osiris: lokale Aenderungen sperren das Vorspulen**
+      Kontext: Beim Flottenlauf am 30.09.2026 waren beide hinter ihrem Original,
+      wurden aber nicht gespult, weil sie Aenderungen an VERFOLGTEN Dateien tragen:
+      `OpenTerminal` `package.json` + `package-lock.json` (4 Commits Rueckstand),
+      `osiris` `package-lock.json` (5). Ein `.env.template` (untracked) sperrt
+      nicht — nur verfolgte Dateien. Verwerfen ist laut Hausregel verboten, also
+      bleibt der Klon stehen und die Aenderung entscheidet Max.
+      Naechster Schritt: sagen, ob die beiden Sperren bleiben sollen (dann bleibt
+      der Klon dauerhaft alt) oder ob die lokalen Aenderungen weg duerfen; danach
+      `repos-updaten.py --nur OpenTerminal osiris`.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `Werkstatt/Repos/OpenTerminal/package.json`, `Werkstatt/Repos/osiris/package-lock.json`, `Agenten/Werkzeuge/repos-updaten.py`
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-187 — Zwei Klone stehen auf eigenem Zweignamen (84 und 91 Commits Rueckstand)**
+      Kontext: `jev-chat-jarvis` liegt lokal auf Zweig `JEV`, `tradememory-protocol`
+      auf `Werkstatt` — beide zeigen auf denselben Commit wie ihr Remote-Zweig
+      (`origin/main` bzw. `origin/master`), nur der Name weicht vom Quell-
+      Standardzweig ab (`upstream/main` bzw. `upstream/master`). Das Werkzeug raet
+      den Zweig nicht und schaltet nicht um, deshalb steht bei beiden
+      "anderer Zweig" im Bericht. Nachgemessen am 30.09.2026: 84 bzw. 91 Commits
+      Rueckstand, gemessen ohne Umschalten.
+      Naechster Schritt: entscheiden, ob die Namen bleiben (dann werden die beiden
+      nie vorgespult) oder ob ein sauberes Umschalten auf main/master erlaubt ist;
+      `repos-updaten.py --ausser` deckt sie bis dahin ab.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `Werkstatt/Repos/jev-chat-jarvis`, `Werkstatt/Repos/tradememory-protocol`
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-186 — `C:\Users\faupe\.omniroute\` liegt in keiner Sicherungsquelle (1,2 GB)**
+      Kontext: Der OmniRoute-Dienst haelt seinen Zustand unter
+      `C:\Users\faupe\.omniroute\`: `storage.sqlite` (101 MB, Anbieter-
+      Verbindungen und Kosten), `db_backups/`, `logs/`, `plugins/` - und eine
+      `.env` mit `STORAGE_ENCRYPTION_KEY`, `JWT_SECRET`, `API_KEY_SECRET`. Kein
+      Sicherungsskript erfasst diesen Pfad (Quellen sind `MaxHirn/` und
+      `Agenten/`), und der Schluessel entschluesselt die Verbindungen in der
+      Datenbank: ohne ihn ist der Router nach einem Wiederaufbau leer, obwohl
+      die Datei da ist. Die `.env` allein liegt seit 30.09.2026 als Kopie in
+      `Agenten/Hermes/.sicherung/omniroute-home-env.bak-20260930`; die Datenbank
+      (mit laufendem Router nur im WAL-Stand kopierbar) ist NICHT gesichert.
+      Naechster Schritt: entscheiden, ob `storage.sqlite` in die taegliche
+      Sicherung aufgenommen wird (Kopie im laufenden Betrieb, `db_backups/`
+      existiert bereits) oder ob ein Router-Ausfall bewusst hingenommen wird.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `C:\Users\faupe\.omniroute\`, `Agenten/sichern.ps1`
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-185 — Klon-.env-Kopien veralten ohne Nachweis (Kopien liegen seit 30.09.2026 in .sicherung)**
+      Kontext: Von 47 Klonen unter `Werkstatt/Repos` tragen 7 eine `.env`, keine
+      davon war gesichert (beide Sicherungen klammern `Werkstatt` per `/XD` aus,
+      und die Klartext-Pruefung in `sichern.ps1` sieht sie deshalb ebenfalls
+      nicht). Sechs Kopien liegen jetzt byte-gleich in
+      `Agenten/Hermes/.sicherung/` (`moondev-env.bak-20260930`,
+      `moondev-src-env.bak-20260930`, `openmontage-env.bak-20260930`,
+      `openterminalui-env.bak-20260930`, `omniroute-werkstatt-env.bak-20260930`,
+      `omniroute-home-env.bak-20260930`), Bestandsaufnahme in
+      `.sicherung/klon-envs-20260930.md`, Wiki-Abschnitt in
+      `Wiki/Betrieb/Sicherung-und-Laufwerke.md`. Aendert Max eine dieser
+      `.env`, veraltet die Kopie still - bisher merkt das niemand.
+      Naechster Schritt: entscheiden, ob ein Schritt in `sichern.ps1` (Kopien
+      beim Lauf mitziehen und Abweichung melden) oder eine eigene Wache gebaut
+      wird; bis dahin ist die Kopie ein Stand vom 30.09.2026.
+      Angelegt · Zuletzt: 2026-09-30 · 2026-09-30
+      Betrifft: `Agenten/sichern.ps1`, `Agenten/Hermes/.sicherung/`, `Werkstatt/Repos/*/.env`
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-244 - Zentrale: Kartenstile und Hinweisspalte (Design-Entscheidungen)**
+      Kontext: Zwei offene Designfragen aus dem Umbau vom 30.09.2026. (a) Die
+      Stile fuer die Karten (`Karte.TLabel`, `Karte.Treeview`, `Karte.TCheckbutton`)
+      stehen LOKAL in `repos-zentrale/fenster.py`, damit `fenster_design.py` -
+      die gemeinsame Quelle von handelszentrale.py und leitstand.py - unberuehrt
+      bleibt. Wer EINE Designquelle will, muss sie dorthin ziehen; das wirkt auf
+      die anderen Fenster. (b) `messprobe.py` misst 63 von 216 Hinweisen als zu
+      lang (laengster 1940 px bei 705 px Spalte) - der volle Text steht nur in
+      der Statuszeile. Ein Tooltip oder eine breitere Spalte waere moeglich,
+      kostet aber Platz bei Projekt/Art/Rolle.
+      Naechster Schritt: Entscheidung Max, ob (a) die Kartenstile nach
+      `Agenten/Werkzeuge/fenster_design.py` wandern und (b) die Hinweisspalte
+      einen Tooltip bekommt.
+      Betrifft: `Agenten/Werkzeuge/repos-zentrale/fenster.py`,
+      `Agenten/Werkzeuge/fenster_design.py`, `messprobe.py`
+      Angelegt: 2026-09-30
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-236 - Zentrale: neue Werkzeugdateien erscheinen ohne Startbefehl**
+      Kontext: Die Datei-Regel (`scan.ist_werkzeug`: eigener Einstieg UND
+      argparse) nimmt jede neue Datei der Handel-Wurzel als Zeile auf - aber nur
+      Dateien in `fuellen.HILFE_VERIFIZIERT` bekommen den `--help`-Start.
+      Beispiel: `kerzenschluss_bias.py` (parallel entstanden) steht ohne Start.
+      Naechster Schritt: soll eine Datei bleiben, ihren Aufruf einmal echt
+      fahren, den Namen in HILFE_VERIFIZIERT aufnehmen und `fuellen.py --belege`
+      laufen lassen.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/quellen.py, fuellen.py
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-235 - Zentrale: vier Werkzeuge absichtlich ohne Klick-Start (Entscheidung Max)**
+      Kontext: `leitstand.py` (oeffnet ein Fenster), `kraken_abweisungs_sonde.py`
+      (jeder Aufruf misst echt gegen Kraken und setzt den Lockout-Timer zurueck),
+      `dauerlauf.py` (Handstart nimmt die echte Sperre) und `melder.py`
+      (verschickt Telegram) haben bewusst KEINEN Startbefehl; ihre Anleitung
+      nennt den Aufruf in Worten, die Zeile traegt den Grund als Warnung.
+      Naechster Schritt: entscheiden, ob leitstand.py trotzdem einen Klick-Start
+      bekommt (Aufruf: .venv\Scripts\pythonw.exe leitstand.py); die drei anderen
+      bleiben ohne.
+      Angelegt: 2026-09-30
+      Betrifft: Agenten/Handel/leitstand.py, Agenten/Werkzeuge/repos-zentrale/fuellen.py
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-234 - Zentrale: Werkstatt-Projekte ohne Startbefehl nachtragen**
+      Kontext: Am 30.09.2026 wurde das Manifest der Zentrale von 46 auf 192 Zeilen
+      gefuellt (Bereiche REPOS / WERKSTATT / HANDEL), 73 mit Startbefehl. Offen
+      sind vor allem die **Werkstatt-Projekte** (freqtrade, omnitrade, OmniRoute,
+      handel-stack, skillspector) sowie die Werkzeug-Ordner in Handel
+      (freqtrade, bt_opt, nautilus-rust, verbesserer, OpenAlice). Die Spuren
+      selbst sollen bewusst OHNE Startbefehl bleiben (der Dauerlauf faehrt sie),
+      die sechs Freqtrade-Strategien ebenfalls (Klassen, freqtrade laedt sie).
+      Hausregel: ein Befehl kommt erst ins Manifest, wenn er einmal echt
+      gelaufen ist (`fuellen.py --belege` fuehrt hinterlegte Staende aus).
+      Naechster Schritt: je Projekt den Startweg einmal von Hand fahren, dann
+      `start` bzw. `befehle` in repos-zentrale.json eintragen.
+      Angelegt: 2026-09-30 · Zuletzt: 2026-09-30
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Werkstatt/
+      Nachgeschlossen in Master-TASKS.md (Kinder schlossen in Worktree-Kopien)
+- [x] **T-097 — Indikatorschwellen der Prognose-Spuren liegen als Konstanten im Code**
+      Kontext: Gemessen 2026-09-25 beim Bau des Optimierers. Die vier
+      Indikator-Spuren (squeeze, wavetrend, macd_mtf, supertrend) lesen aus
+      ihrer `wachen.json` NUR die Ausstiegs-Geometrie
+      (`pflicht_stop_prozent_min`, `pflicht_stop_prozent_max`,
+      `ziel_r_vielfaches`, `max_offene_positionen`). Ihre eigentlichen
+      Indikatorschwellen stehen als Konstanten im Code - `squeeze.signal()` ist
+      eine feste Regel ueber `ti.squeeze_momentum(k)`, und `supertrend` holt
+      sich `supertrend_n`/`supertrend_faktor` NICHT aus den Wachen (im
+      Gegensatz zu trendwende_btc, das beide liest). Das verstoesst gegen die
+      Hausregel "Zahlen gehoeren in die wachen.json, nicht in den Code" und
+      hat eine harte Folge: diese Parameter lassen sich nicht tunen, ohne Code
+      zu aendern - der Optimierer kann sie nicht anfassen.
+      Naechster Schritt: je Spur die Konstanten als Schluessel in die
+      wachen.json aufnehmen (Wert = der heutige Code-Default, damit sich NICHTS
+      verhaelt), die Spur lesend umstellen und mit einem Beleglauf zeigen, dass
+      die Ergebnisse vorher/nachher gleich sind. Danach in `spur_opt.json`
+      aufnehmen.
+      Angelegt: 2026-09-25
+      Betrifft: Agenten/Handel/{squeeze,wavetrend,macd_mtf,supertrend}/handeln.py und wachen.json, spur_opt.json
+      **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - gebaut auf wt/t_5609d126 (Commit 3894778a), aber NICHT in master - bleibt offen bis zur Merge-Entscheidung (Karte t_fb1f87ad).**
+      Indikatorschwellen aus wachen.json gelesen, Code-Defaults = alte Werte, Regression identisch (squeeze 44=44, wavetrend 23=23, macd_mtf 11=11, supertrend 131=131), Code in master gemergt (Commit 3894778a via aac51bde)
+- [x] **T-344 — `nautilus_trader` steht jetzt in zwei venv, ohne dass es jemanden stoert**
+      Kontext: Der Leitstand laeuft in `Agenten/Handel/.venv`, das Nautilus-
+      Rad lag nur in `nautilus/.venv` (326 MB). Fuer den Reiter wurde es
+      deshalb auch ins Handel-.venv installiert (Import 1,8 s). Damit steht
+      dieselbe Version 1.231.0 an zwei Stellen, und `pip`-Aktualisierungen
+      laufen an einer Stelle vorbei.
+      Naechster Schritt: eine Datei `Agenten/Handel/nautilus/README-live-node.md`
+      (Abschnitt 'Zwei venv, ein Rad') verweist darauf; eine
+      Versionspruefung ergaenzen, die beim Start des Reiters beide Orte
+      vergleicht und bei Abweichung sagt, welcher nachgezogen werden muss.
+      Angelegt · 04.10.2026 · Betrifft: Agenten/Handel/.venv,
+      Agenten/Handel/nautilus/.venv
+      beide venvs gemessen (Produktion nautilus/.venv Python 3.13.15 nautilus_trader 1.231.0 vs Release-Kandidat nautilus_rc5/.venv 2.0.0rc5), README-live-node.md erstellt, Commits 569f1de+8634dff im nautilus-Repo
 - [x] **T-258 — nautilus-rust: Evidenzwerte sind hart eingetragen, kein Walk-Forward**
       Kontext: `quant-alpha` schreibt ein Demo-Buch mit festen Zahlen (`net_bps 3.5, se_bps 2.0,
       folds 5, positive_folds 2`), im Code selbst als Demo markiert; `quant-strategy` lehnt es deshalb

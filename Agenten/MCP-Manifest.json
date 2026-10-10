@@ -1,0 +1,255 @@
+{
+  "description": "Single source of truth for all MCP servers. Both Claude Desktop (via claude_desktop_config.json) and Hermes (via Agenten/Hermes/config.yaml) read from this.",
+  "version": "1.2",
+  "updated": "2026-09-29",
+  "note": "Keep this file in sync with both claude_desktop_config.json mcpServers and Hermes/config.yaml mcp_servers. Automated check runs in systempruefung.ps1 via mcp-sync-check.ps1. Feld 'agent': 'beide' (Standard) oder 'hermes'/'claude', wenn nur ein Agent den Server eintragen soll. ACHTUNG: Beide Apps (Claude Desktop, Hermes) ueberschreiben ihre Konfiguration aus dem eigenen Speicher - am 10./11.09.2026 ist so mcp-memory aus beiden Konfigurationen verschwunden. Der Pruefer meldet Konfigurationen, die neuer als das Manifest sind.",
+  "servers": [
+    {
+      "name": "archiv",
+      "enabled": true,
+      "agent": "beide",
+      "type": "stdio",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": [
+        "archiv_mcp.py"
+      ],
+      "cwd": "Agenten\\MCP-Server\\archiv",
+      "env": {
+        "PYTHONPATH": "."
+      },
+      "description": "Eigenes Dateiarchiv mit Volltextsuche. 7631 Dateien."
+    },
+    {
+      "name": "kraken",
+      "enabled": true,
+      "agent": "beide",
+      "type": "stdio",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": [
+        "kraken_mcp.py"
+      ],
+      "cwd": "Agenten\\MCP-Server\\kraken",
+      "env": {
+        "PYTHONPATH": ".",
+        "KRAKEN_API_KEY": "${env:KRAKEN_API_KEY}",
+        "KRAKEN_API_SECRET": "${env:KRAKEN_API_SECRET}"
+      },
+      "description": "Kraken REST API: Kurse (oeffentlich), Orders/Guthaben (mit Schluessel). Schluessel via Windows Registry, nicht im Klartext."
+    },
+    {
+      "name": "kraken-papier",
+      "enabled": true,
+      "agent": "hermes",
+      "type": "stdio",
+      "command": "Werkstatt\\Repos\\kraken-cli\\target\\release\\kraken.exe",
+      "args": [
+        "mcp"
+      ],
+      "description": "kraken-cli (Fork mfaupel95/kraken-cli): Markt lesen, Konto lesen, Papierhandel (Spot+Futures). Standarddienste ohne trade/funding; --allow-dangerous und -s all NICHT setzen. Nur Hermes."
+    },
+    {
+      "name": "okx-agentkit",
+      "enabled": false,
+      "agent": "hermes",
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "Werkstatt\\Repos\\agent-trade-kit\\packages\\mcp\\dist\\index.js",
+        "--demo",
+        "--profile",
+        "demo",
+        "--modules",
+        "market,swap,account"
+      ],
+      "description": "OKX Agent Trade Kit (Fork mfaupel95/agent-trade-kit), nur DEMO (simulierter Handel). Aus, bis in ~/.okx/config.toml ein Profil demo (demo = true, Demo-API-Key) existiert; dann hier und in Hermes enabled: true. Nie --live. Nur Hermes."
+    },
+    {
+      "name": "desktop-commander",
+      "enabled": true,
+      "agent": "beide",
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ],
+      "cwd": "Agenten\\MCP-Server\\ant.dir.gh.wonderwhy-er.desktopcommandermcp",
+      "description": "Desktop steuern: Dateisystem, Prozesse, Terminal."
+    },
+    {
+      "name": "windows-mcp",
+      "enabled": true,
+      "agent": "hermes",
+      "type": "stdio",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": [
+        "-c",
+        "from windows_mcp.__main__ import main; main()"
+      ],
+      "cwd": "Agenten\\MCP-Server\\ant.dir.cursortouch.windows-mcp",
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false",
+        "MODE": "local",
+        "WINDOWS_MCP_SCREENSHOT_BACKEND": "auto"
+      },
+      "description": "Windows-spezifisch: PowerShell, Registry, WMI. Nur Hermes, Claude-Desktop braucht es nicht."
+    },
+    {
+      "name": "tooluniverse",
+      "enabled": true,
+      "agent": "beide",
+      "type": "stdio",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": [
+        "src/run_stdio.py"
+      ],
+      "cwd": "Agenten\\MCP-Server\\ant.dir.gh.tooluniverse.tooluniverse-mcp",
+      "env": {
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONPATH": "src",
+        "TOOLUNIVERSE_STDIO_MODE": "1",
+        "TOOLUNIVERSE_API_URL": "https://api.tooluniverse.io"
+      },
+      "description": "818 wissenschaftliche Werkzeuge in 118 Kategorien. MCP SDK 1.x erforderlich."
+    },
+    {
+      "name": "revolut-x",
+      "enabled": true,
+      "agent": "claude",
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ],
+      "cwd": "Agenten\\MCP-Server\\ant.dir.gh.revolut-engineering.revolut-x-api",
+      "env": {
+        "REVOLUT_API_KEY": "${env:REVOLUT_API_KEY}"
+      },
+      "description": "Revolut API: Kurse, Bestaende, lesend nur. Braucht IP-Whitelist bei Revolut. Nur Claude: in Hermes seit 18.09.2026 abgeschaltet (enabled: false); zum Einschalten dort enabled: true setzen und agent hier auf beide."
+    },
+    {
+      "name": "blender",
+      "enabled": false,
+      "agent": "hermes",
+      "type": "stdio",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": [
+        "-c",
+        "from blmcp import main; main()"
+      ],
+      "cwd": "Agenten\\MCP-Server\\ant.dir.gh.blender.blender-mcp",
+      "description": "Blender 3D-Szenen. Nur Hermes. Funktioniert nur, wenn Blender laeuft (http://localhost:28015); sonst parkt Hermes den Server. In Hermes abgeschaltet (enabled: false). Am 29.09.2026 repariert: mcp 2.x hatte FastMCP entfernt, venv auf mcp<2 gepinnt (1.30.0). Zum Einschalten hier und in Hermes enabled: true."
+    },
+    {
+      "name": "affinity",
+      "enabled": true,
+      "agent": "beide",
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "server/index.js"
+      ],
+      "cwd": "Agenten\\MCP-Server\\ant.dir.gh.canva.affinity",
+      "env": {
+        "SSE_URL": "http://localhost:6767/sse"
+      },
+      "description": "Affinity-Dokumente. Funktioniert nur, wenn Affinity laeuft (http://localhost:6767)."
+    },
+    {
+      "name": "pdf-vault",
+      "enabled": true,
+      "agent": "beide",
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "dist/index.js",
+        "--stdio",
+        "MaxHirn\\Claude"
+      ],
+      "cwd": "Agenten\\MCP-Server\\ant.dir.gh.anthropic.pdf-server-mcp",
+      "description": "PDFs anzeigen, ausfuellen, signieren. Laueft in beiden Agenten (seit 2026-09-10 als aktiv gefuehrt)."
+    },
+    {
+      "name": "mail",
+      "enabled": true,
+      "agent": "beide",
+      "type": "stdio",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": [
+        "mail_mcp.py"
+      ],
+      "cwd": "Agenten\\MCP-Server\\mail",
+      "description": "Gmail-Versand ueber Max' Konto, wahlweise mit Archivsuche fuer Anhaenge. (Am 2026-09-10 ins Manifest aufgenommen, war nur in beiden Agenten.)"
+    },
+    {
+      "name": "projectatlas",
+      "enabled": true,
+      "agent": "hermes",
+      "type": "stdio",
+      "command": "Agenten\\Werkzeuge\\projectatlas\\bin\\projectatlas.exe",
+      "args": [
+        "--require-version",
+        "0.4.5",
+        "--db",
+        "C:\\Users\\faupe\\Documents\\BrainFiles\\Werkstatt\\omnitrade\\.projectatlas\\projectatlas.db",
+        "--config",
+        "C:\\Users\\faupe\\Documents\\BrainFiles\\Werkstatt\\omnitrade\\.projectatlas\\config.toml",
+        "mcp"
+      ],
+      "cwd": "Agenten\\Werkzeuge\\projectatlas",
+      "description": "Repository-Karte fuer Agenten (Rust-CLI + SQLite, MIT): 43 atlas_*-Werkzeuge fuehren den Agenten zur richtigen Datei, statt breit zu lesen. EIN Server bedient jedes indexierte Repo; Standard-Atlas ist Werkstatt/omnitrade, umschalten mit project_path bzw. atlas_set_project_path. Laufzeit, Grenzen und Bedienung: Wissen/Projektatlas.md. Nur bei Hermes eingetragen; Claude Desktop/Claude Code bekommen den Server projektweise."
+    },
+    {
+      "name": "MCP_DOCKER",
+      "enabled": true,
+      "agent": "hermes",
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "mcp",
+        "gateway",
+        "run",
+        "--profile",
+        "max_2_docker"
+      ],
+      "description": "Docker MCP Toolkit als Gateway, Profil max_2_docker. Braucht laufendes Docker Desktop. Eingetragen in Hermes und in Claude Code (~/.claude.json, Nutzerebene), nicht in Claude Desktop - daher agent hermes fuer den Pruefer. Beide Eintraege reichen LOCALAPPDATA, ProgramData und ProgramFiles als env durch. Ins Manifest aufgenommen am 29.09.2026."
+    }
+  ],
+  "disabled": [
+    {
+      "name": "santiment",
+      "reason": "Geprueft am 13.09.2026, KANDIDAT (noch nicht aktiv): offizieller Santiment-MCP-Connector, Streamable HTTP, https://api.santiment.net/mcp (Server-Kennung sanbase-metrics 1.0.0). initialize und tools/list antworten OHNE Anmeldung, der erste tools/call kommt als HTTP 401 mit WWW-Authenticate: Bearer resource_metadata=.../.well-known/oauth-protected-resource - die Daten brauchen OAuth 2.0 mit PKCE. Die live gepruefte Werkzeugliste nennt acht Werkzeuge (metrics_and_assets_discovery_tool, fetch_metric_data_tool, assets_by_metric_tool, insight_discovery_tool, fetch_insights_tool, trending_stories_tool, combined_trends_tool, show_chart); laut Connector-Doku liefert fetch_metric_data_tool u. a. mvrv_usd und daily_active_addresses (MVRV/DAA) sowie exchange_inflow_usd/outflow, Supply, Network Growth und Social - On-Chain-Metriken also ohne eigene SanAPI-Integration. Ein kostenloses Santiment-Konto reicht fuer die Kernmetriken. Hermes kann OAuth-MCP: 'hermes mcp add santiment --url https://api.santiment.net/mcp --auth oauth', danach 'hermes mcp login santiment'. Offen ist nur Max' Browser-Anmeldung; danach hier als aktiver Eintrag mit agent='hermes' fuehren (bei Claude derselbe Server als Custom Connector unter Customize - Connectors). Details: Wissen/Buildix-Santiment-Handelswissen.md."
+    },
+    {
+      "name": "mcp-memory",
+      "reason": "Am 10./11.09.2026 von beiden Apps (Claude Desktop, Hermes) aus der Konfiguration entfernt - beide Apps ueberschreiben ihre Config aus eigenem Speicher und entfernen offenbar fehlschlagende Server. Server-Code liegt noch unter MCP-Server/ant.dir.gh.mnemoverse.mcp-memory-server. Wieder aktivieren: Server erst reparieren, dann in BEIDE Konfigurationen eintragen."
+    },
+    {
+      "name": "apify",
+      "reason": "Braucht APIFY_TOKEN (nicht gesetzt)"
+    },
+    {
+      "name": "metabase",
+      "reason": "Braucht Metabase-Instanz-URL und Anmeldedaten"
+    },
+    {
+      "name": "socket",
+      "reason": "Braucht SOCKET_API_KEY (nicht gesetzt)"
+    },
+    {
+      "name": "stats-compass",
+      "reason": "Wird via 'uvx stats-compass-mcp' direkt aus PyPI geladen (kein lokaler Code)"
+    },
+    {
+      "name": "perseus-vault",
+      "reason": "Deaktiviert nach Sicherheitspruefung"
+    },
+    {
+      "name": "filesystem",
+      "reason": "In keinem Agenten konfiguriert (Hermes nutzt eigene Datei-Tools, windows-mcp deckt Dateizugriff ab). Am 2026-09-10 deaktiviert."
+    },
+    {
+      "name": "robinhood",
+      "reason": "KANDIDAT (noch nicht aktiv): war am 16.09.2026 per 'hermes mcp add robinhood --url https://agent.robinhood.com/mcp/trading --auth oauth' in der Hermes-Config eingetragen (enabled=false), OAuth-Anmeldung steht aus. Am 16.09.2026 aus der Hermes-Config entfernt und hier dokumentiert; nach erfolgreichem Login als aktiver Eintrag mit agent='hermes' fuehren."
+    }
+  ]
+}

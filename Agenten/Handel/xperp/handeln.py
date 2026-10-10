@@ -217,7 +217,7 @@ def kandidaten(werte, w, anzahl=6):
                 continue
             mae = x["mae_short"] if seite == "short" else x["mae_long"]
             deckel = auswahl.hebel_deckel(mae)
-            if deckel < w["max_hebel"]:
+            if deckel < wx.hebel_grenze(w, x["kategorie"]):
                 continue
             aus.append({"basis": x["basis"], "instId": x["instId"],
                         "seite": seite, "kategorie": x["kategorie"],
@@ -255,11 +255,18 @@ def anlauf(w, kandidat):
     stop = okxf.auf_tick(instr, einstieg - vz * w["stop_atr_faktor"] * atr)
     ziel = okxf.auf_tick(instr, einstieg + vz * w["ziel_atr_faktor"] * atr)
 
-    g = bot.groesse(w, instr, einstieg, stop, seite, kandidat["deckel"])
+    # Hebel und Stopweite je Familie (Auftrag Max 08.10.2026: Rohstoffe 10x,
+    # Stop hoechstens 4 %). Fehlt der Familien-Wert, gilt max_hebel unveraendert.
+    smax = wx.stop_max_pct(w, kandidat["kategorie"])
+    if smax is not None and abs(einstieg - stop) / einstieg * 100.0 > smax:
+        return None
+    wf = wx.fuer_familie(w, kandidat["kategorie"])
+
+    g = bot.groesse(wf, instr, einstieg, stop, seite, kandidat["deckel"])
     if not g:
         return None
 
-    p = bot.pruefpflicht(w, instr, k, seite, einstieg, stop, ziel,
+    p = bot.pruefpflicht(wf, instr, k, seite, einstieg, stop, ziel,
                          g["hebel"], still=True)
     return {"instr": instr, "inst": instr["instId"], "basis": kandidat["basis"],
             "seite": seite, "kategorie": kandidat["kategorie"],
@@ -697,6 +704,16 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
     Faellt die Abfrage aus, wird NICHTS gebucht: ein Netzfehler darf das Buch
     nicht leeren.
 
+    REGEL (Max, 09.10.2026): ausgebucht wird NUR mit Boersenbeleg. Der Geist
+    braucht ein realisiertes Ergebnis von der Boerse (realizedPnl aus
+    /account/positions-history, siehe `_geist_erloes`). Fehlt dieser Beleg,
+    bleibt die Position als UNKLAR im Buch stehen und wird gemeldet - NICHT
+    neutral ausgebucht. Anlass: am 05.10.2026 hat die neutrale Buchung
+    (Einsatz zurueck, Erloes 0.00) sechs echte Live-Positionen aus dem Buch
+    geloescht, weil die Boersenabfrage sie kurz nicht zeigte; an der Boerse
+    blieben sie offen und unbewacht. Eine Karteileiche blockiert hoechstens
+    einen Platz, eine echte Position ohne Buch liefe unbewacht weiter.
+
     `stornieren=False` (Papierlauf): eine offene Order zu einem Geist wird
     NICHT storniert. Das waere ein echter Boerseneingriff - und der Grund,
     warum diese Funktion bis zum 01.10.2026 nur im Live-Zweig lief (T-277).
@@ -748,7 +765,26 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
         return 0
     behalten = [p for p in z["positionen"] if p in echte
                 or p.get("modus") != "live"]
+    unklar = []
     for p in geister:
+        erloes, quelle, anteil = _geist_erloes(p)
+        if quelle != "boerse":
+            # REGEL (Max, 09.10.2026): ohne Boersenbeleg wird eine Live-Position
+            # NICHT ausgebucht. Am 05.10.2026 hat genau dieser Weg sechs echte
+            # Positionen aus dem Buch geloescht (TRX, SOL, NIGHT, STRK, QUANT,
+            # XAG): die Boersenabfrage zeigte sie kurz nicht, und die neutrale
+            # Buchung (Einsatz zurueck) liess sie aus dem Buch verschwinden -
+            # an der Boerse blieb die Position offen und unbewacht.
+            # Ohne Beleg bleibt die Position als UNKLAR stehen. Eine Karteileiche
+            # blockiert hoechstens einen Platz; eine echte Position ohne Buch
+            # liefe unbewacht weiter.
+            unklar.append(p)
+            if not still:
+                print("  %s (%s) fehlt an der Boerse, aber KEIN Boersenbeleg "
+                      "(realizedPnl) auffindbar - bleibt als UNKLAR im Buch, "
+                      "wird NICHT ausgebucht (Regel Max 09.10.2026)"
+                      % (p.get("inst"), p.get("seite")))
+            continue
         # Die offene Order gehoert dazu: bliebe sie liegen, koennte sie
         # spaeter fuellen und eine Position ohne Buch erzeugen - dann haette
         # niemand einen Ausstieg im Blick. Sie traegt zwar einen
@@ -766,20 +802,12 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
             elif not still:
                 print("  offene Order zu %s bleibt liegen (Papierlauf storniert "
                       "nichts an der Boerse)" % p.get("inst"))
-        erloes, quelle, anteil = _geist_erloes(p)
         if not still:
-            print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden "
-                  "(nur eine offene Order, kein Bestand)"
-                  % (p.get("inst"), p.get("seite")))
-            if quelle == "boerse":
-                print("    Ergebnis von der Boerse: Einsatz %.2f -> zurueck "
-                      "%.2f (Anteil %.0f%%)"
-                      % (p.get("margin") or 0.0, erloes,
-                         round((anteil or 0.0) * 100)))
-            else:
-                print("    Kein Boersenergebnis auffindbar - NEUTRAL gebucht: "
-                      "Einsatz %.2f zurueck, kein erfundenes Ergebnis"
-                      % erloes)
+            print("  Geist ausgebucht: %s %s - an der Boerse nicht vorhanden, "
+                  "Ergebnis von der Boerse: Einsatz %.2f -> zurueck %.2f "
+                  "(Anteil %.0f%%)"
+                  % (p.get("inst"), p.get("seite"), p.get("margin") or 0.0,
+                     erloes, round((anteil or 0.0) * 100)))
         journal(zeit=_jetzt(), modus="papier", aktion="schliessen",
                 inst=p.get("inst", ""),
                 pos_id=p.get("pos_id", ""), seite=p.get("seite", ""),
@@ -788,8 +816,8 @@ def bueche_geister_aus(z, w, still=False, stornieren=True):
                 nominal_usd="%.2f" % (p.get("nominal") or 0.0),
                 margin_usd="%.2f" % erloes, hebel=p.get("hebel", ""),
                 grund="buchbereinigung_geist")
-    z["positionen"] = behalten
-    return len(geister)
+    z["positionen"] = behalten + unklar
+    return len(geister) - len(unklar)
 
 
 # Kontraktzahlen sind gebrochen (CRCL 1.1), aber nicht beliebig fein: unter
@@ -1147,6 +1175,25 @@ def bueche_stopdeckung(z, w, live, still=False):
     return befunde, True
 
 
+def _abgleich_stufe(name, fn, *args, standard=0, **kwargs):
+    """Eine Stufe des Buchabgleichs, die den Zyklus nie abbrechen darf.
+
+    ANLASS (Review 09.10.2026): `lauf()` ruft `buche_abgleich` VOR Kill-Switch
+    und Herzschlag-Notausstieg. Vier der fuenf Stufen fangen Boersenfehler
+    selbst ab, `wartende_auftraege` aber nicht (`okxf.order_stand` wirft bei
+    fehlenden Schluesseln oder Netzfehler). Die Ausnahme lief durch `lauf()`
+    und uebersprang den Kill - ausgerechnet dann, wenn die Boerse nicht
+    antwortet. Der Abgleich ist Buchhaltung; fehlt er, bleibt das Buch
+    unberuehrt (wie bei den anderen Stufen), der Schutz laeuft trotzdem.
+    """
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:                                     # noqa: BLE001
+        print("  Abgleich-Stufe %s uebersprungen (%s: %s)"
+              % (name, type(e).__name__, e))
+        return standard
+
+
 def buche_abgleich(z, w, live, still=False):
     """Buch gegen BOERSE - in JEDEM Zyklus, nicht nur im Live-Lauf (T-277).
 
@@ -1175,7 +1222,8 @@ def buche_abgleich(z, w, live, still=False):
     Groesse.
     """
     stand = {"wartende": 0, "geister": 0, "fremde": 0, "groessen": 0}
-    stand["wartende"] = wartende_auftraege(z, live, w, still=still)
+    stand["wartende"] = _abgleich_stufe(
+        "wartende", wartende_auftraege, z, live, w, still=still)
     if stand["wartende"] and not still:
         print("  %d wartende(r) Auftrag/Auftraege gefuellt und gebucht"
               % stand["wartende"])
@@ -1184,27 +1232,34 @@ def buche_abgleich(z, w, live, still=False):
     # werden. Andernfalls sieht die Geisterpruefung eine Position, die an der
     # Boerse fehlt, und bucht sie neutral (Einsatz zurueck, Erloes 0.00) -
     # vier echte Positionen verloren so ueber Nacht ihren Erloes.
-    stand["verkaeufe"] = buche_verkaeufe_aus_boerse(z, live, still=still)
+    stand["verkaeufe"] = _abgleich_stufe(
+        "verkaeufe", buche_verkaeufe_aus_boerse, z, live, still=still)
     if stand["verkaeufe"] and not still:
         print("  %d Verkauf/Verkaeufe von der Boerse gebucht (echter Kurs)"
               % stand["verkaeufe"])
-    stand["geister"] = bueche_geister_aus(z, w, still=still, stornieren=live)
+    stand["geister"] = _abgleich_stufe(
+        "geister", bueche_geister_aus, z, w, still=still, stornieren=live)
     if stand["geister"] and not still:
         print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
               "der Boerse)" % stand["geister"])
-    stand["fremde"] = bueche_fremde_positionen_uebernehmen(z, w, still=still,
-                                                           schutz=live)
+    stand["fremde"] = _abgleich_stufe(
+        "fremde", bueche_fremde_positionen_uebernehmen, z, w, still=still,
+        schutz=live)
     if stand["fremde"] and not still:
         print("  %d fremde Position(en) von der Boerse ins Buch uebernommen"
               % stand["fremde"])
-    stand["groessen"] = len(bueche_groessen_abgleichen(z, w, still=still))
+    stand["groessen"] = len(_abgleich_stufe(
+        "groessen", bueche_groessen_abgleichen, z, w, still=still,
+        standard=[]))
     if stand["groessen"] and not still:
         print("  %d Position(en) auf die Boersengroesse gezogen"
               % stand["groessen"])
     # Vierte Stufe: die MENGE des Schutzes. Nur lesend - der Preis fuer ein
     # Nachsetzen kommt vom Menschen (T-362). Ein stiller Zwischenstand zaehlt
     # als Befund, damit `--wachen` und die Vorschau die Luecke zeigen.
-    deckung, deckung_abfrage = bueche_stopdeckung(z, w, live, still=still)
+    deckung, deckung_abfrage = _abgleich_stufe(
+        "stopdeckung", bueche_stopdeckung, z, w, live, still=still,
+        standard=([], False))
     stand["deckung"] = len(deckung)
     stand["deckung_abfrage"] = deckung_abfrage
     if deckung and not still:
@@ -1905,6 +1960,38 @@ def sperren_live(w, s):
     return g
 
 
+def stopluecken_sperre(z, stand, live):
+    """True, wenn neue Live-Einstiege wegen fehlender Boersen-Stops ruhen.
+
+    ANLASS (Review 09.10.2026): `bueche_stopdeckung` misst ungeschuetzte
+    Kontrakte, aber nichts wertete das aus - `lauf()` verwarf den Rueckgabewert,
+    die Luecke stand nur auf der Konsole. Jetzt gilt (Variante A):
+      * Luecke (`deckung > 0`): keine neuen Einstiege im Live-Lauf. Ausstiege,
+        Abgleich, Kill und Herzschlag laufen unveraendert weiter; nachgesetzt
+        wird weiterhin nur von Hand (`stopdeckung.py --stop`, der Preis ist
+        eine Freigabe).
+      * Abfrage nicht lesbar (`deckung_abfrage` falsch): KEINE Sperre. Ein
+        Netzfehler ist Rauschen, aus ihm folgt kein "kein Stop".
+    Gemeldet wird beim Wechsel (Luecke neu / Luecke weg), nicht in jedem Zyklus;
+    der Merker liegt im Zustand (`stopluecke_gemeldet`).
+    """
+    luecke = bool(live and stand and stand.get("deckung")
+                  and stand.get("deckung_abfrage"))
+    gemeldet = bool(z.get("stopluecke_gemeldet"))
+    if luecke and not gemeldet:
+        z["stopluecke_gemeldet"] = True
+        ereignis.hinweis(
+            "handel/xperp",
+            "Stop-Luecke: %d Live-Position(en) ohne vollen Boersen-Stop - "
+            "neue Einstiege gesperrt. Nachsetzen: stopdeckung.py --anwenden "
+            "--stop <preis>" % stand["deckung"])
+    elif not luecke and gemeldet and stand and stand.get("deckung_abfrage"):
+        z["stopluecke_gemeldet"] = False
+        ereignis.hinweis("handel/xperp",
+                         "Stop-Luecke geschlossen: Einstiege wieder frei.")
+    return luecke
+
+
 def lauf(modus):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -1963,7 +2050,7 @@ def lauf(modus):
     # Auftraege, waehrend an der Boerse EINE stand. Der Abgleich ist
     # Buchhaltung, keine Handelsentscheidung; im Papierlauf stellt er keinen
     # Stop und storniert nichts (siehe buche_abgleich).
-    buche_abgleich(z, w, live, still=False)
+    stand = buche_abgleich(z, w, live, still=False)
     # Bedingung 2 - Kill-Switch.
     if s["kill"]:
         print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"
@@ -1997,7 +2084,10 @@ def lauf(modus):
     if faktor != 1.0:
         print("- Drawdown-Ratsche: Ruecklauf %.2f USD -> Positionen halbiert -"
               % s["ruecklauf_usd"])
-    pruefe_einstiege(z, kand, w, live, s, faktor)
+    if stopluecken_sperre(z, stand, live):
+        print("- Stop-Luecke: neue Einstiege gesperrt, Ausstiege laufen weiter -")
+    else:
+        pruefe_einstiege(z, kand, w, live, s, faktor)
 
     gebunden = sum(p["margin"] for p in z["positionen"])
     print("\nBestand: %d Positionen, %.2f von %g USD Margin gebunden"

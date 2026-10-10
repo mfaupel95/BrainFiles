@@ -36,6 +36,35 @@ Symptome (Electron-Konsole bzw. `logs/desktop.log`):
 - MCP-Test-500er (`POST /api/mcp/servers/<name>/test`) — Test-Klick auf einen nicht
   angemeldeten MCP-Server (algolia/robinhood/postman …), normales „nicht konfiguriert".
 
+## models/-Ordner aufraeumen: Katalogeintrag, Symlink, Router-Slug — drei verschiedene Dinge
+
+Vor jeder Frage „brauchen wir dieses Modell noch?" die drei Schichten trennen —
+Grep-Treffer auf den Modellnamen sagen sonst nichts:
+
+- **Katalogeintrag** (`hermes_cli/local_runtime/catalog.json`): committeter Hermes-Quelltext,
+  der Picker zeigt ihn als klickbaren Download (z.B. Qwen3.6-35B mit 22,6 GB). Loeschen
+  waere eine Checkout-Modifikation, die der naechste `hermes update` ueberschreibt — lassen;
+  der Eintrag allein laedt nichts und verursacht keinen Fehler.
+- **Symlink in `Agenten/Hermes/models/`**: nur diese Dateien zaehlt der Status-Endpoint beim
+  `stat()` (tote Links -> 500). Ein Link zeigt meist auf die echte Datei unter
+  `O:\Modelle\GGUF\`. Vor dem Loeschen pruefen, WER den Pfad liest: der Bonsai-Starter
+  `bonsai-27b.ps1` laedt direkt von `O:\Modelle\GGUF\…` (eigene `$Modell`-Variable), NICHT
+  durch den models/-Link — den Link kann man entfernen, die echte Datei bleibt und der
+  Dienst startet unveraendert.
+- **Config-Referenz `qwen/qwen3.6-35b-a3b`** (config.yaml, profiles/*/config.yaml): das ist
+  ein ROUTER-SLUG (Cloud ueber den qwen-Provider), kein Verweis auf das lokale GGUF. Ein
+  Treffer in configs beweist NICHT, dass die lokale Datei benutzt wird.
+
+Entscheidungsweg: (1) referenziert irgendwer die LOCALE Datei (meist niemand — die
+Handels-Spuren laufen ueber Ollama bzw. Bonsai, nicht ueber den verwalteten llama-server)?
+(2) ist der Katalogeintrag Checkout-Quelltext (committet = Standard, lassen)? (3) passt die
+Dateigroesse in den VRAM (22,6 GB Q4 auf einer 8-GB-Karte = kein Download anstossen)? Erst
+dann einen Symlink loeschen — und die Wirkung mit einem Beobachtungsfenster belegen: die
+`preset skip`-Warnzeilen in errors.log haben ihre eigenen Zeitstempel, neue duerfen NACH dem
+Loeschen nicht mehr kommen (Anzahl vorher/nachher vergleichen, Uhrzeitquelle je Log-Datei
+nicht mischen — Desktop-Log, errors.log und die Sandbox-Uhr koennen verschiedene Zeiten
+zeigen).
+
 ## Telemetry-Ordner blockiert (shared_metrics)
 
 `telemetry/shared_metrics/` kann so kaputte Rechte tragen, dass selbst der eigene Benutzer

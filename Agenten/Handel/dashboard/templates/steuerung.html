@@ -1,0 +1,58 @@
+{% extends "basis.html" %}
+{% block titel %}Steuerung{% endblock %}
+{% set seite = "steuerung" %}
+{% block inhalt %}
+<h1>Steuerung</h1>
+
+<h2>Systemprozesse</h2>
+<table>
+  <thead><tr><th>Prozess</th><th>Status</th><th>Aktion</th></tr></thead>
+  <tbody>
+  {% for p in prozesse %}
+  <tr>
+    <td>{{ p.name }}</td>
+    <td class="{{ 'status-ok' if p.laeuft else 'status-fehler' }}">
+      {{ "läuft" if p.laeuft else "gestoppt" }}
+    </td>
+    <td>
+      {% if not p.laeuft %}
+      <button class="btn"
+              hx-post="/api/prozess/{{ p.name }}/start"
+              hx-on::after-request="if (event.detail.successful) { setTimeout(() => location.reload(), 1500) } else { alert(event.detail.xhr.responseText) }"
+              hx-swap="none">Start</button>
+      {% else %}
+      <button class="btn"
+              hx-post="/api/prozess/{{ p.name }}/stop"
+              hx-confirm="{{ p.name }} wirklich stoppen?"
+              hx-on::after-request="if (event.detail.successful) { setTimeout(() => location.reload(), 1500) } else { alert(event.detail.xhr.responseText) }"
+              hx-swap="none">Stopp</button>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Spuren — Not-Aus</h2>
+<table>
+  <thead><tr><th>Spur</th><th>Erlaubt</th><th>Scharf</th><th>Not-Aus</th></tr></thead>
+  <tbody>
+  {% for s in spuren %}
+  <tr>
+    <td>{{ s.spur }}</td>
+    <td>{{ "ja" if s.erlaubt else "nein" if s.erlaubt is false else "-" }}</td>
+    <td>{{ "ja" if s.scharf else "-" }}</td>
+    <td>
+      {% if s.erlaubt %}
+      <button class="btn btn-rot"
+              hx-post="/api/spur/{{ s.spur }}/notaus"
+              hx-confirm="handel_erlaubt für {{ s.spur }} auf false setzen?"
+              hx-on::after-request="if (event.detail.successful) { location.reload() } else { alert(event.detail.xhr.responseText) }"
+              hx-swap="none">Not-Aus</button>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -274,6 +274,17 @@ def main() -> int:
         ids = (daten[0].split() if typ == "OK" and daten else [])
         # Nur die letzten 60 holen - es geht um NEUE Post, nicht um Historie
         for nummer in ids[-60:]:
+            # UID aus der Suche mitlesen: bei UID SEARCH sind die ids selbst
+            # die UIDs - kein Parsen der FETCH-Antwort noetig (T-375).
+            uid_aktuell = int(nummer) if nummer.isdigit() else 0
+            # UID-Weg (kriterium ist None): Gmail liefert bei einem leeren
+            # Bereich die HOECHSTE vorhandene UID zurueck (gemessen 09.10.:
+            # 'UID SEARCH 13368:*' -> ['13367']). Eine UID <= zuletzt_uid
+            # ist schon gesehen - ohne den Sprung zaehlte sie als Kandidat,
+            # der Schreibblock verglich newest_uid > zuletzt_uid (13367 >
+            # 13367 = falsch) und die Merkdatei verlor BEIDE Anker.
+            if kriterium is None and uid_aktuell <= int(zuletzt_uid or 0):
+                continue
             typ, voll = imap.uid(
                 "FETCH", nummer,
                 "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])")
@@ -295,9 +306,6 @@ def main() -> int:
             # Zeuge gegen den Ankunftszeitraum.
             if bis is not None and datum and datum <= bis:
                 continue
-            # UID aus der Suche mitlesen: bei UID SEARCH sind die ids selbst
-            # die UIDs - kein Parsen der FETCH-Antwort noetig (T-375).
-            uid_aktuell = int(nummer) if nummer.isdigit() else 0
             typ2, roh = imap.uid("FETCH", nummer, "(BODY.PEEK[])")
             koerper = ""
             if typ2 == "OK" and roh and isinstance(roh[0], tuple):

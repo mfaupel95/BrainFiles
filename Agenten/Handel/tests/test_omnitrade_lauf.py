@@ -169,12 +169,16 @@ class KeineNebeneffekteTest(unittest.TestCase):
                   encoding="utf-8") as f:
             quelle = f.read()
         for verboten in ("Popen", "os.kill", ".terminate(", "taskkill",
-                         "omnitrade_start", "CREATE_NO_WINDOW", "open(",
+                         "omnitrade_start", "open(",
                          "os.remove", "os.rename", "shutil"):
             self.assertNotIn(verboten, quelle,
                              "Anker-Logik darf %r nicht enthalten" % verboten)
         # subprocess darf nur als run() vorkommen (lesend), nie als Popen.
         self.assertIn("subprocess.run", quelle)
+        # CREATE_NO_WINDOW ist Pflicht: das Modul laeuft auch aus dem
+        # fensterlosen Gateway/Cron, sonst poppt bei jedem tasklist-Aufruf
+        # ein Konsolenfenster auf (Pop-out-Befund 10.10.2026).
+        self.assertIn("CREATE_NO_WINDOW", quelle)
 
     def test_beurteile_schreibt_nicht_in_die_statusdatei(self):
         """Die Statusdatei bleibt byte-identisch, und es entstehen keine neuen

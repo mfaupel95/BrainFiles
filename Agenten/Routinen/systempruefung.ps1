@@ -714,7 +714,8 @@ try {
 # ---------------------------------------------------------------------------
 # 13) Arbeitszweig: eine Linie (master), und ist sie veroeffentlicht?
 # ---------------------------------------------------------------------------
-# AGENTS.md, Abschnitt "Zweige": master ist der EINZIGE Arbeitszweig. Zweimal
+# CLAUDE.md, Abschnitt "Zweige" (08.10.2026): Agenten arbeiten auf eigenen Zweigen in
+# eigenen Arbeitsbaeumen (.worktrees/); der HAUPTBAUM bleibt auf master. Zweimal
 # ist daneben einer entstanden (telegram-bus 16.09., berichtsschicht
 # 17./18.09.) - beide Male lagen Commits herum, die master nicht hatte und die
 # GitHub nicht kannte. Nicht der Zweig ist der Fehler, sondern dass es

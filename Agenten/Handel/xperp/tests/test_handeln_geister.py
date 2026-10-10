@@ -30,10 +30,14 @@ sys.path.insert(0, str(HANDEL))
 import handeln as h                                                  # noqa: E402
 
 
-def _pos(inst, modus="live"):
-    return {"inst": inst, "seite": "long", "familie": "krypto", "einstieg": 1.0,
-            "nominal": 100.0, "margin": 20.0, "hebel": 5.0, "kontrakte": 10.0,
-            "modus": modus}
+def _pos(inst, modus="live", zeit=None):
+    p = {"inst": inst, "seite": "long", "familie": "krypto", "einstieg": 1.0,
+         "nominal": 100.0, "margin": 20.0, "hebel": 5.0, "kontrakte": 10.0,
+         "modus": modus}
+    if zeit:
+        p["eroeffnet_zeit"] = zeit
+        p["eroeffnet"] = zeit[:10]
+    return p
 
 
 class Geister(unittest.TestCase):
@@ -45,9 +49,16 @@ class Geister(unittest.TestCase):
         self.addCleanup(self.j.stop)
 
     def test_position_ohne_bestand_wird_ausgebucht(self):
-        z = {"positionen": [_pos("HBAR-100"), _pos("BZ-200")]}
+        # Handgriff: die Boerse bezeugt die Schliessung (realizedPnl) - nur
+        # dann wird eine fehlende Live-Position ausgebucht (Regel Max
+        # 09.10.2026: ohne Boersenbeleg bleibt sie als UNKLAR stehen).
+        p = _pos("HBAR-100", zeit="2026-09-21T14:06:51+00:00")
+        z = {"positionen": [p, _pos("BZ-200")]}
         boerse = [{"instId": "BZ-200", "pos": "208"}]
-        with patch.object(h.okxf, "positionen", return_value=boerse),                 patch.object(h.okxf, "order_stornieren") as storno:
+        satz = {"realizedPnl": "-2.50", "closeTotalPos": "9.4"}
+        with patch.object(h.okxf, "positionen", return_value=boerse), \
+                patch.object(h.okxf, "geschlossene_position", return_value=satz), \
+                patch.object(h.okxf, "order_stornieren") as storno:
             n = h.bueche_geister_aus(z, {})
         storno.assert_not_called()
         self.assertEqual(n, 1)
@@ -72,18 +83,25 @@ class Geister(unittest.TestCase):
     def test_offene_order_des_geists_wird_storniert(self):
         # Bleibt die Order liegen, kann sie spaeter fuellen und eine Position
         # ohne Buch erzeugen (genau der HBAR-Fall: state=live, accFillSz=0).
-        p = _pos("HBAR-100"); p["ord_id"] = "3942552192558157824"
+        p = _pos("HBAR-100", zeit="2026-09-21T14:06:51+00:00")
+        p["ord_id"] = "3942552192558157824"
         z = {"positionen": [p]}
-        with patch.object(h.okxf, "positionen", return_value=[]),                 patch.object(h.okxf, "order_stornieren") as storno:
+        satz = {"realizedPnl": "1.50", "closeTotalPos": "9.4"}
+        with patch.object(h.okxf, "positionen", return_value=[]), \
+                patch.object(h.okxf, "geschlossene_position", return_value=satz), \
+                patch.object(h.okxf, "order_stornieren") as storno:
             h.bueche_geister_aus(z, {})
         storno.assert_called_once_with("HBAR-100", "3942552192558157824")
 
     def test_position_mit_groesse_null_ist_ein_geist(self):
         # OKX behaelt geschlossene Positionen als Zeile mit pos=0 (am 21.09.2026
-        # bei ZEC/LINK gesehen) - das ist kein Bestand.
-        z = {"positionen": [_pos("ZEC-300")]}
+        # bei ZEC/LINK gesehen) - das ist kein Bestand. Ausgebucht nur mit
+        # Boersenbeleg (Regel Max 09.10.2026).
+        z = {"positionen": [_pos("ZEC-300", zeit="2026-09-21T14:06:51+00:00")]}
+        satz = {"realizedPnl": "3.00", "closeTotalPos": "12.0"}
         with patch.object(h.okxf, "positionen",
-                          return_value=[{"instId": "ZEC-300", "pos": "0"}]):
+                          return_value=[{"instId": "ZEC-300", "pos": "0"}]), \
+                patch.object(h.okxf, "geschlossene_position", return_value=satz):
             self.assertEqual(h.bueche_geister_aus(z, {}), 1)
         self.assertEqual(z["positionen"], [])
 
@@ -107,13 +125,16 @@ class Geister(unittest.TestCase):
         self.assertEqual(len(z["positionen"]), 1)
 
 
-    def test_alte_position_mit_gefuellter_order_ist_ein_geist(self):
-        """Die Karteileiche (gemessen 22.09.2026: BZ, CL, CRCL).
+    def test_alte_position_ohne_boersenbeleg_bleibt_unklar(self):
+        """Die Karteileiche OHNE Boersenbeleg (Regel Max 09.10.2026).
 
-        Die Order, die eine Position eroeffnet hat, bleibt "gefuellt" - auch
-        nachdem Max die Position von Hand geschlossen hat. Die Entschuldigung
-        zaehlt nur im Grace-Fenster nach dem Eroeffnen, sonst bliebe eine
-        handgeschlossene Position FUER IMMER im Buch.
+        Anlass: am 05.10.2026 hat die neutrale Ausbuchung (Erloes 0.00,
+        Einsatz zurueck) sechs ECHTE Live-Positionen aus dem Buch geloescht,
+        weil die Boersenabfrage sie kurz nicht zeigte; an der Boerse blieben
+        sie offen. Seither gilt: ausgebucht wird NUR mit Boersenbeleg
+        (realizedPnl). Fehlt er, bleibt die Position als UNKLAR im Buch -
+        eine Karteileiche blockiert hoechstens einen Platz, eine echte
+        Position ohne Buch liefe unbewacht weiter.
         """
         p = _pos("BZ-100")
         p.update({"ord_id": "394338698122", "margin": 39.82, "kontrakte": 208.0,
@@ -123,8 +144,9 @@ class Geister(unittest.TestCase):
                 patch.object(h.okxf, "gefuellte_kontrakte", return_value=208.0), \
                 patch.object(h.okxf, "geschlossene_position", return_value=None):
             n = h.bueche_geister_aus(z, {})
-        self.assertEqual(n, 1, "nach dem Grace-Fenster ist es ein Geist")
-        self.assertEqual(z["positionen"], [])
+        self.assertEqual(n, 0, "ohne Boersenbeleg wird NICHT ausgebucht")
+        self.assertEqual([x["inst"] for x in z["positionen"]], ["BZ-100"],
+                         "Position bleibt als UNKLAR im Buch stehen")
 
     def test_frisch_gefuellte_order_bleibt(self):
         # Eroeffnung vor zwei Minuten: der Wettlauf Order->Position gilt weiter.
@@ -215,11 +237,18 @@ class GeistErgebnis(unittest.TestCase):
         self.assertEqual(self.geschrieben[0]["margin_usd"], "18.34",
                          "0.00 war der Totalverlust - das ist der Bug")
 
-    def test_ausbuchung_ohne_satz_schreibt_den_einsatz_zurueck(self):
+    def test_ohne_boersensatz_keine_ausbuchung(self):
+        """Regel Max 09.10.2026: ohne realizedPln-Beleg bleibt die Position.
+
+        Vorher wurde sie NEUTRAL ausgebucht (Einsatz zurueck) - genau dieser
+        Weg hat am 05.10.2026 sechs echte Live-Positionen still geloescht.
+        """
         z = {"positionen": [self._p()]}
         with patch.object(h.okxf, "positionen", return_value=[]),                 patch.object(h.okxf, "geschlossene_position", return_value=None):
-            h.bueche_geister_aus(z, {})
-        self.assertEqual(self.geschrieben[0]["margin_usd"], "16.84")
+            n = h.bueche_geister_aus(z, {})
+        self.assertEqual(n, 0)
+        self.assertEqual(len(z["positionen"]), 1, "Position bleibt stehen")
+        self.assertEqual(self.geschrieben, [], "keine Journalzeile ohne Beleg")
 
 
 class Groessenabgleich(unittest.TestCase):

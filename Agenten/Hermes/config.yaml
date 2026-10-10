@@ -659,7 +659,7 @@ auxiliary:
     provider: nous
     model: 'qwen/qwen3-vl-235b-a22b-instruct'
   # Die folgenden Aufgaben sind Einzeiler. "auto" erbt das HAUPTmodell
-  # (meituan/longcat-2.5-preview:free) und zahlt pro Session mit. Umgestellt auf
+  # (inclusionai/ling-3.0-flash-fin:free) und zahlt pro Session mit. Umgestellt auf
   # google/gemini-3.1-flash-lite (am 04.10.2026 am Nous-Endpoint gemessen: 1,4 s,
   # sauberer Inhalt). kanban_decomposer braucht echtes JSON-Graf und laeuft auf
   # inception/mercury-2.5 (1,7 s) - das ist der bestaetigte Triage-Schnellwert.
@@ -770,13 +770,10 @@ delegation:
 moa:
   presets:
     default:
-      # Fuenf Berater aus fuenf Modellfamilien, alle am 04.10.2026 am Nous-Endpoint
-      # mit einem echten Aufruf geprueft (Antwort Inhalt, nicht nur HTTP 200):
-      #   anthropic/claude-opus-5              1.000.000
-      #   openai/gpt-6-astra                   1.050.000
-      #   google/gemini-3.1-pro-preview       1.048.576
-      #   deepseek/deepseek-v4-pro             1.048.576
-      #   qwen/qwen3-30b-a3b                   der guenstige fuenfte gegen die vier Grossen
+      # Berater (Stand 07.10.2026, in den Presets "default" und "Hermes Oktober 26"):
+      # ling-3.0-flash-fin:free, qwen3-235b-a22b-thinking-2507, longcat-2.5-preview:free,
+      # deepseek-v4-pro, nemotron-3.5-lightning:free - kostenpflichtig sind nur die
+      # Nous-Modelle deepseek-v4-pro und qwen3-235b-thinking (Fenster je Modell nicht neu gemessen).
       reference_models:
         - provider: nous
           model: inclusionai/ling-3.0-flash-fin:free
@@ -794,7 +791,7 @@ moa:
           model: nvidia/nemotron-3.5-lightning:free
           enabled: true
       # Der Aggregator IST das handelnde Modell: er laeuft in jedem Werkzeugschritt
-      # und traegt fast die ganzen Kosten. Deshalb meituan/longcat-2.5-preview:free (1.000.000) -
+      # und traegt fast die ganzen Kosten. Deshalb inclusionai/ling-3.0-flash-fin:free (= Hauptmodell) -
       # nicht der guenstigste Berater.
       aggregator:
         provider: nous
@@ -963,7 +960,7 @@ gateway:
       platform: telegram
       chat_id: '7648512088'
       profile: default
-      enabled: false
+      enabled: true
   platforms:
     a2a:
       enabled: true
@@ -1142,10 +1139,24 @@ mcp_servers:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\kraken_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken
+  kraken-papier:
+    args:
+      - mcp
+    command: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
+  okx-agentkit:
+    args:
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\agent-trade-kit\packages\mcp\dist\index.js
+      - --demo
+      - --profile
+      - demo
+      - --modules
+      - market,swap,account
+    command: node
+    enabled: false
   pdf-vault:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
@@ -1234,17 +1245,7 @@ mcp_servers:
   algolia:
     url: https://mcp.algolia.com/mcp
     auth: oauth
-    enabled: true
-  robinhood:
-    url: https://agent.robinhood.com/mcp/trading
-    auth: oauth
-    enabled: true
-    tools:
-      exclude:
-        - get_option_level_upgrade_info
-        - get_popular_watchlists
-        - follow_watchlist
-        - unfollow_watchlist
+    enabled: false
   postman:
     url: https://mcp.postman.com/minimal
     auth: oauth
@@ -1331,6 +1332,19 @@ platforms:
     enabled: true
   telegram:
     enabled: true
+    extra:
+      dm_topics:
+        - chat_id: '7648512088'
+          topics:
+            - name: Allgemein
+              icon_color: 7322096
+            - name: Handel
+              icon_color: 9367192
+              skill: brainfiles/fremdrepos-signal
+            - name: Markt
+              icon_color: 16766590
+            - name: Wissen
+              icon_color: 13338331
 cron:
   catch_up_missed: false
 _left_core_scoped:

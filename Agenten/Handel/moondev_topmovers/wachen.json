@@ -28,6 +28,8 @@
   "max_gesamt_usd": 300.0,
   "_kill_switch": "kill_switch_gesamt_usd = 3 * buch_risiko. Papier: die Ratsche greift vorher.",
   "kill_switch_gesamt_usd": 45.0,
+  "_kill_wiederaufnahme": "Live-faehige Spur: nach dem Kill KEIN Selbstanlauf (Max 09.10.2026). Die Frist laeuft ab, hebt aber nichts auf; Freigabe nur von Hand (kill_seit aus dem Zustand entfernen).",
+  "kill_wiederaufnahme": false,
   "stop_prozent": 8.0,
   "pflicht_stop_prozent_min": 5.0,
   "pflicht_stop_prozent_max": 12.0,

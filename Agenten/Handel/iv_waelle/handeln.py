@@ -33,6 +33,7 @@ for p in (HANDEL, os.path.join(HANDEL, "scanner"), HIER):
         sys.path.insert(0, p)
 
 import spur_buch as buch  # noqa: E402
+import kill_gemeinsam as kg  # noqa: E402  # Kill-Frist/Reset/Opt-out
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
 import iv_waelle as k  # noqa: E402
@@ -325,12 +326,20 @@ def lauf(modus):
         return 0
 
     if s.get("kill"):
-        print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach."
-              % ruecklauf)
-        z["positionen"] = []
-        buch.schreibe_zustand(zustand_pfad, z)
-        buch.spiegeln(zustand_pfad, journal_pfad, z, w)
-        return 0
+        status, ruecklauf = kg.phase(z, w, ruecklauf, s.get("runden_gesamt", 0), buch.jetzt)
+        if status == "frei":
+            faktor = buch.groessenfaktor(ruecklauf, w)
+        else:
+            # Zwangsschluss zum Marktkurs MIT Buchung (bis 09.10.2026 ungebucht geleert).
+            buch.pruefe_ausstiege(z, kurse, w, journal_pfad,
+                                  zusatz=lambda p, w_: kg.KILL_GRUND,
+                                  zustand_pfad=zustand_pfad)
+            if z.get("positionen"):
+                print("  %d Position(en) noch offen (kein Kurs) - naechster Zyklus "
+                      "versucht es erneut." % len(z["positionen"]))
+            buch.schreibe_zustand(zustand_pfad, z)
+            buch.spiegeln(zustand_pfad, journal_pfad, z, w)
+            return 0
 
     buch.pruefe_ausstiege(z, kurse, w, journal_pfad, zusatz=tagesende,
                           zustand_pfad=zustand_pfad)

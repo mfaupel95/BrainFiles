@@ -126,12 +126,15 @@ class RisikoVertrag(unittest.TestCase):
                                      "sonst wird die Position gedeckelt und das "
                                      "Risiko ist kleiner als eingestellt")
 
-    def test_ratsche_ist_das_buchrisiko(self):
+    def test_ratsche_ist_mindestens_das_buchrisiko(self):
+        # Bis 09.10.2026 genau das Buchrisiko (15 USD); der Backtest (PR #21) zeigte,
+        # dass das 42 % des Gewinns kostet - jetzt 20 x Risiko, aber nie unter dem
+        # Buchrisiko, sonst halbiert schon ein einziger voller Stop-Lauf.
         for s in SPUREN:
             with self.subTest(spur=s.name):
                 w = wachen(s)
                 buchrisiko = w["risiko_je_position_usd"] * w["max_offene_positionen"]
-                self.assertAlmostEqual(w["drawdown_halbierung_usd"], buchrisiko, places=6)
+                self.assertGreaterEqual(w["drawdown_halbierung_usd"], buchrisiko)
 
     def test_kill_switch_ueber_der_ratsche(self):
         for s in SPUREN:

@@ -305,6 +305,21 @@ meldet trotzdem „ok". Beleg in eine Datei schreiben und den Aufruf als
   eigenes Argument nicht.** Der Trockenlauf meldete „ok" mit zerhacktem Beleg.
 - **Zwei Spuren mit gleichem Modulnamen** sind die Standardfalle beim Einfuegen
   in eine fremde Spur — der `assert`-Guard daneben ist Pflicht, nicht Kosmetik.
+- **Eine datierte Notiz, die konkrete Zeilen oder Werte nennt, ist eine
+  Hypothese, kein Beleg.** Eine Gedaechtnis-Notiz sagte „drei
+  verkauf_von_hand-Zeilen = Phantom-Peak", gemessen hatte NUR eine davon
+  nominal==margin, die anderen beiden Phantome lagen woanders. Bevor eine
+  Zahl aus einer Notiz korrigiert oder berichtet wird: die Zeilen frisch aus
+  der Datei ableiten (Fingerabdruck: `nominal_usd == margin_usd` bei
+  schliessen). Wer der Notiz glaubt, korrigiert die falsche Zeile und laesst
+  die echte stehen.
+- **Ein `.bak` im beschriebenen Ordner ist kein Beweis.** Der Dauerlauf
+  schreibt das Journal weiter, waehrend man es korrigiert; ein lokaler
+  `.bak` kann verschwinden und ein Byte-Vergleich gegen ihn prueft dann
+  nichts. Der dauerhafte Zeuge einer Buchkorrektur ist die
+  Bedingung-4-Kopie: nach dem Schreiben sofort die Spiegelung nachziehen
+  (`wx.spiegele_journal([...], w['journal_zweitziel'])`) und gegen DIESE
+  verifizieren - nicht gegen den lokalen `.bak`.
 - **Ein Aufgabeneintrag gehoert nicht in eine Datei, die einer anderen Sitzung
   gehoert.** Die Grenze ist 10 min seit der letzten Aenderung. „Ich schreibe
   es spaeter" ist dann keine Ausrede, sondern eine offene Luecke im Vorgang —

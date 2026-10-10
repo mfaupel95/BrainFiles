@@ -39,9 +39,10 @@ def main():
         umgebung.pop(name, None)
     umgebung.setdefault("PYTHONIOENCODING", "utf-8")
     ergebnis = subprocess.run([sys.executable, SONDE, "--wache"],
-                              capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", timeout=180, env=umgebung,
-                              cwd=os.path.dirname(SONDE))
+                                  capture_output=True, text=True, encoding="utf-8",
+                                  errors="replace", timeout=180, env=umgebung,
+                                  cwd=os.path.dirname(SONDE),
+                                  creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     text = (ergebnis.stdout or "").strip()
     if text:
         print(text)

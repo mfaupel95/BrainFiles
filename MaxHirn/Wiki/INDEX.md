@@ -54,7 +54,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 
 | Seite | Zweck |
 |---|---|
-| [Betrieb/Hermes.md](Betrieb/Hermes.md) | Installation, Profile, config.yaml-Fallen, Gateway, Kompression, Delegation |
+| [Betrieb/Hermes.md](Betrieb/Hermes.md) | Installation, Profile, config.yaml-Fallen, Gateway, Kompression, Delegation; Desktop-Verbindungsfehler: 500-Flut durch tote Symlinks in `models/`, drei Schichten (Katalog/Symlink/Router-Slug) |
 | [Betrieb/Interpreter-Landkarte.md](Betrieb/Interpreter-Landkarte.md) | Welcher Python gehoert zu welcher Komponente, und wie man den falschen erkennt (Muster: 41 Sitzungen mit `ModuleNotFoundError`) |
 | [Betrieb/Wachen-und-Aufgaben.md](Betrieb/Wachen-und-Aufgaben.md) | Geplante Aufgaben, Cron-Wachen, Muster „leere Ausgabe = nichts senden" — und warum dieselbe Stille auch „die Pruefung lief nie" heissen kann (Fehlpfad-Befund 05.10.2026, `audit-werkzeugpfad.py`); zwei gleichnamige Ablageorte; gbrain-maintenance-Wache (08.10.) |
 | [Betrieb/Kanban-Boards.md](Betrieb/Kanban-Boards.md) | Die Boards des Hauses, der Board-Satz, `ready` wird sofort ausgefuehrt, gemessener Stand 30.09.2026 |
@@ -102,6 +102,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/Kronos.md](Werkzeuge/Kronos.md) | Kerzen-Foundation-Modell lokal: Aufruf, der pandas-2.2.2-Absturz (`-X faulthandler`), erster Messbefund gegen die Nullinie |
 | [Werkzeuge/Codex-Remote-Control-Windows.md](Werkzeuge/Codex-Remote-Control-Windows.md) | Warum `codex remote-control` auf Windows stirbt (Unix-only Daemon), der tragende Weg `app-server --remote-control --listen ws://...`, und was `409 Conflict / already online` bedeutet |
 | [Werkzeuge/Fomo-Radar.md](Werkzeuge/Fomo-Radar.md) | Robinhood-Chain-Beobachtung: was schluessellos laeuft (147 Wallets, 65 Fills), Fallen, Anschluss als Papierspur |
+| [Werkzeuge/Claude-Code-Channels-Telegram.md](Werkzeuge/Claude-Code-Channels-Telegram.md) | Claude Code Channels statt Remote Control fuer Telegram: Begriffsklaerung, Einrichtung (`/plugin install telegram@...`, `--channels`), Falle mit totem Bot-Token |
 | [Werkzeuge/RLTrader-in-Docker.md](Werkzeuge/RLTrader-in-Docker.md) | TensorTrade-Vorgaenger 2026 zum Laufen gebracht: TF 1.15/Python 3.7 nur in Docker (CPU), Pines samt Begruendung (gym-Extras-Typo, optuna-0.x-Schema, TypedDict-Falle), Datengrab im geteilten Gebiet, Messergebnis: Agent verliert auf gehaltenen Daten (-48,32 USD) |
 | [Werkzeuge/Marktdaten-und-Bot-markt-recherche.md](Werkzeuge/Marktdaten-und-Bot-markt-recherche.md) | Marktdaten ohne Schluessel (OKX/Yahoo/RSS), das Werkzeug `marktdaten.py` und der Bot `markt-recherche` |
 | [Werkzeuge/Marktbreite-Reihe.md](Werkzeuge/Marktbreite-Reihe.md) | Marktbreite als Zeitreihe (`breite.py`), das Fenster-Problem (Startwert drehte das Vorzeichen), Wachenregeln, acht Monate Baerenmarkt vor einem September-Gipfel |
@@ -110,7 +111,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Werkzeuge/ai4trade-AI-Trader.md](Werkzeuge/ai4trade-AI-Trader.md) | Signalplattform ai4trade.ai: Agent `HermesMax2` (ID 25973), Heartbeat per Cron gepollt |
 | [Werkzeuge/config-gegenprobe.md](Werkzeuge/config-gegenprobe.md) | Jede Behauptung der Hermes-Configs gegen die Wirklichkeit: Programmpfade, lokale Adressen, lokale Modellnamen; Wache montags, Befund 29.09.2026 |
 | [Werkzeuge/Paperclip.md](Werkzeuge/Paperclip.md) | Paperclip-CLI (`paperclipai`, Node): der verwaltete Install-Weg scheitert unter Windows an Doppelpunkten im Sperr-Dateinamen, deshalb npm in eigenem Prefix plus zwei PATH-Weiterleitungen in `~/.local/bin`; kein `update`/`uninstall`, aktualisiert wird per npm |
-| [Werkzeuge/Puter-selfhosted.md](Werkzeuge/Puter-selfhosted.md) | Selbst-gehosteter „Internet-Computer" (HeyPuter/puter, Fork `mfaupel95/puter`) an der BrainFiles-Wurzel mit laufendem Docker-Stack (Port 80, 6 Container, `restart unless-stopped`); Zugangsdaten in `.env`/`config.json` (Stufe 0, nicht gelesen); Umzug nach `Werkstatt/Repos` offen |
+| [Werkzeuge/Puter-selfhosted.md](Werkzeuge/Puter-selfhosted.md) | Selbst-gehosteter „Internet-Computer" (HeyPuter/puter, Fork `mfaupel95/puter`) seit 10.10.2026 in `Werkstatt/Repos/puter` mit laufendem Docker-Stack (Port 80, 6 Container, `restart unless-stopped`); Zugangsdaten in `.env`/`config.json` (Stufe 0, nicht gelesen); Umzug-Fallen: erst `down`, `.my-healthcheck.cnf` world-writable -> `chmod 600` |
 | [Offen/Entscheidungen.md](Offen/Entscheidungen.md) | Was auf eine Entscheidung von Max wartet |
 | [Roadmap.md](Roadmap.md) | Zielkarte: gemessene Luecken nach Wirkung sortiert (Zuverlaessigkeit, Schlankheit, Personalisierung, Autonomie) |
 | [[Hermes-Wartung]] | `hermes update` fahren: Ablauf, EXIT 1, Gateway-Task, blockierte Werkzeuge; `state.db` aufraeumen (archiviert ist weich ausblenden) | Werkzeuge |

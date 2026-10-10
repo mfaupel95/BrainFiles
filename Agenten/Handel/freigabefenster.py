@@ -359,8 +359,18 @@ def grenzwerte(w, waehrung="USD"):
         ("Risiko je Anlauf", w_("risiko_je_anlauf_usd"), waehrung),
         ("Kill-Switch", w_("kill_switch_gesamt_usd"), waehrung),
     ]
-    return [(name, "%s %s" % (wert, einheit))
-            for name, wert, einheit in paare if wert is not None]
+    zeilen = [(name, "%s %s" % (wert, einheit))
+              for name, wert, einheit in paare if wert is not None]
+    # Familien mit eigener Hebel-/Stopgrenze (Rohstoffe, Auftrag Max
+    # 08.10.2026) muessen in der Anfrage stehen: sonst unterschriebe Max
+    # "Hebel bis 5x" und der Automat risse bei Rohstoffen 10x.
+    for fam_name, fam in sorted((w.get("familien") or {}).items()):
+        if "max_hebel" in fam:
+            text = "%s x" % fam["max_hebel"]
+            if fam.get("stop_max_pct") is not None:
+                text += ", Stop hoechstens %s %%" % fam["stop_max_pct"]
+            zeilen.append(("Hebel bis (%s)" % fam_name, text))
+    return zeilen
 
 
 def anfrage_text(spur, w, dauer_minuten, waehrung="USD"):

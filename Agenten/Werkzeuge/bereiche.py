@@ -287,6 +287,17 @@ def _status_pfade(root, grenze=400):
     return pfade[:grenze]
 
 
+def _staged_pfade(root):
+    """Die Pfade im Index (`git diff --cached`), ohne Loeschungen auszulassen:
+    auch eine geloeschte Datei im fremden Bereich ist ein Schreibzugriff."""
+    proc = subprocess.run(["git", "-C", root, "diff", "--cached", "--name-only",
+                           "-z"], capture_output=True, encoding="utf-8",
+                          errors="replace", timeout=90)
+    if proc.returncode != 0:
+        return []
+    return [p for p in proc.stdout.split("\0") if p]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Pruefen, ob ein Aufrufer einen Pfad bedienen darf (Besitz-Register).")
@@ -295,6 +306,10 @@ def main(argv=None):
                     help="zu pruefender Pfad (mehrfach); ohne Angabe von stdin")
     ap.add_argument("--baum", action="store_true",
                     help="alle geaenderten Pfade im Arbeitsbaum pruefen")
+    ap.add_argument("--staged", action="store_true",
+                    help="Pre-commit-Modus: Pfade aus dem Index, Aufrufer aus "
+                         "--aufrufer oder $BRAINFILES_BEREICH; ohne Aufrufer "
+                         "wird nicht geprueft (Exit 0)")
     ap.add_argument("--register", action="store_true", help="nur das Register pruefen")
     ap.add_argument("--json", action="store_true", help="Ausgabe als JSON")
     ap.add_argument("--wurzel", default=None, help="Repo-Wurzel (Vorgabe: selbst finden)")
@@ -303,6 +318,29 @@ def main(argv=None):
     root = args.wurzel or repo_wurzel()
     daten = lade_register(os.path.join(root, REGISTER))
     fehler, _ = pruefe_register(daten, root)
+
+    if args.staged:
+        # Ein Commit-Hook kennt den Aufrufer nicht von selbst. Wer sich nicht
+        # als Bereich ausweist (Max von Hand, Routinen wie kb-sync), wird nicht
+        # blockiert - sonst stuende der ganze Baum still. Ein Register-
+        # Fehler blockiert nicht: ein Hook, der wegen eines kaputten Registers
+        # jeden Commit verweigert, wird nach dem ersten Mal abgeschaltet.
+        args.aufrufer = args.aufrufer or os.environ.get("BRAINFILES_BEREICH")
+        if not args.aufrufer:
+            return 0
+        pfade = _staged_pfade(root)
+        konflikte = [p for p in pfade
+                     if pruefe(args.aufrufer, p, daten, root)[0] == GESPERRT]
+        if konflikte:
+            print("bereiche: Commit verweigert - Aufrufer %r schreibt in fremde "
+                  "Bereiche:" % args.aufrufer, file=sys.stderr)
+            for p in konflikte:
+                print("  " + pruefe(args.aufrufer, p, daten, root)[1],
+                      file=sys.stderr)
+            print("Fremdes aus dem Index nehmen (git restore --staged <pfad>) "
+                  "oder den Besitzer arbeiten lassen.", file=sys.stderr)
+            return 1
+        return 0
 
     pfade = list(args.pfad)
     if args.baum:

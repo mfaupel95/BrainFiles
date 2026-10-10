@@ -26,6 +26,7 @@ nicht am cwd.
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 
 SPUR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, SPUR)
@@ -152,7 +153,12 @@ class AlarmTaktTest(unittest.TestCase):
 
 
 class AlarmPreisTest(unittest.TestCase):
-    """Identische Einstiegspreise je (Instrument, Tag) = Snapshot-Fehler."""
+    """Identische Einstiegspreise je (Instrument, Tag) = Snapshot-Fehler.
+
+    Die Preis-Logik wird OHNE Zeitfilter geprueft (fenster_tage=0) - die
+    Zeitfalle gehoert in eigene Tests weiter unten (test_alter_bestand...),
+    sonst wird eine spätere Datumsaenderung hier zum Fehlschlag.
+    """
 
     def test_uebernommener_preis_wird_erkannt(self):
         # Der Fehler aus T-322: derselbe Berichtspreis fuer jeden Kauf.
@@ -161,7 +167,7 @@ class AlarmPreisTest(unittest.TestCase):
             ts = "2026-10-01T%02d:%02d:00+00:00" % (10 + i // 2, (i % 2) * 15)
             runden.append((kauf(ts, preis=7.531000),
                            verkauf(ts, preis=8.6)))
-        a = sa.alarm_preis(runden)
+        a = sa.alarm_preis(runden, fenster_tage=0)
         self.assertEqual(a["gruppen"], 1)
         self.assertEqual(a["gleich"], 1)
         self.assertEqual(a["anteil"], 1.0)
@@ -174,7 +180,7 @@ class AlarmPreisTest(unittest.TestCase):
             (kauf("2026-10-01T12:00:00+00:00", preis=101.5),
              verkauf("2026-10-02T12:00:00+00:00", preis=111.0)),
         ]
-        a = sa.alarm_preis(runden)
+        a = sa.alarm_preis(runden, fenster_tage=0)
         self.assertEqual(a["gleich"], 0)
         self.assertEqual(a["anteil"], 0.0)
 
@@ -195,7 +201,7 @@ class AlarmPreisTest(unittest.TestCase):
             (kauf("2026-10-01T12:00:00+00:00", preis=8.612),
              verkauf("2026-10-01T13:00:00+00:00", preis=8.7)),
         ]
-        a = sa.alarm_preis(runden)
+        a = sa.alarm_preis(runden, fenster_tage=0)
         self.assertEqual(a["gruppen"], 1)
         self.assertEqual(a["gleich"], 0,
                          "zwei Preise, die 14 % auseinanderliegen, sind nicht gleich")
@@ -208,8 +214,45 @@ class AlarmPreisTest(unittest.TestCase):
             (kauf("2026-10-02T10:00:00+00:00", inst="ETH-USDT", preis=200.0),
              verkauf("2026-10-03T10:00:00+00:00", inst="ETH-USDT", preis=220.0)),
         ]
-        a = sa.alarm_preis(runden)
+        a = sa.alarm_preis(runden, fenster_tage=0)
         self.assertEqual(a["gruppen"], 0, "zwei Einmal-Tage sind keine Gruppe")
+
+    # --- Zeitfenster (10.10.2026): Altbestand aus der Fehlerzeit alarmiert
+    # nicht mehr, ein frischer Fehler sofort.
+
+    def test_alter_identischer_preis_alarmiert_nicht(self):
+        """Der Scanner-Fall: identische Preise nur vor dem Fix (21.09.).
+
+        Gemessen 10.10.2026: 182 von 190 Scanner-Kaeufen stammten aus der
+        Zeit vor dem 03.10.-Fix (marktkurs). Der Alarm wertete diesen
+        Altbestand und meldete weiter 'Preis uebernommen' - ein behobener
+        Fehler. Mit dem Zeitfenster zaehlen alte Gruppen nicht mehr.
+        """
+        # 60 Tage zurueck: sicher ausserhalb des 30-Tage-Fensters, egal
+        # wann der Test laeuft (ein festes Datum wandert in das Fenster).
+        alt = (datetime.now(timezone.utc) - timedelta(days=60)).strftime("%Y-%m-%d")
+        runden = [
+            (kauf(alt + "T10:00:00+00:00", inst="AVAX-USDT", preis=7.531),
+             verkauf(alt + "T11:00:00+00:00", inst="AVAX-USDT", preis=8.6)),
+            (kauf(alt + "T12:00:00+00:00", inst="AVAX-USDT", preis=7.531),
+             verkauf(alt + "T13:00:00+00:00", inst="AVAX-USDT", preis=8.7)),
+        ]
+        a = sa.alarm_preis(runden)          # Default-Fenster 30 Tage
+        self.assertEqual(a["gruppen"], 0,
+                         "alte Gruppen gehoeren nicht mehr in den Alarm")
+
+    def test_frischer_identischer_preis_alarmiert_weiter(self):
+        """Gegenprobe: derselbe Fehler HEUTE wird sofort wieder gemeldet."""
+        heute = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        runden = [
+            (kauf(heute + "T10:00:00+00:00", inst="AVAX-USDT", preis=7.531),
+             verkauf(heute + "T10:15:00+00:00", inst="AVAX-USDT", preis=8.6)),
+            (kauf(heute + "T11:00:00+00:00", inst="AVAX-USDT", preis=7.531),
+             verkauf(heute + "T11:15:00+00:00", inst="AVAX-USDT", preis=8.7)),
+        ]
+        a = sa.alarm_preis(runden)          # Default-Fenster 30 Tage
+        self.assertEqual(a["gruppen"], 1)
+        self.assertEqual(a["gleich"], 1)
 
 
 class AlarmStreuungTest(unittest.TestCase):

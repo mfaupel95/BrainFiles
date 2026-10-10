@@ -384,6 +384,17 @@ class Ausstiege(Grundlage):
         kp.pruefe_ausstiege(z, w)
         self.assertEqual(len(z["positionen"]), 1)
 
+    def test_kein_kurs_nach_der_frist_schliesst_mit_erloes_null(self):
+        w = self.wachen()
+        frist_alt = "2000-01-01T00:00:00+00:00"
+        z = {"positionen": [position(token="T1", letzter_kurs=None, frist=frist_alt),
+                            position(token="T2", letzter_kurs=None)]}
+        kp.pruefe_ausstiege(z, w)
+        self.assertEqual([p["token"] for p in z["positionen"]], ["T2"])
+        zeile = self.lese_journal()[-1]
+        self.assertEqual(zeile["grund"], "frist_ohne_kurs")
+        self.assertEqual(float(zeile["wert_usd"]), 0.0)
+
     def test_kill_switch_und_flach(self):
         w = self.wachen(kill_switch_gesamt_usd=10,
                         kill_switch_gesamt_usd_papier=10)

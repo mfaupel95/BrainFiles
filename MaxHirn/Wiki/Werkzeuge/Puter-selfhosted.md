@@ -1,19 +1,19 @@
 ---
 titel: Puter self-hosted (Internet-Computer)
-aktualisiert: 2026-10-08
+aktualisiert: 2026-10-10
 tags: [werkzeug, docker, selfhosting, fremd]
 ---
 
-# Puter self-hosted — der Open-Source-„Internet-Computer“
+# Puter self-hosted — der Open-Source-"Internet-Computer"
 
-**Stand 08.10.2026 (gemessen):** Eine andere Sitzung hat [HeyPuter/puter]
-(„The Open-Source Internet Computer" — ein Web-Desktop/Personal-Cloud-OS, MIT)
-als Fork `mfaupel95/puter` (origin), `upstream` = `HeyPuter/puter`, an die
-**BrainFiles-Wurzel** geklont — nicht nach `Werkstatt/Repos`, wo Fremd-Repos
-nach Hausregel liegen. Dazu gehört ein laufender `docker compose`-Stack
-(`puter/puter-selfhosted/`, 170 MB), der **bereits gestartet ist**.
+Der Fork-Klon von [HeyPuter/puter] ("The Open-Source Internet Computer" - ein
+Web-Desktop/Personal-Cloud-OS, MIT) als `mfaupel95/puter` (origin),
+`upstream` = `HeyPuter/puter`, liegt seit **10.10.2026** in
+`Werkstatt/Repos/puter` (vorher an der BrainFiles-Wurzel, umgezogen, T-380).
+Dazu gehoert der laufende `docker compose`-Stack in
+`Werkstatt/Repos/puter/puter-selfhosted/`.
 
-## Was läuft (gemessen 08.10., 6 Container, alle healthy)
+## Was laeuft (gemessen 10.10., 6 Container, alle up)
 
 | Container | Bild | Port |
 |---|---|---|
@@ -24,28 +24,34 @@ nach Hausregel liegen. Dazu gehört ein laufender `docker compose`-Stack
 | puter-dynamo | amazon/dynamodb-local | 8000 intern |
 | puter-valkey | valkey/valkey:8-alpine | 6379 intern |
 
-Compose-Datei: `puter/puter-selfhosted/docker-compose.yml` (Services valkey,
-mariadb, dynamo, s3, s3-init, ollama, ollama-init, puter, puter-smtp, caddy;
-Ollama-Baustein mit Volume `./puter/data/ollama`). Alle Container laufen mit
-`restart: unless-stopped` — sie überleben Neustarts von selbst.
+Compose-Datei: `Werkstatt/Repos/puter/puter-selfhosted/docker-compose.yml`
+(Services valkey, mariadb, dynamo, s3, s3-init, ollama, ollama-init, puter,
+puter-smtp, caddy; Ollama-Baustein mit Volume `./puter/data/ollama`). Alle
+Container laufen mit `restart: unless-stopped` - sie ueberleben Neustarts von
+selbst. puter und caddy haengen per `depends_on: service_healthy` an mariadb.
 
-## Zugangsdaten — nicht anfassen
+## Umzug 10.10.2026: Machen und Fallen
 
-Unter `puter/puter-selfhosted/` liegen `.env` und `puter/config/config.json`
-(Stufe 0 nach Schutzregeln). Beide wurden **nicht gelesen** und werden hier
-nicht wiedergegeben — der Stack kann Schlüssel enthalten.
+**Umziehen heisst: `docker compose down`, Ordner verschieben, `up -d` vom
+NEUEN Ort.** Die laufenden Container mounten weiter den alten (dann leeren)
+Pfad - erst `down`, sonst zeigen `/etc/puter` und `/var/puter` ins Leere.
 
-## Hausregel-Abweichung
+FALLE (gemessen 10.10.): nach dem Umzug meldete mariadb `unhealthy` mit
+`Access denied for user root (using password: NO)`, obwohl die Env stimmte.
+Ursache: `.my-healthcheck.cnf` im mariadb-Datadir war **world-writable (777)**
+geworden (Umzug/Windows-Seite) - MariaDB IGNORIERT world-writable Config-Dateien
+und der Healthcheck verlor damit sein Passwort. Fix im laufenden Container:
+`chmod 600 /var/lib/mysql/.my-healthcheck.cnf` (danach wird er healthy).
+Kontrolle: `mariadb --defaults-extra-file=/var/lib/mysql/.my-healthcheck.cnf -e
+"SELECT 1"` muss 1 liefern.
 
-Der Klon liegt an der BrainFiles-Wurzel statt in `Werkstatt/Repos` und ist
-**untracked** (`git status` zeigt `?? puter/`). Er wird von der Whitelist
-nicht abgedeckt — ein `git add -A` würde ihn als eingebettetes Repo anfassen.
-Deshalb: nur eigene Pfade stagen. Umzug nach `Werkstatt/Repos` ist offen
-(siehe Entscheidung unten).
+ZWEITE FALLE: `docker compose -f <pfad>` aus einer ANDEREN cwd laedt die `.env`
+des Projekts nicht - leere/Default-Passwoerter. Also immer aus
+`puter-selfhosted/` starten.
 
-## Offene Entscheidung (Max)
+## Zugangsdaten - nicht anfassen
 
-- Klon nach `Werkstatt/Repos/puter` verschieben und als Repo-Bot/profil
-  anbinden (Hausmuster), oder Stack wieder abbauen?
-- Läuft der Dienst dauerhaft (Port 80, Autostart über Docker), ist das ein
-  Betriebsfakt, der hierher gehört.
+Unter `puter-selfhosted/` liegen `.env` und `puter/config/config.json` (Stufe 0
+nach Schutzregeln). Beide werden **nicht gelesen** und hier nicht wiedergegeben.
+Hinweis: das Erst-Boot-Log des puter-Containers zeigt ein generiertes Passwort
+im Klartext (`docker logs puter`) - Zugang zum Stack, Wert nie ausgeben.
