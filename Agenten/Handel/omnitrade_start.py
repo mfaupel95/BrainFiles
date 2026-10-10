@@ -55,7 +55,16 @@ LAEUFE = {
 }
 INTERVALL = "1h"
 # Abweichendes Intervall je benanntem Lauf (sonst INTERVALL).
-INTERVALL_JE_LAUF = {"rsi_noema_btc": "15m"}
+INTERVALL_JE_LAUF = {
+    "rsi_noema_btc": "15m",
+    "ema_cross_btc": "1d",
+    "adx_macd_btc": "1d",
+    "adx_macd_eth": "1d",
+    "pine_sma_cross_btc": "1d",
+    "pine_ema_cross_btc": "1d",
+    "pine_macd_cross_btc": "1d",
+    "pine_donchian_btc": "1d",
+}
 STANDARD_SYMBOL = "BTCUSDC"
 
 # Programme in der Reihenfolge der Vorliebe: eigener Build zuerst (laufende
