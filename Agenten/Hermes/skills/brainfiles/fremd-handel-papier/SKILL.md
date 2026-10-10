@@ -29,10 +29,14 @@ weiterhin nur die Kette aus `okx-live-anbinden` und den Wachen in `Agenten/Hande
 - **kraken-papier** (MCP, an): `Werkstatt/Repos/kraken-cli/target/release/kraken.exe mcp`.
   Standarddienste Markt, Konto lesen, Papier. Futures-Papierkonto 10 000 USD
   initialisiert (`kraken futures paper init`). Neu bauen: `cargo build --release`.
-- **okx-agentkit** (MCP, **aus**): `Werkstatt/Repos/agent-trade-kit/packages/mcp/dist/index.js`
-  mit `--demo --profile demo`. Einschalten erst, wenn in `~/.okx/config.toml` ein
-  Profil `demo` (`demo = true`, Demo-API-Key) existiert; dann in Manifest und
-  `Hermes/config.yaml` `enabled: true`, `mcp-sync-check.ps1` laufen lassen.
+- **okx-agentkit** (MCP, **an, schreibend, nur DEMO**): Starter
+  `Agenten/MCP-Server/okx-agentkit/start-demo.cmd` bildet `OKX_DEMO_API_*` im Kindprozess
+  auf die erwarteten Namen ab (Live-Schluessel greift nie; `--demo --site eea`).
+  **Nur Spot** (z. B. `BTC-USDC`): Swap/Perps sind im EWR-Demo gesperrt (Fehler 50124).
+  Ablauf fuer eine Demo-Order: Signal -> `Agenten/Handel/fremd_demo.py` `plane()` rechnet
+  Menge (quote_ccy), Stop und Limits und lehnt short/Papier/Tor-zu ab; erst dann
+  `spot_place_order` mit genau diesen `args`. Nach dem Fill Position im Demo-Buch halten;
+  `flat` = Verkaufsorder plus offenen Stop stornieren (`spot_cancel_algo_order`, mit `instId`).
   Neu bauen: `pnpm install --frozen-lockfile && pnpm build` im Repo.
 
 ## How to Run
@@ -59,4 +63,4 @@ CLI-Gegenprobe ohne MCP: `kraken futures paper status -o json`.
 - `kraken futures paper status -o json` antwortet ohne `error`.
 
 ## Delegierung
-Telegram-Topic **Handel** ist mit dem Skill `fremdrepos-signal` verdrahtet (Signal-Schema, Stale-Verwurf, Gate). Bot-Profile: `kraken-cli` (MCP `kraken-native`, an) und `agent-trade-kit` (MCP `okx-agentkit`, aus bis Demo-Profil). Dieser Skill ist die Werkzeug-Seite, `fremdrepos-signal` der Vertrag; das Schema nicht hier duplizieren.
+Telegram-Topic **Handel** ist mit dem Skill `fremdrepos-signal` verdrahtet (Signal-Schema, Stale-Verwurf, Gate). Bot-Profile: `kraken-cli` (MCP `kraken-native`, an) und `agent-trade-kit` (MCP `okx-agentkit`, Demo, schreibend). Dieser Skill ist die Werkzeug-Seite, `fremdrepos-signal` der Vertrag; das Schema nicht hier duplizieren.
