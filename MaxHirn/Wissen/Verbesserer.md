@@ -163,7 +163,7 @@ Spec `Werkstatt/spec-verbesserer-spur2-schleife-2026-10-09.md`, Plan
   Holdout (letzte 20 Tage, nie in der Suche) → Max per `/ja`. Bestanden heißt
   „Vertrag erfüllt", nicht „live besser"; der Bericht zeigt Fenster, Abstand je
   Regel, Holdout und einen Absatz „Nicht geprüft".
-- **Fenster:** Block `spur2` in `verbesserer/konfig.json` (90 Tage Rückblick,
+- **Fenster:** Block `spur2` in `verbesserer/konfig.json` (80 Tage Rückblick,
   15er-Fenster, 20 Tage Holdout), am 10.10.2026 gemessen: erster Lauf rund 7 Minuten,
   danach Merkmals-Cache-Treffer. **Funding-Grenze:** OKX liefert Funding nur ca.
   94 Tage zurück; Instrumente, deren Funding nach dem Simulationsstart beginnt,
