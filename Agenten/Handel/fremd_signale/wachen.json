@@ -6,5 +6,15 @@
   "modi_erlaubt": ["paper", "demo"],
   "quellen_erlaubt": ["kraken-cli", "agent-trade-kit"],
   "instrumente_erlaubt": ["BTC/USD", "ETH/USD", "SOL/USD", "BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP"],
-  "size_pct_max": 0.25
+  "size_pct_max": 0.25,
+  "_papier": "Werte fuer fremd_papier.py (Papierbuch). Stop ist Pflicht; Rahmen wie die Klassik-Spuren: 5 USD Risiko je Position, 3 Positionen.",
+  "stop_prozent": 4.0,
+  "pflicht_stop_prozent_min": 2.4,
+  "pflicht_stop_prozent_max": 8.0,
+  "risiko_je_position_usd": 5.0,
+  "max_offene_positionen": 3,
+  "max_pro_trade_usd": 250.0,
+  "max_gesamt_usd": 750.0,
+  "gebuehr_taker": 0.0005,
+  "kill_switch_gesamt_usd": 45.0
 }
