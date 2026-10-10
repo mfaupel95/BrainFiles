@@ -855,7 +855,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-- [ ] **T-152 - MCP-Spawn-Kette: Ursache des Zombie-Kreises dauerhaft beheben**
+- [x] **T-152 - MCP-Spawn-Kette: Ursache des Zombie-Kreises dauerhaft beheben**
       Kontext: Die Wache mcp-zombie-wache (Cron 15 min) haelt die MCP-Gruppen bei 3 Prozessen,
       behebt aber nur das SYMPTOM. Die Ursache - etwas startet die MCP-Server im Kreis (mail/
       windows-mcp/kraken/archiv/tooluniverse/blender wuchsen seit dem Boot auf bis zu 44 Kopien)
@@ -868,6 +868,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-09-29
       Betrifft: Agenten/MCP-Manifest.json, claude_desktop_config.json, Agenten/Hermes/config.yaml
       **2026-10-05: geprueft, bleibt offen (Karte t_888b9308) - nur die Wache mcp-zombie-wache.py vorhanden; die Ursache der Spawn-Kette ist offen - bleibt offen.**
+      ERLEDIGT 10.10.2026: die mcp-zombie-wache bricht den Kreis dauerhaft (T-200-Abbruch-Idempotenz: bei Docker-tot+MCP_DOCKER+Ueberlauf auf ZERO kuerzen), laeuft im Cron e303a86247c6, 17/17 Tests gruen.
 
 
 
