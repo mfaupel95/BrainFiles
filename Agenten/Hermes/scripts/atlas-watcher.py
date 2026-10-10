@@ -22,6 +22,7 @@ Aufruf (aus der Repo-Wurzel):
     python Agenten/Hermes/scripts/atlas-watcher.py --zeige   # Zustand immer ausgeben
 """
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -64,8 +65,9 @@ def prozess_laeuft(pid):
     if not pid:
         return False
     r = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"],
-                       capture_output=True, text=True,
-                       encoding="cp1252", errors="replace")
+                           capture_output=True, text=True,
+                           encoding="cp1252", errors="replace",
+                           creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     for zeile in (r.stdout or "").splitlines():
         teile = zeile.split()
         # Bild: <name> <pid> <sitzung> ...  /  oder KEIN TREFFER-Zeile

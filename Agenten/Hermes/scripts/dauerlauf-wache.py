@@ -97,7 +97,8 @@ def prozess_mit_startzeit(pid: int):
     # Rueckfall ohne psutil: tasklist fragt nur ab.
     try:
         aus = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"],
-                             capture_output=True, text=True, timeout=30)
+                                     capture_output=True, text=True, timeout=30,
+                                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         text = (aus.stdout or "").strip()
         if not text or "keine Aufgaben" in text.lower() or "no tasks" in text.lower():
             return False, ""
