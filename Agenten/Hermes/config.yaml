@@ -1151,8 +1151,6 @@ mcp_servers:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
   okx-agentkit:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\okx-agentkit\start-demo.cmd
-    args:
-      - --read-only
     enabled: true
   pdf-vault:
     args:
