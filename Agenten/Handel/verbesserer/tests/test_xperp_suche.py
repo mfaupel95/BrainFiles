@@ -91,13 +91,22 @@ class TestFenster(unittest.TestCase):
         ende = 1000 * TAG
         fenster, holdout = xs.fenster_grenzen(ende, KONF)
         self.assertEqual(len(fenster), 4)
-        self.assertEqual(fenster[0], (910 * TAG, 925 * TAG))
-        self.assertEqual(fenster[-1], (955 * TAG, 970 * TAG))
+        S = xs.rt.SCHRITT_MS
+        self.assertEqual(fenster[0], (910 * TAG, 925 * TAG - S))
+        self.assertEqual(fenster[-1], (955 * TAG, 970 * TAG - S))
         self.assertEqual(holdout, (980 * TAG, 1000 * TAG))
 
     def test_fenster_beruehren_den_holdout_nicht(self):
+        # simuliere() rechnet bis einschliesslich end_ms (und schaut 4H
+        # weiter): der letzte Schritt muss VOR dem Holdout liegen.
         fenster, holdout = xs.fenster_grenzen(1000 * TAG, KONF)
-        self.assertLessEqual(fenster[-1][1], holdout[0])
+        self.assertLessEqual(fenster[-1][1] + xs.rt.SCHRITT_MS, holdout[0])
+
+    def test_fenster_ueberlappen_nicht(self):
+        fenster, _ = xs.fenster_grenzen(1000 * TAG, KONF)
+        for (_, bis), (von, _) in zip(fenster, fenster[1:]):
+            self.assertLess(bis, von)
+            self.assertLessEqual(bis + xs.rt.SCHRITT_MS, von)
 
     def test_zu_wenig_rueckblick_gibt_keine_fenster(self):
         fenster, _ = xs.fenster_grenzen(

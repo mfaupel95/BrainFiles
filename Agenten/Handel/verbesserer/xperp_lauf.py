@@ -15,6 +15,7 @@ Nur Standardbibliothek.
 """
 
 import argparse
+import hashlib
 import json
 import shutil
 import sys
@@ -248,10 +249,15 @@ def einmal(*, kerzen_holen=True, jetzt=None, konf=None, spur=None,
     ordner = _ordner(berichte, datum)
     hinweise = []
 
+    if kerzen_holen:
+        try:
+            xk.hole_universum(cache_dir)
+        except Exception as e:  # noqa: BLE001
+            print("  Universum-Abruf: %s - nehme Cache" % e, file=sys.stderr)
     universum = xk.laden_universum(cache_dir)
     if not universum:
-        return _abbruch(ordner, "Kein Universum-Cache - einmal ohne "
-                                "--ohne-kerzen-abruf starten.")
+        return _abbruch(ordner, "Kein Universum-Cache und kein Abruf moeglich "
+                                "- OKX/Netz pruefen und den Lauf wiederholen.")
 
     k4, k1h, k1d, saetze, fehlt = _daten_laden(
         universum, konf["such_tage"] + rt.WARMUP_TAGE, kerzen_holen,
@@ -323,6 +329,11 @@ def einmal(*, kerzen_holen=True, jetzt=None, konf=None, spur=None,
     with open(ordner / "wachen.neu.json", "w", encoding="utf-8",
               newline="") as f:
         f.write(vorschlag.wachen_neu_text(alt_text, aenderungen))
+    # Pruefsumme der Basis: anwenden.py verweigert, wenn die Wache sich seit
+    # diesem Lauf (egal an welchem Schluessel) geaendert hat.
+    (ordner / "basis.sha256").write_text(
+        hashlib.sha256(alt_text.encode("utf-8")).hexdigest(), "utf-8",
+        newline="\n")
     (ordner / "commit.txt").write_text(commit_text(ctx, res, aenderungen),
                                        "utf-8", newline="\n")
     return ordner, "vorschlag"

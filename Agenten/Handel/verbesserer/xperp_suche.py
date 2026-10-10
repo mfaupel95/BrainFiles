@@ -67,12 +67,18 @@ def fenster_grenzen(ende_ms, konf):
 
     Der Holdout sind die letzten ``holdout_tage`` Tage; die Testfenster decken
     ``such_tage`` Rueckblick ab, enden vor dem Holdout und ruecken um
-    ``schritt_tage`` vor. Zu wenig Rueckblick -> leere Fensterliste."""
+    ``schritt_tage`` vor. Zu wenig Rueckblick -> leere Fensterliste.
+
+    simuliere() rechnet bis EINSCHLIESSLICH end_ms und liest dabei die 1H-
+    Kerzen des letzten Schritts; ein Fenster endet deshalb einen Schritt vor
+    der Grenze (halboffen). Sonst zaehlte der Grenzschritt in zwei Fenstern,
+    und das letzte Fenster liesse vier Stunden Holdout-Daten in die Suche."""
     holdout_von = ende_ms - konf["holdout_tage"] * TAG_MS
     fenster = []
     von = ende_ms - konf["such_tage"] * TAG_MS
     while von + konf["test_tage"] * TAG_MS <= holdout_von:
-        fenster.append((von, von + konf["test_tage"] * TAG_MS))
+        fenster.append((von, von + konf["test_tage"] * TAG_MS
+                        - rt.SCHRITT_MS))
         von += konf["schritt_tage"] * TAG_MS
     return fenster, (holdout_von, ende_ms)
 

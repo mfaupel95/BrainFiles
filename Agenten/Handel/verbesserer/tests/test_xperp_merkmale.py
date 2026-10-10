@@ -45,6 +45,22 @@ class TestHash(unittest.TestCase):
         self.assertNotEqual(xm.daten_hash(UNI, K4, K1D, CT, [1, 2]),
                             xm.daten_hash(UNI, k4, K1D, CT, [1, 2]))
 
+    def test_geaenderte_kerze_in_der_mitte_andert_den_hash(self):
+        k4 = {"A-X": [list(k) for k in K4["A-X"]]}
+        k4["A-X"][4][4] = 9.9           # Anzahl und Raender bleiben gleich
+        self.assertNotEqual(xm.daten_hash(UNI, K4, K1D, CT, [1, 2]),
+                            xm.daten_hash(UNI, k4, K1D, CT, [1, 2]))
+
+    def test_anderer_code_stempel_andert_den_hash(self):
+        a = xm.daten_hash(UNI, K4, K1D, CT, [1, 2])
+        with mock.patch.object(xm, "_code_stempel", return_value="anders"):
+            b = xm.daten_hash(UNI, K4, K1D, CT, [1, 2])
+        self.assertNotEqual(a, b)
+
+    def test_code_stempel_ist_stabil_und_nicht_leer(self):
+        self.assertTrue(xm._code_stempel())
+        self.assertEqual(xm._code_stempel(), xm._code_stempel())
+
     def test_anderes_raster_andert_den_hash(self):
         self.assertNotEqual(xm.daten_hash(UNI, K4, K1D, CT, [1, 2]),
                             xm.daten_hash(UNI, K4, K1D, CT, [1, 2, 3]))

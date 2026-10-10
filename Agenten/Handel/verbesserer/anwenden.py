@@ -331,6 +331,22 @@ def anwenden(ordner, spur, repo):
                                           % (key, neu_obj[key], lo, hi)),
                                 "commit": None}
 
+    # 2b2. Basis-Pruefsumme (Spur 2): hat sich wachen.json seit dem Lauf
+    #      geaendert - auch an einem Whitelist-Schluessel, den der Vorschlag
+    #      gar nicht anfasst -, wuerde das byteweise Ueberschreiben diese
+    #      Aenderung still zuruecksetzen. Vorschlaege ohne Pruefsumme (Spur 1,
+    #      Spur 3) bleiben unveraendert.
+    basis_datei = ordner / "basis.sha256"
+    if hat_wachen_neu and basis_datei.exists():
+        soll = basis_datei.read_text(encoding="utf-8").strip()
+        ist = hashlib.sha256(wachen_pfad.read_bytes()).hexdigest()
+        if ist != soll:
+            return {"ok": False,
+                    "grund": ("wachen.json hat sich seit dem Lauf geaendert "
+                              "(Basis-Pruefsumme) - /nein und neuen Lauf "
+                              "abwarten"),
+                    "commit": None}
+
     # 2c. commit.txt frueh pruefen - vor jeder Aenderung am Arbeitsbaum.
     commit_datei = ordner / "commit.txt"
     if (not commit_datei.exists()

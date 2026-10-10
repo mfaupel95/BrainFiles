@@ -207,6 +207,48 @@ class TestAbbruch(Basis):
         self.assertIn("offline", (ordner / "bericht.md").read_text("utf-8"))
 
 
+class TestUniversumAuffrischen(Basis):
+    def test_mit_abruf_wird_das_universum_geholt(self):
+        with mock.patch.object(lauf.xk, "hole_universum",
+                               return_value=UNI) as h:
+            self.einmal(kerzen_holen=True)
+        h.assert_called_once()
+
+    def test_ohne_abruf_wird_nichts_geholt(self):
+        with mock.patch.object(lauf.xk, "hole_universum") as h:
+            self.einmal(kerzen_holen=False)
+        h.assert_not_called()
+
+    def test_fehlgeschlagener_abruf_faellt_auf_den_cache_zurueck(self):
+        with mock.patch.object(lauf.xk, "hole_universum",
+                               side_effect=OSError("offline")):
+            _, status = self.einmal(kerzen_holen=True)
+        self.assertEqual(status, "vorschlag")
+
+    def test_abbruchmeldung_nennt_keine_wirkungslose_abhilfe(self):
+        with mock.patch.object(lauf.xk, "laden_universum", return_value=[]):
+            ordner, _ = self.einmal()
+        b = (ordner / "bericht.md").read_text("utf-8")
+        self.assertIn("Universum", b)
+        self.assertNotIn("ohne --ohne-kerzen-abruf", b)
+
+
+class TestBasisPruefsumme(Basis):
+    def test_lauf_schreibt_die_pruefsumme_der_wache(self):
+        import hashlib
+        ordner, _ = self.einmal()
+        self.assertEqual(
+            (ordner / "basis.sha256").read_text("utf-8").strip(),
+            hashlib.sha256(self.wachen.read_bytes()).hexdigest())
+
+    def test_kein_vorschlag_schreibt_keine_pruefsumme(self):
+        with mock.patch.object(
+                lauf.rt, "simuliere",
+                side_effect=lambda *a, **k: [_runde(a[8] + 1, 1.0)] * 8):
+            ordner, _ = self.einmal()
+        self.assertFalse((ordner / "basis.sha256").exists())
+
+
 class TestZaehler(unittest.TestCase):
     def test_lesen_ohne_datei_und_mit_kaputter_datei(self):
         d = Path(mkdtemp())

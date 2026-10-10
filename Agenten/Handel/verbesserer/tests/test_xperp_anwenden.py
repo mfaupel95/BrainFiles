@@ -1,3 +1,4 @@
+import hashlib
 import json
 import subprocess
 import sys
@@ -146,6 +147,32 @@ class TestAnwendenSpur2(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertIn("handel_erlaubt", r["grund"])
         self.assertIn('"handel_erlaubt": false', self.wachen.read_text("utf-8"))
+
+    def _mit_pruefsumme(self, ziel_neu='"ziel_atr_faktor": 3.5'):
+        ordner = self._vorschlag(
+            WACHEN_ALT.replace('"ziel_atr_faktor": 3.0', ziel_neu))
+        (ordner / "basis.sha256").write_text(
+            hashlib.sha256(WACHEN_ALT.encode("utf-8")).hexdigest(), "utf-8")
+        return ordner
+
+    def test_passende_pruefsumme_wendet_an(self):
+        r = anwenden.anwenden(self._mit_pruefsumme(), self.spur, self.repo)
+        self.assertTrue(r["ok"], r["grund"])
+
+    def test_handaenderung_an_whitelist_schluessel_wird_nicht_ueberschrieben(
+            self):
+        # Der Vorschlag aendert nur ziel_atr_faktor; stop_atr_faktor (auch
+        # auf der Whitelist) hat inzwischen jemand von Hand geaendert.
+        ordner = self._mit_pruefsumme()
+        hand = WACHEN_ALT.replace('"stop_atr_faktor": 1.5',
+                                  '"stop_atr_faktor": 2.0')
+        self.wachen.write_text(hand, "utf-8", newline="")
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-qm", "von Hand")
+        r = anwenden.anwenden(ordner, self.spur, self.repo)
+        self.assertFalse(r["ok"])
+        self.assertIn("seit dem Lauf", r["grund"])
+        self.assertEqual(self.wachen.read_text("utf-8"), hand)
 
     def test_patch_ohne_bewertungsdatei_wird_abgelehnt(self):
         ordner = self._vorschlag(

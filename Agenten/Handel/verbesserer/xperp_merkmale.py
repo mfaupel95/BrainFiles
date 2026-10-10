@@ -38,8 +38,25 @@ def ctval_je_inst(universum, instr_je_basis):
 
 
 def _reihe(kerzen):
-    return ([len(kerzen), kerzen[0][0], kerzen[-1][0], kerzen[-1][4]]
-            if kerzen else [0])
+    """Fingerabdruck der GANZEN Reihe (Zeit und Schluss je Kerze): OKX
+    korrigiert gelegentlich Kerzen mitten in der Reihe, ohne dass Anzahl oder
+    Raender sich aendern."""
+    if not kerzen:
+        return [0]
+    h = hashlib.sha256(
+        json.dumps([[k[0], k[4]] for k in kerzen]).encode("utf-8"))
+    return [len(kerzen), h.hexdigest()]
+
+
+def _code_stempel():
+    """Hash der Quelltexte, die die Rangliste bestimmen (Punkteformel,
+    Kennzahlen, Kategorien, Engine). Eine Aenderung dort macht jeden Cache
+    ungueltig - sonst liefe die Suche gegen eine Logik, die live nicht mehr
+    gilt."""
+    h = hashlib.sha256()
+    for modul in (rt, rt.auswahl):
+        h.update(Path(modul.__file__).read_bytes())
+    return h.hexdigest()
 
 
 def daten_hash(universum, k4_je_inst, k1d_je_inst, ctval, stand_liste):
@@ -47,6 +64,7 @@ def daten_hash(universum, k4_je_inst, k1d_je_inst, ctval, stand_liste):
     Anzahl/erste/letzte Zeit/letzter Schlusskurs der 4H- und 1D-Reihe,
     Kontraktwerte und das Stand-Raster."""
     kopf = {
+        "code": _code_stempel(),
         "universum": [[x["instId"], x["basis"], x["kategorie"]]
                       for x in universum],
         "k4": {i: _reihe(k4_je_inst[i]) for i in sorted(k4_je_inst)},
