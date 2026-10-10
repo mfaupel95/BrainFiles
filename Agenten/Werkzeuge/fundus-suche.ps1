@@ -104,7 +104,8 @@ function DateiHash([string]$pfad) {
 # ---------------------------------------------------------------- Sammeln
 function Sammle([string]$quelle, [string]$wurzel) {
   if (-not (Test-Path $wurzel)) { return @() }
-  Get-ChildItem $wurzel -Recurse -File -Filter 'SKILL.md' -ErrorAction SilentlyContinue | ForEach-Object {
+  Get-ChildItem $wurzel -Recurse -File -Filter 'SKILL.md' -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '\\node_modules\\' } | ForEach-Object {
     $k = Get-SkillKopf $_
     # Pfad RELATIV zur eigenen Wurzel (nicht zu $stamm): der Fundus liegt seit
     # 18.09.2026 ausserhalb BrainFiles - ein Substring auf $stamm schnitt

@@ -1,0 +1,24 @@
+{% extends "basis.html" %}
+{% block titel %}Prognosen{% endblock %}
+{% set seite = "prognosen" %}
+{% block inhalt %}
+<h1>Prognosen</h1>
+{% if not prognosen %}
+<p style="color:var(--overlay0)">Keine prognose.json-Dateien gefunden.</p>
+{% else %}
+<table>
+  <thead><tr><th>Quelle</th><th>Richtung</th><th>Konfidenz</th><th>Instrument</th><th>Zeitstempel</th></tr></thead>
+  <tbody>
+  {% for p in prognosen %}
+  <tr>
+    <td>{{ p._quelle }}</td>
+    <td>{{ p.richtung or p.direction or "-" }}</td>
+    <td>{{ p.konfidenz or p.confidence or "-" }}</td>
+    <td>{{ p.instrument or "-" }}</td>
+    <td>{{ p.ts_utc or p.zeitstempel or "-" }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

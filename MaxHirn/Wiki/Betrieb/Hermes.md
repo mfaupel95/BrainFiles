@@ -3,7 +3,7 @@ id: 20260921-hermes
 title: 'Betrieb — Hermes'
 tags: [betrieb, hermes]
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-10-08
 related: ['[[Betrieb/Wachen-und-Aufgaben]]', '[[Werkzeuge/Fundus-Skills-Bots]]', '[[Wissen/Hermes]]']
 summary: 'Installation, Pfade, Profile, die wiederkehrenden config.yaml-Fallen, Gateway, Kompression und Delegation.'
 ---
@@ -357,3 +357,49 @@ Photon-Kennung der Haupt-`.env` als eigene - kein Bot-Profil traegt `PHOTON_PROJ
 (nachgemessen: 0 von 30 Profil-`.env`), ebenso wenig eine Windows-Benutzervariable. Damit ist
 die bereits am 25.09.2026 notierte Falschmeldung bestaetigt; sie blaeht den Doctor-Bericht auf
 19 Befunde auf und verdeckte die echten. **Behoben am 29.09.2026** (Abschnitt "Photon-Doppelkennungen" oben): die 18 Profile tragen jetzt `platforms.photon.enabled: false`, der Doctor meldet 1 statt 19 Befunde.
+## Desktop-Verbindungsfehler: ECONNRESET / 500-Flut auf `/api/*` (08.10.2026)
+
+**Regel: die wiederholte 500-Zeile im Desktop-Log IST die Ursache, der
+ECONNRESET nur die Folge.** Electron-Main verliert die HTTP-Verbindung zum
+Backend waehrend des Lesens, wenn ein Endpoint 500er spuckt. Die einzige
+bekannte (und haeufige) Quelle: `GET /api/local-models/status` poollt im
+2-s-Takt, und der Endpoint (`hermes_cli/web_routers/local_models.py`,
+`_staged_row`) macht `stat()` auf jede stagede GGUF in
+`Agenten/Hermes/models/` — ein **toter Symlink** (Ziel fehlt) wirft dort
+ungefangen `FileNotFoundError` -> 500-Flut. `Timed out connecting to Hermes
+backend after 30000ms` ist der Nachhall, kein zweiter Fehler.
+
+**Diagnose-Reihenfolge.** (1) `gateway_state.json` — `running` + Plattformen
+`connected` heisst: Ursache sitzt im Desktop-Backend-Pfad, ein Gateway-Restart
+hilft nicht. (2) `grep -n "hermes:api.*Error" logs/desktop.log | tail` — die
+500er finden. (3) `ls -la Agenten/Hermes/models/` auf tote Links pruefen
+(erscheinen als `lrwxrwxrwx`). (4) Fix: den toten Symlink loeschen — der
+Katalogeintrag bleibt als klickbares Modell im Picker stehen und legt die Datei
+beim Download neu an. (5) Nachweis ohne Auth-Token: der Desktop poollt selbst —
+keine NEUEN `hermes:api … Error`-Zeilen nach dem Fix (Zeitstempel vergleichen)
+ist der Beleg, nicht ein `curl`.
+
+**`models/`-Ordner: drei Schichten getrennt halten.** (1) Katalogeintrag
+(`hermes_cli/local_runtime/catalog.json`) ist committeter Quelltext — lassen,
+der Picker zeigt ihn nur als Download. (2) Symlink in `Agenten/Hermes/models/`
+— NUR diese zaehlt der Status-Endpoint beim `stat()`. (3) Config-Referenz
+`qwen/qwen3.6-35b-a3b` in config.yaml ist ein ROUTER-SLUG (Cloud), kein Verweis
+auf das lokale GGUF — ein Grep-Treffer in Configs beweist keine lokale Nutzung.
+Erst alle drei Fragen beantworten (referenziert jemand die LOCALE Datei? ist der
+Eintrag Checkout-Quelltext? passt die Datei in den VRAM?), dann einen Symlink
+loeschen — und die Wirkung mit einem Beobachtungsfenster belegen (Anzahl der
+`preset skip`-Warnzeilen vorher/nachher, Uhrzeitquellen je Log-Datei nicht
+mischen).
+
+**Harmlose Nachbarn, keine Reparatur noetig:** `preset skip Ternary-Bonsai-…`
+(der verwaltete llama-server 18434 kann ternäre Gewichte nicht laden; Bonsai
+laeuft separat auf 8080) und MCP-Test-500er `POST /api/mcp/servers/<name>/test`
+auf nicht angemeldete Server.
+
+**Telemetry-Ordner blockiert:** `telemetry/shared_metrics/` mit `WinError 5`
+(selbst der eigene Benutzer kann nicht lesen/loeschen, ein fremder Prozesskontext
+hat ihn angelegt) loggt laufend `shared metrics initialization failed` — die
+Warnung ist harmlos, der Log-Rauschen bleibt. Reparatur in EINEM erhoehten Lauf:
+`icacls <pfad> /grant <user>:(OI)(CI)F /T /C` — kein `takeown` noetig (`takeown
+/D Y` ist ungueltige Syntax). Ergebnis am ZIEL belegen, nicht am Log des
+elevated Skripts.

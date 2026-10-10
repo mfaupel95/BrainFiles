@@ -21,6 +21,7 @@ set "SYS=%SystemRoot%\System32"
 set "OMNI=%ROOT%Werkstatt\omnitrade"
 if /I "%~1"=="start" goto start
 if /I "%~1"=="ui" goto ui
+if /I "%~1"=="dashboard" goto dashboard
 python "%ROOT%Agenten\Handel\omnitrade_bridge.py" %*
 goto :eof
 
@@ -55,4 +56,19 @@ if exist "target\debug\omnitrade-ui.exe" (
   echo Baue omnitrade-ui (erster Start dauert ein paar Minuten) ...
   cargo run -q -p omnitrade-ui
 )
+goto :eof
+
+:dashboard
+set "DASHPY=%ROOT%Agenten\Handel\dashboard\.venv\Scripts\python.exe"
+if not exist "%DASHPY%" (
+  echo Dashboard-venv fehlt. Einmal anlegen:
+  echo   python -m venv "%ROOT%Agenten\Handel\dashboard\.venv"
+  echo   "%ROOT%Agenten\Handel\dashboard\.venv\Scripts\pip.exe" install -r "%ROOT%Agenten\Handel\dashboard\requirements.txt"
+  exit /b 1
+)
+set "DASH_ARGS="
+if /I "%~2"=="--lan" set "DASH_ARGS=--lan"
+cd /d "%ROOT%Agenten\Handel"
+echo Starte Omnitrade Dashboard auf http://localhost:7788   Beenden: Strg+C
+"%DASHPY%" -m dashboard %DASH_ARGS%
 goto :eof

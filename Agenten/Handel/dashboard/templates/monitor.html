@@ -1,0 +1,54 @@
+{% extends "basis.html" %}
+{% block titel %}Monitor{% endblock %}
+{% set seite = "monitor" %}
+{% block inhalt %}
+<h1>Monitor <small id="verbindung" class="status-nicht_konfiguriert">verbinde …</small></h1>
+<table id="spuren-tabelle">
+  <thead>
+    <tr><th>Spur</th><th>Status</th><th>HS</th><th>Fenster</th><th>Positionen</th><th>Alter (min)</th></tr>
+  </thead>
+  <tbody id="spuren-koerper">
+  {% for s in spuren %}
+  <tr>
+    <td>{{ s.spur }}</td>
+    <td class="status-{{ s.status }}">{{ s.status }}</td>
+    <td>{{ s.hs or "-" }}</td>
+    <td>{{ s.fenster or "-" }}</td>
+    <td>{{ s.buch | tojson if s.buch else "-" }}</td>
+    <td>{{ s.alter if s.alter is not none else "-" }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<script>
+(function () {
+  var koerper = document.getElementById("spuren-koerper");
+  var anzeige = document.getElementById("verbindung");
+  function zelle(zeile, text, klasse) {
+    var td = document.createElement("td");
+    td.textContent = text;
+    if (klasse) td.className = klasse;
+    zeile.appendChild(td);
+  }
+  function zeichne(spuren) {
+    koerper.replaceChildren();
+    spuren.forEach(function (s) {
+      var tr = document.createElement("tr");
+      zelle(tr, s.spur);
+      zelle(tr, s.status, "status-" + String(s.status).replace(/[^a-z_]/g, ""));
+      zelle(tr, s.hs || "-");
+      zelle(tr, s.fenster || "-");
+      zelle(tr, s.buch && Object.keys(s.buch).length ? JSON.stringify(s.buch) : "-");
+      zelle(tr, s.alter === null || s.alter === undefined ? "-" : s.alter);
+      koerper.appendChild(tr);
+    });
+  }
+  var quelle = new EventSource("/stream");
+  quelle.addEventListener("spuren", function (e) {
+    anzeige.textContent = "live";
+    zeichne(JSON.parse(e.data));
+  });
+  quelle.onerror = function () { anzeige.textContent = "getrennt – Seite neu laden"; };
+})();
+</script>
+{% endblock %}

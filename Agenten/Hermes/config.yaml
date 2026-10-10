@@ -960,7 +960,7 @@ gateway:
       platform: telegram
       chat_id: '7648512088'
       profile: default
-      enabled: false
+      enabled: true
   platforms:
     a2a:
       enabled: true
@@ -1139,10 +1139,24 @@ mcp_servers:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\kraken_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken\.venv\Scripts\python.exe
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\kraken
+  kraken-papier:
+    args:
+      - mcp
+    command: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
+  okx-agentkit:
+    args:
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\agent-trade-kit\packages\mcp\dist\index.js
+      - --demo
+      - --profile
+      - demo
+      - --modules
+      - market,swap,account
+    command: node
+    enabled: false
   pdf-vault:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
@@ -1231,17 +1245,7 @@ mcp_servers:
   algolia:
     url: https://mcp.algolia.com/mcp
     auth: oauth
-    enabled: true
-  robinhood:
-    url: https://agent.robinhood.com/mcp/trading
-    auth: oauth
-    enabled: true
-    tools:
-      exclude:
-        - get_option_level_upgrade_info
-        - get_popular_watchlists
-        - follow_watchlist
-        - unfollow_watchlist
+    enabled: false
   postman:
     url: https://mcp.postman.com/minimal
     auth: oauth
@@ -1328,6 +1332,19 @@ platforms:
     enabled: true
   telegram:
     enabled: true
+    extra:
+      dm_topics:
+        - chat_id: '7648512088'
+          topics:
+            - name: Allgemein
+              icon_color: 7322096
+            - name: Handel
+              icon_color: 9367192
+              skill: brainfiles/fremdrepos-signal
+            - name: Markt
+              icon_color: 16766590
+            - name: Wissen
+              icon_color: 13338331
 cron:
   catch_up_missed: false
 _left_core_scoped:

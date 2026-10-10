@@ -92,6 +92,8 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
+Dazu seit 09.10.2026 `docker-cascade-repair` unter `skills/system/`
+(Quelle `~/.claude/skills`, einzeln uebernommen, Vault-Kopie in `MaxHirn/.claude/skills/`). 
 **24 eigene** unter `Hermes/skills/claude-code-imports/` — jeder Vault-Skill hat
 dort eine Kopie, keine Luecke. Dazu `data-guard-audit` unter `skills/productivity/`.
 `hermes skills list` (HERMES_HOME gesetzt): **161 Skills geladen** (145 local,
