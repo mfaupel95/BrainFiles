@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Order-Plaene fuer das OKX-Demo aus den durchs Tor gelassenen Fremd-Signalen.
 
-Aufruf: python demo_plan.py --vorschau | --vormerken   (kein --live, sendet nie selbst)
+Aufruf: python demo_plan.py --vorschau | --vormerken | --verwerfen <instrument>   (kein --live, sendet nie selbst)
 
 --vorschau   liest Journal und Demo-Buch, gibt die Plaene als JSON-Zeilen aus, schreibt NICHTS.
 --vormerken  dito, haelt die Positionen im Demo-Buch (fremd_signale/demo_zustand.json) fest.
+--verwerfen  nimmt eine vorgemerkte Position wieder aus dem Buch (Order abgelehnt/nicht gefuellt
+             bzw. nach dem Verkauf), damit Buch und Boerse zusammenpassen.
 Ausfuehren tut Hermes: je Plan `spot_place_order` (okx-agentkit) mit genau diesen args.
 Ist das Tor zu, passiert nichts.
 """
@@ -67,6 +69,18 @@ def main(argv):
     if "--live" in argv:
         print("Kein Live-Zweig: nur Demo. --live verweigert.")
         return 2
+    if "--verwerfen" in argv:
+        i = argv.index("--verwerfen")
+        if i + 1 >= len(argv):
+            print("--verwerfen braucht ein Instrument.")
+            return 2
+        z = atomar.lade_json(ZUSTAND, fremd_papier.leer)
+        if z["offen"].pop(argv[i + 1], None) is None:
+            print("nicht im Demo-Buch: " + argv[i + 1])
+            return 1
+        atomar.schreibe_json(ZUSTAND, z)
+        print("verworfen: " + argv[i + 1])
+        return 0
     if "--vorschau" not in argv and "--vormerken" not in argv:
         print(__doc__)
         return 2

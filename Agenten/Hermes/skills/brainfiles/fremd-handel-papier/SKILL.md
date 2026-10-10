@@ -37,6 +37,12 @@ weiterhin nur die Kette aus `okx-live-anbinden` und den Wachen in `Agenten/Hande
   Menge (quote_ccy), Stop und Limits und lehnt short/Papier/Tor-zu ab; erst dann
   `spot_place_order` mit genau diesen `args`. Nach dem Fill Position im Demo-Buch halten;
   `flat` = Verkaufsorder plus offenen Stop stornieren (`spot_cancel_algo_order`, mit `instId`).
+  **Ausfuehrungsschritt (Hermes):** 1) `python Agenten/Handel/fremd_signale/demo_plan.py --vormerken`
+  (Tor zu = nichts). 2) Je JSON-Zeile mit `ok:true` genau `plan.tool` mit `plan.args` aufrufen,
+  nie abgeaendert. 3) Antwort `sCode` != 0 oder nicht gefuellt -> `demo_plan.py --verwerfen <instrument>`.
+  4) Bei `aktion: schliessen` nach dem Verkauf offene Stops per `spot_get_algo_orders` suchen,
+  mit `spot_cancel_algo_order` (`instId`, `algoId`) stornieren und `--verwerfen <instrument>`.
+  5) Ergebnis (Fill-Preis, Menge, Stop) in den Topic Handel melden. Nie `mode=live`, nie Swap.
   Neu bauen: `pnpm install --frozen-lockfile && pnpm build` im Repo.
 
 ## How to Run

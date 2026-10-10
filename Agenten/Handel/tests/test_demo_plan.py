@@ -37,6 +37,9 @@ class T(unittest.TestCase):
         r = demo_plan.plaene(fremd_papier.leer(), [zeile("a")], boese, W, J)
         self.assertFalse(r[0][1])
 
+    def test_verwerfen_ohne_argument(self):
+        self.assertEqual(demo_plan.main(["--verwerfen"]), 2)
+
     def test_live_verweigert(self):
         self.assertEqual(demo_plan.main(["--live"]), 2)
 
