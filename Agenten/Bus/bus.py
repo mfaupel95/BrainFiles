@@ -32,7 +32,8 @@ def port_aus_datei():
 def _laeuft(pid):
     try:
         a = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid],
-                           capture_output=True, timeout=10)
+                                   capture_output=True, timeout=10,
+                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except Exception as exc:                                  # noqa: BLE001
         # Im Zweifel geschlossen: koennen wir nicht feststellen, ob der
         # Prozess noch lebt (tasklist fehlt im PATH, PermissionError,
