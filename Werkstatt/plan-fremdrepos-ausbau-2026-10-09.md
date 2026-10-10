@@ -136,3 +136,14 @@ Lauf: BTC-USDT 1H von OKX, 9000 Kerzen, rollierend 4 x 1000 ungesehene Stunden (
 - **Simulation:** beste Kombination +37,6 % bei 5 Trades (2 gewinnbringend), Buy&Hold im selben Fenster +4,7 %. Die Zahl ist die beste von 100 Rasterpunkten, auf denselben ungesehenen Daten gewählt, also optimistisch und bei 5 Trades nicht belastbar.
 - **Urteil:** kein Beleg für einen Vorteil. Adapter `adapter_itb` bleibt technisch fertig, das Tor bleibt zu; kein Zeitplan für diese Quelle, solange kein stabiler Out-of-sample-Nutzen gezeigt ist.
 - **Nächste Schritte (nur wenn gewollt):** andere Labels/Horizonte, mehr Historie, Gebühren und Funding in die Simulation, Mehrfach-Fenster; erst danach Routine.
+
+### Varianten-Lauf (10.10., drei vorab festgelegte Varianten, alle gemeldet)
+AUC auf ungesehenen Stunden (Zufall = 0,5), BTC-USDT 1H, OKX:
+| Variante | Daten / ungesehen | Modell, Schwelle | AUC high_30 | AUC low_30 |
+|---|---|---|---|---|
+| Basis | 9000 / 4 x 1000 | SVC, 3 % | 0,438 | 0,430 |
+| V1 | 20 000 / 5 x 2000 | SVC, 3 % | 0,554 | 0,483 |
+| V2 | 9000 / 4 x 1000 | SVC, 1,5 % | 0,511 | 0,479 |
+| V3 | 20 000 / 5 x 2000 | Gradient Boosting, 3 % | 0,542 | 0,469 |
+- **Lesart:** Die `low`-Labels liegen in allen Läufen unter 0,5; die `high`-Labels streuen zwischen 0,44 und 0,55. Mehr Historie hilft, aber 0,54-0,55 ist schwach und wegen überlappender Stunden (Autokorrelation) statistisch weicher, als die Zahl wirkt. Kein belastbarer Vorteil.
+- **Entscheidung:** `intelligent-trading-bot` bleibt ruhende Quelle (Adapter fertig, Tor zu, kein Zeitplan). Lohnt sich nur mit grundlegend anderem Ansatz (andere Features/Labels, Gebühren und Funding in der Simulation).
