@@ -79,6 +79,18 @@ PowerShell: `Get-CimInstance Win32_Process -Filter "Name='git.exe'"` und
   clean gegen HEAD, holt `git checkout HEAD -- <datei>` sie verlustfrei zurueck
   und der Insert wird mit der korrekten Grenze wiederholt — nie auf dem
   kaputten Stand weiterbauen.
+- **Block innerhalb DERSELBEN Datei verschieben: die Einfuegeposition erst
+  NACH dem Entfernen berechnen.** Ein vorher berechneter Index zeigt nach dem
+  Schnitt in die Mitte eines anderen Eintrags (T-380 landete mit 5-Spaces-
+  Einrueckung im Block T-382). Und die Schnittgrenze des Entfernens
+  Zeile-fuer-Zeile pruefen: ein `find` auf den naechsten Block-Marker kann eine
+  Whitespace-Only-Zeile des Nachbarn mitnehmen, die dann fremd attribuiert
+  wird — der Diff zeigt sie, byte-genau zurueckholen.
+- **Verweigert `write_file` trotz vollstaendigem Vor-Les weiter** (der
+  Partial-View-Zustand bleibt nach einem frueheren `offset`-Lesen haengen),
+  hilft kein weiterer write_file-Versuch: den ganzen Inhalt in Python
+  zusammenbauen (`assert b'\r' not in neu`), mit `open(p,'wb')` schreiben und
+  `git diff --numstat` pruefen.
 - **Die Fremdarbeit-Routine sammelt ein, was 30 min liegt** und attribiert es
   einem „Anderen Sitzung"-Commit. Wer seine Arbeit nicht selbst committet,
   verliert die Zuschreibung — das ist die Faustregel, nicht nur beim Spiegeln.
