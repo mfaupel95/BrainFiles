@@ -72,3 +72,4 @@ h2 { font-size: 0.95rem; color: var(--subtext); margin: 1rem 0 0.5rem; }
 
 .befund { background: var(--mantle); border-left: 3px solid var(--yellow);
           padding: 0.6rem 1rem; margin-bottom: 0.5rem; border-radius: 0 4px 4px 0; }
+.status-unbekannt { color: var(--peach, var(--yellow)); }

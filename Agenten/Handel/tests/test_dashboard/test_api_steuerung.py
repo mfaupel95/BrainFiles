@@ -19,7 +19,7 @@ MOCK_SPUREN = [
 
 def _client():
     from dashboard.app import create_app
-    return TestClient(create_app())
+    return TestClient(create_app(), base_url="http://localhost")
 
 
 class TestSteuerungNotAus(unittest.TestCase):
@@ -86,7 +86,7 @@ class TestProzessAktionen(unittest.TestCase):
     def test_gleiche_origin_ist_erlaubt(self):
         with patch("dashboard.quellen.prozesse.system_starten"):
             resp = _client().post("/api/prozess/dauerlauf/start",
-                                  headers={"Origin": "http://testserver"})
+                                  headers={"Origin": "http://localhost"})
         self.assertEqual(resp.status_code, 200)
 
 

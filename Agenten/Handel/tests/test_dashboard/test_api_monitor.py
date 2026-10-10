@@ -21,20 +21,24 @@ MOCK_SPUREN = [
 
 class TestMonitor(unittest.TestCase):
 
+    def setUp(self):
+        from dashboard.routen import monitor
+        monitor._cache.clear()
+
     def _app(self):
         from dashboard.app import create_app
         return create_app()
 
     def test_monitor_html_liefert_200(self):
         with patch("dashboard.quellen.spuren.get_spuren", return_value=MOCK_SPUREN):
-            resp = TestClient(self._app()).get("/")
+            resp = TestClient(self._app(), base_url="http://localhost").get("/")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("xperp", resp.text)
 
     def test_monitor_maskiert_spurnamen(self):
         boese = [dict(MOCK_SPUREN[0], spur="<script>alert(1)</script>")]
         with patch("dashboard.quellen.spuren.get_spuren", return_value=boese):
-            resp = TestClient(self._app()).get("/")
+            resp = TestClient(self._app(), base_url="http://localhost").get("/")
         self.assertNotIn("<script>alert(1)</script>", resp.text)
 
     def test_stream_liefert_drei_events(self):
@@ -42,7 +46,7 @@ class TestMonitor(unittest.TestCase):
         with patch("dashboard.quellen.spuren.get_spuren", return_value=MOCK_SPUREN), \
              patch.object(monitor, "_INTERVALL_S", 0.01), \
              patch.object(monitor, "_MAX_EVENTS", 3):
-            with TestClient(self._app()).stream("GET", "/stream") as resp:
+            with TestClient(self._app(), base_url="http://localhost").stream("GET", "/stream") as resp:
                 events = [json.loads(z[5:].strip()) for z in resp.iter_lines()
                           if z.startswith("data:")]
         self.assertEqual(len(events), 3)

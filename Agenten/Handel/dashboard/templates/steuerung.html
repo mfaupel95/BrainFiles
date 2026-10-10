@@ -18,13 +18,13 @@
       {% if not p.laeuft %}
       <button class="btn"
               hx-post="/api/prozess/{{ p.name }}/start"
-              hx-on::after-request="setTimeout(() => location.reload(), 1500)"
+              hx-on::after-request="if (event.detail.successful) { setTimeout(() => location.reload(), 1500) } else { alert(event.detail.xhr.responseText) }"
               hx-swap="none">Start</button>
       {% else %}
       <button class="btn"
               hx-post="/api/prozess/{{ p.name }}/stop"
               hx-confirm="{{ p.name }} wirklich stoppen?"
-              hx-on::after-request="setTimeout(() => location.reload(), 1500)"
+              hx-on::after-request="if (event.detail.successful) { setTimeout(() => location.reload(), 1500) } else { alert(event.detail.xhr.responseText) }"
               hx-swap="none">Stopp</button>
       {% endif %}
     </td>
@@ -47,7 +47,7 @@
       <button class="btn btn-rot"
               hx-post="/api/spur/{{ s.spur }}/notaus"
               hx-confirm="handel_erlaubt für {{ s.spur }} auf false setzen?"
-              hx-on::after-request="location.reload()"
+              hx-on::after-request="if (event.detail.successful) { location.reload() } else { alert(event.detail.xhr.responseText) }"
               hx-swap="none">Not-Aus</button>
       {% endif %}
     </td>

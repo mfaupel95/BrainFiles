@@ -24,9 +24,13 @@ class TestGetSpuren(unittest.TestCase):
         self.assertEqual(_status({"erlaubt": None, "hs": None, "alter": 5}), "nicht_konfiguriert")
 
     def test_stale_alter_none(self):
-        # alter=None (Spur nie im Log) darf nicht als veraltet gelten
+        # alter=None (Spur nie im Log): weder Crash noch "veraltet" noch faelschlich gruen
         from dashboard.quellen.spuren import _status
-        self.assertEqual(_status({"erlaubt": True, "hs": 45, "alter": None}), "ok")
+        self.assertEqual(_status({"erlaubt": True, "hs": 45, "alter": None}), "unbekannt")
+
+    def test_alter_none_ohne_herzschlagpflicht_ist_ok(self):
+        from dashboard.quellen.spuren import _status
+        self.assertEqual(_status({"erlaubt": True, "hs": 0, "alter": None}), "ok")
 
     def test_sammle_ohne_log_kein_crash(self):
         # sammle() wirft -> get_spuren() liefert leere Liste statt Crash

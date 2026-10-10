@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 def _client():
     from dashboard.app import create_app
-    return TestClient(create_app())
+    return TestClient(create_app(), base_url="http://localhost")
 
 
 class TestJobs(unittest.TestCase):

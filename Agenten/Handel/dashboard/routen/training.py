@@ -35,8 +35,11 @@ async def training_seite(request: Request):
 async def training_starten(spur: str = Form(...)):
     _spur(spur)
     log = _LOGS / f"training-{spur}.log"
-    _jobs.starte(f"training-{spur}", [_PY, str(_LAUF), "--spur", spur, "--ohne-kerzen-abruf"],
-                 cwd=_LAUF.parent, logdatei=log)
+    try:
+        _jobs.starte(f"training-{spur}", [_PY, str(_LAUF), "--spur", spur, "--ohne-kerzen-abruf"],
+                     cwd=_LAUF.parent, logdatei=log)
+    except _jobs.JobLaeuftSchon:
+        return JSONResponse({"ok": False, "meldung": "Lauf läuft schon"}, status_code=409)
     return JSONResponse({"ok": True, "log": log.name})
 
 

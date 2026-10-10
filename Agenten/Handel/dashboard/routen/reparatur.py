@@ -1,4 +1,5 @@
 # dashboard/routen/reparatur.py
+import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -14,7 +15,7 @@ _templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templ
 
 @router.get("/reparatur", response_class=HTMLResponse)
 async def reparatur_seite(request: Request):
-    return _templates.TemplateResponse(request, "reparatur.html", {"befunde": _rep.alle_checks()})
+    return _templates.TemplateResponse(request, "reparatur.html", {"befunde": await asyncio.to_thread(_rep.alle_checks)})
 
 
 @router.post("/api/repair/{check_id}", dependencies=[Depends(gleiche_herkunft)])

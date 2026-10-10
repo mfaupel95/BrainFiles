@@ -1,4 +1,5 @@
 # dashboard/routen/prognosen.py
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -33,4 +34,4 @@ def _prognosen_lesen() -> list[dict]:
 
 @router.get("/prognosen", response_class=HTMLResponse)
 async def prognosen_seite(request: Request):
-    return _templates.TemplateResponse(request, "prognosen.html", {"prognosen": _prognosen_lesen()})
+    return _templates.TemplateResponse(request, "prognosen.html", {"prognosen": await asyncio.to_thread(_prognosen_lesen)})

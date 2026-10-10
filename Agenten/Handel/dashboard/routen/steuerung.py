@@ -31,12 +31,14 @@ async def steuerung_seite(request: Request):
 
 @router.post("/api/spur/{spur_id}/notaus", dependencies=[Depends(gleiche_herkunft)])
 async def spur_not_aus_api(spur_id: str):
-    return JSONResponse(_prozesse.spur_not_aus(spur_id))
+    erg = _prozesse.spur_not_aus(spur_id)
+    return JSONResponse(erg, status_code=erg.get("status", 200 if erg["ok"] else 500))
 
 
 @router.post("/api/prozess/{name}/start", dependencies=[Depends(gleiche_herkunft)])
 async def prozess_starten(name: str):
-    _prozesse.system_starten(_bekannt(name))
+    if not await asyncio.to_thread(_prozesse.system_starten, _bekannt(name)):
+        return JSONResponse({"ok": False, "meldung": f"{name} läuft schon"}, status_code=409)
     return {"ok": True}
 
 

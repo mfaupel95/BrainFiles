@@ -34,8 +34,11 @@ async def backtest_seite(request: Request):
 async def backtest_starten(spur: str = Form(...), tage: int = Form(30, ge=7, le=365)):
     _spur(spur)
     log = _LOGS / f"{spur}-letzter.log"
-    _jobs.starte(f"backtest-{spur}", [_PY, str(_BACKTESTS[spur]), "--tage", str(tage)],
-                 cwd=_BACKTESTS[spur].parent, logdatei=log)
+    try:
+        _jobs.starte(f"backtest-{spur}", [_PY, str(_BACKTESTS[spur]), "--tage", str(tage)],
+                     cwd=_BACKTESTS[spur].parent, logdatei=log)
+    except _jobs.JobLaeuftSchon:
+        return JSONResponse({"ok": False, "meldung": "Lauf läuft schon"}, status_code=409)
     return JSONResponse({"ok": True, "log": log.name})
 
 

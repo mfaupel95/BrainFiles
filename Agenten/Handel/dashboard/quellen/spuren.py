@@ -23,7 +23,9 @@ def _status(e: dict) -> str:
         return "nicht_konfiguriert"
     alter = e.get("alter")
     hs = e.get("hs") or 0
-    if alter is not None and hs > 0 and alter > hs:
+    if hs > 0 and alter is None:
+        return "unbekannt"  # kein Herzschlag-Beleg im Log: nicht gruen anzeigen
+    if hs > 0 and alter > hs:
         return "veraltet"
     return "ok"
 
@@ -39,6 +41,8 @@ def get_spuren() -> list[dict]:
             eintraege = json.loads(sig_pfad.read_text(encoding="utf-8"))
             if isinstance(eintraege, list):
                 for eintrag in eintraege:
+                    if not isinstance(eintrag, dict):
+                        continue
                     eintrag.setdefault("status", _status(eintrag))
                     spuren.append(eintrag)
         except Exception:
