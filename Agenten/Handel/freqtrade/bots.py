@@ -57,6 +57,12 @@ IMAGE = "freqtradeorg/freqtrade:stable"
 # Im Container heisst das Benutzerverzeichnis immer gleich (Mountpunkt).
 IM_CONTAINER = "/freqtrade/user_data"
 
+# Haus-Code fuer HausSpur-Bots: Agenten/ read-only im Container. Die Regeln
+# werden importiert, nicht in die Strategie kopiert (Spec 10.10.2026).
+HAUS = HIER.parent.parent
+HAUS_IM_CONTAINER = "/agenten"
+SPEICHER = "700m"
+
 
 # --- Manifest ---------------------------------------------------------------
 
@@ -97,6 +103,14 @@ def mount_pfad() -> str:
     Shell-Aufrufer schon an der Uebersetzung gescheitert.
     """
     return USER_DATA.resolve().as_posix()
+
+
+def mounts(bot: dict) -> list[str]:
+    """Die -v-Argumente fuer docker: user_data immer, Agenten/ bei HausSpur."""
+    m = ["-v", f"{mount_pfad()}:{IM_CONTAINER}"]
+    if bot.get("hausspur"):
+        m += ["-v", f"{HAUS.resolve().as_posix()}:{HAUS_IM_CONTAINER}:ro"]
+    return m
 
 
 # --- Docker -----------------------------------------------------------------
@@ -154,7 +168,7 @@ def config_fuer(bot: dict) -> dict:
     port = int(bot["port"])
     name = bot["name"]
     basis_exchange = _basis_exchange()
-    return {
+    cfg = {
         "max_open_trades": int(bot.get("max_open_trades", 3)),
         "stake_currency": "USDT",
         "stake_amount": "unlimited",
@@ -199,6 +213,12 @@ def config_fuer(bot: dict) -> dict:
         # ein Backtest-Lauf sie ueberschreiben kann, ohne die Datei zu aendern.
         "moondev": {"signal_ausstieg": bool(bot.get("signal_ausstieg", True))},
     }
+    if bot.get("hausspur"):
+        cfg["trading_mode"] = "futures"
+        cfg["margin_mode"] = "isolated"
+        cfg["hausspur"] = {"name": bot["hausspur"],
+                           "pfad": f"{HAUS_IM_CONTAINER}/Handel"}
+    return cfg
 
 
 def schreibe_configs(ziele: list[dict]) -> int:
@@ -240,37 +260,39 @@ def cmd_configs(argumente: list[str]) -> int:
     return schreibe_configs(ausgewaehlt(argumente))
 
 
-def _daten_fenster(paare: list[str], zeitrahmen: str) -> list[str]:
+def _daten_fenster(paare: list[str], zeitrahmen: str, futures: bool = False,
+                   haus: bool = False) -> list[str]:
+    # 740 Tage: zwei Jahre Backtest plus Anlauf (startup_candle_count).
     return [
         "run", "--rm",
-        "-v", f"{mount_pfad()}:{IM_CONTAINER}",
+        *mounts({"hausspur": haus}),
         IMAGE,
         "download-data", "--userdir", IM_CONTAINER,
         "-p", *paare,
         "-t", zeitrahmen,
-        "--days", "400",
+        *(["--trading-mode", "futures"] if futures else []),
+        "--days", "740",
     ]
 
 
 def cmd_daten(argumente: list[str]) -> int:
-    """Kerzen laden, die der Backtest der Bots braucht.
+    """Kerzen laden, die der Backtest der Bots braucht - je Zeitrahmen und Modus.
 
-    Alle Pairlisten zusammen, damit kein Bot ohne Daten dasteht.
+    Alle Pairlisten einer Gruppe zusammen, damit kein Bot ohne Daten dasteht.
+    HausSpur-Bots laufen im Futures-Modus und brauchen eigene Reihen.
     """
-    paare: list[str] = []
-    zeitrahmen: set[str] = set()
+    gruppen: dict[tuple[str, bool], list[str]] = {}
     for b in ausgewaehlt(argumente):
-        for p in b["whitelist"]:
-            if p not in paare:
-                paare.append(p)
-        zeitrahmen.add(b.get("zeitrahmen", "1h"))
-        for p in b.get("breite_paare", []):
-            if p not in paare:
-                paare.append(p)
-    print(f"{len(paare)} Paare, Zeitrahmen {sorted(zeitrahmen)}, 400 Tage")
+        schluessel = (b.get("zeitrahmen", "1h"), bool(b.get("hausspur")))
+        liste = gruppen.setdefault(schluessel, [])
+        for p in [*b["whitelist"], *b.get("breite_paare", [])]:
+            if p not in liste:
+                liste.append(p)
     rc = 0
-    for tf in sorted(zeitrahmen):
-        rc |= einweglauf(_daten_fenster(paare, tf), f"download-data {tf}")
+    for (tf, futures), paare in sorted(gruppen.items()):
+        print(f"{len(paare)} Paare, {tf}, {'futures' if futures else 'spot'}")
+        rc |= einweglauf(_daten_fenster(paare, tf, futures, futures),
+                         f"download-data {tf}")
     return rc
 
 
@@ -300,7 +322,7 @@ def cmd_backtest(argumente: list[str], timerange: str | None = None,
         print(f"\n══ Backtest {b['name']} ({b['strategie']}){hinweis} ══")
         fenster = [
             "run", "--rm",
-            "-v", f"{mount_pfad()}:{IM_CONTAINER}",
+            *mounts(b),
             IMAGE,
             "backtesting", "--userdir", IM_CONTAINER,
             "--config", f"{IM_CONTAINER}/{cfg_pfad.name}",
@@ -330,7 +352,8 @@ def cmd_start(argumente: list[str]) -> int:
         docker(["rm", "-f", name])
         fenster = [
             "run", "-d", "--name", name, "--restart", "unless-stopped",
-            "-v", f"{mount_pfad()}:{IM_CONTAINER}",
+            "--memory", SPEICHER,
+            *mounts(b),
             "-p", f"127.0.0.1:{b['port']}:{b['port']}",
             IMAGE,
             "trade",
