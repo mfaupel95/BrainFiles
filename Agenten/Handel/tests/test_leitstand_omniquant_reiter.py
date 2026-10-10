@@ -40,7 +40,7 @@ class Basis(unittest.TestCase):
         # OmniquantReiter baut in echt OmniquantGui (Netz beim Start). Fuer
         # die Interface-Pruefung wird die KLASSE im Modul ersetzt - `_gui`
         # ist ein Instanzattribut und selbst nicht patchbar.
-        attrappe = type("A", (), {"__init__": lambda s, eltern: None})
+        attrappe = type("A", (), {"__init__": lambda s, eltern, eigener_timer=True: None})
         p = patch.object(gui, "OmniquantGui", attrappe)
         p.start()
         self.addCleanup(p.stop)
@@ -69,7 +69,7 @@ class Basis(unittest.TestCase):
             "zustand": zustand if zustand is not None else {},
             "bericht": bericht if bericht is not None else {},
             "bericht_alter": alter,
-            "refresh_daten": neu,
+            "_planer": neu,
         })()
 
 
@@ -127,8 +127,10 @@ class Interface(Basis):
 class Verdrahtung(unittest.TestCase):
     def test_omniquant_haengt_am_rahmen(self):
         self.assertIn(OmniquantReiter, [k for _, k in lst.REITER])
-        self.assertEqual(lst.REITER[-2][0], "Omniquant")
-        self.assertEqual(lst.KUERZEL["<Control-Key-5>"], ("reiter", len(lst.REITER) - 2))
+        self.assertEqual(lst.REITER[-3][0], "Omniquant")
+        self.assertEqual(lst.REITER[-2][0], "Nautilus")
+        self.assertEqual(lst.REITER[-1][0], "Prozesse")
+        self.assertEqual(lst.KUERZEL["<Control-Key-5>"], ("reiter", len(lst.REITER) - 3))
 
     def test_wer_einen_hintergrundprozess_haelt_sagt_es(self):
         # `abbrechbar()` ist OPTIONAL: der Rahmen nutzt
