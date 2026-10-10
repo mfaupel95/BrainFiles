@@ -1,4 +1,5 @@
 # dashboard/routen/steuerung.py
+import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -23,8 +24,8 @@ def _bekannt(name: str) -> str:
 @router.get("/steuerung", response_class=HTMLResponse)
 async def steuerung_seite(request: Request):
     return _templates.TemplateResponse(request, "steuerung.html", {
-        "spuren": _spuren.get_spuren(),
-        "prozesse": _prozesse.systemprozesse(),
+        "spuren": await asyncio.to_thread(_spuren.get_spuren),
+        "prozesse": await asyncio.to_thread(_prozesse.systemprozesse),
     })
 
 
