@@ -63,6 +63,13 @@ class Mounts(unittest.TestCase):
         self.assertIn("127.0.0.1:8085:8085", run)
 
 
+class Daten(unittest.TestCase):
+    def test_download_nennt_boerse_und_modus(self):
+        f = bots._daten_fenster(["BTC/USDT:USDT"], "4h", True, True)
+        self.assertEqual(f[f.index("--exchange") + 1], "binance")
+        self.assertEqual(f[f.index("--trading-mode") + 1], "futures")
+
+
 class Strategie(unittest.TestCase):
     QUELLE = (Path(bots.STRATEGIEN) / "HausSpur.py")
 

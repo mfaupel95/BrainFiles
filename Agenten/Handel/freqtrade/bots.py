@@ -269,6 +269,9 @@ def _daten_fenster(paare: list[str], zeitrahmen: str, futures: bool = False,
         *mounts({"hausspur": haus}),
         IMAGE,
         "download-data", "--userdir", IM_CONTAINER,
+        # Ausdruecklich: ohne user_data/config.json (frischer Klon, Arbeitsbaum)
+        # kennt download-data sonst keine Boerse und bricht ab.
+        "--exchange", "binance",
         "-p", *paare,
         "-t", zeitrahmen,
         *(["--trading-mode", "futures"] if futures else []),
