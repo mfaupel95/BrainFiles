@@ -16,7 +16,7 @@ fester Prozentsatz der Spur, ATR-Stop der Indikatorspuren, Range bei ORB.
 import sys
 from pathlib import Path
 
-from pandas import DataFrame
+from pandas import DataFrame, isna
 
 from freqtrade.exceptions import OperationalException
 from freqtrade.strategy import IStrategy, stoploss_from_open
@@ -28,7 +28,11 @@ class HausSpur(IStrategy):
     timeframe = "1h"                 # die Bot-Konfiguration setzt den echten
     stoploss = -0.99                 # echter Stop in custom_stoploss
     use_custom_stoploss = True
-    minimal_roi = {"0": 100.0}       # echtes Ziel in custom_exit
+    minimal_roi = {"0": 100.0}       # echtes Ziel in custom_roi
+    # custom_roi statt custom_exit (Review I3): ROI-Ausstiege fuellt der
+    # Backtest zum Zielpreis wie das Haus; custom_exit erst zum Kerzenschluss
+    # (gemessen: +6,08 % statt Ziel 5,0 % bei klassik_ema).
+    use_custom_roi = True
     use_exit_signal = True
     exit_profit_only = False
     process_only_new_candles = True
@@ -42,8 +46,10 @@ class HausSpur(IStrategy):
             raise OperationalException(
                 f"HausSpur: {pfad}/hausspur_regeln.py fehlt - Mount von Agenten/ "
                 f"nach /agenten (bots.py mounts) fehlt?")
+        # ANHAENGEN, nicht vorne einfuegen (Review M8): Handel/freqtrade/ waere
+        # sonst ein Namespace-Paket "freqtrade" vor dem echten.
         if str(pfad) not in sys.path:
-            sys.path.insert(0, str(pfad))
+            sys.path.append(str(pfad))
         import hausspur_regeln as hr
         try:
             hr.spur(name)
@@ -88,11 +94,13 @@ class HausSpur(IStrategy):
         df, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         vorher = df[df["date"] < trade.open_date_utc]
         zeile = vorher.iloc[-1] if len(vorher) else None
-        stop = 6.0
-        if zeile is not None and zeile["hs_stop"] == zeile["hs_stop"]:   # nicht NaN
+        # isna statt x == x (Review M1): eine reine None-Spalte ist object-dtype,
+        # float(None) wuerde werfen und die Position bliebe beim Platzhalter -0.99.
+        stop = self.hr.STOP_VORGABE
+        if zeile is not None and not isna(zeile["hs_stop"]):
             stop = float(zeile["hs_stop"])
         ziel = 2.0 * stop
-        if zeile is not None and zeile["hs_ziel"] == zeile["hs_ziel"]:
+        if zeile is not None and not isna(zeile["hs_ziel"]):
             ziel = float(zeile["hs_ziel"])
         trade.set_custom_data("hs_stop", stop)
         trade.set_custom_data("hs_ziel", ziel)
@@ -104,12 +112,10 @@ class HausSpur(IStrategy):
         return stoploss_from_open(-stop / 100.0, current_profit,
                                   is_short=trade.is_short, leverage=trade.leverage)
 
-    def custom_exit(self, pair, trade, current_time, current_rate,
-                    current_profit, **kwargs):
+    def custom_roi(self, pair, trade, current_time, trade_duration, entry_tag,
+                   side, **kwargs):
         _, ziel = self._signalwerte(pair, trade)
-        if current_profit >= ziel / 100.0:
-            return "ziel"
-        return None
+        return ziel / 100.0
 
     def leverage(self, pair, current_time, current_rate, proposed_leverage,
                  max_leverage, entry_tag, side, **kwargs) -> float:
