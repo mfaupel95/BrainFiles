@@ -346,8 +346,13 @@ def markt_verkauf(inst, kontrakte, fuer_ausstieg=True):
     return _kf().markt_verkauf(paar_fuer(inst, fuer_ausstieg), kontrakte, echt=True)
 
 
-def stop_setzen(inst, kontrakte, stop_preis):
-    return _kf().stop_setzen(paar_fuer(inst), kontrakte, stop_preis, echt=True)
+def stop_setzen(inst, kontrakte, stop_preis, fuer_ausstieg=True):
+    """Schutz-Stop setzen. VORGABE: das Gate wird umgangen - ein Nachsatz
+    fuer eine OFFENE Position ist nie eine neue Marktwahl (T-306). Ohne
+    `fuer_ausstieg` wuerde eine abgeleitete Position (z. B. NEAR-USDC) ihren
+    Notausstieg nicht nachsetzen koennen, sobald der Prozess neu startet
+    (ABLEITUNG_ERLAUBT ist prozesslokal und nur beim Einstieg gesetzt)."""
+    return _kf().stop_setzen(paar_fuer(inst, fuer_ausstieg), kontrakte, stop_preis, echt=True)
 
 
 def offene_positionen(inst=None, fuer_ausstieg=True):
