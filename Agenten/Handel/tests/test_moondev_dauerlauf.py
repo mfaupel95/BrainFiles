@@ -366,6 +366,14 @@ class ProzesslisteKodierungTest(unittest.TestCase):
         self.assertEqual(daten[0]["CommandLine"], "C:/Müller/x.py")
 
 
+class UngepuffertTest(unittest.TestCase):
+    def test_agenten_laufen_ungepuffert(self):
+        # stdout geht in eine Datei: ohne das Flag puffert Python 8 KB, ein
+        # wortkarger Agent (kraken) schrieb so stundenlang keine Zeile.
+        quelle = TREIBER.read_text(encoding="utf-8")
+        self.assertIn('umgebung["PYTHONUNBUFFERED"] = "1"', quelle)
+
+
 class LokalStandardTest(unittest.TestCase):
     def test_hausstandard_ist_qwen35_9b(self):
         # Auftrag Max 11.10.2026: qwen35-8k ist nicht mehr installiert.

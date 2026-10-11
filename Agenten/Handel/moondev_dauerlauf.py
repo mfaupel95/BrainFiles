@@ -485,6 +485,9 @@ class MoonDevDauerlauf:
         umgebung["HANDEL_RISIKO"] = self.risiko
         # Haus-Ordner fuer CSV-Export der Agenten (Emppfehlungen/Urteile).
         umgebung["MOONDEV_HAUS_DIR"] = str(HIER)
+        # stdout geht in eine Datei - ohne das Flag puffert Python 8 KB, und ein
+        # wortkarger Agent (kraken) schreibt stundenlang keine Zeile ins Log.
+        umgebung["PYTHONUNBUFFERED"] = "1"
         # PFLICHT: die Agenten drucken Emoji (print_fancy). Ueber eine PIPE
         # (subprocess.PIPE, kein echtes Konsolenfenster) faellt Python ohne
         # dieses Flag auf die Windows-ANSI-Codepage zurueck und stirbt beim
