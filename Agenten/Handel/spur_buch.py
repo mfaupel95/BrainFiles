@@ -751,8 +751,13 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
             # der ALTE Stop an der Boerse stehen - die Position ist dann
             # weiter geschuetzt; ein stiller Verlust des Schutzes waere die
             # ZEC-Lektion vom 26.09.2026.
+            # `trailing_stop_prozent` ist ein PROZENTWERT (3.0 = 3 %), wie in
+            # trailing.py und im Namen. Bis 09.10.2026 wurde er hier als Bruchteil
+            # gelesen: bei 3.0 kam `hoch * (1 - 3.0)` = negativ heraus, die
+            # Bedingung `neu > stop` war nie erfuellt und der Trailing lief in
+            # omnitrade_futures nie - ohne Meldung.
             try:
-                pct = float(w.get("trailing_stop_prozent") or 0.0)
+                pct = float(w.get("trailing_stop_prozent") or 0.0) / 100.0
             except (TypeError, ValueError):
                 pct = 0.0
             if pct > 0.0 and p.get("seite") == "long":
