@@ -1,10 +1,6 @@
 ## Offen
 
 
-- [ ] **T-384 - Documents/GitHub: 21 Klone ausserhalb der Flotte - 6 nicht in Werkstatt/Repos**
-      Kontext: C:\Users\faupe\Documents\GitHub haelt 21 git-Klone, die NICHT in Werkstatt/Repos liegen. Bekannte Repos (nautilus_trader, unsloth, financial-services, context7, onchainos-skills u. a.) und NEU/anders: OmniQuant (eigener Fork), OpenMobius-skill, awesome-trading-agents, data-mcp, fintool, moon-dev-ai-agents2. Fund beim Skill-Scan 09.10.2026 (23 SKILL.md). Naechster Schritt: Entscheidung Max - die 6 unbekannten nach Werkstatt/Repos verschieben (Hausmuster) oder loeschen; Duplikate der Flotte dort entfernen. Angelegt: 2026-10-09
-      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
-
 - [ ] **T-378 — BtcRegimeKurz abgelegt: Kante 1,2:1, nicht lebensfaehig**
       Kontext: Auftrag Max 05.10.2026 (BTC-Strategie fuer Seitwaerts-/Aufwaerts-Phasen,
       Haltung max 48 h, moeglichst kurz, hohe Fluktuation). Gebaut und gemessen:
@@ -1808,6 +1804,13 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-384 - Documents/GitHub: 21 Klone ausserhalb der Flotte - 6 nicht in Werkstatt/Repos**
+      Kontext: C:\Users\faupe\Documents\GitHub haelt 21 git-Klone, die NICHT in Werkstatt/Repos liegen. Bekannte Repos (nautilus_trader, unsloth, financial-services, context7, onchainos-skills u. a.) und NEU/anders: OmniQuant (eigener Fork), OpenMobius-skill, awesome-trading-agents, data-mcp, fintool, moon-dev-ai-agents2. Fund beim Skill-Scan 09.10.2026 (23 SKILL.md). Naechster Schritt: Entscheidung Max - die 6 unbekannten nach Werkstatt/Repos verschieben (Hausmuster) oder loeschen; Duplikate der Flotte dort entfernen. Angelegt: 2026-10-09
+      **Erledigt 2026-10-11 (Auftrag Max 'T384 klonen').** Gemessen: von den damals 6 unbekannten waren 4 (OpenMobius-skill, awesome-trading-agents, data-mcp, fintool) inzwischen schon in Werkstatt/Repos. Die 3 echten fehlenden Fork-Repos nach Werkstatt/Repos verschoben: OmniQuant (origin=mfaupel95, upstream=OpenGVLab), cli (origin=mfaupel95, upstream=firecrawl), moon-dev-ai-agents2 (origin=mfaupel95, eigener Fork ohne upstream). Alle 3 in repos-zentrale.json aufgenommen (fuellen.py --anwenden, 265 Eintraege). Nicht verschoben: chromaprint (kein mfaupel95-Fork, Audio-Bibliothek, liegt schon in Werkstatt/repos-verschoben-aus-skills), mfaupel95 (Profil-Repo, 1 Commit), one-skill-to-rule-them-all-main + productivity (keine .git). Duplikate der Flotte in Documents/GitHub bleiben stehen (bewusst, kein Loeschauftrag).
+      Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
+
+
+
 - [x] **T-181 — Bonsai-Einbau der parallelen Sitzung nutzt Port 8080 (freqtrade-Konflikt)**
       **Erledigt 2026-10-11.** bonsai-provider-einbauen.py schreibt Port 8081 (gemessen), kein 8080-Freqtrade-Konflikt mehr.
       Kontext: Eine parallele Sitzung baut Bonsai ein (Agenten/Hermes/scripts/bonsai-provider-einbauen.py) mit Port 8080 - genau der Port, den der Freqtrade-Container belegt (127.0.0.1:8080->8080). Ich habe am 29.09. auf 8081 umgestellt (Starter + Config); das Skript der parallelen Sitzung wuerde 8080 wieder einschreiben.
