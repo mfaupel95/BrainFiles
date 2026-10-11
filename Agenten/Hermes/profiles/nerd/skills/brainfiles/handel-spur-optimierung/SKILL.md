@@ -451,6 +451,32 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
   "nicht auswertbar", nicht als gewonnen, und die Periode gehoert in den Bericht
   - dieselbe Spur steht ueber 5,7 Jahre bei +0,08 % je Runde netto und im
   12-Monats-Fenster bei -0,99 %.
+- **Ein kurzes Fenster ist kein Urteil — die volle verfuegbare Historie fahren,
+  bevor eine Spur beurteilt wird.** Der Standard-Backtest (`--kerzen 3000` =
+  ~125 Tage) ist ein guenstiger Ausschnitt, kein Beleg: gemessen an squeeze
+  war das 125-Tage-Fenster positiv (+0,345 USD/Runde, Quote 45 %), das volle
+  716-Tage-Fenster negativ (-0,102 USD/Runde, Quote 38,6 %). Ein positives
+  kurzes Fenster heisst nur, dass der Zeitraum guenstig war. Vor jedem
+  Spur-Urteil die volle verfuegbare Historie fahren (bei Binance-Reihen ab
+  2021: `replay.lauf_a(spur, gebuehr, lauf, bis_ms=..., wachen_patch=...)` mit
+  `bis_ms` auf das Fensterende) und die Quote/Runden beider Fensterlaengen
+  nebeneinander nennen — schrumpft die Quote mit dem Fenster, war das kurze
+  Fenster der Ausreisser.
+- **Haus-Backtest gegen Freqtrade vergleichen heisst: Zeitraum UND Spur
+  angleichen.** Die Freqtrade-Referenz (z. B. 541 Runden / -4,45 %) ist nur
+  dann squeeze-spezifisch, wenn `hausspur.name = squeeze` in der
+  Backtest-Config steht (die HausSpur-Strategie faehrt sonst ALLE Spuren), und
+  sie laeuft ueber 716 Tage auf Binance Futures, waehrend der Haus-Backtest
+  standardmaessig 125 Tage auf OKX-Spot faehrt. Zwei verschiedene Zeitraeume
+  und Boersen sind kein Vergleich — erst beide auf dasselbe Fenster und
+  dieselbe Spur bringen, dann die Richtung (nicht die Hohe) gegenhalten.
+- **`kosten_wendepunkt.runden_aus_journal(pfad)` gibt ein TUPEL zurueck
+  `(runden, zwang)`, nicht die Rundenliste.** `wendepunkt()` nimmt die
+  Rundenliste als Argument. Wer das Tupel direkt in `wendepunkt()` steckt,
+  bekommt `TypeError: must be real number, not tuple`; wer `runden_aus_journal`
+  als `kennzahlen`-Ersatz ruft, findet kein Attribut `kennzahlen`. Die
+  Kennzahlen heissen `R, C, p, f_max, ev_ohne, ergebnis_summe` (kein
+  `netto_pct_mittel`).
 - **Backtest-Runden sind Messung, keine Freigabe.** Sie zaehlen NICHT fuer die
   Bedingungen in `Wissen/Handelsregeln.md` und gehoeren getrennt ausgewiesen -
   ein historischer Lauf ist keine Live-Erfahrung.

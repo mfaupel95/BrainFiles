@@ -188,6 +188,7 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 
 ### Tips
 
+- **Recurring job edits:** use `cronjob_manage` only for jobs returned by its own `list`; a successful update response is not enough if the schedule shown back is unchanged. Re-read with `list` and verify the stored schedule. For jobs managed by a separate named Hermes profile (`hermes --profile default cron ...`), use that profile's CLI and confirm the active entry afterward; the connected cron gateway may be a different scheduler with an unrelated job list.
 - **Prefer `delegate_task` for quick subtasks** — less overhead than spawning a full process
 - **Use `-w` (worktree mode)** when spawning agents that edit code — prevents git conflicts
 - **Set timeouts** for one-shot mode — complex tasks can take 5-10 minutes

@@ -831,7 +831,18 @@ Kurzfassung ersetzt die Begruendung nicht.
   (`xperp/stopwahl.py`) gibt die alte Form weiter und bricht erst zur Laufzeit
   (Kerzenliste in der URL -> HTTP 414 „URI Too Long“). Nach jeder Aenderung an
   einer geteilten Funktion `grep -rn "<symbol>("` ueber ganz `Handel/` (auch
-  Nachbartools) und jede Fundstelle mit der neuen Form versorgen.
+ Nachbartools) und jede Fundstelle mit der neuen Form versorgen.
+ - **Einen neuen Konfigurationsschalter an eine Funktion haengen, die die Wachen
+ nicht bekommt: Parameter mit Default ergaenzen, nicht jeden Aufrufer umbauen.**
+ Braucht eine Spur-Funktion einen neuen `wachen.json`-Schalter, reicht aber
+ kein `w`-Dict durch (z. B. `flach_stellen(z, live, grund)`), den Parameter
+ mit `w=None` ergaenzen und den Schalter als `(w or {}).get(...)` lesen —
+ fehlendes Dict ist dann schlicht "aus". So bleiben alle bestehenden Aufrufer
+ (Tests, die die Funktion ohne `w` rufen) unveraendert gruen, statt dass jeder
+ einzeln auf die neue Signatur gezogen werden muss. Das ist die VORBEUGENDE
+ Kehrseite der zwei Regeln oben (Doubles muessen mit, ungetestete Aufrufer
+ brechen): ein neuer Parameter mit Default bricht niemanden, ein neuer
+ Pflichtparameter bricht jeden Aufrufer, den kein Test beruehrt.
 - **Ein Stummel im Testbaum kann den geaenderten Aufruf verbergen — am echten
   Aufruf beweisen.** Ersetzen die Tests den AUFRUFER durch einen Stummel
   (`h.anlauf = anlauf_stummel`), prueft kein Test, ob der echte Aufrufer den neuen

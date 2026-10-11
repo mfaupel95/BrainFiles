@@ -1,4 +1,4 @@
-"""Nautilus-Reiter im Leitstand: Trennung Fenster/Inhalt, Reiter-Interface.
+"""Nautilus-Reiter im Leitstand: Trennung Fenster/Inhalt, Reiter-Interface, Kraken-Tabs.
 
 Geprueft wird die EIGENTLICHT zu sichernde Regel: `NautilusFrame` ist ein
 Frame ohne Fensterpflege (kein title/geometry/minsize/protocol/destroy), und
@@ -8,6 +8,9 @@ Einbetten ein Fenster im Fenster - der Fehler faellt erst zur Laufzeit auf.
 Auch geprueft: ein Reiter, dessen nautilus_trader fehlt, baut trotzdem - mit
 Begruendung statt Absturz. Und: Leitstand.py importiert Nautilus nicht direkt,
 sonst waere ein fehlendes Rad ein toter Leitstand.
+
+Ausbau 11.10.2026: Drei Tabs (OKX DEMO, Kraken Spot, Kraken Futures).
+Die Kraken-Nodes laufen als Kindprozesse, read-only, ohne API-Keys.
 
 Ohne Nautilus im venv werden die Teiltests uebersprungen; der Fall "fehlt"
 wird mit einer Attrappe geprueft, der braucht kein echtes Rad.
@@ -19,7 +22,7 @@ import sys
 import unittest
 from pathlib import Path
 from tkinter import ttk
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -66,8 +69,6 @@ class Trennung(unittest.TestCase):
             self.assertIn(pflicht, quelle, pflicht)
 
     def test_der_rahmen_importiert_nautilus_nicht(self):
-        # Wer nautilus_trader direkt in leitstand.py laedt, macht den ganzen
-        # Leitstand zur Beute eines fehlenden Rades.
         self.assertNotIn("nautilus_gui", lst.__file__ and
                          Path(lst.__file__).read_text(encoding="utf-8"))
 
@@ -83,7 +84,6 @@ class ReiterOhneRad(unittest.TestCase):
             self.skipTest("kein Bildschirm: %s" % e)
         self.root.withdraw()
         self.addCleanup(self._zu)
-        self.tmp = None
 
     def _zu(self):
         try:
@@ -98,7 +98,7 @@ class ReiterOhneRad(unittest.TestCase):
         self.assertEqual(r.titel_zusatz(), " (fehlt)")
         self.assertIn("fehlt", r.status())
         self.assertTrue(r.abbrechbar())
-        self.assertIsNone(r.frame)
+        self.assertFalse(hasattr(r, "_okx_frame"))
         texte = [w.cget("text") for w in r.winfo_children()
                  if isinstance(w, ttk.Label)]
         self.assertTrue(any("nautilus_trader fehlt" in t for t in texte), texte)
@@ -131,13 +131,13 @@ class ReiterMitAttrappe(unittest.TestCase):
         m = type("M", (), {"NautilusFrame": self.Attrappe})
         with patch.object(ln, "nautilus_gui_laden", return_value=(m, "")):
             r = ln.NautilusReiter(self.root, type("L", (), {})())
-        r.frame._running = laeuft
+        r._okx_frame._running = laeuft
         return r
 
     def test_laufender_node_zeigt_punkt_und_sperrt_das_schliessen(self):
         r = self._reiter(True)
-        self.assertEqual(r.titel_zusatz(), " ●")
-        self.assertIn("läuft", r.status())
+        self.assertEqual(r.titel_zusatz(), " \u25cf")
+        self.assertIn("l\u00e4uft", r.status())
         self.assertFalse(r.abbrechbar())
 
     def test_stehender_node_zeigt_nichts(self):
@@ -151,10 +151,140 @@ class ReiterMitAttrappe(unittest.TestCase):
         self.assertIsNone(r.refresh())
 
 
+class KrakenTabs(unittest.TestCase):
+    """Ausbau 11.10.2026: Kraken Spot und Futures als Tabs."""
+
+    def setUp(self):
+        import tkinter as tk
+        try:
+            self.root = tk.Tk()
+        except tk.TclError as e:
+            self.skipTest("kein Bildschirm: %s" % e)
+        self.root.withdraw()
+        self.addCleanup(self._zu)
+
+    def _zu(self):
+        try:
+            self.root.destroy()
+        except tk.TclError:
+            pass
+
+    def test_zwei_kraken_tabs(self):
+        m = type("M", (), {"NautilusFrame": lambda eltern: ttk.Frame(eltern)})
+        with patch.object(ln, "nautilus_gui_laden", return_value=(m, "")):
+            r = ln.NautilusReiter(self.root, type("L", (), {})())
+        self.assertEqual(len(r._kraken_frames), 2)
+        self.assertIn("spot", r._kraken_frames)
+        self.assertIn("futures", r._kraken_frames)
+
+    def test_kraken_spot_frame(self):
+        m = type("M", (), {"NautilusFrame": lambda eltern: ttk.Frame(eltern)})
+        with patch.object(ln, "nautilus_gui_laden", return_value=(m, "")):
+            r = ln.NautilusReiter(self.root, type("L", (), {})())
+        f = r._kraken_frames["spot"]
+        self.assertEqual(f.produkt, "spot")
+        self.assertEqual(f.symbol, "BTC/EUR")
+
+    def test_kraken_futures_frame(self):
+        m = type("M", (), {"NautilusFrame": lambda eltern: ttk.Frame(eltern)})
+        with patch.object(ln, "nautilus_gui_laden", return_value=(m, "")):
+            r = ln.NautilusReiter(self.root, type("L", (), {})())
+        f = r._kraken_frames["futures"]
+        self.assertEqual(f.produkt, "futures")
+        self.assertEqual(f.symbol, "PF_SOLUSD")
+
+    def test_kraken_pid_dateien_unterschiedlich(self):
+        m = type("M", (), {"NautilusFrame": lambda eltern: ttk.Frame(eltern)})
+        with patch.object(ln, "nautilus_gui_laden", return_value=(m, "")):
+            r = ln.NautilusReiter(self.root, type("L", (), {})())
+        spot_pid = r._kraken_frames["spot"]._pid_pfad
+        futures_pid = r._kraken_frames["futures"]._pid_pfad
+        self.assertNotEqual(spot_pid, futures_pid)
+
+    def test_kraken_titel_zusatz_wenn_spot_laeuft(self):
+        m = type("M", (), {"NautilusFrame": lambda eltern: ttk.Frame(eltern)})
+        with patch.object(ln, "nautilus_gui_laden", return_value=(m, "")):
+            r = ln.NautilusReiter(self.root, type("L", (), {})())
+        r._kraken_frames["spot"]._prozess = MagicMock()
+        r._kraken_frames["spot"]._prozess.poll.return_value = None
+        self.assertEqual(r.titel_zusatz(), " \u25cf")
+
+    def test_kraken_abbrechbar_when_spot_laeuft(self):
+        m = type("M", (), {"NautilusFrame": lambda eltern: ttk.Frame(eltern)})
+        with patch.object(ln, "nautilus_gui_laden", return_value=(m, "")):
+            r = ln.NautilusReiter(self.root, type("L", (), {})())
+        r._kraken_frames["spot"]._prozess = MagicMock()
+        r._kraken_frames["spot"]._prozess.poll.return_value = None
+        self.assertFalse(r.abbrechbar())
+
+    def test_kraken_status_wenn_spot_laeuft(self):
+        m = type("M", (), {"NautilusFrame": lambda eltern: ttk.Frame(eltern)})
+        with patch.object(ln, "nautilus_gui_laden", return_value=(m, "")):
+            r = ln.NautilusReiter(self.root, type("L", (), {})())
+        r._kraken_frames["spot"]._prozess = MagicMock()
+        r._kraken_frames["spot"]._prozess.poll.return_value = None
+        self.assertIn("Kraken spot l\u00e4uft", r.status())
+
+
+class KrakenNodeStartStop(unittest.TestCase):
+    """Kraken-Node: Start/Stop als Kindprozess."""
+
+    def setUp(self):
+        import tkinter as tk
+        try:
+            self.root = tk.Tk()
+        except tk.TclError as e:
+            self.skipTest("kein Bildschirm: %s" % e)
+        self.root.withdraw()
+        self.addCleanup(self._zu)
+
+    def _zu(self):
+        try:
+            self.root.destroy()
+        except tk.TclError:
+            pass
+
+    def test_start_schreibt_pid_datei(self):
+        f = ln._KrakenNodeFrame(self.root, "spot", "BTC/EUR")
+        f._pid_pfad.unlink(missing_ok=True)
+        with patch.object(ln.subprocess, "Popen") as mock_popen:
+            mock_proc = MagicMock()
+            mock_proc.pid = 12345
+            mock_popen.return_value = mock_proc
+            f._starten()
+            self.assertTrue(f._pid_pfad.exists())
+            self.assertEqual(f._pid(), 12345)
+        f._pid_pfad.unlink(missing_ok=True)
+
+    def test_stop_loescht_pid_datei(self):
+        f = ln._KrakenNodeFrame(self.root, "spot", "BTC/EUR")
+        f._pid_pfad.write_text("12345\n", encoding="ascii")
+        with patch.object(ln, "psutil") as mock_psutil:
+            mock_proc = MagicMock()
+            mock_psutil.Process.return_value = mock_proc
+            f._stoppen()
+            self.assertFalse(f._pid_pfad.exists())
+
+    def test_keys_werden_aus_env_entfernt(self):
+        f = ln._KrakenNodeFrame(self.root, "spot", "BTC/EUR")
+        f._pid_pfad.unlink(missing_ok=True)
+        with patch.object(ln.subprocess, "Popen") as mock_popen:
+            mock_proc = MagicMock()
+            mock_proc.pid = 11111
+            captured_env = {}
+            def capture(*args, **kwargs):
+                captured_env.update(kwargs.get("env", {}))
+                return mock_proc
+            mock_popen.side_effect = capture
+            f._starten()
+            self.assertNotIn("KRAKEN_SPOT_API_KEY", captured_env)
+            self.assertNotIn("KRAKEN_SPOT_API_SECRET", captured_env)
+            self.assertEqual(captured_env.get("KRAKEN_PRODUKT"), "spot")
+        f._pid_pfad.unlink(missing_ok=True)
+
+
 class Verdrahtung(unittest.TestCase):
     def test_der_reiter_haengt_am_rahmen(self):
-        # Ueber den Titel, nicht ueber die Position: seit Prozesse (7) und
-        # FreqTrade (8, 10.10.2026) ist Nautilus nicht mehr der letzte Reiter.
         i = [t for t, _k in lst.REITER].index("Nautilus")
         self.assertIs(lst.REITER[i][1], ln.NautilusReiter)
         self.assertEqual(lst.KUERZEL["<Control-Key-%d>" % (i + 1)], ("reiter", i))
@@ -169,12 +299,7 @@ class Verdrahtung(unittest.TestCase):
 
 
 class OrderClientBeschriftet(unittest.TestCase):
-    """T-343: der Haken ist KEIN Weg der Spuren - und das steht sichtbar da.
-
-    Ein dauerhaftes Wort in einer Fussnote wird ueberlesen. Deshalb sind es
-    drei Stellen: der Hinweis erscheint BEIM Anhaeken, die Warnung steht ueber
-    dem Log, und jeder Start mit Haaken schreibt es ins Protokoll.
-    """
+    """T-343: der Haken ist KEIN Weg der Spuren - und das steht sichtbar da."""
 
     def setUp(self):
         import tkinter as tk
@@ -199,13 +324,12 @@ class OrderClientBeschriftet(unittest.TestCase):
         return self.modul.NautilusFrame(self.root)
 
     def _texte(self, widget, tief=0):
-        """Alle Texte unterhalb eines Widgets."""
         r = []
         try:
             t = widget.cget("text")
             if t:
                 r.append(str(t))
-        except Exception:            # kein Text-Option (Frames, Canvas)
+        except Exception:
             pass
         for k in widget.winfo_children():
             r += self._texte(k, tief + 1)
@@ -215,8 +339,7 @@ class OrderClientBeschriftet(unittest.TestCase):
         f = self.frame()
         self.assertFalse(f.order_var.get())
         f._order_hinweis_sichtbar()
-        self.assertFalse(f.order_hinweis.winfo_manager(),
-                         "ohne Haaken darf der Hinweis nicht stehen")
+        self.assertFalse(f.order_hinweis.winfo_manager())
         f.order_var.set(True)
         f._order_hinweis_sichtbar()
         self.assertEqual(f.order_hinweis.winfo_manager(), "pack")
@@ -231,9 +354,6 @@ class OrderClientBeschriftet(unittest.TestCase):
     def test_jeder_start_mit_haken_schreibt_es_ins_log(self):
         f = self.frame()
         f.order_var.set(True)
-        # start_node darf hier KEINEN Node bauen - der Test prueft die
-        # Hinweiszeile, nicht den Start. `load_client_configs` ist die Naht:
-        # sie wirft SystemExit, bevor ein Node entsteht (fehlende Keys).
         with patch.object(f, "_log") as geloggt, \
              patch.object(self.modul.node_mod, "load_client_configs",
                           side_effect=SystemExit("Keys fehlen")):

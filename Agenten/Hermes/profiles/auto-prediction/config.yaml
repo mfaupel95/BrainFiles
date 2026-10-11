@@ -1,5 +1,5 @@
 model:
-  default: inclusionai/ling-3.0-flash-fin:free
+  default: deepseek/deepseek-v4-flash-0731:US
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -439,3 +439,6 @@ terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\Handel\OpenAlice\workspaces\workspaces\auto-prediction-modest-birch-bridge
   timeout: 180
+onboarding:
+  seen:
+    profile_build_offered: true

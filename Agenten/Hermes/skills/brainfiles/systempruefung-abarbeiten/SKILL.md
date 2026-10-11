@@ -121,8 +121,50 @@ zum Befund mit dem eigenen Protokoll daneben.
     `--author="Hermes <hermes@local>"` fuer eigene, `fremd@local` fuer fremde
     Arbeit; `git push origin master`.
 
+## Befund-Klassen: konkrete Behebung
+
+Die haeufigsten Entscheiden-Zeilen und ihre Aufloesung (jede mit echtem Lauf
+belegt, nicht nur umgebaut):
+
+- **MCP-Drift "im Manifest aktiv, fehlt bei Hermes"** — die Richtung bestimmt
+  der IST-Zustand, nicht das Manifest. Pruefen: laeuft die App, die der Server
+  braucht (Prozess), und kennt die Claude-Config den Server? Laeuft die App
+  nicht und fehlt er in Claude, ist die Hermes-Config (`enabled: false`) die
+  neuere Wahrheit — das Manifest auf `false` anheben (gleiche Bauart wie
+  blender), NICHT den Server erzwingen. Danach `mcp-sync-check.ps1` erneut:
+  muss "ALLES IN ORDNUNG" melden.
+- **Fremd-Grenze "Ordner liegt nicht auf der Platte"** — erst pruefen, ob der
+  Ordner verschoben wurde (z. B. nach `Werkstatt/Repos/`). Liegt er unter einem
+  bereits gelisteten Elternordner (`Werkstatt/Repos` ist als Ganzes gelistet),
+  ist der Einzeleintrag REDUNDANT und wird entfernt, nicht auf den neuen Pfad
+  umgeschrieben. `fremd.py --pruefen` nennt die Redundanz selbst ("ein Eintrag
+  genuegt (der kuerzere)").
+- **konfig-doktor "Datei hinter Flag fehlt"** (Status "Vermutung") — ist oft
+  ein Fehlalarm: die Datei ist optional oder wird vom Server selbst erzeugt.
+  Vor jedem Umbau pruefen, ob der Server nachweislich laeuft (mcp-sync-check
+  OK, Werkzeuge antworten). Laeuft er, ist der Pfad im Manifest eine harmlose
+  Altlast — nicht anfassen.
+- **Bedingung 4 "Ziel fehlt / Ordner nicht erreichbar"** — der Q:-Zielordner
+  der Spur existiert schlicht nicht. Fix: `mkdir -p Q:\Handel_Journal\<spur>`;
+  der naechste Dauerlauf-Zyklus spiegelt hinein. Danach `spiegelstand.py`
+  erneut — muss "gleich" melden.
+- **Herzschlag-Wert weicht von der Regel ab** (Block 11b) — beim Korrigieren
+  des Werts AUCH die Felder `_herzschlag_regel` und `_herzschlag_folge` in
+  derselben wachen.json anheben: sie koennen den Stand VOR der Regelanderung
+  beschreiben und widersprechen sonst dem neuen Wert. Wert + Feldtexte in
+  einem Zug, mit `.bak-JJJJMMTT`.
+
 ## Pitfalls
 
+- **JSON-Konfigdateien (Manifest, wachen.json, FREMD-Liste) nicht mit dem
+  fuzzy patch-Werkzeug editieren.** Es verzieht bei mehrzeiligen Bloecken die
+  Einrueckung und schleust Tippfehler in Stringwerte ein (`Werkstatttatt`,
+  `WerkWerkstatt`), und der Escape-Drift-Fehler verlangt Backslash-Zaehlen.
+  Fuer strukturierte Dateien den Block per Python `json.load`/`json.dump`
+  aendern (ein Feld setzen, dann zurueckschreiben) und danach IMMER
+  `json.loads` als Validierung laufen lassen — der Patch-Mechanismus meldet
+  "JSON ok" nicht von selbst. Ein Tippfehler in einem Pfadwert faellt sonst
+  erst beim naechsten Prueflauf auf.
 - **Ein Haenger ist kein "kein Befund".** Der Bericht wird am Ende geschrieben:
   haengt Block 14, fehlen ALLE Bloecke danach, und `letzter-lauf.md` bleibt
   tagealt, waehrend jeden Morgen ein Tageslog entsteht. Der Aufgabenzustand
