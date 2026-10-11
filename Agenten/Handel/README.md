@@ -1127,9 +1127,3 @@ genau die zwei Fehler, die nur beim echten Start auftreten (fehlendes
 `from tkinter import ttk`, ein `root` in einer Builder-Methode, die nur
 `self.root` kennt). Deshalb wird das Fenster wirklich gebaut, einmal gezeichnet
 und wieder geschlossen.
-
-## Handelsagenten und Auswertungs-Aufgaben (Kopien, 11.10.2026)
-
-Lesekopien zur Pruefung (Originale: `~/.claude/agents/handels-*.md` und `~/.claude/scheduled-tasks/*/SKILL.md`):
-`agenten/` = Handelskette scanner -> pruefer -> disponent, `aufgaben/` = die zwei Omnitrade-Auswertungen mit Telegram-Meldung.
-Vor Aenderungen immer das Original anpassen; diese Kopien dann nachziehen.
