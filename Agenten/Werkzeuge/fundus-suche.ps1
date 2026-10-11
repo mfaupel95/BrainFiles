@@ -4,7 +4,7 @@
 
   Zwei Quellen:
     Fundus:        %USERPROFILE%\Documents\GitHub  (alle Skill-Klone dort)
-    Werkstatt:     Werkstatt/Repos (19 Repos mit SKILL.md, ~356 Dateien)
+    Werkstatt:     Werkstatt/Repos (34 Repos mit SKILL.md, ~1022 Dateien)
   Wuerde man alle in die Hermes-Bibliothek legen, kostet das ~14.700 Tokens
   bei JEDER Anfrage. Dieses Skript haelt sie draussen und sucht nur auf
   Anforderung - in beiden Baeumen zugleich.
