@@ -162,17 +162,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       `prognose.json` (streng, `max_volatilitaet_pa: 2.0`).
       `prognose.weit.json` blieb auf **1.2** - obwohl der eigene Kommentar dort
       woertlich sagt "Wie wachen.json max_volatilitaet_pa".
-      Wirkung heute: omniquant liest inzwischen die WEITE Fassung
-      (`wachen.json: prognose_fassung=weit`, weil der strenge Bericht seit Tagen
-      0 Treffer liefert) und faehrt damit eine Grenze, die Max vor zwei Wochen
-      ausdruecklich angehoben hat. `prognose.py:212` weist jeden Markt ueber der
-      Grenze ab - der weite Bericht erbt also das alte, strengere Tor.
-      Gemessen am Bericht vom 10.10. 22:58: 53 Maerkte geprueft, **0 Treffer im
-      strengen, 3 im weiten** (OKB 66,7 / ADA 60,7 / BTC-USDC 61,1).
-      Naechster Schritt: entscheiden, ob die weite Fassung die 2,0 erben soll
-      (dann `max_volatilitaet_pa` dort auf 2.0 setzen und den Widerspruch in
-      beiden Kommentaren aufloesen). Gegenprobe: Bericht neu fahren und
-      Maerkte/Treffer vorher-nachher nennen.
+      **KORRIGIERT 11.10.2026 - die Grenze ist derzeit WIRKUNGSLOS.** Mein erster
+      Befund ("die weite Fassung faehrt eine zu strenge Grenze und kostet
+      Signale") ist widerlegt. Gemessen an allen 20 Berichten 02.-11.10.2026,
+      hoechste Vola je Bericht unter den Treffern:
+        02.10.weit 1.05 | 03.10.weit 1.05 | 05.10.weit 1.09 | 06.10.weit 1.09
+        07.10.weit 1.10 | 08.10.weit 0.99 | 09.10.weit 1.05 | 10.10.weit 0.79
+        11.10.weit 0.98
+      Hoechster Wert ueberhaupt: **1,10**. Beide Grenzen - 1,2 (weit) UND 2,0
+      (streng) - liegen darueber. In zehn Tagen hat die Vola-Grenze also KEINEN
+      Markt abgewiesen; ein Markt zwischen 1,2 und 2,0 ist nicht aufgetreten.
+      Die Inkonsistenz bleibt echt (die weite Fassung hat die Erhoehung vom
+      25.09. nicht bekommen, obwohl ihr Kommentar "Wie wachen.json" sagt), aber
+      sie ist eine ORDNUNGSFRAGE, keine Bremse.
+      Naechster Schritt (Entscheidung Max): entweder die 2,0 nachziehen
+      (Konsistenz) oder die 1,2 stehen lassen und den Kommentar richtigstellen -
+      dann sagt die Datei, was sie meint. Beides ist vertretbar, solange die
+      Zahl zur Begruendung passt.
       Betrifft: Agenten/Handel/prognose.weit.json, Agenten/Handel/prognose.json
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
 
