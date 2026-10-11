@@ -61,6 +61,73 @@
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-393 — omniquant hat kein Pflichtband: der Stop kommt ungeprueft aus dem Bericht**
+      Kontext: `omniquant/wachen.json` traegt weder `pflicht_stop_prozent_min/max`
+      noch `stop_prozent` noch `stop_atr_faktor`. Die Hauspruefung in
+      `freigabe.py` hat zwei Zweige: SPOTARTIG (prueft smin..smax, Defaults 4..12)
+      und Kontrakt (prueft `stop_atr_faktor`, Default 1.5). omniquant ist
+      KEINES von beiden: `boerse=kraken_futures`, `hebel=6` - es faellt in den
+      Kontrakt-Zweig, und der liest ein Feld, das nicht existiert. Der Stop
+      wird also nirgends gegen eine Grenze gehalten.
+      GEMESSEN an den 40 Einstiegen im eigenen Journal
+      (`omniquant/handelsjournal.csv`): schmalster Stop 4,92 %, Median 11,32 %,
+      breitester 13,96 %. Bei Hebel 6 und 50 USD Einsatz kostet der Median-Stop
+      **33,95 USD = 68 % des Einsatzes**; der breiteste 41,89 USD = 84 %.
+      Der Stop macht damit die Arbeit der Positionsgroesse - bei einer Spur mit
+      EINEM Live-Platz und 50 USD ist das der halbe Kontostand je Fehlversuch.
+      Naechster Schritt (Entscheidung Max): Band in `omniquant/wachen.json`
+      eintragen. Zwei Wege, beide begruendbar:
+        (a) wie xperp: `stop_atr_faktor` 1.5 + `ziel_atr_faktor` 3.0 (dann
+            rechnet der Kontrakt-Zweig und die Grenze greift),
+        (b) wie die Klassik-Spuren: `stop_prozent` 3.0 + Band 1.8..6.0.
+      Vorher klaeren, ob der Bericht den Stop ueberhaupt so eng liefern kann -
+      `prognose.py` klemmt ihn selbst auf `stop_min_pct..stop_max_pct` (5..12),
+      der Median 11,32 % ist also eine FOLGE dieser Klammer, nicht des Marktes.
+      Betrifft: Agenten/Handel/omniquant/wachen.json, Agenten/Handel/freigabe.py,
+      Agenten/Handel/prognose.json
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+
+- [ ] **T-394 — Der weite Prognose-Bericht hat die Vola-Erhoehung vom 25.09. nicht bekommen**
+      Kontext: Am 25.09.2026 hat Max die erlaubte Volatilitaet von 1,2 auf 2,0
+      erhoeht ("erlaubte Volatilitaet erhoehen"). Die Aenderung steht nur in
+      `prognose.json` (streng, `max_volatilitaet_pa: 2.0`).
+      `prognose.weit.json` blieb auf **1.2** - obwohl der eigene Kommentar dort
+      woertlich sagt "Wie wachen.json max_volatilitaet_pa".
+      Wirkung heute: omniquant liest inzwischen die WEITE Fassung
+      (`wachen.json: prognose_fassung=weit`, weil der strenge Bericht seit Tagen
+      0 Treffer liefert) und faehrt damit eine Grenze, die Max vor zwei Wochen
+      ausdruecklich angehoben hat. `prognose.py:212` weist jeden Markt ueber der
+      Grenze ab - der weite Bericht erbt also das alte, strengere Tor.
+      Gemessen am Bericht vom 10.10. 22:58: 53 Maerkte geprueft, **0 Treffer im
+      strengen, 3 im weiten** (OKB 66,7 / ADA 60,7 / BTC-USDC 61,1).
+      Naechster Schritt: entscheiden, ob die weite Fassung die 2,0 erben soll
+      (dann `max_volatilitaet_pa` dort auf 2.0 setzen und den Widerspruch in
+      beiden Kommentaren aufloesen). Gegenprobe: Bericht neu fahren und
+      Maerkte/Treffer vorher-nachher nennen.
+      Betrifft: Agenten/Handel/prognose.weit.json, Agenten/Handel/prognose.json
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+
+- [ ] **T-395 — Der Sweep prueft den Code nicht: Syntax-Tor gebaut, Testlauf-Suite bricht vorher ab**
+      Kontext: `fremdarbeit-einziehen.ps1` hat am 11.10.2026 zwei echte Defekte
+      nach master gebracht (in 4a4357e1 zurueckgenommen: `getattr` mit vier
+      Argumenten -> TypeError in jedem `status()`-Aufruf; zweite Kraken-Node-
+      Klasse gegen den read-only-Kontrakt). Die Handel-Suite lag dadurch rot.
+      GEBAUT (387c9037): `Agenten/Hermes/scripts/syntax-tor-wache.py` (Syntax +
+      Argumentzahl bekannter Builtins + roter Testlauf gegen die neue
+      `testlauf_basis.json`), als Tor direkt in der Routine VOR `git commit-tree`
+      verdrahtet, Cron `syntax-tor-wache` (Job 3139b9d19ea9, 6 h).
+      OFFEN: die grosse `tests`-Suite (170 Testdateien) bricht VOR ihrer
+      Zusammenfassung ab - `testlauf.py` liefert dafuer `fehler: -1`, die
+      Basislinie fuehrt sie deshalb als unbekannt. Ein unbekanntes Ergebnis
+      gilt im Laeufer immer als Rueckschritt, kann also nie gruen werden.
+      Sichtbarer Grund: ein Tcl-Interpreter-Leak (gh-83274) aus Tkinter-Tests
+      und ein `WinError 32` auf `cache/okx-takt/fenster.json.tmp-*`.
+      Naechster Schritt: die Suite in zwei Laeufe teilen (Tkinter-Tests
+      getrennt) oder `-f`/`-v` nutzen, um die abbrechende Datei zu benennen;
+      danach `testlauf.py --basis-schreiben`.
+      Betrifft: Agenten/Handel/tests/, Agenten/Handel/testlauf.py,
+      Agenten/Handel/testlauf_basis.json
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
 - [ ] **T-391 — Drei Kennungen rotieren (Anthropic, Telegram-Bot, OpenAI)**
       Kontext: T-070 geschlossen 2026-10-11 - die .env.example ist belegt sauber
       (alle Secrets leer, nie versioniert, origin/privat gepusht ohne Wert).
