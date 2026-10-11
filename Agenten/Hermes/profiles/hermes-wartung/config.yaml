@@ -32,7 +32,6 @@ fallback_providers:
 plugins:
   enabled: []
 _config_version: 50
-agent: {}
 onboarding:
   seen:
     tool_progress_prompt: true
@@ -123,3 +122,6 @@ skills:
     - grounded-citations
     - llm-wiki
     - xurl
+command_allowlist:
+  - execute_code
+  - script execution via -e/-c flag
