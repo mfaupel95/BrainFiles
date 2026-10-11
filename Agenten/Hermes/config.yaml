@@ -963,6 +963,11 @@ gateway:
       chat_id: '7648512088'
       profile: default
       enabled: true
+    - name: telegram-gruppe-bots
+      platform: telegram
+      chat_id: '-1003980261765'
+      profile: bots
+      enabled: true
   platforms:
     a2a:
       enabled: true
