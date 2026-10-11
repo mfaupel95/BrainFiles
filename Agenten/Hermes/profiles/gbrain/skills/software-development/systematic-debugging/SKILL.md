@@ -84,6 +84,58 @@ checks (e.g. `'2026' != '2026-10-07'`); read it first, then make the debug asser
 property, not a nearby one. If the debug and the test disagree, the debug is the weaker
 witness — trust the test's assertion, and widen the debug to check the same value.
 
+**A log line that matches the symptom is not the end of the log.** Before concluding a run
+aborted, crashed, or hung, prove the process is actually gone AND search the WHOLE log for the
+summary line (`Ran N tests`, `FAILED`, an exit marker) — do not read the tail and infer. The tail
+holds the noisiest lines, not the last ones: warnings, `ResourceWarning`, a leaked-interpreter
+note, a `WinError 32` on a temp file all sit at the bottom of runs that finished cleanly hundreds
+of lines above them. The failure this produces is a confident, wrong diagnosis: "the suite aborts
+before its summary" is a very different claim from "the suite is slower than its timeout", and
+they need opposite fixes. Grep for the summary first; only if it is absent is the run unfinished.
+
+**An absent entry is not automatically a defect.** When a lookup, registry, table, or list is
+missing something you expected — a name in `SPUREN`, a key in a config, a route in a table — read
+the site where it WOULD live before calling it a bug, including the comments and the commented-out
+lines. Deliberate deactivation is documented exactly there (a disabled feature with its reason
+above it, an entry parked behind a note), and the two fixes are opposites: re-adding a
+deliberately disabled entry undoes a decision, while patching the test that still expects it is
+correct. Decide which side is stale — the code or the expectation — before editing either.
+
+**An inconsistency between two values is not evidence that either one binds.** Before reporting
+that a threshold, gate, guard, or limit is too strict, too loose, or costing work, measure whether
+it has EVER fired: pull the actual cases from the logs or journals and compare them to the limit.
+Two config files that disagree are a CONSISTENCY question; they become an IMPACT question only
+when you can name a case that falls between them. Quote the measured maximum across the window,
+not the configured value — they are different numbers and only the first one tells you anything.
+Calling an inert mechanism a brake sends the next reader to retune a number that governs nothing,
+while the gate that actually binds goes unexamined.
+
+**A sentinel that means "not measured" must not be recorded in the same field as a failure
+count.** When a harness times out, aborts, or cannot run a suite, the honest value is unknown — but
+if it lands in the numeric result field (a `-1`, a `null` coerced to zero), every downstream
+comparison treats it as a score, and a checker that flags "worse than the baseline" will flag it
+forever: the item can never go green no matter what anyone fixes. Recognise the shape by its
+signature — the same entry reported as failing across runs while its own log shows it running
+fine. The fix is two-part: raise the limit so the measurement completes, then write the measured
+number into the baseline; never leave the sentinel in place and call the item broken.
+
+**No new output plus low CPU is not proof of a hang — check whether output is BUFFERED.** A
+runner that captures each child through `subprocess.PIPE` (or a shell `>` redirect) holds the
+child's text until that child exits, so a working step looks identical to a frozen one: the log
+stops growing, and process CPU stays near zero because the work is elsewhere or I/O-bound. Before
+reporting a hang, establish that the process is doing NOTHING rather than merely saying nothing —
+sample CPU twice over an interval (a real hang shows a flat, tiny total), look for child processes
+still alive under the parent, and grep the runner's source for `PIPE`/`stdout=`. If output is
+buffered, the honest state is "unknown, still running": wait, or re-run with unbuffered output
+(`python -u`, `PYTHONUNBUFFERED=1`, `stdbuf -oL`) to watch it. Calling it a hang costs you the
+result and sends the next reader hunting a defect that does not exist.
+
+**When you have already written the wrong diagnosis down, correct it in place.** A false cause
+committed to a task list, a changelog, or a commit message keeps working against you: the next
+reader acts on it. Re-measure, then replace the wrong sentence where it stands (same place, same
+shape) rather than appending a correction underneath — a note that reads "was wrong, actually X"
+leaves the wrong half load-bearing for anyone skimming.
+
 ### 2. Build a Tight Feedback Loop
 
 - Can you trigger the user's exact symptom with one command?
