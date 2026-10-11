@@ -1338,13 +1338,17 @@ platforms:
           topics:
             - name: Allgemein
               icon_color: 7322096
+              thread_id: 30755
             - name: Handel
               icon_color: 9367192
               skill: brainfiles/fremdrepos-signal
+              thread_id: 30757
             - name: Markt
               icon_color: 16766590
+              thread_id: 30759
             - name: Wissen
               icon_color: 13338331
+              thread_id: 30761
 cron:
   catch_up_missed: false
 _left_core_scoped:
