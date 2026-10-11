@@ -115,46 +115,9 @@ Ein Fremd-Werkzeug liefert nur ein **Signal** oder eine **Papier-Order** im Form
 - Topic-Delegierung: Zuordnung in der Hermes-Konfiguration (`dm_topics`) noch nicht angefasst.
 - Naechste Repos: intelligent-trading-bot (Signalpipeline auf OKX umbauen), tradememory-protocol (Journal).
 
-## Phase 0 – Rest der Handels-Rolle (10.10., nur gelesen)
-| Repo | Stack | Lizenz | Börsen (Treffer) | Papier/Test | UI | Eignung |
-|---|---|---|---|---|---|---|
-| Harvard-Algorithmic-Trading-with-AI | Ordner backtest/implement/research, kein Paket | keine Lizenzdatei | Hyperliquid (11) | – | – | **Niedrig**: Lehrmaterial (RBI-Methode), kein ausführbares System; als Ideenquelle für Strategien nutzbar |
-| fomo-robinhood-radar | Python, pyproject | MIT | Robinhood Chain (527), Coinbase | Beobachtung von Wallets, kein Handel | Site + Telegram-Bot | **Niedrig für Handel**: Wallet-Radar auf Robinhood Chain, kein Börsenanschluss an OKX/Kraken; eher Signalquelle. Enthält Datenbanken (`fomo_agent.db`) im Klon – nicht versionieren |
-| osiris | Next.js, Docker | MIT | OKX (33) am Rand | Live-Demo | Dashboard (Web) | **Niedrig**: allgemeines Lage-Dashboard (Flüge, Erdbeben, News); kein Handelssystem. Als UI-Rahmen höchstens Anregung |
-| auto-prediction (TraderAlice, Mirror) | TS/pnpm, Alice-Harness | – | Prognosemärkte (Polymarket, Kalshi u. a.) | Fixtures | `apps/studio` | **Eigenes Thema**: Forschung zu semantischer Arbitrage; kein Anschluss an Krypto-Börsen. Fork `mfaupel95/Auto-Prediction` angelegt, lokal ohne origin |
+## Stand 11.10.2026 - Demo-Kette und offenes Tor
 
-### Gesamtbild Handels-Rolle (11 Repos)
-- **Anschlussreif:** agent-trade-kit (OKX), kraken-cli (Kraken Papier) – beide umgesetzt (Phase 1/2).
-- **Umbau nötig:** intelligent-trading-bot (Binance -> OKX), danach als Signalquelle über `fremd_signal`.
-- **Zusatz/Journal:** tradememory-protocol (Handelsgedächtnis, Wartungsmodus).
-- **Keine Anbindung sinnvoll:** Harvard, fomo-robinhood-radar, osiris, jev-trader (DEX), ziplime (EULA).
-- **Nächster sinnvoller Schritt:** intelligent-trading-bot auf OKX-Demo umschreiben (Datenabruf + Signal-Ausgabe im Schema), erst nach Demo-Key.
-
-## intelligent-trading-bot auf OKX – Walk-forward (10.10.)
-Lauf: BTC-USDT 1H von OKX, 9000 Kerzen, rollierend 4 x 1000 ungesehene Stunden (27.04.-10.10.2026), Zweig `claude/okx-collector` im Fork-Klon, Config `configs/config-okx-walk-forward.json`.
-- **Vorhersagegüte ungesehen:** AUC high_30 = 0,438, low_30 = 0,430 (Zufall = 0,5). Das Modell ist schlechter als Raten; precision/recall nahe 0.
-- **Simulation:** beste Kombination +37,6 % bei 5 Trades (2 gewinnbringend), Buy&Hold im selben Fenster +4,7 %. Die Zahl ist die beste von 100 Rasterpunkten, auf denselben ungesehenen Daten gewählt, also optimistisch und bei 5 Trades nicht belastbar.
-- **Urteil:** kein Beleg für einen Vorteil. Adapter `adapter_itb` bleibt technisch fertig, das Tor bleibt zu; kein Zeitplan für diese Quelle, solange kein stabiler Out-of-sample-Nutzen gezeigt ist.
-- **Nächste Schritte (nur wenn gewollt):** andere Labels/Horizonte, mehr Historie, Gebühren und Funding in die Simulation, Mehrfach-Fenster; erst danach Routine.
-
-### Varianten-Lauf (10.10., drei vorab festgelegte Varianten, alle gemeldet)
-AUC auf ungesehenen Stunden (Zufall = 0,5), BTC-USDT 1H, OKX:
-| Variante | Daten / ungesehen | Modell, Schwelle | AUC high_30 | AUC low_30 |
-|---|---|---|---|---|
-| Basis | 9000 / 4 x 1000 | SVC, 3 % | 0,438 | 0,430 |
-| V1 | 20 000 / 5 x 2000 | SVC, 3 % | 0,554 | 0,483 |
-| V2 | 9000 / 4 x 1000 | SVC, 1,5 % | 0,511 | 0,479 |
-| V3 | 20 000 / 5 x 2000 | Gradient Boosting, 3 % | 0,542 | 0,469 |
-- **Lesart:** Die `low`-Labels liegen in allen Läufen unter 0,5; die `high`-Labels streuen zwischen 0,44 und 0,55. Mehr Historie hilft, aber 0,54-0,55 ist schwach und wegen überlappender Stunden (Autokorrelation) statistisch weicher, als die Zahl wirkt. Kein belastbarer Vorteil.
-- **Entscheidung:** `intelligent-trading-bot` bleibt ruhende Quelle (Adapter fertig, Tor zu, kein Zeitplan). Lohnt sich nur mit grundlegend anderem Ansatz (andere Features/Labels, Gebühren und Funding in der Simulation).
-
-### Anderer Ansatz, einmal gerechnet (10.10.) - Ergebnis: negativ
-Skript `Werkstatt/okx_walkforward_itb.py` (alles vorab festgelegt: Features Renditen/Vol/Volumen/Abstand, Label = 24-h-Rendite > 0, logreg + LightGBM, expandierend mit 24-h-Embargo, feste Schwelle 0,55, Gebuehr 0,05 %/Seite, Funding 0,01 %/8 h). Daten: BTC-USDT 1H, 19 999 Stunden (06.2024-10.2026), rein ungesehene Prognosen.
-| Modell | Fenster | AUC | Rendite | Buy&Hold | Trades | MaxDD |
-|---|---|---|---|---|---|---|
-| logreg | Entwicklung | 0,470 | -40,1 % | -19,8 % | 406 | -48 % |
-| logreg | Endfenster (5000 h) | 0,525 | -17,7 % | +12,9 % | 83 | -25 % |
-| lgbm | Entwicklung | 0,474 | -42,4 % | -19,8 % | 516 | -54 % |
-| lgbm | Endfenster (5000 h) | 0,488 | -18,5 % | +12,9 % | 181 | -21 % |
-- **Urteil:** Kein Vorhersagevorteil (AUC 0,47-0,53) und mit Gebuehren/Funding klar verlustreich, in beiden Fenstern und beiden Modellen. Das Ergebnis ist eindeutig genug, dass weitere Varianten auf diesen Daten nicht lohnen.
-- **Folge:** `intelligent-trading-bot` als Signalquelle ruht endgueltig bis ein anderer Datenvorteil (z. B. Orderbuch, Funding-/OI-Daten, andere Maerkte) vorliegt. Adapter und Tor bleiben als Infrastruktur fuer kuenftige Quellen.
+- Tor `Agenten/Handel/fremd_signale/wachen.json` auf Max' Ansage **geoeffnet** (nur paper/demo, nie live); 59 Instrumente (OKX `-USDC` Spot, Kraken `/USD`), 11 Quellen.
+- OKX-Demo im EWR: Swap/Perps gesperrt (Fehler 50124), nur Spot. Durchlauf BTC-USDC (Kauf 50 USDC mit Stop 4 %, Verkauf, Stop-Storno) fehlerfrei.
+- Neu: `Agenten/Handel/fremd_demo.py` (rechnet Plan), `fremd_signale/demo_plan.py` (`--vorschau|--vormerken|--verwerfen`), Hermes-Ausfuehrungsschritt im Skill `fremd-handel-papier`. Hermes-MCP okx-agentkit schreibend (ohne `--read-only`), nur Demo.
+- Offen: Hermes als Ausfuehrer noch nicht mit echtem Signal erprobt; Task `MaxHirn-Fremd-Papier` nicht registriert; Adapter fuer die neuen Quellen fehlen.
