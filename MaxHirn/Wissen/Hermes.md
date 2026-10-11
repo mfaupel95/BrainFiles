@@ -1647,4 +1647,71 @@ Renderer-Deckel (3072 MB) und `idle_compact_after_seconds` (3600) wirken wie
 gedacht; `max_concurrent_children` (5) begrenzt parallele Subagenten. Gegen den
 WSL-Druck helfen sie nicht.
 
+### `.wslconfig` angelegt, 11.10.2026
+
+**Der Hebel liegt bei WSL, nicht bei Docker.** Docker Desktop fuehrt in seiner
+`settings-store.json` `MemoryMiB = 33024`, `Cpus = 22` und `SwapMiB = 3072` —
+alle drei sind im **WSL2-Modus wirkungslos**. Die Docker-Doku ist eindeutig:
+*"In WSL 2 mode, configure memory, CPU, and swap limits on the WSL 2 utility
+VM."* Diese Werte stammen aus der Hyper-V-Aera. Gemessen passt es dazu: die
+WSL-VM meldet 31.932 MB total (also die 50-%-Vorgabe), nicht 33.024.
+
+Angelegt wurde `C:\Users\faupe\.wslconfig` (vorher **nicht vorhanden**, also
+nichts ueberschrieben):
+
+```ini
+[wsl2]
+memory=24GB
+swap=8GB
+
+[experimental]
+autoMemoryReclaim=gradual
+sparseVhd=true
+```
+
+`autoMemoryReclaim=gradual` ist der eigentliche Gewinn: es gibt den Linux-
+Page-Cache schrittweise an Windows zurueck. Docker empfiehlt die Einstellung
+ausdruecklich nach Image-Builds. Ohne sie haelt die VM den Cache, bis der
+Deckel greift — genau das Bild vom 11.10. WSL 2.7.13 unterstuetzt beide
+experimentellen Schalter.
+
+**Noch nicht wirksam.** Die Datei wird beim Start der WSL-VM gelesen; sie
+braucht `wsl --shutdown`. Das beendet **alle** Distributionen und damit die
+**38 laufenden Docker-Container** (16 `freqtrade-*`, n8n, puter-Stack mit
+MariaDB/RustFS/Valkey, `nautilus-demo`, kind-Cluster). Der Befehl wurde deshalb
+**nicht** ausgefuehrt — das ist Max' Entscheidung zu einem Zeitpunkt seiner
+Wahl. Danach pruefen: `wsl --system free -m` muss ~24 GB zeigen statt 31,9.
+
+### Was WSL tatsaechlich belegt
+
+Die 19,5 GB sind **kein** Leck, sondern die Summe aus:
+
+- **38 laufende Container**, u. a. 16 × `freqtradeorg/freqtrade:stable` (je ein
+  Python-Prozess), der komplette puter-Stack (Caddy, puter, MariaDB, RustFS,
+  DynamoDB, Valkey) und ein kind-Kubernetes-Cluster.
+- **24,12 GB Docker-Images**, davon 7,89 GB zurueckholbar.
+- Linux-Page-Cache, den die VM ohne `autoMemoryReclaim` nicht abgibt.
+
+Diese Last laeuft neben Hermes, nicht in ihm. `container_memory` in der
+Hermes-Config hat damit nichts zu tun.
+
+### Nebenbefund: sieben Python-Abstuerze am 11.10.
+
+In `%LOCALAPPDATA%\CrashDumps` liegen 10 Dateien mit 426,7 MB, **alle vom
+11.10.2026** zwischen 13:02 und 16:00: `llama-server` (1 × 232,4 MB),
+`python` (4 × 92,7 MB), `WindowsTerminal` (2 × 66,5 MB), `pythonw`
+(3 × 35,1 MB). Alle im selben Zeitfenster wie die Id-2004-Meldungen — das ist
+die Signatur von Speicherdruck, nicht von einem Code-Fehler. Kein Bugcheck,
+kein `MEMORY.DMP`, also kein Bluescreen; die Prozesse wurden einzeln beendet.
+
+### Offener Befund: Telegram geparkt
+
+`gateway.log`, 11.10. 14:30:50: der Haupt-Gateway meldet
+`1 configured platform(s) failed to start and are parked` — Telegram, weil
+`informatiker161` (PID 62716) dasselbe Bot-Token haelt. Der Gateway laeuft
+dadurch **DEGRADED**. Zusaetzlich meldet `gateway status` sechs Profile, die
+dieselbe Photon-Kennung tragen (basic-memory, bots, findusarbeitus, fomo-radar,
+lokal-first, recherche). Beides am 11.10.2026 **nicht** angefasst — die
+Zuordnung „welches Profil besitzt welchen Kanal" ist eine eigene Entscheidung.
+
 **Sicherung der Notiz:** `Wissen/Hermes.md.bak-20261011-ram`.
