@@ -100,6 +100,58 @@ Ports: echter TCP-Connect oder `Get-NetTCPConnection` — `netstat` nicht parsen
 die deutsche Anzeige schreibt „ABHOEREN“ mit Umlaut und wird als Binaer
 fehlgedeutet.
 
+## Speicherdruck messen (RAM, Commit, Auslagerung)
+
+Der harte Deckel ist nicht der freie RAM, sondern das **Commit-Limit** — RAM
+plus Auslagerungsdateien. Es zu ueberschreiten beendet Prozesse, unabhaengig
+davon, wie viel RAM gerade frei ist.
+
+```
+powershell -NoProfile -Command "\$os=Get-CimInstance Win32_OperatingSystem; 'Commit-Limit GB: ' + [math]::Round(\$os.TotalVirtualMemorySize/1MB,1); 'Commit belegt GB: ' + [math]::Round((\$os.TotalVirtualMemorySize-\$os.FreeVirtualMemory)/1MB,1); 'RAM frei GB: ' + [math]::Round(\$os.FreePhysicalMemory/1MB,1)"
+```
+
+`TotalVirtualMemorySize` **ist** das Commit-Limit (RAM + Pagefiles zusammen),
+`FreeVirtualMemory` der Rest. Beide Zahlen nennen — „18 GB RAM frei“ neben
+„15 GB Commit frei“ beschreibt einen Rechner unter Druck, nicht einen gesunden.
+
+**Wenn Windows schon gemeldet hat, WER den Speicher haelt, diese Meldung
+lesen statt zu suchen.** `Id 2004` („virtueller Speicher unzureichend“)
+**nennt die drei groessten Verbraucher mit PID und Bytezahl** — die guenstigste
+Ursachendiagnose ueberhaupt. Wiederholt sie sich im Minutentakt, ist es kein
+Ausrutscher:
+
+```
+powershell -NoProfile -Command "Get-WinEvent -FilterHashtable @{LogName='System'; Id=@(2004,2019,2020); StartTime=(Get-Date).AddDays(-7)} -MaxEvents 15 | ForEach-Object { \$t=\$_.Message -replace \"`r`n\",' '; \$_.TimeCreated.ToString('dd.MM HH:mm') + '  Id ' + \$_.Id + '  ' + \$t.Substring(0,[Math]::Min(220,\$t.Length)) }"
+```
+
+**Die Verbraucher nachpruefen, nicht die Meldung wiederholen.** Typische Halter
+sind `vmmemWSL` (WSL/Docker), ein lokaler Modellserver (`llama-server` mit
+`--models-autoload` laedt nach) und ein Terminal-Emulator. Je Prozess
+`WorkingSet64` (Arbeitsseite) **und** `PrivateMemorySize64` (Zusage, zaehlt
+gegen das Commit-Limit) zeigen — ein Prozess mit kleiner Arbeitsseite und
+riesiger Zusage sieht sonst harmlos aus.
+
+**Gestuerzte Prozesse liegen mit Zeit und Groesse bereit:**
+`%LOCALAPPDATA%\CrashDumps`. Ein 232-MB-Dump eines Modellservers ist der
+Nachweis einer Speicherspitze, die kein Log zeigt.
+
+**Externe Deckel sind der eigentliche Hebel, nicht die Hermes-Config.** Eine
+WSL-VM hat ohne `%USERPROFILE%\.wslconfig` keinen Deckel und nimmt sich die
+Haelfte des RAM (Vorgabe). **Docker Desktops `MemoryMiB` aus
+`%APPDATA%\Docker\settings-store.json` greift im WSL2-Modus NICHT** — die
+Docker-Doku verweist fuer Speicher/CPU/Swap ausdruecklich auf die WSL-Utility-VM.
+Belegt: `MemoryMiB = 33024`, gemeldet wurden 31.932 MB (die 50-%-Vorgabe).
+**Ein gesetzter Wert ist kein wirkender Wert — nach dem Setzen den Ist-Stand
+messen** (`wsl --system free -m`): stimmt die Zahl mit dem Vorgabewert ueberein
+statt mit dem eingestellten, sitzt der Schalter an der falschen Stelle. Rezept
+fuer die `.wslconfig`: im Skill `hermes-config-ops`, Abschnitt
+"Die Config ist selten die Ursache".
+
+**Ein grosser `vmmemWSL` ist meist kein Leck, sondern Summe.** Er enthaelt alle
+WSL-Distributionen: Container, Images, Linux-Page-Cache. Vor dem Urteil die
+Treiber zaehlen und benennen (`docker ps`, `docker system df` inkl.
+"reclaimable") — sonst wird eine gewollte Last als Fehler gemeldet.
+
 ## systempruefung.ps1 pflegen
 
 - **Neue Bloecke zuerst isoliert testen, nicht ueber den vollen Lauf.**
@@ -134,6 +186,40 @@ fehlgedeutet.
 
 ## Pitfalls
 
+- **Ein Datentraeger-Test, dessen Testdatei in den Dateicache passt, misst den
+  RAM.** 200 zufaellige 4-KB-Zugriffe auf eine 8-MB-Datei meldeten fuer eine
+  USB-HDD, eine USB-SSD und zwei NVMe **dieselben 0,2–0,6 ms** — alles las aus
+  dem Cache, und das Ergebnis war „ueberall NVMe". Richtig ist
+  **sequentielles Lesen von ~1 GB aus einer Datei, die groesser als das
+  Doppelte der Lesemenge ist** (oder einer vorhandenen dicken Datei), in
+  1-MB-Bloecken mit `[System.IO.File]::Open` und Stoppuhr. Das ergab 73 MB/s
+  (USB-HDD) gegen 930 MB/s (NVMe) — Faktor 13, den der Cache-Test verschluckt
+  hatte. **Fertige Sonde statt selbst tippen:**
+  `scripts/disk-durchsatz.ps1` (findet je Laufwerk selbst eine Datei > 1 GB,
+  liest read-only 1 GB, nennt MB/s und Einordnung; warnt, wenn die Datei zu
+  klein ist, um den Cache auszuschliessen).
+- **`$HOME` (und `$PID`, `$HOST`) sind in PowerShell schreibgeschuetzt.** Ein
+  Skript, das `$home = '...'` als Laufzeitvariable setzen will, bricht mit
+  „Die Variable "HOME" kann nicht ueberschrieben werden, da sie konstant oder
+  schreibgeschuetzt ist" ab — und zwar **mitten in der Schleife**, sodass die
+  restlichen Zeilen des Durchlaufs fehlen. Fuer den eigenen Zielpfad einen
+  anderen Namen nehmen (`$ziel`, `$hermesHome`).
+- **`[Environment]::GetEnvironmentVariable('NAME','System')` wirft** — der
+  Scope-Name heisst `Machine`, nicht `System`:
+  „Der Wert "System" kann nicht in den Typ System.EnvironmentVariableTarget
+  konvertiert werden. … Geben Sie einen der folgenden Enumeratornamen an:
+  Process, User, Machine". Die drei gueltigen Werte sind `Process`, `User`,
+  `Machine`.
+- **`MediaType` aus `Get-PhysicalDisk` entscheidet ueber USB nichts.**
+  USB-Gehaeuse melden `Unspecified` bei `BusType=USB`; eine NVMe im einen und
+  eine Magnetplatte im anderen Gehaeuse sind damit nicht unterscheidbar. Das
+  Feld als Hinweis lesen, den gemessenen Durchsatz als Beweis.
+- **Vor „ist X auf Laufwerk Y in Ordnung“ erst pruefen, ob X dort liegt.** Die
+  Frage „ist der Pagefile auf G: ok?“ setzt voraus, dass dort einer ist;
+  `Get-CimInstance Win32_PageFileSetting` zeigte zwei Pagefiles, beide auf
+  NVMe, und keines auf G:. Die Praemisse der Frage gehoert geprueft und
+  ausdruecklich korrigiert — sonst wird eine Empfehlung zu einem Problem
+  abgegeben, das es nicht gibt.
 - **Werkzeugnamen nie erfinden.** Schlaegt ein Aufruf mit „Tool X does not
   exist. Available tools: …“ fehl, ist die zurueckgegebene Liste die Wahrheit:
   den naechsten Aufruf daraus waehlen, nicht aus der Erinnerung an die

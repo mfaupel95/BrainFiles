@@ -107,6 +107,38 @@ HAUPTbaum; ein Bot-Profil hat eine eigene Skill-Bibliothek und laedt es nicht pe
   schon“/„X fehlt“ aus dem Gedaechtnis oder aus einem Werkzeug mit falschem Scope
   ist keine Messung; die Datei und `hermes cron list` sind es.
 
+## Was ein Cron-Auftrag nicht sein kann: den Gateway selbst betreffen
+
+**Ein Auftrag, der den Gateway neu startet, laeuft NICHT als Cron — er wird
+abgelehnt, und die Ablehnung nennt den Grund.** `cronjob_manage action=create`
+mit einem Skript, das `hermes gateway restart`/`stop` aufruft, endet mit
+
+> *„Blocked: cron job contains a gateway lifecycle command … to prevent
+> agent-driven SIGTERM-respawn loops under launchd/systemd supervision"*
+
+Das ist strukturell, nicht kosmetisch: **ein Cron-Auftrag laeuft INNERHALB des
+Gateways.** Ein Restart von dort beendet den eigenen Prozess, die Aufsicht
+startet ihn neu, der Auftrag feuert wieder — die Schleife, die die Sperre
+verhindert. Die Meldung sagt den Ausweg selbst: *„Run `hermes gateway restart`
+from a shell outside the running gateway instead."* **Eine Ablehnung ist
+Anleitung — ihren Text lesen, nicht umgehen wollen.**
+
+**Der Weg fuer alles Zeitversetzte, das den Gateway betrifft:** ein
+Hintergrundprozess aus einer Shell AUSSERHALB des Gateways, mit
+`persist_on_release=true` (sonst stirbt er an `/new`, Kompression oder
+Sitzungsende) und `notify=true` (sonst meldet sich nichts). Fuer „in N Minuten"
+braucht das Skript einen eigenen Warteschalter (`--nach-sekunden N`) und
+schreibt den Zielzeitpunkt SOFORT ins Protokoll, bevor es schlaeft — sonst ist
+nicht belegbar, dass der Lauf angesetzt ist.
+
+Das Skript haelt den Zustand **vorher und nachher** fest, wartet aktiv auf das
+Erfolgskriterium (nicht blind `sleep`) und berichtet den Vergleich, statt
+„gestartet" zu melden. Muster: `profiles/<profil>/scripts/gateway-neustart-geplant.py`.
+
+**Nicht ueber `action='run'` umgehen wollen.** Ein sofortiges Feuern im
+laufenden Gateway ist derselbe Selbstmord; der Umweg ueber eine Warteschlange
+hilft nicht.
+
 ## Zweite Instanz derselben Komponente
 
 Soll derselbe Code ein zweites Mal laufen (gleiche Spuren, anderer Parameter),
@@ -205,6 +237,17 @@ ist er ein EIGENER Dauerprozess - kein zweiter Aufruf derselben Datei:
   das auseinander (Prozess wenige Minuten alt, letzter echter Erfolg Stunden
   zurueck), ist es ein Crash-Loop und kein gesunder Dauerbetrieb, auch wenn
   gerade ein Prozess laeuft.
+- **`RestartOnFailure` deckt einen SAUBEREN Stop nicht ab — die Gegenrichtung
+  derselben Falle.** Eine Aufgabe mit `RestartCount 999 / Interval PT1M` startet
+  nur nach einem UNERWARTETEN Abbruch neu; ein regulaerer `stop`/`restart`
+  beendet sie, und **nichts startet sie von selbst**. Hat die Aufgabe als
+einzigen Trigger einen `LogonTrigger` (der Normalfall bei Autostart-Diensten),
+  bleibt der Dienst bis zur naechsten Anmeldung unten. Wer einen Dienst
+  absichtlich stoppt, muss den Wiederanlauf **selbst einplanen** — sonst ist der
+  Ausfall still, und niemand vermisst ihn bis zum naechsten Login.
+  Diagnose vor dem Urteil: `schtasks /query /tn <name> /xml` lesen und die
+  `<Triggers>` (nur Logon? nur Zeit?) gegen `<RestartOnFailure>` halten. Ein
+  hoher `RestartCount` sagt nichts ueber den Stop-Fall.
 - **Ein aus der Agentensitzung gestarteter Hintergrundprozess stirbt mit ihr.**
   Symptom: Stunden spaeter endet er mit Exit 127, waehrend der per `.cmd`
   gestartete weiterlaeuft — das ist kein Fehler der Komponente und kein Grund zur

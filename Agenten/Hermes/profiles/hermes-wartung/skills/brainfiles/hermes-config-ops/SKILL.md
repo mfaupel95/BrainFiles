@@ -429,14 +429,27 @@ als `assert`: Typ der Liste, Zahl der Eintraege, kein toter Schluessel mehr).
 
 ## Kanal-Zugangsdaten gehoeren genau einem Profil (Telegram, Photon, ...)
 
-1. **Ein Bot-Token, ein Profil.** Traegt ein Profil dieselbe Verbindungskennung
-   wie `default`, warnt `hermes profile list` je Profil
-   (`hermes_cli/profile_channels.shared_channel_credentials`: Byte-Vergleich der
-   Kennungszeilen aus `.env` und von `platforms.<p>.token|api_key` aus
-   `config.yaml`). Ein zweites Gateway auf demselben Token nimmt dem ersten die
-   Nachrichten weg — beide pollen `getUpdates` —, und
-   `hermes gateway migrate --multiplex` verweigert, solange die Dopplung steht.
-   Die Dopplung ist also nicht kosmetisch: sie kostet Nachrichten.
+1. **Ein Bot-Token, ein Profil — aber zwei verschiedene Warnquellen.** Traegt ein
+   Profil dieselbe Verbindungskennung wie `default`, warnt `hermes profile list`
+   je Profil (`hermes_cli/profile_channels.shared_channel_credentials`:
+   Byte-Vergleich der Kennungszeilen aus `.env` und von
+   `platforms.<p>.token|api_key` aus `config.yaml`). **`hermes gateway status`
+   warnt zusaetzlich aus einem ganz anderen Grund:** ein Profil ohne
+   `platforms.<p>.enabled` wird ueber die Umgebung aktiviert und erbt die
+   Kennung des Startprofils, obwohl in keiner Datei etwas doppelt steht. Die
+   beiden Warnungen sehen gleich aus und brauchen verschiedene Fixes — vor
+   jedem Strippen `shared_channel_credentials()` selbst aufrufen.
+   Entscheidungstabelle (Kollision / fehlendes `enabled` / zweiter Prozess) und
+   Belege: `references/profil-kanalzugangsdaten.md`.
+   Ein zweites Gateway auf demselben Token nimmt dem ersten die Nachrichten weg
+   — beide pollen `getUpdates` —, und `hermes gateway migrate --multiplex`
+   verweigert, solange die Dopplung steht. Die Dopplung ist also nicht
+   kosmetisch: sie kostet Nachrichten.
+   **`profil-kanaele-bereinigen.py` ist kein Diagnosewerkzeug, sondern ein
+   Loeschwerkzeug** — es streicht nach Plattformnamen und wuerde bei einem
+   nicht-kollidierenden Profil gueltige Zugangsdaten entfernen. Sein
+   Trockenlauf listet auch Profile mit verschiedenen, richtigen Token; die
+   Liste ist kein Kollisionsbefund.
 2. **Ein Bot-PROFIL braucht keine Kanalzugangsdaten — es braucht eine eigene
    Modellkennung.** Der `/bot`-Weg des SkillsBot startet
    `hermes -p NAME chat -q` ohne Gateway. Also die geteilten Kanalzeilen
@@ -628,6 +641,14 @@ kostenloser Gesundheitsindikator fuer den Gateway.
   des Profils. Dieselbe Falle in der Schreibrichtung: `hermes config set` schreibt
   in das Home, das die CLI liest — die Erfolgsmeldung nennt die Datei, die Zeile
   muss aber in die gewollte.
+  **Der Scope wechselt auch die VERGLEICHSBASIS — zwei Befehle koennen sich
+  gruen und rot widersprechen, ohne dass einer luegt.** `hermes profile list`
+  vergleicht jedes Profil gegen das **aktive** Profil, `hermes gateway status`
+  gegen das **Startprofil** `default`. Aus einem Bot-Profil heraus ist die Liste
+  damit still gruen, waehrend die Statusausgabe die Dopplung nennt — vor dem
+  Urteil klaeren, **gegen welches Profil** verglichen wird, und im Zweifel die
+  Pruefung direkt mit `source_dir=<Startprofil>` aufrufen (Rezept:
+  `references/profil-kanalzugangsdaten.md`).
 - **Was der Nutzer „Loops“ nennt, ist oft etwas anderes als ein Cron-Auftrag.**
   `/loop <intervall> <aufgabe>` ist eine SITZUNGS-Schleife (endet mit
   `LOOP_COMPLETE`/`--times N`/`loops.max_ticks`, Einstellungen `loops.*`), kein
@@ -742,3 +763,9 @@ kostenloser Gesundheitsindikator fuer den Gateway.
 - `Compare-Object` Sicherung ↔ Datei: genau eine geänderte Zeile.
 - `hermes gateway status`: Aufgabe registriert, Prozess läuft — ohne Neustart.
 - `Wissen/Hermes.md` nennt Änderung, Prüfweg, Sicherungspfad und Falle; committet.
+  **Jede Zahl und Ortsangabe darin stammt aus einem Aufruf dieser Sitzung** —
+  eine plausibel klingende, aber ungemessene Ursache in der Notiz ist die
+  einzige Wahrheit, aus der die naechste Sitzung liest, und kostet einen
+  zweiten Commit zur Korrektur.
+- Speicherdruck, Pagefile und der Deckel, der wirklich beisst:
+  `references/ram-limit-und-absturzschutz.md`.
