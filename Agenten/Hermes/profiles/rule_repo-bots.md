@@ -1,21 +1,19 @@
 # rule_repo-bots
 
-Regeldatei der Bot-Profile (ein Bot je Fremd-Repo, Hausstandard) - sie gilt fuer
-ALLE Bot-Profile, auch die ohne Repo (`hermes-wartung`, `lotse`) und den
-Nachschlage-Bot `nerd`.
-Sie liegt ABSICHTLICH eine Ebene HOEHER als die Profile, damit alle Bots EINE
-Stil- und Betriebsquelle teilen statt 27 wortgleiche Kopien.
-Jedes `profiles\<bot>\SOUL.md` verweist hierher und bleibt selbst individuell
+Regeldatei ALLER Bot-Profile (ein Bot je Fremd-Repo), auch der ohne Repo
+(`hermes-wartung`, `lotse`) und des Nachschlage-Bots `nerd`. Sie liegt ABSICHTLICH
+eine Ebene HOEHER als die Profile, damit alle Bots EINE Stil- und Betriebsquelle
+teilen. Jedes `profiles\<bot>\SOUL.md` verweist hierher und bleibt individuell
 (Repo-Wissen, Aufgaben, Grenzen).
-Budget: 6000 Zeichen (`wc -c < Datei`).
-Ueber Budget: verdichten (Abschnitt 5), nicht anhaengen.
+Budget: 6000 Zeichen, ohne CR gemessen (CRLF zaehlt sonst doppelt).
+Ueber Budget: verdichten (Abschnitt 5).
 
 ## 1. Diese Datei zuerst lesen
 
 Jede Bot-Sitzung liest sie, BEVOR sie plant, Code aendert oder committet.
 Gelerntes sofort hierher - eine Zeile je Lektion, Regel + Grund. Repospezifisches
-in die eigene `SOUL.md` (sie gewinnt beim Repo-Wissen), Generelles hierher (diese
-Datei gewinnt bei Stil und Betriebsregeln).
+in die `SOUL.md` (gewinnt beim Repo-Wissen), Generelles hierher (gewinnt bei Stil
+und Betrieb).
 
 ## 2. Stil (gilt fuer alle Bots)
 
@@ -29,10 +27,9 @@ Datei gewinnt bei Stil und Betriebsregeln).
 - Fehler sachlich: Ursache + Behebung, kein Bedauern.
 - Max 5 sichtbare Punkte je Gruppe, wichtigster zuerst.
 - Eine begruendete Empfehlung statt Optionsliste; Ergebnis zuerst.
-- Regel brechen bei: unumkehrbarer/Live-Aktion (Sicherheit gewinnt), echter
-  Mehrdeutigkeit (eine kurze Frage schlaegt Raten), oder wenn die Regel die Antwort
-  selbst loeschen wuerde ("welche Optionen habe ich" = die Optionen SIND die Antwort).
 - Tiefe auf Zuruf: erklaeren, wenn Max es verlangt - dann vollstaendig, mit Ueberschriften.
+- Regel brechen bei unumkehrbarer/Live-Aktion (Sicherheit gewinnt) oder echter
+  Mehrdeutigkeit (kurze Frage schlaegt Raten).
 
 ## 3. Betriebsregeln (gemeinsam)
 
@@ -63,10 +60,9 @@ Doku: `MaxHirn\Wissen\Repo-Bots.md`.
 
 ## 5. Verdichten (Pflicht, sobald ueber Budget)
 
-1. Groesse messen (Befehl oben). 2. Doppelte Lektionen zusammenlegen. 3. Erledigtes
-und Veraltetes loeschen - nicht archivieren. 4. Lange Belege in die passende
-Skill-Referenz, hier bleibt der Verweis. 5. Abschlusszeile
-`Verdichtet JJJJ-MM-TT: N -> M Zeichen`.
+1. Groesse messen. 2. Doppelte Lektionen zusammenlegen. 3. Erledigtes und Veraltetes
+loeschen - nicht archivieren. 4. Lange Belege in die passende Skill-Referenz.
+5. Abschlusszeile `Verdichtet JJJJ-MM-TT: N -> M Zeichen`.
 Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
 
 ## Gelerntes
@@ -78,22 +74,26 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
   `profiles\.sicherung\`.
 - 18.09.2026 PowerShell 5.1: `Get-FileHash` fehlt (stumm nichts, eine Pruefung
   meldet falsch "alle gleich" - MD5 ueber .NET auf die Bytes); MEHRERE Here-Strings
-  in EINEM Befehl kommen verstuemmelt an - eine Datei je Aufruf, Groesse pruefen.
+  in EINEM Befehl kommen verstuemmelt an.
 - 20.09.2026 Headless (Kanban/Cron): `execute_code` und gefaehrliche Shell-Befehle
   werden abgewiesen, `write_file` laeuft in den Timeout; auch der INHALT zaehlt.
-- 20.09.2026 Schreiben nach `O:\Werkstatt` scheitert (Junction): Arbeitsergebnisse
-  unter `C:\...\BrainFiles` ablegen.
-- 20.09.2026 Tool-Ausgabe ist LOSSY: Quelltext nie per Augenschein pruefen.
-  08.10.2026 neue Spielart: Read verschluckt CR-Bytes (CRLF-Mix) - Edit auf Basis
-  der gelesenen Kopie zerstoert die Datei. Tier-1: vor dem ersten Lesen cp
-  .bak-JJJJMMTT, Edit byte-exakt gegen das .bak bauen, Head-Gleichheit pruefen.
+  Schreiben nach `O:\Werkstatt` scheitert (Junction): Arbeitsergebnisse unter
+  `C:\...\BrainFiles` ablegen. Tool-Ausgabe ist LOSSY: Quelltext nie per Augenschein
+  pruefen; Read verschluckt CR-Bytes (CRLF-Mix) - Edit auf Basis der gelesenen Kopie
+  zerstoert die Datei. Tier-1: vor dem ersten Lesen cp .bak-JJJJMMTT, Edit byte-exakt
+  gegen das .bak, Head-Gleichheit pruefen.
 - 20.09.2026 Zwei getrennt gebaute Komponenten sind nicht integriert, nur weil beide
   Testreihen gruen sind: die Naht ist das Vokabular - ein Test PRO Wort der Gegenseite;
   ein Probe-Modus darf keine Marke fortschreiben.
 - 22.09.2026 Defender loescht Doku-Skills und sperrt den LESEZUGRIFF ("Virus");
   `ls` beweist nichts - Probe ist echter Lesevorgang, Fundort `Get-MpThreatDetection`.
 - 22.09.2026 Symlink `auth.json`: `pwsh` 7 legt ihn an, `powershell.exe` 5.1 verweigert (Admin noetig).
-- 11.10.2026 Eine Schleife ist ein CRON-Auftrag (`Agenten/Hermes/cron/jobs.json`), nicht `/loop` - das lebt in EINER Sitzung und stirbt mit ihr. Fuer Bots immer Cron.
-- 11.10.2026 Jeder Kanal-Bot sieht JEDE Nachricht seiner Gruppe (eigenes Token, gleiches `TELEGRAM_ALLOWED_CHATS`): auf EINE Frage antworteten fuenf Bots. Eine Frage = eine Zustaendigkeit.
+- 11.10.2026 Eine Schleife ist ein CRON-Auftrag (`Agenten/Hermes/cron/jobs.json`),
+  nicht `/loop` - das lebt in EINER Sitzung und stirbt mit ihr.
+- 11.10.2026 Jeder Kanal-Bot sieht JEDE Nachricht seiner Gruppe (eigenes Token,
+  gleiches `TELEGRAM_ALLOWED_CHATS`): auf EINE Frage antworteten fuenf Bots.
+- 11.10.2026 `wc -c` misst CRLF doppelt; diese Datei lag real bei 5974 B, galt als
+  6144. Budget erst nach `tr -d '\r'` vergleichen.
 
 Verdichtet 2026-10-08: 6122 -> 5921 (Stash-Regel), -> 5974 (CR-Falle)
+Verdichtet 2026-10-11: 5974 -> hier (Loop=Cron, ein Bot je Frage)
