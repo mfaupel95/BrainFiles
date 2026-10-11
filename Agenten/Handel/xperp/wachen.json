@@ -78,7 +78,7 @@
   "grid_spanne_atr": 6.0,
   "grid_stufen": 6,
   "handel_erlaubt": true,
-  "handpositionen_automatisch_schliessen": false,
+  "handpositionen_automatisch_schliessen": true,
   "herzschlag_max_minuten": 180,
   "journal_zweitziel": "Q:\\Handel_Journal\\xperp",
   "kill_switch_gesamt_usd": 1500.0,
