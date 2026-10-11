@@ -19,6 +19,14 @@ class KrakenQuoteNodes(unittest.TestCase):
         self.assertEqual([p.produkt for p in nodes], ["spot", "futures"])
         self.assertTrue(all(p.read_only for p in nodes))
 
+    def test_zusatz_zeigt_papier_pnl_oder_nichts(self):
+        node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "spot")
+        with patch.object(lp, "lese_papierstand", return_value=None):
+            self.assertEqual(node.zusatz(), "")
+        stand = {"realisiert": 3.5, "unrealisiert": -1.25, "trades": 2}
+        with patch.object(lp, "lese_papierstand", return_value=stand):
+            self.assertEqual(node.zusatz(), "PnL +2.25 (2 Trades)")
+
     def test_spot_start_uebergibt_produkt_symbol_und_keinen_order_client(self):
         node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "spot")
         with patch.object(lp.subprocess, "Popen") as popen:
