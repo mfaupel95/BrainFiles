@@ -440,3 +440,6 @@ fallback_providers:
   - provider: ollama-launch
     model: gemma-e4b-8k:cpu
     base_url: http://127.0.0.1:11434/v1
+platforms:
+  photon:
+    enabled: false

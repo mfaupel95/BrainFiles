@@ -54,3 +54,6 @@ skills:
     - grounded-citations
     - llm-wiki
     - xurl
+platforms:
+  photon:
+    enabled: false

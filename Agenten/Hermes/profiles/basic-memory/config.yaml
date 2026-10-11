@@ -490,3 +490,6 @@ _left_core_scoped:
   - homeassistant
 _left_core_installed:
   - homeassistant
+platforms:
+  photon:
+    enabled: false

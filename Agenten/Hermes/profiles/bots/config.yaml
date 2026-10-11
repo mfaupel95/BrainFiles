@@ -74,3 +74,6 @@ onboarding:
 command_allowlist:
   - force kill processes (taskkill /F)
   - script execution via -e/-c flag
+platforms:
+  photon:
+    enabled: false
