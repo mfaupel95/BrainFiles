@@ -1,0 +1,6 @@
+---
+name: auswertung-nach-2h
+description: Einmalige Auswertung aller Omnitrade-Testnet-Läufe nach 2 h, Ergebnis per Telegram
+---
+
+Arbeitsverzeichnis: Wurzel des BrainFiles-Repos (Ordner mit CLAUDE.md, Agenten/, Werkstatt/). Antworte auf Deutsch, knapp. Nur lesen, keine Orders, keine Starts, nichts committen. 1) Führe `python Agenten/Handel/omnitrade_auswertung.py` aus (Bash). 2) Werte ALLE Testnet-Läufe aus (OKX-Testnet, 500 USD): die sechs Pine-Läufe auf BTCUSDC (1h, gestartet 09.10.2026 ca. 22:00: pine_sma_cross_20_50, pine_ema_cross_12_26, pine_macd_cross, pine_rsi_meanrev, pine_bollinger_breakout, pine_donchian_20_10), außerdem rsi_noema, adx_macd, rsi30_stop5 und ema_cross. Je Lauf: Laufzeit, Orders/Trades, Gewinn in USD und %, Vergleich mit Buy-and-Hold. Läufe mit '[LAEUFT NICHT]' oder '[veraltet]' als Befund markieren, nicht neu starten. Bei den Pine-Läufen sind es nach 2 h nur etwa 2 Kerzen: ausdrücklich als wenig aussagekräftig kennzeichnen. 3) Schicke die Zusammenfassung (höchstens ca. 15 Zeilen, nur Zahlen aus der Auswertung) per Telegram an Max' eigenen Chat: in Agenten/Handel mit `python -I` den Text über `melder.sende(text)` senden (`import sys; sys.path.insert(0,'.'); import melder`), nur wenn `melder.bereit()` True ist, sonst im Ergebnis vermerken. Mainnet bleibt gesperrt; keine Schlüssel oder Token ausgeben.

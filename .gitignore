@@ -127,6 +127,11 @@ Agenten/Handel/stand/
 !Agenten/Handel/xperp/*.md
 !Agenten/Handel/xperp/*.json
 !Agenten/Handel/xperp/tests/*.py
+!Agenten/Handel/agenten/
+!Agenten/Handel/agenten/*.md
+!Agenten/Handel/agenten/*.py
+!Agenten/Handel/aufgaben/
+!Agenten/Handel/aufgaben/*.md
 # Web-Dashboard (FastAPI/HTMX), Spec Werkstatt/spec-dashboard-web-2026-10-10.md
 !Agenten/Handel/dashboard/*.py
 !Agenten/Handel/dashboard/*.txt
