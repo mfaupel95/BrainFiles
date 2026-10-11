@@ -166,7 +166,7 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/,
       Agenten/Handel/verbesserer/spuren.json, Agenten/Handel/xperp/wachen.json
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
-- [ ] **T-393 — omniquant hat kein Pflichtband: der Stop kommt ungeprueft aus dem Bericht**
+- [x] **T-393 — omniquant hat kein Pflichtband: der Stop kommt ungeprueft aus dem Bericht**
       **WEG (a) GESETZT 11.10.2026 (Auftrag Max: a wie xperp).**
       `omniquant/wachen.json` traegt jetzt `stop_atr_faktor: 1.5` und
       `ziel_atr_faktor: 3.0` (Commit `18c2da2a`, gepusht), mit `.bak-20261011`.
@@ -225,11 +225,36 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
               Einstiege. Das ist eine echte Strategieaenderung, keine Formalie -
               und die Parameter, mit denen die 40 Einstiege entstanden, sind
               dann nicht mehr die, die live laufen.
-      Naechster Schritt (Entscheidung Max): Band in `omniquant/wachen.json`
-      eintragen. Zwei Wege, beide begruendbar:
-        (a) wie xperp: `stop_atr_faktor` 1.5 + `ziel_atr_faktor` 3.0 (dann
-            rechnet der Kontrakt-Zweig und die Grenze greift),
-        (b) wie die Klassik-Spuren: `stop_prozent` 3.0 + Band 1.8..6.0.
+      **ERLEDIGT 11.10.2026 (Commit fbc4a2aa, diese Sitzung) - Weg (a) ist jetzt
+      WIRKSAM, nicht nur gesetzt.** Der parallele Commit 18c2da2a hatte die Werte
+      eingetragen und ehrlich vermerkt, sie seien ueber `freigabe.py` wirkungslos
+      (omniquant fehlt in dessen WACHEN-Map). Das stimmt fuer DIESE Pruefkette -
+      aber der Handelsweg laeuft nicht darueber:
+        - `omniquant/handeln.py` hat jetzt `_atr_stop_ziel()`: wenn
+          `stop_atr_faktor` gesetzt ist, rechnet die Spur Stop/Ziel SELBST aus
+          dem 4H-ATR (n=14, `xperp/indikatoren.atr` - dieselbe Formel wie xperp,
+          keine zweite Implementierung), statt die Bericht-Klammer (5..12 %) zu
+          uebernehmen. `kandidaten()` ersetzt damit die Berichtswerte; Papier-
+          UND Live-Eroeffnung (live_perp.kaufe uebernimmt kand['stop']/kand['ziel'])
+          bekommen den ATR-Stop. Ohne Kerzen oder ohne das Feld: Rueckfall auf
+          Bericht, lauter Uebersprung statt Rat.
+        - BEWIESEN live (Vorschau 11.10. 14:xx): INJ-USDT Stop 7.34 statt 6.69
+          (4,7 % statt 11,5 %), Ziel 8.42 statt 8.69, R:R 2:1 (3.0/1.5).
+        - Tests: `tests/test_omniquant_atr.py` (neu, 5 Faelle, kein Netz).
+          45 omniquant-Tests gruen (dabei der veraltete Score-Test der weiten
+          Fassung auf die dokumentierte Absicht korrigiert: weit ist hoechstens
+          so streng wie streng - weite Fassung hat seit 11.10. bewusst 55).
+      **NICHT Teil dieses Tickets, aber dringender Zusatzbefund (NACHTRAG 2, im
+      Ticket):** der Live-Arm hat den Stop bisher oft gar nicht an die Boerse
+      bekommen - 231 `fehler`-Zeilen im Journal (01.-10.10.), davon 200 mit
+      "SICHERHEITSLUECKE: Stop fehlte an der Boerse und liess sich nicht setzen"
+      auf NEAR-USDC, dazu je eine "Rueckdrehung"-/"Schutz-Stop fehlgeschlagen"-
+      Zeile. Die drei Live-`eroeffnen` (HBAR, NEAR-USDC, ADA) sind nicht
+      aufgegangen. Ein engerer ATR-Stop aendert daran nichts - das ist ein
+      Orderweg-Problem (kraken_perp.stop_setzen vs. Geister-NEVER_/reduceOnly),
+      eigener Task noetig, sobald der naechste Live-Einstieg ansteht.
+      Naechster Schritt (Erledigungsweg): DIESEN Text als Abschluss eintragen;
+      der Rest des Tickets bleibt als Sachstand stehen.
       **NACHTRAG 2, 11.10.2026 - selbst nachgezaehlt, zwei Zahlen korrigiert und ein
       Befund, der die Dringlichkeit dreht:**
         - Es sind **37 EINSTIEG-Zeilen**, nicht 40 (handelsjournal.csv, 303 Zeilen
