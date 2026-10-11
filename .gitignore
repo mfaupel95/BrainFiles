@@ -525,6 +525,14 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Hermes/profiles/*/plans/**
 !Agenten/Hermes/profiles/*/hooks/**
 !Agenten/Hermes/profiles/*/skins/**
+# Wartungsbot (11.10.2026): die Skripte, die ein Profil per Hermes-Cron ohne
+# Modell fahrt. Der Cron loest einen Skriptpfad NUR innerhalb des eigenen
+# Profils auf (cron/scheduler_script.py::_resolve_script_path), also gehoert
+# ein no_agent-Skript in `profiles/<profil>/scripts/`. Ohne diese Zeile liegt
+# das Skript ausserhalb von Git - genau die Ablage, aus der am 30.09.2026
+# sechs Testdateien unbemerkt verschwunden sind (T-100).
+!Agenten/Hermes/profiles/*/scripts/
+!Agenten/Hermes/profiles/*/scripts/**
 #
 # SKILL-BUNDLES (11.10.2026): Slash-Command-Buendel unter
 # Agenten/Hermes/skill-bundles/*.yaml - Verhalten wie Skills, deshalb
