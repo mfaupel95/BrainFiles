@@ -61,6 +61,35 @@
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-396 — xperp-Vorschlag vom 11.10. ist blockiert: er will Max' eigene Auftraege zuruecknehmen**
+      Kontext: Der Verbesserer hat um **04:38** einen Vorschlag erzeugt
+      (`Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/`, Marker `ANGEFRAGT`
+      seit 04:45). Drei Parameter, alle innerhalb ihrer Baender, die Zahlen sind
+      gut: OOS netto je Runde **-0.2187 -> 1.2429**, Holdout **-1.2744 -> 0.1011**
+      bei n=28, Siebregeln a-e bestanden.
+        - `stop_atr_faktor`        1.5 -> 1.25  (Band 1.0..2.5)
+        - `trailing_stop_prozent`  1.5 -> 1.0   (Band 0.75..3.0)
+        - `trailing_trigger_r`     1.0 -> 1.25  (Band 0.5..2.0)
+      BLOCKER: der Vorschlag traegt zwei weitere geaenderte Schluessel, die
+      nicht auf der Whitelist stehen - `_ev_entfaellt` und
+      `handpositionen_automatisch_schliessen`. `anwenden.py:311` bricht bei
+      JEDEM solchen Schluessel ab (`{"ok": False, "grund": "nicht auf der
+      Whitelist: _ev_entfaellt"}`), es wird also NICHTS angewendet - auch die
+      drei guten Parameter nicht. Live nachgerechnet, nicht gelesen.
+      URSACHE (Zeitfolge): der Vorschlag ist vom **04:38**, Max' Auftraege sind
+      vom **04:39** (`handpositionen_automatisch_schliessen` auf true) und
+      **04:43** (`_ev_entfaellt`). Der Verbesserer hat die `wachen.json` VOR
+      beiden gelesen und den Stand von damals eingefroren; beim Anwenden wuerde
+      er beide Auftraege zuruecknehmen wollen. Dass das nicht passiert, ist
+      die Whitelist bei der Arbeit - der Schaden ist verhindert, der Vorschlag
+      ist blockiert, nicht kaputt.
+      Naechster Schritt (Entscheidung Max): Vorschlag NEU fahren lassen (liest
+      den aktuellen Stand und traegt nur die drei Parameter ein), oder die zwei
+      Schluessel bewusst freigeben - Letzteres hiesse, der Verbesserer darf
+      kuenftig Max' Schalter umdrehen, vermutlich nicht gewollt.
+      Betrifft: Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/,
+      Agenten/Handel/verbesserer/spuren.json, Agenten/Handel/xperp/wachen.json
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
 - [ ] **T-393 — omniquant hat kein Pflichtband: der Stop kommt ungeprueft aus dem Bericht**
       Kontext: `omniquant/wachen.json` traegt weder `pflicht_stop_prozent_min/max`
       noch `stop_prozent` noch `stop_atr_faktor`. Die Hauspruefung in
