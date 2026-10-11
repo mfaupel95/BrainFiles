@@ -136,7 +136,7 @@
     },
     {
       "name": "affinity",
-      "enabled": true,
+      "enabled": false,
       "agent": "beide",
       "type": "stdio",
       "command": "node",
@@ -147,7 +147,7 @@
       "env": {
         "SSE_URL": "http://localhost:6767/sse"
       },
-      "description": "Affinity-Dokumente. Funktioniert nur, wenn Affinity laeuft (http://localhost:6767)."
+      "description": "Affinity-Dokumente. Funktioniert nur, wenn Affinity laeuft (http://localhost:6767). In Hermes abgeschaltet (enabled: false) - Affinity-App laeuft nicht, kein Eintrag in Claude-Config. Zum Einschalten hier und in Hermes enabled: true."
     },
     {
       "name": "pdf-vault",
