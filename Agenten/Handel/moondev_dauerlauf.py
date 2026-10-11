@@ -249,8 +249,12 @@ AGENTEN = {
         "cmd": [REPO_PYTHON, "-m", "src.agents.new_or_top_agent"],
         "cwd": str(REPO),
     },
+    # kraken: seit Fork-Commit 0cb95b7 (04.10.2026) "from src.agents.
+    # zyklus_watchdog import ..." - als Skriptpfad dieselbe Falle wie oben
+    # (ModuleNotFoundError: No module named 'src', Neustart im Kreis bis
+    # 09.10.2026). Deshalb ebenfalls -m.
     "kraken": {
-        "cmd": [REPO_PYTHON, str(REPO / "src" / "agents" / "kraken_agent.py")],
+        "cmd": [REPO_PYTHON, "-m", "src.agents.kraken_agent"],
         "cwd": str(REPO),
     },
     # sniper_agent (19.09.2026): scannt neue Solana-Launches ueber die
