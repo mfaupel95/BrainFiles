@@ -61,6 +61,32 @@
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-397 — Karten-Worker: kausale Gegenprobe fuer den Token-Fix (Commit 2389eeba) fehlt**
+      Kontext: Root-Kanban t_8e9b88e2 ist abgeschlossen (alle 10 Karten heute done), der Fix
+      (38 Skills disabled in profiles/hermes-wartung/config.yaml, Commit 2389eeba vom 10.10. 21:03)
+      ist in der Config belegt - aber die 5 zuvor am Limit gestorbenen Karten (t_29c89f80,
+      t_4f96661d, t_c3909e3e, t_542d26a4, t_b2142a56) wurden 06.-09.10.2026 abgeschlossen,
+      VOR dem Fix-Commit. Die Verifikationslogs (kanban/logs/t_*.log, 11.10. 07:22) dokumentieren
+      nur den done-Status, keine kausale Gegenprobe 'dieselbe Karte laeuft post-fix durch'.
+      Crash-Bilder vorher: 'raise max_tokens', 'resend your message (history preserved)',
+      MemoryError; Modell meituan/longcat-2.5-preview:free (1M Kontext, 128K output).
+      Naechster Schritt: eine neue Karte an assignee hermes-wartung legen (Fachinhalt aus einer
+      der alten Crash-Karten), Lauf mit 'kanban --board <slug> runs <id>' + kanban/logs/<id>.log
+      belegen; erst dann 'kausal behoben' behaupten.
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Betrifft: Agenten/Hermes/profiles/hermes-wartung/config.yaml, Agenten/Hermes/kanban/
+- [ ] **T-398 — Karten-Worker: Token-Fix gilt nur fuer hermes-wartung, andere Worker-Profile unberuehrt**
+      Kontext: Die Crash-Karten liefen auf mehreren Profilen (t_29c89f80: agent-trade-kit,
+      t_4f96661d/t_c3909e3e/t_542d26a4: default, t_b2142a56: hermes-wartung). Commit 2389eeba
+      hat NUR hermes-wartung getrimmt (38 disabled); default (Agenten/Hermes/config.yaml hat
+      skills.disabled: []), agent-trade-kit und weitere laden weiter ihre vollen Skill-Bundles
+      (Befund t_5d05e39f: ~115 Skills / ~1 MB je Profil). 18 Profile tragen bereits eine
+      disabled-Liste (Trim 21.09.), die uebrigen nicht.
+      Naechster Schritt: stirbt ein Worker auf default/agent-trade-kit wieder am max_tokens-Crash,
+      dieselbe skills.disabled-Kur dort nachziehen (Muster Commit 2389eeba).
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Betrifft: Agenten/Hermes/profiles/*/config.yaml, Agenten/Hermes/config.yaml
+
 - [ ] **T-396 — xperp-Vorschlag vom 11.10. ist blockiert: er will Max' eigene Auftraege zuruecknehmen**
       Kontext: Der Verbesserer hat um **04:38** einen Vorschlag erzeugt
       (`Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/`, Marker `ANGEFRAGT`
