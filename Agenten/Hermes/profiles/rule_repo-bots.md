@@ -7,16 +7,15 @@ Sie liegt ABSICHTLICH eine Ebene HOEHER als die Profile (`Agenten\Hermes\profile
 damit alle Bots EINE Stil- und Betriebsquelle teilen statt 27 wortgleiche Kopien.
 Jedes `profiles\<bot>\SOUL.md` verweist hierher und bleibt selbst individuell
 (Repo-Wissen, Aufgaben, Grenzen).
-Budget: 6000 Zeichen. Messen:
-`(Get-Item 'C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\profiles\rule_repo-bots.md').Length`
+Budget: 6000 Zeichen (`wc -c < Datei`).
 Ueber Budget: verdichten (Abschnitt 5), nicht anhaengen.
 
 ## 1. Diese Datei zuerst lesen
 
-Jede Bot-Sitzung liest diese Datei, BEVOR sie plant, Code aendert oder committet.
-Gelerntes kommt sofort hier hinein - eine Zeile je Lektion, Regel + Grund.
-Repospezifisches gehoert in die eigene `SOUL.md` (sie gewinnt beim Repo-Wissen),
-Generelles hierher (diese Datei gewinnt bei Stil und Betriebsregeln).
+Jede Bot-Sitzung liest sie, BEVOR sie plant, Code aendert oder committet.
+Gelerntes sofort hierher - eine Zeile je Lektion, Regel + Grund. Repospezifisches
+in die eigene `SOUL.md` (sie gewinnt beim Repo-Wissen), Generelles hierher (diese
+Datei gewinnt bei Stil und Betriebsregeln).
 
 ## 2. Stil (gilt fuer alle Bots)
 
@@ -73,10 +72,10 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
 ## Gelerntes
 
 - 18.09.2026 angelegt: 27 wortgleiche SOUL.md ersetzt durch EINE hoehere Stilquelle
-  (diese Datei). Alte Fassung: `profiles\.sicherung\`.
-- Git-Freigabe dieser Datei: `!Agenten/Hermes/profiles/*.md` in `.gitignore` (sonst
-  gewinnt `Agenten/Hermes/**`). Pruefen: `git check-ignore -v`.
-- 18.09.2026: 27 Repo-Bots; ohne `nous` und `awesome-systematic-trading` (eigene Regeldatei).
+  (diese Datei, Git-Freigabe `!Agenten/Hermes/profiles/*.md`, sonst gewinnt
+  `Agenten/Hermes/**`; pruefen `git check-ignore -v`). 27 Repo-Bots; ohne
+  `nous` und `awesome-systematic-trading` (eigene Regeldatei). Alte Fassung:
+  `profiles\.sicherung\`.
 - 18.09.2026 PowerShell 5.1: `Get-FileHash` fehlt (stumm nichts, eine Pruefung
   meldet falsch "alle gleich" - MD5 ueber .NET auf die Bytes); MEHRERE Here-Strings
   in EINEM Befehl kommen verstuemmelt an - eine Datei je Aufruf, Groesse pruefen.
@@ -91,10 +90,10 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
 - 20.09.2026 Zwei getrennt gebaute Komponenten sind nicht integriert, nur weil beide
   Testreihen gruen sind: die Naht ist das Vokabular - ein Test PRO Wort der Gegenseite;
   ein Probe-Modus darf keine Marke fortschreiben.
-
-- 22.09.2026 Windows Defender loescht Doku-Skills und sperrt den LESEZUGRIFF
-  ("enthaelt einen Virus"); `ls` beweist nichts - Probe ist echter Lesevorgang,
-  Fundort `Get-MpThreatDetection`.
+- 22.09.2026 Defender loescht Doku-Skills und sperrt den LESEZUGRIFF ("Virus");
+  `ls` beweist nichts - Probe ist echter Lesevorgang, Fundort `Get-MpThreatDetection`.
 - 22.09.2026 Symlink `auth.json`: `pwsh` 7 legt ihn an, `powershell.exe` 5.1 verweigert (Admin noetig).
+- 11.10.2026 Eine Schleife ist ein CRON-Auftrag (`Agenten/Hermes/cron/jobs.json`), nicht `/loop` - das lebt in EINER Sitzung und stirbt mit ihr. Fuer Bots immer Cron.
+- 11.10.2026 Jeder Kanal-Bot sieht JEDE Nachricht seiner Gruppe (eigenes Token, gleiches `TELEGRAM_ALLOWED_CHATS`): auf EINE Frage antworteten fuenf Bots. Eine Frage = eine Zustaendigkeit.
 
 Verdichtet 2026-10-08: 6122 -> 5921 (Stash-Regel), -> 5974 (CR-Falle)
