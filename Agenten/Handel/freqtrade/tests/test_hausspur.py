@@ -134,7 +134,6 @@ class StopUndZiel(unittest.TestCase):
     def test_ziel_ueber_custom_roi_nicht_custom_exit(self):
         """Review I3: ROI fuellt der Backtest zum Zielpreis, custom_exit erst zum Schluss."""
         self.assertTrue(HausSpur.use_custom_roi)
-        self.assertIs(HausSpur.custom_exit, IStrategy.custom_exit)
 
     def test_custom_roi_ist_ziel_der_signalkerze(self):
         k, df = rahmen()
@@ -146,6 +145,39 @@ class StopUndZiel(unittest.TestCase):
         roi = s.custom_roi(PAAR, t, df["date"].iloc[-1], 60, "klassik_ema", "long")
         self.assertAlmostEqual(roi, df["hs_ziel"].iloc[i] / 100.0)
         self.assertEqual(t.get_custom_data("hs_stop"), df["hs_stop"].iloc[i])
+
+    def _schluss(self):
+        _k, df = rahmen()
+        s = strategie()
+        s.config["hausspur"]["ausloesung"] = "schluss"
+        df = s.populate_indicators(df, {"pair": PAAR})
+        s.dp.get_analyzed_dataframe = lambda pair, tf: (df, None)
+        t = Handel(df["date"].iloc[-3] + timedelta(minutes=1))
+        t.set_custom_data("hs_stop", 3.0)
+        t.set_custom_data("hs_ziel", 4.5)
+        return s, t, df
+
+    def test_schluss_kein_dochtstop_und_kein_roi(self):
+        """Variante wie im Haus (T-202): Stop/Ziel nur auf dem Kerzenschluss."""
+        s, t, df = self._schluss()
+        jetzt = df["date"].iloc[-1]
+        self.assertEqual(s.custom_stoploss(PAAR, t, jetzt, 90.0, -0.10, False), -0.99)
+        self.assertIsNone(s.custom_roi(PAAR, t, jetzt, 60, "x", "long"))
+
+    def test_schluss_loest_auf_schlusskurs_aus(self):
+        s, t, df = self._schluss()
+        jetzt = df["date"].iloc[-1]
+        self.assertEqual(s.custom_exit(PAAR, t, jetzt, 0, -0.031), "stop_schluss")
+        self.assertEqual(s.custom_exit(PAAR, t, jetzt, 0, 0.046), "ziel_schluss")
+        self.assertIsNone(s.custom_exit(PAAR, t, jetzt, 0, 0.01))
+
+    def test_vorgabe_bleibt_docht(self):
+        _k, df = rahmen()
+        s = strategie()
+        df = s.populate_indicators(df, {"pair": PAAR})
+        s.dp.get_analyzed_dataframe = lambda pair, tf: (df, None)
+        t = Handel(df["date"].iloc[-3] + timedelta(minutes=1))
+        self.assertIsNone(s.custom_exit(PAAR, t, df["date"].iloc[-1], 0, -0.5))
 
     def test_ohne_signalzeile_vorgabe_statt_absturz(self):
         """Review M1: Signalkerze ohne Werte (Altposition) -> Vorgabestop, kein TypeError."""
