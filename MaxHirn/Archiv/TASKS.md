@@ -88,14 +88,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       t_4f96661d/t_c3909e3e/t_542d26a4: default, t_b2142a56: hermes-wartung). Commit 2389eeba
       hat NUR hermes-wartung getrimmt (38 disabled); default (Agenten/Hermes/config.yaml hat
       skills.disabled: []), agent-trade-kit und weitere laden weiter ihre vollen Skill-Bundles.
-      **GEMESSEN 11.10.2026:** die vier Boards haben zusammen **10 verschiedene Assignees**
+      **GEMESSEN 11.10.2026:** die vier Boards haben zusammen **11 verschiedene Assignees**
       (agent-trade-kit, awesome-systematic-trading, deepseek-harness, default, fomo-radar,
-      harvard-trading, hermes-wartung, lokal-first, lotse, moon-dev-agents) - und nur
-      **einer** davon ist getrimmt (hermes-wartung, 38 Eintraege). Die anderen neun laden
+      harvard-trading, hermes-wartung, lokal-first, lotse, moon-dev-agents,
+      one-skill-to-rule-them-all) - und nur
+      **einer** davon ist getrimmt (hermes-wartung, 38 Eintraege). Die anderen zehn laden
       beim Kartenstart weiter ihr volles Skill-Bundle. Das ist die Zahl, um die es bei
-      der Entscheidung geht: nicht "noch ein Profil", sondern neun von zehn.
-      (Befund t_5d05e39f: ~115 Skills / ~1 MB je Profil). 18 Profile tragen bereits eine
-      disabled-Liste (Trim 21.09.), die uebrigen nicht.
+      der Entscheidung geht: nicht "noch ein Profil", sondern zehn von elf.
+      **KORREKTUR 11.10.2026 (nachgezaehlt, nicht gelesen):** der Satz "18 Profile tragen
+      bereits eine disabled-Liste (Trim 21.09.), die uebrigen nicht" ist FALSCH. Ueber
+      alle 34 config.yaml (1 Hauptdatei + 33 Profile) geprueft:
+        - `skills.disabled` mit Eintraegen: **1 von 34** (nur hermes-wartung, 38).
+        - `plugins.disabled` mit Eintraegen: **0 von 34**.
+      Die 18 genannten Profile tragen `plugins.disabled: []` - eine LEERE Liste unter
+      einem ANDEREN Schluessel, kein Trim. Der Trim vom 21.09. hat die SPUREN-Plugins
+      getroffen, nicht die Skills; genau das ist die Verwechslung. Kein Profil ausser
+      hermes-wartung blendet beim Kartenstart Skills aus.
       Naechster Schritt: stirbt ein Worker auf default/agent-trade-kit wieder am max_tokens-Crash,
       dieselbe skills.disabled-Kur dort nachziehen (Muster Commit 2389eeba).
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
@@ -123,6 +131,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       er beide Auftraege zuruecknehmen wollen. Dass das nicht passiert, ist
       die Whitelist bei der Arbeit - der Schaden ist verhindert, der Vorschlag
       ist blockiert, nicht kaputt.
+      **ERLEDIGT 11.10.2026 - der Vorschlag ist neu gefahren und ANGEWENDET.** Der
+      blockierte Stand war der Lauf vom **04:38**; er ist unter `berichte/erledigt/
+      2026-10-11-spur2/` abgelegt und zu Recht abgewiesen (zwei Waechter: Whitelist
+      anwenden.py:311 fuer `_ev_entfaellt`, Basis-Pruefsumme anwenden.py:340-348).
+      Danach lief ein ZWEITER Lauf, der den Stand NACH Max' Auftraegen gelesen hat:
+        - `anwendungslog.json`: `"anwendung_ts": "2026-10-11T09:01:19Z"`,
+          `"entscheidung": "angewendet"` (09:01 UTC = 11:01 CEST).
+        - Commit **8967e4ec** (11.10. 11:01:19 +0200) aendert `xperp/wachen.json`,
+          3 insertions / 3 deletions - genau die drei Parameter.
+      Live nachgeprueft in `xperp/wachen.json`: `stop_atr_faktor=1.25`,
+      `trailing_stop_prozent=1.0`, `trailing_trigger_r=1.25` - identisch mit dem
+      Kandidaten. Die zwei umstrittenen Schluessel stehen dort jetzt so, wie Max sie
+      gesetzt hat (`_ev_entfaellt` = Max-Vermerk, `handpositionen_automatisch_
+      schliessen` = true) und sind im eingefrorenen Kandidaten BYTEGLEICH - der
+      neue Lauf hat den spaeteren Stand gelesen, das Problem ist damit weg.
+      Keine Entscheidung mehr offen; Ticket kann zu.
       Naechster Schritt (Entscheidung Max): Vorschlag NEU fahren lassen (liest
       den aktuellen Stand und traegt nur die drei Parameter ein), oder die zwei
       Schluessel bewusst freigeben - Letzteres hiesse, der Verbesserer darf
@@ -166,6 +190,29 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
         (a) wie xperp: `stop_atr_faktor` 1.5 + `ziel_atr_faktor` 3.0 (dann
             rechnet der Kontrakt-Zweig und die Grenze greift),
         (b) wie die Klassik-Spuren: `stop_prozent` 3.0 + Band 1.8..6.0.
+      **NACHTRAG 2, 11.10.2026 - selbst nachgezaehlt, zwei Zahlen korrigiert und ein
+      Befund, der die Dringlichkeit dreht:**
+        - Es sind **37 EINSTIEG-Zeilen**, nicht 40 (handelsjournal.csv, 303 Zeilen
+          gesamt). Alle 37 sind `papier`. Die "3 live" des ersten Nachtrags sind die
+          drei `eroeffnen`-Zeilen (HBAR 11,29 %, NEAR-USDC 13,52 %, ADA 10,71 %) -
+          als EINSTIEG zaehlt das Buch sie nicht, sie haben einen eigenen Aktionsnamen.
+        - **Die drei Live-eroeffnungen sind nicht aufgegangen.** Auf sie folgen in
+          derselben Datei **231 `fehler`-Zeilen** (01.-10.10.), davon **200 mit
+          "SICHERHEITSLUECKE: Stop fehlte an der Boerse und liess sich nicht setzen"
+          auf NEAR-USDC** - und je eine Zeile "Position wegen fehlendem Stop
+          zurueckgedreht" und "Schutz-Stop fehlgeschlagen: HTTP 400". Der Live-Arm
+          hat den Stop also nicht an die Boerse bekommen; das ist genau das Feld,
+          das dieses Ticket als ungeprueft beschreibt.
+        - Baender nachgerechnet an den 37: 1,8..6,0 -> **6 (16 %)**, 3,0..10,0 ->
+          **12 (32 %)**, 5..12 -> **30 (81 %)**. Median 11,32 %, schmalster 4,92 %
+          (ETH-USDT), breitester 13,96 % (TRB-USDT).
+        - Die Klammer 5..12 steht in **beiden** Prognose-Fassungen (`prognose.json`
+          UND `prognose.weit.json`, je `stop_min_pct=5.0` / `stop_max_pct=12.0`) -
+          ein Band 1,8..6,0 verwirft also 84 % der Einstiege, unabhaengig davon,
+          welcher Bericht sie erzeugt hat.
+        - Gegenprobe ueber ALLE vier Journale (handelsjournal.csv/.hoch/.mittel/
+          .weit): **105 Einstiege, ausnahmslos `papier`** - der Live-Arm hat
+          ausser den drei gescheiterten `eroeffnen` keine Einstiege.
       Vorher klaeren, ob der Bericht den Stop ueberhaupt so eng liefern kann -
       `prognose.py` klemmt ihn selbst auf `stop_min_pct..stop_max_pct` (5..12),
       der Median 11,32 % ist also eine FOLGE dieser Klammer, nicht des Marktes.
