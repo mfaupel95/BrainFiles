@@ -100,6 +100,16 @@ class Pfad(unittest.TestCase):
         sys.modules.pop("freqtrade.optimize.hyperopt_tools", None)
         importlib.import_module("freqtrade.optimize.hyperopt_tools")
 
+    def test_neuer_prozess_findet_echtes_freqtrade(self):
+        """Hyperopt-Worker starten frisch mit geerbtem sys.path (11.10.2026)."""
+        import os
+        import subprocess
+        strategie()
+        r = subprocess.run([sys.executable, "-c", "import freqtrade.main"],
+                           env=dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path)),
+                           cwd="/", capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr[-500:])
+
 
 class Spalten(unittest.TestCase):
     def test_backtest_wie_signale(self):

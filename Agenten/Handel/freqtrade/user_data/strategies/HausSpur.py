@@ -48,8 +48,15 @@ class HausSpur(IStrategy):
                 f"nach /agenten (bots.py mounts) fehlt?")
         # ANHAENGEN, nicht vorne einfuegen (Review M8): Handel/freqtrade/ waere
         # sonst ein Namespace-Paket "freqtrade" vor dem echten.
-        if str(pfad) not in sys.path:
-            sys.path.append(str(pfad))
+        # Neue Prozesse (Hyperopt-Worker per forkserver) erben sys.path, laden
+        # freqtrade aber frisch: ohne den echten Paketordner im Pfad gewinnt
+        # dort der Namespace Handel/freqtrade (gemessen 11.10.2026). Ein
+        # regulaeres Paket schlaegt einen Namespace an jeder Pfadposition.
+        import freqtrade
+        wurzel = str(Path(freqtrade.__file__).resolve().parents[1])
+        for eintrag in (wurzel, str(pfad)):
+            if eintrag not in sys.path:
+                sys.path.append(eintrag)
         import hausspur_regeln as hr
         try:
             hr.spur(name)
