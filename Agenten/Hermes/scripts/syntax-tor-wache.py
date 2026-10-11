@@ -51,9 +51,22 @@ WURZEL = HIER.parents[2]                       # scripts -> Hermes -> Agenten ->
 MERK = HIER.parent / "cache" / "syntax-tor-wache.json"
 
 RUHE_STUNDEN = 6.0
-ZEITLIMIT_TESTLAUF = 1500        # 25 min; die grosse tests-Suite allein braucht ~8 min,
-                                 # der volle Lauf ueber 40 Suiten gemessen ~13 min
-                                 # (11.10.2026). Der Cron laeuft alle 6 h - das passt.
+ZEITLIMIT_TESTLAUF = 2400        # 40 min. GEMESSEN 11.10.2026 (Wache-Probe 07:43:36
+                                 # -> Merker 08:01:07): der volle Lauf ueber 40 Suiten
+                                 # dauert **1051 s (17,5 min)**. Die grosse tests-Suite
+                                 # laeuft dabei in ihr EIGENES 900-s-Limit und wird als
+                                 # fehler: -1 gebucht (39 Suiten fertig, dann "Zeitlimit
+                                 # von 900 s ueberschritten" - steht so in
+                                 # testlauf_basis.json).
+                                 # Vorher stand hier 1500 s mit der Rechnung 780+900 =
+                                 # 1680 s - die Rechnung war zu pessimistisch (die
+                                 # 900 s der tests-Suite laufen nicht voll neben den
+                                 # anderen, testlauf.py faehrt sie nacheinander).
+                                 # 2400 s deckt die gemessenen 1051 s mit 128 % Luft:
+                                 # ein langsamerer Rechner oder ein neuer Test kippt
+                                 # die Wache nicht ins eigene Timeout, was sie sonst
+                                 # als Befund melden wuerde, obwohl der Lauf gesund war.
+                                 # Der Cron laeuft alle 6 h - das passt.
 
 # Ordner, deren .py nicht geprueft werden (Junctions, venvs, Fremd-Klone).
 AUSLASSEN = {".venv", "__pycache__", "node_modules", "target", "logs",
