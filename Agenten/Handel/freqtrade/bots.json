@@ -66,7 +66,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_sma, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -79,7 +80,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_ema, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -92,7 +94,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_macd, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -105,7 +108,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_bollinger, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -118,7 +122,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_donchian, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -131,7 +136,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_rsi, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -144,7 +150,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_rsi2, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -157,7 +164,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_donchian_trend, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -170,7 +178,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_sr_breaks, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -183,7 +192,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_pmax, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -196,7 +206,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/klassik_regeln.py (REGELN)",
       "regel": "Haus-Regel der Spur klassik_supertrend, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -222,7 +233,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/squeeze/handeln.py",
       "regel": "Haus-Regel der Spur squeeze, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -235,7 +247,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/wavetrend/handeln.py",
       "regel": "Haus-Regel der Spur wavetrend, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
@@ -248,7 +261,8 @@
       "max_open_trades": 3,
       "quelle": "Agenten/Handel/supertrend/handeln.py",
       "regel": "Haus-Regel der Spur supertrend, importiert ueber Agenten/Handel/hausspur_regeln.py.",
-      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+      "whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "BNB/USDT:USDT", "XRP/USDT:USDT", "DOGE/USDT:USDT", "ADA/USDT:USDT", "AVAX/USDT:USDT", "LINK/USDT:USDT", "LTC/USDT:USDT"],
+      "_whitelist_vermerk": "11.10.2026 Auftrag Max (Handelsfrequenz zu niedrig): 3 -> 10 Paare. Zurueck: nur BTC/ETH/SOL.",
       "beschreibung": "Haus-Spur als Dry-Run-Bot (Auftrag Max 10.10.2026: Breite). Futures, Hebel 1."
     },
     {
