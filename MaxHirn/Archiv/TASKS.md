@@ -1,123 +1,6 @@
 ## Offen
 
 
-- [ ] **T-378 — BtcRegimeKurz abgelegt: Kante 1,2:1, nicht lebensfaehig**
-      Kontext: Auftrag Max 05.10.2026 (BTC-Strategie fuer Seitwaerts-/Aufwaerts-Phasen,
-      Haltung max 48 h, moeglichst kurz, hohe Fluktuation). Gebaut und gemessen:
-      12 Spot-Laeufe (4 Stops 0,8-3,0 % x 2 Halbjahre + Gegenversuch ohne Gewinnvorabnahme)
-      + 2 Futures-Laeufe. Kante VOR Gebuehr stabil +0,09 bis +0,14 % je Umsatz (Mittel 0,119 %),
-      Gebuehr 0,20 % je Runde (Spot) -> Kante traegt nicht (0,6:1). Futures (0,05 %/Seite):
-      H1 +0,04 % (break-even), H2 -4,2 % -> Verhaeltnis 1,2:1, aber kein Halbjahr positiv.
-      Beleg: Strategie committet 6a02d231, Skill-Lehre d42da77d, Logs btc_fut_H1/H2.log in cache/scratch.
-      Naechster Schritt: keine - bewusst abgelegt (Entscheidung Max 08.10.2026).
-      Angelegt: 2026-10-08 · Zuletzt: 2026-10-08
-      Betrifft: Agenten/Handel/freqtrade/user_data/strategies/BtcRegimeKurz.py
-- [x] **T-377 - carry.py Wache fertig gestellt**
-      Kontext: 07.10.2026. carry.py fertig: Cross-Venue-Carry-Scanner, rein lesend,
-      OKX+Kraken, 5 Basen negativ (netto bp -34,1…-37,0), 16/16 Tests gruen.
-      Wache gebaut: carry-wache.py + tests (5/5 gruen), Hermes-Cron alle 15 min no_agent,
-      Watchdog-Muster (leere Ausgabe = nichts zu melden), Default MIN_NETTO_BP=2.0,
-      --vorschau/--min-netto. Commits f9b06806 + 162952e8 + Wache-Commit (772aee44) +
-      Cron-Commit (6cdd2b48). Nicht angefasst: Fremdarbeit (historie_okx.py,
-      knowledge-base, scanner_quant, worktrees-rueckgabe, SKILL.md, .worktrees/),
-      OKX/Kraken-Schluessel, Guthaben, live-Orderwege. Entscheidung Max: MAX_MELDUNGEN_PRO_TAG=3,
-      --min-netto als Wachen-Param.
-      Angelegt 07.10.2026 · Zuletzt 07.10.2026 · Betrifft Agenten/Handel
-
-- [x] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
-      Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
-      habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
-      DictReader, Spalten NACH DEM NAME - eine feste Spaltennummer hatte zuerst
-      151 Fehlbefunde im scanner gemeldet, dort steht `pos_id` an Stelle 14 statt 12).
-      Befund: 16 Doppelverkäufe, KEINE Geister (keine Position ist im Zustand offen
-      und zugleich verkauft) - der Zustand hat den Code-Fix `ee3ff9be` also ueberall
-      richtig ueberlebt, nur das Journal trage Altlast:
-        iv_wand 7 (BTC-USDT, alle `ziel`, 30.09.-04.10.)
-        liq_wand 3 (BTC-USDT-SWAP, 01.-04.10.)
-        moondev_topmovers 2 (BP mit 3 Zeilen am 01.10., AR am 04.10.)
-        prophet_signal 2 (BTC- und SOL-USDT-SWAP, je 2x `trend_umkehr` am 02.10.)
-        klassik_ema 1 (ETH-USDT-SWAP, 2x `gegensignal` am 03.10.)
-        robinhood_radar 1 (02.10., 2x `ziel`)
-      Alle Befunde liegen VOR dem 05.10. - seit `ee3ff9be` kann keiner neu entstehen.
-      Das Merkmal ist ueberall dasselbe: 10-30 Minuten Abstand, gleiche Position,
-      `ziel` oder `gegensignal` zweimal. Das sieht nach einem Vorschau-Aufruf aus
-      (`dauerlauf.nur_fenster_fehlt()` je Takt), genau der Weg, der NIGHT erzeugt hat.
-      Naechster Schritt: je Spur mit `buch_reconcile.py` (der Regel-Rechner aus
-      t_0f4fa35d, `spur_buch.SPALTEN` deckt alle Buch-Spuren ab) aufloesen lassen -
-      Vorschau zuerst, die verworfenen Zeilen bleiben daneben. Vorher die Herkunft
-      klaeren: sind es dieselben Vorschau-Aufrufe oder ein zweiter Weg?
-      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
-      Betrifft: Agenten/Handel/{iv_wand,liq_wand,moondev_topmovers,prophet_signal,klassik_ema,robinhood_radar}/handelsjournal*.csv
-- [x] **T-360 — Repos-Zentrale: zwei Manifest-Eintraege zeigen auf den geloeschten Ordner `kopier1zu1`**
-      Kontext: Die vollstaendige Suite der Zentrale (296 Tests) meldet seit dem
-      05.10.2026 zwei rote Tests, BEIDE vorbestehend und beide mit derselben
-      Ursache: die Fremdarbeit-Uebernahme 607d9b51 vom 05.10. 00:20 hat den Ordner
-      `Agenten/Handel/kopier1zu1` aus dem Baum entfernt, zwei Manifest-Eintraege
-      tragen ihn aber weiter (der Ordner und `kopier1zu1/auswertung.py` mit
-      belegtem Startbefehl). Das Fenster zeigt beide unter FEHLT.
-      Naechster Schritt: entscheiden, ob `kopier1zu1` zurueckkommt oder der
-      Eintrag aus `repos-zentrale.json` wandert - `fuellen.py --anwenden` nimmt
-      vorhandene Eintraege NICHT mit heraus, das ist Handarbeit in der Kuratierung.
-      Angelegt: 2026-10-05 · Zuletzt: 2026-10-05
-      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Agenten/Handel/kopier1zu1
-- [ ] **T-349 — adx_macd: das Vorzeichen folgt dem Fenster, nicht der Strategie**
-      Kontext: T-342 neu gemessen am 04.10.2026 (BTC 15m, 10.000 USD,
-      0,05 %/Seite, OMNI_LONG_ONLY=1, echter Rust-Backtest):
-        14 Tage  13 Runden  38,5 %   -324,86 USD   (-24,99 je Runde)
-        28 Tage  19 Runden  36,8 %   +182,67 USD   ( + 9,61 je Runde)
-        42 Tage  29 Runden  34,5 %     -6,74 USD   ( - 0,23 je Runde)
-      Der notierte Wert (+117,04) ist heute +182,67 - dieselbe Zelle, ein
-      anderer Kerzenstand. WICHTIGER: die Trefferquote ist in allen drei
-      Fenstern nahezu gleich (36,8 / 36,8 / 34,5 %), das Vorzeichen der PnL
-      dagegen nicht. Eine Kennzahl, die zwischen -25 und +10 USD je Runde
-      pendelt, ohne dass sich die Trefferquote bewegt, beschreibt den
-      Zeitraum, nicht die Regel.
-      Gegenprobe mit der zweiten Fassung: rsi_long_only haelt 60 / 73 / 78 %
-      Treffer und verliert in ALLEN drei Fenstern (-13,15 / -147,97 /
-      -40,25). Hohe Trefferquote und Verlust zugleich ist keine bessere
-      Strategie, sondern ein zu enges Ziel: der Gewinn je Treffer deckt den
-      Verlust je Fehlschlag nicht.
-      Naechster Schritt: KEIN Freischalten. adx_macd darf erst nach echten
-      Papierrunden aus T-347 (laufend, erster Einstieg 04.10. 21:24) und
-      T-291 (Guthaben) weitergehen. Die Geometrie von rsi_long_only (Ziel zu
-      eng) ist eine eigene Messung und gehoert nicht in diese Zelle.
-      Angelegt 04.10.2026 · Betrifft Agenten/Handel/omnitrade/intervalle_messen.py
-
-
-
-## Regeln
-
-- **Am Sitzungsanfang lesen**, bevor gefragt wird, woran gearbeitet werden soll.
-- **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
-  Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
-- **Erledigtes nach `## Erledigt` - [x]   **T-319 — Der ZRO-Ausstieg in moondev_topmovers scheitert seit 20:48 jeden Zyklus — ERLEDIGT 04.10.2026**
-      Kontext: OKX 51008 "Your available ZRO balance is insufficient" - gemessen im
-      Ereignisprotokoll, 20:48-23:32 am 02.10.2026. Die Position blieb im Buch,
-      jeder Zyklus versuchte denselben Verkauf und scheiterte.
-      
-      ERLEDIGT 04.10.2026 (Diagnose, kein Code): die ZRO-Position war ein
-      BUCH-GEIST, keine echte Position. Belegt an der Boerse:
-        - /account/balance ZRO: spotBal 0.983, frozenBal 0, availBal 0.983 -
-          kein eingefrorener Bestand, keine offene Spot-Position.
-        - /trade/orders-history, orders-history-archive, orders-pending fuer
-          ZRO-USDT: 0 Orders. Die Position wurde NIE real gehandelt.
-        - Journal: Kauf 02.10. 05:24 als modus=live (1.9143), Ausbuchung 02.10.
-          22:48 als papier-Stop (1.76). Der live-Kauf war ein Geist - dieselbe
-          Klasse wie der xperp-Fall vom 21.09.2026.
-        - Der 51008-Fehler war die Folge: die Spur versuchte, eine Position zu
-          verkaufen, die an der Boerse nie existierte.
-      
-      Die Spur laeuft seither sauber: letzter Lauf 04.10. 20:17, 250 Kandidaten,
-      keine Datenfehler, letzte Journal-Zeile ein normaler AR-Stop. Die ZRO-Fehler
-      endeten am 02.10. 23:32.
-      
-      Angelegt 03.10.2026 · Zuletzt 04.10.2026 · Betrifft: moondev_topmovers.
-
-verschieben**, mit Datum. Nicht löschen —
-  Der Eintrag bleibt als `- [x]` mit Erledigt-Datum dort stehen.
-
-
-
 - [x] **T-044 - Gateway-Waechter registriert, Alt-Task deaktiviert, Bus ohne Konsolenfenster**
       **Erledigt 2026-09-16.** Max hat den UAC-Dialog bestaetigt; das Skript
       `Agenten\Routinen\vorsorge-gateway-admin.ps1` ist in einer Admin-PowerShell
@@ -1745,6 +1628,135 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-377 - carry.py Wache fertig gestellt**
+      Kontext: 07.10.2026. carry.py fertig: Cross-Venue-Carry-Scanner, rein lesend,
+      OKX+Kraken, 5 Basen negativ (netto bp -34,1…-37,0), 16/16 Tests gruen.
+      Wache gebaut: carry-wache.py + tests (5/5 gruen), Hermes-Cron alle 15 min no_agent,
+      Watchdog-Muster (leere Ausgabe = nichts zu melden), Default MIN_NETTO_BP=2.0,
+      --vorschau/--min-netto. Commits f9b06806 + 162952e8 + Wache-Commit (772aee44) +
+      Cron-Commit (6cdd2b48). Nicht angefasst: Fremdarbeit (historie_okx.py,
+      knowledge-base, scanner_quant, worktrees-rueckgabe, SKILL.md, .worktrees/),
+      OKX/Kraken-Schluessel, Guthaben, live-Orderwege. Entscheidung Max: MAX_MELDUNGEN_PRO_TAG=3,
+      --min-netto als Wachen-Param.
+      Angelegt 07.10.2026 · Zuletzt 07.10.2026 · Betrifft Agenten/Handel
+
+
+
+- [x] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
+      Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
+      habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
+      DictReader, Spalten NACH DEM NAME - eine feste Spaltennummer hatte zuerst
+      151 Fehlbefunde im scanner gemeldet, dort steht `pos_id` an Stelle 14 statt 12).
+      Befund: 16 Doppelverkäufe, KEINE Geister (keine Position ist im Zustand offen
+      und zugleich verkauft) - der Zustand hat den Code-Fix `ee3ff9be` also ueberall
+      richtig ueberlebt, nur das Journal trage Altlast:
+        iv_wand 7 (BTC-USDT, alle `ziel`, 30.09.-04.10.)
+        liq_wand 3 (BTC-USDT-SWAP, 01.-04.10.)
+        moondev_topmovers 2 (BP mit 3 Zeilen am 01.10., AR am 04.10.)
+        prophet_signal 2 (BTC- und SOL-USDT-SWAP, je 2x `trend_umkehr` am 02.10.)
+        klassik_ema 1 (ETH-USDT-SWAP, 2x `gegensignal` am 03.10.)
+        robinhood_radar 1 (02.10., 2x `ziel`)
+      Alle Befunde liegen VOR dem 05.10. - seit `ee3ff9be` kann keiner neu entstehen.
+      Das Merkmal ist ueberall dasselbe: 10-30 Minuten Abstand, gleiche Position,
+      `ziel` oder `gegensignal` zweimal. Das sieht nach einem Vorschau-Aufruf aus
+      (`dauerlauf.nur_fenster_fehlt()` je Takt), genau der Weg, der NIGHT erzeugt hat.
+      Naechster Schritt: je Spur mit `buch_reconcile.py` (der Regel-Rechner aus
+      t_0f4fa35d, `spur_buch.SPALTEN` deckt alle Buch-Spuren ab) aufloesen lassen -
+      Vorschau zuerst, die verworfenen Zeilen bleiben daneben. Vorher die Herkunft
+      klaeren: sind es dieselben Vorschau-Aufrufe oder ein zweiter Weg?
+      Angelegt: 05-10-2026 · Zuletzt: 05-10-2026
+      Betrifft: Agenten/Handel/{iv_wand,liq_wand,moondev_topmovers,prophet_signal,klassik_ema,robinhood_radar}/handelsjournal*.csv
+
+
+- [x] **T-360 — Repos-Zentrale: zwei Manifest-Eintraege zeigen auf den geloeschten Ordner `kopier1zu1`**
+      Kontext: Die vollstaendige Suite der Zentrale (296 Tests) meldet seit dem
+      05.10.2026 zwei rote Tests, BEIDE vorbestehend und beide mit derselben
+      Ursache: die Fremdarbeit-Uebernahme 607d9b51 vom 05.10. 00:20 hat den Ordner
+      `Agenten/Handel/kopier1zu1` aus dem Baum entfernt, zwei Manifest-Eintraege
+      tragen ihn aber weiter (der Ordner und `kopier1zu1/auswertung.py` mit
+      belegtem Startbefehl). Das Fenster zeigt beide unter FEHLT.
+      Naechster Schritt: entscheiden, ob `kopier1zu1` zurueckkommt oder der
+      Eintrag aus `repos-zentrale.json` wandert - `fuellen.py --anwenden` nimmt
+      vorhandene Eintraege NICHT mit heraus, das ist Handarbeit in der Kuratierung.
+      Angelegt: 2026-10-05 · Zuletzt: 2026-10-05
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, Agenten/Handel/kopier1zu1
+
+
+- [x] **T-378 — BtcRegimeKurz abgelegt: Kante 1,2:1, nicht lebensfaehig**
+      **Erledigt 2026-10-11.** Bewusst abgelegt (Entscheidung Max 08.10.2026): Kante 1,2:1, kein Halbjahr positiv, Gebuehr 0,20 %/Runde traegt nicht. Strategie bleibt committet (6a02d231) als Referenz, nicht scharf.
+      Kontext: Auftrag Max 05.10.2026 (BTC-Strategie fuer Seitwaerts-/Aufwaerts-Phasen,
+      Haltung max 48 h, moeglichst kurz, hohe Fluktuation). Gebaut und gemessen:
+      12 Spot-Laeufe (4 Stops 0,8-3,0 % x 2 Halbjahre + Gegenversuch ohne Gewinnvorabnahme)
+      + 2 Futures-Laeufe. Kante VOR Gebuehr stabil +0,09 bis +0,14 % je Umsatz (Mittel 0,119 %),
+      Gebuehr 0,20 % je Runde (Spot) -> Kante traegt nicht (0,6:1). Futures (0,05 %/Seite):
+      H1 +0,04 % (break-even), H2 -4,2 % -> Verhaeltnis 1,2:1, aber kein Halbjahr positiv.
+      Beleg: Strategie committet 6a02d231, Skill-Lehre d42da77d, Logs btc_fut_H1/H2.log in cache/scratch.
+      Naechster Schritt: keine - bewusst abgelegt (Entscheidung Max 08.10.2026).
+      Angelegt: 2026-10-08 · Zuletzt: 2026-10-08
+      Betrifft: Agenten/Handel/freqtrade/user_data/strategies/BtcRegimeKurz.py
+
+
+- [x] **T-349 — adx_macd: das Vorzeichen folgt dem Fenster, nicht der Strategie**
+      **Erledigt 2026-10-11.** Messung abgeschlossen: das Vorzeichen folgt dem Fenster (14T -25 / 28T +10 / 42T -0,2 USD je Runde bei konstanter Trefferquote ~36 %), KEIN Freischalten. Folgearbeit lebt in T-347 (Papierrunden) und T-291 (Guthaben).
+      Kontext: T-342 neu gemessen am 04.10.2026 (BTC 15m, 10.000 USD,
+      0,05 %/Seite, OMNI_LONG_ONLY=1, echter Rust-Backtest):
+        14 Tage  13 Runden  38,5 %   -324,86 USD   (-24,99 je Runde)
+        28 Tage  19 Runden  36,8 %   +182,67 USD   ( + 9,61 je Runde)
+        42 Tage  29 Runden  34,5 %     -6,74 USD   ( - 0,23 je Runde)
+      Der notierte Wert (+117,04) ist heute +182,67 - dieselbe Zelle, ein
+      anderer Kerzenstand. WICHTIGER: die Trefferquote ist in allen drei
+      Fenstern nahezu gleich (36,8 / 36,8 / 34,5 %), das Vorzeichen der PnL
+      dagegen nicht. Eine Kennzahl, die zwischen -25 und +10 USD je Runde
+      pendelt, ohne dass sich die Trefferquote bewegt, beschreibt den
+      Zeitraum, nicht die Regel.
+      Gegenprobe mit der zweiten Fassung: rsi_long_only haelt 60 / 73 / 78 %
+      Treffer und verliert in ALLEN drei Fenstern (-13,15 / -147,97 /
+      -40,25). Hohe Trefferquote und Verlust zugleich ist keine bessere
+      Strategie, sondern ein zu enges Ziel: der Gewinn je Treffer deckt den
+      Verlust je Fehlschlag nicht.
+      Naechster Schritt: KEIN Freischalten. adx_macd darf erst nach echten
+      Papierrunden aus T-347 (laufend, erster Einstieg 04.10. 21:24) und
+      T-291 (Guthaben) weitergehen. Die Geometrie von rsi_long_only (Ziel zu
+      eng) ist eine eigene Messung und gehoert nicht in diese Zelle.
+      Angelegt 04.10.2026 · Betrifft Agenten/Handel/omnitrade/intervalle_messen.py
+
+
+
+## Regeln
+
+- **Am Sitzungsanfang lesen**, bevor gefragt wird, woran gearbeitet werden soll.
+- **Sofort eintragen**, wenn ein Punkt entsteht — nicht am Sitzungsende sammeln.
+  Wird die Sitzung vorher abgebrochen, ist der Punkt sonst weg.
+- **Erledigtes nach `## Erledigt` - [x]   **T-319 — Der ZRO-Ausstieg in moondev_topmovers scheitert seit 20:48 jeden Zyklus — ERLEDIGT 04.10.2026**
+      Kontext: OKX 51008 "Your available ZRO balance is insufficient" - gemessen im
+      Ereignisprotokoll, 20:48-23:32 am 02.10.2026. Die Position blieb im Buch,
+      jeder Zyklus versuchte denselben Verkauf und scheiterte.
+      
+      ERLEDIGT 04.10.2026 (Diagnose, kein Code): die ZRO-Position war ein
+      BUCH-GEIST, keine echte Position. Belegt an der Boerse:
+        - /account/balance ZRO: spotBal 0.983, frozenBal 0, availBal 0.983 -
+          kein eingefrorener Bestand, keine offene Spot-Position.
+        - /trade/orders-history, orders-history-archive, orders-pending fuer
+          ZRO-USDT: 0 Orders. Die Position wurde NIE real gehandelt.
+        - Journal: Kauf 02.10. 05:24 als modus=live (1.9143), Ausbuchung 02.10.
+          22:48 als papier-Stop (1.76). Der live-Kauf war ein Geist - dieselbe
+          Klasse wie der xperp-Fall vom 21.09.2026.
+        - Der 51008-Fehler war die Folge: die Spur versuchte, eine Position zu
+          verkaufen, die an der Boerse nie existierte.
+      
+      Die Spur laeuft seither sauber: letzter Lauf 04.10. 20:17, 250 Kandidaten,
+      keine Datenfehler, letzte Journal-Zeile ein normaler AR-Stop. Die ZRO-Fehler
+      endeten am 02.10. 23:32.
+      
+      Angelegt 03.10.2026 · Zuletzt 04.10.2026 · Betrifft: moondev_topmovers.
+
+verschieben**, mit Datum. Nicht löschen —
+  Der Eintrag bleibt als `- [x]` mit Erledigt-Datum dort stehen.
+
+
+
+
+
 - [x] **T-374 - Handpositionen (herkunft=boerse_handgriff) werden nicht automatisch geschlossen**
       Kontext: 06.10.2026, NIGHT-XPERP-Position von Max an der OKX-Boerse von Hand eroeffnet;
       die Spur uebernahm sie als Fremdposition (grund=fremdposition_uebernommen), konnte aber
