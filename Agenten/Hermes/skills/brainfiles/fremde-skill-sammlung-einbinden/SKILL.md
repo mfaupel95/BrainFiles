@@ -148,7 +148,9 @@ Werkstatt-Wurzel)" ist eine Bestandsaufnahme, KEINE Uebernahme: nichts
 kopieren, am Ende Befund + TASKS-Eintraege mit Entscheidungsbedarf. Rezept,
 bekannte Baeume und Klassifikationstabelle: `references/fremde-skills-finden.md`.
 
-1. **Bekannte Baeume zuerst hashen** (Fundus MaxHirn/skills, Werkstatt/Repos,
+1. **Bekannte Baeume zuerst hashen** (Fundus `%USERPROFILE%/Documents/GitHub`
+   — ausserhalb BrainFiles, der alte Ordner `MaxHirn/skills` existiert nicht
+   mehr; aktueller Pfad in `fundus-suche.ps1` — plus Werkstatt/Repos,
    Hausbibliothek, MaxHirn/.claude/skills + .agents/skills): byte-identisch
    = bereits uebernommen, nur Hash-Neue sind Kandidaten. Ohne diesen Abgleich
    zaehlt jede Install-Kopie eines bekannten Repos als "neu".

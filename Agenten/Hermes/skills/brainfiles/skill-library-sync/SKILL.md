@@ -185,6 +185,16 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
 3. **Weglegen statt loeschen** — `.archive/<baum>/`, vorher `hermes curator backup`.
    Danach zaehlen (`hermes skills list`, Gesamtzahl der SKILL.md) und Stichproben
    laden: die wichtigsten Haus-Skills muessen weiter erscheinen.
+   **Vor dem Loeschen eines Skills im Hauptbaum die Profil-Symlink-Ketten
+   pruefen:** `profiles/<bot>/skills/<name>` sind oft Symlinks auf
+   `skills/<name>` — ein `git rm`/`rm` des Hauptziels reisst ALLE Bot-Ketten mit,
+   und `git status` zeigt dann scheinbar willkuerliche `D`-Eintraege unter
+   `Agenten/Hermes/profiles/*/skills/`. Vor dem Loeschen
+   `git status --porcelain -- Agenten/Hermes/profiles` lesen; nach dem Loeschen
+   erneut. Reparatur-Muster: tote Links je Profil finden (`-L && ! -e`),
+   tote Links `rm`, fehlende gueltige Links neu auf die verbleibende Quelle
+   setzen (`ln -s .../skills/<name> .../profiles/<bot>/skills/<name>`), dann
+   `git add` der Profile und committen.
 4. **Falle Windows-Junction.** Fremd-Importe (die `okx-*`) sind JUNCTIONS auf
    `~/.agents/skills`. Python meldet sie NICHT als Symlink — `Path.is_symlink()` und
    `os.path.islink()` sind beide `False`, nur `os.path.isjunction()` erkennt sie. Ein
@@ -214,6 +224,29 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
    einer Klasse fehlt in der geladenen Liste UND steht in der Schlusszeile), dann haelt
    der Test auch die naechste Ausmistung aus.
 
+## Namenskollisionen: gleicher Name, verschiedene Inhalte
+
+Ein Skill-Name kann mehrfach im Ladepfad liegen, mit VERSCHIEDENEM Inhalt
+(z. B. eine aktive v4.6.0-Fassung als Junction und eine aeltere Kopie in einem
+Klon-Ordner). Symptom: `skill_view('<name>')` antwortet `Ambiguous skill name
+... refusing to guess` und listet die Kandidaten — ein reiner Hash-Duplikat-Scan
+findet den Fall NICHT, weil die Inhalte verschieden sind.
+
+Regeln:
+
+- **Erst den INHALT vergleichen, nicht nur die Existenz.** Byte-identische
+  Kopien stoeren Hermes nicht (eine Fassung wird aufgeloest); kollidieren tun
+  nur Ordner mit verschiedenen Inhalten unter demselben Namen.
+- **Die Ambiguous-Meldung traegt die Diagnose:** `matches` = alle Kandidaten,
+  `load_names` = die aufloesbaren. Eine Junction auf `~/.agents/skills`
+  erscheint als match, aber nicht als load_name — die Kollision loest man,
+  indem man die ZWEITE Version verschiebt oder umbenennt, nicht die
+  identische Kopie loescht.
+- **Verschieben nach `.archive/<name>/` statt Loeschen** — Hermes laedt aus
+  `.archive` nicht, der Inhalt bleibt erreichbar und umkehrbar.
+- **Nach dem Eingriff jeden betroffenen Namen per `skill_view` pruefen** — muss
+  eindeutig aufloesen; `hermes skills list` zeigt die Namen ohne Warnung.
+
 ## Vor dem Ersetzen: Richtung und Historie lesen
 
 Ein Abgleich ist die einzige Stelle im Haus, an der ein Werkzeug Inhalt **loeschen**
@@ -241,6 +274,9 @@ Ist die Kopie weiter als die Quelle: **erst die Quelle nachziehen, dann kopieren
 
 ## Fallen
 
+- **`hermes skills list --json` haengt (Timeout).** Fuer Laden-Status und
+  Kategorie reicht die Text-Liste ohne `--json`; der greppbare Name ist in der
+  Kategorie-Spalte abgegrenzt.
 - **Die SKILL.md hat eine harte Groessengrenze: ab ~100.000 Zeichen verweigert
   `skill_manage` JEDE Aenderung an diesem Skill** — auch eine einzelne Zeile, auch eine
   neue Referenzdatei im selben Aufruf (der ganze Stapel wird zurueckgerollt). Ein

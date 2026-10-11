@@ -178,6 +178,24 @@ ist kein Beweis fuer einen funktionierenden Orderweg.
   `user_data/backtest_results/*.zip` (JSON -> `strategy` -> `trades`, je Trade
   `pair`). `scripts/backtest_archiv_lesen.py` zaehlt das nach. Eine doppelte
   Zeile in der Anzeige ist kein Datenfehler — erst nachzaehlen, dann melden.
+- **Ein Bot, dessen API vom Host nicht antwortet, ist nicht automatisch tot —
+  erst IM Container pruefen, dann die Portweiterleitung verdaechtigen.**
+  Symptom: `curl http://127.0.0.1:<port>/api/v1/ping` gibt nichts (HTTP 000),
+  aber `docker ps` zeigt den Container up und das Log heartbeattet frisch.
+  Diagnose in zwei Schritten: (1) `docker exec <bot> python -c "import
+  urllib.request; print(urllib.request.urlopen('http://127.0.0.1:<port>/api/v1/ping',
+  timeout=5).read())"` — antwortet es dort `pong`, ist der Bot gesund und das
+  Problem ist die Weiterleitung, nicht der Prozess. (2) Gegenprobe mit einem
+  NICHT-freqtrade-Container (z. B. n8n auf 5678): antwortet der, ist die
+  Weiterleitung nicht global kaputt, sondern haengt nur fuer die frisch
+  gestarteten freqtrade-Container. Heilweg: `docker restart <bot>` (dry_run-Bots
+  uebernehmen ihre offenen Papierpositionen), danach `curl` erneut. Ein
+  Neustart aller 20 Bots in einer Schleife kann einzelne Container ueber
+  Commit-Druck verlieren (docker.exe: "Resource temporarily unavailable" /
+  "out of memory allocating heap arena map") — danach die fehlenden Ports
+  einzeln neu starten und alle 20 gegenpruefen. Gemessen 11.10.2026: 20/20
+  Container up und gesund, 0/20 Ports vom Host erreichbar, n8n ok; nach
+  Restart 20/20 `pong`.
 - **Eine Config-Aenderung an einem laufenden Bot ueber die API verifizieren
   heisst: die AUFSATZ-Zugangsdaten nehmen, nicht die Basis.** Jeder Aufsatz
   (`config.<name>.json`) traegt EIGENE Web-UI-Zugangsdaten; die Basis-`config.json`
