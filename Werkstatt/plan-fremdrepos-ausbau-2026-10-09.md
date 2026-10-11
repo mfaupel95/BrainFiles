@@ -121,3 +121,10 @@ Ein Fremd-Werkzeug liefert nur ein **Signal** oder eine **Papier-Order** im Form
 - OKX-Demo im EWR: Swap/Perps gesperrt (Fehler 50124), nur Spot. Durchlauf BTC-USDC (Kauf 50 USDC mit Stop 4 %, Verkauf, Stop-Storno) fehlerfrei.
 - Neu: `Agenten/Handel/fremd_demo.py` (rechnet Plan), `fremd_signale/demo_plan.py` (`--vorschau|--vormerken|--verwerfen`), Hermes-Ausfuehrungsschritt im Skill `fremd-handel-papier`. Hermes-MCP okx-agentkit schreibend (ohne `--read-only`), nur Demo.
 - Offen: Hermes als Ausfuehrer noch nicht mit echtem Signal erprobt; Task `MaxHirn-Fremd-Papier` nicht registriert; Adapter fuer die neuen Quellen fehlen.
+
+## Stand 11.10.2026 abends - Kette laeuft (Papier)
+
+- Adapter gemergt: `adapter_nautilus.py`, `adapter_moondev.py` (Konsens zweier Agenten), Aufrufer `adapter_lauf.py` + `adapter_quellen.json` (ITB aus).
+- `Bus/nautilus_signalgeber.py` (EMA-Kreuzung, schreibt nur Absichtszeilen) und `Bus/nautilus_okx_lauf.py` (echte OKX-Kerzen BTC-USDC 5m). Umgebung `Werkstatt/nautilus-venv` (Nautilus 1.231 aus PyPI; der Fork hat eine neuere API).
+- Registriert: `MaxHirn-Nautilus-OKX` (5 Min), `MaxHirn-Fremd-Adapter` (2 Min), `MaxHirn-Fremd-Papier` (2 Min). Alles Papier, nie live.
+- Beobachten: `stale`-Verwuerfe im Journal (Fenster 180 s knapp), erste Papier-Positionen in `fremd_signale/zustand.json`.
