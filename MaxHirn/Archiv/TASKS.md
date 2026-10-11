@@ -171,15 +171,21 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Argumentzahl bekannter Builtins + roter Testlauf gegen die neue
       `testlauf_basis.json`), als Tor direkt in der Routine VOR `git commit-tree`
       verdrahtet, Cron `syntax-tor-wache` (Job 3139b9d19ea9, 6 h).
-      OFFEN: die grosse `tests`-Suite (170 Testdateien) bricht VOR ihrer
-      Zusammenfassung ab - `testlauf.py` liefert dafuer `fehler: -1`, die
-      Basislinie fuehrt sie deshalb als unbekannt. Ein unbekanntes Ergebnis
-      gilt im Laeufer immer als Rueckschritt, kann also nie gruen werden.
-      Sichtbarer Grund: ein Tcl-Interpreter-Leak (gh-83274) aus Tkinter-Tests
-      und ein `WinError 32` auf `cache/okx-takt/fenster.json.tmp-*`.
-      Naechster Schritt: die Suite in zwei Laeufe teilen (Tkinter-Tests
-      getrennt) oder `-f`/`-v` nutzen, um die abbrechende Datei zu benennen;
-      danach `testlauf.py --basis-schreiben`.
+      OFFEN (KORRIGIERT 11.10.2026): die Annahme "die Suite bricht vor ihrer
+      Zusammenfassung ab" war FALSCH. Ein Hintergrund-Lauf ist um 06:53:45
+      durchgelaufen: **Ran 2399 tests in 1521.724s, FAILED (failures=11,
+      errors=6, skipped=11)**. Die Tcl-Leak- und WinError-32-Zeilen stehen im
+      Log, sind aber nicht das Ende. Die Suite laeuft vollstaendig - sie ist nur
+      LANGSAMER als das 900-s-Limit von `testlauf.py`. Deshalb steht sie in
+      `testlauf_basis.json` als `fehler: -1` ("Zeitlimit von 900 s
+      ueberschritten"), und -1 gilt im Laeufer als Rueckschritt: sie kann so nie
+      gruen werden, obwohl sie 17 ECHTE Fehler hat, die nur nie sichtbar waren.
+      Naechster Schritt: (1) `zeitlimit_sekunden` in `testlauf_basis.json` von
+      900 auf >= 1800 heben, (2) den `tests`-Eintrag von -1 auf die gemessenen
+      17 setzen, (3) die 17 Fehler ansehen. Der erste ist ein echter Code-Bug:
+      `befehle.spuren()` kennt `squeeze` nicht, weil die Spur in
+      `dauerlauf.SPUREN` fehlt, obwohl `Agenten/Handel/squeeze/` mit Tests
+      existiert (45 statt 46 Spuren).
       Betrifft: Agenten/Handel/tests/, Agenten/Handel/testlauf.py,
       Agenten/Handel/testlauf_basis.json
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
