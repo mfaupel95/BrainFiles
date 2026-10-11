@@ -51,22 +51,27 @@ WURZEL = HIER.parents[2]                       # scripts -> Hermes -> Agenten ->
 MERK = HIER.parent / "cache" / "syntax-tor-wache.json"
 
 RUHE_STUNDEN = 6.0
-ZEITLIMIT_TESTLAUF = 3000        # 50 min. GERECHNET 11.10.2026 aus zwei Messungen:
-                                 #   tests-Suite allein: 1521 s (Ran 2399 tests,
-                                 #     gemessen im Hintergrund-Lauf 06:28->06:53:45)
-                                 #   39 uebrige Suiten:  ~780 s (gemessen 13 min)
-                                 #   Summe:              ~2301 s
-                                 # 3000 s deckt das mit 30 % Luft.
+ZEITLIMIT_TESTLAUF = 3000        # 50 min. GEMESSEN 11.10.2026, voller Lauf:
+                                 #   1398 s (EXIT 0, "Kein Rueckschritt", tests = 16)
+                                 # - mit dem korrigierten 2100-s-Limit fuer die
+                                 # tests-Suite. Vorher (tests bei 900 s gekappt):
+                                 # 1051 s. Die Differenz ist genau der Rest, der
+                                 # vorher abgeschnitten wurde.
+                                 # 3000 s deckt 1398 s mit 115 % Luft - Absicht:
+                                 # der Lauf ist datenabhaengig (drei Dauerlaeufe
+                                 # und Spuren schreiben nebenher), die
+                                 # tests-Suite allein schwankte an diesem Tag
+                                 # zwischen 1444 und 1522 s.
                                  #
-                                 # ACHTUNG - die erste Fassung war zu knapp: 2400 s
-                                 # haetten nur 4 % Luft gelassen. Grund fuer den
-                                 # Fehler war ein zweiter: `testlauf.py` stand auf
-                                 # `zeitlimit_sekunden: 900`, damit wurde die
-                                 # tests-Suite ABGESCHNITTEN (fehler: -1) und der
-                                 # gemessene Wache-Lauf dauerte nur 1051 s. Seit dem
-                                 # 11.10. steht das Limit in testlauf_basis.json auf
-                                 # 1800 s - die Suite laeuft jetzt voll durch, und
-                                 # der Lauf wird entsprechend laenger.
+                                 # WARNUNG FUER DEN, DER HIER ETWAS SUCHT: eine
+                                 # Suite, die 19 min lang KEINE Ausgabe zeigt,
+                                 # haengt nicht - testlauf.py liest jede Suite mit
+                                 # `stdout=subprocess.PIPE` und gibt ihren Text erst
+                                 # nach ihrem Ende aus (Zeile 115). Wer im Log
+                                 # stehenbleibt und die Prozess-CPU beobachtet,
+                                 # sieht 0 % und haelt es fuer einen Haenger.
+                                 # Gemessen 11.10.2026: die tests-Suite lief so
+                                 # 19 min still und kam mit 16 Fehlern zurueck.
                                  # Der Cron laeuft alle 6 h - das passt.
 
 # Ordner, deren .py nicht geprueft werden (Junctions, venvs, Fremd-Klone).
