@@ -1,0 +1,8 @@
+name: wissen
+skills:
+  - wiki-pflege
+  - notiz
+  - dokumente-zu-wissen
+description: 'Wissen festhalten: Wiki-Seite, Notiz, Dokumente erschliessen'
+instruction: 'Dauerhaftes Wissen als Markdown ablegen: Wiki/INDEX folgen, LF-Zeilenenden,
+  Wikilinks verwenden.'

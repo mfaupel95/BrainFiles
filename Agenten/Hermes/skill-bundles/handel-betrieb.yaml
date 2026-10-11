@@ -1,0 +1,9 @@
+name: handel-betrieb
+skills:
+  - okx-orderweg-diagnose
+  - dauerprozess-bewachen
+  - stille-ausfaelle-eingrenzen
+description: 'Live-Betrieb: Orderweg-Fehler, Prozesse bewachen, stille Ausfaelle finden'
+instruction: Bei Live-Stoerung zuerst einordnen (Schluessel/Host/Fehlercode), 
+  Prozess-Identitaet am Programmnamen pruefen, Befund belegen bevor irgendetwas 
+  umgebaut wird.

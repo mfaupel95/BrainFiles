@@ -526,6 +526,12 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Hermes/profiles/*/hooks/**
 !Agenten/Hermes/profiles/*/skins/**
 #
+# SKILL-BUNDLES (11.10.2026): Slash-Command-Buendel unter
+# Agenten/Hermes/skill-bundles/*.yaml - Verhalten wie Skills, deshalb
+# versioniert. Zuerst das Verzeichnis, dann die Dateien.
+!Agenten/Hermes/skill-bundles/
+!Agenten/Hermes/skill-bundles/*.yaml
+#
 # SKILLS, freigelegt am 15.09.2026. Die Hauptbibliothek ist Prozedurwissen in
 # Textform (591 Dateien, 7,7 MB ohne die drei Brocken unten) und steuert das
 # Verhalten jedes Laufs - sie gehoert in den Verlauf, nicht nur in die Sicherung.

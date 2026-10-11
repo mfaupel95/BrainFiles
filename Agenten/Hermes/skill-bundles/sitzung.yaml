@@ -1,0 +1,9 @@
+name: sitzung
+skills:
+  - sitzungsabschluss
+  - betriebsrunde
+  - aufgabenliste-pflegen
+description: 'Sitzung abschliessen: Befunde belegen, TASKS.md pflegen, committen'
+instruction: 'Am Ende der Aufgabe: Befunde belegen, offene Punkte als T-Nummer in
+  TASKS.md eintragen, nur eigene Pfade stagen (nie git add -A), dann committen. Fremdarbeit
+  nicht anfassen.'
