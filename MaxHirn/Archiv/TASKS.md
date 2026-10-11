@@ -1,5 +1,15 @@
 ## Offen
 
+- [ ] **T-392 - Squeeze: 716-Tage-Backtest negativ, kein Live**
+      Kontext: Vergleich Haus-Backtest vs. Freqtrade (541 Runden, -4,45%) ueber
+      2024-10-24 bis 2026-10-10 (Binance-Historie, BTC/ETH/SOL 1h, Gebuehr 0,1%/Seite).
+      Beide Geometrien negativ: heute 3%/1,5R n=1969 Quote 38,6% -0,102 USD/Runde
+      (Summe -196,39); 21.09 5%/2R n=1183 Quote 29,2% -0,613 USD/Runde (-722,84).
+      Das 125-Tage-Fenster (+0,345) war ein guenstiger Ausschnitt, kein Vorteil.
+      Die Geometrie-Umstellung am 04.10. erklaert die Freqtrade-Diskrepanz NICHT.
+      Naechster Schritt: Spur nicht live schalten, Papier beobachten; Geometrie-Suche
+      auf dem vollen Fenster statt auf 125 Tagen.
+      Angelegt 2026-10-11 · Zuletzt 2026-10-11 / Betrifft: Agenten/Handel/squeeze
 
 - [x] **T-044 - Gateway-Waechter registriert, Alt-Task deaktiviert, Bus ohne Konsolenfenster**
       **Erledigt 2026-09-16.** Max hat den UAC-Dialog bestaetigt; das Skript
