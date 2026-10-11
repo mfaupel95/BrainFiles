@@ -1,29 +1,6 @@
 ## Offen
 
 
-- [ ] **T-390 - Werkstatt-Junction: zweiter Verlust in 6 Tagen (05.10., 11.10.2026) - Wache bauen**
-      Kontext: BrainFiles\Werkstatt war am 11.10.2026 02:00 KEINE Junction auf O:\Werkstatt mehr, sondern ein echter, seit 10.10. 18:47 gewachsener Schatten-Ordner (23 Eintraege: Aufraeum-Verschiebungen, plan-/spec-MDs, omnitrade-status-Kopien). Alle Zugriffe ueber BrainFiles\Werkstatt\ liefen ins Leere: scanner-papier-stunde schlug stundenlang mit 'Python oder Ordner fehlt' fehl (Befund 2 des Sammelauftrags hatte diese Ursache). GELOEST (verlustfrei, 11.10. 02:00-02:20): Schatten-Inhalte nach O: gerettet (2 Abweichungen -> O:\Werkstatt\zusammenfuehrung-20261011: okx_demo_order.ps1, plan-fremdrepos-ausbau-2026-10-09.md; 12 alte omnitrade-status-Kopien gegen die juengeren O:-Originale), Junction neu gesetzt. Protokoll Agenten/Routinen/logs/werkstatt-junction-reparatur-20261011.log. Zweiter Fall derselben Klasse (erster: 05.10.2026 22:12, 2 Dateien). Es gibt weiterhin KEINE Wache, die Junction-Verlust meldet - konfig-doktor haelt LAUFZEIT-JUNCTION-* nur als KRITISCH beim manuellen Lauf.
-      Naechster Schritt: Wache bauen (z.B. Hermes-Cron no_agent, prueft LinkType+Target von BrainFiles\Werkstatt und BrainFiles\Modelle, meldet nur Verlust; Muster ausserhaus-frist-wache).
-      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
-      Betrifft: BrainFiles\Werkstatt (Junction), Modelle (Junction)
-
-
-
-- [ ] **T-388 - Dateischwund-Wache auf den ganzen Baum erweitert: dateischwund-wache-baum.py (10.10.2026)**
-      Kontext: Die bestehenden Wachen deckten nur Agenten/Hermes/scripts (dateischwund-wache.py) und Agenten/Handel (dateischwund-wache-handel.py) ab. Der T-100-Fall (versionierte Datei verschwindet, fremdarbeit-einziehen committet die Loeschung) kann ueberall passieren. BEHOBEN: neue dateischwund-wache-baum.py prueft die VERSIONIERTE TEXTEbene des ganzen Baums (git ls-files, ~2844 Dateien, Laufzeit 1,2s - kein rglob ueber .venv/daten). Git-Soll + Merkliste + Leer-Erkennung, meldet nur bei Auffaelligkeit, Ruhe 6h. Merge 23a0c844. Cron 6f11866c3c05 (alle 15m, no_agent). Gegenprobe: versionierte Datei geloescht -> Git-Soll-Befund.
-      Naechster Schritt: beobachten. Nicht-versionierte Dateien in kritischen Ordnern bleiben den beiden Einzel-Wachen ueberlassen (Arbeitsteilung).
-      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
-      Betrifft: Agenten/Hermes/scripts/dateischwund-wache-baum.py
-
-
-- [ ] **T-386 - omniquant: Stop-Breite jetzt kalibrierbar - 12 echte Runden, 83% Treffer, Band unveraendert lassen (Empfehlung)**
-      Kontext: Befund 10.10.2026. omniquant hatte im Journal 0 geschlossene Runden - eine Stop-Breite liess sich nicht kalibrieren. Die 10 offenen Positionen zeigten Stop-Breiten 6,4-13,5 % (teils ueber stop_max_pct 12.0). Die Prognose rechnet den Stop gegen 20-Tage-Extrema (prognose.py:121-133), nicht gegen den Einstieg - daher die Streuung. Tore in prognose.weit.json: mindest_score 60, mindest_score_short 45, mindest_cr 1.0, stop_min_pct 5.0, stop_max_pct 12.0.
-      NEUER BEFUND 11.10.2026 (nach T-389, omniquant eigener Rechenweg): omniquant hat 12 ECHTE Runden (10 ziel, 2 stop, 83% Treffer) - die Kalibrierung ist jetzt moeglich. Stop-Breiten der echten Runden: Ziel-Ausstiege 10,45-13,00 % (Gewinne +6,70 bis +16,17), Stop-Ausstiege LIT 11,77 % (-6,11) und TRB 13,96 % (-7,59). Die Stop-Breite FUNKTIONIERT: 83% Treffer, Gewinne > Verluste, die 2 Stop-Ausstiege sind normale Verluste, keine Fehlkalibrierung. Aktuelle offene Positionen: nur SUI (12,02 %) liegt knapp ueber dem Band 12.0, alle anderen darunter (FIL 11,60, STX 11,98, ADA 10,71, JUP 9,89, W 9,43, BTC-BRL 6,88, OKB 6,44; XPL/MON sind SHORT mit ~11,4 % Breite).
-      Naechster Schritt: Entscheidung Max - (a) stop_max_pct 12.0 unveraendert lassen (Empfehlung, belegt durch 12 echte Runden mit 83% Treffer; SUI 12,02 % ist ein Einzelfall der 20-Tage-Extrema-Rechnung), oder (b) stop_max_pct senken, damit keine offene Position ueber dem Band liegt.
-      Angelegt: 2026-10-10 · Zuletzt: 2026-10-11
-      Betrifft: Agenten/Handel/omniquant/, prognose.weit.json
-
-
 - [ ] **T-384 - Documents/GitHub: 21 Klone ausserhalb der Flotte - 6 nicht in Werkstatt/Repos**
       Kontext: C:\Users\faupe\Documents\GitHub haelt 21 git-Klone, die NICHT in Werkstatt/Repos liegen. Bekannte Repos (nautilus_trader, unsloth, financial-services, context7, onchainos-skills u. a.) und NEU/anders: OmniQuant (eigener Fork), OpenMobius-skill, awesome-trading-agents, data-mcp, fintool, moon-dev-ai-agents2. Fund beim Skill-Scan 09.10.2026 (23 SKILL.md). Naechster Schritt: Entscheidung Max - die 6 unbekannten nach Werkstatt/Repos verschieben (Hausmuster) oder loeschen; Duplikate der Flotte dort entfernen. Angelegt: 2026-10-09
       Betrifft: Skill-Scan 09.10.2026 (fremde-skill-sammlung-einbinden)
@@ -63,53 +40,6 @@
       in wachen.json (offene Entscheidung Max).
       Angelegt: 06.10.2026 - Zuletzt: 06.10.2026 - Betrifft: Agenten/Handel/xperp
 
-- [ ] **T-369 — Junction-Verlust der Wurzel: Ursache unbewiesen, Wache gebaut**
-      Kontext: Am 05.10.2026 um 22:12:52 war `BrainFiles/Werkstatt` kein Verweis mehr
-      auf `O:/Werkstatt`, sondern ein echter, fast leerer Ordner (nur die zwei
-      konfig-doktor-Dateien). Alle 49 Repos, omnitrade, OmniRoute und die Projekte waren
-      ueber den BrainFiles-Pfad unsichtbar; `omnitrade.cmd` meldete 'keine Statusdatei'.
-      Auf O: lag alles unversehrt - nur der Verweis war weg. Reparatur war verlustfrei
-      (Dateien nach O: kopiert, echter Ordner entfernt, `New-Item -ItemType Junction`).
-      AUSGESCHLOSSEN als Ursache: `konfig-doktor.ps1` (schreibt nur eine Datei) und seine
-      Testsuite (alle Fixtures in GetTempPath mit eigener GUID). Zeitgleich 22:12:52
-      wurden `datensortierung.ps1`, `sicherung.ps1` und `wissen-index-pruefen.ps1`
-      geschrieben (parallele Sitzung im Baum) - keine davon fasst Werkstatt an.
-      GEBAUT: `Agenten/Hermes/scripts/konfig-doktor-wache.py`, Cron `konfig-doktor-wache`
-      (1beb6d64a8c8, alle 4 h, no_agent, Telegram, leere Ausgabe = nichts), Commit 6c50e960.
-      Naechster Schritt: pruefen, ob die Junction erneut verschwindet (die Wache meldet es
-      binnen 4 h). Tritt es wieder auf, im selben Moment die Kommandozeilen laufender
-      Skripte mitschreiben - der Verursacher ist dann fassbar. Offen bleibt: welche
-      Sitzung um 22:12 im Baum schrieb.
-
-      07.10.2026 - BEFUND (Hermes, beim Schreiben von AGENTS.md im Repo claude-code):
-      Die Junction ist wieder da und zeigt auf `O:\Werkstatt`. Laut Zeitstempel wurde sie
-      am 07.10.2026 um 00:16 neu angelegt (`dir /AL`: "<JUNCTION> Werkstatt
-      [\??\O:\Werkstatt]", `LinkType: Junction`). Heute also KEIN Verlust.
-      Gefunden wurde derselbe Mechanismus von der anderen Seite: Hermes' Schreib-Sandbox
-      (`HERMES_WRITE_SAFE_ROOT`) stand nur auf `C:\...\BrainFiles`. Beim Schreiben nach
-      `C:\...\BrainFiles\Werkstatt\Repos\claude-code\AGENTS.md` loeste der Pruefer den
-      Reparse-Punkt auf, landete auf `O:\Werkstatt\...` und lehnte ab: "outside
-      HERMES_WRITE_SAFE_ROOT". Dreimal gescheitert, waehrend `read_file` und `terminal`
-      durchkamen - dieselbe Kante, zwei verschiedene Urteile ueber denselben Pfad.
-      Damit ist die Kante benannt: alles, was ueber den BrainFiles-Pfad auf Werkstatt
-      zugreift, haengt am Reparse-Punkt. Fehlt er, sind die 49 Repos unsichtbar; ist er da,
-      entscheiden aufloesende Werkzeuge ueber `O:\` - und liegen dann ausserhalb einer
-      Sandbox, die nur auf BrainFiles gesetzt ist.
-      BEHOBEN: `HERMES_WRITE_SAFE_ROOT` umfasst jetzt beide Wurzeln, in ZWEI `.env`-Dateien
-      (jedes Hermes-Profil fuehrt den Wert selbst): `Agenten/Hermes/.env` und
-      `Agenten/Hermes/profiles/claude-code/.env`. Wert:
-      `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`. Beleg: `get_safe_write_roots()`
-      liefert beide; `O:\Werkstatt\Repos\...` ERLAUBT, `C:\Windows\...` und `~/.ssh`
-      weiterhin GESPERRT.
-      FUER DIE WACHE: `konfig-doktor-wache.py` prueft nur, ob der Verweis DA ist - nicht, ob
-      er auf das richtige Ziel zeigt und ob die Werkzeuge durchkommen. Eine Zusatzpruefung
-      "Ziel == O:\Werkstatt UND ein Schreibtest im Repo klappt" faengt beide Ausfaelle
-      dieser Kante.
-      Offen (Entscheidung Max): die uebrigen Repo-Bot-Profile unter
-      `Agenten/Hermes/profiles/<name>/.env` tragen weiterhin nur BrainFiles. Dort bleibt es
-      so, solange kein Bot in Werkstatt schreiben muss.
-      Angelegt: 05-10-2026 · Zuletzt: 07-10-2026
-      Betrifft: Agenten/Hermes/scripts/konfig-doktor-wache.py, Werkstatt (Junction), Modelle (Junction), Agenten/Hermes/.env, Agenten/Hermes/profiles/claude-code/.env
 - [x] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
       Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
       habe ich die Regel ueber ALLE Buch-Spuren gelegt (Wegwerf-Skript mit
@@ -504,11 +434,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Handel/skalieren.py, squeeze, wavetrend, macd_mtf, supertrend
 
 
-- [ ]   **T-324 — Spur-Audit: Edge und Echtheit fuer ALLE Spuren in einem Durchgang messen**
-      Kontext: Nach T-322 (Scanner: Einstieg aus dem Vortagesbericht, +17,49 % und t=15,3 waren ein Rechenfehler) gab es im Haus kein Werkzeug, das diese Fehlerklasse von selbst findet. Es gab `auswertung_alle.py` (rechnet die Zahlen) und Einzelfallbefunde. Folge: eine neue Spur hatte keine Messung, an der ihre Runden vor der Freigabe haette vorbeiliegen koennen. Gebaut: `Agenten/Handel/spur_audit.py` beantwortet fuer alle Spuren zwei Fragen - IST DIE STATISTIK ECHT (Haltedauer im Aufrufertakt, ein Instrument traegt die Mehrheit, Einstiegspreis je (Instrument, Tag) identisch) und HAT DIE SPUR EDGE (Excess gegen BUY & HOLD aus den gespeicherten Kerzen, nicht Trefferquote). Spurliste aus `dauerlauf.SPUREN`, Zuordnung aus `journalpaarung`, Aufrufertakt aus `dauerlauf.TAKT_MAX_MINUTEN` - keine eigenen Zahlen. 33 Tests, acht Gegenproben greifen. Befund am laufenden System: die 475 Runden aller Spuren haben zu 100 % eine Basislinie, nach dem Nachladen von 14 auf 45 Kerzenreihen (Binance, ohne Schluessel).
-      Naechster Schritt: `spur_audit.py` als Cron-Wache haengen (leere Ausgabe = gesund), damit ein Befund im Betrieb ankommt statt erst bei der naechsten Einzelpruefung. Und: die 23 Basiswerte ohne Binance-Paar (Aktien-ETPs CL/XAU/QQQ/MSTR/META, Pump-Token CASHCAT/FARTCOIN/UNITREE, GRASS/OKB/XDC/MON/DRV) bekommen bewusst KEIN Ersatzinstrument - fuer die bleibt die Edge-Frage offen, bis eine Historiequelle existiert.
-      Angelegt 03.10.2026 · Betrifft: alle Spuren, historie_binance, handel-spuren/references/pitfalls.md Punkt 104.
-
 - [ ]   **T-323 — Welche Spur hat ueberhaupt Edge: Feed-Spuren gegen die Scanner-Basislinie messen**
       Kontext: Nach dem Scanner-Befund (T-322) ist die Frage offen, welche Spur wirklich trägt. Der Scanner-Score selbst hat nachweislich KEINEN Edge: seine Kaufauswahl (Score >= 60) liegt nach 7 Tagen mit -2,16 % MEAN unter der Basislinie aller vom Scanner gesehenen Märkte (-1,11 %), t = -1,03. Als Indikator an andere Spuren gehängt brächte er also nichts. Die besseren Zahlen im Haus stehen woanders: moondev_topmovers (27 Runden, 56 % Treffer, +48,12 im Journal; Backtest 135 Runden, 50 %, +1,926 % je Runde), moondev_signalwelle (16/56 %, +35,72), die Prognose-Spuren macd_mtf und supertrend (+0,172 %/+0,158 % je Runde über 1209/854 Runden) - alle NIE live geschaltet, weil nur der Scanner einen Orderweg hat.
       Naechster Schritt: topmovers und signalwelle über denselben Zeitraum und dieselbe Gebuehr gegen eine Marktbasislinie messen (nicht gegen die Scanner-Basislinie - die ist selbst ein Marktdurchschnitt). Reihenfolge laut aufgabenliste-pflegen: erst die Freigabe des Scanners klaeren (T-322), dann topmovers, dann die Prognose-Spuren.
@@ -793,28 +718,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-- [ ] **T-181 — Bonsai-Einbau der parallelen Sitzung nutzt Port 8080 (freqtrade-Konflikt)**
-      Kontext: Eine parallele Sitzung baut Bonsai ein (Agenten/Hermes/scripts/bonsai-provider-einbauen.py) mit Port 8080 - genau der Port, den der Freqtrade-Container belegt (127.0.0.1:8080->8080). Ich habe am 29.09. auf 8081 umgestellt (Starter + Config); das Skript der parallelen Sitzung wuerde 8080 wieder einschreiben.
-      Naechster Schritt: Das Skript der parallelen Sitzung auf 8081 anpassen oder nach dessen Lauf den Port erneut pruefen.
-      Angelegt 29.09.2026 · Zuletzt 29.09.2026
-      Betrifft: Agenten/Hermes/scripts/bonsai-provider-einbauen.py
 
 
 
@@ -1905,6 +1808,121 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-181 — Bonsai-Einbau der parallelen Sitzung nutzt Port 8080 (freqtrade-Konflikt)**
+      **Erledigt 2026-10-11.** bonsai-provider-einbauen.py schreibt Port 8081 (gemessen), kein 8080-Freqtrade-Konflikt mehr.
+      Kontext: Eine parallele Sitzung baut Bonsai ein (Agenten/Hermes/scripts/bonsai-provider-einbauen.py) mit Port 8080 - genau der Port, den der Freqtrade-Container belegt (127.0.0.1:8080->8080). Ich habe am 29.09. auf 8081 umgestellt (Starter + Config); das Skript der parallelen Sitzung wuerde 8080 wieder einschreiben.
+      Naechster Schritt: Das Skript der parallelen Sitzung auf 8081 anpassen oder nach dessen Lauf den Port erneut pruefen.
+      Angelegt 29.09.2026 · Zuletzt 29.09.2026
+      Betrifft: Agenten/Hermes/scripts/bonsai-provider-einbauen.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- [x] **T-324 — Spur-Audit: Edge und Echtheit fuer ALLE Spuren in einem Durchgang messen**
+      **Erledigt 2026-10-11.** spur-audit-wache.py + Cron a9a58d42a4a8 (alle 6 h, enabled) laufen seit 03.10.2026; die 23 Basiswerte ohne Binance-Paar bleiben bewusst ohne Ersatzinstrument (dokumentierte Offenheit).
+      Kontext: Nach T-322 (Scanner: Einstieg aus dem Vortagesbericht, +17,49 % und t=15,3 waren ein Rechenfehler) gab es im Haus kein Werkzeug, das diese Fehlerklasse von selbst findet. Es gab `auswertung_alle.py` (rechnet die Zahlen) und Einzelfallbefunde. Folge: eine neue Spur hatte keine Messung, an der ihre Runden vor der Freigabe haette vorbeiliegen koennen. Gebaut: `Agenten/Handel/spur_audit.py` beantwortet fuer alle Spuren zwei Fragen - IST DIE STATISTIK ECHT (Haltedauer im Aufrufertakt, ein Instrument traegt die Mehrheit, Einstiegspreis je (Instrument, Tag) identisch) und HAT DIE SPUR EDGE (Excess gegen BUY & HOLD aus den gespeicherten Kerzen, nicht Trefferquote). Spurliste aus `dauerlauf.SPUREN`, Zuordnung aus `journalpaarung`, Aufrufertakt aus `dauerlauf.TAKT_MAX_MINUTEN` - keine eigenen Zahlen. 33 Tests, acht Gegenproben greifen. Befund am laufenden System: die 475 Runden aller Spuren haben zu 100 % eine Basislinie, nach dem Nachladen von 14 auf 45 Kerzenreihen (Binance, ohne Schluessel).
+      Naechster Schritt: `spur_audit.py` als Cron-Wache haengen (leere Ausgabe = gesund), damit ein Befund im Betrieb ankommt statt erst bei der naechsten Einzelpruefung. Und: die 23 Basiswerte ohne Binance-Paar (Aktien-ETPs CL/XAU/QQQ/MSTR/META, Pump-Token CASHCAT/FARTCOIN/UNITREE, GRASS/OKB/XDC/MON/DRV) bekommen bewusst KEIN Ersatzinstrument - fuer die bleibt die Edge-Frage offen, bis eine Historiequelle existiert.
+      Angelegt 03.10.2026 · Betrifft: alle Spuren, historie_binance, handel-spuren/references/pitfalls.md Punkt 104.
+
+
+
+- [x] **T-369 — Junction-Verlust der Wurzel: Ursache unbewiesen, Wache gebaut**
+      **Erledigt 2026-10-11.** Zeuge 2 (Zielvergleich + Schreibtest + .env-Lage) ist seit 07.10. gebaut und hat heute erstmals echt geschlagen: 2 Profil-.env ohne HERMES_WRITE_SAFE_ROOT (auto-prediction, informatiker161) nachgezogen, Wache danach 0 Befunde. Rest (uebrige Profile nur BrainFiles) ist bewusste Entscheidung Max vom 07.10.
+      Kontext: Am 05.10.2026 um 22:12:52 war `BrainFiles/Werkstatt` kein Verweis mehr
+      auf `O:/Werkstatt`, sondern ein echter, fast leerer Ordner (nur die zwei
+      konfig-doktor-Dateien). Alle 49 Repos, omnitrade, OmniRoute und die Projekte waren
+      ueber den BrainFiles-Pfad unsichtbar; `omnitrade.cmd` meldete 'keine Statusdatei'.
+      Auf O: lag alles unversehrt - nur der Verweis war weg. Reparatur war verlustfrei
+      (Dateien nach O: kopiert, echter Ordner entfernt, `New-Item -ItemType Junction`).
+      AUSGESCHLOSSEN als Ursache: `konfig-doktor.ps1` (schreibt nur eine Datei) und seine
+      Testsuite (alle Fixtures in GetTempPath mit eigener GUID). Zeitgleich 22:12:52
+      wurden `datensortierung.ps1`, `sicherung.ps1` und `wissen-index-pruefen.ps1`
+      geschrieben (parallele Sitzung im Baum) - keine davon fasst Werkstatt an.
+      GEBAUT: `Agenten/Hermes/scripts/konfig-doktor-wache.py`, Cron `konfig-doktor-wache`
+      (1beb6d64a8c8, alle 4 h, no_agent, Telegram, leere Ausgabe = nichts), Commit 6c50e960.
+      Naechster Schritt: pruefen, ob die Junction erneut verschwindet (die Wache meldet es
+      binnen 4 h). Tritt es wieder auf, im selben Moment die Kommandozeilen laufender
+      Skripte mitschreiben - der Verursacher ist dann fassbar. Offen bleibt: welche
+      Sitzung um 22:12 im Baum schrieb.
+
+      07.10.2026 - BEFUND (Hermes, beim Schreiben von AGENTS.md im Repo claude-code):
+      Die Junction ist wieder da und zeigt auf `O:\Werkstatt`. Laut Zeitstempel wurde sie
+      am 07.10.2026 um 00:16 neu angelegt (`dir /AL`: "<JUNCTION> Werkstatt
+      [\??\O:\Werkstatt]", `LinkType: Junction`). Heute also KEIN Verlust.
+      Gefunden wurde derselbe Mechanismus von der anderen Seite: Hermes' Schreib-Sandbox
+      (`HERMES_WRITE_SAFE_ROOT`) stand nur auf `C:\...\BrainFiles`. Beim Schreiben nach
+      `C:\...\BrainFiles\Werkstatt\Repos\claude-code\AGENTS.md` loeste der Pruefer den
+      Reparse-Punkt auf, landete auf `O:\Werkstatt\...` und lehnte ab: "outside
+      HERMES_WRITE_SAFE_ROOT". Dreimal gescheitert, waehrend `read_file` und `terminal`
+      durchkamen - dieselbe Kante, zwei verschiedene Urteile ueber denselben Pfad.
+      Damit ist die Kante benannt: alles, was ueber den BrainFiles-Pfad auf Werkstatt
+      zugreift, haengt am Reparse-Punkt. Fehlt er, sind die 49 Repos unsichtbar; ist er da,
+      entscheiden aufloesende Werkzeuge ueber `O:\` - und liegen dann ausserhalb einer
+      Sandbox, die nur auf BrainFiles gesetzt ist.
+      BEHOBEN: `HERMES_WRITE_SAFE_ROOT` umfasst jetzt beide Wurzeln, in ZWEI `.env`-Dateien
+      (jedes Hermes-Profil fuehrt den Wert selbst): `Agenten/Hermes/.env` und
+      `Agenten/Hermes/profiles/claude-code/.env`. Wert:
+      `C:\Users\faupe\Documents\BrainFiles;O:\Werkstatt`. Beleg: `get_safe_write_roots()`
+      liefert beide; `O:\Werkstatt\Repos\...` ERLAUBT, `C:\Windows\...` und `~/.ssh`
+      weiterhin GESPERRT.
+      FUER DIE WACHE: `konfig-doktor-wache.py` prueft nur, ob der Verweis DA ist - nicht, ob
+      er auf das richtige Ziel zeigt und ob die Werkzeuge durchkommen. Eine Zusatzpruefung
+      "Ziel == O:\Werkstatt UND ein Schreibtest im Repo klappt" faengt beide Ausfaelle
+      dieser Kante.
+      Offen (Entscheidung Max): die uebrigen Repo-Bot-Profile unter
+      `Agenten/Hermes/profiles/<name>/.env` tragen weiterhin nur BrainFiles. Dort bleibt es
+      so, solange kein Bot in Werkstatt schreiben muss.
+      Angelegt: 05-10-2026 · Zuletzt: 07-10-2026
+      Betrifft: Agenten/Hermes/scripts/konfig-doktor-wache.py, Werkstatt (Junction), Modelle (Junction), Agenten/Hermes/.env, Agenten/Hermes/profiles/claude-code/.env
+
+
+- [x] **T-386 - omniquant: Stop-Breite jetzt kalibrierbar - 12 echte Runden, 83% Treffer, Band unveraendert lassen (Empfehlung)**
+      **Erledigt 2026-10-11 (Entscheidung Max, (a)).** stop_max_pct 12.0 bleibt unveraendert: 12 echte Runden mit 83 % Treffer und Gewinne > Verluste belegen das Band; SUI 12,02 % ist Einzelfall der 20-Tage-Extrema-Rechnung, kein Systemfehler.
+      Kontext: Befund 10.10.2026. omniquant hatte im Journal 0 geschlossene Runden - eine Stop-Breite liess sich nicht kalibrieren. Die 10 offenen Positionen zeigten Stop-Breiten 6,4-13,5 % (teils ueber stop_max_pct 12.0). Die Prognose rechnet den Stop gegen 20-Tage-Extrema (prognose.py:121-133), nicht gegen den Einstieg - daher die Streuung. Tore in prognose.weit.json: mindest_score 60, mindest_score_short 45, mindest_cr 1.0, stop_min_pct 5.0, stop_max_pct 12.0.
+      NEUER BEFUND 11.10.2026 (nach T-389, omniquant eigener Rechenweg): omniquant hat 12 ECHTE Runden (10 ziel, 2 stop, 83% Treffer) - die Kalibrierung ist jetzt moeglich. Stop-Breiten der echten Runden: Ziel-Ausstiege 10,45-13,00 % (Gewinne +6,70 bis +16,17), Stop-Ausstiege LIT 11,77 % (-6,11) und TRB 13,96 % (-7,59). Die Stop-Breite FUNKTIONIERT: 83% Treffer, Gewinne > Verluste, die 2 Stop-Ausstiege sind normale Verluste, keine Fehlkalibrierung. Aktuelle offene Positionen: nur SUI (12,02 %) liegt knapp ueber dem Band 12.0, alle anderen darunter (FIL 11,60, STX 11,98, ADA 10,71, JUP 9,89, W 9,43, BTC-BRL 6,88, OKB 6,44; XPL/MON sind SHORT mit ~11,4 % Breite).
+      Naechster Schritt: Entscheidung Max - (a) stop_max_pct 12.0 unveraendert lassen (Empfehlung, belegt durch 12 echte Runden mit 83% Treffer; SUI 12,02 % ist ein Einzelfall der 20-Tage-Extrema-Rechnung), oder (b) stop_max_pct senken, damit keine offene Position ueber dem Band liegt.
+      Angelegt: 2026-10-10 · Zuletzt: 2026-10-11
+      Betrifft: Agenten/Handel/omniquant/, prognose.weit.json
+
+
+
+
+- [x] **T-388 - Dateischwund-Wache auf den ganzen Baum erweitert: dateischwund-wache-baum.py (10.10.2026)**
+      **Erledigt 2026-10-11.** dateischwund-wache-baum.py laeuft (Merge 23a0c844, Cron 6f11866c3c05 alle 15 m enabled), Probelauf exit 0 ohne Befund; die Beobachtung uebernimmt die Wache selbst.
+      Kontext: Die bestehenden Wachen deckten nur Agenten/Hermes/scripts (dateischwund-wache.py) und Agenten/Handel (dateischwund-wache-handel.py) ab. Der T-100-Fall (versionierte Datei verschwindet, fremdarbeit-einziehen committet die Loeschung) kann ueberall passieren. BEHOBEN: neue dateischwund-wache-baum.py prueft die VERSIONIERTE TEXTEbene des ganzen Baums (git ls-files, ~2844 Dateien, Laufzeit 1,2s - kein rglob ueber .venv/daten). Git-Soll + Merkliste + Leer-Erkennung, meldet nur bei Auffaelligkeit, Ruhe 6h. Merge 23a0c844. Cron 6f11866c3c05 (alle 15m, no_agent). Gegenprobe: versionierte Datei geloescht -> Git-Soll-Befund.
+      Naechster Schritt: beobachten. Nicht-versionierte Dateien in kritischen Ordnern bleiben den beiden Einzel-Wachen ueberlassen (Arbeitsteilung).
+      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
+      Betrifft: Agenten/Hermes/scripts/dateischwund-wache-baum.py
+
+
+
+
+- [x] **T-390 - Werkstatt-Junction: zweiter Verlust in 6 Tagen (05.10., 11.10.2026) - Wache bauen**
+      **Erledigt 2026-10-11.** junction-wache.py gebaut (10-min-Takt, prueft LinkType+Target+Inhalt von Werkstatt und Modelle, Watchdog-Muster, 7 Tests gruen, Cron b65d0a979ce8 no_agent Telegram). Schliesst das 4-h-Fenster der konfig-doktor-wache, durch das der Verlust von 02:00-02:20 heute fiel.
+      Kontext: BrainFiles\Werkstatt war am 11.10.2026 02:00 KEINE Junction auf O:\Werkstatt mehr, sondern ein echter, seit 10.10. 18:47 gewachsener Schatten-Ordner (23 Eintraege: Aufraeum-Verschiebungen, plan-/spec-MDs, omnitrade-status-Kopien). Alle Zugriffe ueber BrainFiles\Werkstatt\ liefen ins Leere: scanner-papier-stunde schlug stundenlang mit 'Python oder Ordner fehlt' fehl (Befund 2 des Sammelauftrags hatte diese Ursache). GELOEST (verlustfrei, 11.10. 02:00-02:20): Schatten-Inhalte nach O: gerettet (2 Abweichungen -> O:\Werkstatt\zusammenfuehrung-20261011: okx_demo_order.ps1, plan-fremdrepos-ausbau-2026-10-09.md; 12 alte omnitrade-status-Kopien gegen die juengeren O:-Originale), Junction neu gesetzt. Protokoll Agenten/Routinen/logs/werkstatt-junction-reparatur-20261011.log. Zweiter Fall derselben Klasse (erster: 05.10.2026 22:12, 2 Dateien). Es gibt weiterhin KEINE Wache, die Junction-Verlust meldet - konfig-doktor haelt LAUFZEIT-JUNCTION-* nur als KRITISCH beim manuellen Lauf.
+      Naechster Schritt: Wache bauen (z.B. Hermes-Cron no_agent, prueft LinkType+Target von BrainFiles\Werkstatt und BrainFiles\Modelle, meldet nur Verlust; Muster ausserhaus-frist-wache).
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Betrifft: BrainFiles\Werkstatt (Junction), Modelle (Junction)
+
+
+
+
+
 - [x] **T-070 — echte Zugangsdaten in `Werkstatt/Repos/fomo-robinhood-radar/.env.example`**
       Kontext: Beim Sichern der Fremdarbeit am 24.09.2026 gefunden - in einer
       VERSIONIERTEN Vorlagendatei stehen zwei echte Kennungen im Klartext
