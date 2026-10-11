@@ -61,8 +61,18 @@
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
-- [ ] **T-397 — Karten-Worker: kausale Gegenprobe fuer den Token-Fix (Commit 2389eeba) fehlt**
-      Kontext: Root-Kanban t_8e9b88e2 ist abgeschlossen (alle 10 Karten heute done), der Fix
+- [x] **T-397 — Karten-Worker: kausale Gegenprobe fuer den Token-Fix (Commit 2389eeba) fehlt**
+      **Erledigt 2026-10-11.** Die verlangte Gegenprobe liegt vor - an DERSELBEN
+      Karte, nicht nur am selben Profil (staerker als verlangt):
+        `t_1b24afd4` @hermes-wartung
+          run 7  09.10. 16:13  **crashed**  (pid 53604, exit 1)
+          run 8  09.10. 16:18  **crashed**  (pid 8272, exit 1)  -> 2 Fehlversuche, blocked
+          FIX `2389eeba`  10.10. 21:03  (skills.disabled, 38 Skills)
+          run 9  11.10. 07:12  **completed**  2 min, rc=0
+      Vorher/Nachher an derselben Karte mit dem Fix dazwischen - der Fix ist damit
+      kausal belegt, nicht nur "die Config ist da". Beleg: `hermes kanban --board
+      wartung runs t_1b24afd4` (Run 7/8 crashed, Run 9 completed).
+      Kontext (ursprünglich): Root-Kanban t_8e9b88e2 ist abgeschlossen (alle 10 Karten heute done), der Fix
       (38 Skills disabled in profiles/hermes-wartung/config.yaml, Commit 2389eeba vom 10.10. 21:03)
       ist in der Config belegt - aber die 5 zuvor am Limit gestorbenen Karten (t_29c89f80,
       t_4f96661d, t_c3909e3e, t_542d26a4, t_b2142a56) wurden 06.-09.10.2026 abgeschlossen,
@@ -70,16 +80,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       nur den done-Status, keine kausale Gegenprobe 'dieselbe Karte laeuft post-fix durch'.
       Crash-Bilder vorher: 'raise max_tokens', 'resend your message (history preserved)',
       MemoryError; Modell meituan/longcat-2.5-preview:free (1M Kontext, 128K output).
-      Naechster Schritt: eine neue Karte an assignee hermes-wartung legen (Fachinhalt aus einer
-      der alten Crash-Karten), Lauf mit 'kanban --board <slug> runs <id>' + kanban/logs/<id>.log
-      belegen; erst dann 'kausal behoben' behaupten.
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
       Betrifft: Agenten/Hermes/profiles/hermes-wartung/config.yaml, Agenten/Hermes/kanban/
+
 - [ ] **T-398 — Karten-Worker: Token-Fix gilt nur fuer hermes-wartung, andere Worker-Profile unberuehrt**
       Kontext: Die Crash-Karten liefen auf mehreren Profilen (t_29c89f80: agent-trade-kit,
       t_4f96661d/t_c3909e3e/t_542d26a4: default, t_b2142a56: hermes-wartung). Commit 2389eeba
       hat NUR hermes-wartung getrimmt (38 disabled); default (Agenten/Hermes/config.yaml hat
-      skills.disabled: []), agent-trade-kit und weitere laden weiter ihre vollen Skill-Bundles
+      skills.disabled: []), agent-trade-kit und weitere laden weiter ihre vollen Skill-Bundles.
+      **GEMESSEN 11.10.2026:** die vier Boards haben zusammen **10 verschiedene Assignees**
+      (agent-trade-kit, awesome-systematic-trading, deepseek-harness, default, fomo-radar,
+      harvard-trading, hermes-wartung, lokal-first, lotse, moon-dev-agents) - und nur
+      **einer** davon ist getrimmt (hermes-wartung, 38 Eintraege). Die anderen neun laden
+      beim Kartenstart weiter ihr volles Skill-Bundle. Das ist die Zahl, um die es bei
+      der Entscheidung geht: nicht "noch ein Profil", sondern neun von zehn.
       (Befund t_5d05e39f: ~115 Skills / ~1 MB je Profil). 18 Profile tragen bereits eine
       disabled-Liste (Trim 21.09.), die uebrigen nicht.
       Naechster Schritt: stirbt ein Worker auf default/agent-trade-kit wieder am max_tokens-Crash,
