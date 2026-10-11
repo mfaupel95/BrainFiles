@@ -150,22 +150,38 @@ stehen in `references/spiegeln-parallelsitzung.md` (laden mit `skill_view`).
 - **`git check-ignore -v` beweist nichts.** Es trifft auch die Negationsregel
   (`!pfad`) und endet mit 0. Verlaesslich ist `git add --dry-run <pfad>`:
   `add '<pfad>'` = nicht gesperrt, Fehler 128 = gesperrt.
-- **Ein Lock nach dem eigenen Commit ist meist ein Wrack.** Nach dem
+- **Ein Lock nach dem eigenen Commit ist meist ein Wrack — aber ein Lock bei
+  laufender Parallelarbeit ist es NICHT.** Wrack-Fall: Nach dem
   Scratch-Index-Commit meldet das Nachziehen `File exists`; misst man die Datei
-  danach, ist sie schon weg. Reihenfolge: Existenz, Alter, **echte**
-  `git.exe`-Prozesse ohne `fsmonitor` — erst bei 0 echten Prozessen umbenennen
-  (`Move-Item -Force`; `[System.IO.File]::Move` mit drei Argumenten gibt es in
-  PS 5.1 nicht), nie loeschen. Sonst einmal wiederholen.
+  danach, ist sie schon weg. Lebend-Fall: eine Sitzung, die in Schueben
+  committet, haelt den 0-Byte-Lock nur Sekunden — in einer Stichprobe sieht
+  man 0 echte `git.exe`-Prozesse ohne `fsmonitor` und trotzdem ist gerade ein
+  Commit im Gange; der Lock verschwindet von selbst, sobald der Commit durch
+  ist. Entscheidend ist Bewegung, nicht der Lock: `git log` zwischen zwei
+  Messungen vergleichen und die mtimes der geaenderten Dateien beobachten —
+  landet ein neuer Commit oder wandert eine mtime, gehoert der Lock der
+  Sitzung und ein Umbenennen schlaegt mit PathNotFound fehl (das ist der
+  Beleg, kein Fehler). Erst wenn ueber Minuten weder Commits landen noch
+  mtimes wandern, umbenennen (`Move-Item -Force`;
+  `[System.IO.File]::Move` mit drei Argumenten gibt es in PS 5.1 nicht), nie
+  loeschen. Die Routine macht das von selbst richtig: sie ueberspringt bei
+  Lock, und ein spaeterer Lauf committet die inzwischen gesicherte Arbeit
+  nicht doppelt.
 - **Nichts fremdes zuruecksetzen.** `git checkout -- <datei>` verwirft die
   Arbeit der anderen Sitzung. Zum Trennen `GIT_INDEX_FILE` nehmen, aus der
   Sicherung oder byteweise zurueckholen.
 - **Der Zeitstempel im Sandbox-Terminal ist die Uhr des Containers**, nicht des
   Rechners — „vor 5 min" kann 7 Stunden heissen. Das Alter fremder Dateien ueber
   den Host pruefen, bevor daraus eine Reihenfolge wird.
-- **Die Fremdarbeit-Routine sammelt ein, was 30 min liegt.** Wer die fremden
-  Dateien nicht uebernimmt, gehoert nach 30 min einem „Anderen Sitzung"-Commit
-  mit *anderem* Autor. Das ist eine offene Entscheidung fuer Max und gehoert in
-  den Bericht.
+- **Die Fremdarbeit-Routine sammelt ein, was 30 min liegt — gemessen an
+  RUHE, nicht am Alter allein.** Dateien mit frischer mtime (< 30 min) sind
+  per Definition Teil einer noch aktiven Sitzung; auch aeltere Dateien gehoeren
+  ihr, solange Geschwister-Dateien weiter geschrieben werden und neue Commits
+  landen. Der saubere Gate ist der `-Testlauf` der Routine: ueberspringt er
+  wegen eines Locks, warten und spaeter erneut fahren, statt die Arbeit
+  manuell wegzunehmen. Wer die fremden Dateien nicht uebernimmt, gehoert nach
+  30 min einem „Anderen Sitzung"-Commit mit *anderem* Autor. Das ist eine
+  offene Entscheidung fuer Max und gehoert in den Bericht.
 - **Der Sweep prueft den Code nicht — und committet ihn trotzdem.** Die
   Commit-Nachricht sagt es selbst: „nicht von Hand geprueft". Am 11.10.2026 hat
   `fremdarbeit-einziehen.ps1` so zwei echte Defekte nach master gebracht

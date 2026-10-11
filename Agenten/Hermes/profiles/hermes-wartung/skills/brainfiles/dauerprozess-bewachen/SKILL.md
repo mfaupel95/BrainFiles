@@ -365,6 +365,27 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   `cronjob action='run'`, dann muss im `cron/output` genau die erwartete Meldung
   stehen. Deshalb bekommt so ein Wachenschritt einen `--merkdatei`-Schalter — ohne
   ihn kostet jede Probe einen echten Ausfall und wird deshalb nicht gemacht.
+- **Der erste Lauf einer Merkdatei-Wache ist eine Grundlinie, keine Meldung.** Fehlt
+  die Merkdatei, ist der Bestand „neu“ — ein Bericht ueber tausende Zeilen, der wie
+  ein Fehlalarm aussieht und den Empfaenger gegen die Wache abstumpft. Den
+  Erster-Lauf-Fall (`letzte_ts == 0`) erkennen und schweigen lassen; der Merkstand
+  wird trotzdem geschrieben, damit der zweite Lauf echt vergleicht.
+- **Berichtstakt und Sammeltakt duerfen nicht gleich sein.** Ein Bericht im selben
+  Takt wie der Sammler liest den Sammelvorgang mitten im Lauf: der Merkstand steht
+  dann auf dem hoechsten Zeitstempel, die eben noch nicht gelesenen Fuellungen
+  liegen darunter und sind beim naechsten Lauf unsichtbar. Den Bericht langsamer
+  takten als den Sammler (gemessen: Sammler 20 Min, Bericht 60 Min) und im Bericht
+  NUR lesen, nie selbst sammeln — zwei Schreiber auf einer Zustandsdatei sind
+  Doppelarbeit und ein Mischstand.
+- **Ein Skript, das in zwei Ablagen liegen kann, darf seine Wurzel nicht zaehlen.**
+  Dasselbe Wachenschritt-Skript liegt je nach Einbau in `Agenten/Hermes/scripts/`
+  ODER in `Agenten/Hermes/profiles/<profil>/scripts/` (der Cron loest nur im
+  eigenen Profil auf, siehe Schritt 4) — eine feste Zahl von `dirname`-Aufrufen
+  ist in der einen der beiden Ablagen falsch, und der Fehler faellt erst zur
+  Laufzeit auf. Die Wurzel aufwaerts suchen: vom eigenen Ordner nach oben, bis ein
+  Verzeichnis die erwartete Struktur traegt (z. B. `Werkstatt/Repos/<name>`), mit
+  einer Umgebungsvariable als Uebersteuerung und einem Rueckfall auf den
+  Vorgabepfad.
 - **Ein abgeloester Auftrag bleibt scharf, auch in einem fremden Profil.** Wird eine
   Wache durch eine andere ersetzt, feuert die alte weiter (jedes Profil hat seinen
   eigenen Cron-Speicher) — doppelte Meldung, und wenn sie einen Modelllauf startet,
