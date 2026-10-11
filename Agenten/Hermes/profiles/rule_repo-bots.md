@@ -88,12 +88,14 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
 - 22.09.2026 Defender loescht Doku-Skills und sperrt den LESEZUGRIFF ("Virus");
   `ls` beweist nichts - Probe ist echter Lesevorgang, Fundort `Get-MpThreatDetection`.
 - 22.09.2026 Symlink `auth.json`: `pwsh` 7 legt ihn an, `powershell.exe` 5.1 verweigert (Admin noetig).
-- 11.10.2026 Eine Schleife ist ein CRON-Auftrag (`Agenten/Hermes/cron/jobs.json`),
-  nicht `/loop` - das lebt in EINER Sitzung und stirbt mit ihr.
-- 11.10.2026 Jeder Kanal-Bot sieht JEDE Nachricht seiner Gruppe (eigenes Token,
-  gleiches `TELEGRAM_ALLOWED_CHATS`): auf EINE Frage antworteten fuenf Bots.
-- 11.10.2026 `wc -c` misst CRLF doppelt; diese Datei lag real bei 5974 B, galt als
-  6144. Budget erst nach `tr -d '\r'` vergleichen.
+- 11.10.2026 Kanal-Bots sehen alle Nachrichten ihrer Gruppe (gemeinsames
+  Token): eine Frage -> fuenf Bot-Antworten.
+- 11.10.2026 Schleife = CRON-Auftrag (`cron/jobs.json`), nicht `/loop`.
+- 11.10.2026 `wc -c` misst CRLF doppelt (5974 vs 6144); Budget nach
+  `tr -d '\r'`.
+- 11.10.2026 Status von Dauerlaeufen entsteht NUR beim Kerzenabschluss
+  (live.json=1d): feste 45-min-Wachgrenze erklaerte den gesunden 692-min-alten
+  Lauf fuer tot (lage-Grenze 60 h). Todesgrenzen in Wachen kerzenabhaengig
+  (2,5x Abstand), fixer Fallback (omnitrade-order-wache).
 
-Verdichtet 2026-10-08: 6122 -> 5921 (Stash-Regel), -> 5974 (CR-Falle)
-Verdichtet 2026-10-11: 5974 -> 5909 (Loop=Cron, ein Bot je Frage)
+Verdichtet 2026-10-08: 6122->5921 (Stash), ->5974 (CR); 11.10: 5974->5909 (Loop=Cron)
