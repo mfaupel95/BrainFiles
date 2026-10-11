@@ -8,7 +8,8 @@ Zwei Produkttypen, ein Kern:
 
 Der Node registriert die Kraken-Factories am TradingNode und subskribiert
 Quotes. REINER PAPIER-/QUOTEN-BETRIEB, keine Broker-Order: die Strategie
-fuehrt ein Papierbuch (Muster: nautilus/OKX). Der Data-Client bekommt
+fuehrt ein Papierbuch (papierbuch.py: SMA-Kreuzung, simulierte Fills,
+PnL in papierbuch.<produkt>.json, liest der Leitstand). Der Data-Client bekommt
 bewusst KEINE Zugangsdaten - oeffentliche Quotes brauchen keinen Key.
 
 Produkttyp ueber die Umgebungsvariable KRAKEN_PRODUKT (spot|futures),
@@ -41,6 +42,8 @@ from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.trading.config import StrategyConfig
 from nautilus_trader.trading.strategy import Strategy
 
+from papierbuch import Papierbuch
+
 
 # --- Produkttyp-Auswahl ------------------------------------------------------
 
@@ -58,11 +61,12 @@ def produkt_name() -> str:
 # --- Demo-Datastrategie (liest nur Quoten, gibt nichts aus / kein Handel) ----
 
 class DemoQuoteStrategy(Strategy):
-    """Liest Quoten und schreibt sie ins Log. Gibt nichts aus, handelt nicht."""
+    """Liest Quoten und fuehrt damit ein Papierbuch. Keine Broker-Order."""
 
     def __init__(self, config, symbol: str):
         super().__init__(config)
         self.symbol = symbol
+        self.buch = Papierbuch(produkt_name(), Path(__file__).resolve().parent)
 
     def on_start(self):
         for inst in self.cache.instruments():
@@ -75,7 +79,11 @@ class DemoQuoteStrategy(Strategy):
         self.log.info(f"Subscribed quotes (fallback): {ziel}")
 
     def on_quote_tick(self, tick: QuoteTick):
-        self.log.info(f"Quote {tick} bid={tick.bid_price} ask={tick.ask_price}")
+        vorher = self.buch.trades, self.buch.position is None
+        self.buch.tick(float(tick.bid_price), float(tick.ask_price), tick.ts_event / 1e9)
+        if (self.buch.trades, self.buch.position is None) != vorher:
+            s = self.buch.stand()
+            self.log.info(f"Papierbuch: trades={s['trades']} realisiert={s['realisiert']:.2f}")
 
 
 # --- Node-Umbau mit Kraken-Factories ----------------------------------------
