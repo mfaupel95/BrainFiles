@@ -144,6 +144,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       **33,95 USD = 68 % des Einsatzes**; der breiteste 41,89 USD = 84 %.
       Der Stop macht damit die Arbeit der Positionsgroesse - bei einer Spur mit
       EINEM Live-Platz und 50 USD ist das der halbe Kontostand je Fehlversuch.
+      **NACHTRAG 11.10.2026 - die Zahlen, die die Entscheidung tragen:**
+        - Von den 40 Einstiegen sind **37 Papier und nur 3 live** (HBAR 11,29 %,
+          NEAR-USDC 13,52 %, ADA 10,71 %). Alle drei Live-Faelle liegen ueber
+          JEDEM Band, das die Klassik-Spuren fahren.
+        - Gegen ein Klassik-Band 1,8..6,0: **6 von 40 passen (15 %)**.
+          Gegen 3,0..10,0: 12 von 40 (30 %).
+          Gegen die Bericht-Klammer 5..12: 32 von 40 (80 %).
+        - ENTSCHEIDEND: `prognose.py` klemmt den Stop SELBST auf
+          `stop_min_pct..stop_max_pct` (5..12). Ein Band in `wachen.json`, das
+          enger ist als diese Klammer, kann nur VERWERFEN - es kann den Stop
+          nicht enger machen. Die Wahl ist damit:
+          (a) Band WIE die Klammer (5..12): aendert nichts am Handel, macht die
+              Pruefung nur sichtbar. Der ehrliche erste Schritt.
+          (b) Band ENGER (1,8..6,0 wie Klassik): verwirft 85 % der bisherigen
+              Einstiege. Das ist eine echte Strategieaenderung, keine Formalie -
+              und die Parameter, mit denen die 40 Einstiege entstanden, sind
+              dann nicht mehr die, die live laufen.
       Naechster Schritt (Entscheidung Max): Band in `omniquant/wachen.json`
       eintragen. Zwei Wege, beide begruendbar:
         (a) wie xperp: `stop_atr_faktor` 1.5 + `ziel_atr_faktor` 3.0 (dann
