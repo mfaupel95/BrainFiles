@@ -134,11 +134,48 @@ class TorTest(unittest.TestCase):
         self.assertFalse(ok2)                     # z(61 Spuren) = 3.34 > 3.0
         self.assertTrue(any("Konfidenzgrenze" in x for x in g), g)
 
+    # 13 - Out-of-Sample: Edge nur in einer Haelfte
+    def test_edge_nur_in_einer_haelfte_bleibt_zu(self):
+        self.stand("regime", mean_excess=1.0, n_frueh=20, n_spaet=20,
+                   mean_excess_frueh=2.0, mean_excess_spaet=0.0)
+        ok, g = tor.pruefe("regime", WACHE)
+        self.assertFalse(ok)
+        self.assertTrue(any("Haelften" in x for x in g), g)
+
+    # 14 - beide Haelften positiv
+    def test_edge_in_beiden_haelften_passiert(self):
+        self.stand("stabil", mean_excess=1.0, n_frueh=20, n_spaet=20,
+                   mean_excess_frueh=1.1, mean_excess_spaet=0.9)
+        ok, g = tor.pruefe("stabil", WACHE)
+        self.assertTrue(ok, g)
+
+    # 15 - zu kleine Haelfte: keine Pruefung
+    def test_zu_kleine_haelfte_entfaellt(self):
+        self.stand("klein2", mean_excess=1.0, n_frueh=5, n_spaet=5,
+                   mean_excess_frueh=2.0, mean_excess_spaet=-1.0)
+        ok, g = tor.pruefe("klein2", WACHE)
+        self.assertTrue(ok, g)
+
     # 12 - aelterer Auditstand ohne std: Bedingung entfaellt
     def test_ohne_std_keine_konfidenzbedingung(self):
         self.stand("alt")
         ok, g = tor.pruefe("alt", WACHE)
         self.assertTrue(ok, g)
+
+
+class HalbierungTest(unittest.TestCase):
+    def test_halbierung_teilt_in_journalreihenfolge(self):
+        import spur_audit
+        h = spur_audit.halbierung([1.0, 2.0, 3.0, 4.0, 5.0])
+        self.assertEqual((h["n_frueh"], h["n_spaet"]), (2, 3))
+        self.assertAlmostEqual(h["mean_excess_frueh"], 1.5)
+        self.assertAlmostEqual(h["mean_excess_spaet"], 4.0)
+
+    def test_halbierung_bei_zu_wenig_werten_leer(self):
+        import spur_audit
+        h = spur_audit.halbierung([1.0])
+        self.assertIsNone(h["mean_excess_frueh"])
+        self.assertEqual(h["n_frueh"], 0)
 
 
 if __name__ == "__main__":

@@ -519,6 +519,23 @@ def stdabw(xs):
     return (sum((x - m) ** 2 for x in xs) / (len(xs) - 1)) ** 0.5
 
 
+def halbierung(excess):
+    """Frueh/Spaet-Hälften der Excess-Liste (in Journalreihenfolge).
+
+    Liefert Mittel und Anzahl je Haelfte; bei weniger als 2 Werten leere Felder.
+    Die Reihenfolge der Journalpaarung ist chronologisch nach Schliessung, weil
+    das Journal angehaengt wird.
+    """
+    n = len(excess)
+    if n < 2:
+        return {"n_frueh": 0, "n_spaet": 0,
+                "mean_excess_frueh": None, "mean_excess_spaet": None}
+    h = n // 2
+    return {"n_frueh": h, "n_spaet": n - h,
+            "mean_excess_frueh": mittel(excess[:h]),
+            "mean_excess_spaet": mittel(excess[h:])}
+
+
 def median(xs):
     if not xs:
         return None
@@ -674,6 +691,9 @@ def pruefe(spur, takt="1H"):
         "fehlende_inst": sorted(fehlt),
         "mean_excess": mittel(excess),
         "std_excess": stdabw(excess),
+        # Halbierung nach Journalreihenfolge (= Schliessungsreihenfolge): wer
+        # nur in einer Haelfte Edge hat, hat sie vermutlich nicht.
+        **halbierung(excess),
         "median_excess": median(excess),
         "n_excess": len(excess),
         "verzerrung": verz,
