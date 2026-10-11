@@ -490,6 +490,28 @@ $r = Lauf $fx3 @('ballast')
 $ak = @($r | Where-Object { $_.id -eq 'BALLAST-ALTKOPIEN' }) | Select-Object -First 1
 Pruefe 'mit .old: Titel nennt "davon 1 unsicher"' (($null -ne $ak) -and ($ak.titel -match 'davon 1 unsicher')) "titel=$($ak.titel)"
 
+Write-Host '--- Modul wurzel ---'
+$fx = Neue-Wurzel
+foreach ($d in 'MaxHirn', 'Agenten', 'Werkstatt', '.git', '.claude', '.githooks', '.worktrees') { New-Item -ItemType Directory -Path (Join-Path $fx $d) | Out-Null }
+foreach ($f in 'AGENTS.md', 'CLAUDE.md', 'README.md', '.gitignore', 'omnitrade.cmd') { Schreibe (Join-Path $fx $f) 'x' }
+$r = Lauf $fx @('wurzel')
+Pruefe 'saubere Wurzel: kein Befund' (@($r | Where-Object { $_.modul -eq 'wurzel' }).Count -eq 0) (($r | ForEach-Object { $_.id }) -join ',')
+Schreibe (Join-Path $fx 'docs/superpowers/plans/p.md') 'x'
+Schreibe (Join-Path $fx 'package.json') '{}'
+New-Item -ItemType Directory -Path (Join-Path $fx '.venv') | Out-Null
+Schreibe (Join-Path $fx 'test-prv-key.pem') 'x'
+Schreibe (Join-Path $fx '.env') 'X=1'
+Schreibe (Join-Path $fx 'docker-compose.yml') 'x'
+Schreibe (Join-Path $fx 'CLAUDE.md.bak-20261001') 'x'
+Schreibe (Join-Path $fx 'IMPROVEMENTS.md') 'x'
+$r = Lauf $fx @('wurzel')
+$w = @($r | Where-Object { $_.id -eq 'WURZEL-ABLAGEFEHLER' }) | Select-Object -First 1
+Pruefe 'Ablagefehler als WARNUNG' (($null -ne $w) -and ($w.schwere -eq 'WARNUNG') -and ($w.titel -match '^7 Ablagefehler')) "titel=$($w.titel)"
+Pruefe 'Beleg nennt docs, .venv, .pem, .env, compose, .bak' (($w.beleg -match 'docs \(Ordner') -and ($w.beleg -match '\.venv') -and ($w.beleg -match 'test-prv-key\.pem') -and ($w.beleg -match '\.env \(') -and ($w.beleg -match 'docker-compose') -and ($w.beleg -match 'CLAUDE\.md\.bak'))
+$h = @($r | Where-Object { $_.id -eq 'WURZEL-UNBEKANNT' }) | Select-Object -First 1
+Pruefe 'Unbekanntes als HINWEIS' (($null -ne $h) -and ($h.schwere -eq 'HINWEIS') -and ($h.beleg -match 'IMPROVEMENTS\.md') -and ($h.beleg -notmatch 'docs'))
+Pruefe 'Erlaubtes wird nicht gemeldet' ((($w.beleg + $h.beleg) -notmatch 'omnitrade\.cmd|\.claude|\.githooks|README|AGENTS\.md \('))
+
 Write-Host '--- echte Wurzel (Gegenprobe) ---'
 $echteWurzel = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
 $vorher = (& git -C $echteWurzel status --porcelain 2>$null) -join "`n"
