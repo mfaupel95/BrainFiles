@@ -166,7 +166,7 @@ def _bruecke_sicherstellen() -> str:
 NOUS_BASIS = "https://inference-api.nousresearch.com/v1"
 NOUS_MODELL = "deepseek/deepseek-v4-flash-0731"
 OLLAMA_TAGS = "http://127.0.0.1:11434/api/tags"
-LOKAL_STANDARD = "qwen35-8k:latest"          # im Store vorhanden (Hausstandard)
+LOKAL_STANDARD = "qwen3.5:9b"                # Hausstandard seit 11.10.2026 (Auftrag Max); qwen35-8k ist nicht mehr installiert
 LOKAL_BASIS = "http://127.0.0.1:11434/v1"
 
 def _nous_schluessel() -> str:
@@ -368,12 +368,18 @@ def _prozesse() -> list[dict]:
     """
     if os.name != "nt":
         return []
-    skript = ("Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,"
+    # UTF-8 auf BEIDEN Seiten: Windows PowerShell 5 schreibt umgeleitet in der
+    # OEM-Codepage (cp850), Python las cp1252 und brach am ersten Umlaut einer
+    # Kommandozeile ab (Byte 0x81) - stdout None, Liste leer, Aufraeumen
+    # uebersprungen ("Prozessliste nicht lesbar", gefunden 11.10.2026).
+    skript = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8; "
+              "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,"
               "CreationDate,Name,CommandLine | ConvertTo-Json -Compress")
     try:
         p = subprocess.run([_powershell_pfad(), "-NoProfile", "-NonInteractive",
                             "-Command", skript],
-                           capture_output=True, text=True, timeout=60,
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=60,
                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except Exception:                                          # noqa: BLE001
         return []
