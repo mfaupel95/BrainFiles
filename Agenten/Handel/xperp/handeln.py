@@ -1295,7 +1295,20 @@ def _trailing_versuch(p, kurs, w):
     trailing_modul.erst_hoch(p, kurs)
     if not w.get("trailing_aktiv"):
         return False
-    kennungen = [x for x in (p.get("stop_ids") or []) if x]
+    boerse_ids = []
+    if not p.get("stop_id") and not p.get("stop_ids"):
+        # Beim Eroeffnen wird keine Kennung gebucht (der Stop haengt als
+        # attachAlgoOrds an der Einstiegsorder und bekommt seine algoId erst
+        # beim Fuellen). Ohne diese Nachfrage war Trailing bei JEDER Position
+        # tot (gefunden 11.10.2026: ETH, BZ, HYPE). Lesend; im Fehlerfall
+        # bleibt es beim Vermerk unten.
+        try:
+            boerse_ids = [s.get("algoId") for s in
+                             okxf.schutz_stops(p.get("inst")) or []
+                             if okxf.ist_schutz_stop(s) and s.get("algoId")]
+        except Exception:                                   # noqa: BLE001
+            pass
+    kennungen = [x for x in (p.get("stop_ids") or boerse_ids) if x]
     if len(kennungen) > 1:
         journal(zeit=_jetzt(), modus="live", aktion="vermerkt",
                 inst=p.get("inst") or "", seite=p.get("seite") or "",
