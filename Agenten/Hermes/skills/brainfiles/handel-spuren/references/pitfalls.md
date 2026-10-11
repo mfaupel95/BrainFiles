@@ -1371,3 +1371,43 @@ haben** - beide waeren stillschweigend in jede Messung eingegangen:
 **Merksatz:** eine Basislinie, die fehlt, ist kein Freifahrtschein. Sie
 faellt als Befund auf, wenn man sie verlangt.
 
+### 105. Ein abgeschnittenes Log ist kein abgebrochener Lauf - und eine stille
+Suite ist kein Haenger
+
+Drei Fehlschluesse in einer Sitzung (11.10.2026), alle von derselben Bauart:
+aus einem ZWISCHENSTAND ein ENDE abgeleitet.
+
+**(a) `fehler: -1` heisst "nicht gemessen", nicht "kaputt".** Die grosse
+`tests`-Suite stand in `testlauf_basis.json` als `-1` mit dem Grund "Zeitlimit
+von 900 s ueberschritten". Daraus wurde die Geschichte "die Suite bricht vor
+ihrer Zusammenfassung ab" - samt erfundener Ursache (Tcl-Leak gh-83274). Ein
+Hintergrund-Lauf zeigte dann:
+
+    Ran 2399 tests in 1521.724s
+    FAILED (failures=11, errors=6, skipped=11)
+
+Sie laeuft vollstaendig, sie ist nur langsamer als das Limit. **Und -1 gilt im
+Laeufer als Rueckschritt: eine Suite, die so gebucht wird, kann NIE gruen
+werden.** 17 echte Fehler lagen darunter und waren unsichtbar. Wer `-1` sieht,
+misst zuerst die echte Laufzeit - und hebt dann das Limit, statt eine Ursache
+zu erfinden.
+
+**(b) Eine Log-Zeile, die im Log steht, ist nicht das Ende des Logs.** Die
+Zeilen "Tcl interpreter is leaked" und "WinError 32" standen wirklich drin - ich
+habe sie gelesen und das Lesen dort beendet. Das Log ging danach noch weiter.
+Bei einer Weiterleitung mit `>` schreibt Python gepuffert: eine wachsende Datei
+heisst nicht, dass die Ausgabe aktuell ist. Erst `grep -E "^(Ran|OK|FAILED)"`
+sagt, ob ein Lauf zu Ende ist.
+
+**(c) Eine Suite, die 19 min keine Ausgabe zeigt und 0 % CPU hat, haengt
+NICHT.** `testlauf.py` liest jede Suite mit `stdout=subprocess.PIPE` (Zeile 115)
+und gibt ihren Text erst NACH ihrem Ende aus. Von aussen sah das wie ein
+Haenger aus: Kindprozess bei CPU 0,015 s, RAM unveraendert, Log steht bei
+`swap/tests`. Tatsaechlich rechnete die tests-Suite und kam mit 16 Fehlern
+zurueck. **Bei gepufferter Ausgabe ist "keine neuen Zeilen" kein Zustandssignal -
+die Prozess-CPU auch nicht, weil ein wartender Test sie nicht hebt.**
+
+**Merksatz:** bevor aus einem Zustand eine Ursache wird, den Zustand selbst
+messen - echte Laufzeit, ganzen Log bis zur Zusammenfassung, und bei
+gepufferter Ausgabe lieber warten als diagnostizieren. Drei Messungen schlagen
+eine gute Geschichte.
