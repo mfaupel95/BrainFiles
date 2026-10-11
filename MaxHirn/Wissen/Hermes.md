@@ -1788,17 +1788,42 @@ nennt ein Profil), nichts im Start-Ordner, kein VBS im `gateway-service/`. Der
 Elternprozess 37772 existiert nicht mehr. Also ein **manuell gestarteter
 Prozess**, der seine Shell ueberlebt hat.
 
-**Gestoppt wurde er nicht.** Der Befehl steht fest, die Ausfuehrung gehoert Max
-(Regel 2 dieses Postens — kein laufender Dienst wird angefasst):
+**Gestoppt am 11.10.2026** (auf Max' Anweisung, `hermes --profile
+informatiker161 gateway stop` → „✓ Stopped gateway for this profile"):
+
+- **PID 62716 beendet**, `profiles/informatiker161/gateway.lock` entfernt.
+- **`hermes gateway status` gibt keine einzige Kanal-Warnung mehr aus** — vorher
+  sieben Zeilen (Telegram + sechs Photon). Das ist der Beleg fuer den
+  Config-Fix: die Pruefung liest die Dateien und ist damit sofort sauber.
+- **Ein Autostart-Eintrag existiert nicht** — das Gateway kam nicht von selbst
+  wieder. Falls es erneut auftaucht, ist die Herkunft weiter offen.
+
+**Noch nicht wirksam, und der Grund steht im Code.** `gateway_state.json` fuehrt
+weiterhin `telegram.state = "fatal"` (Zeitstempel 12:28 UTC, also **vor** dem
+Stop) und die sechs `duplicate_credential`-Eintraege. Ein Neustart ist noetig,
+weil Hermes einen Token-Konflikt beim Start **ausdruecklich nicht** erneut
+versucht — `gateway/restart.py::is_global_startup_conflict`:
+
+> *„Adapters emit ``{scope}_lock`` with ``retryable=True`` so a *mid-run*
+> reconnect can recover; at startup a live foreign holder is a configuration
+> conflict (two gateways cannot poll one token), not a transient blip."*
+
+`gateway/run_startup.py:1344` setzt das um:
+`_retryable = adapter.fatal_error_retryable and not is_global_startup_conflict(...)`.
+Das Gate ist also **zu**, solange kein Fremdprozess mehr laeuft: die Warteschlange
+nimmt die Plattform nicht auf, es gibt keinen Hot-Path zurueck.
+
+**Der Neustart wurde nicht ausgefuehrt** (Regel 2, und der Zeitpunkt gehoert
+Max). `gateway_state.json` meldete zum Zeitpunkt des Stops **`active_agents = 3`**
+— ein `hermes gateway restart` bricht laufende Agenten ab. Der Befehl, wenn
+gerade nichts laeuft:
 
 ```
-hermes --profile informatiker161 gateway stop
+hermes gateway restart
 ```
 
-Danach ist der Beleg: `gateway_state.json` → `telegram.state = "connected"`,
-`gateway_state = "running"`, und die Warnzeile „already in use" bleibt aus.
-Falls das Gateway wiederkommt, ist ein Autostart-Eintrag zu suchen — bisher
-gibt es keinen.
+Beleg danach: `telegram.state = "connected"`, die sechs Photon-Eintraege
+verschwunden, `gateway_state = "running"` statt `degraded`.
 
 ### Kanal-Kennungen: Ist-Stand des Hauses (11.10.2026)
 
