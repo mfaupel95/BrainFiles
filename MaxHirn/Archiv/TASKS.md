@@ -182,10 +182,17 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       gruen werden, obwohl sie 17 ECHTE Fehler hat, die nur nie sichtbar waren.
       Naechster Schritt: (1) `zeitlimit_sekunden` in `testlauf_basis.json` von
       900 auf >= 1800 heben, (2) den `tests`-Eintrag von -1 auf die gemessenen
-      17 setzen, (3) die 17 Fehler ansehen. Der erste ist ein echter Code-Bug:
-      `befehle.spuren()` kennt `squeeze` nicht, weil die Spur in
-      `dauerlauf.SPUREN` fehlt, obwohl `Agenten/Handel/squeeze/` mit Tests
-      existiert (45 statt 46 Spuren).
+      17 setzen, (3) die 17 Fehler ansehen. Der erste davon ist KEIN Code-Bug,
+      sondern ein VERALTETER TEST: `test_befehle.test_indikatorspuren_sind_bekannt`
+      verlangt `squeeze` in `befehle.spuren()`. Die Spur ist aber in
+      `dauerlauf.py` Zeilen 309-314 ABSICHTLICH auskommentiert -
+      "SQUEEZE AUS seit 10.10.2026 (Auftrag Max 'alles sinnvolle'):
+      Parameter-Suche (optimieren.py, 9 Kandidaten) fand keinen Kandidaten,
+      Live netto -0.72 % (15 Runden)". Der Code ist richtig, die ERWARTUNG ist
+      es nicht. Die uebrigen 16 Fehler sind einzeln zu pruefen; die zwei
+      `test_dashboard`- und die `test_handelszentrale_rein_lesend`-Fehler
+      entstehen vermutlich, weil waehrend des Laufs Dauerlaeufe schreiben
+      (Fingerabdruck aendert sich) - auch das waere ein Test-, kein Code-Fehler.
       Betrifft: Agenten/Handel/tests/, Agenten/Handel/testlauf.py,
       Agenten/Handel/testlauf_basis.json
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
