@@ -166,6 +166,21 @@ stehen in `references/spiegeln-parallelsitzung.md` (laden mit `skill_view`).
   Dateien nicht uebernimmt, gehoert nach 30 min einem „Anderen Sitzung"-Commit
   mit *anderem* Autor. Das ist eine offene Entscheidung fuer Max und gehoert in
   den Bericht.
+- **Der Sweep prueft den Code nicht — und committet ihn trotzdem.** Die
+  Commit-Nachricht sagt es selbst: „nicht von Hand geprueft". Am 11.10.2026 hat
+  `fremdarbeit-einziehen.ps1` so zwei echte Defekte nach master gebracht
+  (`getattr(obj, name, default, False)` — vier Argumente, `TypeError` bei jedem
+  `status()`-Aufruf; dazu eine zweite Kraken-Node-Klasse gegen den
+  read-only-Kontrakt des Moduls und auf derselben PID-Datei wie der
+  Prozesse-Reiter). Ein `py_compile` findet den ersten Fall NICHT — der Aufruf
+  ist syntaktisch gueltig.
+  **Regel:** Eine Uebernahme, die .py-Dateien enthaelt, ist erst fertig, wenn
+  `python Agenten/Hermes/scripts/syntax-tor-wache.py` leer bleibt (Syntax +
+  Argumentzahl bekannter Builtins + roter Testlauf gegen
+  `Agenten/Handel/testlauf_basis.json`). Das Tor sitzt seit 11.10.2026 auch
+  direkt in der Routine: ein Befund in einer uebernommenen Datei bricht den
+  Lauf ab, nichts wird committet, die Arbeit bleibt im Baum liegen. Der Cron
+  `syntax-tor-wache` (6 h) faehrt die volle Pruefung nach.
 - **Eine zurueckgenommene Aenderung gehoert an die Stelle, an der die Zahl
   steht.** Nur einen Kommentar daneben zu setzen heisst: beim naechsten Mal
   liest man den Kommentar und nicht die Zahl.

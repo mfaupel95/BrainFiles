@@ -262,6 +262,46 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "git add fehlgeschlagen (Exitcode $LASTEXITCODE)" }
     Remove-Item $pfadDatei -Force -ErrorAction SilentlyContinue
 
+    # --- SYNTAX-TOR (11.10.2026) ------------------------------------------
+    # Der Sweep committet rohen Code ("nicht von Hand geprueft"). Am 11.10.2026
+    # brachte er zwei Defekte nach master, die die Handel-Suite rot machten
+    # (getattr mit 4 Argumenten -> TypeError in leitstand_nautilus.status();
+    # zweite Kraken-Node-Klasse gegen den read-only-Kontrakt). Syntaxfehler war
+    # das nicht - deshalb prueft das Tor mehr als py_compile: Syntax UND
+    # Argumentzahl bekannter Builtins.
+    #
+    # Nur bei .py im uebernommenen Satz. Befund in einer uebernommenen Datei =
+    # Lauf abgebrochen, nichts committet, Arbeit bleibt im Baum liegen.
+    # Der volle Testlauf laeuft hier absichtlich NICHT (~12 min, sprengt den
+    # 30-Minuten-Takt) - den faehrt der Cron `syntax-tor-wache` separat.
+    $pyUebernommen = @($ruhend | Where-Object { $_ -like '*.py' })
+    if ($pyUebernommen.Count -gt 0) {
+        $torSkript = Join-Path $wurzel 'Agenten\Hermes\scripts\syntax-tor-wache.py'
+        $torPy = Join-Path $wurzel 'Agenten\Handel\scanner\.venv\Scripts\python.exe'
+        if ((Test-Path $torSkript) -and (Test-Path $torPy)) {
+            $torAus = (& $torPy $torSkript --nur-syntax 2>&1 | Out-String)
+            $torCode = $LASTEXITCODE
+            $torTreffer = @()
+            foreach ($p in $pyUebernommen) {
+                $muster = [regex]::Escape($p.Replace('/', '\'))
+                foreach ($z in ($torAus -split "`n")) {
+                    if ($z -match $muster) { $torTreffer += $z.Trim() }
+                }
+            }
+            if ($torTreffer.Count -gt 0) {
+                Schreib "ENDE abgebrochen - SYNTAX-TOR: $($torTreffer.Count) Befund(e) in uebernommenen Dateien"
+                $torTreffer | ForEach-Object { Schreib "    $_" }
+                Schreib "    Nichts committet - die Arbeit bleibt im Baum liegen."
+                Schreib "    Volle Pruefung: Agenten\Hermes\scripts\syntax-tor-wache.py"
+                Melde-Ende -Marke $marke -Code 0 -Text "Syntax-Tor: $($torTreffer.Count) Befund(e), nichts committet"
+                exit 0
+            }
+            Schreib "    Syntax-Tor: $($pyUebernommen.Count) .py-Datei(en) geprueft, sauber"
+        } else {
+            Schreib "    WARNUNG Syntax-Tor nicht verfuegbar (Skript oder venv fehlt) - ohne Pruefung"
+        }
+    }
+
     $baum = (git write-tree).Trim()
     if (-not $baum) { throw 'git write-tree lieferte nichts' }
 
