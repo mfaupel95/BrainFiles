@@ -129,4 +129,14 @@ Aufruf ueber das `terminal`-Werkzeug, vorher `PYTHONHOME`/`PYTHONPATH` entfernen
   Bot-Sitzungen unter `profiles/<name>/state.db`.
 - **`id` ist global.** Nie `id > N` als Fenster nutzen.
 - **Leere Assistentenzeilen sind Werkzeug-Turns.** Beim Inhaltslesen nach
-  `length(content)>0` filtern, sonst steht „(nichts)“ trotz voller Sitzung.
+  `length(content)>0` filtern, sonst steht "(nichts)" trotz voller Sitzung.
+- **Zeitstempel sind gemischt: REAL-Epoch ODER ISO-String.** `ended_at` (und
+  andere `*_at`-Spalten) liegen mal als Float (Unix-Epoch), mal als ISO-String
+  mit `Z` vor — eine Altersrechnung, die nur `str(ts).replace('Z', …)` kennt,
+  crasht mit `AttributeError: 'float' object has no attribute 'replace'`. Beide
+  Formen behandeln: Float -> `fromtimestamp(ts, tz=utc)`, String ->
+  `fromisoformat(str(ts).replace('Z','+00:00'))`.
+- **`archive --older-than` zaehlt `last_activity_at`, nicht `ended_at`.** Eine
+  Bucket-Rechnung auf `ended_at` sagt deshalb NICHT, was der Filter treffen
+  wird — der Trockenlauf-Kopf nennt die echte Grenze ("last active before …").
+  Beide Uhren pruefen oder den Filter aus vorher/nachher Zaehlern verifizieren.

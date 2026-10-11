@@ -69,7 +69,15 @@ Faustregeln, wenn eine neue Spur entsteht:
 1. **Das Journal entscheidet ueber den Rechenweg, nicht der Ordnername.**
    `kauf`/`verkauf` mit `einsatz_usd` = `runden_indikator`
    (INDIKATOR_ oder BOT_SPUREN). `eroeffnen`/`schliessen` mit Betrag =
-   `runden_nautilus`. `inst`-Feld vorhanden = nautilus-Weg; `token`/`symbol`
+   `runden_nautilus`. **In der Liste zu stehen garantiert NICHT, dass das
+   Journalformat passt:** eine Spur in BOT_SPUREN, die `eroeffnen`/`schliessen`
+   schreibt, bekommt still 0 Runden in JEDER Auswertung, weil
+   `runden_indikator` nur `kauf`/`verkauf` paart (gemessen an omniquant:
+   37 EINSTIEG/20 AUSSTIEG-Zeilen, 0 Runden). Vor einer Auswertungs-Aussage
+   die AKTIONEN zaehlen, die die Spur wirklich schreibt
+   (`Counter(r.get('aktion') for r in zeilen)`), und gegen den Rechenweg
+   halten, dem sie zugeordnet ist - nicht nur pruefen, dass sie in der Liste
+   steht. `inst`-Feld vorhanden = nautilus-Weg; `token`/`symbol`
    statt `inst` = **kein** Weg in auswertung_alle (belegt: `runden_nautilus`
    an kopier ergab 107 Runden mit falscher Paarung, Einsteig PATE /
    Ausstieg leeres Symbol). Dann gehoert eine eigene `auswertung.py` in den

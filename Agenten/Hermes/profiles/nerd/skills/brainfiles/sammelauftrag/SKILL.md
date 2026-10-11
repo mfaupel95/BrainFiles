@@ -65,6 +65,7 @@ nie in einem Rutsch:
 |---|---|
 | uncommittete Arbeit | `git status --porcelain` (jeder Treffer ist ein Kandidat) |
 | Sitzungen, letzte Aktivität | `session_search` |
+| Claude-/Claude-Code-Sitzungen | `references/claude-sessions.md` (Orte + Lese-Rezept) |
 | Übergaben | `Werkstatt/Austausch/` (Ordner je Datum) |
 | Sitzungsablagen | `Werkstatt/Sitzungen/`, `Werkstatt/Protokolle/` |
 | Läufe mit Fehler | `Agenten/Routinen/logs/*.log` — Zeilen mit `ENDE FEHLER` |
@@ -120,6 +121,11 @@ git log --oneline -15                        # was zuletzt fertig wurde
 Dazu `search_files` über `Werkstatt/Austausch/` und `read_file` auf
 `MaxHirn/Wissen/Routinen.md` (Statusspalte). Den Chatverlauf nicht mitzählen:
 `session_search` liefert Sitzungen und ihre letzte Aktivität, nicht deren Auftrag.
+
+Claude- und Claude-Code-Sitzungen liegen NICHT in `state.db` — Orte, Lese-Rezept
+und die Signale, die einen offenen Punkt bedeuten (Session-Limit-Abbruch,
+HANDOVER-Open-Questions, ungemergte Worktree-Zweige), stehen in
+`references/claude-sessions.md`.
 
 ### 2. Lebende von toten Ständen trennen
 
@@ -246,11 +252,37 @@ natürlichen Abschluss-Kandidaten):
 python Agenten/Hermes/skills/brainfiles/sammelauftrag/scripts/beendete_sitzungen.py
 ```
 
-Dann der Abschluss selbst:
+Dann der Abschluss selbst — **zuerst die Altersverteilung der Kandidaten messen,
+nie einen festen Wert raten**: `--older-than` filtert auf der LETZTEN AKTIVITAET
+(`last_activity_at`, der Trockenlauf nennt es im Kopf: "last active before …"),
+nicht auf `ended_at`, und ein einzelnes Alter kann leer treffen, waehrend ein
+juengeres greift (gemessen: 130 beendet+unarchiviert, davon 0 aelter als 30 d;
+`--older-than 30d`/`7d`/`14d` alle "No sessions match", `--older-than 2d` traf 18).
+Die Buckets liefert ein lesender SQL-Lauf (Zeitstempel sind gemischt REAL-Epoch
+ODER ISO — beide Formen behandeln):
 
 ```bash
-hermes sessions archive --older-than 30d --dry-run     # was würde versteckt?
-hermes sessions archive --older-than 30d --yes          # dann wirklich
+python - <<'EOF'
+import sqlite3, datetime
+from collections import Counter
+db = sqlite3.connect(r"file:Agenten/Hermes/state.db?mode=ro", uri=True)
+now = datetime.datetime.now(datetime.timezone.utc)
+def alter(ts):
+    if isinstance(ts, (int, float)):
+        dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+    else:
+        dt = datetime.datetime.fromisoformat(str(ts).replace('Z', '+00:00'))
+    return (now - dt).days
+rows = db.execute("SELECT ended_at, source FROM sessions WHERE ended_at IS NOT NULL AND archived = 0").fetchall()
+print(Counter(('<1d' if alter(e) < 1 else '1-7d' if alter(e) < 7 else '7-30d' if alter(e) < 30 else '>30d', s) for e, s in rows))
+EOF
+```
+
+Danach Trockenlauf ZAEHLEN und mit dem Bucket-gerechten Alter wirklich laufen:
+
+```bash
+hermes sessions archive --older-than 2d --dry-run | wc -l   # Zahl nennen, nicht ansehen
+hermes sessions archive --older-than 2d --yes
 ```
 
 Vor einem Massen-Abschluss `hermes sessions pinned` lesen und Angeheftete ausnehmen
@@ -277,10 +309,14 @@ sie werden nur gelesen oder per `hermes sessions import` einseitig übernommen.
   `unarchive` (`hermes sessions --help`); umkehrbar heisst hier: in `state.db`
   `UPDATE sessions SET archived=0` (Spalte existiert, Tabelle `sessions`).
   Wer 100+ Sitzungen versteckt, muss diesen Rueckweg mitliefern.
-- **`archive --older-than 30d` kann "No sessions match" melden, obwohl 153
-  beendete Sitzungen unarchiviert liegen** — die aeltere Auswahl greift nur
-  einen Teil. Der Bestand kommt aus `beendete_sitzungen.py` (beendet und noch
-  nicht archiviert), nicht aus einem einzelnen Filter.
+- **`archive --older-than AGE` filtert auf der LETZTEN AKTIVITAET, nicht auf
+  `ended_at` — und jedes einzelne Alter kann leer treffen.** "No sessions match"
+  trotz 100+ beendeter, unarchivierter Sitzungen ist der Normalfall, wenn die
+  Auswahl alle juenger sind als der Wert (gemessen: von 130 beendeten 0 aelter
+  als 30 d, `--older-than 7d`/`14d`/`30d` leer, `--older-than 2d` traf 18). Der
+  Wert gehoert aus den Alters-Buckets der DB gewaehlt (Schritt 8, SQL-Rezept),
+  nie aus dem Gedaechtnis; der Bestand kommt aus `beendete_sitzungen.py`,
+  nicht aus einem einzelnen Filter.
 - **`Wissen/Routinen.md` ist CRLF mit einzelnen LF-Zeilen.** Weder `write_file`
   noch `patch` darauf ansetzen: beide normalisieren die Zeilenenden und erzeugen
   im Diff Änderungen, die niemand gemacht hat. Sicherung `.bak-JJJJMMTT` anlegen,

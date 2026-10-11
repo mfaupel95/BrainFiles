@@ -129,18 +129,13 @@ Ob ein Stop-Nachsatz wirkt, beweist allein die Börse. Das Buch (`zustand.json`)
 - `paar_fuer()` eines abgeleiteten Instruments wirft `ValueError: unbekanntes Instrument … Marktliste nicht geladen`, solange die Instrumentenliste fehlt. Vor jeder lesenden Börsenprobe erst `live_perp.markte_laden()` aufrufen — das ist ein öffentlicher `/instruments`-Abruf und bleibt rein lesend.
 - Nicht jeder Schlüssel darf alles lesen: Positionen/Orders können gehen, während `/fills` mit `authenticationError` antwortet. Ohne Fills ist ein Ausstiegspreis **nicht belegbar** — dann Stop-Fill, Handverkauf und Liquidation ausdrücklich als ungeklärt melden und keinen Preis ins Journal raten.
 
-## Geisterposition: Buch führt live, Börse kennt sie nicht
+## Geisterposition: Exchange und Buch weichen voneinander ab
 
-Führt `zustand.json` eine Position mit `modus: live`, während die Börse keine offene Position meldet, ist das ein Befund mit vier Folgen — alle vier nennen, weil sie sich nicht von selbst auflösen:
+Wenn `zustand.json` eine Live-Position führt, aber Kraken sie nicht mehr offen meldet, strikt trennen: Exchange-Fakten, Journal-Fakten und Buchstatus. Vor der Diagnose offene Positionen sowohl symbolgefiltert als auch ungefiltert und offene Orders abfragen; erst `live_perp.markte_laden()` aufrufen, damit abgeleitete Symbole wie `NEAR-USDC` korrekt geprüft werden. Fills können mit `authenticationError` gesperrt sein: dann Verkauf, Stop-Auslösung und Liquidation als ungeklärt markieren; keinen Ausstiegspreis oder P&L schätzen.
 
-1. Ein zurückgebliebener `reduceOnly`-Stop kann **nie** füllen (kein Bestand zum Reduzieren) und steht unbegrenzt als offene Order.
-2. `_ausstiegsgrund` prüft nur Stop/Ziel/Frist gegen den Kurs — liegt der Kurs dazwischen und die Frist ist offen, bleibt die Geisterzeile dauerhaft im Buch.
-3. Die Runde wird nie geschlossen, die Spur bleibt bei 0 geschlossenen Runden und damit nach der Regel oben nicht kalibrierbar.
-4. Der Platz gilt als belegt und blockiert `live_max_offene_positionen`.
+Die Bereinigung braucht Max' Freigabe. Bei Freigabe eine `.bak`-Sicherung der Runtime-Dateien anlegen, die Position aus dem offenen Bestand entfernen und einen expliziten Buchabgleich mit `preis`, `wert_usd` und P&L leer/null protokollieren. Nicht `erledigt`/Verkauf verwenden, wenn kein Ausstiegspreis belegt ist: die GUI und Auswertungen können diese Felder als realisierte Rendite interpretieren. Journal und Zustand nach Änderung bytegenau zum `journal_zweitziel` spiegeln; einen laufenden Dauerlauf beachten, der die Dateien unmittelbar neu schreiben kann.
 
-**`/openpositions` immer auch UNGEFILTERT lesen**, bevor du „Position weg" meldest — ein leeres Ergebnis kann sonst am Symbol-Filter liegen (falsch abgeleitetes Paar) statt an der Börse.
-
-Das Bereinigen (Order stornieren, Position ausbuchen) ist eine **Handelsentscheidung**: vortragen, nicht selbst ausführen. Ohne belegbaren Ausstiegspreis ist die Frage, zu welchem Preis gebucht wird, Teil der Vorlage.
+Für die dauerhafte Abhilfe Code im eigenen `.worktrees/`-Worktree und test-first ändern: Vor Stop-/Kurs-/Verkaufspfad jede gebuchte Live-Seite und Kontraktmenge mit `/openpositions` abgleichen. Bei Abfragefehler, fehlender Position oder Mengenabweichung alarmieren und **keine** Order senden, nichts automatisch ausbuchen und keine Rendite buchen; Exchange-/Buchdifferenzen erfordern menschliche Klärung. Regressionstests müssen beweisen, dass bei Geister- und Teilbestand weder Stop noch Market-Verkauf oder Kurs-Exit ausgelöst wird. Die Omniquant-Suite ausführen, committen, PR erstellen; der Fix wirkt erst nach Merge und dem betrieblichen Neustart.
 
 ## Fallen
 
