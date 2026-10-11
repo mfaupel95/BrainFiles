@@ -140,6 +140,15 @@ Vorschau-Lauf setzt damit einen frischen Herzschlag und lässt die Q:-Kopie
 älter aussehen als den eigenen Zustand (swap und xperp bis 13.09.2026).
 
 ## Pitfalls
+- **Einfacher Backslash vor einem Buchstaben im JSON-Pfad ist ein Escape.**
+  `"journal_zweitziel": "Q:\\Handel_Journal\fib_retrace"` wird von
+  `json.load` als `Q:\Handel_Journal\x0cib_retrace` (Formfeed 0x0C vor
+  'ib_retrace') geparst — das Ziel ist unerreichbar, die Spur spiegelt still
+  nie, und spiegelstand meldet dauerhaft "Ordner nicht erreichbar", obwohl
+  der Ordner existiert (11.10.2026: fib_retrace). Bei JEDEM neuen Ziel nach
+  dem Setzen gegenpruefen:
+  `python -c "import json,os; z=json.load(open('wachen.json',encoding='utf-8'))['journal_zweitziel']; print(repr(z), os.path.isdir(z))"`
+  — `repr()` zeigt ein Formfeed als `\x0c`, ein korrekter Pfad als `\\`.
 - **Testzyklen spiegeln mit.** Faehrt ein Test den vollen `lauf()` und patcht
   nur `ZUSTAND`/`JOURNAL` auf Temp-Pfade, kopiert die Spiegelung die
   **Temp-Datei an das echte Ziel** — im Zielordner liegt danach ein
