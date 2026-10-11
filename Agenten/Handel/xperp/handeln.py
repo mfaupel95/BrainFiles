@@ -1925,12 +1925,21 @@ def zeige_wachen(w):
     if s["kill"]:
         print()
         print("  KILL-SWITCH erreicht - der naechste Lauf stellt flach.")
-    if s["ev_negativ"] and w.get("handel_erlaubt"):
+    if s["ev_negativ"] and w.get("handel_erlaubt") and not _ev_sperre_entfaellt(w):
         if wx.sperre_zu("rollierender EV %.3f USD < 0" % s["rollierender_ev"]):
             print("  EV negativ -> handel_erlaubt auf false gesetzt.")
 
 
 # --- Hauptlauf --------------------------------------------------------------
+
+def _ev_sperre_entfaellt(w):
+    """Vermerk _ev_entfaellt in wachen.json (Bedingung 5, Auftrag Max 11.10.2026).
+
+    true/gesetzt = die EV-Sperre greift nicht mehr - die Spur laeuft auch bei
+    negativem rollierendem EV live. freigabe.erfuellt bleibt der Haken.
+    """
+    return bool((w or {}).get("_ev_entfaellt"))
+
 
 def sperren_live(w, s):
     """Alles, was --live gerade verschliesst. Leere Liste = frei."""
@@ -1952,7 +1961,7 @@ def sperren_live(w, s):
         g.append("freigabe.erfuellt=false (Bedingung 1)")
     if not s["herzschlag_frisch"]:
         g.append("Herzschlag alt (Bedingung 3)")
-    if s["ev_negativ"]:
+    if s["ev_negativ"] and not _ev_sperre_entfaellt(w):
         g.append("rollierender EV %.3f USD < 0 (Bedingung 5)"
                  % s["rollierender_ev"])
     if w.get("journal_zweitziel") is None:
