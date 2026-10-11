@@ -3,7 +3,7 @@ id: 20260830-hermes
 title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
-updated: 2026-10-08
+updated: 2026-10-11
 related: [20260830-verbindungen, 20260831-python-versionen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
@@ -1596,3 +1596,33 @@ Desktop bleibt beim (nicht versionierten) `MCP-Manifest.json` und
 `hermes-mcp` (Port 9900, Token `HERMES_A2A_TOKEN`); im Code nirgends benutzt,
 nur im Skill `a2a-telegram-skills` als "lokaler Peer" genannt. Woher die Zahl
 stammt, steht nirgends im Repo.
+## RAM-Limit und Absturzschutz, 11.10.2026
+
+**Anlass:** Renderer-Freeze vom 13.09.2026 und RAM-Druck durch Container,
+Renderer, Gateway und Hilfsprozesse. Die Grenzen sind jetzt getrennt geprueft.
+
+**Aenderungen an `Agenten/Hermes/config.yaml`:**
+
+- `terminal.container_memory`: **5120 -> 8192 MB.** Container sind der
+  Python-Prozess, Modell-Inferenz und Tool-Loop; 5 GB war bei groesseren
+  Sitzungen und mehreren Subagenten knapp.
+- `desktop.renderer_max_old_space_mb`: **4096 -> 3072 MB.** Der Renderer darf
+  nicht mehr als 3 GB V8-Heap beanspruchen. Der Freeze war Renderer-basiert,
+  nicht Gateway-basiert. Bei 64 GB Host-RAM bleibt damit Reserve.
+- `delegation.max_concurrent_children`: **10 -> 5.** Begrenzt parallele
+  Subagenten und damit gleichzeitige Modell-/Tool-Arbeit.
+- `compression.idle_compact_after_seconds`: **0 -> 3600.** Komprimiert eine
+  Sitzung nach einer Stunde Inaktivitaet.
+
+**Belege:** Sicherung `config.yaml.bak-20261011`; `yaml.safe_load` bestaetigt
+alle vier Zielwerte; `diff` gegen die Sicherung zeigt exakt vier Ersetzungen;
+CRLF und kein BOM erhalten. `herges gateway status` lief vor und nach der
+Aenderung ohne Neustart. Die Werte greifen ab dem naechsten Neustart bzw.
+fueuer neue Sitzungen; der laufende Prozess behaelt seine bisherige Konfiguration.
+
+**Auslagerungsdateien:** Der Windows-Pagefile ist ein Notfall-Puffer, keine
+Loesung fuer dauerhaften RAM-Druck. Er kann auf `G:` groesser gesetzt werden,
+muss aber nicht. Entscheidend ist der kleinere Renderer-Deckel und der groessere
+Container-Speicher.
+
+**Sicherung der Notiz:** `Wissen/Hermes.md.bak-20261011-ram`.

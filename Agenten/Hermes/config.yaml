@@ -588,7 +588,7 @@ terminal:
     - VISION_TOOLS_DEBUG
     - WEB_TOOLS_DEBUG
   container_cpu: 1
-  container_memory: 5120
+  container_memory: 8192
   container_disk: 51200
   container_persistent: true
   docker_mount_cwd_to_workspace: true
@@ -641,7 +641,7 @@ compression:
   codex_gpt55_autoraise: true
   codex_app_server_auto: native
   codex_responses_native: false
-  idle_compact_after_seconds: 0
+  idle_compact_after_seconds: 3600
 prompt_caching:
   # auto = 1h-Tier fuer alles, was ein Mensch tippt (cli, tui, desktop, Gateway),
   # 5m fuer maschinell getaktete Quellen (subagent, cron, kanban, webhook).
@@ -764,7 +764,7 @@ delegation:
       model: google/gemini-3.1-flash-lite
   max_iterations: 100
   reasoning_effort: high
-  max_concurrent_children: 10
+  max_concurrent_children: 5
   # 180 s war fuer ein grosses Denkmodell zu knapp: der Timeout startet bei JEDEM
   # Fortschritt neu, ein lebender Subagent mit mehreren Werkzeugschritten wurde
   # trotzdem abgeschnitten.
@@ -1043,7 +1043,7 @@ desktop:
   # Deckel fuer den V8-Heap des Renderers. 0 = Chromium-Standard, und genau der hat
   # am 13.09.2026 einen Rechner-weiten Freeze erzeugt; mit Deckel wird daraus ein
   # begrenzter Renderer-Neustart. 4096 MB passt zu 64 GB RAM neben dem Gateway.
-  renderer_max_old_space_mb: 4096
+  renderer_max_old_space_mb: 3072
 local_runtime:
   enabled: true
 _config_version: 50
