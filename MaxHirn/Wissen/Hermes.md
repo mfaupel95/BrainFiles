@@ -1620,9 +1620,31 @@ CRLF und kein BOM erhalten. `herges gateway status` lief vor und nach der
 Aenderung ohne Neustart. Die Werte greifen ab dem naechsten Neustart bzw.
 fueuer neue Sitzungen; der laufende Prozess behaelt seine bisherige Konfiguration.
 
-**Auslagerungsdateien:** Der Windows-Pagefile ist ein Notfall-Puffer, keine
-Loesung fuer dauerhaften RAM-Druck. Er kann auf `G:` groesser gesetzt werden,
-muss aber nicht. Entscheidend ist der kleinere Renderer-Deckel und der groessere
-Container-Speicher.
+**Auslagerungsdateien — gemessen, nicht geraten.** Die Pagefiles liegen auf
+`C:\pagefile.sys` (8 GB) und `O:\pagefile.sys` (32 GB), beide fest, beide auf
+**NVMe-SSDs**. Auf `G:` liegt **kein** Pagefile; G: ist eine USB-HDD (Seagate
+Portable, sequentiell 73 MB/s gemessen) und waere fuer einen Pagefile auch der
+falsche Ort. An der Pagefile-Lage ist **nichts zu aendern**.
+
+**Die eigentliche Ursache des Speicherdrucks liegt ausserhalb der Hermes-Config.**
+Am 11.10.2026 meldete Windows fuenfzehnmal `Id 2004` (virtueller Speicher
+unzureichend), zwischen 13:22 und 16:28. Die genannten Verbraucher:
+
+- `vmmemWSL` (PID 19968): **19,5 GB** — die WSL-VM hat **keinen** `.wslconfig`-Deckel,
+  Docker Desktop setzt `MemoryMiB = 33024` (32 GB).
+- `llama-server.exe`: wechselnde PIDs, **4 bis 16 GB** — `--models-autoload` laedt
+  Modelle mit `ctx-size 65536` nach; ein Crash-Dump vom 13:22 ist 232 MB gross.
+- `WindowsTerminal.exe`: 5,8 GB.
+
+Commit-Limit 103,7 GB (63,7 RAM + 40 Pagefile), belegt 88,1 GB — nur 15,6 GB Luft.
+Abhilfe waere ein `%USERPROFILE%\.wslconfig` mit `memory=16GB` und ein kleineres
+`MemoryMiB` in Docker Desktop; beides wurde am 11.10.2026 **nicht** angefasst.
+
+**Was die vier Config-Aenderungen leisten und was nicht:** `container_memory`
+(5120 -> 8192) ist ein **Deckel, keine Belegung** — er greift nur im
+Docker-Terminal-Zweig, und `terminal.backend` steht auf `local`. Der
+Renderer-Deckel (3072 MB) und `idle_compact_after_seconds` (3600) wirken wie
+gedacht; `max_concurrent_children` (5) begrenzt parallele Subagenten. Gegen den
+WSL-Druck helfen sie nicht.
 
 **Sicherung der Notiz:** `Wissen/Hermes.md.bak-20261011-ram`.
