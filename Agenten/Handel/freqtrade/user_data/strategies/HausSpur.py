@@ -106,14 +106,36 @@ class HausSpur(IStrategy):
         trade.set_custom_data("hs_ziel", ziel)
         return stop, ziel
 
+    def _auf_schluss(self):
+        """Variante `hausspur.ausloesung: "schluss"` (Messung 11.10.2026):
+        Stop und Ziel loesen wie im Haus (T-202) nur auf dem Kerzenschluss aus,
+        nicht schon, wenn ein Docht sie streift. Vorgabe bleibt "docht" -
+        die strengere Fassung, die ein echter Stop an der Boerse auch hat."""
+        return (self.config.get("hausspur") or {}).get("ausloesung") == "schluss"
+
+    def custom_exit(self, pair, trade, current_time, current_rate,
+                    current_profit, **kwargs):
+        if not self._auf_schluss():
+            return None
+        stop, ziel = self._signalwerte(pair, trade)
+        if current_profit <= -stop / 100.0:
+            return "stop_schluss"
+        if current_profit >= ziel / 100.0:
+            return "ziel_schluss"
+        return None
+
     def custom_stoploss(self, pair, trade, current_time, current_rate,
                         current_profit, after_fill, **kwargs):
+        if self._auf_schluss():
+            return -0.99              # Notbremse; der echte Stop sitzt in custom_exit
         stop, _ = self._signalwerte(pair, trade)
         return stoploss_from_open(-stop / 100.0, current_profit,
                                   is_short=trade.is_short, leverage=trade.leverage)
 
     def custom_roi(self, pair, trade, current_time, trade_duration, entry_tag,
                    side, **kwargs):
+        if self._auf_schluss():
+            return None
         _, ziel = self._signalwerte(pair, trade)
         return ziel / 100.0
 
