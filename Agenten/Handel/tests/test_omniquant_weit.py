@@ -107,10 +107,19 @@ class ToreTest(unittest.TestCase):
             (weit["hoechst_rsi"], weit["mindest_cr"], weit["ruecksetzer_bis_pct"]),
             (streng["hoechst_rsi"], streng["mindest_cr"], streng["ruecksetzer_bis_pct"]))
 
-    def test_score_schwelle_gleich(self):
-        """Der Score bleibt die gemeinsame Messlatte beider Arme."""
+    def test_score_schwelle_weit_ist_nicht_strenger(self):
+        """Die weite Fassung darf einen eigenen (weicheren) Score haben.
+
+        Bis 11.10.2026 galt: der Score bleibt die gemeinsame Messlatte beider
+        Arme (assertEqual). Am 11.10. wurde der weite Score bewusst auf 55
+        gesenkt (prognose.weit.json: 'WEIT 11.10.2026: 60 -> 55. Gemessen ueber
+        49 Maerkte: Score war bei 16 Long-Kandidaten das EINZIGE geschlossene
+        Tor; 55 hebt die Treffer von 5 auf 7') - die weite Fassung ist der
+        Schattenarm, der MEHR faengt, nicht dieselbe Messlatte. Die Regel ist
+        damit: weit ist hoechstens so streng wie streng.
+        """
         streng, weit = self._konf("prognose.json"), self._konf("prognose.weit.json")
-        self.assertEqual(weit["mindest_score"], streng["mindest_score"])
+        self.assertLessEqual(weit["mindest_score"], streng["mindest_score"])
 
     def test_wachen_weit_zeigt_auf_den_weichen_bericht(self):
         with open(os.path.join(SPUR, "wachen.weit.json"), encoding="utf-8") as fh:
