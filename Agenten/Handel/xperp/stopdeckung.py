@@ -134,7 +134,12 @@ def schutz_auftraege(inst, seite):
             continue
         if a.get("side") != gegenteil:
             continue
-        if not (a.get("slTriggerPx") or a.get("tpTriggerPx")):
+        # Nur ein STOP schuetzt. Ein reiner Take-Profit (tpTriggerPx ohne
+        # slTriggerPx) loest nur im Gewinn aus - bis 11.10.2026 zaehlte er mit
+        # und ETH meldete "alle geschuetzt" bei 203 von 884 Kontrakten ohne
+        # Stop (442 davon hingen an einem reinen Ziel-Auftrag).
+        if not any(str(a.get(f) or "").strip() for f in
+                   ("slTriggerPx", "moveTriggerPx", "trailingTriggerPx")):
             continue
         try:
             menge = abs(float(a.get("sz") or 0.0))
