@@ -2,16 +2,11 @@ model:
   default: deepseek/deepseek-v4-flash-0731
   provider: nous
 providers:
-  ollama-launch:
-    api: http://127.0.0.1:11434/v1
-    base_url: http://127.0.0.1:11434/v1
-    default_model: gemma-e4b-8k:latest
+  llamacpp:
+    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
     discover_models: true
-    model: gemma-e4b-8k:latest
-    models:
-      - gemma-e4b-8k:latest
-      - gemma-e4b-8k:cpu
-    name: Ollama
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    name: LLaMA.cpp
   omniroute:
     api: http://localhost:20128/v1
     default_model: auto
@@ -26,9 +21,8 @@ providers:
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
 fallback_providers:
-  - provider: ollama-launch
-    model: gemma-e4b-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
+  - provider: llamacpp
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
 toolsets:
   - hermes-cli
 database:

@@ -1,10 +1,8 @@
 providers:
-  ollama-launch:
-    api: http://127.0.0.1:11434/v1
-    base_url: http://127.0.0.1:11434/v1
-    default_model: gemma-e4b-8k:cpu
-    model: gemma-e4b-8k:cpu
-    name: Ollama
+  llamacpp:
+    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    name: LLaMA.cpp
     discover_models: true
   omniroute:
     api: http://localhost:20128/v1
@@ -26,9 +24,8 @@ model:
   default: meituan/longcat-2.5-preview:free
   provider: nous
 fallback_providers:
-  - provider: ollama-launch
-    model: gemma-e4b-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
+  - provider: llamacpp
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
 plugins:
   enabled: []
 _config_version: 50

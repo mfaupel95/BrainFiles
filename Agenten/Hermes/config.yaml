@@ -433,20 +433,13 @@ providers:
       anthropic/claude-sonnet-5.5:batch: {}
       anthropic/claude-sonnet-5:batch: {}
       ~anthropic/claude-sonnet-latest: {}
-  ollama-launch:
-    api: http://127.0.0.1:11434/v1
-    base_url: http://127.0.0.1:11434/v1
-    default_model: deepseek-r1:7b
+  llamacpp:
+    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
     discover_models: true
-    model: gemma-e4b-8k:latest
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
     models:
-      - gemma-e4b-8k:latest
-      - gemma-e4b-8k:cpu
-      - deepseek-chat:latest
-      - glm4:9b
-      - qwen3.5:9b
-      - deepseek-reasoner:latest
-    name: Ollama
+      - gemma-4-E4B-it-OBLITERATED-Q8_0
+    name: LLaMA.cpp
   omniroute:
     api: http://localhost:20128/v1
     default_model: auto
@@ -810,8 +803,8 @@ moa:
         - provider: custom:deepseek
           model: auto/best-chat
           enabled: true
-        - provider: ollama-launch
-          model: gemma-e4b-8k:latest
+        - provider: llamacpp
+          model: gemma-4-E4B-it-OBLITERATED-Q8_0
           enabled: true
       aggregator:
         provider: omniroute
