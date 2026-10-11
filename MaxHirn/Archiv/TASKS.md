@@ -1,6 +1,13 @@
 ## Offen
 
 
+- [ ] **T-390 - Werkstatt-Junction: zweiter Verlust in 6 Tagen (05.10., 11.10.2026) - Wache bauen**
+      Kontext: BrainFiles\Werkstatt war am 11.10.2026 02:00 KEINE Junction auf O:\Werkstatt mehr, sondern ein echter, seit 10.10. 18:47 gewachsener Schatten-Ordner (23 Eintraege: Aufraeum-Verschiebungen, plan-/spec-MDs, omnitrade-status-Kopien). Alle Zugriffe ueber BrainFiles\Werkstatt\ liefen ins Leere: scanner-papier-stunde schlug stundenlang mit 'Python oder Ordner fehlt' fehl (Befund 2 des Sammelauftrags hatte diese Ursache). GELOEST (verlustfrei, 11.10. 02:00-02:20): Schatten-Inhalte nach O: gerettet (2 Abweichungen -> O:\Werkstatt\zusammenfuehrung-20261011: okx_demo_order.ps1, plan-fremdrepos-ausbau-2026-10-09.md; 12 alte omnitrade-status-Kopien gegen die juengeren O:-Originale), Junction neu gesetzt. Protokoll Agenten/Routinen/logs/werkstatt-junction-reparatur-20261011.log. Zweiter Fall derselben Klasse (erster: 05.10.2026 22:12, 2 Dateien). Es gibt weiterhin KEINE Wache, die Junction-Verlust meldet - konfig-doktor haelt LAUFZEIT-JUNCTION-* nur als KRITISCH beim manuellen Lauf.
+      Naechster Schritt: Wache bauen (z.B. Hermes-Cron no_agent, prueft LinkType+Target von BrainFiles\Werkstatt und BrainFiles\Modelle, meldet nur Verlust; Muster ausserhaus-frist-wache).
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Betrifft: BrainFiles\Werkstatt (Junction), Modelle (Junction)
+
+
 
 - [ ] **T-388 - Dateischwund-Wache auf den ganzen Baum erweitert: dateischwund-wache-baum.py (10.10.2026)**
       Kontext: Die bestehenden Wachen deckten nur Agenten/Hermes/scripts (dateischwund-wache.py) und Agenten/Handel (dateischwund-wache-handel.py) ab. Der T-100-Fall (versionierte Datei verschwindet, fremdarbeit-einziehen committet die Loeschung) kann ueberall passieren. BEHOBEN: neue dateischwund-wache-baum.py prueft die VERSIONIERTE TEXTEbene des ganzen Baums (git ls-files, ~2844 Dateien, Laufzeit 1,2s - kein rglob ueber .venv/daten). Git-Soll + Merkliste + Leer-Erkennung, meldet nur bei Auffaelligkeit, Ruhe 6h. Merge 23a0c844. Cron 6f11866c3c05 (alle 15m, no_agent). Gegenprobe: versionierte Datei geloescht -> Git-Soll-Befund.
