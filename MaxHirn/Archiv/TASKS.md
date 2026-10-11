@@ -83,7 +83,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
       Betrifft: Agenten/Hermes/profiles/hermes-wartung/config.yaml, Agenten/Hermes/kanban/
 
-- [ ] **T-398 — Karten-Worker: Token-Fix gilt nur fuer hermes-wartung, andere Worker-Profile unberuehrt**
+- [x] **T-398 — Karten-Worker: Token-Fix gilt nur fuer hermes-wartung, andere Worker-Profile unberuehrt**
+      **ERLEDIGT 2026-10-11 (Auftrag Max).** Die 38er-Kur (Muster Commit
+      2389eeba) ist auf die neun uebrigen dedizierten Karten-Worker-Profile
+      gezogen: agent-trade-kit, awesome-systematic-trading, deepseek-harness,
+      fomo-radar, harvard-trading, lokal-first, lotse, moon-dev-agents,
+      one-skill-to-rule-them-all. Jedes traegt jetzt `skills.disabled` mit
+      exakt denselben 38 Eintraegen; Nachzaehlung ueber alle config.yaml:
+      **vorher 1 von 34, jetzt 10 von 34**. Commit `18c2da2a`, gepusht.
+      Je Datei eine `.bak-20261011` (Stufe 1).
+      **Bewusst NICHT getan:** die Haupt-Config `Agenten/Hermes/config.yaml`
+      (Board `default`) ist nicht mitgezogen - Stufe 1, von laufenden Sitzungen
+      geteilt, und ein Trim dort blendet Skills fuer den ganzen Hauptagenten
+      aus. Sie bleibt der letzte offene Karten-Worker; Entscheidung Max.
       Kontext: Die Crash-Karten liefen auf mehreren Profilen (t_29c89f80: agent-trade-kit,
       t_4f96661d/t_c3909e3e/t_542d26a4: default, t_b2142a56: hermes-wartung). Commit 2389eeba
       hat NUR hermes-wartung getrimmt (38 disabled); default (Agenten/Hermes/config.yaml hat
@@ -155,6 +167,34 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Agenten/Handel/verbesserer/spuren.json, Agenten/Handel/xperp/wachen.json
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
 - [ ] **T-393 — omniquant hat kein Pflichtband: der Stop kommt ungeprueft aus dem Bericht**
+      **WEG (a) GESETZT 11.10.2026 (Auftrag Max: a wie xperp).**
+      `omniquant/wachen.json` traegt jetzt `stop_atr_faktor: 1.5` und
+      `ziel_atr_faktor: 3.0` (Commit `18c2da2a`, gepusht), mit `.bak-20261011`.
+      **ABER: die zwei Werte sind derzeit WIRKUNGSLOS - das Ticket irrt in
+      seiner Praemisse.** Gemessen am 11.10.2026:
+        - `freigabe.py` fuehrt omniquant NICHT in seiner `WACHEN`-Map
+          (Zeile 55-58: nur spot/hebel/kraken/mosaic). `--spur omniquant` ist
+          dort kein gueltiger Wert - der Kontrakt-Zweig (`rechne_hebel` +
+          `pruefe`) rechnet fuer diese Spur also NIE. Das Ticket behauptet,
+          omniquant falle "in den Kontrakt-Zweig"; es faellt in GAR KEINEN,
+          weil es in der Map fehlt.
+        - `wachen_pruefung.py` (das `omniquant/handeln.py` importiert) prueft
+          Drawdown, Kill-Switch, Herzschlag, rollierenden EV und die
+          Journal-Spiegelung - **keine Stopweite**.
+        - `omniquant/live_perp.py` laedt `freigabe.py` nur wegen `audit()`,
+          nicht wegen `bestaetige()`/`pruefe()`.
+      Der Stop kommt weiter allein aus `prognose.py` (Klammer 5..12 %), keine
+      Grenze haelt ihn. Damit Weg (a) wirklich greift, fehlen zwei Schritte,
+      die NICHT getan sind (eigener Auftrag, weil sie Verhalten aendern):
+        1. omniquant in `freigabe.WACHEN` registrieren (Pfad omniquant/wachen.json),
+        2. die Kontrakt-Felder eintragen: max_margin_je_anlauf_usd,
+           max_margin_gesamt_usd, max_offene_anlaeufe, max_hebel,
+           risiko_je_anlauf_usd. Achtung: omniquant rechnet mit hebel 6, der
+           Kontrakt-Zweig zeigt dann hebel 6 > max_hebel 5 als REISST - die
+           Deckel sind auf xperps Hebel 5 zugeschnitten und muessen fuer
+           omniquant eigens gesetzt werden.
+      Die zwei Zahlen sind der erste Schritt, nicht der fertige Zaun; der
+      Sachstand steht als `_stop_band_vermerk` in der Datei selbst.
       Kontext: `omniquant/wachen.json` traegt weder `pflicht_stop_prozent_min/max`
       noch `stop_prozent` noch `stop_atr_faktor`. Die Hauspruefung in
       `freigabe.py` hat zwei Zweige: SPOTARTIG (prueft smin..smax, Defaults 4..12)
@@ -220,7 +260,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Agenten/Handel/prognose.json
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
 
-- [ ] **T-394 — Der weite Prognose-Bericht hat die Vola-Erhoehung vom 25.09. nicht bekommen**
+- [x] **T-394 — Der weite Prognose-Bericht hat die Vola-Erhoehung vom 25.09. nicht bekommen**
+      **ERLEDIGT 2026-10-11 (Auftrag Max: nachziehen).** `prognose.weit.json`
+      traegt jetzt `max_volatilitaet_pa: 2.0` (vorher 1.2), der Kommentar ist
+      richtiggestellt (nennt den 25.09.-Auftrag und die Messung aus dem
+      Ticket-Nachtrag). Commit `18c2da2a`, gepusht. Die Datei ist laut eigenem
+      Vermerk Stufe 2 (frei aenderbar, beruehrt keine Order).
       Kontext: Am 25.09.2026 hat Max die erlaubte Volatilitaet von 1,2 auf 2,0
       erhoeht ("erlaubte Volatilitaet erhoehen"). Die Aenderung steht nur in
       `prognose.json` (streng, `max_volatilitaet_pa: 2.0`).
