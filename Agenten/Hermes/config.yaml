@@ -910,6 +910,45 @@ moa:
       model: nvidia/nemotron-3.5-lightning:free
       enabled: true
 skills:
+  disabled:
+    - apple-notes
+    - apple-reminders
+    - findmy
+    - imessage
+    - architecture-diagram
+    - ascii-video
+    - baoyu-infographic
+    - claude-design
+    - design-md
+    - humanizer
+    - manim-video
+    - p5js
+    - popular-web-designs
+    - songwriting-and-ai-music
+    - email-inbox-triage
+    - himalaya
+    - gif-search
+    - songsee
+    - youtube-content
+    - airtable
+    - box
+    - document-to-action-items
+    - docx
+    - google-workspace
+    - maps
+    - meeting-action-items
+    - notion
+    - pdf
+    - powerpoint
+    - product-price-monitor
+    - teams-meeting-pipeline
+    - weekly-review-planning
+    - xlsx
+    - arxiv
+    - competitor-news-monitor
+    - grounded-citations
+    - llm-wiki
+    - xurl
   creation_nudge_interval: 15
 curator:
   enabled: true
