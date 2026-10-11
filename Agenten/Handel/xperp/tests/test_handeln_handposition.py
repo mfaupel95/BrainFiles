@@ -112,5 +112,54 @@ class HandpositionAusstieg(unittest.TestCase):
         self.assertEqual(len(z["positionen"]), 0)
 
 
+class HandpositionSchalter(unittest.TestCase):
+    """Schalter handpositionen_automatisch_schliessen (T-374, 11.10.2026).
+
+    true = Handpositionen werden wieder automatisch geschlossen (Stop/Ziel/
+    Kill greifen wie bei jeder Position). false/fehlt = sie bleiben stehen.
+    """
+
+    def setUp(self):
+        self.geschrieben = []
+        self.j = patch.object(h, "journal",
+                              side_effect=lambda **k: self.geschrieben.append(k))
+        self.j.start()
+        self.addCleanup(self.j.stop)
+
+    def test_schalter_true_schliesst_handposition_bei_stop(self):
+        """w={'handpositionen_automatisch_schliessen': True} -> Stop greift."""
+        p = _handpos()
+        z = {"positionen": [p], "letzte_stops": {}}
+        with patch.object(h.okxf, "letzter_kurs_mit_fallback",
+                          return_value=(p["inst"], 0.0480)), \
+             patch.object(h.okxf, "markt_schliessen") as schliessen:
+            h.pruefe_ausstiege(z, live=True,
+                               w={"handpositionen_automatisch_schliessen": True})
+        schliessen.assert_called_once()
+        self.assertEqual(len(z["positionen"]), 0)
+
+    def test_schalter_true_kill_flacht_handposition(self):
+        """flach_stellen mit Schalter true schliesst die Handposition."""
+        p = _handpos()
+        z = {"positionen": [p]}
+        with patch.object(h.okxf, "letzter_kurs_mit_fallback",
+                          return_value=(p["inst"], 0.0480)), \
+             patch.object(h.okxf, "markt_schliessen") as schliessen:
+            h.flach_stellen(z, live=True, grund="kill_switch",
+                            w={"handpositionen_automatisch_schliessen": True})
+        schliessen.assert_called_once()
+        self.assertEqual(len(z["positionen"]), 0)
+
+    def test_schalter_false_laesst_handposition_stehen(self):
+        """Gegenprobe: false (oder fehlend) behaelt das aktuelle Verhalten."""
+        p = _handpos()
+        z = {"positionen": [p], "letzte_stops": {}}
+        with patch.object(h.okxf, "letzter_kurs_mit_fallback",
+                          return_value=(p["inst"], 0.0480)):
+            h.pruefe_ausstiege(z, live=True,
+                               w={"handpositionen_automatisch_schliessen": False})
+        self.assertEqual(len(z["positionen"]), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1378,6 +1378,16 @@ def _ist_handposition(p):
     return (p or {}).get("herkunft") == "boerse_handgriff"
 
 
+def _handpositionen_automatisch_schliessen(w):
+    """Schalter in wachen.json: handpositionen_automatisch_schliessen.
+
+    true  = Handpositionen (herkunft=boerse_handgriff) werden wieder automatisch
+            geschlossen - Stop/Ziel/Trailing/Kill greifen wie bei jeder Position.
+    false/fehlt = sie bleiben stehen (Max verwaltet selbst, Auftrag 06.10.2026).
+    """
+    return bool((w or {}).get("handpositionen_automatisch_schliessen"))
+
+
 def pruefe_ausstiege(z, live, w):
     behalten = []
     for p in z["positionen"]:
@@ -1387,7 +1397,7 @@ def pruefe_ausstiege(z, live, w):
         # eroeffnete XPERP-Position mit grund=stop, obwohl er sie halten
         # wollte (Journal: "ja war meine und das wollte ich"). Handpositionen
         # bleiben stehen - egal wie der Kurs laeuft. Max schliesst sie selbst.
-        if _ist_handposition(p):
+        if _ist_handposition(p) and not _handpositionen_automatisch_schliessen(w):
             behalten.append(p)
             continue
         if not live and p.get("modus") == "live":
@@ -1517,7 +1527,7 @@ def buche_funding(z, live, w):
               % (p["inst"], betrag, perioden, satz * 100))
 
 
-def flach_stellen(z, live, grund):
+def flach_stellen(z, live, grund, w=None):
     """Alle Positionen sofort schliessen - Bedingung 2 und 3.
 
     ECHTE POSITIONEN GEHOEREN DEM LIVE-LAUF (21.09.2026): Laeuft die Spur im
@@ -1539,7 +1549,7 @@ def flach_stellen(z, live, grund):
     """
     behalten = []
     for p in z["positionen"]:
-        if _ist_handposition(p):
+        if _ist_handposition(p) and not _handpositionen_automatisch_schliessen(w):
             print("  %s bleibt im Buch: Handposition (herkunft=boerse_handgriff)"
                   " wird auch von %s nicht geschlossen (Max verwaltet selbst)"
                   % (p.get("inst"), grund))
@@ -2055,7 +2065,7 @@ def lauf(modus):
     if s["kill"]:
         print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"
               % (s["ruecklauf_usd"], w["kill_switch_gesamt_usd"]))
-        flach_stellen(z, live, "kill_switch")
+        flach_stellen(z, live, "kill_switch", w)
         if wx.sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
             print("  wachen.json handel_erlaubt -> false")
         schreibe_zustand(z)
@@ -2070,7 +2080,7 @@ def lauf(modus):
               % ("?" if s["herzschlag_alter_min"] is None
                  else "%.0f" % s["herzschlag_alter_min"],
                  w.get("herzschlag_max_minuten", 30)))
-        flach_stellen(z, live, "herzschlag_alt")
+        flach_stellen(z, live, "herzschlag_alt", w)
         z["modus"] = "papier"
         schreibe_zustand(z)
         if w.get("journal_zweitziel"):
