@@ -727,6 +727,14 @@ kostenloser Gesundheitsindikator fuer den Gateway.
   unsichtbar. Passt eine Meldung nicht zur vermuteten Ursache, zuerst den
   `fallback_providers`-Block des PROFILS lesen und die Zahl der Eintraege zaehlen, bevor
   der Provider verdaechtigt wird.
+- **CRLF-Datei editieren ohne Normalisierung = ganzer Diff.** Ein Profil, das per
+  `hermes config set` geschrieben wurde, kann CRLF-endig sein. Liest man es mit
+  `read_text()`/`write_text()` ohne `newline=""`, konvertiert Python die gelesenen
+  Zeilen still auf LF — der Diff zeigt danach die GEAENDE Datei, obwohl nur ein
+  Block neu ist. Vor dem Schreiben `\r\n` in den ROHEN Bytes bestimmen
+  (`b"\r\n" in raw`) und die Datei auf das Hausformat normalisieren; der
+  `yaml.safe_load`-Vergleich beweist, dass nur die Enden geaendert wurden, der
+  Diff gegen die Sicherung zeigt genau die neuen Zeilen.
 
 ## Nachweis (Abschluss)
 

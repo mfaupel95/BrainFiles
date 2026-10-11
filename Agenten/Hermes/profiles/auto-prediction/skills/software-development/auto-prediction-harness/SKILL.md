@@ -30,6 +30,11 @@ Load this skill when the task touches the Auto-Prediction harness at all:
 Covers: studio/control-plane lifecycle, authority-boundary verification, fixture
 integrity, mutation review, and how reports for this repo must look.
 
+Dieses Profil ist ein Bot in der Haus-Flotte. Kommt ein Auftrag an, der einem
+anderen Bot gehoert (Handel, Wartung, Fremd-Repo), gilt `brainfiles-bot-betrieb`:
+Zustaendigkeit messen, dann ueber `Agenten/Werkzeuge/lotse-route.py --an <ziel>`
+verteilen statt selbst in fremde Bereiche zu schreiben.
+
 ## Reporting rules (always on)
 
 - All reports in **German**, result first, then evidence. No preamble, no filler, no

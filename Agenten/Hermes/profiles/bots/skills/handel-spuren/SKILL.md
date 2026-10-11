@@ -104,6 +104,8 @@ Eine Intervall-Änderung wirkt erst beim **Neustart** der laufenden Testnet-Proz
 - Manuell gestartete Läufe schreiben **keine Logfile** (anders als `omnitrade_start.py`, das nach `logs/` umleitet) — fürs Debugging den Start über `omnitrade_start.py` nachziehen, sobald Pfade stimmen.
 - Nach dem Neustart per Commandline-Analyse verifizieren (ein Scratch-`.ps1`, das `--interval`/Strategie aller Prozesse ausgibt), dass die neuen Läufe wirklich den gewünschten Takt tragen und die Statusdateien frisch geschrieben werden.
 
+Die drei omnitrade-Wachskripte — `omnitrade-lauf-wache.py`, `omnitrade-order-wache.py`, der `omnitrade-waechter`-Cron — ihre Rollen und warum die Todesgrenze kerzenabhängig sein muss (Statusdatei nur beim Kerzenabschluss): `references/omnitrade-wachen.md`.
+
 ## Score-Tore sind seitenabhängig und liegen in der Fassungs-Datei
 
 Beim Prüfen, ob eine offene Position das Score-Tor verletzt: **die Schwelle hängt an der Seite.** Long nutzt `mindest_score`, Short `mindest_score_short` — die Short-Schwelle ist deutlich niedriger (z. B. 45 gegen 60), weil die Score-Skala long-kalibriert ist. Eine Short-Position mit Score 49,5 ist korrekt eröffnet, wenn die Short-Schwelle 45 ist — sie NICHT gegen die Long-Schwelle 60 zu prüfen, sonst meldet man einen Fehler, der keiner ist.

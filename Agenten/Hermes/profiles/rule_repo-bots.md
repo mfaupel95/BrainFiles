@@ -87,9 +87,9 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
   ein Probe-Modus darf keine Marke fortschreiben.
 - 22.09.2026 Defender loescht Doku-Skills und sperrt den LESEZUGRIFF ("Virus");
   `ls` beweist nichts - Probe ist echter Lesevorgang, Fundort `Get-MpThreatDetection`.
-- 22.09.2026 Symlink `auth.json`: `pwsh` 7 legt ihn an, `powershell.exe` 5.1 verweigert (Admin noetig).
-- 11.10.2026 Kanal-Bots sehen alle Nachrichten ihrer Gruppe (gemeinsames
-  Token): eine Frage -> fuenf Bot-Antworten.
+- 22.09.2026 Symlink `auth.json`: nur `pwsh` 7; 5.1 verweigert (Admin).
+- 11.10.2026 Gruppenchat: jedes Profil sieht JEDE Nachricht; ANTWORTET nur der
+  Angesprochene, Verteilen macht der Verteiler-Bot (`/bot NAME`).
 - 11.10.2026 Schleife = CRON-Auftrag (`cron/jobs.json`), nicht `/loop`.
 - 11.10.2026 `wc -c` misst CRLF doppelt (5974 vs 6144); Budget nach
   `tr -d '\r'`.
@@ -98,4 +98,4 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
   Lauf fuer tot (lage-Grenze 60 h). Todesgrenzen in Wachen kerzenabhaengig
   (2,5x Abstand), fixer Fallback (omnitrade-order-wache).
 
-Verdichtet 2026-10-08: 6122->5921 (Stash), ->5974 (CR); 11.10: 5974->5909 (Loop=Cron)
+Verdichtet 2026-10-08: 6122->5921 (Stash), ->5974 (CR); 11.10: 5974->5909 (Loop=Cron), ->5992 (ein-Bot).
