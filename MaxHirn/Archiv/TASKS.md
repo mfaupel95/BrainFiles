@@ -254,6 +254,16 @@ verschieben**, mit Datum. Nicht löschen —
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-391 — Drei Kennungen rotieren (Anthropic, Telegram-Bot, OpenAI)**
+      Kontext: T-070 geschlossen 2026-10-11 - die .env.example ist belegt sauber
+      (alle Secrets leer, nie versioniert, origin/privat gepusht ohne Wert).
+      Die drei Kennungen lagen aber am 24.09.2026 in Klon-Arbeitsbaeumen
+      (fomo-robinhood-radar, skillspector), die von Sicherungen nicht erfasst
+      werden. Kein nachgewiesener Leak, Rotation ist die saubere Antwort.
+      Naechster Schritt (Entscheidung Max): Anthropic-Key neu ausstellen,
+      Telegram-Bot-Token bei BotFather neu holen, OpenAI-Key neu ausstellen.
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Betrifft: Agenten/Hermes/.env, Werkstatt/Repos/fomo-robinhood-radar/.env
 
 - [ ] **T-376 — Historie ausserhalb des Baums? (Entscheidung Max)**
       Kontext: T-361 (05.10.2026) war kein Loeschvorgang - der rote Replay-Lauf kam
@@ -1440,43 +1450,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Betrifft: Agenten/Hermes/profiles/, Agenten/Werkzeuge/repos-zentrale
 
 
-- [ ] **T-070 — echte Zugangsdaten in `Werkstatt/Repos/fomo-robinhood-radar/.env.example`**
-      Kontext: Beim Sichern der Fremdarbeit am 24.09.2026 gefunden - in einer
-      VERSIONIERTEN Vorlagendatei stehen zwei echte Kennungen im Klartext
-      (ANTHROPIC_API_KEY und TELEGRAM_BOT_TOKEN, Werte hier absichtlich nicht
-      wiederholt). Die Aenderung liegt nur im Arbeitsbaum (Status " M"), der
-      Kopf des Klons ist unveraendert auf origin/main - es ist also noch NICHTS
-      gepusht und nichts geleakt.
-      RISIKO: Die Datei wird von jedem `git add -A` in diesem Klon erfasst; ein
-      Push in den Fork mfaupel95/fomo-robinhood-radar legt beide Kennungen
-      offen. Deshalb wurde sie beim Sichern bewusst NICHT committet.
-      Naechster Schritt (Entscheidung Max): beide Werte in der Datei wieder auf
-      Platzhalter setzen und die zwei Kennungen als kompromittiert behandeln -
-      Anthropic-Key neu ausstellen, Telegram-Bot-Token bei BotFather neu holen.
-      Vorher pruefen, in welcher .env die echten Werte noch stehen (die Datei
-      selbst ist Stufe 0 und wird nicht geblaettert).
-      STAND 26.09.2026: Die zwei Dateien sind bereinigt (jede auf ihren
-      HEAD-Stand zurueckgesetzt, in dem die Werte LEER sind), die
-      Arbeitsbaeume sind sauber. Beide waren nur im Arbeitsbaum veraendert -
-      HEAD und Fork/Upstream trugen leere Werte, es ist also NICHTS geleakt.
-      Der Fund war doppelt: neben fomo-robinhood-radar/.env.example trug auch
-      Werkstatt/skillspector/.env.example einen echten OPENAI_API_KEY (Klon von
-      nvidia/skillspector, Remote zeigt auf NVIDIA - ein Push dorthin waere gar
-      nicht moeglich gewesen).
-      Geprueft und unauffaellig: 41 .env-Dateien in Wurzel und Werkstatt/Repos -
-      die zwei .env mit echten Werten (Agenten/Hermes/.env,
-      moon-dev-ai-agents/.env) sind per .gitignore gesperrt und nie versioniert
-      worden; die .env.template-Artefakte in mehreren Klonen sind die Vorlage
-      von ToolUniverse ("fill in your actual API keys"), kein Wert.
-      OFFEN (nur Max): die drei Kennungen (Anthropic, Telegram-Bot, OpenAI) als
-      kompromittiert behandeln und neu ausstellen. Kein Leak nach aussen, aber
-      die Werte lagen in Klon-Arbeitsbaeumen, die von Sicherungen und
-      Sitzungsablagen nicht erfasst werden - Rotation ist die saubere Antwort.
-      Werkzeug: Agenten/Hermes/cache/scratch/keys_bereinigen.py (liest und
-      meldet nur Laengen/Hashes, gibt nie Werte aus).
-      Angelegt: 2026-09-24 · Zuletzt: 2026-09-26
-      Betrifft: Werkstatt/Repos/fomo-robinhood-radar/.env.example,
-      Werkstatt/skillspector/.env.example
 
 
 - [ ] **T-067 — Kraken-Futures-Orderweg LIVE bewiesen, Spur auf PF_SOLUSD umgestellt (armt noch nicht)**
@@ -1932,6 +1905,44 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-070 — echte Zugangsdaten in `Werkstatt/Repos/fomo-robinhood-radar/.env.example`**
+      Kontext: Beim Sichern der Fremdarbeit am 24.09.2026 gefunden - in einer
+      VERSIONIERTEN Vorlagendatei stehen zwei echte Kennungen im Klartext
+      (ANTHROPIC_API_KEY und TELEGRAM_BOT_TOKEN, Werte hier absichtlich nicht
+      wiederholt). Die Aenderung liegt nur im Arbeitsbaum (Status " M"), der
+      Kopf des Klons ist unveraendert auf origin/main - es ist also noch NICHTS
+      gepusht und nichts geleakt.
+      RISIKO: Die Datei wird von jedem `git add -A` in diesem Klon erfasst; ein
+      Push in den Fork mfaupel95/fomo-robinhood-radar legt beide Kennungen
+      offen. Deshalb wurde sie beim Sichern bewusst NICHT committet.
+      Naechster Schritt (Entscheidung Max): beide Werte in der Datei wieder auf
+      Platzhalter setzen und die zwei Kennungen als kompromittiert behandeln -
+      Anthropic-Key neu ausstellen, Telegram-Bot-Token bei BotFather neu holen.
+      Vorher pruefen, in welcher .env die echten Werte noch stehen (die Datei
+      selbst ist Stufe 0 und wird nicht geblaettert).
+      STAND 26.09.2026: Die zwei Dateien sind bereinigt (jede auf ihren
+      HEAD-Stand zurueckgesetzt, in dem die Werte LEER sind), die
+      Arbeitsbaeume sind sauber. Beide waren nur im Arbeitsbaum veraendert -
+      HEAD und Fork/Upstream trugen leere Werte, es ist also NICHTS geleakt.
+      Der Fund war doppelt: neben fomo-robinhood-radar/.env.example trug auch
+      Werkstatt/skillspector/.env.example einen echten OPENAI_API_KEY (Klon von
+      nvidia/skillspector, Remote zeigt auf NVIDIA - ein Push dorthin waere gar
+      nicht moeglich gewesen).
+      Geprueft und unauffaellig: 41 .env-Dateien in Wurzel und Werkstatt/Repos -
+      die zwei .env mit echten Werten (Agenten/Hermes/.env,
+      moon-dev-ai-agents/.env) sind per .gitignore gesperrt und nie versioniert
+      worden; die .env.template-Artefakte in mehreren Klonen sind die Vorlage
+      von ToolUniverse ("fill in your actual API keys"), kein Wert.
+      OFFEN (nur Max): die drei Kennungen (Anthropic, Telegram-Bot, OpenAI) als
+      kompromittiert behandeln und neu ausstellen. Kein Leak nach aussen, aber
+      die Werte lagen in Klon-Arbeitsbaeumen, die von Sicherungen und
+      Sitzungsablagen nicht erfasst werden - Rotation ist die saubere Antwort.
+      Werkzeug: Agenten/Hermes/cache/scratch/keys_bereinigen.py (liest und
+      meldet nur Laengen/Hashes, gibt nie Werte aus).
+      Angelegt: 2026-09-24 · Zuletzt: 2026-09-26
+      Betrifft: Werkstatt/Repos/fomo-robinhood-radar/.env.example,
+      Werkstatt/skillspector/.env.example
+      
 - [x] **T-389 - omniquant: Auswertung zeigt 0 Runden trotz 37 EINSTIEG/20 AUSSTIEG**
       Kontext: omniquant schreibt im Journal die Aktionen EINSTIEG/AUSSTIEG (papier) und eroeffnen/schliessen (live). auswertung_alle.runden_indikator paart aber kauf/verkauf (BOT_SPUREN-Weg) - omniquant hat deshalb 0 Runden in JEDER Auswertung, obwohl 37 EINSTIEG- und 20 AUSSTIEG-Zeilen existieren (gemessen 11.10.2026). Die Spur ist in BOT_SPUREN, aber ihr Journalformat passt nicht zum Rechenweg. Folge: kein Tagesbericht, keine Strategiekennzahl, kein Kosten-Wendepunkt fuer omniquant.
       Naechster Schritt: omniquant einen eigenen Rechenweg geben (eroeffnen/schliessen mit einsatz_usd, wie runden_nautilus) oder die Spur auf kauf/verkauf umstellen; pruefen, welche Aktionen die Spur wirklich schreibt.
