@@ -167,6 +167,21 @@ Rechteproblem — die Junction wird aufgelöst. Über das `terminal`-Werkzeug
 schreiben (Verzeichnis vorher anlegen) oder das Ziel in einen Ordner legen, der
 keine Junction ist.
 
+**Die Junction kann STILL verschwunden sein — vor dem Schreiben pruefen.**
+`Werkstatt` (und `Modelle`) sind Junctions auf `O:\`; ein echter Ordner an ihrer
+Stelle (LinkType leer, Attributes nur `Directory`) heisst: alle Zugriffe ueber
+`BrainFiles\Werkstatt\...` laufen in einen Schatten auf C:, nicht nach O: —
+zweimal passiert (05.10. und 10.10.2026). Symptom von aussen: eine Routine
+scheitert mit „Python oder Ordner fehlt" oder „keine Statusdatei", obwohl der
+Ordner auf O: existiert. Vor jedem Schreiben in `Werkstatt/`:
+`(Get-Item 'Werkstatt' -Force).LinkType` muss `Junction` sein. Ist er es nicht:
+Schatten-Inhalte verlustfrei nach O: retten (Kollisionen nie ueberschreiben,
+Hash-Vergleich, Abweichendes nach `O:\Werkstatt\zusammenfuehrung-<datum>`),
+dann `New-Item -ItemType Junction -Path <w> -Target 'O:\Werkstatt'`; ein von
+einem Prozess gehaltener leerer Schatten laesst sich umbenennen statt loeschen.
+Reparatur-Protokoll: `Agenten/Routinen/logs/werkstatt-junction-reparatur-<datum>.log`.
+Eine Wache dafuer fehlt (T-390).
+
 `write_file` bzw. `terminal` nach `Werkstatt/Austausch/<JJJJ-MM-TT>/<thema>.md`,
 mit dem Vault-Frontmatter (`id`, `title`, `tags`, `created`, `updated`,
 `related`, `summary`) und den Regeln aus `Werkstatt/AGENTS.md` Regel 3: **der

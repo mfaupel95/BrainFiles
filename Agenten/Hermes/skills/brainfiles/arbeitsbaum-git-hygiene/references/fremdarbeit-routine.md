@@ -13,6 +13,14 @@ um 20:00).
 - **Eigener Index, damit der Staging-Bereich anderer Sitzungen unberuehrt bleibt:**
   `$env:GIT_INDEX_FILE = .git\fremdarbeit.index` -> `git read-tree <tip>` ->
   `git add -- <pfade>` -> `git write-tree`.
+- **Viele Pfade: `git add` NICHT ueber die Kommandozeile.** Ab einigen hundert
+  ruhenden Dateien (gemessen: 2044 Profil-Skill-Pfade) sprengt `git add -- $ruhend`
+  die Windows-32k-Grenze und scheitert mit dem irrefuehrenden `Der Dateiname oder
+  die Erweiterung ist zu lang` (WinError 206 - Prozess-Startfehler, nicht
+  Pfadlaenge). Loesung in der Routine seit 11.10.2026: Pfade NUL-getrennt nach
+  `.git\fremdarbeit-pfade.txt` schreiben, dann
+  `git add --pathspec-from-file=<pfad> --pathspec-file-nul` (git >= 2.25).
+  Gegenprobe in einem Wegwerf-Klon (2044 Pfade staged, Exit 0), nie am echten Baum.
 - **Commit ohne HEAD/Arbeitsbaum anzufassen:** `git commit-tree $baum -p $tip -F <msgdatei>`,
   Autor per `GIT_AUTHOR_NAME/EMAIL` = `Andere Sitzung <fremd@local>`,
   Committer = `Routine <routine@localhost>` (die Historie soll nicht behaupten,

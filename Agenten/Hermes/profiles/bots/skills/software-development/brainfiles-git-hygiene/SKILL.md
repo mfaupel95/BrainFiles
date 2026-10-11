@@ -32,6 +32,7 @@ Max bittet um „git anbindung prüfen und arbeit auf lücken und fehler prüfen
 - **`git worktree prune` bereinigt verwaiste Einträge NICHT immer.** Ein Worktree, dessen Ordner weg ist, aber den git noch registriert, bleibt nach `prune` stehen. `zweige.py` erkennt ihn über `git -C <pfad> rev-parse --git-dir` (returncode != 0 = verwaist).
 - **MSYS/git-bash löst Pfade anders auf als nativ.** `os.path.isdir(pfad)` kann True melden, obwohl der Ordner nativ weg ist (Junction/Reparse-Artefakt). Der robuste Zeuge ist `git -C <pfad>` selbst, nicht `os.path.isdir`.
 - Ein Worktree, dessen Ordner von einem **aktiven Prozess** (laufende Claude-Code-Sitzung) gehalten wird, lässt sich nicht löschen („Device or resource busy"). Fremde Prozesse nicht beenden — den leeren Restordner stehen lassen, er verschwindet, wenn die Sitzung fertig ist.
+- Vor dem Entfernen einer Junction unter einem Worktree-Pfad das Ziel und den genauen Linkpfad nativ prüfen; Junction-Operationen können unerwartet das Ziel betreffen, daher nie rekursiv auf dem Zielpfad löschen.
 
 ## Wache bauen (no_agent-Cron)
 

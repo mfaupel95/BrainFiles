@@ -38,3 +38,6 @@ telemetry:
   shared_metrics:
     enabled: false
     send: false
+onboarding:
+  seen:
+    tool_progress_prompt: true

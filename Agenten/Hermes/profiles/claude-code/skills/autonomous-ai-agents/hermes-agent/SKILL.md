@@ -71,6 +71,7 @@ hermes proxy                   # OpenAI-compatible local proxy backed by your OA
 ~/.hermes/config.yaml       Main configuration (settings — never secrets)
 ~/.hermes/.env              API keys and secrets ONLY (under $HERMES_HOME if set)
 $HERMES_HOME/skills/        Installed skills
+$HERMES_HOME/skill-bundles/  Grouped skill aliases (see references/skill-bundles.md)
 ~/.hermes/skins/            Custom themes (see references/themes.md)
 ~/.hermes/desktop-plugins/  Desktop app UI plugins (see references/desktop-plugins.md)
 ~/.hermes/tui-widgets/      TUI widget apps (see references/tui-widgets.md)
@@ -91,6 +92,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | **Anything not listed below — "can Hermes do X?", "how do I set up X?"** | **https://hermes-agent.nousresearch.com/docs/llms.txt** |
 | Bots that chat, run routines, or message each other; the Bots tab | docs: `/user-guide/bot-mode` |
 | CLI commands, subcommands, flags, "how do I run X" | `references/cli-reference.md` |
+| Skill bundles — group several skills under one slash command (`hermes bundles`, `/<name>`) | `references/skill-bundles.md` |
 | In-session slash commands | `references/slash-commands.md` |
 | Provider setup, API keys, OAuth | `references/providers-and-models.md` |
 | config.yaml sections, toolsets, voice/STT/TTS | `references/configuration.md` |
