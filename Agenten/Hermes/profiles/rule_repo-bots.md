@@ -96,4 +96,4 @@ Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
   6144. Budget erst nach `tr -d '\r'` vergleichen.
 
 Verdichtet 2026-10-08: 6122 -> 5921 (Stash-Regel), -> 5974 (CR-Falle)
-Verdichtet 2026-10-11: 5974 -> hier (Loop=Cron, ein Bot je Frage)
+Verdichtet 2026-10-11: 5974 -> 5909 (Loop=Cron, ein Bot je Frage)
