@@ -186,13 +186,14 @@ class ProzessReiterUI(unittest.TestCase):
         with patch.object(lp, "PROZESSE", [StubProzess()]),              patch.object(lp, "spuren_status", return_value=rows):
             view = lp.ProzessReiter(root, object())
             text = view._spur_text.get("1.0", "end")
+            # Standard ist "Alle" - sonst fehlen 40 von 45 Spuren.
             self.assertIn("nautilus_kraken", text)
-            self.assertNotIn("scanner", text)
-            view._spur_filter.set("Alle")
+            self.assertIn("scanner", text)
+            view._spur_filter.set("Nautilus")
             view._zeige_spuren()
             text = view._spur_text.get("1.0", "end")
             self.assertIn("nautilus_kraken", text)
-            self.assertIn("scanner", text)
+            self.assertNotIn("scanner", text)
 
 
 

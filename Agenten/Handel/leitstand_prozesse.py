@@ -160,7 +160,7 @@ def spuren_status(jetzt=None):
         zustand = hz.lade_json(str(ordner / ("zustand%s.json" % suffix)))
         wachen = hz.lade_json(str(ordner / ("wachen%s.json" % suffix)))
         lage, alter, grenze = hz.herzschlag_lage(spur, zustand, wachen, jetzt)
-        positionen = hz.positionen_aus(zustand)
+        positionen = hz.positionen_der_spur(spur, zustand, wachen)
         zeilen.append({
             "spur": spur,
             "modus": str(zustand.get("modus") or "-"),
@@ -181,15 +181,19 @@ def filter_spuren(zeilen, auswahl):
 
 def formatiere_spuren_status(zeilen):
     """Monospace-Statusmatrix aus der dauerlauf.SPUREN-Liste."""
-    aus = ["SPUR                 MODUS     HERZSCHLAG       POSITIONEN  HANDEL_ERLAUBT",
-           "-" * 76]
+    # Breite nach dem laengsten Namen, sonst verrutschen Spalten bei
+    # nautilus_kraken_futures / klassik_donchian_trend.
+    breite = max([20] + [len(z["spur"]) for z in zeilen])
+    aus = ["%-*s MODUS     HERZSCHLAG          POSITIONEN  HANDEL_ERLAUBT" % (breite, "SPUR"),
+           "-" * (breite + 59)]
     for z in zeilen:
-        live = "true" if z.get("handel_erlaubt") else "false"
+        erlaubt = z.get("handel_erlaubt")
+        live = "-" if erlaubt is None else ("true" if erlaubt else "false")
         alter = z.get("alter_minuten")
         lage = ("%s (%d min)" % (z["herzschlag"], alter)
                 if alter is not None else z["herzschlag"])
-        aus.append("%-20s %-9s %-17s %10d  %s" %
-                   (z["spur"], z["modus"], lage, z["positionen"], live))
+        aus.append("%-*s %-9s %-20s %10d  %s" %
+                   (breite, z["spur"], z["modus"], lage, z["positionen"], live))
     return "\n".join(aus)
 
 
@@ -294,7 +298,7 @@ class ProzessReiter(ttk.Frame):
         filterzeile.pack(fill="x", pady=(0, 4))
         ttk.Label(filterzeile, text="Handelsspuren — nur Status; gesteuert vom Dauerlauf",
                   style="Titel.TLabel", anchor="w").pack(side="left")
-        self._spur_filter = tk.StringVar(value="Nautilus")
+        self._spur_filter = tk.StringVar(value="Alle")
         self._spur_auswahl = ttk.Combobox(filterzeile, textvariable=self._spur_filter,
                                           values=("Nautilus", "Alle"),
                                           state="readonly", width=12)
