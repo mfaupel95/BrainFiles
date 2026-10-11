@@ -191,19 +191,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
       Betrifft: Agenten/Hermes/.env, Werkstatt/Repos/fomo-robinhood-radar/.env
 
-- [ ] **T-376 — Historie ausserhalb des Baums? (Entscheidung Max)**
-      Kontext: T-361 (05.10.2026) war kein Loeschvorgang - der rote Replay-Lauf kam
-      aus einem Worktree, und daten/ ist nicht versioniert. Damit ist die Frage nach
-      dem ORT neu zu stellen: `historie_binance.ORDNER = HIER/daten/historie` ist
-      relativ zur Modulposition, also sieht JEDE Kopie des Baums einen anderen Ordner.
-      Gemessen 05./06.10.2026: 127 MB, 57 Reihen (45x 1H, 3x 4H, 3x 1D, 3x 5M),
-      plus feed/ (30x 1D). Kein Umzug noetig, damit etwas funktioniert.
-      Naechster Schritt: ENTSCHEIDUNG - liegt die Historie weiter unter
-      Agenten/Handel/daten/ (taeglich nachgefuellt vom Cron historie-wache), oder
-      zieht sie nach O:/ neben die Zweitkopie? Meine Empfehlung: LASSEN - ein Umzug
-      bringt nur neue Pfadbrueche, und der Nachfueller haelt den Bestand frisch.
-      Angelegt: 06-10-2026 · Zuletzt: 06-10-2026
-      Betrifft: Agenten/Handel/historie_binance.py, Agenten/Handel/daten/historie/
 - [ ] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Wache haelt sie jetzt, Ursache offen**
       Kontext: Die Windows-Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30,
       Wrapper `Agenten/Routinen/ausserhaus-kopie.ps1`) war am 05.10. um 22:30
@@ -1804,6 +1791,20 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-376 — Historie ausserhalb des Baums? (Entscheidung Max)**
+      Kontext: T-361 (05.10.2026) war kein Loeschvorgang - der rote Replay-Lauf kam
+      aus einem Worktree, und daten/ ist nicht versioniert. Damit ist die Frage nach
+      dem ORT neu zu stellen: `historie_binance.ORDNER = HIER/daten/historie` ist
+      relativ zur Modulposition, also sieht JEDE Kopie des Baums einen anderen Ordner.
+      Gemessen 05./06.10.2026: 127 MB, 57 Reihen (45x 1H, 3x 4H, 3x 1D, 3x 5M),
+      plus feed/ (30x 1D). Kein Umzug noetig, damit etwas funktioniert.
+      **Erledigt 2026-10-11 (Entscheidung Max 'Ja').** Historie bleibt unter
+      Agenten/Handel/daten/ - ein Umzug nach O: bringt nur neue Pfadbrueche, und der
+      Nachfueller (Cron historie-wache) haelt den Bestand frisch. Kein Code geaendert.
+      Angelegt: 06-10-2026 · Zuletzt: 06-10-2026
+      Betrifft: Agenten/Handel/historie_binance.py, Agenten/Handel/daten/historie/
+
+
 - [x] **T-384 - Documents/GitHub: 21 Klone ausserhalb der Flotte - 6 nicht in Werkstatt/Repos**
       Kontext: C:\Users\faupe\Documents\GitHub haelt 21 git-Klone, die NICHT in Werkstatt/Repos liegen. Bekannte Repos (nautilus_trader, unsloth, financial-services, context7, onchainos-skills u. a.) und NEU/anders: OmniQuant (eigener Fork), OpenMobius-skill, awesome-trading-agents, data-mcp, fintool, moon-dev-ai-agents2. Fund beim Skill-Scan 09.10.2026 (23 SKILL.md). Naechster Schritt: Entscheidung Max - die 6 unbekannten nach Werkstatt/Repos verschieben (Hausmuster) oder loeschen; Duplikate der Flotte dort entfernen. Angelegt: 2026-10-09
       **Erledigt 2026-10-11 (Auftrag Max 'T384 klonen').** Gemessen: von den damals 6 unbekannten waren 4 (OpenMobius-skill, awesome-trading-agents, data-mcp, fintool) inzwischen schon in Werkstatt/Repos. Die 3 echten fehlenden Fork-Repos nach Werkstatt/Repos verschoben: OmniQuant (origin=mfaupel95, upstream=OpenGVLab), cli (origin=mfaupel95, upstream=firecrawl), moon-dev-ai-agents2 (origin=mfaupel95, eigener Fork ohne upstream). Alle 3 in repos-zentrale.json aufgenommen (fuellen.py --anwenden, 265 Eintraege). Nicht verschoben: chromaprint (kein mfaupel95-Fork, Audio-Bibliothek, liegt schon in Werkstatt/repos-verschoben-aus-skills), mfaupel95 (Profil-Repo, 1 Commit), one-skill-to-rule-them-all-main + productivity (keine .git). Duplikate der Flotte in Documents/GitHub bleiben stehen (bewusst, kein Loeschauftrag).
