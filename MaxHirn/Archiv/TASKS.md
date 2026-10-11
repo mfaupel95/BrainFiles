@@ -9,10 +9,11 @@
       Betrifft: Agenten/Hermes/scripts/dateischwund-wache-baum.py
 
 
-- [ ] **T-386 - omniquant: Stop-Breite nicht kalibrierbar - 0 geschlossene Runden, offene Stops teils ueber dem Pflichtband**
-      Kontext: Befund 10.10.2026. omniquant hat im Journal 0 geschlossene Runden - die Spur hat noch nie eine Runde geschlossen. Eine Stop-Breite laesst sich nicht kalibrieren, wenn keine Runde die Wirkung belegt. Die 10 offenen Positionen zeigen Stop-Breiten 6,4-13,5 % (NEAR-USDC 13,52, SUI 12,02, FIL 11,6, STX 11,98 - teils ueber stop_max_pct 12.0). Die Prognose rechnet den Stop gegen 20-Tage-Extrema (prognose.py:121-133), nicht gegen den Einstieg - daher die Streuung. Tore in prognose.weit.json: mindest_score 60, mindest_score_short 45, mindest_cr 1.0, stop_min_pct 5.0, stop_max_pct 12.0. NACHPRUEFUNG 10.10.2026: alle 10 offenen Positionen erfuellen die Tore (XPL 49,5 und MON 53,4 sind SHORT, Schwelle 45 - korrekt eroeffnet, kein Fehler), keine ueberlaeufig (2-5 Tage < 14), keine im Stop/Ziel gerissen. Nur NEAR-USDC ist live (Kraken-Futures), die uebrigen 9 Papier.
-      Naechster Schritt: Entscheidung Max - (a) Stop-Breite unveraendert lassen, bis >=8 geschlossene Runden vorliegen (Empfehlung), oder (b) stop_max_pct senken, damit keine offene Position ueber dem Band liegt.
-      Angelegt: 2026-10-10 · Zuletzt: 2026-10-10
+- [ ] **T-386 - omniquant: Stop-Breite jetzt kalibrierbar - 12 echte Runden, 83% Treffer, Band unveraendert lassen (Empfehlung)**
+      Kontext: Befund 10.10.2026. omniquant hatte im Journal 0 geschlossene Runden - eine Stop-Breite liess sich nicht kalibrieren. Die 10 offenen Positionen zeigten Stop-Breiten 6,4-13,5 % (teils ueber stop_max_pct 12.0). Die Prognose rechnet den Stop gegen 20-Tage-Extrema (prognose.py:121-133), nicht gegen den Einstieg - daher die Streuung. Tore in prognose.weit.json: mindest_score 60, mindest_score_short 45, mindest_cr 1.0, stop_min_pct 5.0, stop_max_pct 12.0.
+      NEUER BEFUND 11.10.2026 (nach T-389, omniquant eigener Rechenweg): omniquant hat 12 ECHTE Runden (10 ziel, 2 stop, 83% Treffer) - die Kalibrierung ist jetzt moeglich. Stop-Breiten der echten Runden: Ziel-Ausstiege 10,45-13,00 % (Gewinne +6,70 bis +16,17), Stop-Ausstiege LIT 11,77 % (-6,11) und TRB 13,96 % (-7,59). Die Stop-Breite FUNKTIONIERT: 83% Treffer, Gewinne > Verluste, die 2 Stop-Ausstiege sind normale Verluste, keine Fehlkalibrierung. Aktuelle offene Positionen: nur SUI (12,02 %) liegt knapp ueber dem Band 12.0, alle anderen darunter (FIL 11,60, STX 11,98, ADA 10,71, JUP 9,89, W 9,43, BTC-BRL 6,88, OKB 6,44; XPL/MON sind SHORT mit ~11,4 % Breite).
+      Naechster Schritt: Entscheidung Max - (a) stop_max_pct 12.0 unveraendert lassen (Empfehlung, belegt durch 12 echte Runden mit 83% Treffer; SUI 12,02 % ist ein Einzelfall der 20-Tage-Extrema-Rechnung), oder (b) stop_max_pct senken, damit keine offene Position ueber dem Band liegt.
+      Angelegt: 2026-10-10 · Zuletzt: 2026-10-11
       Betrifft: Agenten/Handel/omniquant/, prognose.weit.json
 
 
