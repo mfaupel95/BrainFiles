@@ -27,6 +27,8 @@ _PY = HIER / "scanner" / ".venv" / "Scripts" / "python.exe"
 _NAUTILUS_PY = HIER / "nautilus" / ".venv" / "Scripts" / "python.exe"
 _CREATE_NEW_CONSOLE = 0x00000010
 _KRAKEN_NODE = HIER / "nautilus_kraken" / "run_kraken_paper_node.py"
+sys.path.insert(0, str(HIER / "nautilus_kraken"))
+from papierbuch import lese_stand as lese_papierstand  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -84,6 +86,14 @@ class _KrakenQuoteNode:
         self.name = "Kraken Paper-Node (%s)" % produkt.upper()
         self._prozess = None
         self._pid_pfad = HIER / ("nautilus_kraken_node_%s.pid" % produkt)
+
+    def zusatz(self):
+        """PnL-Kurztext aus dem Papierbuch des Nodes, sonst leer."""
+        stand = lese_papierstand(self.produkt, HIER / "nautilus_kraken")
+        if not stand:
+            return ""
+        gesamt = stand["realisiert"] + stand["unrealisiert"]
+        return "PnL %+.2f (%d Trades)" % (gesamt, stand["trades"])
 
     def _pid(self):
         try:
@@ -248,7 +258,7 @@ class _ProzessZeile(ttk.Frame):
         super().__init__(eltern)
         self._p = prozess
         ttk.Label(self, text=prozess.name, width=22, anchor="w").pack(side="left")
-        self.w_zustand = ttk.Label(self, text="", width=22, anchor="w")
+        self.w_zustand = ttk.Label(self, text="", width=40, anchor="w")
         self.w_zustand.pack(side="left", padx=(0, 12))
         self.w_start = ttk.Button(self, text="Start", command=self._starten, width=7)
         self.w_start.pack(side="left", padx=(0, 4))
@@ -258,7 +268,9 @@ class _ProzessZeile(ttk.Frame):
 
     def refresh(self):
         laeuft = self._p.laeuft()
-        self.w_zustand.config(text="\u25cf l\u00e4uft" if laeuft else "\u25cb gestoppt")
+        text = "\u25cf l\u00e4uft" if laeuft else "\u25cb gestoppt"
+        zusatz = getattr(self._p, "zusatz", lambda: "")()
+        self.w_zustand.config(text=text + ("  " + zusatz if zusatz else ""))
         self.w_start.config(state="disabled" if laeuft else "normal")
         self.w_stopp.config(state="normal" if laeuft else "disabled")
 
