@@ -32,8 +32,10 @@ Seit 11.10.2026: n8n 2.42.6 als Docker-Container `n8n` (n8nio/n8n:latest), nur a
 `Agenten/Hermes/scripts/n8n-wache.py` + Hermes-Cron `n8n-wache` (id b198bd6aab97,
 alle 15 min, no_agent, Telegram). Watchdog-Muster: leere Ausgabe = nichts senden.
 - UI kaputt + Container tot → `docker start n8n` (heilt, meldet)
-- UI kaputt + Container laeuft → Meldung, kein Neustart (max 1x/6h, Merkdatei
-  `Agenten/Hermes/cache/n8n-wache.json`)
+- UI kaputt + Container laeuft → `docker restart n8n` (haengende Port-Weiterleitung,
+  stateful im Volume, kein Verlust) — meldet
+- Heilversuch hoechstens alle 6 h (Merkdatei `Agenten/Hermes/cache/n8n-wache.json`),
+  Erholung wird immer gemeldet
 
 ## Fallen
 
