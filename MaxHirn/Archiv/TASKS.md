@@ -244,15 +244,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
           45 omniquant-Tests gruen (dabei der veraltete Score-Test der weiten
           Fassung auf die dokumentierte Absicht korrigiert: weit ist hoechstens
           so streng wie streng - weite Fassung hat seit 11.10. bewusst 55).
-      **NICHT Teil dieses Tickets, aber dringender Zusatzbefund (NACHTRAG 2, im
-      Ticket):** der Live-Arm hat den Stop bisher oft gar nicht an die Boerse
-      bekommen - 231 `fehler`-Zeilen im Journal (01.-10.10.), davon 200 mit
-      "SICHERHEITSLUECKE: Stop fehlte an der Boerse und liess sich nicht setzen"
-      auf NEAR-USDC, dazu je eine "Rueckdrehung"-/"Schutz-Stop fehlgeschlagen"-
-      Zeile. Die drei Live-`eroeffnen` (HBAR, NEAR-USDC, ADA) sind nicht
-      aufgegangen. Ein engerer ATR-Stop aendert daran nichts - das ist ein
-      Orderweg-Problem (kraken_perp.stop_setzen vs. Geister-NEVER_/reduceOnly),
-      eigener Task noetig, sobald der naechste Live-Einstieg ansteht.
+      **NICHT Teil dieses Tickets - und bereits geklaert (T-385, erledigt):** der
+      Live-Arm bekam den Stop zeitweise nicht an die Boerse - 231 `fehler`-Zeilen
+      im Journal (01.-10.10.), davon 200 mit "SICHERHEITSLUECKE: Stop fehlte an
+      der Boerse und liess sich nicht setzen" auf NEAR-USDC, dazu je eine
+      "Rueckdrehung"-/"Schutz-Stop fehlgeschlagen"-Zeile. Die drei Live-
+      `eroeffnen` (HBAR, NEAR-USDC, ADA) sind nicht aufgegangen. Ursache laut
+      T-385: `kraken_perp.stop_setzen` rief `paar_fuer(inst)` OHNE
+      `fuer_ausstieg=True` - das Einstiegs-Gate `ABLEITUNG_ERLAUBT` blockierte
+      den Nachsatz; BEHOBEN mit Merge 5f2f7ec4 (Flag wird durchgereicht, Test
+      `test_stop_setzen_umgeht_das_einstiegs_gate`, 122 omniquant-Tests gruen).
+      Ein engerer ATR-Stop aendert daran nichts - das war ein Orderweg-Problem,
+      kein Band-Problem.
       Naechster Schritt (Erledigungsweg): DIESEN Text als Abschluss eintragen;
       der Rest des Tickets bleibt als Sachstand stehen.
       **NACHTRAG 2, 11.10.2026 - selbst nachgezaehlt, zwei Zahlen korrigiert und ein
