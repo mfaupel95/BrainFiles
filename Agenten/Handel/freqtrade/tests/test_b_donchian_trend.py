@@ -127,5 +127,24 @@ class Gleichheit(unittest.TestCase):
                 self._pruefe(k)
 
 
+class OptVorgabe(unittest.TestCase):
+    def test_opt_ohne_parameterdatei_gleich_b(self):
+        """HausSpurDonchianTrendOpt mit Vorgaben = B-Fassung (Spalten erst im Entry)."""
+        from HausSpurDonchianTrendOpt import HausSpurDonchianTrendOpt
+        k = zufallsreihe(1400, 7)
+        df_b, _ = b_spalten(k)
+        s = HausSpurDonchianTrendOpt({"hausspur": {"name": NAME, "pfad": str(HANDEL)},
+                                      "timeframe": "4h", "stake_currency": "USDT",
+                                      "dry_run": True})
+        s.dp = SimpleNamespace(runmode=SimpleNamespace(value="backtest"))
+        s.bot_start()
+        df = s.populate_indicators(rahmen(k), {"pair": PAAR})
+        self.assertNotIn("hs_ein", df.columns)
+        df = s.populate_exit_trend(s.populate_entry_trend(df, {"pair": PAAR}), {"pair": PAAR})
+        for spalte in ("hs_ein", "hs_aus_long", "hs_aus_short", "hs_stop", "hs_ziel"):
+            pd.testing.assert_series_equal(df[spalte], df_b[spalte], check_names=False)
+        self.assertEqual(s._signalwerte(PAAR, None), (5.0, 10.0))
+
+
 if __name__ == "__main__":
     unittest.main()

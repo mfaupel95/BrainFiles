@@ -167,6 +167,7 @@ Agenten/Handel/stand/
 !Agenten/Handel/freqtrade/bots.json
 !Agenten/Handel/freqtrade/bots.py
 !Agenten/Handel/freqtrade/gleichheit.py
+!Agenten/Handel/freqtrade/walkforward.py
 !Agenten/Handel/freqtrade/bots_starten.sh
 !Agenten/Handel/freqtrade/user_data/strategies/*.py
 !Agenten/Handel/freqtrade/user_data/bots/*.json

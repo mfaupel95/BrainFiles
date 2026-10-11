@@ -48,6 +48,33 @@ def ema_im_fenster(x, n, fenster, versatz=0):
     return aus
 
 
+def donchian_spalten(dataframe, fenster, n_ein, n_aus, trend_n, steigung,
+                     nur_long, aus_ok, stop, ziel):
+    """Die hs_*-Spalten der Spur fuer frei gewaehlte Parameter (auch Hyperopt)."""
+    h, l, c = dataframe["high"], dataframe["low"], dataframe["close"]
+    e0 = ema_im_fenster(c.values, trend_n, fenster, 0)
+    e_alt = ema_im_fenster(c.values, trend_n, fenster, steigung)
+    hoch_ein = h.rolling(n_ein).max().shift(1).values
+    tief_ein = l.rolling(n_ein).min().shift(1).values
+    cv = c.values
+    voll = ~np.isnan(e0)
+
+    long = voll & (cv > hoch_ein) & (cv > e0) & (e0 > e_alt)
+    short = voll & (cv < tief_ein) & (cv < e0) & (e0 < e_alt)
+    if nur_long:
+        short = np.zeros(len(cv), dtype=bool)
+    ein = np.where(long, "long", np.where(short, "short", None))
+    dataframe["hs_ein"] = np.where(voll, ein, None)
+
+    tief_aus = l.rolling(n_aus).min().shift(1).values
+    hoch_aus = h.rolling(n_aus).max().shift(1).values
+    dataframe["hs_aus_long"] = voll & aus_ok & (cv < tief_aus)
+    dataframe["hs_aus_short"] = voll & aus_ok & (cv > hoch_aus)
+    dataframe["hs_stop"] = np.where(voll, stop, np.nan)
+    dataframe["hs_ziel"] = np.where(voll, ziel, np.nan)
+    return dataframe
+
+
 class HausSpurKlassikDonchianTrend(HausSpur):
 
     def bot_start(self, **kwargs) -> None:
@@ -56,35 +83,10 @@ class HausSpurKlassikDonchianTrend(HausSpur):
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         w = self.hs_wachen
-        fenster = self.hr.fenster(w)
-        h, l, c = dataframe["high"], dataframe["low"], dataframe["close"]
-        n_ein = int(w.get("kanal_ein_n", 20))
-        n_aus = int(w.get("kanal_aus_n", 10))
-        trend_n = int(w.get("trend_n", 200))
-        steigung = int(w.get("steigung_n", 20))
-
-        e0 = ema_im_fenster(c.values, trend_n, fenster, 0)
-        e_alt = ema_im_fenster(c.values, trend_n, fenster, steigung)
-        hoch_ein = h.rolling(n_ein).max().shift(1).values
-        tief_ein = l.rolling(n_ein).min().shift(1).values
-        cv = c.values
-        voll = ~np.isnan(e0)
-
-        long = voll & (cv > hoch_ein) & (cv > e0) & (e0 > e_alt)
-        short = voll & (cv < tief_ein) & (cv < e0) & (e0 < e_alt)
-        if w.get("nur_long"):
-            short = np.zeros(len(cv), dtype=bool)
-        ein = np.where(long, "long", np.where(short, "short", None))
-        dataframe["hs_ein"] = np.where(voll, ein, None)
-
-        aus_ok = w.get("ausstieg_bei_regel", True)
-        tief_aus = l.rolling(n_aus).min().shift(1).values
-        hoch_aus = h.rolling(n_aus).max().shift(1).values
-        dataframe["hs_aus_long"] = voll & bool(aus_ok) & (cv < tief_aus)
-        dataframe["hs_aus_short"] = voll & bool(aus_ok) & (cv > hoch_aus)
-
         stop = float(w.get("stop_prozent") or self.hr.STOP_VORGABE)
-        ziel = float(w.get("ziel_r_vielfaches") or 2.0) * stop
-        dataframe["hs_stop"] = np.where(voll, stop, np.nan)
-        dataframe["hs_ziel"] = np.where(voll, ziel, np.nan)
-        return dataframe
+        return donchian_spalten(
+            dataframe, self.hr.fenster(w),
+            n_ein=int(w.get("kanal_ein_n", 20)), n_aus=int(w.get("kanal_aus_n", 10)),
+            trend_n=int(w.get("trend_n", 200)), steigung=int(w.get("steigung_n", 20)),
+            nur_long=bool(w.get("nur_long")), aus_ok=bool(w.get("ausstieg_bei_regel", True)),
+            stop=stop, ziel=float(w.get("ziel_r_vielfaches") or 2.0) * stop)
