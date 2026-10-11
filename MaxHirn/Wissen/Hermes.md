@@ -1704,14 +1704,110 @@ In `%LOCALAPPDATA%\CrashDumps` liegen 10 Dateien mit 426,7 MB, **alle vom
 die Signatur von Speicherdruck, nicht von einem Code-Fehler. Kein Bugcheck,
 kein `MEMORY.DMP`, also kein Bluescreen; die Prozesse wurden einzeln beendet.
 
-### Offener Befund: Telegram geparkt
+### Photon-Dopplung: Config-Asymmetrie, keine geteilte Kennung
 
-`gateway.log`, 11.10. 14:30:50: der Haupt-Gateway meldet
-`1 configured platform(s) failed to start and are parked` — Telegram, weil
-`informatiker161` (PID 62716) dasselbe Bot-Token haelt. Der Gateway laeuft
-dadurch **DEGRADED**. Zusaetzlich meldet `gateway status` sechs Profile, die
-dieselbe Photon-Kennung tragen (basic-memory, bots, findusarbeitus, fomo-radar,
-lokal-first, recherche). Beides am 11.10.2026 **nicht** angefasst — die
-Zuordnung „welches Profil besitzt welchen Kanal" ist eine eigene Entscheidung.
+**Der Befund war irrefuehrend formuliert.** `hermes gateway status` meldete sechs
+Profile, die „dieselbe Photon-Kennung" tragen. Gemessen mit Hermes' **eigener**
+Funktion — `hermes_cli.profile_channels.shared_channel_credentials(profil, default)`,
+also genau der, die `profile list` und der Gateway benutzen — gibt es **null
+Kollisionen**. Es existiert nur **eine** `PHOTON_PROJECT_ID` im ganzen Haus, und
+sie steht in der Haupt-`.env` (gehoert `default`).
+
+**Die Ursache ist eine Asymmetrie in den Profil-Configs.** 25 von 33 Profilen
+tragen bereits
+
+```yaml
+platforms:
+  photon:
+    enabled: false
+```
+
+**6 Profile hatten gar keinen `platforms`-Block** — basic-memory, bots,
+findusarbeitus, fomo-radar, lokal-first, recherche. Ein Profil **ohne**
+ausdrueckliches `enabled` wird ueber die Umgebung aktiviert: der Photon-Adapter
+registriert `env_enablement_fn=_env_enablement`
+(`plugins/platforms/photon/adapter.py:326`, Kommentar *„seed ``PlatformConfig.extra``
+so env-only setups appear in status"*). Das Profil hat keine eigenen
+`PHOTON_`-Werte, erbt also die der Haupt-`.env` und gilt damit als
+photon-aktiv. Der Gateway sieht zwei Profile auf derselben Kennung und lehnt das
+zweite als `duplicate_credential` ab — zu Recht, nur ist die Ursache die fehlende
+Zeile, nicht eine geteilte Kennung.
+
+**Behoben** (Commit `0b45d4b7`): der Block an die 6 Dateien angehaengt, je
+**+3 Zeilen, 0 geloescht**, Zeilenenden erhalten (5 × CRLF, `fomo-radar` LF).
+Damit tragen **31 von 33** Profilen den Block. Werkzeug:
+`scripts/profil-photon-aus.py` (Trockenlauf ohne `--anwenden`; parst die Datei
+vorher und nachher mit `yaml.safe_load` und assertet, dass sich ausserhalb von
+`platforms` nichts geaendert hat).
+
+**Zwei Profile bleiben ohne Block — mit Absicht.** `auto-prediction` und
+`awesome-systematic-trading` haben **keine** `PHOTON_`-Zeile in ihrer `.env`,
+koennen die Haupt-Kennung also nicht erben und werden von Hermes nicht
+beanstandet. Ein Block dort waere Kosmetik.
+
+**Falle, die eine Stunde gekostet hat:** `hermes profile list` meldete **null**
+Kanal-Warnungen, obwohl `hermes gateway status` sechs auflistete. Beide Befehle
+lesen **denselben** Home-Pfad — die Ursache ist der **Profil-Scope**, nicht der
+Pfad: die Sitzung laeuft im Profil `hermes-wartung`, und der Profil-Scope gilt
+fuer **alle** Hermes-Lesebefehle. `profile list` vergleicht dann jedes Profil
+gegen `hermes-wartung` (dessen `.env` hat gar keine `PHOTON_`-Zeile, also keine
+Kollision), waehrend der Gateway-Status gegen das **Startprofil** `default`
+prueft. **Eine gruene Liste und eine rote Statusausgabe sind kein Widerspruch,
+sondern zwei verschiedene Fragen** — vor dem Urteil klaeren, gegen welches Profil
+verglichen wird.
+
+### Telegram: ein verwaistes Standalone-Gateway haelt das Haupt-Token
+
+**Kein Config-Problem — ein laufender Fremdprozess.**
+
+```
+PID 62716   gestartet 11.10. 13:34:43
+  argv:  ... hermes_cli.main gateway run --replace
+  Log:   "Active profile: informatiker161"
+  Lock:  profiles/informatiker161/gateway.lock  (PID 62716, hermes_home=...\profiles\informatiker161)
+```
+
+Dieses Gateway verbindet sich mit **demselben Bot-Token** wie `default` und
+gewinnt das Rennen: `gateway_state.json` fuehrt `telegram.state = "fatal"`,
+`error_code = "telegram-bot-token_lock"` fuer den Haupt-Gateway, der deshalb
+**DEGRADED** laeuft.
+
+**Es beantwortet Max' Nachrichten.** `profiles/informatiker161/logs/gateway.log`:
+
+```
+16:24:01 inbound message: platform=telegram user=Maximilian Faupel chat=7648512088
+16:25:55 response ready: session=agent:main:telegram:dm:7648512088:30970 time=114.3s
+```
+
+Max' DM um 16:24 lief also ueber das Profil `informatiker161`, nicht ueber
+`default` — mit dessen Modell, dessen Skills und dessen Gedaechtnis.
+
+**Die Herkunft ist nicht auffindbar.** Kein Eintrag in der Aufgabenplanung
+(`Hermes_Gateway_2ef9d0b7`, `Hermes_Dashboard`, `Hermes-Update-20260921` — keiner
+nennt ein Profil), nichts im Start-Ordner, kein VBS im `gateway-service/`. Der
+Elternprozess 37772 existiert nicht mehr. Also ein **manuell gestarteter
+Prozess**, der seine Shell ueberlebt hat.
+
+**Gestoppt wurde er nicht.** Der Befehl steht fest, die Ausfuehrung gehoert Max
+(Regel 2 dieses Postens — kein laufender Dienst wird angefasst):
+
+```
+hermes --profile informatiker161 gateway stop
+```
+
+Danach ist der Beleg: `gateway_state.json` → `telegram.state = "connected"`,
+`gateway_state = "running"`, und die Warnzeile „already in use" bleibt aus.
+Falls das Gateway wiederkommt, ist ein Autostart-Eintrag zu suchen — bisher
+gibt es keinen.
+
+### Kanal-Kennungen: Ist-Stand des Hauses (11.10.2026)
+
+Gemessen mit `shared_channel_credentials` und Hashes, nie im Klartext:
+
+- **Telegram:** 8 Profile tragen einen eigenen `TELEGRAM_BOT_TOKEN`, **alle
+  verschiedenen** — keiner teilt ihn mit `default`. Die Warnung im
+  Gateway-Status nennt `informatiker161` zurecht: es ist ein zweiter
+  **Prozess** auf derselben Kennung, keine zweite Kennung in einer Datei.
+- **Photon:** genau **eine** Kennung im Haus, in der Haupt-`.env`.
 
 **Sicherung der Notiz:** `Wissen/Hermes.md.bak-20261011-ram`.
