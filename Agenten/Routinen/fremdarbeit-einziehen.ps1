@@ -252,8 +252,15 @@ try {
     git read-tree $tip
     if ($LASTEXITCODE -ne 0) { throw "git read-tree fehlgeschlagen (Exitcode $LASTEXITCODE)" }
 
-    git add -- $ruhend
+    # Viele ruhende Pfade (z.B. 2044 Profil-Skill-Dateien) sprengen die
+    # Windows-Kommandozeile (32k, WinError 206 'Dateiname zu lang', gemessen
+    # 11.10.2026 01:20). Pfade stattdessen NUL-getrennt aus einer Datei lesen
+    # (git add --pathspec-from-file, git >= 2.25).
+    $pfadDatei = Join-Path $wurzel '.git\fremdarbeit-pfade.txt'
+    [System.IO.File]::WriteAllText($pfadDatei, ($ruhend -join "`0"), (New-Object System.Text.UTF8Encoding($false)))
+    git add --pathspec-from-file=$pfadDatei --pathspec-file-nul
     if ($LASTEXITCODE -ne 0) { throw "git add fehlgeschlagen (Exitcode $LASTEXITCODE)" }
+    Remove-Item $pfadDatei -Force -ErrorAction SilentlyContinue
 
     $baum = (git write-tree).Trim()
     if (-not $baum) { throw 'git write-tree lieferte nichts' }
