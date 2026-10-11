@@ -81,7 +81,8 @@ def _signatur(pfad, post_data, nonce):
     return base64.b64encode(mac.digest()).decode()
 
 
-def _roh(pfad, werte=None, signiert=True, post=False, methode=None):
+def _roh(pfad, werte=None, signiert=True, post=False, methode=None,
+         fehler_erlauben=False):
     """Ein Aufruf. `werte` als Dict = POST mit Formkoerper (Reihenfolge zaehlt!).
 
     Die Reihenfolge der Felder muss der Signatur entsprechen, deshalb wird der
@@ -91,6 +92,13 @@ def _roh(pfad, werte=None, signiert=True, post=False, methode=None):
     `methode` erzwingt ein anderes Verfahren (PUT bei /leveragepreferences,
     GEMESSEN 01.10.2026: die Parameter muessen dort als FORMKOEPRER rein - als
     Query-String antwortet dieselbe Signatur mit authenticationError).
+
+    `fehler_erlauben=True` (NUR fuer Order-Aufrufe): Kraken antwortet bei
+    /sendorder und /transfer gelegentlich mit `result: "error"` und
+    `authenticationError`, obwohl die Order GEFUELLT wurde (gemessen 01.10.2026,
+    zwei Probe-Kaeufe). Die Antwort wird dann zurueckgegeben statt geworfen,
+    damit der Aufrufer die echte sendStatus lesen kann. Ein ECHTER Fehler
+    (keine sendStatus mit placed) wird weiterhin laut erhoben.
     """
     post_data = urllib.parse.urlencode(werte) if werte else ""
     kopf = {"User-Agent": "BrainFiles/1.0"}
@@ -115,6 +123,8 @@ def _roh(pfad, werte=None, signiert=True, post=False, methode=None):
         text = e.read().decode(errors="replace")
         raise KrakenFuturesFehler("HTTP %s: %s" % (e.code, text[:300])) from None
     if isinstance(antwort, dict) and antwort.get("result") == "error":
+        if fehler_erlauben:
+            return antwort
         fehler = antwort.get("errors") or antwort.get("error")
         raise KrakenFuturesFehler("Kraken Futures meldet: %s" % (fehler,))
     return antwort
@@ -361,11 +371,19 @@ def _order_aufgeben(werte):
     Kraken antwortet zweistufig: result=success, sendStatus.status=placed,
     sendStatus.order_id. Steht dort ein Fehler, wird er laut erhoben -
     ein stilles 'success' ohne Order waere die gefaehrlichste Form.
+
+    GEMESSEN 01.10.2026: /sendorder kann `result: "error"` mit
+    `authenticationError` zurueckgeben, obwohl die Order GEFUELLT wurde (zwei
+    Probe-Kaeufe). Deshalb `fehler_erlauben=True`: die Antwort wird gelesen,
+    und die sendStatus entscheidet - steht dort 'placed', ist die Order da,
+    egal was result sagt. Ein ECHTER Fehler (keine placed-sendStatus) wird
+    weiterhin laut erhoben.
     """
-    antwort = _roh("/sendorder", werte, post=True)
+    antwort = _roh("/sendorder", werte, post=True, fehler_erlauben=True)
     status = antwort.get("sendStatus") or {}
     if status.get("status") not in ("placed", None):
-        grund = status.get("status") or status.get("reason")
+        grund = status.get("status") or status.get("reason") \
+            or antwort.get("errors") or antwort.get("error")
         raise KrakenFuturesFehler("Order nicht angenommen: %s" % grund)
     kennung = status.get("order_id") or (status.get("orderEvents") or [{}])[0].get("orderId")
     if not kennung:
