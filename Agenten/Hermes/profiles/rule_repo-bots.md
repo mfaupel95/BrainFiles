@@ -3,8 +3,8 @@
 Regeldatei der Bot-Profile (ein Bot je Fremd-Repo, Hausstandard) - sie gilt fuer
 ALLE Bot-Profile, auch die ohne Repo (`hermes-wartung`, `lotse`) und den
 Nachschlage-Bot `nerd`.
-Sie liegt ABSICHTLICH eine Ebene HOEHER als die Profile (`Agenten\Hermes\profiles\`),
-damit alle Bots EINE Stil- und Betriebsquelle teilen statt 27 wortgleiche Kopien.
+Sie liegt ABSICHTLICH eine Ebene HOEHER als die Profile, damit alle Bots EINE
+Stil- und Betriebsquelle teilen statt 27 wortgleiche Kopien.
 Jedes `profiles\<bot>\SOUL.md` verweist hierher und bleibt selbst individuell
 (Repo-Wissen, Aufgaben, Grenzen).
 Budget: 6000 Zeichen (`wc -c < Datei`).
