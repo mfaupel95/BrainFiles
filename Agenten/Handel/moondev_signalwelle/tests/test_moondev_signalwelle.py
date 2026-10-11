@@ -159,13 +159,18 @@ class BuchTest(unittest.TestCase):
         alt_argv = sys.argv
         sys.argv = ["handeln.py", "--live"]
         puffer = io.StringIO()
+        # Seit 11.10.2026 faellt --live auf den Papierzyklus zurueck (sonst
+        # stand die Spur bei offenem Freigabefenster still). Der Zyklus wird
+        # hier ersetzt, damit der Test nichts in den echten Ordner bucht.
+        from unittest import mock
         try:
-            with contextlib.redirect_stdout(puffer):
+            with contextlib.redirect_stdout(puffer),                     mock.patch.object(h.buch, "zyklus", return_value=0) as z:
                 code = h.main()
         finally:
             sys.argv = alt_argv
         self.assertEqual(code, 0)
         self.assertIn("Live waere gesperrt", puffer.getvalue())
+        self.assertEqual(z.call_args[0][3], "papier")
 
 
 if __name__ == "__main__":

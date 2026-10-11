@@ -97,7 +97,8 @@ class StufenPfadTest(unittest.TestCase):
             app = hz.Handelszentrale(root)
             app.refresh()
         zustands_dateien = [p for p in gesehen
-                            if os.path.basename(p).startswith("zustand.")]
+                            if os.path.basename(p).startswith("zustand.")
+                            and ".live." not in os.path.basename(p)]
         self.assertTrue(zustands_dateien,
                         "refresh() hat keine einzige Zustandsdatei gelesen")
         self.assertTrue(all(os.path.basename(p) == "zustand.mittel.json"

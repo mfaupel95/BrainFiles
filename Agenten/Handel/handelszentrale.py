@@ -398,6 +398,28 @@ def alter_minuten(wert, jetzt):
     return (jetzt - t).total_seconds() / 60.0
 
 
+def mit_live_herzschlag(zustand, ordner):
+    """Herzschlag aus dem Live-Buch, wenn es juenger ist als das Papierbuch.
+
+    Scharfe Spuren mit eigenem Live-Stamm (moondev_marktlage/live_kraken.py,
+    moondev_signalwelle) schreiben im Live-Zyklus nur `zustand.live.json`;
+    `zustand.json` bleibt stehen. Gelesen wurde nur das Papierbuch - die Spur
+    stand im Leitstand auf "ueberfaellig", obwohl sie alle 15 min lief
+    (gefunden 11.10.2026). Nur `letzter_lauf` wird uebernommen, die
+    Positionen bleiben die des Papierbuchs.
+    """
+    live = lade_json(os.path.join(ordner, stufenname("zustand.live.json")))
+    t_live = live.get("letzter_lauf") if isinstance(live, dict) else None
+    if not t_live:
+        return zustand
+    jetzt = datetime.now(UTC)
+    a_live = alter_minuten(t_live, jetzt)
+    a_pap = alter_minuten((zustand or {}).get("letzter_lauf"), jetzt)
+    if a_live is not None and (a_pap is None or a_live < a_pap):
+        zustand = dict(zustand or {}, letzter_lauf=t_live)
+    return zustand
+
+
 def herzschlag_lage(spur, zustand, wachen, jetzt):
     """Traegt die Spur ihren eigenen Herzschlag noch?
 
@@ -2019,6 +2041,7 @@ class Handelszentrale:
             # richtigen Dateien lasen. Zwei Lesarten, ein Fenster.
             z = lade_json(os.path.join(ordner, stufenname("zustand.json")))
             w = lade_json(os.path.join(ordner, "wachen.json"))
+            z = mit_live_herzschlag(z, ordner)
             self.zustaende[spur] = z
             self.wachen[spur] = w
             try:
