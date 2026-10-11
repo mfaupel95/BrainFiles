@@ -34,6 +34,51 @@ weiterlaufen und die Änderung mit einem echten Lauf belegt ist.
 **Don't use for:** MCP-Server-Einträge zwischen Claude und Hermes (`mcp-sync`),
 Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 
+## Ein Arbeitsauftrag, der Skriptpfade nennt
+
+Ein Auftrag kann Dateien nennen, die es nicht gibt. Solche Listen stammen oft aus
+einer anderen Sitzung oder aus dem Chat und beschreiben einen **Plan**, keinen
+Bestand. **Vor dem ersten Schritt pruefen, ob die genannten Artefakte existieren**
+— und zwar breit, weil ein einzelner Ort nichts beweist:
+
+1. Dateisystem (`search_files`, gezieltes `find` im vermuteten Ordner),
+2. **alle Zweige und Worktrees** (`git for-each-ref`, `git worktree list`),
+3. die Git-Historie (`git log --all -S "<name>"`) — etwas kann existiert und
+   wieder geloescht worden sein.
+
+**Eine Suche, die ins Zeitlimit laeuft, ist kein Negativbefund.** Ueber die
+Wurzel zu suchen laeuft an 45 GB Archiv und Junctions in den Timeout; dann
+gezielt in den wahrscheinlichen Ordnern suchen und den Umfang der Pruefung im
+Bericht nennen, statt „gibt es nicht" aus einem Abbruch zu schliessen.
+
+**Fehlendes Skript ist nicht fehlender Mechanismus — beides getrennt melden.**
+Der Mechanismus kann als Modul existieren, waehrend sein Wrapper
+(`*-aufgabe.ps1`) und damit die geplante Aufgabe nie gebaut wurden. Was fehlt,
+ist dann der Wrapper: den kann ein Agent schreiben, die **Registrierung** der
+Aufgabe braucht Erhoehung und gehoert dem Nutzer. Umgekehrt ist ein Auftrag, der
+einen Skriptpfad nennt, **keine Freigabe fuer dessen Inhalt** — erst lesen, dann
+entscheiden. Ein Skript kann mehr tun als sein Name sagt (loeschen statt
+diagnostizieren), und ein Wrapper kann eine Sperre scharf schalten, die danach
+fuer alle gilt.
+
+### Bevor eine Sperre scharf geschaltet wird
+
+Ein Gate, das erst durch einen Setzschritt wirkt, ist bis dahin **dormant**.
+Der Bereichs-Hook ist das Muster: `Agenten/Werkzeuge/bereiche.py --staged`
+laeuft und gibt Exit 0, blockiert aber nichts, solange `BRAINFILES_BEREICH`
+nicht gesetzt ist — erst `git config core.hooksPath .githooks` macht ihn
+wirksam. Zwei Dinge vorher klaeren:
+
+- **Wen trifft die Sperre?** Eine Rolle, die qua Amt in mehreren Bereichen
+  schreibt (Wartung: `Agenten/Handel/`, `Agenten/Hermes/profiles/`,
+  `MaxHirn/Wissen/`), kann keinen einzelnen Bereichs-Wert tragen. Die Sperre
+  zuerst scharf zu schalten und den Besitz danach zu klaeren blockiert die
+  eigene Arbeit — die eigenen Commits der laufenden Sitzung sind der Beweis.
+- **Die Reihenfolge ist die Entscheidung, nicht die Technik.** Das Setzen ist
+  ein Befehl; die Zuordnung „welche Rolle besitzt welchen Bereich" ist eine
+  Entscheidung des Nutzers. Beides zusammen vorlegen, nicht nur den Befehl
+  ausfuehren.
+
 ## Regeln (immer)
 
 1. **Drei Ablagen, nach Verbraucher getrennt.** Menschliche Ablage ist

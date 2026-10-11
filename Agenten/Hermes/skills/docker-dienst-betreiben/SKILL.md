@@ -43,6 +43,21 @@ Hermes-Cron.
 4. **Wache als Hermes-Cron** (Muster in `dauerprozess-bewachen`): healthz
    pruefen, bei tot `docker start <container>` (heilen), Befund/Erholung melden,
    leere Ausgabe = nichts senden.
+   - **Zwei Leben pruefen: Container UND Dienstantwort.** Der Container kann
+     laufen, waehrend der Dienst nicht antwortet (haengende
+     Port-Weiterleitung, blockierter Event-Loop) — eine Wache, die nur tote
+     Container startet, haelt diesen Zustand ewig fuer gesund. Heilen auch
+     den laufenden Fall: `docker restart <container>` (stateful im Volume,
+     kein Verlust), nicht nur `docker start`.
+   - **Probe von der RICHTIGEN Seite.** Im Container gesund
+     (`docker exec <c> wget -q -O- http://localhost:<port>/healthz`), vom Host
+     tot (curl 000) = die Weiterleitung haengt, nicht der Dienst. Nur beide
+     Seiten zusammen lokalisieren den Fehlerort.
+   - **JEDEN Heilversuch dedupen, auch den Restart-Fall.** Ein Merker, der nur
+     beim Start-Zweig 6-h-Stille setzt, laesst einen Restart-Zweig alle
+     15 min feuern. EIN Zeitstempel `zuletzt_geheilt` deckt alle Heilarme;
+     Gegenprobe: zweiter Lauf sofort danach -> still UND kein zweiter
+     Restart-Ruf.
 
 ## Fallen
 
@@ -58,6 +73,15 @@ Hermes-Cron.
 - **Zugangsdaten des Dienstes in die Schluesselablage, nie in den Chat.**
   Owner-Konto automatisch anlegen, Passwort generieren und in
   `Wissen/Zugaenge.md` haengen (Muster: ai4trade/neu_anlegen.py). Nie ausgeben.
+- **Docker Desktop „manually paused": kein CLI-Unpause.** Der Daemon lebt,
+  aber JEDE Docker-Operation (auch `docker ps`) antwortet mit „Docker Desktop
+  is manually paused. Unpause it through the Whale menu or Dashboard" und
+  `docker exec` haengt schlicht (Timeout). `docker desktop unpause` gibt es
+  in der installierten Version NICHT (Usage kennt nur start/stop/restart/
+  update). Heilen kann nur der Nutzer (Whale-Tray -> Resume) oder ein
+  Desktop-Neustart — als Befund melden und den Nutzer bitten, nicht
+  stundenlang retryen. `docker exec`-Proben grundsaetzlich mit `timeout`
+  begrenzen (ein pausierter Daemon beantwortet sie nie).
 
 ## Referenzen
 

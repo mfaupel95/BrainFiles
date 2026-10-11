@@ -195,6 +195,7 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 - **Use `hermes chat -q` for fire-and-forget** — no PTY needed
 - **Use tmux for interactive sessions** — raw PTY mode has `\r` vs `\n` issues with prompt_toolkit
 - **For scheduled tasks**, use the `cronjob` tool instead of spawning — handles delivery and retry
+- **Topic-based group dispatch:** verify the effective `gateway.profile_routes` before claiming a topic is routed. A route selects one runtime profile for each inbound message; it does not chain a research bot into a dispatcher. To enforce research-before-specialist dispatch, keep one dispatcher profile on the group and put the sequential workflow in that profile's operating rules. Telegram links identify messages, not forum topics: never copy the link's message ID into `thread_id`; use a verified inbound `message_thread_id`/stored session `thread_id`, and preserve an existing whole-group route until every intended topic ID is confirmed.
 - **"delegate_task is capped at N" reports** — see `references/delegate-task-concurrency-diagnosis.md`. Three real cap paths in Hermes; if none fired, the model is self-limiting and rationalising it as "the runtime caps."
 - **"Can $external_app use my Nous Portal subscription / OAuth?"** — see `references/portal-auth-for-third-party-apps.md`. Walk the user through three layers (plugin-vs-app, what Portal actually exposes, local-broker-proxy option).
 
