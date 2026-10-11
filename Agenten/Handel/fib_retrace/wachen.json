@@ -25,7 +25,7 @@
   "_kein_live_pfad": true
  },
  "herzschlag_max_minuten": 180,
- "journal_zweitziel": "Q:\\Handel_Journal\fib_retrace",
+ "journal_zweitziel": "Q:\\Handel_Journal\\fib_retrace",
  "tracker": {
   "_fib_retrace": {
    "einstieg_schwelle": 0.382,
