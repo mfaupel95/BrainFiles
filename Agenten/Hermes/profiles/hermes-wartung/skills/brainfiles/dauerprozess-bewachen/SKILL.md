@@ -40,6 +40,24 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
    Die Wache gibt **nichts** aus, wenn alles laeuft (leere Ausgabe sendet nichts),
    und beschreibt nur den Befund, wenn sie eingreift. Nicht-0-Exit oder Timeout
    loest die Fehlermeldung aus.
+   **Das Skript gehoert nach `profiles/<profil>/scripts/`.** Der Cron loest einen
+   Skriptpfad ausschliesslich innerhalb des Home auf, das ihn faehrt
+   (`cron/scheduler_script.py::_resolve_script_path`): ein Pfad ausserhalb endet mit
+   „resolves outside the scripts directory“, ein Name aus `Agenten/Hermes/scripts/`
+   mit „Script not found“. Eine Wache fuer ein Profil also neben dieses Profil legen,
+   nicht in die Haus-Ablage — und die Ablage in der Whitelist freigeben
+   (`!Agenten/Hermes/profiles/*/scripts/` **und** `…/scripts/**`), sonst liegt die
+   Wache ausserhalb von Git und verschwindet unbemerkt. Gegenprobe:
+   `git check-ignore -v <pfad>` (Exit 1) und `git status --porcelain` zeigt `??`.
+
+   **Was der Auftrag aufruft, muss ENDEN.** Ein Poller oder Dauerlauf als Skript
+   laeuft bis in den Timeout und hinterlaesst einen Lauf im Zustand `running`, der
+   die naechsten Feuertests verdeckt. Vor dem Einplanen am Dienst pruefen, ob der
+   Unterbefehl einen Einmal-Lauf hat (`<cli> run --once`). Zahlen aus einer Datenbank
+   gehoeren ohnehin nicht in einen Modelllauf: `no_agent` kann sich nicht verplaudern
+   und kostet keine Tokens. Braucht ein Modelllauf den Klon, `workdir` auf das Repo
+   setzen — ein Agent startet im Home des Profils und findet `Werkstatt/Repos/` von
+   dort nicht.
 5. **Gegenproben in beide Richtungen, vor dem Bericht:**
    (a) Prozess laeuft -> Wache gibt 0 Zeichen aus, Exit 0;
    (b) `Stop-Process -Id <pid> -Force` -> Wache meldet „PID ... laeuft nicht“,
@@ -50,6 +68,44 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
    Ausfall, und die Probe wird deshalb nicht gemacht.
 6. **Wirksamkeit der Komponente selbst belegen** (nicht nur den Prozess): eine
    Eingabe erzeugen und nachsehen, dass die Ausgabe nachzieht.
+
+## Sitzungs-Loop oder dauerhafte Wache
+
+Zwei verschiedene Dinge heissen „Loop“ — vor dem Einrichten unterscheiden, sonst
+wird eine Sitzungsschleife fuer einen Dauerbetrieb gehalten:
+
+- **Sitzungs-Loop** (`/loop <intervall> <aufgabe>`, Alias `/proactive`): weckt nur
+die laufende Sitzung im Takt, endet mit `LOOP_COMPLETE` in der Antwort, mit
+`--times N` oder am Rueckfall-Budget (`loops.max_ticks`, Vorgabe 100);
+`loops.min_interval_seconds` hebt zu kurze Takte auf 30 s an. Steuerung:
+`/loop status | pause | resume | stop`. **Stirbt mit der Sitzung** — nie als
+Ersatz fuer eine Wache verwenden, auch wenn „richte einen Loop ein“ danach klingt.
+- **Dauerhafte Wache**: Hermes-Cron `no_agent` mit Skript (Ablauf oben).
+Ueberlebt Sitzung und Neustart.
+
+Eine neue dauerhafte Schleife ist eine Entscheidung, kein Handgriff: die
+Hausregel (fuenf Fragen, alle mit ja — Wiederkehr belegt, Pruefkriterium in einer
+Zeile, stiller Erfolg, entscheidungsarm, rein lesend) steht in
+`Agenten/Hermes/skills/brainfiles/skill-schleifen/SKILL.md`. Dieses Skill liegt im
+HAUPTbaum; ein Bot-Profil hat eine eigene Skill-Bibliothek und laedt es nicht per
+`skill_view` — als Datei lesen.
+
+### Wo die Cron-Auftraege wirklich liegen
+
+- **`cronjob_manage action='list'` liest den Cron-Speicher des AKTUELLEN Profils.**
+  Ein Profil kann 0 Auftraege melden, waehrend das Haus seine Auftraege faehrt: sie
+  liegen im Speicher des Startprofils (`Agenten/Hermes/cron/jobs.json`), und das
+  `cron/`-Verzeichnis eines frisch angelegten Profils enthaelt nur `output/` und
+  gar keine `jobs.json`. Vor „es laeuft kein Auftrag“ und vor jedem Anlegen den
+  Ist-Stand an der Datei lesen — `jobs.json` ist eine Liste von Dicts mit u. a.
+  `name, state, schedule, script, no_agent, last_run_at, last_status,
+  last_delivery_error, failure_streak` — und mit `hermes cron list` gegenhalten.
+- **Ein in einem Profil angelegter Auftrag feuert nur im Scope dieses Profils.**
+  Vorher klaeren, welches Home der Scheduler liest: sonst entsteht ein Auftrag,
+  den niemand ausfuehrt, oder ein zweiter Auftrag fuer dieselbe Arbeit.
+- **Die eigene Antwort ist nicht die Quelle fuer den Ist-Stand.** „X laeuft
+  schon“/„X fehlt“ aus dem Gedaechtnis oder aus einem Werkzeug mit falschem Scope
+  ist keine Messung; die Datei und `hermes cron list` sind es.
 
 ## Zweite Instanz derselben Komponente
 
@@ -299,6 +355,26 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
   ob der Waechter einen Ausfall bereits selbst geheilt hat, bevor manuell
   eingegriffen wird — sonst ist der manuelle Neustart entweder ueberfluessig
   oder verdeckt, dass der Waechter allein schon ausgereicht haette.
+  **Die Zustellung ist der zweite Beleg, nicht nur der Lauf:** in
+  `profiles/<profil>/cron/executions.db` steht je Lauf `delivery_outcome` —
+  `suppressed` bei leerer Ausgabe, `delivered` bei Befund. Ein Auftrag mit
+  `last_status: ok` kann trotzdem nichts zugestellt haben; wer nur den Status liest,
+  belegt die Wirkung nicht. Die Alarmrichtung ist ohne Eingriff in echte Daten
+  pruefbar, wenn das Skript seinen Zustand in eine eigene Merkdatei schreibt: die
+  Merkdatei praeparieren (alten Zeitstempel bzw. geleerte Befundliste setzen),
+  `cronjob action='run'`, dann muss im `cron/output` genau die erwartete Meldung
+  stehen. Deshalb bekommt so ein Wachenschritt einen `--merkdatei`-Schalter — ohne
+  ihn kostet jede Probe einen echten Ausfall und wird deshalb nicht gemacht.
+- **Ein abgeloester Auftrag bleibt scharf, auch in einem fremden Profil.** Wird eine
+  Wache durch eine andere ersetzt, feuert die alte weiter (jedes Profil hat seinen
+  eigenen Cron-Speicher) — doppelte Meldung, und wenn sie einen Modelllauf startet,
+  doppelte Kosten. Beim Ersetzen den alten Auftrag suchen (alle
+  `profiles/*/cron/jobs.json` nach dem Namen durchsuchen, nicht nur den eigenen
+  Speicher) und den Befund melden; `pause` statt `remove`, damit der Verlauf bleibt.
+  Einen fremden Cron-Speicher nicht selbst anfassen — das ist die Entscheidung des
+  Nutzers. Ein Lauf, der `running` stehen bleibt, laesst `last_run_at` auf `None`:
+  „nie gelaufen“ und „haengt noch“ sehen in der Auftragsliste gleich aus, das Alter
+  aus `executions.db` entscheidet.
 
 ## Verification
 

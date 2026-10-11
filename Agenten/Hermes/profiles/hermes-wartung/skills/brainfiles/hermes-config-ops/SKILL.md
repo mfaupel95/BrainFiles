@@ -617,6 +617,39 @@ kostenloser Gesundheitsindikator fuer den Gateway.
 - `hermes config get <pfad>` kennt nur Schlüssel aus `DEFAULT_CONFIG`; eigene Blöcke
   (z. B. `a2a_agents`) melden fälschlich „Config key not set". Kein Fehler — über
   `load_config()` prüfen.
+- **Der Profil-Scope gilt für ALLE Hermes-Lesebefehle, nicht nur für `config get`.**
+  Aus einem Bot-Profil heraus melden `config get`, `cron list`/`cronjob_manage
+  action='list'`, `fallback list` und `profile list` den Stand DIESES Profils —
+  gemeldet wird jeweils der Ist-Stand des aktiven Homes, nicht der des Hauses, und
+  ein leeres Ergebnis heisst nicht, dass der Rest leer ist. Vor jeder Aussage über
+  den Haus-Zustand den Scope feststellen (aktives Profil, `HERMES_HOME`, gelesenes
+  Home) und die Datei unter dem passenden Home lesen: `Agenten/Hermes/config.yaml`
+  und `Agenten/Hermes/cron/jobs.json` sind die Haus-Ablagen, `profiles/<bot>/…` die
+  des Profils. Dieselbe Falle in der Schreibrichtung: `hermes config set` schreibt
+  in das Home, das die CLI liest — die Erfolgsmeldung nennt die Datei, die Zeile
+  muss aber in die gewollte.
+- **Was der Nutzer „Loops“ nennt, ist oft etwas anderes als ein Cron-Auftrag.**
+  `/loop <intervall> <aufgabe>` ist eine SITZUNGS-Schleife (endet mit
+  `LOOP_COMPLETE`/`--times N`/`loops.max_ticks`, Einstellungen `loops.*`), kein
+  Dauerbetrieb; dauerhaft ist nur ein Cron-Auftrag oder eine Windows-Aufgabe
+  (`dauerprozess-bewachen`). Bei einem mehrdeutigen Ein-Wort-Auftrag zuerst die
+  Bedeutung klaeren und erst danach etwas anlegen — eine Sitzungsschleife als
+  „eingerichtet“ zu melden ist ein falscher Nachweis. Die Rueckfrage muss aber
+  nicht warten: wer den Ist-Stand ohnehin misst, meldet ihn mit der Frage und
+  laesst das Anlegen bis zur Antwort liegen (eine abgelaufene Rueckfrage ist
+  kein Auftrag).
+- **Ein Cron-Skript wird nur im Home des Profils aufgeloest, das den Auftrag
+  faehrt** (`cron/scheduler_script.py::_resolve_script_path`): ein Pfad ausserhalb
+  endet mit „resolves outside the scripts directory“, ein Name aus
+  `Agenten/Hermes/scripts/` mit „Script not found“. Also `profiles/<profil>/scripts/`
+  anlegen und in der Whitelist freigeben (`!Agenten/Hermes/profiles/*/scripts/`
+  UND `…/scripts/**` — die Datei-Freigabe allein laesst Git nicht hineinsehen,
+  und `**` allein reicht nicht immer, beide Zeilen setzen). Gegenprobe:
+  `git check-ignore -v <pfad>` (Exit 1) plus `git status --porcelain` zeigt `??`.
+  Nebenwirkung, die man kennen sollte: eine neue Freigabe kann in FREMDEN Profilen
+  Dateien sichtbar machen, die dort schon lagen (hier ein `scripts/` in `caveman/`)
+  — liegen lassen, im Commit-Text nennen. Rezept und Belegleiter:
+  `references/cron-wache-bauen.md`.
 - `hermes config set` schreibt die ganze Datei neu und kennt dieselbe Grenze. Für eine
   einzelne Zeile ist der chirurgische Ersatz nachvollziehbarer: eine Zeile geändert,
   `Compare-Object` beweist es.
