@@ -8,3 +8,6 @@ terminal:
 platforms:
   photon:
     enabled: false
+onboarding:
+  seen:
+    tool_progress_prompt: true
