@@ -23,18 +23,6 @@
       OKX/Kraken-Schluessel, Guthaben, live-Orderwege. Entscheidung Max: MAX_MELDUNGEN_PRO_TAG=3,
       --min-netto als Wachen-Param.
       Angelegt 07.10.2026 · Zuletzt 07.10.2026 · Betrifft Agenten/Handel
-- [ ] **T-374 - Handpositionen (herkunft=boerse_handgriff) werden nicht automatisch geschlossen**
-      Kontext: 06.10.2026, NIGHT-XPERP-Position von Max an der OKX-Boerse von Hand eroeffnet;
-      die Spur uebernahm sie als Fremdposition (grund=fremdposition_uebernommen), konnte aber
-      keinen Boersen-Stop verankern (Journal den ganzen Tag: 'trailing nicht ausgefuehrt: keine
-      Boersen-Stop-Kennung in der Position'). Am 06.10. um 16:31:59 UTC schloss pruefe_ausstiege
-      die Position mit grund=stop, obwohl Max sie halten wollte ('ja war meine und das wollte ich').
-      FIX umgesetzt: handeln.py pruefe_ausstiege + flach_stellen ueberspringen Positionen mit
-      herkunft=boerse_handgriff (Tests xperp/tests/test_handeln_handposition.py, 5 gruen;
-      Gegenprobe: normale Positionen werden weiter automatisch geschlossen).
-      Naechster Schritt: beobachten; soll die Regel wieder greifen, braucht es einen Schalter
-      in wachen.json (offene Entscheidung Max).
-      Angelegt: 06.10.2026 - Zuletzt: 06.10.2026 - Betrifft: Agenten/Handel/xperp
 
 - [x] **T-364 — 16 Doppelverkäufe in 6 Spuren: derselbe Fehler wie NIGHT, drei Tage aelter**
       Kontext: Nach der Reconciliation von `moondev_signalwelle` (T-356, 05.10.2026)
@@ -1757,6 +1745,19 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-374 - Handpositionen (herkunft=boerse_handgriff) werden nicht automatisch geschlossen**
+      Kontext: 06.10.2026, NIGHT-XPERP-Position von Max an der OKX-Boerse von Hand eroeffnet;
+      die Spur uebernahm sie als Fremdposition (grund=fremdposition_uebernommen), konnte aber
+      keinen Boersen-Stop verankern (Journal den ganzen Tag: 'trailing nicht ausgefuehrt: keine
+      Boersen-Stop-Kennung in der Position'). Am 06.10. um 16:31:59 UTC schloss pruefe_ausstiege
+      die Position mit grund=stop, obwohl Max sie halten wollte ('ja war meine und das wollte ich').
+      FIX umgesetzt: handeln.py pruefe_ausstiege + flach_stellen ueberspringen Positionen mit
+      herkunft=boerse_handgriff (Tests xperp/tests/test_handeln_handposition.py, 5 gruen;
+      Gegenprobe: normale Positionen werden weiter automatisch geschlossen).
+      Naechster Schritt: beobachten; soll die Regel wieder greifen, braucht es einen Schalter
+      in wachen.json (offene Entscheidung Max).
+      Angelegt: 06.10.2026 - Zuletzt: 06.10.2026 - Betrifft: Agenten/Handel/xperp
+      
 - [x] **T-367 — Ausser-Haus-Aufgabe verschwindet taeglich; Wache haelt sie jetzt, Ursache offen**
       Kontext: Die Windows-Aufgabe `MaxHirn-Ausserhaus-Kopie` (taeglich 21:30,
       Wrapper `Agenten/Routinen/ausserhaus-kopie.ps1`) war am 05.10. um 22:30
