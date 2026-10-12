@@ -88,9 +88,33 @@ class HausSpur(IStrategy):
         return dataframe
 
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe.loc[dataframe["hs_aus_long"], "exit_long"] = 1
-        dataframe.loc[dataframe["hs_aus_short"], "exit_short"] = 1
+        # Review M5: Freqtrade nimmt keinen Einstieg, wenn in derselben Kerze ein
+        # Ausstieg derselben Seite steht - und keinen Ausstieg, wenn ein Einstieg
+        # steht. Das Haus steigt flach ein und offen aus. Darum hier nur der
+        # konfliktfreie Ausstieg; den Konfliktfall loest custom_exit fuer offene
+        # Trades (_konflikt_ausstieg).
+        dataframe.loc[dataframe["hs_aus_long"] & (dataframe["hs_ein"] != "long"),
+                      "exit_long"] = 1
+        dataframe.loc[dataframe["hs_aus_short"] & (dataframe["hs_ein"] != "short"),
+                      "exit_short"] = 1
         return dataframe
+
+    def _konflikt_ausstieg(self, pair, trade):
+        """Ausstieg eines offenen Trades in einer Kerze mit Ein- und Ausstieg (M5).
+
+        Nur fuer Trades, die schon zu Beginn dieser Kerze offen waren - ein
+        Trade, der erst auf genau dieses Einstiegssignal hin eroeffnet wurde,
+        bleibt (im Haus war man da flach)."""
+        df, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+        if df is None or not len(df):
+            return None
+        zeile = df.iloc[-1]
+        seite = "short" if trade.is_short else "long"
+        if zeile["hs_ein"] != seite or not bool(zeile["hs_aus_" + seite]):
+            return None
+        if trade.open_date_utc > zeile["date"]:
+            return None
+        return "hs_aus_" + seite
 
     def _signalwerte(self, pair, trade):
         """(stop %, ziel %) der Signalkerze, einmal je Trade gemerkt."""
@@ -122,8 +146,9 @@ class HausSpur(IStrategy):
 
     def custom_exit(self, pair, trade, current_time, current_rate,
                     current_profit, **kwargs):
-        if not self._auf_schluss():
-            return None
+        grund = self._konflikt_ausstieg(pair, trade)
+        if grund or not self._auf_schluss():
+            return grund
         stop, ziel = self._signalwerte(pair, trade)
         if current_profit <= -stop / 100.0:
             return "stop_schluss"
