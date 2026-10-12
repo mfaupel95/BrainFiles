@@ -96,11 +96,25 @@ Audit in einem Lauf (etwa 30 Sekunden):
 ```python
 import sys; sys.path.insert(0, 'Agenten/Handel')
 import dauerlauf, auswertung_alle, pruefe_ratschen, befehle
-ausw = set(auswertung_alle.SPUREN)
+# ACHTUNG: auswertung_alle.SPUREN haelt NUR die ~10 Kern-Spuren; die
+# Indikator-/Bot-Spuren stehen in INDIKATOR_SPUREN und BOT_SPUREN. Nur
+# SPUREN zu lesen meldet ~35 Spuren falsch als 'ohne Auswertung'.
+ausw = (set(auswertung_alle.SPUREN) | set(auswertung_alle.INDIKATOR_SPUREN)
+        | set(auswertung_alle.BOT_SPUREN))
 rats = set(x[0] for x in pruefe_ratschen.SPUREN) | set(pruefe_ratschen.RUHT)
 print('ohne Auswertung:', sorted(set(dauerlauf.SPUREN) - ausw))
 print('ohne Ratschenpruefung:', sorted(set(dauerlauf.SPUREN) - rats))
 ```
+
+**Zuverlaessige Gegenprobe "welche Spur fehlt in der Auswertung":** die
+Wahrheit ist die AUSGABE von `auswertung_alle.py` (die `=== NAME ===`-Zeilen),
+nicht die Listen im Code. Spur-Ordner erkennt man an `wachen.json` (Tiefe 1),
+NICHT an `handeln.py` - kopier/spiegel haben kein `handeln.py` und waeren
+sonst uebersehen. Die Ausgabe schreibt Namen GROSS, die Ordner klein:
+case-insensitiv vergleichen (`{n.lower()}`). Spuren mit eigener
+`auswertung.py` (gitter, kopier, omniquant, spiegel) sind bewusst NICHT in
+auswertung_alle - sie zaehlen als erfasst. Ein `glob` mit `**` ueber
+Agenten/Handel laeuft in die venvs und timed out - nur Tiefe 1 scannen.
 
 `lage.HOLER` ist ein **Tupel von Funktionen** (`spur_<name>`, `spur_kopier_familie`
 fasst fuenf Spuren zusammen), `befehle.FAMILIE` ein `dict` Spur->Beschreibung -
