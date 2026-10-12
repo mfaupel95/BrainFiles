@@ -74,7 +74,10 @@ class KrakenQuoteNodes(unittest.TestCase):
 
     def test_futures_start_uebergibt_pf_solusd_und_keinen_order_client(self):
         node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "futures")
-        with patch.object(lp.subprocess, "Popen") as popen:
+        # laeuft() fest auf False: sonst entscheidet ein echter, evtl. noch
+        # lebender Node aus einer frueheren Sitzung, ob Popen aufgerufen wird.
+        with patch.object(type(node), "laeuft", return_value=False), \
+             patch.object(lp.subprocess, "Popen") as popen:
             node.starten()
         _, kwargs = popen.call_args
         self.assertEqual(kwargs["env"]["KRAKEN_PRODUKT"], "futures")
