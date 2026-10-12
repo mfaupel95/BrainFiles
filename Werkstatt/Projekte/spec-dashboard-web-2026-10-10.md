@@ -2,14 +2,14 @@
 
 **Stand:** 2026-10-10  
 **Bereich:** `handel` → `Agenten/Handel/dashboard/`  
-**Status:** Entwurf — wartet auf Abnahme durch Max.
+**Status:** Umgesetzt (Commits 72df4623, e99a31a5, 4cce0df7); am 12.10.2026 an den gebauten Stand angeglichen.
 
 ---
 
 ## Ziel
 
 Ein optionales Web-Dashboard (`localhost:7788`) das den bestehenden tkinter-Leitstand
-(`leitstand.py`) ergänzt — nicht ersetzt. Alle 20+ Handelsspuren sind auf einen Blick
+(`leitstand.py`) ergänzt — nicht ersetzt. Alle Handelsspuren (Stand 12.10.2026: 45) sind auf einen Blick
 sichtbar; Backtest, Training und Reparatur sind ohne tkinter-Fenster aufrufbar.
 Fremdrepo-Signale erscheinen automatisch sobald ihre Schema-JSON-Datei existiert.
 
@@ -30,13 +30,13 @@ Fremdrepo-Signale erscheinen automatisch sobald ihre Schema-JSON-Datei existiert
 
 ```
 Agenten/Handel/dashboard/
+├── schutz.py         # Host-Allowlist, CSRF, Basic Auth (Middleware)
 ├── __main__.py          # python -m dashboard startet app.py
 ├── app.py               # FastAPI-App, Routen registrieren, Lifespan
 ├── quellen/
 │   ├── spuren.py        # importiert spuren_stand → Dict[str, SpurStatus]
 │   ├── prozesse.py      # laeuft()/starten()/stoppen() je Spur (aus leitstand_prozesse)
-│   ├── backtests.py     # trigger + lesen aus backtest_laeufe/ + xperp_ruecktest
-│   ├── training.py      # trigger verbesserer/suche.py, liest Ergebnis-JSON
+│   ├── jobs.py          # Hintergrundjobs (Backtest/Training) per Popen, Doppelstart-Sperre
 │   └── reparatur.py     # Checks: PID-Datei, Log-Alter, wachen-Herzschlag
 ├── routen/
 │   ├── monitor.py       # GET / + GET /stream (SSE)
@@ -85,29 +85,27 @@ Importiert `spuren_stand` als Modul (kein Subprocess-Overhead) und gibt
 Stale-Regel: `alter > hs` → Status `"veraltet"`, im Monitor gelb markiert.
 Fehlende JSON-Datei → Status `"nicht konfiguriert"`, grau.
 Fremdrepo-Signale: `quellen/spuren.py` sucht zusätzlich nach
-`Agenten/Handel/fremdrepos-signal-*.json` und hängt deren Einträge an.
+`Agenten/Handel/fremdrepos-signal-*.json` und hängt deren Einträge an (Schema:
+`signal_schema.py`). Stand 12.10.2026 existiert noch keine solche Datei — nur per
+Test abgedeckt.
 
 ### `prozesse.py`
 
-Dünner Wrapper um die `OmnitradeProzess`- und `DauerlaufProzess`-Klassen aus
-`leitstand_prozesse.py`. Kein tkinter-Import — die Klassen werden ohne GUI-Teil
-eingebunden. Exponiert: `laeuft(spur) → bool`, `starten(spur)`, `stoppen(spur)`.
+Eigene Prozesslogik ohne Import von `leitstand_prozesse.py` (das Modul importiert
+tkinter auf oberster Ebene; seine Klassen `_OmnitradetLauf`/`_PythonDauerlauf` sind
+privat). Liest `dauerlauf.pid`, fragt `omnitrade_lauf.beurteile()` ab, beendet per
+`taskkill`. Exponiert: `laeuft(spur) → bool`, `starten(spur)`, `stoppen(spur)`.
 
 **Not-Aus**: schreibt `"handel_erlaubt": false` in die `wachen.json` der Spur
 und ruft `stoppen()`. Nie `mode: live` setzen — Gate weist das zurück.
 
-### `backtests.py`
+### `jobs.py` (Backtest und Training)
 
-- Liest `backtest_laeufe/` und `leitstand_backtests.json` für abgeschlossene Läufe.
-- Startet neuen Backtest via `subprocess.Popen` in separatem Prozess;
-  schreibt Log nach `backtest_laeufe/<spur>-<ts>.log`.
-- `xperp_ruecktest`: importiert `verbesserer/xperp_ruecktest` direkt.
-
-### `training.py`
-
-- Startet `verbesserer/lauf.py` (Spur 1) oder `verbesserer/xperp_ruecktest`
-  via Subprocess; Log-Datei per SSE streambar.
-- Liest Ergebnis aus `verbesserer/ergebnis.json` sobald vorhanden.
+- Startet Läufe via `subprocess.Popen` als eigenen Prozess, ein Lauf je Name zur Zeit;
+  Log per SSE streambar.
+- Backtest: `verbesserer/xperp_ruecktest.py` (nur xperp).
+- Training: `verbesserer/lauf.py --spur <spur>`; Ergebnis aus
+  `verbesserer/lauf_ergebnis.json`.
 
 ### `reparatur.py`
 
@@ -163,7 +161,8 @@ und Fix-Button (POST `/api/repair/{check_id}`). Kein automatischer Fix.
 ## Technische Details
 
 **Framework:** FastAPI + Jinja2 + `sse-starlette`. Abhängigkeiten in
-`dashboard/requirements.txt` (nicht in die Handel-Haupt-requirements.txt).
+`dashboard/requirements.txt`, eigene Umgebung `dashboard/.venv` (Tests und
+`omnitrade.cmd` nutzen sie; mit der Scanner-venv scheitern die Tests).
 
 **Charts:** TradingView Lightweight Charts per CDN (`cdn.jsdelivr.net`),
 kein npm-Build.
@@ -208,19 +207,19 @@ Kein Browser-Test, kein Playwright.
 1. `omnitrade.cmd`: neuer Block `:dashboard`.
 2. `Agenten/Routinen/systempruefung.ps1`: optionaler Check ob Dashboard erreichbar
    (nur wenn PID-Datei existiert).
-3. Keine Änderung an `leitstand.py`, `spuren_stand.py` oder anderen Dateien
-   außer `omnitrade.cmd`.
+3. Keine Änderung an `leitstand.py`, `spuren_stand.py` oder anderen bestehenden
+   Dateien außer den unter 1. und 2. genannten. Punkt 2 ist offen (nicht umgesetzt).
 
 ---
 
 ## Abnahmekriterien
 
-- [ ] `python -m dashboard` startet ohne Fehler auf Port 7788.
-- [ ] Monitor zeigt alle 20 Spuren aus `spuren_stand --json`.
-- [ ] SSE-Stream liefert Update spätestens nach 6 s.
-- [ ] Not-Aus schreibt `handel_erlaubt: false` in wachen.json der Spur.
-- [ ] Backtest für xperp startet, Log streamt, Ergebnis erscheint.
-- [ ] Reparatur-Check erkennt Zombie-PID korrekt.
-- [ ] Alle Tests in `tests/test_dashboard/` grün.
-- [ ] `omnitrade.cmd dashboard` startet das Dashboard.
-- [ ] Leitstand.py funktioniert unverändert neben dem Dashboard.
+- [x] `python -m dashboard` startet ohne Fehler auf Port 7788.
+- [x] Monitor zeigt alle Spuren aus `spuren_stand --json`.
+- [x] SSE-Stream liefert Update spätestens nach 6 s.
+- [x] Not-Aus schreibt `handel_erlaubt: false` in wachen.json der Spur.
+- [ ] Backtest für xperp startet, Log streamt, Ergebnis erscheint. (am System ungeprüft)
+- [x] Reparatur-Check erkennt Zombie-PID korrekt.
+- [x] Alle Tests in `tests/test_dashboard/` grün.
+- [x] `omnitrade.cmd dashboard` startet das Dashboard.
+- [x] Leitstand.py funktioniert unverändert neben dem Dashboard.
