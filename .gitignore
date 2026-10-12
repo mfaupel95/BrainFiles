@@ -1094,6 +1094,14 @@ Agenten/Handel/klassik_pmax/handelsjournal.csv
 Agenten/Handel/klassik_supertrend/zustand.json
 Agenten/Handel/klassik_supertrend/handelsjournal.csv
 
+# LLM-Stunde (12.10.2026, Papierspur auf 1H mit LLM-Arm)
+!Agenten/Handel/llm_stunde/*.py
+!Agenten/Handel/llm_stunde/*.md
+!Agenten/Handel/llm_stunde/wachen.json
+!Agenten/Handel/llm_stunde/tests/*.py
+Agenten/Handel/llm_stunde/zustand*.json
+Agenten/Handel/llm_stunde/handelsjournal*.csv
+
 # Prophet-Signal-Spur (02.10.2026, CryptoPredictions-Papier)
 !Agenten/Handel/prophet_signal/*.py
 !Agenten/Handel/prophet_signal/*.md
