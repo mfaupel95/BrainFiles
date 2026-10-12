@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socketserver
 import sys
 import time
 import urllib.error
@@ -122,6 +123,40 @@ def auf_openai(koerper: dict) -> dict:
         neu["max_tokens"] = koerper["max_tokens"]
     # `think` gibt es bei llama-server nicht - bewusst nicht uebersetzt.
     return neu
+
+
+class SchnellServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer ohne die umgekehrte DNS-Abfrage beim Binden.
+
+    HTTPServer.server_bind() ruft socket.getfqdn(host). Auf diesem Rechner
+    dauert das fuer 127.0.0.1 GEMESSEN 8,03 s (12.10.2026), weil Docker
+    Desktop den Namen 'kubernetes.docker.internal' auf 127.0.0.1 zeigt.
+    In diesen acht Sekunden ist der Socket zwar gebunden, aber noch NICHT im
+    Zustand LISTEN: jeder weitere Aufrufer haelt den Port fuer frei und
+    startet einen weiteren Adapter. Im Protokoll standen sechs "Start auf
+    Port 11498" in derselben Sekunde, fuenf davon starben am Binden. Der Name
+    wird hier nirgends gebraucht (er landet nur im Fehlertext), also wird er
+    gesetzt statt erfragt. Wer einen Dienst an 127.0.0.1 bindet, sollte
+    getfqdn nie im Startweg haben.
+    """
+
+    daemon_threads = True
+
+    # WINDOWS-FALLE, der eigentliche Grund der Prozessschwemme: HTTPServer
+    # setzt von Haus aus SO_REUSEADDR (allow_reuse_address = 1). Unter Unix
+    # laesst das nur das Wiederverwenden eines Sockets im TIME_WAIT zu, unter
+    # WINDOWS darf ein ZWEITER Prozess damit denselben Port binden - ohne
+    # Fehler. Der zweite Adapter glaubte also, er sei der einzige, blieb am
+    # Leben und teilte sich den Port: sechs Prozesse, alle "erfolgreich",
+    # keiner beendete sich. Mit False schlaegt das Binden mit WinError 10048
+    # fehl, main() faengt es und endet still - der Port bekommt genau einen
+    # Besitzer. Gemessen 12.10.2026: vorher 6 Prozesse auf 11498, nachher 1.
+    allow_reuse_address = False
+
+    def server_bind(self):                                     # noqa: D102
+        socketserver.TCPServer.server_bind(self)               # bindet wirklich
+        self.server_name = "127.0.0.1"
+        self.server_port = self.server_address[1]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -288,16 +323,33 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 2
 
+    # ERST binden, dann die Gegenstelle fragen. Umgekehrt (Fassung vom
+    # 12.10.2026, vormittags) lag zwischen dem Start und dem Binden ein
+    # Fenster, in dem modelle() auf llama-server wartete: jeder weitere
+    # Aufrufer sah den Port als FREI und startete einen weiteren Adapter.
+    # Im Log standen sechs "Start auf Port 11498" in derselben Sekunde,
+    # fuenf davon starben am Binden. Wer zuerst bindet, ist der Einzige.
+    try:
+        server = SchnellServer(("127.0.0.1", args.port), Handler)
+    except OSError as e:
+        # Belegt = es laeuft schon einer. Das ist kein Fehler, sondern der
+        # Normalfall bei mehreren Aufrufern; still und mit 0 enden, damit
+        # keine Wache einen "Fehlschlag" meldet und neu startet.
+        print("Port %d ist belegt (%s) - es laeuft schon ein Adapter. Ende."
+              % (args.port, e), file=sys.stderr)
+        return 0
+    server.basis = args.basis                                  # type: ignore[attr-defined]
+
     namen = modelle(args.basis)
     protokoll("Start auf Port %d -> %s (%d Modelle)"
               % (args.port, args.basis, len(namen)))
     if not namen:
+        # NICHT beenden: eine tote Gegenstelle ist kein Grund, den Dienst
+        # abzuschalten. Wer sich hier beendet, gibt den Port frei und laesst
+        # jeden Aufrufer einen neuen Prozess starten - die Schwemme.
         print("WARNUNG: llama-server auf %s antwortet nicht - der Adapter "
-              "startet trotzdem und meldet /gesundheit als false." % args.basis,
+              "laeuft weiter und meldet /gesundheit als false." % args.basis,
               file=sys.stderr)
-
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    server.basis = args.basis                                  # type: ignore[attr-defined]
     print("Ollama-Schnittstelle auf http://127.0.0.1:%d  ->  %s"
           % (args.port, args.basis))
     print("  /gesundheit  /api/tags  /api/version  POST /api/chat")
