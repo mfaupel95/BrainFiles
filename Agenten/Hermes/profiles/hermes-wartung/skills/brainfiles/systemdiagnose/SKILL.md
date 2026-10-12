@@ -90,7 +90,9 @@ powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='py
 Vielfachheit statt Einzelprozess — der schnellste Weg bei „der Rechner ist
 unendlich langsam“: Prozesse **nach Kommandozeile gruppieren** und je Gruppe
 zaehlen, dann Eltern-Kind-Paare trennen. Eine Gruppe mit vier Eintraegen ist
-vierfacher Dauerbetrieb;
+vierfacher Dauerbetrieb; waechst sie im Minutentakt, ist es eine Spawn-Schleife
+— Ursache und die drei Gegenproben stehen in `dauerprozess-bewachen`, Abschnitt
+„Ein Dienst, der sich vermehrt".
 ```
 powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='python.exe' OR Name='pythonw.exe'\" | ForEach-Object { \$c=\$_.CommandLine; if(-not \$c){\$c='(ohne)'}; (\$c -replace '.*BrainFiles\\\\','') } | Group-Object | Sort-Object Count -Descending | Select-Object -First 12 | ForEach-Object { '{0,3} x  {1}' -f \$_.Count, \$_.Name }"
 ```
@@ -262,6 +264,20 @@ Treiber zaehlen und benennen (`docker ps`, `docker system df` inkl.
   sie, meldet sie auf einem Weg, der den Ausfall ueberlebt (direkter Versand oder
   ein fremder Scheduler), meldet sie **nur** im Fehlerfall (sonst wird sie
   ignoriert) und steht die Ausfallhaeufigkeit irgendwo sichtbar.
+- **Eltern-Kind-Aussagen aus der Prozessliste sind ungeprueft, solange PIDs
+  recycelt werden koennen.** Windows vergibt freigegebene PIDs neu: ein
+  `ParentProcessId` aus einer Abfrage kann auf einen Prozess zeigen, der erst
+  NACH dem toten Eltern entstand — und „A hat B gespawnt" ist dann falsch, obwohl
+  die Zahlen plausibel aussehen. Vor einer solchen Aussage das `CreationDate`
+  beider Prozesse vergleicht: ist das Kind AELTER als der behauptete Elternprozess,
+  ist die Elternschaft falsch. (Belegt: eine Gruppe, deren Mehrheit eine Instanz
+  derselben Komponente als Eltern hatte, sah wie eine Spawn-Kette aus und war
+  reines PID-Recycling.)
+- **Eine einzige Zaehlung ist keine Rate.** Ein Wert aus einer Abfrage ueber
+  mehrere Huelle meldete „522 neue Prozesse in 60 s"; die Wachstumsrate lag bei
+  etwa 2 pro Minute. Richtig: Anzahl **vorher und nachher** im selben Intervall,
+  aus Differenz und Sekundenzahl die Rate bilden — und das Intervall gross
+  genug waehlen, dass ein einzelner Zyklus das Ergebnis nicht verfaelscht.
 - **`Get-Process ... | Sort-Object CPU` zeigt Lebenszeit, nicht Last.** `CPU` ist
   die aufsummierte Prozessorzeit seit Prozessstart — oben stehen damit
   langlebige Anwendungen (Terminal, Browser, Afterburner), nicht die aktuelle

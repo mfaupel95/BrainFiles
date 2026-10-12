@@ -27,6 +27,15 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
 1. **Starter als idempotentes Skript** (`<komponente>-start.ps1`) neben die
    Komponente legen: erst PID-Datei lesen und pruefen, ob der Prozess lebt ->
    „laeuft schon“ + Exit 0. Nur sonst starten.
+   **Die entscheidende Frage ist, ob der EIGENE PORT belegt ist — nicht, ob die
+   Gegenstelle gesund ist.** Ein Starter, der die Gegenstelle proben laesst,
+   wird zur Spawn-Schleife, sobald sie weg ist: die Antwort wird nie „gesund",
+   jeder Versuch erzeugt einen weiteren Prozess, und kein Zeitpunkt beendet ihn.
+   Zwei getrennte Fragen: `_laeuft(port)` (eigener Port, `socket.create_connection`)
+   und `_gesund()` (Gegenstelle). **Nur bei freiem Port starten; bei belegtem
+   Port melden** („laeuft, meldet aber ungesund — kein zweiter Start"), nicht
+   ein zweites Mal starten. Ein belegter Port laesst keinen zweiten Prozess zu,
+   auch wenn der gerade Versuch eine Fehlermeldung wirft.
 2. **Start ueber eine `.cmd` je Ziel, nicht die EXE direkt.** In der `.cmd` macht
    die Shell die Umleitung, dann `start "" /b "<exe>" <argumente> >> "<log>" 2>&1`.
    Aufruf des Starters:
@@ -346,6 +355,39 @@ die "laufende Aufgaben" vortaeuschen, obwohl der Supervising-Prozess weg ist.
 - **Ein Waechter darf nicht ueber den Weg melden, den er ueberwacht.** Eine Wache,
   die ihren Befund in den Bus oder in die ueberwachte Warteschlange schreibt,
   schweigt genau beim Ausfall. Deshalb Cron/Scheduler direkt nach Telegram.
+
+## Ein Dienst, der sich vermehrt (Spawn-Schleife)
+
+Symptom: eine Prozessgruppe waechst im Minutentakt, jedes neue Mitglied hat
+dasselbe Startskript in der Kommandozeile, der Rechner wird langsam, ohne dass
+ein einzelner Prozess viel tut. **Die Ursache ist fast immer die Startbedingung,
+kein Leck und kein Waechter.**
+
+Diagnose in dieser Reihenfolge:
+
+1. **Prozesse nach Kommandozeile gruppieren** (Befehl siehe `systemdiagnose`)
+   und je Gruppe zaehlen — die Zahl der Gruppe ist die Vielfachheit.
+2. **Den Starter benennen, nicht das Kind.** Je Gruppe den Elternprozess suchen
+   und dessen Kommandozeile lesen: das Kind ist das Opfer, der Starter ist der
+   Erzeuer. Ein Kind, das selbst Kinder hat, ist eine Kette, kein Befund.
+3. **Im Starter die Startbedingung lesen:** fragt es den **eigenen Port** oder
+   die **Gegenstelle**? Letzteres ist die Ursache, sobald die Gegenstelle weg
+   ist — die Antwort wird nie „gesund", also startet jeder Zyklus neu.
+4. **Die Wachstumsrate messen:** Anzahl **vorher und nachher** ueber ein bekanntes
+   Intervall, nie aus einer einzigen Zahl schliessen.
+
+Fix: die Startbedingung auf den eigenen Port stellen (Schritt 1 oben). Dann die
+Gegenprobe in **drei Faellen** am echten Modul laden und je Fall die Prozesszahl
+vorher/nachher vergleichen:
+
+| Fall | erwartetes Ergebnis |
+|---|---|
+| Port belegt, Gegenstelle gesund | kein Start |
+| Port belegt, Gegenstelle tot | kein Start, nur Meldung |
+| Port frei | genau ein Start |
+
+Der zweite Fall ist der, der die Schwemme erzeugt hat — er muss bewiesen sein,
+sonst ist der Fix eine Vermutung.
 - **`subprocess` mit `text=True`** stirbt an Umlauten aus `tasklist`/`powershell`:
   die Konsole schreibt cp1252, nicht UTF-8. `encoding="cp1252", errors="replace"`
   setzen, sonst reisst ein `UnicodeDecodeError` im Lesethread den Aufruf ab.

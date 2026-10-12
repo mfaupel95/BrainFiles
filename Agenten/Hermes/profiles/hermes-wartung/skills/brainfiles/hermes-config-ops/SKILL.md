@@ -479,11 +479,14 @@ als `assert`: Typ der Liste, Zahl der Eintraege, kein toter Schluessel mehr).
    je Profil (`hermes_cli/profile_channels.shared_channel_credentials`:
    Byte-Vergleich der Kennungszeilen aus `.env` und von
    `platforms.<p>.token|api_key` aus `config.yaml`). **`hermes gateway status`
-   warnt zusaetzlich aus einem ganz anderen Grund:** ein Profil ohne
+   **`hermes gateway status` warnt zusaetzlich aus einem ganz anderen Grund:** ein Profil ohne
    `platforms.<p>.enabled` wird ueber die Umgebung aktiviert und erbt die
-   Kennung des Startprofils, obwohl in keiner Datei etwas doppelt steht. Die
-   beiden Warnungen sehen gleich aus und brauchen verschiedene Fixes — vor
-   jedem Strippen `shared_channel_credentials()` selbst aufrufen.
+   Kennung des Startprofils, obwohl in keiner Datei etwas doppelt steht. Der
+   Schalter liegt in `plugins/platforms/<p>/adapter.py::_env_enablement` und
+   liest die `PHOTON_`-Zeilen der Haupt-`.env` — **das Streichen der
+   Kanalzeilen allein heilt nicht**, das Profil wird ueber die Umgebung wieder
+   scharf. Die beiden Warnungen sehen gleich aus und brauchen verschiedene Fixes —
+   vor jedem Strippen `shared_channel_credentials()` selbst aufrufen.
    Entscheidungstabelle (Kollision / fehlendes `enabled` / zweiter Prozess) und
    Belege: `references/profil-kanalzugangsdaten.md`.
    Ein zweites Gateway auf demselben Token nimmt dem ersten die Nachrichten weg
