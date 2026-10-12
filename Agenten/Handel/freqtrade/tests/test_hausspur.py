@@ -130,6 +130,39 @@ class Spalten(unittest.TestCase):
         self.assertEqual(list(df["hs_stop"].iloc[-3:]), [x["stop"] for x in erwartet[-3:]])
 
 
+class Konflikt(unittest.TestCase):
+    """Review M5: Ein- und Ausstieg derselben Seite in einer Kerze."""
+
+    def setUp(self):
+        _k, df = rahmen()
+        self.s = strategie(df=df)
+        df = self.s.populate_indicators(df, {"pair": PAAR})
+        df["hs_ein"] = None
+        df["hs_aus_long"] = False
+        df.loc[df.index[-1], ["hs_ein", "hs_aus_long"]] = ("long", True)
+        self.df = df
+        self.s.dp.get_analyzed_dataframe = lambda pair, tf: (df, None)
+
+    def test_einstieg_nicht_durch_ausstieg_verworfen(self):
+        df = self.s.populate_exit_trend(self.s.populate_entry_trend(self.df, {"pair": PAAR}),
+                                        {"pair": PAAR})
+        self.assertEqual(df["enter_long"].iloc[-1], 1)
+        self.assertNotEqual(df["exit_long"].fillna(0).iloc[-1], 1)
+
+    def test_offener_trade_steigt_aus(self):
+        t = Handel(self.df["date"].iloc[-10])
+        self.assertEqual(self.s.custom_exit(PAAR, t, None, 1.0, 0.0), "hs_aus_long")
+
+    def test_frisch_eroeffneter_trade_bleibt(self):
+        t = Handel(self.df["date"].iloc[-1] + pd.Timedelta(hours=1))
+        self.assertIsNone(self.s.custom_exit(PAAR, t, None, 1.0, 0.0))
+
+    def test_short_unberuehrt(self):
+        t = Handel(self.df["date"].iloc[-10])
+        t.is_short = True
+        self.assertIsNone(self.s.custom_exit(PAAR, t, None, 1.0, 0.0))
+
+
 class StopUndZiel(unittest.TestCase):
     def test_ziel_ueber_custom_roi_nicht_custom_exit(self):
         """Review I3: ROI fuellt der Backtest zum Zielpreis, custom_exit erst zum Schluss."""

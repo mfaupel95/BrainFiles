@@ -62,7 +62,7 @@ IM_CONTAINER = "/freqtrade/user_data"
 # werden importiert, nicht in die Strategie kopiert (Spec 10.10.2026).
 HAUS = HIER.parent.parent
 HAUS_IM_CONTAINER = "/agenten"
-SPEICHER = "700m"
+SPEICHER = "700m"          # Vorgabe; je Bot ueberschreibbar mit "speicher" (Review M7)
 
 
 # --- Manifest ---------------------------------------------------------------
@@ -454,7 +454,7 @@ def cmd_start(argumente: list[str]) -> int:
         docker(["rm", "-f", name])
         fenster = [
             "run", "-d", "--name", name, "--restart", "unless-stopped",
-            "--memory", SPEICHER,
+            "--memory", str(b.get("speicher") or SPEICHER),
             *mounts(b),
             "-p", f"127.0.0.1:{b['port']}:{b['port']}",
             IMAGE,

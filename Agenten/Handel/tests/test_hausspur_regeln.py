@@ -103,6 +103,24 @@ class Grenzen(unittest.TestCase):
         self.assertTrue(all(x is None for x in s[:890]))
         self.assertTrue(all(x is not None for x in s[890:]))
 
+    def test_ohne_atr_kein_einstieg(self):
+        # Review M4: das Haus handelt bei ATR <= 0 nicht, der Adapter auch nicht.
+        import dataclasses
+        import types
+        k = reihe()
+        name = "macd_mtf"
+        null = types.SimpleNamespace(atr_abs=lambda *_a: 0.0)
+        ersatz = dataclasses.replace(hr.spur(name), einstieg=lambda _k, _w: "long",
+                                     stop_prozent=hr._atr_stop(null))
+        alt = hr.spur
+        hr.spur = lambda n: ersatz if n == name else alt(n)
+        try:
+            s = hr.signale(k, name, ab=len(k) - 1)[-1]
+        finally:
+            hr.spur = alt
+        self.assertIsNone(s["einstieg"])
+        self.assertEqual(s["stop"], hr.STOP_VORGABE)
+
     def test_stop_und_ziel(self):
         k = reihe()
         s = hr.signale(k, "klassik_ema", ab=len(k) - 1)[-1]

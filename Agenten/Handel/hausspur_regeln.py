@@ -35,6 +35,7 @@ INDIKATOR = ("macd_mtf", "squeeze", "wavetrend", "supertrend")
 ALLE = KLASSIK + INDIKATOR + ("trendwende_btc", "orb")
 
 STOP_VORGABE = 6.0          # wie die Moon-Dev-Bots, wenn die Spur keinen nennt
+KEIN_HANDEL = -1.0          # Stop-Antwort "Haus handelt hier nicht" (Review M4)
 
 
 @dataclass(frozen=True)
@@ -122,7 +123,7 @@ def _atr_stop(modul):
         atr = modul.atr_abs(k, idx, int(w.get("atr_n", 14)))
         unten = float(w.get("pflicht_stop_prozent_min", 5.0))
         if not atr or atr <= 0:
-            return unten
+            return KEIN_HANDEL              # pruefe_einstieg bricht hier ab (M4)
         pct = max(atr / float(k[idx][4]) * 100.0, unten)
         return min(pct, float(w.get("pflicht_stop_prozent_max", 12.0)))
     return stop
@@ -316,6 +317,8 @@ def signale(kerzen: list, name: str, w: dict | None = None,
         if seite == "short" and w.get("nur_long"):
             seite = None
         stop = _sicher(s.stop_prozent, k, w) or STOP_VORGABE
+        if stop == KEIN_HANDEL:
+            seite, stop = None, STOP_VORGABE
         ziel = _sicher(s.ziel_prozent, k, w, seite or "long", stop) or 2.0 * stop
         aus[i] = {"einstieg": seite,
                   "aus_long": _sicher(s.ausstieg, k, "long", w),
