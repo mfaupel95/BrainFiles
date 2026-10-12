@@ -92,12 +92,11 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
-Dazu seit 09.10.2026 `docker-cascade-repair` unter `skills/system/`
-(Quelle `~/.claude/skills`, einzeln uebernommen, Vault-Kopie in `MaxHirn/.claude/skills/`). 
-**24 eigene** unter `Hermes/skills/claude-code-imports/` — jeder Vault-Skill hat
-dort eine Kopie, keine Luecke. Dazu `data-guard-audit` unter `skills/productivity/`.
-`hermes skills list` (HERMES_HOME gesetzt): **161 Skills geladen** (145 local,
-15 builtin, 1 hub), alle vier neuen `local`/`enabled`.
+**25 eigene** unter `Hermes/skills/claude-code-imports/` — jeder Vault-Skill hat
+dort eine Kopie, keine Luecke. Neu seit 13.10.2026: `docker-cascade-repair` und
+`geld` (Quelle `MaxHirn/.claude/skills/`, kopiert und Werkzeugnamen auf
+Hermes umgesetzt). `i-have-adhd` steht bewusst unter `skills/productivity/`,
+nicht in `claude-code-imports/`. Dazu `data-guard-audit` under `skills/productivity/`.
 
 **Der Abgleich vom 07.10.2026 hat sich selbst ins Knie geschossen — und ist
 repariert.** Der Import-Commit `0b7b5158` (07.10., 20:54) setzte drei Hermes-Kopien
