@@ -73,6 +73,15 @@ harter Massstab `--grenze 2.0` setzen.
    Steht im Log `zuletzt_gelesen_bis` auf dem Datum der juengsten Mail, war
    wirklich nichts neu.
 
+7. **Die Antwort-Muster sind deutsch; englische Fragen fallen durch** (gemessen
+   12.10.2026): "A quick question from Denis at DEBYKO" scorte 0,0 und blieb
+   stumm, weil `muster_antwort` nur (frage|antwort|bitte melden|...) kannte.
+   Englische Muster (\b(quick\s+)?question\b, \bwhat\s+(were|are|do|did|would)\s+you\b,
+   \bthoughts|input|feedback\b, \basking\b, \bcurious\b) sind jetzt ergaenzt.
+   Gegenprobe beim Gegenlesen: eine englische Frage, eine Werbemail mit
+   englischer Frage (muss negativ bleiben - die AUSSCHLUSS-Minderung traegt),
+   eine no-reply-Bestaetigung (netto 0,0).
+
 ## Gehoert NICHT gemeldet
 
 Newsletter, Werbung, Bank-/OpenAI-/Anthropic-Bestaetigungen, Reiseplanaenderungen
