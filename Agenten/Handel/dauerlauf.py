@@ -528,7 +528,7 @@ AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "kraken",
                  "trendwende_btc", "liq_wand", "omniquant",
                  "moondev_marktlage", "nautilus_kraken",
                  "omnitrade_futures", "moondev_signalwelle",
-                 "orb")
+                 "orb", "orbk")
 AUTO_FREIGABE_STUNDEN = 12
 
 
