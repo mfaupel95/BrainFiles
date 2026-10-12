@@ -68,7 +68,7 @@ AUSSCHLUSS = [
     # 04.10. mit 'erwartet Antwort', weil das HTML im Body das Wort 'Antwort'
     # irgendwo im Fussnote-Block mitbringt).
     ("automatisierte_benachrichtigung", r"(notification|benachrichtigung|do-not-reply|"
-                                       r"noreply|no-reply|nicht\s+antworten)"),
+                                       r"noreply|no-reply|nicht\s+antworten|@paypal\.(de|com))"),
     # Kaltakquise: ein einseitiger Verkaufs-Pitch ohne Auftrag, weder
     # Newsletter noch Werbung. Gemessen 10.10.: 'Mein neuer Skill fuer deine
     # eigene Website' (julian@ki-automatisierungs-community.de) sammelte 2,5

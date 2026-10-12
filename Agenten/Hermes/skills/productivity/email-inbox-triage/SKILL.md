@@ -82,6 +82,15 @@ harter Massstab `--grenze 2.0` setzen.
    englischer Frage (muss negativ bleiben - die AUSSCHLUSS-Minderung traegt),
    eine no-reply-Bestaetigung (netto 0,0).
 
+8. **Dienst-Automatik-Absender ohne no-reply im Namen fallen durch** (gemessen
+   12.10.2026): service@paypal.de traegt kein no-reply/notification, also gab
+   der Footer "bitte antworten sie nicht auf diese e-mail" 1,5 Antwortpunkte
+   und "kann sofort genutzt werden" 1,0 Dringlichkeit - zwei
+   PayPal-Zahlungsbestaetigungen (Ueberweisung, 10-EUR-Einzahlung) wurden als
+   "erwartet Antwort" gemeldet. Fix: `@paypal\.(de|com)` in den AUSSCHLUSS
+   automatisierte_benachrichtigung, danach -1,0/0,0 (stumm). Gegenprobe: eine
+   echte englische Frage (DEBYKO, 1.5) bleibt positiv.
+
 ## Gehoert NICHT gemeldet
 
 Newsletter, Werbung, Bank-/OpenAI-/Anthropic-Bestaetigungen, Reiseplanaenderungen
