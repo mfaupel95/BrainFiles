@@ -1242,9 +1242,23 @@ def buche_abgleich(z, w, live, still=False):
     if stand["geister"] and not still:
         print("  %d Geist(er) aus dem Live-Buch gebucht (kein Bestand an "
               "der Boerse)" % stand["geister"])
-    stand["fremde"] = _abgleich_stufe(
-        "fremde", bueche_fremde_positionen_uebernehmen, z, w, still=still,
-        schutz=live)
+    # NUR DIE BASIS uebernimmt Fremdpositionen (Auftrag Max 12.10.2026).
+    # Alle drei Risikostufen (niedrig/mittel/hoch) fragen dasselbe Boersenkonto
+    # (`okxf.positionen()` kennt keine Stufe). Ohne diese Bedingung holte jede
+    # Stufe die Handpositionen in ihr EIGENES Buch und buchte sie spaeter als
+    # Geist wieder aus: dieselben Ereignisse standen bis zu dreimal in
+    # verschiedenen Journalen, belegten in jedem Buch einen Platz und zaehlten
+    # in jeder Kapitalkurve (Drawdown, Kill). Eine Stufe ist ein Messwerkzeug
+    # mit Papiergeld und darf nie live gehen (`risikostufe.live_erlaubt`) - es
+    # gibt dort keine Boersenposition, die ein Buch fuehren muesste. Die
+    # Geisterpruefung oben laeuft weiter: sie raeumt Altbestand ab und ist
+    # ohne Live-Positionen im Buch ein No-op.
+    if risikostufe.ist_basis():
+        stand["fremde"] = _abgleich_stufe(
+            "fremde", bueche_fremde_positionen_uebernehmen, z, w, still=still,
+            schutz=live)
+    else:
+        stand["fremde"] = 0
     if stand["fremde"] and not still:
         print("  %d fremde Position(en) von der Boerse ins Buch uebernommen"
               % stand["fremde"])
