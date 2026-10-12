@@ -75,6 +75,12 @@ class _OmnitradetLauf:
             pass
 
 
+def _produkt_aus_env(env):
+    """Wie run_kraken_paper_node.produkt_typ(): ohne Angabe gilt spot."""
+    wahl = (env.get("KRAKEN_PRODUKT") or "spot").strip().lower()
+    return "futures" if wahl in ("futures", "future", "perpetual", "pf") else "spot"
+
+
 class _KrakenQuoteNode:
     """Eigenstaendiger, read-only Kraken-Quote-Node fuer Spot oder Futures."""
 
@@ -111,16 +117,42 @@ class _KrakenQuoteNode:
                    for a in proc.cmdline()]
             skript = os.path.normcase(os.path.realpath(str(_KRAKEN_NODE)))
             return (exe == erwartet_exe and skript in cmd
-                    and proc.environ().get("KRAKEN_PRODUKT") == self.produkt)
+                    and _produkt_aus_env(proc.environ()) == self.produkt)
         except (psutil.Error, OSError, PermissionError):
             return False
+
+    def _suche_node(self):
+        """PID des laufenden Nodes per Prozess-Scan, falls die PID-Datei veraltet ist.
+
+        Der venv-python.exe ist ein Launcher, der den Basis-Python als Kind
+        startet; beide tragen Skript und Produkt. Gemeldet wird der oberste.
+        """
+        skript = os.path.normcase(os.path.realpath(str(_KRAKEN_NODE)))
+        treffer = set()
+        for proc in psutil.process_iter():
+            try:
+                cmd = [os.path.normcase(os.path.realpath(a)) if os.path.exists(a) else a
+                       for a in proc.cmdline()]
+                if skript in cmd and _produkt_aus_env(proc.environ()) == self.produkt:
+                    treffer.add((proc.pid, proc.ppid()))
+            except (psutil.Error, OSError):
+                continue
+        pids = {pid for pid, _ in treffer}
+        oberste = sorted(pid for pid, eltern in treffer if eltern not in pids)
+        return oberste[0] if oberste else None
 
     def laeuft(self):
         if self._prozess is not None and self._prozess.poll() is None:
             return True
         pid = self._pid()
-        return (pid is not None and hz.prozess_lebt(pid) is True
-                and self._persistiert_ist_eigener_node(pid))
+        if (pid is not None and hz.prozess_lebt(pid) is True
+                and self._persistiert_ist_eigener_node(pid)):
+            return True
+        gefunden = self._suche_node()
+        if gefunden is None:
+            return False
+        self._pid_pfad.write_text("%d\n" % gefunden, encoding="ascii")
+        return True
 
     def starten(self):
         if self.laeuft():
@@ -144,12 +176,14 @@ class _KrakenQuoteNode:
     def stoppen(self):
         pid = self._prozess.pid if self._prozess is not None else self._pid()
         if pid is None or not hz.prozess_lebt(pid):
+            pid = self._suche_node()
+        if pid is None or not hz.prozess_lebt(pid):
             self._pid_pfad.unlink(missing_ok=True)
             return
         subprocess.run(
             [os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
                           "System32", "taskkill.exe"),
-             "/F", "/PID", str(pid)],
+             "/F", "/T", "/PID", str(pid)],
             capture_output=True, check=False,
         )
         self._pid_pfad.unlink(missing_ok=True)
