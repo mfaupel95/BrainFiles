@@ -91,6 +91,15 @@ harter Massstab `--grenze 2.0` setzen.
    automatisierte_benachrichtigung, danach -1,0/0,0 (stumm). Gegenprobe: eine
    echte englische Frage (DEBYKO, 1.5) bleibt positiv.
 
+9. **`--alle --fenster-erzwingen` (Gegenlesen) ueberschreibt die Merkdatei
+   und verliert den UID-Anker** (gemessen 12.10.2026): der Schreibblock schrieb
+   auch beim Gegenlesen, und `zuletzt_uid` wurde nur geschrieben, wenn
+   `newest_uid > zuletzt_uid` - beim Wiederlesen derselben Mails sind sie
+   gleich, also fiel zuletzt_uid weg und der naechste Betriebslauf haette das
+   ganze 26h-Fenster erneut gemeldet (Doppelmeldung). Fix: Schreibblock
+   bedingt `not args.fenster_erzwingen`. Gegenprobe: Gegenlesen laufen lassen
+   und Merkdatei vorher/nachher vergleichen - sie muss unveraendert sein.
+
 ## Gehoert NICHT gemeldet
 
 Newsletter, Werbung, Bank-/OpenAI-/Anthropic-Bestaetigungen, Reiseplanaenderungen
