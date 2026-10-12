@@ -25,7 +25,7 @@
  "ausstieg_bei_regel": true,
  "gebuehr_taker": 0.0005,
  "llm": {
-   "modell": "qwen35-8k:latest",
+   "modell": "phi4-mini:latest",
    "bruecke": "http://127.0.0.1:11499/v1",
    "temperatur": 0,
    "konfidenz_min": 70,

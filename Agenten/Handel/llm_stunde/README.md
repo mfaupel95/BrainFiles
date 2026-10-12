@@ -9,7 +9,7 @@ Papierspur auf 1H-Kerzen, BTC/ETH/SOL-USDT-SWAP, nur Long. Drei Indikator-Kandid
 | `rsi1h` | RSI14 kreuzt über 30, Schluss über EMA200 | RSI14 über 55 |
 
 - **R-Arm:** Einstieg, sobald der Kandidat steht.
-- **L-Arm:** Einstieg nur bei `BUY` mit Konfidenz ≥ 70 % vom lokalen Modell (`qwen35-8k` über die Brücke, Port 11499). Ausfall heißt kein Einstieg.
+- **L-Arm:** Einstieg nur bei `BUY` mit Konfidenz ≥ 70 % vom lokalen Modell (`phi4-mini` über die Brücke, Port 11499). Ausfall heißt kein Einstieg.
 
 Stop: fest 2,5 % (Hausstandard von `klassik_ema`, innerhalb 1,5 bis 5 %). Kein festes Ziel. Ausstiege sind in beiden Armen regelbasiert. Jeder Strang schreibt nach `laeufe/<variante>-<arm>/`, das LLM-Protokoll nach `llm_entscheide.jsonl`.
 
