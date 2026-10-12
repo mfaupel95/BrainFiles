@@ -2,7 +2,7 @@
 """Echte OKX-Kerzen durch die Signalgeber-Strategie (Nautilus) -> nautilus_intents.jsonl.
 
 Nur in der Nautilus-Umgebung: Werkstatt/nautilus-venv/Scripts/python.exe nautilus_okx_lauf.py
-          [--instrument BTC-USDC] [--bar 5m|1D] [--strategie ema|donchian] [--ziel Pfad] [--vorschau]
+          [--instrument BTC-USDC] [--bar 5m|1H|4H|1D] [--strategie ema|donchian] [--rein 55] [--raus 20] [--ziel Pfad] [--vorschau]
 Holt die letzten abgeschlossenen Kerzen (oeffentlicher OKX-Markt, kein Schluessel), rechnet sie
 im Backtest-Motor und haengt NUR die Kreuzung der juengsten Kerze an die Zieldatei an
 (ts_event = Kerzenschluss, jede Kreuzung einmal). Aeltere Kreuzungen werden nicht nachgeholt:
@@ -31,7 +31,7 @@ from nautilus_trader.test_kit.providers import TestInstrumentProvider
 from nautilus_signalgeber import (DonchianConfig, DonchianSignalgeber, Signalgeber,
                                   SignalgeberConfig)
 
-BAR_S = {"1m": 60, "5m": 300, "15m": 900, "1H": 3600, "1D": 86400}
+BAR_S = {"1m": 60, "5m": 300, "15m": 900, "1H": 3600, "4H": 14400, "1D": 86400}
 STANDARD_ZIEL = os.path.join(os.path.dirname(os.path.dirname(HIER)), "Werkstatt", "nautilus_intents.jsonl")
 
 
@@ -45,7 +45,7 @@ def kerzen(instrument, bar, n=300):
     return sorted(([int(x[0]), float(x[1]), float(x[2]), float(x[3]), float(x[4])] for x in fertig))
 
 
-def rechne(zeilen, bar_s, ziel_id, strategie="ema"):
+def rechne(zeilen, bar_s, ziel_id, strategie="ema", rein=55, raus=20):
     """Backtest ueber die Kerzen; gibt die geschriebenen Absichtszeilen zurueck."""
     e = BacktestEngine(BacktestEngineConfig(trader_id=TraderId("BACKTESTER-001"),
                                             risk_engine=RiskEngineConfig(bypass=True)))
@@ -53,7 +53,8 @@ def rechne(zeilen, bar_s, ziel_id, strategie="ema"):
                 base_currency=None, starting_balances=[Money(1_000_000, USDT), Money(10, ETH)])
     inst = TestInstrumentProvider.ethusdt_binance()   # nur Rechentraeger; ziel_id benennt das Signal
     e.add_instrument(inst)
-    spez = "1-DAY" if bar_s == 86400 else "1-HOUR" if bar_s == 3600 else "%d-MINUTE" % (bar_s // 60)
+    spez = ("%d-DAY" % (bar_s // 86400) if bar_s % 86400 == 0 else "%d-HOUR" % (bar_s // 3600)
+            if bar_s % 3600 == 0 else "%d-MINUTE" % (bar_s // 60))
     bt = BarType.from_str("ETHUSDT.BINANCE-%s-LAST-EXTERNAL" % spez)
     bars = []
     for ms, o, h, l, c in zeilen:
@@ -78,13 +79,14 @@ def main(argv):
     inst, bar = opt("--instrument", "BTC-USDC"), opt("--bar", "5m")
     ziel = opt("--ziel", STANDARD_ZIEL)
     strategie = opt("--strategie", "ema")
+    rein, raus = int(opt("--rein", 55)), int(opt("--raus", 20))
     bar_s = BAR_S[bar]
     zeilen = kerzen(inst, bar)
     if len(zeilen) < 40:
         print("zu wenige Kerzen: %d" % len(zeilen))
         return 1
     letzter_schluss = (zeilen[-1][0] // 1000 + bar_s) * 10**9
-    intents = rechne(zeilen, bar_s, inst + ".OKX", strategie)
+    intents = rechne(zeilen, bar_s, inst + ".OKX", strategie, rein, raus)
     neu = [z for z in intents if z["ts_event"] == letzter_schluss]
     print("Kerzen: %d | Kreuzungen gesamt: %d | auf juengster Kerze: %d" % (len(zeilen), len(intents), len(neu)))
     if not neu or "--vorschau" in argv:
