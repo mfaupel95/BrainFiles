@@ -835,21 +835,27 @@ class Lauf:
         # (scanner ab 21.09. 19:22 in jedem Zyklus).
         umgebung = zyklus_umgebung(modus, umgebung)
 
+        # Popen statt run: bei Timeout muss der GANZE Prozessbaum enden. run()
+        # beendet nur den direkten Kindprozess; dessen Enkel bleiben als
+        # Waisen stehen und laufen in jedem Zyklus weiter (am 12.10.2026 wuchs
+        # so die Zahl der Scanner-Prozesse auf 768).
+        p = subprocess.Popen([python, skript, modus], cwd=ordner,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             text=True, env=umgebung,
+                             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         try:
-            p = subprocess.run([python, skript, modus], cwd=ordner,
-                               capture_output=True, text=True, timeout=TIMEOUT_S,
-                               env=umgebung,
-                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
-        except subprocess.TimeoutExpired as e:
-            # FIXED: Timeout-Exception nicht mehr fatal
-            protokoll("%s TIMEOUT (exceeded %ds limit)" % (spur, TIMEOUT_S))
+            out, err = p.communicate(timeout=TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)],
+                           capture_output=True)
+            p.communicate()
+            protokoll("%s TIMEOUT (exceeded %ds limit), Prozessbaum beendet" % (spur, TIMEOUT_S))
             return kennung, 124, "TIMEOUT: Handelslogik antwortet nicht"
         except Exception as e:
-            # Andere Subprocess-Fehler (OSError, etc.)
             protokoll("%s subprocess ERROR: %s" % (spur, e))
             return kennung, 1, str(e)
-        
-        return kennung, p.returncode, (p.stdout or "") + (p.stderr or "")
+        return kennung, p.returncode, (out or "") + (err or "")
+
 
     def zyklus(self):
         self.zyklen += 1

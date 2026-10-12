@@ -103,6 +103,11 @@ def soll_block(profil, abw, haupt):
     alle = abw.get("alle") or {}
     mein = (abw.get("profile") or {}).get(profil) or {}
     ausschluss = set(alle.get("ausschluss") or []) - set(mein.get("einschluss") or [])
+    # ohne: je Server die Profile, in denen er entfaellt (z. B. windows-mcp nur
+    # in den Desktop-Profilen). Liegt in einem eigenen Schluessel, weil
+    # 'ausschluss' global gilt.
+    ausschluss |= {n for n, profile_ in (abw.get("ohne") or {}).items()
+                   if profil in (profile_ or [])}
     ersetze = copy.deepcopy(mein.get("ersetze") or {})
     repo = mein.get("projectatlas_repo")
     if repo:

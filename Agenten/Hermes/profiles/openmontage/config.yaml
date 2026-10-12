@@ -401,17 +401,6 @@ mcp_servers:
       PYTHONPATH: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src
       TOOLUNIVERSE_STDIO_MODE: '1'
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp
-  windows-mcp:
-    args:
-      - -c
-      - from windows_mcp.__main__ import main; main()
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.cursortouch.windows-mcp\.venv\Scripts\python.exe
-    env:
-      ANONYMIZED_TELEMETRY: "false"
-      MODE: local
-      WINDOWS_MCP_DEBUG: "false"
-      WINDOWS_MCP_PROFILE_SNAPSHOT: "true"
-      WINDOWS_MCP_SCREENSHOT_BACKEND: auto
   projectatlas:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe
     args:
