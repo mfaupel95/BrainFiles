@@ -215,9 +215,12 @@ def _orb() -> Spur:
         if not r:
             return None
         heute, hoch, tief = r
-        jetzt = _tag(heute[-1][0])
+        # Gezaehlt wird das Kerzenende (Review M3): das Haus handelt erst nach
+        # Schluss der Kerze, eine 22:45-Kerze also um 23:00.
+        dauer_ms = heute[-1][0] - heute[-2][0]
+        ende_min = (heute[-1][0] + dauer_ms - heute[0][0]) // 60_000
         schluss_min = 24 * 60 - int(w.get("letzter_einstieg_min_vor_schluss", 60))
-        if jetzt.hour * 60 + jetzt.minute >= schluss_min:
+        if ende_min >= schluss_min:
             return None
         for z in heute[2:-1]:
             if z[4] > hoch or z[4] < tief:
@@ -275,12 +278,22 @@ def spur(name: str) -> Spur:
 
 # --- Rechnung je Kerze ---------------------------------------------------------
 
+_GEMELDET: set = set()
+
+
 def _sicher(fn, *args):
-    """Eine Regel, die wirft, gibt kein Signal - wie klassik_regeln.bauen."""
+    """Eine Regel, die wirft, gibt kein Signal - wie klassik_regeln.bauen.
+
+    Jeder Fehlertext wird nur einmal gemeldet (Review M9): im Backtest wirft
+    sonst jede Kerze eine Zeile, ueber zwei Jahre M15 bis zu ~70k.
+    """
     try:
         return fn(*args)
     except Exception as e:                                     # noqa: BLE001
-        print("  hausspur: Regel nicht rechenbar (%s)" % e, file=sys.stderr)
+        text = "%s: %s" % (type(e).__name__, e)
+        if text not in _GEMELDET:
+            _GEMELDET.add(text)
+            print("  hausspur: Regel nicht rechenbar (%s)" % text, file=sys.stderr)
         return None
 
 

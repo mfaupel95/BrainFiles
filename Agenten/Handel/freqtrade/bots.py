@@ -355,6 +355,9 @@ def cmd_backtest(argumente: list[str], timerange: str | None = None,
             "--strategy", b["strategie"],
             "--cache", "none",
             "--export", "trades",
+            # Live wirken StoplossGuard und MaxDrawdown - ohne den Schalter
+            # misst das Urteil eine andere Konfiguration (Review M6).
+            "--enable-protections",
         ]
         if timerange:
             fenster += ["--timerange", timerange]
