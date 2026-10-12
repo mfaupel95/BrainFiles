@@ -51,7 +51,7 @@ class KrakenQuoteNodes(unittest.TestCase):
 
     def test_spot_start_uebergibt_produkt_symbol_und_keinen_order_client(self):
         node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "spot")
-        with patch.object(lp.subprocess, "Popen") as popen:
+        with patch.object(type(node), "laeuft", return_value=False), patch.object(lp.subprocess, "Popen") as popen:
             node.starten()
         args, kwargs = popen.call_args
         self.assertIn("run_kraken_paper_node.py", args[0][1])
@@ -89,7 +89,7 @@ class KrakenQuoteNodes(unittest.TestCase):
         secrets = {"KRAKEN_SPOT_API_KEY": "secret", "KRAKEN_SPOT_API_SECRET": "secret",
                    "KRAKEN_FUTURES_DEMO_API_KEY": "secret",
                    "KRAKEN_FUTURES_DEMO_API_SECRET": "secret"}
-        with patch.dict(lp.os.environ, secrets), patch.object(lp.subprocess, "Popen") as popen:
+        with patch.dict(lp.os.environ, secrets), patch.object(type(node), "laeuft", return_value=False), patch.object(lp.subprocess, "Popen") as popen:
             node.starten()
         child_env = popen.call_args.kwargs["env"]
         self.assertFalse(set(secrets) & set(child_env))

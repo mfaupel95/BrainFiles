@@ -151,7 +151,11 @@ class _KrakenQuoteNode:
         gefunden = self._suche_node()
         if gefunden is None:
             return False
-        self._pid_pfad.write_text("%d\n" % gefunden, encoding="ascii")
+        # Nur Merkhilfe fuer den naechsten Start: fehlt der Ordner, gilt die PID trotzdem.
+        try:
+            self._pid_pfad.write_text("%d\n" % gefunden, encoding="ascii")
+        except OSError:
+            pass
         return True
 
     def starten(self):
