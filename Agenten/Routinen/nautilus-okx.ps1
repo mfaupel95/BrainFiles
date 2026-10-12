@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Continue'
 $wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $py     = Join-Path $wurzel 'Werkstatt\nautilus-venv\Scripts\python.exe'
 $skript = Join-Path $wurzel 'Agenten\Bus\nautilus_okx_lauf.py'
+if (-not (Test-Path $py)) { $py = 'O:\Werkstatt\nautilus-venv\Scripts\python.exe' }
 $logs   = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 $log = Join-Path $logs 'nautilus-okx-letzter-lauf.log'
