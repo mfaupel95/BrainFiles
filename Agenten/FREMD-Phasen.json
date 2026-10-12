@@ -1,0 +1,48 @@
+{
+  "fassung": 1,
+  "stand": "2026-10-12",
+  "_zweck": "Phasenstand je Fremd-Repo aus dem Ausbauplan (Werkstatt/plan-fremdrepos-ausbau-2026-10-09.md). Von Hand gepflegt, Gegenstück zu FREMD-Liste.json (Herkunft) und BEREICHE.json (Besitz).",
+  "_phasen": {
+    "0": "Inventur (lesend)",
+    "1": "Adapter",
+    "2": "Hermes-Agent",
+    "3": "UI-Start",
+    "4": "Test und Betrieb"
+  },
+  "_status": ["offen", "in_arbeit", "fertig", "blockiert"],
+  "_regeln": [
+    "status bezieht sich auf phase_aktuell: 'fertig' heisst, diese Phase ist abgeschlossen; das Repo wartet dann auf die naechste Entscheidung.",
+    "blockiert braucht blockiert_weil; ohne Begruendung kein blockiert.",
+    "Rolle 'referenz' hat keinen Anschluss geplant; Phasenstand bleibt 0.",
+    "name entspricht dem Verzeichnisnamen unter Werkstatt/Repos/ (bei den Handels-Repos ohne Fork-Pfad)."
+  ],
+  "repos": [
+    {"name": "agent-trade-kit", "rolle": "handel", "phase_aktuell": 1, "status": "blockiert", "blockiert_weil": "Demo-Key fehlt (Max); okx-agentkit ist gebaut, MCP steht aus", "notiz": "Phase 0 fertig 09.10.; startet nur mit --demo --profile demo", "geaendert": "2026-10-11"},
+    {"name": "kraken-cli", "rolle": "handel", "phase_aktuell": 2, "status": "in_arbeit", "blockiert_weil": null, "notiz": "Adapter aktiv (kraken-papier, Papierkonto 10 000 USD); Profil und Skill fremd-handel-papier vorhanden", "geaendert": "2026-10-11"},
+    {"name": "intelligent-trading-bot", "rolle": "handel", "phase_aktuell": 1, "status": "offen", "blockiert_weil": null, "notiz": "Phase 0 fertig; in adapter_quellen.json aus; Binance-Adapter muesste auf OKX umgebaut werden", "geaendert": "2026-10-11"},
+    {"name": "tradememory-protocol", "rolle": "handel", "phase_aktuell": 0, "status": "fertig", "blockiert_weil": null, "notiz": "Inventur fertig; Journal-Rolle, Projekt im Wartungsmodus; naechstes Repo nach Phase 1", "geaendert": "2026-10-09"},
+    {"name": "moon-dev-ai-agents", "rolle": "handel", "phase_aktuell": 1, "status": "blockiert", "blockiert_weil": "keine handelbaren Signale (Token nicht gelistet); Lizenz fehlt", "notiz": "Adapter moondev gemergt; Auswertung 12.10. nicht durchfuehrbar", "geaendert": "2026-10-12"},
+    {"name": "jev-trader", "rolle": "handel", "phase_aktuell": 0, "status": "fertig", "blockiert_weil": null, "notiz": "Inventur fertig; DEX-spezifisch, nur als Vorlage; Anschluss zurueckgestellt", "geaendert": "2026-10-09"},
+    {"name": "ziplime", "rolle": "handel", "phase_aktuell": 0, "status": "fertig", "blockiert_weil": null, "notiz": "Inventur fertig; EULA-Lizenz vor Weiterverwendung lesen", "geaendert": "2026-10-09"},
+    {"name": "Harvard-Algorithmic-Trading-with-AI", "rolle": "handel", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "fomo-robinhood-radar", "rolle": "handel", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "osiris", "rolle": "handel", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "auto-prediction-modest-birch-bridge", "rolle": "handel", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "Prognosemaerkte; origin entfernt, Zweig research/prediction lokal", "geaendert": "2026-10-09"},
+    {"name": "Scrapling", "rolle": "recherche", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "jevgrep", "rolle": "recherche", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "awesome-systematic-trading", "rolle": "recherche", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "Agent-Reach", "rolle": "recherche", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "basic-memory", "rolle": "gedaechtnis", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "gbrain", "rolle": "gedaechtnis", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "claudian", "rolle": "gedaechtnis", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "obsidian-skills", "rolle": "gedaechtnis", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "caveman", "rolle": "gedaechtnis", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "OpenTerminal", "rolle": "ui", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "OpenTerminalUI", "rolle": "ui", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "openmontage", "rolle": "ui", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "", "geaendert": "2026-10-09"},
+    {"name": "claude-code", "rolle": "referenz", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "nur lesen, kein Anschluss", "geaendert": "2026-10-09"},
+    {"name": "codex", "rolle": "referenz", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "nur lesen, kein Anschluss", "geaendert": "2026-10-09"},
+    {"name": "deepseek-harness", "rolle": "referenz", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "nur lesen, kein Anschluss", "geaendert": "2026-10-09"},
+    {"name": "EasyCLIProxyAPI", "rolle": "referenz", "phase_aktuell": 0, "status": "offen", "blockiert_weil": null, "notiz": "nur lesen, kein Anschluss", "geaendert": "2026-10-09"}
+  ]
+}

@@ -24,6 +24,16 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   Prozess vom abgelaufenen Lauf, erst `kill -9 <pid>` (mein eigener, abgebrochener
   Job) und dann neu starten. Nie doppelt starten.
 
+## Bot-Wahl: ein Modell, das in Schleifen laeuft, ist ein Wechsel-Grund
+- Kollabiert ein delegierter Bot mit exit 1 / "Repetition Detected" (Modell-Loop),
+  NICHT denselben Bot blind erneut starten — das Modell kollabiert wieder. Erst im
+  Repo pruefen, was wirklich passiert ist (Commit da? Fenster offen? Position
+  eingelegt?), dann den Auftrag an einen Bot mit stabilem Modell geben.
+- Modell-Karte (gemessen): `recherche` = deepseek-v4-flash (stabil, auch fuer
+  Handel-Baum-Analyse, cwd BrainFiles); `markt-recherche`/`lotse` = longcat
+  (kollabiert bei offenen Such-/Bau-Aufgaben in Wiederholungsschleifen). Fuer
+  Analyse/Recherche im Handel-Baum `recherche` bevorzugen, nicht den longcat-Bot.
+
 ## fomo-radar Score-Workflow
 - Ablauf: `score --export` -> Verdicts beurteilen (ok/skip, per LLM-Workflow des
   Bots oder im Chat) -> `score --import <results>`. Ein `--import` ohne neue
