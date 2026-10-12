@@ -8,9 +8,11 @@ zurueck (wie kraken). Keine Testrunde beruehrt eine echte Order: alle
 Boersenfunktionen werden ersetzt (Patch), und die Dry-Run-Funktion
 platziere_einstieg(..., echt=False) darf die Boerse gar nicht erst ansprechen.
 
-Das Ziel (Take-Profit) hat keine Boersenorder: kraken.py stellt nur den Stop
-(stop_setzen). Ein Ausstieg zum Ziel wird vom Papier-Ausstiegspfad gebucht
-(pruefe_ausstiege), der den Eintrag schliesst - siehe Modul-Docstring.
+Der Live-Pfad legt seit dem Take-Profit-Ausbau zusaetzlich das ZIEL als
+take-profit-market-Order an die Boerse (kraken.take_profit_setzen). Ein
+Short-Signal wird live verweigert (Kraken-Spot kann kein Short halten). Der
+Live-Ausstieg schliesst die echte Position nur nach Buch-vs-Boerse-Pruefung
+(_exit_live/_abgleich_runde) - bei Ungewissheit keine Marktorder.
 """
 import io
 import json
@@ -109,7 +111,7 @@ class TestPlatzierung(unittest.TestCase):
         self.assertIsNone(p)
         self.assertNotIn("kauf_txid", self.z["position"])
 
-    def test_echt_true_ordert_kauf_und_stop_long(self):
+    def test_echt_true_ordert_kauf_stop_und_take_profit_long(self):
         aufrufe = []
         def _markt_kauf(paar, menge, echt=False):
             aufrufe.append(("kauf", paar, menge, echt))
@@ -117,44 +119,48 @@ class TestPlatzierung(unittest.TestCase):
         def _stop(paar, menge, stop, echt=False, **k):
             aufrufe.append(("stop", paar, menge, stop, echt))
             return "TX-STOP"
+        def _tp(paar, menge, preis, echt=False, **k):
+            aufrufe.append(("tp", paar, menge, preis, echt))
+            return "TX-TP"
         with self.paar_info, \
                 patch.object(handeln.kraken, "markt_kauf", _markt_kauf), \
-                patch.object(handeln.kraken, "stop_setzen", _stop):
+                patch.object(handeln.kraken, "stop_setzen", _stop), \
+                patch.object(handeln.kraken, "take_profit_setzen", _tp):
             p = handeln.platziere_einstieg(self.z, _w_offen(),
                                            self.z["position"], echt=True)
         self.assertEqual(aufrufe[0][:4], ("kauf", "ETHUSD", 5.0, True))
         self.assertEqual(aufrufe[1][:5], ("stop", "ETHUSD", 5.0, 98.0, True))
+        # Das ZIEL liegt jetzt als eigenstaendige Boersenorder.
+        self.assertEqual(aufrufe[2][:5], ("tp", "ETHUSD", 5.0, 103.4, True))
         self.assertEqual(p["kauf_txid"], "TX-KAUF")
         self.assertEqual(p["stop_txid"], "TX-STOP")
+        self.assertEqual(p["tp_txid"], "TX-TP")
+        self.assertFalse(p["tp_fehlt"])
         self.assertEqual(p["menge"], 5.0)
         self.assertEqual(p["modus"], "live")
 
-    def test_echt_true_short_verkauft_und_stoppt_kauf(self):
-        """Ein Short oeffnet mit markt_verkauf; der Schutz-Stop eines Short
-        ist ein KAUF (glattstellen) - orbk stellt ihn ueber _buy_stop_setzen,
-        weil kraken.stop_setzen nur Verkaufs-Stops kennt (Long-Spur)."""
-        aufrufe = []
+    def test_echt_true_short_wird_verweigert(self):
+        """Kraken-Spot kann kein Short halten: ein Short-Signal darf im
+        Live-Pfad KEINE Order legen und nennt einen klaren Sperrgrund."""
+        def _verboten(*a, **k):
+            raise AssertionError("Short darf keine Order an die Boerse legen")
         z = {"position": {"inst": "ETH_USD", "richtung": "short",
                           "einstieg": 97.6, "stop": 100.0, "ziel": 94.6,
                           "tag": "2026-09-13", "range_hoehe": 2.0,
                           "punkt_wert_usd": 1.0, "risiko_usd": 10.0}}
-        def _markt_verkauf(paar, menge, echt=False):
-            aufrufe.append(("verkauf", paar, menge, echt))
-            return "TX-VERKAUF"
-        def _buy_stop(paar, menge, stop, echt=False):
-            aufrufe.append(("buy_stop", paar, menge, stop, echt))
-            return "TX-BUYSTOP"
         with self.paar_info, \
-                patch.object(handeln.kraken, "markt_verkauf", _markt_verkauf), \
-                patch.object(handeln, "_buy_stop_setzen", _buy_stop):
+                patch.object(handeln.kraken, "markt_verkauf", _verboten), \
+                patch.object(handeln.kraken, "markt_kauf", _verboten), \
+                patch.object(handeln.kraken, "stop_setzen", _verboten), \
+                patch.object(handeln.kraken, "take_profit_setzen", _verboten), \
+                patch("builtins.print") as pr:
             p = handeln.platziere_einstieg(z, _w_offen(), z["position"],
                                            echt=True)
-        self.assertEqual(aufrufe[0][:4], ("verkauf", "ETHUSD", 5.0, True))
-        self.assertEqual(aufrufe[1][:5], ("buy_stop", "ETHUSD", 5.0, 100.0,
-                                          True))
-        self.assertEqual(p["kauf_txid"], "TX-VERKAUF")
-        self.assertEqual(p["stop_txid"], "TX-BUYSTOP")
-        self.assertEqual(p["modus"], "live")
+        self.assertIsNone(p)
+        gedruckt = " ".join(str(a[0]) for a in pr.call_args_list)
+        self.assertIn("Short", gedruckt)
+        self.assertIn("nicht moeglich", gedruckt)
+
 
 
 class TestVorschauUndFallsafe(unittest.TestCase):
@@ -202,6 +208,9 @@ class TestLaufLivePlatziert(unittest.TestCase):
         def _stop(paar, menge, stop, echt=False, **k):
             aufrufe.append(("stop", paar, menge, stop, echt))
             return "TX-STOP"
+        def _tp(paar, menge, preis, echt=False, **k):
+            aufrufe.append(("tp", paar, menge, preis, echt))
+            return "TX-TP"
         with tempfile.TemporaryDirectory() as w:
             zpfad = Path(w) / "zustand.json"
             jpfad = Path(w) / "handelsjournal.csv"
@@ -221,6 +230,7 @@ class TestLaufLivePlatziert(unittest.TestCase):
                                                    "preis_stellen": 4}), \
                         patch.object(handeln.kraken, "markt_kauf", _markt_kauf), \
                         patch.object(handeln.kraken, "stop_setzen", _stop), \
+                        patch.object(handeln.kraken, "take_profit_setzen", _tp), \
                         patch.object(handeln, "_jetzt", lambda: datetime(
                             2026, 9, 13, 0, 45, tzinfo=timezone.utc)), \
                         patch.object(handeln, "_letzter_kurs",
@@ -235,6 +245,7 @@ class TestLaufLivePlatziert(unittest.TestCase):
             nachher = json.loads(zpfad.read_text(encoding="utf-8"))
             self.assertEqual(nachher["position"]["modus"], "live")
             self.assertEqual(nachher["position"]["kauf_txid"], "TX-KAUF")
+            self.assertEqual(nachher["position"]["tp_txid"], "TX-TP")
 
 
 class TestKeinLiveEintragInPapier(unittest.TestCase):

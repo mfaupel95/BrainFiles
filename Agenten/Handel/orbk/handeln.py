@@ -1,19 +1,32 @@
 """ORB auf Kraken - Papierzyklus (Spur orbk).
 
-Reine Simulation: Kerzen von der oeffentlichen Kraken-API, Buch in
-zustand.json, kein einziger Order-Call. handel_erlaubt bleibt false -
- diese Datei kann gar nicht echt handeln.
+Buch in zustand.json, Kerzen von der oeffentlichen Kraken-API. Der Standard-
+lauf ist reine Simulation (kein Order-Call, handel_erlaubt=false); nur --live
+mit ALLEN Sperren offen legt echte Orders an die Boerse (unten im Docstring).
 
 --live ist ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur scharf,
 wenn ihr Zeitfenster offen ist (freigabefenster.py). Ist ALLES sperrenfrei
 (handel_erlaubt, freigabe.erfuellt, journal_zweitziel, API-Schluessel,
-Freigabefenster), legt dieser Pfad eine ECHTE Order (Einstieg + Boersen-Stop)
-an die Boerse. Fehlt eine Sperre, laeuft der Lauf als Papier weiter und nennt
-die Gruende - derselbe Fallsafe wie kraken/handeln.py. Das ZIEL hat keine
-Boersenorder: kraken.py stellt nur den Stop; ein Ausstieg zum Ziel wird vom
-Papier-Ausstiegspfad gebucht (pruefe_ausstiege), die echten Coins stehen dann
-noch auf Kraken und brauchen einen eigenen Live-Ausstieg, bevor die Spur echt
-Geld bewegen darf.
+Freigabefenster), legt dieser Pfad an die Boerse: Einstieg + Boersen-STOP +
+Boersen-TAKE-PROFIT (kraken.take_profit_setzen). Das ZIEL hat seit dem
+Take-Profit-Ausbau (12.10.2026) eine eigene Boersenorder - es bleibt kein
+echter Bestand ohne Exit an Kraken. Fehlt eine Sperre, laeuft der Lauf als
+Papier weiter und nennt die Gruende - derselbe Fallsafe wie kraken/handeln.py.
+
+AUSSTIEG (echt): Eine LIVE-Position (p['modus']=='live') schliesst der
+Live-Pfad am MARKT, wenn Stop/Ziel/Zwangsschluss feuert. pruefe_ausstiege
+stoesst dafuer einen Markt-Close (markt_verkauf, Long) - aber nur, nachdem die
+Buch-vs-Boerse-Pruefung (_abgleich_runde) bestaetigt hat, dass die Position
+dort noch liegt. Hat die Boerse sie schon geschlossen (Boersen-Stop oder
+Take-Profit ausgeloest), wird KEINE zweite Marketorder gestellt (die wuerde
+ueberverkaufen und einen Short eroeffnen) - der Boersenschluss wird nur im
+Buch nachgezogen. Kann die Boerse nicht gelesen werden, schliesst dieser Lauf
+nichts und meldet den Ausstieg als UNGEKLAERT. Ein PAPIERLauf bleibt eine
+reine Buchoperation und schliesst eine echte Position nicht.
+
+SHORT auf Kraken-Spot ist unmoeglich (kein echtes Short-Halten): ein
+Short-Signal wird im Live-Pfad mit klarem Sperrgrund verweigert (kein
+Einstieg). Der Papierlauf simuliert Shorts fuer den Backtest weiter.
 
 Zyklus (alle 15 min):
   1. Ausstiege zuerst: offene Papier-Position gegen Stop/Ziel/Zwangsschluss
@@ -138,8 +151,17 @@ def _range_fenster(w, key, tag):
     return start, ende
 
 
-def pruefe_ausstiege(z, w, jetzt=None):
-    """Offene Papier-Position: Stop/Ziel/Zwangsschluss. Rueckgabe (veraendert, grund)."""
+def pruefe_ausstiege(z, w, jetzt=None, live=False):
+    """Offene Position: Stop/Ziel/Zwangsschluss. Rueckgabe (veraendert, grund).
+
+    LIVE-Position (p['modus']=='live') im LIVE-Lauf (live=True): der Ausstieg
+    schliesst die ECHTE Position an der Boerse (_exit_live) - verifiziert
+    gegen Stop/Ziel-Fuellstand; bei Ungewissheit KEINE Marketorder, der
+    Ausstieg bleibt als UNGEKLAERT stehen. Ein PAPIERLAUF (live=False) laesst
+    eine echte Position im Buch stehen: sie ist per Boersen-Stop/Ziel
+    geschuetzt, und nur der Live-Pfad haelt dort Geld fest. Papier-Positionen
+    werden rein im Buch geschlossen (Simulation, keine Order).
+    """
     p = z.get("position")
     if not p:
         return False, None
@@ -160,16 +182,28 @@ def pruefe_ausstiege(z, w, jetzt=None):
         ziel_verletzt = p["letzter_kurs"] <= p["ziel"]
     zwang = jetzt >= sess.zwangsschluss(konf, tag)
     if zwang:
-        _schliesse(p, p["letzter_kurs"], "zwangsschluss")
-        return True, "zwangsschluss"
-    if stop_verletzt:
-        _schliesse(p, p["stop"], "stop")
-        return True, "stop"
-    if ziel_verletzt:
-        _schliesse(p, p["ziel"], "ziel")
-        return True, "ziel"
-    return False, None
+        grund, kurs = "zwangsschluss", p["letzter_kurs"]
+    elif stop_verletzt:
+        grund, kurs = "stop", p["stop"]
+    elif ziel_verletzt:
+        grund, kurs = "ziel", p["ziel"]
+    else:
+        return False, None
 
+    if p.get("modus") == "live" and not live:
+        print("  AUSSTIEG %s verschoben: echte Position - nur der Live-Lauf "
+              "schliesst sie (Boerse schuetzt per Stop/Ziel)" % key)
+        return False, None
+    if p.get("modus") == "live":
+        ok, effgrund = _exit_live(z, w, p, konf["kraken"], kurs, grund)
+        if not ok:
+            p["exit_ungeklaert"] = True
+            print("  AUSSTIEG %s UNGEKLAERT - keine Marktorder, Position bleibt"
+                  % key, file=sys.stderr)
+            return False, None
+        grund = effgrund
+    _schliesse(p, kurs, grund)
+    return True, grund
 
 def _schliesse(p, kurs, grund):
     # zustand.json serialisiert alles zu Strings: "tag" kommt beim Lesen als
@@ -336,19 +370,8 @@ def positionsgroesse(w, p):
     return risiko / (range_hoehe * punkt_wert)
 
 
-def _buy_stop_setzen(paar, menge, stop, echt=False):
-    """Buy-Seite eines Schutz-Stops (fuer einen SHORT).
-
-    kraken.stop_setzen stellt nur Verkaufs-Stops (die Haus-Spur ist
-    Long-only). Ein Short wird durch einen KAUF glattgestellt - also ein
-    Buy-Stop-Loss, gestellt ueber die Modul-Orderfunktion."""
-    return kraken._add_order(paar, "buy", menge, "stop-loss",
-                             preis=kraken.preis_gerundet(paar, stop, "auf"),
-                             echt=echt)
-
-
 def platziere_einstieg(z, w, p, echt=True):
-    """Einstieg + Boersen-Stop fuer eine Position ordert.
+    """Einstieg + Boersen-Stop + Boersen-Take-Profit fuer eine Position ordert.
 
     echt=False (Vorschau/Dry-Run) rechnet die geplante Order durch und zeigt
     sie, ruft aber KEINE Boersenfunktion - Tests und Handlauefe pruefen so
@@ -356,20 +379,27 @@ def platziere_einstieg(z, w, p, echt=True):
     der einzige echte Pfad und steht ausschliesslich hinter lauf('live'),
     wenn keine Sperre zu ist.
 
-    Ein TAKEPROFIT gibt es hier bewusst NICHT: kraken.py stellt nur den Stop.
-    Der Ausstieg zum Ziel laeuft ueber den Papier-Ausstiegspfad (pruefe_ausstiege
-    bucht ihn), bevor die Spur echter Geldbewegung einen Live-Ausstieg braucht."""
+    Seit dem Take-Profit-Ausbau (12.10.2026) wird bei einer LONG-Live-Position
+    zusaetzlich zum Stop auch das ZIEL als take-profit-market-Order an die
+    Boerse gelegt (kraken.take_profit_setzen): ein ausgeloestes Ziel raeumt
+    die Position an der Boerse selbst ab. Nur Long - ein Short-Signal wird
+    verweigert: Kraken-Spot kann kein Short halten, ein Verkauf ohne Bestand
+    waere dort ein Fehler.
+    """
     key = p["inst"]
     konf = w["instrumente"][key]
     paar = konf["kraken"]
+    if p["richtung"] == "short":
+        print("  %s: Short auf kraken Spot nicht moeglich - kein Einstieg "
+              "(nur Long)" % paar)
+        return None
     menge = positionsgroesse(w, p)
     if menge <= 0:
         print("  %s: Positionsgroesse <= 0 - kein Einstieg" % paar)
         return None
     if not echt:
-        print("  DRY-RUN %s %s %.8f %s @ %.4f (Stop %.4f, Ziel %.4f)"
-              % (paar, p["richtung"], menge, p["inst"],
-                 p["einstieg"], p["stop"], p["ziel"]))
+        print("  DRY-RUN %s long %.8f %s @ %.4f (Stop %.4f, Ziel %.4f)"
+              % (paar, menge, p["inst"], p["einstieg"], p["stop"], p["ziel"]))
         return None
     # Nur fuer die echte Order: auf Paar-Genauigkeit runden (lot_decimals).
     try:
@@ -380,23 +410,107 @@ def platziere_einstieg(z, w, p, echt=True):
     if menge <= 0:
         print("  %s: Positionsgroesse nach Rundung <= 0 - kein Einstieg" % paar)
         return None
-    if p["richtung"] == "long":
-        kauf_txid = kraken.markt_kauf(paar, menge, echt=True)
-        print("  EINSTIEG LONG %s %.8f %s @ %.4f (Order %s)"
-              % (paar, menge, p["inst"], p["einstieg"], kauf_txid))
-        stop_txid = kraken.stop_setzen(paar, menge, p["stop"], echt=True)
-    else:
-        kauf_txid = kraken.markt_verkauf(paar, menge, echt=True)
-        print("  EINSTIEG SHORT %s %.8f %s @ %.4f (Order %s)"
-              % (paar, menge, p["inst"], p["einstieg"], kauf_txid))
-        stop_txid = _buy_stop_setzen(paar, menge, p["stop"], echt=True)
+    kauf_txid = kraken.markt_kauf(paar, menge, echt=True)
+    print("  EINSTIEG LONG %s %.8f %s @ %.4f (Order %s)"
+          % (paar, menge, p["inst"], p["einstieg"], kauf_txid))
+    stop_txid = kraken.stop_setzen(paar, menge, p["stop"], echt=True)
     print("  Schutz-Stop (%.4f) gesetzt" % p["stop"])
+    # Take-Profit an die Boerse. Schlaegt es fehl, bleibt der Stop als
+    # Notausstieg (und der Live-Ausstiegspfad kann das Ziel trotzdem per
+    # Marketorder schliessen) - die Position wird nur markiert, nicht
+    # verworfen.
+    try:
+        tp_txid = kraken.take_profit_setzen(paar, menge, p["ziel"], echt=True)
+    except Exception as e:                                # noqa: BLE001
+        print("  Take-Profit fuer %s fehlgeschlagen (%s) - Stop bleibt, "
+              "Ausstieg laeuft ueber den Live-Pfad" % (paar, e),
+              file=sys.stderr)
+        tp_txid = None
+    if tp_txid:
+        print("  Take-Profit (%.4f) gesetzt" % p["ziel"])
     p["kauf_txid"] = kauf_txid
     p["stop_txid"] = stop_txid
+    p["tp_txid"] = tp_txid
+    p["tp_fehlt"] = not tp_txid
     p["menge"] = menge
     p["modus"] = "live"
     return p
 
+
+def _exit_live(z, w, p, paar, kurs, grund):
+    """Der ECHTE Ausstieg fuer eine LIVE-Position an der Boerse.
+
+    Rueckgabe (ok, effektiver_grund): ok=True bedeutet, die Position ist an
+    der Boerse schlussgeworden - entweder durch eine hier gestellte
+    Marketorder, oder weil die Boerse sie schon per Stop/Ziel geschlossen
+    hatte - und der Aufrufer darf lokal buchen. ok=False heisst UNGEKLAERT:
+    es wird NICHTS geschlossen, keine Marketorder, die Position bleibt stehen.
+    Eine zweite Marketorder auf eine bereits geschlossene Position waere ein
+    Ueberverkauf und eroeffnete einen Short - deshalb wird die Boerse IMMER
+    zuerst gefragt (stop_gefuellt auf Stop und Take-Profit), bevor geschlossen
+    wird.
+    """
+    try:
+        stop_weg = bool(p.get("stop_txid")) and kraken.stop_gefuellt(p["stop_txid"])
+        tp_weg = bool(p.get("tp_txid")) and kraken.stop_gefuellt(p["tp_txid"])
+    except Exception as e:                                # noqa: BLE001
+        print("  Live-Ausstieg %s nicht verifizierbar (%s) - KEINE Order, "
+              "Position bleibt" % (paar, e), file=sys.stderr)
+        return False, None
+    if stop_weg or tp_weg:
+        fach = "stop" if stop_weg else "ziel"
+        print("  Boerse hat %s bereits geschlossen (%s) - keine Marketorder"
+              % (paar, fach))
+        return True, "%s (boerse)" % fach
+    # Noch gehalten: Schutzauftraege abraeumen, dann Markt-Close.
+    for txid in (p.get("stop_txid"), p.get("tp_txid")):
+        if not txid:
+            continue
+        try:
+            kraken.order_stornieren(txid)
+        except Exception as e:                            # noqa: BLE001
+            print("  Schutzauftrag %s nicht stornierbar (%s)" % (txid, e),
+                  file=sys.stderr)
+    try:
+        kraken.markt_verkauf(paar, p["menge"], echt=True)
+    except Exception as e:                                # noqa: BLE001
+        print("  Markt-Close %s fehlgeschlagen (%s) - Position bleibt, "
+              "UNGEKLAERT" % (paar, e), file=sys.stderr)
+        return False, None
+    print("  MARKT-CLOSE %s %.8f (Grund %s)" % (paar, p["menge"], grund))
+    return True, grund
+
+
+def _abgleich_runde(z, w):
+    """Buch gegen BOERSE (nur Live-Position): schon geschlossene zurueckspiegeln.
+
+    Hat der Boersen-Stop oder das Boersen-Take-Profit die Position bereits
+    ausgeloest, ist sie an der Boerse weg - im Buch wird das nachgezogen,
+    OHNE jede Order (ein gefuellter Stop/Ziel hat schon verkauft). Kann die
+    Boerse nicht gelesen werden, bleibt die Position stehen und es wird
+    nichts behauptet ("keine Aussage" statt einer geratenen Zahl).
+    """
+    zus = z.get("position")
+    if not zus or zus.get("modus") != "live":
+        return None
+    paar = w["instrumente"][zus["inst"]]["kraken"]
+    try:
+        stop_weg = bool(zus.get("stop_txid")) and kraken.stop_gefuellt(zus["stop_txid"])
+        tp_weg = bool(zus.get("tp_txid")) and kraken.stop_gefuellt(zus["tp_txid"])
+    except Exception as e:                                # noqa: BLE001
+        print("  Buch-vs-Boerse %s nicht verifizierbar (%s) - keine Aussage"
+              % (paar, e), file=sys.stderr)
+        return None
+    if not (stop_weg or tp_weg):
+        print("  Buch-vs-Boerse: Buch und Boerse stimmen ueberein")
+        return {"ausgebucht": False}
+    fach = "stop" if stop_weg else "ziel"
+    trig = zus["stop"] if stop_weg else zus["ziel"]
+    _schliesse(zus, zus.get("letzter_kurs") or trig, "%s (boerse)" % fach)
+    z.pop("position", None)
+    print("  Buch-vs-Boerse: %s WEG an der Boerse (%s) - Boersenschluss "
+          "gebucht, keine Marketorder" % (paar, fach))
+    return {"ausgebucht": True, "grund": fach}
 
 def lauf(modus="papier"):
     w = _wachen()
@@ -409,20 +523,36 @@ def lauf(modus="papier"):
     # echt orden, wenn keine Sperre zu ist - doppelter Boden.
     live = (modus == "live") and not live_sperren(w)
 
-    # 1. Ausstiege zuerst
-    veraendert, grund = pruefe_ausstiege(z, w, jetzt)
+    # 1. Buch zuerst gegen BOERSE (nur Live-Positionen): hat die Boerse die
+    #    Position schon geschlossen (Boersen-Stop oder Take-Profit ausgeloest),
+    #    wird das im Buch nachgezogen - nie eine zweite Marketorder, nie eine
+    #    geratene Zahl.
+    if (z.get("position") or {}).get("modus") == "live":
+        _abgleich_runde(z, w)
+    # 2. Ausstiege zuerst (der Live-Ausstieg schliesst die echte Position am
+    #    Markt, verifiziert gegen die Boerse).
+    veraendert, grund = pruefe_ausstiege(z, w, jetzt, live=live)
     if veraendert:
         p = z.pop("position", None)
-        meldungen.append("AUSSTIEG (Papier, %s): %s %s, Einstieg %.4f" % (
-            grund, p["richtung"], p["inst"], p["einstieg"]))
+        art = "LIVE" if p and p.get("modus") == "live" else "Papier"
+        meldungen.append("AUSSTIEG (%s, %s): %s %s, Einstieg %.4f" % (
+            art, grund, p["richtung"], p["inst"], p["einstieg"]))
 
-    # 2. Einstieg
+    # 3. Einstieg
     if not z.get("position"):
         einstieg, meldung = pruefe_einstieg(z, w, jetzt)
         if einstieg:
             if live:
-                platziere_einstieg(z, w, z["position"], echt=True)
-                meldungen.append("EINSTIEG (LIVE): " + meldung)
+                platz = platziere_einstieg(z, w, z["position"], echt=True)
+                if platz:
+                    meldungen.append("EINSTIEG (LIVE): " + meldung)
+                else:
+                    # platziere_einstieg hat es verweigert (z.B. Short auf
+                    # Spot) und den Grund schon ausgedruckt - keine Position.
+                    inst = z["position"]["inst"]
+                    z.pop("position", None)
+                    meldungen.append("kein Einstieg: %s - Order abgelehnt "
+                                     "(Details oben)" % inst)
             else:
                 meldungen.append("EINSTIEG (Papier): " + meldung)
         elif meldung:
