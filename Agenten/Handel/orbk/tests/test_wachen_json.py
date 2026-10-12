@@ -8,16 +8,14 @@ class TestWachenJson(unittest.TestCase):
     def setUp(self):
         self.w = json.loads(WACHEN.read_text(encoding="utf-8"))
 
-    def test_start_gesperrt(self):
-        # handel_erlaubt bleibt false (nur Papier). instrument_aktiv ist fuer
-        # den laufenden ETH-Papiertest gesetzt - der Backtest ist weiter offen.
-                # handel_erlaubt steht seit dem 21.09.2026 auf True (Auftrag Max:
-        # "alle weiteren spuren live offen und handel erlaubt"). Die Spur
-        # hat aber KEINEN Orderaufruf im Code - der Schalter allein handelt
-        # nicht. Der Test prueft weiter, dass der Wert gesetzt ist und
-        # niemand ihn still auf None/Text umstellt.
+    def test_start_live_aktiv(self):
+        # handel_erlaubt=True und freigabe.erfuellt=True seit 12.10.2026
+        # (Auftrag Max: 'Live pfad anbinden. Backtest außer acht lassen,
+        # daten zählen'). Der Backtest ist negativ / zu wenig Daten und wird
+        # bewusst ignoriert; die Papierdaten zaehlen. Der Test stellt sicher,
+        # dass niemand die Freigabe still zurueckdreht.
         self.assertIs(self.w["handel_erlaubt"], True)
-        self.assertIs(self.w["freigabe"]["erfuellt"], False)
+        self.assertIs(self.w["freigabe"]["erfuellt"], True)
 
     def test_journal_zweitziel_gesetzt(self):
         # Bedingung 4. Bis 13.09.2026 stand hier assertIsNone - das Ziel ist
