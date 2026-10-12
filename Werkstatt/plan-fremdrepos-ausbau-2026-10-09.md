@@ -143,3 +143,17 @@ Skript `Werkstatt/ema_walkforward.py` (unversioniert). BTC-USDC, OKX-Kerzen, Lon
 ## Auswertung 12.10.2026 - moon-dev-ai-agents (nicht durchfuehrbar)
 
 `ai_analysis_buys.csv`: 95 Zeilen, nur 12.-31.01.2025 (Memecoins). 47x BUY/BUY, 35x BUY/DO NOTHING, 13x DO NOTHING/BUY; keine SELL-Zeilen, keine Ergebnisspalte. **Kein einziges Symbol steht in der Tor-Liste** (kein Token auf OKX-/Kraken-Spot). Kursverlauf zur Pruefung: CoinGecko-Gratisschnittstelle liefert fuer Daten aelter als 365 Tage HTTP 401 (28 von 28 Abfragen), danach 429. Eine Auswertung ist ohne bezahlten Schluessel nicht moeglich; `Werkstatt/moondev_auswertung.py` bleibt als Vorlage (unversioniert). Selbst mit Daten waeren die Signale nicht handelbar (Token nicht gelistet, Survivorship-Bias, Alter der Daten). Der Adapter bleibt, hat aber nichts zu tun, bis das Repo frische Empfehlungen fuer gelistete Paare schreibt.
+
+## Auswertung 12.10.2026 - handelsarme Trendvarianten (BTC-USDT, OKX)
+
+Skript `Werkstatt/trend_wenighandel.py` (unversioniert). Fuenf Varianten VORAB festgelegt, nicht optimiert: A SMA 50/200 1D, B Donchian 55/20 1D, C Donchian 20/10 1D, D EMA 20/50 4H, E Donchian 55d/20d 4H. Long/Flat, Kosten 0,07 %/Seite, 1 Kerze Verzug, 5,8 Jahre (1D) bzw. 4,2 Jahre (4H). Kriterium vorab: netto > 0 in BEIDEN Zeithaelften, maxDD kleiner als Buy&Hold, <= 30 Wechsel/Jahr.
+
+| Variante | Gesamt (B&H) | maxDD (B&H) | Wechsel/Jahr | Kriterium |
+|---|---|---|---|---|
+| A SMA 50/200 1D | +84 % (+139 %) | 44,6 % (76,4 %) | 1,9 | erfuellt |
+| B Donchian 55/20 1D | +151 % (+139 %) | 35,2 % (76,4 %) | 7,1 | erfuellt |
+| C Donchian 20/10 1D | +46 % | 65,1 % | 16,3 | nicht |
+| D EMA 20/50 4H | +198 % (+253 %) | 30,2 % (53,4 %) | 39,5 | nicht (zu viele Wechsel) |
+| E Donchian 55/20 4H | +107 % | 41,3 % | 8,4 | nicht (2. Haelfte -3 %) |
+
+Lesart: A und B bestehen die Vorab-Hurde; die Wirkung ist vor allem **halbierter Drawdown**, nicht Mehrertrag (A bleibt unter Buy&Hold, B liegt knapp darueber). Grenzen: ein Instrument, eine Bullenphase mit zwei grossen Rueckschlaegen, 5 Varianten getestet (Auswahlrisiko, 2 bestanden), keine Aussicht auf Zukunft. Naechster Schritt waere B als Nautilus-Strategie auf Tageskerzen (7 Wechsel/Jahr) zur Papier-Beobachtung, kein Geld.
