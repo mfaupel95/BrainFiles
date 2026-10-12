@@ -25,7 +25,10 @@ DIE DREI BEDINGUNGEN
    durch K): wer aus 42 Spuren die mit positivem Mittel herausgreift,
    findet allein durch Zufall Gewinner. Fehlt `std_excess` im Auditstand
    (aelterer Lauf), entfaellt diese Bedingung bis zur naechsten Messung.
-4. `trigger_modus == "signal"`. Eine Spur, die im 15-Minuten-Takt handelt,
+4. Out-of-Sample (seit 09.10.2026): der Netto-Excess muss in der fruehen UND
+   der spaeten Haelfte der Runden positiv sein (je Haelfte mindestens
+   `MIN_RUNDEN_HAELFTE`). Fehlen die Felder, entfaellt die Bedingung.
+5. `trigger_modus == "signal"`. Eine Spur, die im 15-Minuten-Takt handelt,
    darf nicht live: sie wuerde Gebuehren zahlen, fuer die es keinen
    Edge gibt.
 
@@ -57,6 +60,7 @@ MERK = os.path.join(HANDEL, "cache", "freigabe-tor.json")
 VENV = os.path.join(HANDEL, "scanner", ".venv", "Scripts", "python.exe")
 
 MIN_RUNDEN = 30
+MIN_RUNDEN_HAELFTE = 8        # so viele Runden braucht jede Haelfte, sonst keine Pruefung
 ALPHA = 0.05                  # Familienfehler ueber alle geprueften Spuren
 ALTER_MAX_S = 6 * 3600        # der Audit laeuft alle 6 Stunden
 
@@ -103,6 +107,12 @@ def messen():
             "mean_excess": float(d.get("mean_excess") or 0.0),
             "std_excess": (None if d.get("std_excess") is None
                            else float(d["std_excess"])),
+            "n_frueh": int(d.get("n_frueh") or 0),
+            "n_spaet": int(d.get("n_spaet") or 0),
+            "mean_excess_frueh": (None if d.get("mean_excess_frueh") is None
+                                  else float(d["mean_excess_frueh"])),
+            "mean_excess_spaet": (None if d.get("mean_excess_spaet") is None
+                                  else float(d["mean_excess_spaet"])),
             "befunde": [str(b) for b in (d.get("befunde") or [])],
             "mean": float((d.get("roh") or {}).get("mean") or 0.0),
             "treffer": float((d.get("roh") or {}).get("treffer") or 0.0),
@@ -160,6 +170,19 @@ def pruefe(spur, w=None):
                            "Excess %+.2f %% (z=%.2f bei %d Spuren, Std %.2f %%, "
                            "n=%d) - vom Zufall nicht zu trennen"
                            % (untere, z, k, std, d["n_excess"]))
+    # Out-of-Sample (Halbierung): der Netto-Excess muss in der fruehen UND in
+    # der spaeten Haelfte der Runden positiv sein. Ein Edge, der nur in einer
+    # Haelfte steht, ist ein Zufalls- oder Regimebefund. Fehlen die Felder
+    # (aelterer Auditstand) oder ist eine Haelfte zu klein, entfaellt die
+    # Bedingung.
+    mf, ms = d.get("mean_excess_frueh"), d.get("mean_excess_spaet")
+    if (mf is not None and ms is not None
+            and d.get("n_frueh", 0) >= MIN_RUNDEN_HAELFTE
+            and d.get("n_spaet", 0) >= MIN_RUNDEN_HAELFTE):
+        if mf - geb <= 0 or ms - geb <= 0:
+            gruende.append("Gebuehren-Tor: Netto-Excess nicht in beiden "
+                           "Haelften positiv (frueh %+.2f %%, spaet %+.2f %% "
+                           "nach Gebuehr %.2f %%)" % (mf - geb, ms - geb, geb))
     # Die vierte Bedingung, und die wichtigste: eine Spur mit einem
     # BEFUND im Audit ist nicht gemessen, sondern beanstandet. Der scanner
     # haette die drei anderen Bedingungen mit +8,52 % Excess klar

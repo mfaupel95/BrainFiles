@@ -11,6 +11,7 @@ einfrieren. Tk wird nur im Hauptthread angefasst (after-Schleife).
 
 import json
 import threading
+import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
 
@@ -25,6 +26,7 @@ SPALTEN = (("bot", "Bot", 170), ("spur", "Spur", 150), ("zustand", "Zustand", 19
 OFFEN_SPALTEN = ("Paar", "Seite", "seit", "Einstieg", "aktuell", "Einsatz", "G/V %")
 ZU_SPALTEN = ("Paar", "auf", "zu", "G/V %", "G/V", "Grund")
 ABHOLEN_MS = 150
+DETAIL_ZEITGRENZE = 4        # wie die Uebersicht; Bruecken-Vorgabe 10 s ist fuer Tk zu lang
 
 
 def lade_urteile(pfad: Path = URTEILE) -> dict:
@@ -38,10 +40,22 @@ def lade_urteile(pfad: Path = URTEILE) -> dict:
 def _backtest_text(u):
     if not u:
         return "—"
+    if not isinstance(u, dict):               # urteile.json ist Fremdtext (Review M10d)
+        return "?"
     stand = str(u.get("stand", ""))
     datum = "%s.%s." % (stand[8:10], stand[5:7]) if len(stand) >= 10 else "?"
-    return "%+.2f %% / %d R (%s)" % (float(u.get("netto_prozent", 0.0)),
-                                     int(u.get("runden", 0)), datum)
+    try:
+        return "%+.2f %% / %d R (%s)" % (float(u.get("netto_prozent", 0.0)),
+                                         int(u.get("runden", 0)), datum)
+    except (TypeError, ValueError):
+        return "?"
+
+
+def detail_abfrage(bot):
+    """Offene und geschlossene Trades eines Bots, mit kurzer Zeitgrenze (Review M10c)."""
+    zugang = fb.zugang_fuer(bot["port"])
+    return (fb.hole("status", zugang, zeitgrenze=DETAIL_ZEITGRENZE),
+            fb.hole("trades", zugang, zeitgrenze=DETAIL_ZEITGRENZE, limit=50))
 
 
 def zeilen(uebersicht, bot_liste, urteile):
@@ -78,16 +92,19 @@ def status_text(uebersicht):
 
 
 class FreqtradeReiter(ttk.Frame):
-    def __init__(self, eltern, leitstand, quelle=None, bot_quelle=None, urteile_pfad=None):
+    def __init__(self, eltern, leitstand, quelle=None, bot_quelle=None, urteile_pfad=None,
+                 detail_quelle=None):
         super().__init__(eltern, padding=stil.ABSTAND_GROSS)
         self.ls = leitstand
         self.quelle = quelle or fb.uebersicht
         self.bot_quelle = bot_quelle or fb.bots
         self.urteile_pfad = urteile_pfad or URTEILE
+        self.detail_quelle = detail_quelle or detail_abfrage
         self._uebersicht = []
         self._bots = []
         self._ergebnisse = []          # (fertig, wert, fehler) aus den Threads
         self._detail_laeuft = False
+        self._detail_nachholen = False  # Auswahl kam waehrend einer Abfrage (Review M10a)
         self._laeuft = False
 
         self.kopf = ttk.Label(self, text="FreqTrade: wird abgefragt …", anchor="w")
@@ -122,11 +139,17 @@ class FreqtradeReiter(ttk.Frame):
         self.after(ABHOLEN_MS, self._abholen)
 
     def _abholen(self):
-        if not self._ergebnisse:
-            self.after(ABHOLEN_MS, self._abholen)
+        # Review M10e: nach destroy() trifft ein spaetes Ergebnis kein Widget mehr.
+        try:
+            if not self.winfo_exists():
+                return
+            if not self._ergebnisse:
+                self.after(ABHOLEN_MS, self._abholen)
+                return
+            fertig, wert, fehler = self._ergebnisse.pop(0)
+            fertig(wert, fehler)
+        except tk.TclError:
             return
-        fertig, wert, fehler = self._ergebnisse.pop(0)
-        fertig(wert, fehler)
 
     # --- Reiter-Schnittstelle --------------------------------------------
     def refresh(self):
@@ -157,20 +180,25 @@ class FreqtradeReiter(ttk.Frame):
     def _gewaehlt(self, _ereignis=None):
         sel = self.tabelle.selection()
         bot = next((b for b in self._bots if sel and b["name"] == sel[0]), None)
-        if bot is None or self._detail_laeuft:
+        if bot is None:
+            return
+        if self._detail_laeuft:
+            self._detail_nachholen = True
             return
         self._detail_laeuft = True
-
-        def arbeit():
-            zugang = fb.zugang_fuer(bot["port"])
-            return fb.offene_trades(zugang), fb.trades(50, zugang)
-        self._im_hintergrund(arbeit, self._detail_da)
+        self._im_hintergrund(lambda: self.detail_quelle(bot), self._detail_da)
 
     def _detail_da(self, wert, fehler):
         self._detail_laeuft = False
+        if self._detail_nachholen:            # Ergebnis gehoert zur alten Auswahl
+            self._detail_nachholen = False
+            self._gewaehlt()
+            return
         self.offen.delete(*self.offen.get_children())
         self.zu.delete(*self.zu.get_children())
         if fehler is not None or wert is None:
+            self.offen.insert("", "end", values=(
+                "⚠ Abfrage gescheitert", str(fehler or "keine Antwort")))
             return
         offen, zu = wert
         for t in (offen if isinstance(offen, list) else []):

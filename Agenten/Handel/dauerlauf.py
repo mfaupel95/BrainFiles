@@ -137,9 +137,33 @@ sys.path.insert(0, VERB_DIR)
 try:
     import anfrage as verbesserer_anfrage                # noqa: E402
     import anwenden as verbesserer_anwenden              # noqa: E402
-except Exception:                                        # noqa: BLE001
+except Exception as _e:                                  # noqa: BLE001
     verbesserer_anfrage = None
     verbesserer_anwenden = None
+    # Nicht lautlos: ein kaputter Import schaltete den Anfrage-Typ bisher ab,
+    # ohne dass es jemand erfuhr (Review 09.10.2026). Der Grund bleibt hier
+    # stehen und wird beim Start gemeldet (verbesserer_import_melden).
+    VERB_IMPORT_FEHLER = "%s: %s" % (type(_e).__name__, _e)
+else:
+    VERB_IMPORT_FEHLER = None
+
+
+def verbesserer_import_melden():
+    """Meldet einmal beim Start, wenn verbesserer/ nicht geladen werden konnte.
+
+    Der Dauerlauf laeuft ohne den Selbstverbesserungs-Typ weiter - das bleibt
+    so -, aber der Ausfall steht jetzt im Log und im Bus. Wirft nie.
+    """
+    if not VERB_IMPORT_FEHLER:
+        return False
+    text = ("verbesserer/ nicht geladen (%s) - der Dauerlauf laeuft ohne "
+            "Selbstverbesserungs-Anfragen weiter" % VERB_IMPORT_FEHLER)
+    print(text, file=sys.stderr)
+    try:
+        ereignis.hinweis("handel/dauerlauf", text)
+    except Exception:                                    # noqa: BLE001
+        pass
+    return True
 
 PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 
@@ -1359,6 +1383,7 @@ def main():
               % (a.risiko, gelesen[0] if gelesen else "?"))
         return 0
     sperre.schreibe(sperr_datei)
+    verbesserer_import_melden()
 
     try:
         with ereignis.lauf("handel/dauerlauf"):
