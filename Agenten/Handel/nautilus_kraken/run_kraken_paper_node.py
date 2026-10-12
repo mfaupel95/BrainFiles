@@ -42,7 +42,7 @@ from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.trading.config import StrategyConfig
 from nautilus_trader.trading.strategy import Strategy
 
-from papierbuch import Papierbuch
+from papierbuch import Papierbuch, sperren
 
 
 # --- Produkttyp-Auswahl ------------------------------------------------------
@@ -168,6 +168,10 @@ def load_client_configs(symbol: str, mit_order_client: bool = False) -> tuple[di
 
 
 def main() -> None:
+    # Ein Buch, ein Node: die Sperre lebt bis Prozessende.
+    sperre = sperren(produkt_name(), Path(__file__).resolve().parent)
+    if sperre is None:
+        raise SystemExit("Papierbuch %s ist belegt - ein Node laeuft schon." % produkt_name())
     symbol = os.environ.get("KRAKEN_SYMBOL", "BTC/EUR")
     mit_order = os.environ.get("NAUTILUS_MIT_ORDER", "").strip() in {"1", "true", "ja", "yes"}
     data_clients, exec_clients = load_client_configs(symbol, mit_order_client=mit_order)
