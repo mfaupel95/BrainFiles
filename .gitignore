@@ -1125,6 +1125,9 @@ Agenten/Handel/prophet_signal/handelsjournal.csv
 !Agenten/FREMD.md
 !Agenten/Werkzeuge/fremd.py
 !Agenten/Werkzeuge/bestand.py
+# Phasenstand der Fremd-Repos (12.10.2026): Register plus Stand-Anzeige
+!Agenten/FREMD-Phasen.json
+!Agenten/Werkzeuge/fremd_phasen.py
 # Wurzel-Aufrufer fuer den Bestand (30.09.2026): aus jedem Verzeichnis
 !/bestand.cmd
 # --- jevgrep (30.09.2026, Auftrag Max "jevgrep installieren wenn sinnvoll") ---
