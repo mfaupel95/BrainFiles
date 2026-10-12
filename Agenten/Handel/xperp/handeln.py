@@ -1722,6 +1722,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
             continue
 
         ord_antwort = None
+        o_preis = a["einstieg"]          # live ggf. von maker_preis verbessert
         if live:
             try:
                 okxf.hebel_setzen(a["inst"], g["hebel"])
@@ -1732,9 +1733,14 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                 # die Kernel-Power-41-Abschaltungen aus Wissen/Hardware.md
                 # nehmen ihn ohne Vorwarnung mit. Eine gehebelte Position
                 # ohne boersenseitigen Stop laeuft dann bis zur Liquidation.
+                # Bestpreis-Ausfuehrung (11.10.2026): nie ueber den Spread,
+                # post_only = nur Maker-Gebuehr. Siehe okxf.maker_preis.
+                o_seite = "buy" if a["seite"] == "long" else "sell"
+                _, bid, ask = okxf.kurs_und_spanne(a["inst"])
+                o_preis = okxf.maker_preis(o_seite, a["einstieg"], bid, ask)
                 ord_antwort = okxf.order_limit(
-                    a["inst"], "buy" if a["seite"] == "long" else "sell",
-                    kontrakte, a["einstieg"], tp=a["ziel"], sl=a["stop"])
+                    a["inst"], o_seite, kontrakte, o_preis,
+                    tp=a["ziel"], sl=a["stop"], post_only=True)
             except Exception as e:                       # noqa: BLE001
                 print("  Eroeffnen %s fehlgeschlagen: %s" % (a["inst"], e),
                       file=sys.stderr)
@@ -1748,20 +1754,22 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                 # Kann das Limit hier ueberhaupt fillen? Ein Kauflimit unter
                 # dem Ask ist eine WARTENDE Order (der Einstieg kommt aus der
                 # Zonenrechnung), kein Fehler.
+                # Gegen den TATSAECHLICHEN Orderpreis pruefen: maker_preis kann
+                # ihn auf Bid/Ask gesetzt haben (post_only wartet dann im Buch).
                 _, bid, ask = okxf.kurs_und_spanne(a["inst"])
                 marktbar = False
                 if ask and bid:
                     if a["seite"] == "long":
-                        marktbar = a["einstieg"] >= ask
+                        marktbar = o_preis >= ask
                     else:
-                        marktbar = a["einstieg"] <= bid
+                        marktbar = o_preis <= bid
                 if not marktbar:
                     print("  Eroeffnen %s: Limit %.6f liegt hinter dem Markt "
                           "(bid %s / ask %s) und wartet - Auftrag bleibt liegen"
-                          % (a["inst"], a["einstieg"], bid, ask))
+                          % (a["inst"], o_preis, bid, ask))
                     z.setdefault("wartende", []).append({
                         "inst": a["inst"], "basis": a["basis"], "seite": a["seite"],
-                        "familie": a["kategorie"], "einstieg": a["einstieg"],
+                        "familie": a["kategorie"], "einstieg": o_preis,
                         "stop": a["stop"], "ziel": a["ziel"], "liq": g["liq"],
                         "kontrakte": kontrakte, "nominal": g["nominal"],
                         "margin": g["margin"], "hebel": g["hebel"],
@@ -1770,7 +1778,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                     })
                     journal(zeit=_jetzt(), modus="live", aktion="order_offen",
                             inst=a["inst"], seite=a["seite"],
-                            familie=a["kategorie"], preis="%.6f" % a["einstieg"],
+                            familie=a["kategorie"], preis="%.6f" % o_preis,
                             kontrakte=kontrakte,
                             nominal_usd="%.2f" % g["nominal"],
                             margin_usd="%.2f" % g["margin"],
@@ -1807,7 +1815,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
 
         pos = {
             "inst": a["inst"], "basis": a["basis"], "seite": a["seite"],
-            "familie": a["kategorie"], "einstieg": a["einstieg"],
+            "familie": a["kategorie"], "einstieg": o_preis,
             "stop": a["stop"], "ziel": a["ziel"], "liq": g["liq"],
             "kontrakte": kontrakte, "nominal": g["nominal"],
             "margin": g["margin"], "hebel": g["hebel"],

@@ -139,6 +139,27 @@ terminal(command="hermes chat -q 'Research GRPO papers and write summary to ~/re
 terminal(command="hermes chat -q 'Set up CI/CD for ~/myapp'", background=true)
 ```
 
+**Long `chat -q` delegation: preserve and retrieve the result.** Start long research/coding bots with `terminal(background=true, notify=true)` so the answer returns on exit; for a foreground run that times out, the process may still be alive while the stdout handle is lost. Poll/wait on the returned process session rather than launching the same assignment again. On Windows, do not trust `ps aux | grep hermes` from git-bash to identify native processes; use a bounded `powershell Get-CimInstance Win32_Process` query or `tasklist`.
+
+**A spawned bot's session can end while the work it started is still running — don't wait for it to "report back".** When a delegated bot (`hermes -p <bot> chat -q`) starts a background process and its final message promises "I'll get a notification and report the result," that promise dies with the bot's own process: the bot exits, the background process keeps running, and no one relays the result. Verify the spawned process is still alive (PowerShell `Get-Process`/`Get-CimInstance` by PID) and read the output artifact the work writes (log/report file) directly instead of waiting for the bot's notification.
+
+**When the completion notification truncates a spawned bot's answer, the full output is on disk.** The gateway stores the complete stdout of every background process at `profiles/<active-profile>/logs/process-results/<proc_id>.json` under the `output` field (the notification shows only the tail). Read it with `execute_code` (json.load + strip ANSI `\x1b[...m` codes) rather than `read_file`, which truncates the JSON line. This is the reliable way to relay a long bot result verbatim to the user — do not re-run the bot to recover text you already have.
+
+**Topic-based group dispatch:** before saying group Topics are routed, inspect the effective `gateway.profile_routes` and verify each actual forum `thread_id`. A profile route selects one runtime profile per inbound message; it does not chain Research into a dispatcher. If Max wants sequential research-then-specialist handling, keep one dispatcher profile on the group and encode the sequence in its operating rules: one research bot, await its result, then at most one specialist. Telegram `t.me/c/.../<id>` links contain a message ID, not a reliable topic ID. Read a real inbound `message_thread_id` or stored session `thread_id`; never guess thread IDs or replace an existing group route until every intended Topic is verified. Keep the unmodified whole-group route as the safe fallback for unmapped Topics.
+
+When routing only to an existing bot profile fails to provide sequencing, update the dispatcher profile's role instructions rather than adding simultaneous profile routes. This prevents every bot from independently taking the same group post and avoids unsupported many-to-many routing assumptions.
+
+**A spawned bot that dies in a repetition loop still finished part of the job — recover its artifacts, don't relaunch it.** If a delegated `hermes -p <bot> chat -q` exits (the "Response Stopped — Repetition Detected" loop, often on weaker models) after many tool calls, it usually wrote real files before the loop closed in. Check the repo/workspace `git status` (uncommitted new/modified files) to learn what it actually produced, finish the remainder yourself, and commit — do not start the same assignment again in a fresh loop that will hit the same wall. Verify the artifacts run (tests/backtest) before committing; the bot's own files may be only partway working. This is the physical counterpart to the text-recovery rule above.
+
+
+**Checking whether a spawned bot is still alive on Windows:** `ps aux | grep hermes` in git-bash does NOT reliably show native Windows processes (it can report nothing while the bot runs). Use `tasklist` or PowerShell instead:
+
+```
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { \$_.CommandLine -match '<bot>' -and \$_.CommandLine -match 'chat' } | Select-Object ProcessId,CreationDate"
+```
+
+Fresh `CreationDate` values mean it is still working; a stable empty result means it finished or died.
+
 ### Interactive PTY Mode (via tmux)
 
 Hermes uses prompt_toolkit, which requires a real terminal. Use tmux for interactive spawning:

@@ -8,3 +8,11 @@ terminal:
 platforms:
   photon:
     enabled: false
+mcp_servers:
+  ziplime:
+    command: '"C:/Users/faupe/Documents/BrainFiles/Werkstatt/Repos/ziplime/.venv/Scripts/python.exe"'
+    args:
+      - -m
+      - ziplime.mcp
+    timeout: 120
+    connect_timeout: 60

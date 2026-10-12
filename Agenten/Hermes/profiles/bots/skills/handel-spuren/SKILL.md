@@ -77,6 +77,14 @@ Wenn eine belastbare Spur netto negativ ist UND der Parametersuche nichts überl
 
 **Eine Stilllegung in `SPUREN` greift erst beim Neustart des Dauerlaufs** — das Dict wird einmal beim Import gelesen, laufende Zyklen sehen die alte Liste. Einen Dauerlauf-Neustart nicht ungefragt machen: er recycelt die Echtgeld-Spuren (scanner/xperp in mittel/hoch) und kann offene Positionen flachstellen. Committen und die Wirkung als „beim nächsten Neustart wirksam" vermerken, Max die Entscheidung über den Neustart überlassen.
 
+## Ziplime — externer Backtesting-Engine
+
+Eine Anfrage, Ziplime (Werkstatt/Repos/ziplime) fuer die Handelsoptimierung zu
+installieren/starten/nutzen, ist eine eigene Klasse: externer Aktien/ETF/Futures-
+Backtester, KEIN Krypto-Perpetual-Engine. Setup, die Polars-Versionsfalle
+(2.0 bricht, 1.24.0 hat WindowsPath-Bug, 1.44.2 funktioniert) und der
+verifizierte Quick-Start: `references/ziplime.md`.
+
 ## Leitstand ausbauen
 
 Eine Anfrage „leitstand.py untersuchen/ausbauen" (Nautilus-/Prozesse-Reiter, Nodes einbinden) ist eine eigene Klasse innerhalb des Handel-Baums: Tk-Dashboard, kein Spur-Tuning, aber dieselbe Worktree-Regel und Stufe-1-Disziplin. Karte der Reiter-Schnittstelle, der Takt-Gruppen und der tatsaechlich handelnden Nautilus-Repos + Nodes: `references/leitstand.md`. Zusaetzlich zur Auswertung unten stehen die `.venv`-Grenzen (Nautilus-Spuren laufen NICHT unter `scanner/.venv`) dort.
