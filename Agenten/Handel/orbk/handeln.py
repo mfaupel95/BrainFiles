@@ -4,11 +4,16 @@ Reine Simulation: Kerzen von der oeffentlichen Kraken-API, Buch in
 zustand.json, kein einziger Order-Call. handel_erlaubt bleibt false -
  diese Datei kann gar nicht echt handeln.
 
---live ist trotzdem ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur
-scharf, wenn ihr Zeitfenster offen ist (freigabefenster.py). Ohne Live-Pfad
-gibt es nichts freizugeben - der Aufruf nennt genau einen Grund (ohne das Wort
-"Freigabefenster", damit der Dauerlauf keine Anfrage stellt) und laeuft als
-Papier weiter, statt mit einem argparse-Fehler abzubrechen. Muster: spiegel.py.
+--live ist ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur scharf,
+wenn ihr Zeitfenster offen ist (freigabefenster.py). Ist ALLES sperrenfrei
+(handel_erlaubt, freigabe.erfuellt, journal_zweitziel, API-Schluessel,
+Freigabefenster), legt dieser Pfad eine ECHTE Order (Einstieg + Boersen-Stop)
+an die Boerse. Fehlt eine Sperre, laeuft der Lauf als Papier weiter und nennt
+die Gruende - derselbe Fallsafe wie kraken/handeln.py. Das ZIEL hat keine
+Boersenorder: kraken.py stellt nur den Stop; ein Ausstieg zum Ziel wird vom
+Papier-Ausstiegspfad gebucht (pruefe_ausstiege), die echten Coins stehen dann
+noch auf Kraken und brauchen einen eigenen Live-Ausstieg, bevor die Spur echt
+Geld bewegen darf.
 
 Zyklus (alle 15 min):
   1. Ausstiege zuerst: offene Papier-Position gegen Stop/Ziel/Zwangsschluss
@@ -56,15 +61,9 @@ _rs_spec_obj.loader.exec_module(risikostufe)
 ZUSTAND = risikostufe.datei(HIER / "zustand.json")
 JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 
-# Genau ein Grund, ohne das Wort "Freigabefenster": der Dauerlauf liest diese
-# Zeile im Vorschau-Modus (nur_fenster_fehlt) und fragt nur dann nach einer
-# Freigabe, wenn genau dieser Grund dort steht. Diese Spur hat keinen
-# Live-Pfad - es gibt nichts freizugeben, also wird auch nicht gefragt.
-# Gedruckt wird sie NUR in --vorschau und --live, nicht im Papierlauf: der
-# Dauerlauf schickt jede Ausgabezeile mit dem Wort "gesperrt" nach Telegram
-# (dauerlauf.zyklus) - ein Lauf alle 15 Minuten waere Spam.
-GRUND_KEIN_LIVE = ("Live waere gesperrt durch: kein Live-Pfad in dieser "
-                   "Spur (Papier)")
+# Spur-Name fuer den Freigabe-Dienst (freigabefenster.py / freigabebeleg.py):
+# muss mit dem Schluessel in dauerlauf.SPUREN zusammenpassen.
+SPUR = "orbk"
 
 
 def _jetzt():
@@ -86,6 +85,15 @@ _at_obj = _at_spec("atomar", os.path.join(
     os.path.dirname(os.path.abspath(__file__)), os.pardir, "atomar.py"))
 atomar = _at_mod(_at_obj)
 _at_obj.loader.exec_module(atomar)
+
+# Freigabefenster ueber den PFAD laden (Hausmuster, s. kraken/handeln.py): ein
+# blankes 'import freigabefenster' greift im Spurlauf nicht, weil Handel/ nicht
+# auf sys.path liegt (nur <spur>/../../Bus).
+_fw_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabefenster.py")
+_fw_spec_obj = _rs_spec("freigabefenster", _fw_datei)
+freigabefenster = _rs_mod(_fw_spec_obj)
+_fw_spec_obj.loader.exec_module(freigabefenster)
 
 
 def lade_zustand():
@@ -249,7 +257,11 @@ def pruefe_einstieg(z, w, jetzt=None):
             else kurs - w["ziel_k"] * (hoch - tief))
     z["position"] = {"inst": key, "richtung": richtung, "einstieg": kurs,
                      "stop": stop, "ziel": ziel, "tag": tag.isoformat(),
-                     "letzter_kurs": kurs}
+                     "letzter_kurs": kurs,
+                     # Positionsgroesse fuer den Live-Pfad (Buchrisiko teilen).
+                     "range_hoehe": hoch - tief,
+                     "punkt_wert_usd": konf.get("punkt_wert_usd", 1.0),
+                     "risiko_usd": w.get("risiko_pro_trade_usd", 10.0)}
     # Merkzeichen fuer "heute schon gehandelt": muss den Ausstieg
     # ueberleben, sonst steigt derselbe Breakout im selben Zyklus wieder
     # ein (Endloskreis, siehe _schon_gehandelt_heute).
@@ -275,6 +287,117 @@ def _schon_gehandelt_heute(z, tag):
     return z.get("zuletzt_gehandelt_tag") == tag.isoformat()
 
 
+def zeitfenster_offen():
+    """Hat Max diese Spur zeitlich freigegeben (freigabefenster.py)?
+
+    Ein Lesefehler gilt als *nicht* offen - im Zweifel keine Order. Er wird
+    gemeldet statt still geschluckt (Befund scanner 22.09.2026)."""
+    try:
+        return bool(freigabefenster.lade(SPUR).offen())
+    except Exception as e:                                   # noqa: BLE001
+        print("  Zeitfenster nicht lesbar (%s: %s) - gilt als zu."
+              % (type(e).__name__, e), file=sys.stderr)
+        return False
+
+
+def live_sperren(w):
+    """Alle Gruende, die einen --live-Lauf auf Papier zurueckwerfen.
+
+    Leere Liste heisst: scharf. Der Dauerlauf (dauerlauf.nur_fenster_fehlt)
+    oeffnet sein Auto-Freigabefenster nur, wenn GENAU EIN Grund fehlt - und
+    dieser eine Grund ist das Fenster. Deshalb traegt der Fenster-Grund als
+    einziger das Wort 'Freigabefenster'.
+    """
+    gruende = []
+    if not w.get("handel_erlaubt"):
+        gruende.append("wachen.json handel_erlaubt=false")
+    if not (w.get("freigabe") or {}).get("erfuellt"):
+        gruende.append("freigabe.erfuellt=false")
+    if not w.get("journal_zweitziel"):
+        gruende.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
+    if not kraken.schluessel_vorhanden():
+        gruende.append("KRAKEN_SPOT_API_KEY/SECRET nicht gesetzt")
+    if not zeitfenster_offen():
+        gruende.append("Freigabefenster nicht offen")
+    return gruende
+
+
+def positionsgroesse(w, p):
+    """Basiswaehrung aus dem Buchrisiko: risiko / (range_hoehe * punkt_wert).
+
+    Reine Rechnung ohne Netz - die Paar-Rundung passiert erst bei der echten
+    Order (platziere_einstieg, echt=True). 0 heisst: nicht handelbar.
+    """
+    range_hoehe = p.get("range_hoehe") or 0.0
+    punkt_wert = p.get("punkt_wert_usd", 1.0)
+    risiko = p.get("risiko_usd") or w.get("risiko_pro_trade_usd", 0.0) or 0.0
+    if range_hoehe <= 0 or punkt_wert <= 0 or risiko <= 0:
+        return 0.0
+    return risiko / (range_hoehe * punkt_wert)
+
+
+def _buy_stop_setzen(paar, menge, stop, echt=False):
+    """Buy-Seite eines Schutz-Stops (fuer einen SHORT).
+
+    kraken.stop_setzen stellt nur Verkaufs-Stops (die Haus-Spur ist
+    Long-only). Ein Short wird durch einen KAUF glattgestellt - also ein
+    Buy-Stop-Loss, gestellt ueber die Modul-Orderfunktion."""
+    return kraken._add_order(paar, "buy", menge, "stop-loss",
+                             preis=kraken.preis_gerundet(paar, stop, "auf"),
+                             echt=echt)
+
+
+def platziere_einstieg(z, w, p, echt=True):
+    """Einstieg + Boersen-Stop fuer eine Position ordert.
+
+    echt=False (Vorschau/Dry-Run) rechnet die geplante Order durch und zeigt
+    sie, ruft aber KEINE Boersenfunktion - Tests und Handlauefe pruefen so
+    die Rueckwaertsrechnung, ohne je eine Order zu platzieren. echt=True ist
+    der einzige echte Pfad und steht ausschliesslich hinter lauf('live'),
+    wenn keine Sperre zu ist.
+
+    Ein TAKEPROFIT gibt es hier bewusst NICHT: kraken.py stellt nur den Stop.
+    Der Ausstieg zum Ziel laeuft ueber den Papier-Ausstiegspfad (pruefe_ausstiege
+    bucht ihn), bevor die Spur echter Geldbewegung einen Live-Ausstieg braucht."""
+    key = p["inst"]
+    konf = w["instrumente"][key]
+    paar = konf["kraken"]
+    menge = positionsgroesse(w, p)
+    if menge <= 0:
+        print("  %s: Positionsgroesse <= 0 - kein Einstieg" % paar)
+        return None
+    if not echt:
+        print("  DRY-RUN %s %s %.8f %s @ %.4f (Stop %.4f, Ziel %.4f)"
+              % (paar, p["richtung"], menge, p["inst"],
+                 p["einstieg"], p["stop"], p["ziel"]))
+        return None
+    # Nur fuer die echte Order: auf Paar-Genauigkeit runden (lot_decimals).
+    try:
+        stellen = int(kraken.paar_info(paar).get("mengen_stellen", 8))
+    except Exception:                                     # noqa: BLE001
+        stellen = 8
+    menge = int(menge * 10 ** stellen) / 10 ** stellen
+    if menge <= 0:
+        print("  %s: Positionsgroesse nach Rundung <= 0 - kein Einstieg" % paar)
+        return None
+    if p["richtung"] == "long":
+        kauf_txid = kraken.markt_kauf(paar, menge, echt=True)
+        print("  EINSTIEG LONG %s %.8f %s @ %.4f (Order %s)"
+              % (paar, menge, p["inst"], p["einstieg"], kauf_txid))
+        stop_txid = kraken.stop_setzen(paar, menge, p["stop"], echt=True)
+    else:
+        kauf_txid = kraken.markt_verkauf(paar, menge, echt=True)
+        print("  EINSTIEG SHORT %s %.8f %s @ %.4f (Order %s)"
+              % (paar, menge, p["inst"], p["einstieg"], kauf_txid))
+        stop_txid = _buy_stop_setzen(paar, menge, p["stop"], echt=True)
+    print("  Schutz-Stop (%.4f) gesetzt" % p["stop"])
+    p["kauf_txid"] = kauf_txid
+    p["stop_txid"] = stop_txid
+    p["menge"] = menge
+    p["modus"] = "live"
+    return p
+
+
 def lauf(modus="papier"):
     w = _wachen()
     z = lade_zustand()
@@ -282,6 +405,9 @@ def lauf(modus="papier"):
     z["letzter_lauf"] = jetzt.isoformat()
 
     meldungen = []
+    # Sicherheits-Gatter AUCH hier (nicht nur in _main): lauf('live') darf nur
+    # echt orden, wenn keine Sperre zu ist - doppelter Boden.
+    live = (modus == "live") and not live_sperren(w)
 
     # 1. Ausstiege zuerst
     veraendert, grund = pruefe_ausstiege(z, w, jetzt)
@@ -294,7 +420,11 @@ def lauf(modus="papier"):
     if not z.get("position"):
         einstieg, meldung = pruefe_einstieg(z, w, jetzt)
         if einstieg:
-            meldungen.append("EINSTIEG (Papier): " + meldung)
+            if live:
+                platziere_einstieg(z, w, z["position"], echt=True)
+                meldungen.append("EINSTIEG (LIVE): " + meldung)
+            else:
+                meldungen.append("EINSTIEG (Papier): " + meldung)
         elif meldung:
             meldungen.append("kein Einstieg: " + meldung)
 
@@ -360,15 +490,19 @@ def _main(argv=None):
     if modus == "vorschau":
         # Der Dauerlauf liest die Sperrgruende aus genau diesem Modus.
         print(zeige_wachen(w))
-        print(GRUND_KEIN_LIVE)
+        print("Live waere gesperrt durch: %s"
+              % ("; ".join(live_sperren(w)) or "nichts"))
         return 0
+    live_modus = "papier"
     if modus == "live":
-        # Der Dauerlauf ruft --live nur, wenn ein Fenster offen ist. Diese
-        # Spur hat keinen Live-Pfad - statt mit einem argparse-Fehler
-        # (Rueckgabe 2, sieht wie ein Absturz aus) abzubrechen, nennt sie den
-        # Grund und laeuft als Papier weiter. Muster: spiegel.py.
-        print(GRUND_KEIN_LIVE)
-    meldungen = lauf()
+        gruende = live_sperren(w)
+        if gruende:
+            print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
+            print("-> es wird Papier gehandelt.")
+        else:
+            live_modus = "live"
+            print("--live: alle Sperren offen - LIVE")
+    meldungen = lauf(modus=live_modus)
     for m in meldungen:
         print(m)
     # Bedingung 4: Journal und Zustand ausser Haus - nach dem Herzschlag.
