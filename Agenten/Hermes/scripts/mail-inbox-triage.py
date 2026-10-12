@@ -349,7 +349,7 @@ def main() -> int:
     kandidaten.sort(key=lambda m: (-m["punkte"], m["datum"] or ""), reverse=False)
     gemeldet = [m for m in kandidaten if args.alle or m["punkte"] >= args.grenze]
 
-    if not args.trocken and kandidaten:
+    if not args.trocken and not args.fenster_erzwingen and kandidaten:
         merk_neu = {"zuletzt_lauf": jetzt.isoformat(),
                     "gelesen": len(kandidaten)}
         # Die UID ist der dauerhafte Anker: auch im Datum-Weg wird sie
