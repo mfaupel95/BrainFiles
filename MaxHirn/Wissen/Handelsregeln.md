@@ -487,6 +487,17 @@ Volatilität, Chance/Risiko) und darf höchstens drei Tage alt sein. Gehandelt
 wird ausschließlich auf Papier (`handel_erlaubt: false`,
 `freigabe.erfuellt: false`).
 
+**Kraken-Paper-Node (Papierbuch, Stand 13.10.2026):** `Handel/nautilus_kraken`
+läuft quote-only gegen Kraken (Spot und Futures). Die Fills simuliert
+`papierbuch.py`: Kauf zum Ask, Verkauf zum Bid, 0,26 % Taker-Gebühr je Seite,
+nur Long, 1000 Kapital. Gekauft und verkauft wird nach SMA 4/16 auf 15-Minuten-Mids
+mit 0,4 %-Band; die Gewinnanzeige steht im Leitstand.
+**Warum:** Die alte Strategie (SMA 10/30 auf 1-Minuten-Mids) verlor im Spot-Lauf
+46,02 € in 8 Trades, fast nur durch Gebühren. Im Backtest über 7,5 Tage
+(15-Minuten-Kerzen) kam die neue Strategie ohne Band auf 35 Trades und −209 €,
+mit Band auf 1 Trade und +10 €; Buy&Hold lag bei −35 €. Die alten Bücher liegen
+archiviert als `*.v1-20261012.*`.
+
 **Nautilus-Spur (Papier, seit 13.09.2026):** `Handel/nautilus` fährt die
 NautilusTrader-Engine gegen OKX **DEMO** als Spur im Dauerlauf. Je Zyklus
 (~15 min) startet sie eine **begrenzte** Node-Session (~30 s), sammelt
