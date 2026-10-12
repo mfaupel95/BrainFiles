@@ -30,6 +30,10 @@ class Config(unittest.TestCase):
                                          "pfad": "/agenten/Handel"})
         self.assertTrue(c["dry_run"])
 
+    def test_vektor_rechnung_wird_durchgereicht(self):
+        c = bots.config_fuer(dict(HAUSBOT, hausspur_rechnung="vektor"))
+        self.assertEqual(c["hausspur"]["rechnung"], "vektor")
+
     def test_moondev_bleibt_spot(self):
         c = bots.config_fuer(MOONBOT)
         self.assertEqual(c["trading_mode"], "spot")
@@ -173,6 +177,14 @@ class Manifest(unittest.TestCase):
     def setUp(self):
         self.alle = bots.bots()
         self.haus = [b for b in self.alle if b.get("hausspur")]
+
+    def test_vektor_nur_mit_vektor_fassung(self):
+        """Phase 2: ein Bot rechnet vektorisiert nur, wenn hausspur_vektor die
+        Spur kennt (und ihr Gleichheitstest damit existiert)."""
+        import hausspur_vektor as hv
+        for b in self.haus:
+            if b.get("hausspur_rechnung") == "vektor":
+                self.assertTrue(hv.hat(b["hausspur"]), b["name"])
 
     def test_siebzehn_hausspuren(self):
         self.assertEqual(sorted(b["hausspur"] for b in self.haus), sorted(hr.ALLE))

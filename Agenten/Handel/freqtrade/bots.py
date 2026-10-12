@@ -241,6 +241,8 @@ def config_fuer(bot: dict) -> dict:
         cfg["margin_mode"] = "isolated"
         cfg["hausspur"] = {"name": bot["hausspur"],
                            "pfad": f"{HAUS_IM_CONTAINER}/Handel"}
+        if bot.get("hausspur_rechnung"):
+            cfg["hausspur"]["rechnung"] = bot["hausspur_rechnung"]
     return cfg
 
 

@@ -140,6 +140,10 @@ sich aus der Vergangenheit schätzen, die künftige Rendite nicht.
 - `hausspur_regeln.py` — 17 Haus-Spuren als eine Signal-Schnittstelle für die
   Freqtrade-Strategie `freqtrade/user_data/strategies/HausSpur.py` (seit
   10.10.2026, Bots in `freqtrade/bots.json`, Urteile über `bots.py backtest`)
+- `hausspur_vektor.py` — Phase 2: dieselben Spuren als numpy-Rechnung, Kerze
+  für Kerze gleich mit `hausspur_regeln` (Test `tests/test_hausspur_vektor.py`).
+  Ein Bot nutzt sie mit `"hausspur_rechnung": "vektor"` in `bots.json`; bisher
+  nur `klassik_donchian_trend` (seit 12.10.2026)
 - `leitstand_freqtrade.py` — Leitstand-Reiter FreqTrade (Strg+8): alle Bots,
   Zustand, Runden, Backtest-Urteil; nur lesend über `freqtrade_bridge.py`
 

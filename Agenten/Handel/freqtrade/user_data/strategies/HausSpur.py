@@ -64,10 +64,23 @@ class HausSpur(IStrategy):
             raise OperationalException(f"HausSpur: {e}") from e
         self.hr = hr
         self.hs_name = name
+        # Phase 2 (Ansatz B): numpy-Fassung der Spur, Kerze fuer Kerze gleich
+        # mit dem Adapter (tests/test_hausspur_vektor.py). Nur fuer Spuren mit
+        # gruenem Gleichheitstest vorhanden - sonst verweigern statt still A.
+        self.hv = None
+        if hs.get("rechnung") == "vektor":
+            import hausspur_vektor as hv
+            if not hv.hat(name):
+                raise OperationalException(
+                    f"HausSpur: keine Vektor-Fassung fuer {name!r} "
+                    f"(vorhanden: {', '.join(hv.VEKTOR)})")
+            self.hv = hv
         self.hs_wachen = hr.wachen(name)
         self.nachrechnen = int(hs.get("nachrechnen", 3))
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        if self.hv is not None:
+            return self._vektor_spalten(dataframe)
         kerzen = [[int(d.timestamp() * 1000), o, h, l, c, v] for d, o, h, l, c, v in zip(
             dataframe["date"], dataframe["open"], dataframe["high"],
             dataframe["low"], dataframe["close"], dataframe["volume"])]
@@ -80,6 +93,17 @@ class HausSpur(IStrategy):
         dataframe["hs_aus_short"] = [bool(x and x["aus_short"]) for x in werte]
         dataframe["hs_stop"] = [x["stop"] if x else None for x in werte]
         dataframe["hs_ziel"] = [x["ziel"] if x else None for x in werte]
+        return dataframe
+
+    def _vektor_spalten(self, dataframe: DataFrame) -> DataFrame:
+        """Ganze Reihe in einem Zug - auch im Dry-Run (kostet Millisekunden)."""
+        x = self.hv.signale_arrays(dataframe["high"].to_numpy(), dataframe["low"].to_numpy(),
+                                   dataframe["close"].to_numpy(), self.hs_name, self.hs_wachen)
+        dataframe["hs_ein"] = list(x["einstieg"])
+        dataframe["hs_aus_long"] = x["aus_long"]
+        dataframe["hs_aus_short"] = x["aus_short"]
+        dataframe["hs_stop"] = [None if v != v else float(v) for v in x["stop"]]
+        dataframe["hs_ziel"] = [None if v != v else float(v) for v in x["ziel"]]
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
