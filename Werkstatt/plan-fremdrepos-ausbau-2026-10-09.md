@@ -128,3 +128,14 @@ Ein Fremd-Werkzeug liefert nur ein **Signal** oder eine **Papier-Order** im Form
 - `Bus/nautilus_signalgeber.py` (EMA-Kreuzung, schreibt nur Absichtszeilen) und `Bus/nautilus_okx_lauf.py` (echte OKX-Kerzen BTC-USDC 5m). Umgebung `Werkstatt/nautilus-venv` (Nautilus 1.231 aus PyPI; der Fork hat eine neuere API).
 - Registriert: `MaxHirn-Nautilus-OKX` (5 Min), `MaxHirn-Fremd-Adapter` (2 Min), `MaxHirn-Fremd-Papier` (2 Min). Alles Papier, nie live.
 - Beobachten: `stale`-Verwuerfe im Journal (Fenster 180 s knapp), erste Papier-Positionen in `fremd_signale/zustand.json`.
+
+## Auswertung 12.10.2026 - EMA-Kreuzung (nautilus_signalgeber), Walk-forward
+
+Skript `Werkstatt/ema_walkforward.py` (unversioniert). BTC-USDC, OKX-Kerzen, Long/Flat, Kosten 0,07 %/Seite (Gebuehr 0,05 + Slippage 0,02), 1 Kerze Verzug. Raster fast {5,8,10,13,20} x slow {20..120}, IS 30 Tage waehlt, OOS naechste 7 Tage. Kriterium vorab: OOS-Summe > 0 UND >= 60 % der Fenster positiv.
+
+| Lauf | OOS gewaehlt | OOS fix 10/20 | Buy&Hold |
+|---|---|---|---|
+| 1H, 367 Tage, 48 Fenster | -36,96 % (14/48 positiv) | -47,47 % (17/48) | -13,47 % |
+| 5m, 120 Tage, 12 Fenster | -4,76 % (3/12 positiv) | **-74,69 %** (1/12) | +33,84 % |
+
+**Ergebnis: Kriterium in beiden Laeufen NICHT erfuellt.** Die live laufende Einstellung (5m, 10/20) verliert Out-of-sample praktisch alles an Kosten und Fehlsignalen. Die Walk-forward-Wahl landet bei langsamen Paaren (20/120), d. h. das Raster flieht vor den Kosten. Kein Vorteil; Strategie taugt nur als Rohrleitungs-Test der Kette. Grenzen: kein Stop simuliert (4 %-Stop aendert auf 5m wenig), ein Instrument, eine Marktphase.
