@@ -208,7 +208,7 @@ Kein Browser-Test, kein Playwright.
 2. `Agenten/Routinen/systempruefung.ps1`: optionaler Check ob Dashboard erreichbar
    (nur wenn PID-Datei existiert).
 3. Keine Änderung an `leitstand.py`, `spuren_stand.py` oder anderen bestehenden
-   Dateien außer den unter 1. und 2. genannten. Punkt 2 ist offen (nicht umgesetzt).
+   Dateien außer den unter 1. und 2. genannten. Punkt 2 umgesetzt als Block 17 (Lauscher auf 7788 statt PID-Datei).
 
 ---
 

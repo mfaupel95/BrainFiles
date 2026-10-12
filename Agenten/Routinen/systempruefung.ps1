@@ -878,6 +878,24 @@ try {
 } catch { Notiz "  ! Konfig-Doktor abgebrochen: $_" }
 
 # ---------------------------------------------------------------------------
+# 17) Web-Dashboard (Agenten\Handel\dashboard, Port 7788): optional, kein Autostart.
+# Das Dashboard schreibt keine PID-Datei; massgeblich ist, ob jemand auf 7788
+# lauscht. Kein Lauscher = nicht gestartet, kein Befund. Lauscher ohne Antwort
+# (5 s Frist) = haengendes Dashboard, das den Port blockiert.
+try {
+  Notiz "`n--- 17) Web-Dashboard ---"
+  $dashLauscher = Get-NetTCPConnection -LocalPort 7788 -State Listen -EA SilentlyContinue | Select-Object -First 1
+  if (-not $dashLauscher) { Info "Web-Dashboard nicht gestartet (optional)." }
+  else {
+    try {
+      $dashAntwort = Invoke-WebRequest -Uri 'http://localhost:7788/' -UseBasicParsing -TimeoutSec 5
+      if ($dashAntwort.StatusCode -eq 200) { Info "Web-Dashboard erreichbar (localhost:7788, PID $($dashLauscher.OwningProcess))." }
+      else { Entscheiden "Web-Dashboard antwortet mit HTTP $($dashAntwort.StatusCode) (PID $($dashLauscher.OwningProcess))." }
+    } catch { Entscheiden "Web-Dashboard lauscht auf 7788 (PID $($dashLauscher.OwningProcess)), antwortet aber nicht: $($_.Exception.Message)" }
+  }
+} catch { Notiz "  ! Dashboard-Pruefung abgebrochen: $_" }
+
+# ---------------------------------------------------------------------------
 # Bericht schreiben
 # ---------------------------------------------------------------------------
 $vortag = Get-ChildItem $logs -Filter 'systempruefung-*.md' -EA SilentlyContinue |
