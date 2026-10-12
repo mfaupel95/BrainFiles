@@ -157,3 +157,19 @@ Skript `Werkstatt/trend_wenighandel.py` (unversioniert). Fuenf Varianten VORAB f
 | E Donchian 55/20 4H | +107 % | 41,3 % | 8,4 | nicht (2. Haelfte -3 %) |
 
 Lesart: A und B bestehen die Vorab-Hurde; die Wirkung ist vor allem **halbierter Drawdown**, nicht Mehrertrag (A bleibt unter Buy&Hold, B liegt knapp darueber). Grenzen: ein Instrument, eine Bullenphase mit zwei grossen Rueckschlaegen, 5 Varianten getestet (Auswahlrisiko, 2 bestanden), keine Aussicht auf Zukunft. Naechster Schritt waere B als Nautilus-Strategie auf Tageskerzen (7 Wechsel/Jahr) zur Papier-Beobachtung, kein Geld.
+
+## Suche nach besserer Strategie 13.10.2026 - Ensemble-Donchian (Online-Recherche + Test)
+
+Recherche: Zarattini/Pagani/Barbon, "Catching Crypto Trends" (SFI Research Paper 25-80; Mehrfach-Donchian-Ensemble, Long-only, Vola-Skalierung; Autoren berichten Sharpe > 1,5 netto auf einem Top-20-Korb - nicht von uns nachgeprueft). Quantpedia-Nachtest: Breakout-Signale ("buy near highs") halten out-of-sample besser als Kauf-am-Tief; Grayscale: einfache Long-only-Trendregeln halbieren Drawdowns. TradingView-/MQL5-Skripte = Verkaufs-Backtests ohne Out-of-sample, nicht verwertet.
+
+Skript `Werkstatt/trend_ensemble.py` (unversioniert), vorab festgelegt: Lookbacks {5,10,20,30,60,90,150,250,360} Tage, rein ueber Max(n), raus unter Min(n/2), Position = Anteil der Modelle im Markt; Kosten 0,07 %/Seite. Kriterium: netto > 0 in beiden Haelften UND maxDD < B&H UND Sharpe >= B&H.
+
+| Variante | Gesamt (B&H) | maxDD (B&H) | Sharpe (B&H) | Umschichtungen/Jahr | Kriterium |
+|---|---|---|---|---|---|
+| B Donchian 55/20 1D (Ref) | +151 % (+139 %) | 35 % (76 %) | 0,73 (0,55) | 7 | erfuellt |
+| F Ensemble 1D | +85 % | 36 % | 0,60 | 15 | erfuellt |
+| G Ensemble 1D + Vola 40 % | +81 % | 25 % | 0,65 | 13 | erfuellt |
+| H Ensemble 4H | +137 % (+253 %) | 26 % (53 %) | 0,98 (0,90) | 15 | erfuellt |
+| H2 Ensemble 4H + Vola 40 % | +131 % (+253 %) | 23 % (53 %) | **1,07 (0,90)** | 15 | erfuellt |
+
+Lesart: H2 (4H-Ensemble mit Vola-Skalierung) hat die beste Risikokennzahl (Sharpe 1,07, halbierter Drawdown), bleibt aber im Gesamtertrag klar unter Buy&Hold (Bullenphase). Grenzen: ein Instrument, 4,2 Jahre, insgesamt ~11 Varianten gesichtet (Auswahlrisiko), Papier-Stop 4 % nicht simuliert. Umsetzung im Signalweg waere nicht trivial: Ensemble liefert Positionsanteile 0..1, der Bus kennt long/flat mit size_pct; naechster Schritt waere Uebersetzung Anteil -> size_pct (nur bei Aenderung melden).
