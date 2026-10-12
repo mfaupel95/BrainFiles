@@ -109,6 +109,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | delegate_task "capped at N" reports | `references/delegate-task-concurrency-diagnosis.md` |
 | "Can app X use my Nous Portal subscription/OAuth?" | `references/portal-auth-for-third-party-apps.md` |
 | Connecting a messaging platform (Telegram, Discord, Slack, WhatsApp, …) | docs: `/user-guide/messaging` |
+| Route a Telegram group's forum Topics to different bot profiles (multiplex + `profile_routes`, recover real `thread_id`s) | `references/telegram-topic-routing.md` |
 
 The reference list above is not the feature list — it is the set of topics that
 need more than their docs page. For everything else Hermes ships, fetch
