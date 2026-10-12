@@ -1787,7 +1787,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                     continue
                 print("  Eroeffnen %s: Order war marktbar (Limit %.6f gegen "
                       "ask %s), ist aber NICHT gefuellt - wird storniert"
-                      % (a["inst"], a["einstieg"], ask), file=sys.stderr)
+                      % (a["inst"], o_preis, ask), file=sys.stderr)
                 try:
                     okxf.order_stornieren(a["inst"], ord_antwort)
                 except Exception as e:                         # noqa: BLE001
@@ -1795,7 +1795,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                           file=sys.stderr)
                 journal(zeit=_jetzt(), modus="live", aktion="fehler",
                         inst=a["inst"], seite=a["seite"],
-                        familie=a["kategorie"], preis="%.6f" % a["einstieg"],
+                        familie=a["kategorie"], preis="%.6f" % o_preis,
                         kontrakte=kontrakte,
                         nominal_usd="%.2f" % g["nominal"],
                         margin_usd="%.2f" % g["margin"],
@@ -1811,7 +1811,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                     print("  Storno %s fehlgeschlagen: %s" % (a["inst"], e),
                           file=sys.stderr)
                 kontrakte = gehandelt
-                g["nominal"] = gehandelt * (a["einstieg"] / max(a["hebel"], 1e-9))
+                g["nominal"] = gehandelt * (o_preis / max(a["hebel"], 1e-9))
 
         pos = {
             "inst": a["inst"], "basis": a["basis"], "seite": a["seite"],
@@ -1839,7 +1839,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
 
         print("  AUF %-22s %-5s @ %.6f  %g Kontrakte, %.1fx, "
               "%.2f Margin (%.2f nominal)" % (
-                  a["inst"], a["seite"], a["einstieg"], kontrakte,
+                  a["inst"], a["seite"], o_preis, kontrakte,
                   g["hebel"], g["margin"], g["nominal"]))
         # Instrument und Seite stehen auch hier. Der Dauerlauf meldet jede
         # Zeile mit dem Wort Stop einzeln nach Telegram - eine
@@ -1860,7 +1860,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="eroeffnen", inst=a["inst"],
                 pos_id=pos["pos_id"], seite=a["seite"],
-                familie=a["kategorie"], preis="%.6f" % a["einstieg"],
+                familie=a["kategorie"], preis="%.6f" % o_preis,
                 kontrakte=kontrakte, nominal_usd="%.2f" % g["nominal"],
                 margin_usd="%.2f" % g["margin"], hebel="%.2f" % g["hebel"],
                 stop="%.6f" % a["stop"], ziel="%.6f" % a["ziel"],
@@ -1876,7 +1876,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
             spur_name="xperp",
             instrument=a["inst"],
             richtung=a["seite"],
-            einstieg_kurs=a["einstieg"],
+            einstieg_kurs=o_preis,
             stop_kurs=a["stop"],
             ziel_kurs=a["ziel"],
             nominal_eur=g["nominal"],

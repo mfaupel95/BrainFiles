@@ -388,6 +388,50 @@ vorher/nachher vergleichen:
 
 Der zweite Fall ist der, der die Schwemme erzeugt hat — er muss bewiesen sein,
 sonst ist der Fix eine Vermutung.
+
+### Zwei Windows-Fallen, die den Fix wirkungslos machen
+
+Ein korrekter Port-Test genuegt NICHT, wenn der Dienst selbst mehrere Besitzer
+zulaesst. Beide Fallen erzeugen dasselbe Bild: viele Prozesse, alle "erfolgreich",
+keiner beendet sich — und der Port-Test sieht trotzdem "belegt" oder "frei"
+je nach Zeitpunkt.
+
+1. **`SO_REUSEADDR` unter Windows laesst einen ZWEITEN Prozess denselben Port
+   binden — ohne Fehler.** `http.server.HTTPServer` setzt
+   `allow_reuse_address = True` von Haus aus. Unter Unix erlaubt das nur das
+   Wiederverwenden eines Sockets im TIME_WAIT; unter Windows ist es ein
+   Freibrief: kein `OSError`, kein Beenden, zwei Prozesse teilen sich den Port.
+   Gemessen an einem Adapter auf 127.0.0.1: 6 Prozesse, keiner endete.
+   **Fix:** in einer eigenen Server-Klasse `allow_reuse_address = False` setzen
+   und das Binden in `try/except OSError` legen — der zweite Start endet dann
+   mit `WinError 10048` und kann **still mit Exitcode 0** zurueckkehren (belegter
+   Port ist der Normalfall, kein Fehler; ein Exitcode != 0 laesst jede Wache
+   einen "Fehlschlag" melden und neu starten).
+2. **`socket.getfqdn()` im Startweg — der Socket ist gebunden, aber nicht im
+   Zustand LISTEN.** `HTTPServer.server_bind()` ruft `socket.getfqdn(host)`;
+   `server_activate()` (das `listen()`) laeuft erst danach. Zeigt Docker Desktop
+   `kubernetes.docker.internal` auf 127.0.0.1, dauert die umgekehrte DNS-Abfrage
+   GEMESSEN 8,03 s. In diesem Fenster meldet `Get-NetTCPConnection -State Listen`
+   "frei" und `socket.create_connection` bekommt "connection refused": jeder
+   Aufrufer startet einen weiteren Dienst, obwohl der erste schon bindet.
+   **Fix:** eine Server-Klasse, die `server_bind()` ueberschreibt und den Namen
+   SETZT statt zu erfragen (`socketserver.TCPServer.server_bind(self)` + 
+   `self.server_name = "127.0.0.1"` + `self.server_port = self.server_address[1]`).
+   Der Name wird nur im Fehlertext gebraucht.
+
+**Dazu gehoert die Reihenfolge im Startweg: erst binden, dann die Gegenstelle
+fragen.** Steht die langsame Abfrage (`modelle()`, `tags`, Health-Check) VOR dem
+Binden, ist der Port waehrend ihrer Laufzeit noch frei — dasselbe Rennfenster.
+
+**Diagnose, wenn der Dienst trotz Fix nicht hochkommt:** den Start in
+Einzelschritte zerlegen und jeden messen (Modul laden, Schluessel lesen,
+`getfqdn`, Binden, Gegenstelle). Bleibt der Prozess bei ~0,03 s CPU und 1 Thread
+stehen, wartet er auf etwas — die Einzelmessung zeigt, worauf. Laeuft jeder
+Schritt einzeln schnell, aber der Start als Ganzes nicht, liegt es an der ART des
+Starts: ein Dienst, der aus einer PTY/Pipe heraus gestartet wird, kann haengen.
+Dann genau so starten, wie der spaetere Aufrufer es tut (abgesetzt:
+`DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`, stdout in eine DATEI statt in eine
+Pipe), und erst dann urteilen.
 - **`subprocess` mit `text=True`** stirbt an Umlauten aus `tasklist`/`powershell`:
   die Konsole schreibt cp1252, nicht UTF-8. `encoding="cp1252", errors="replace"`
   setzen, sonst reisst ein `UnicodeDecodeError` im Lesethread den Aufruf ab.
