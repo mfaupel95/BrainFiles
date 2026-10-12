@@ -1,15 +1,17 @@
-"""orbk: --live verweigert mit Grund, und ein Ausstieg darf nicht abstuerzen.
+"""orbk: --live faellt bei geschlossenen Sperren auf Papier zurueck, und ein
+Ausstieg darf nicht abstuerzen.
 
-Zwei Regressionen aus dem 13.09.2026:
+Zwei Regressionen aus dem 13.09.2026, plus der Live-Umbau:
 
 1. `_schliesse()` scheiterte an `p["tag"].isoformat()`, weil `zustand.json`
    alles zu Strings serialisiert - die Position liess sich nie schliessen,
    jeder Papierlauf endete mit Rueckgabe 1.
 2. `--live` war dem Skript unbekannt. Der Dauerlauf ruft eine Spur mit
-   `--live` auf, sobald ihr Zeitfenster offen ist; statt eines argparse-
-   Fehlers (Rueckgabe 2) muss ein Sperrgrund kommen - genau einer, ohne das
-   Wort "Freigabefenster", damit `dauerlauf.nur_fenster_fehlt()` keine
-   Freigabe anfragt, die nichts oeffnen koennte.
+   `--live` auf, sobald ihr Zeitfenster offen ist. Seit dem Live-Umbau nennt
+   ein --live-Aufruf mit geschlossenen Sperren die Sperrgruende und laeuft
+   als Papier weiter (kein argparse-Fehler, keine Order). Der Dauerlauf
+   (dauerlauf.nur_fenster_fehlt) fragt nur nach einer Freigabe, wenn GENAU
+   EIN Grund fehlt - und der ist das Freigabefenster.
 
 Kein Netz: die Wachen und der Lauf werden ersetzt, das Journal in einen
 temporaeren Ordner umgebogen.
@@ -37,7 +39,10 @@ def _ausgabe(argv):
     """Ruft _main mit ersetzten Wachen/Lauf und gibt die Ausgabe zurueck."""
     puffer = io.StringIO()
     with patch.object(handeln, "_wachen", lambda: W), \
-            patch.object(handeln, "lauf", lambda: []):
+            patch.object(handeln, "lauf", lambda modus="papier": []), \
+            patch.object(handeln, "zeitfenster_offen", lambda: False), \
+            patch.object(handeln.kraken, "schluessel_vorhanden",
+                         lambda: True):
         with redirect_stdout(puffer):
             code = handeln._main(argv)
     return code, puffer.getvalue()
@@ -45,28 +50,27 @@ def _ausgabe(argv):
 
 class VerweigerungTest(unittest.TestCase):
 
-    def test_live_nennt_genau_einen_grund_ohne_freigabefenster(self):
+    def test_live_gesperrt_nennt_gruende_und_faellt_auf_papier(self):
         code, aus = _ausgabe(["--live"])
         self.assertEqual(code, 0, "kein Abbruch - es wird Papier gebucht")
-        zeilen = [z for z in aus.splitlines() if "gesperrt durch" in z]
-        self.assertEqual(len(zeilen), 1, aus)
-        gruende = [g.strip() for g in zeilen[0].split(":", 1)[-1].split(";")]
-        self.assertEqual(len(gruende), 1, gruende)
-        self.assertNotIn("Freigabefenster", zeilen[0])
+        # Der --live-Fallsafe nennt die Gruende in der Zeile
+        # "--live angefordert, aber gesperrt: ..." (kraken-Format).
+        self.assertIn("gesperrt", aus)
+        self.assertIn("handel_erlaubt=false", aus)
 
     def test_live_als_positional_und_als_flag(self):
         # Der Dauerlauf ruft "--live" als Argument der Liste auf.
         for form in (["--live"], ["live"]):
             code, aus = _ausgabe(form)
             self.assertEqual(code, 0, form)
-            self.assertIn("gesperrt durch", aus, form)
+            self.assertIn("gesperrt", aus, form)
 
     def test_vorschau_druckt_den_grund_papier_nicht(self):
-        """Der Dauerlauf liest den Grund mit --vorschau.
+        """Der Dauerlauf liest die Sperrgruende mit --vorschau.
 
-        Im Papierlauf darf er NICHT stehen: der Filter in dauerlauf.zyklus()
-        schickt jede Zeile mit dem Wort "gesperrt" nach Telegram - bei einem
-        Lauf alle 15 Minuten waere das Spam (so war es bis zum 13.09.2026).
+        Im Papierlauf darf das Wort "gesperrt" NICHT stehen: der Filter in
+        dauerlauf.zyklus() schickt jede Zeile mit dem Wort "gesperrt" nach
+        Telegram - bei einem Lauf alle 15 Minuten waere das Spam.
         """
         _, vorschau = _ausgabe(["--vorschau"])
         self.assertIn("gesperrt durch", vorschau)

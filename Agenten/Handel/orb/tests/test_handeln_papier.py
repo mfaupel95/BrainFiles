@@ -233,12 +233,18 @@ class TestOrbEigenheiten(unittest.TestCase):
         self.assertEqual(handeln.ziel_kurs(w, "ETH_USDT", "long", 2000.0, 20.0),
                          2030.0)
 
-    def test_kein_live_pfad(self):
-        self.assertIn("kein Live-Pfad", handeln.GRUND_KEIN_LIVE)
-        # Der Dauerlauf fragt nur nach einer Freigabe, wenn das Wort
-        # "Freigabefenster" NICHT in der Zeile steht - sonst entstuende eine
-        # Anfrage fuer eine Spur, die gar nicht live handeln kann.
-        self.assertNotIn("Freigabefenster", handeln.GRUND_KEIN_LIVE)
+    def test_live_pfad_gesperrt_ohne_handel_erlaubt(self):
+        """Seit dem Live-Umbau gibt es einen echten Live-Pfad: live_sperren
+        nennt handel_erlaubt=false als Sperrgrund. Der Dauerlauf fragt nur
+        nach einer Freigabe, wenn GENAU EIN Grund fehlt - und der ist das
+        Freigabefenster (siehe test_live.py)."""
+        w = dict(W, handel_erlaubt=False, freigabe={"erfuellt": True},
+                 journal_zweitziel="Q:/x")
+        with patch.object(handeln, "zeitfenster_offen", lambda: True), \
+                patch.object(handeln.okxf, "schluessel_vorhanden",
+                             lambda: True):
+            gruende = handeln.live_sperren(w)
+        self.assertIn("handel_erlaubt=false", "; ".join(gruende))
 
 
 if __name__ == "__main__":

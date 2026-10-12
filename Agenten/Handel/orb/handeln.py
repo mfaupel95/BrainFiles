@@ -9,12 +9,12 @@ Vorlage ist `orbk/handeln.py` (dieselbe Strategie auf Kraken, laeuft seit
 kraken, Session ist die UTC-Tagesgrenze (orb/session.py), und das Ziel kommt
 aus `ziel_modus`/`ziel_k`/`ziel_punkte` der eigenen wachen.json.
 
---live ist trotzdem ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur
-scharf, wenn ihr Zeitfenster offen ist. Ohne Live-Pfad gibt es nichts
-freizugeben - der Aufruf nennt genau einen Grund (ohne das Wort
-"Freigabefenster", damit der Dauerlauf keine Anfrage stellt) und laeuft als
-Papier weiter, statt mit einem argparse-Fehler abzubrechen. Muster: orbk,
-spiegel.
+--live ist ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur scharf,
+wenn ihr Zeitfenster offen ist. Ist ALLES sperrenfrei (handel_erlaubt,
+freigabe.erfuellt, journal_zweitziel, API-Schluessel, Freigabefenster), legt
+dieser Pfad eine ECHTE Order (Einstieg + Boersen-Stop + Ziel) an die Boerse.
+Fehlt eine Sperre, laeuft der Lauf als Papier weiter und nennt die Gruende -
+derselbe Fallsafe wie kraken/handeln.py.
 
 DAS URTEIL STEHET IM WACHENBUCH UND BLEIBT STEHEN: der OKX-Backtest vom
 13.09.2026 (siehe `_backtest` in wachen.json, nachrechenbar mit
@@ -67,11 +67,9 @@ _rs_spec_obj.loader.exec_module(risikostufe)
 ZUSTAND = risikostufe.datei(HIER / "zustand.json")
 JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 
-# Genau ein Grund, ohne das Wort "Freigabefenster": dauerlauf.nur_fenster_fehlt
-# liest diese Zeile und fragt nur dann nach einer Freigabe. Diese Spur hat
-# keinen Live-Pfad - es gibt nichts freizugeben, also wird nicht gefragt.
-GRUND_KEIN_LIVE = ("Live waere gesperrt durch: kein Live-Pfad in dieser "
-                   "Spur (Papier; Backtest-Urteil negativ)")
+# Spur-Name fuer den Freigabe-Dienst (freigabefenster.py / freigabebeleg.py):
+# muss mit dem Schluessel in dauerlauf.SPUREN zusammenpassen.
+SPUR = "orb"
 
 
 def _jetzt():
@@ -93,6 +91,15 @@ _at_obj = _at_spec("atomar", os.path.join(
     os.path.dirname(os.path.abspath(__file__)), os.pardir, "atomar.py"))
 atomar = _at_mod(_at_obj)
 _at_obj.loader.exec_module(atomar)
+
+# Freigabefenster ueber den PFAD laden (Hausmuster, s. kraken/handeln.py): ein
+# blankes 'import freigabefenster' greift im Spurlauf nicht, weil Handel/ nicht
+# auf sys.path liegt (nur <spur>/../../Bus).
+_fw_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabefenster.py")
+_fw_spec_obj = _rs_spec("freigabefenster", _fw_datei)
+freigabefenster = _rs_mod(_fw_spec_obj)
+_fw_spec_obj.loader.exec_module(freigabefenster)
 
 
 def lade_zustand():
@@ -277,12 +284,98 @@ def _letzter_kurs(w, key):
     return okxf.letzter_kurs(w["instrumente"][key]["okx"])
 
 
+def zeitfenster_offen():
+    """Hat Max diese Spur zeitlich freigegeben (freigabefenster.py)?
+
+    Ein Lesefehler gilt als *nicht* offen - im Zweifel keine Order. Er wird
+    gemeldet statt still geschluckt (Befund scanner 22.09.2026)."""
+    try:
+        return bool(freigabefenster.lade(SPUR).offen())
+    except Exception as e:                                   # noqa: BLE001
+        print("  Zeitfenster nicht lesbar (%s: %s) - gilt als zu."
+              % (type(e).__name__, e), file=sys.stderr)
+        return False
+
+
+def live_sperren(w):
+    """Alle Gruende, die einen --live-Lauf auf Papier zurueckwerfen.
+
+    Leere Liste heisst: scharf. Der Dauerlauf (dauerlauf.nur_fenster_fehlt)
+    oeffnet sein Auto-Freigabefenster nur, wenn GENAU EIN Grund fehlt - und
+    dieser eine Grund ist das Fenster. Deshalb traegt der Fenster-Grund als
+    einziger das Wort 'Freigabefenster'.
+    """
+    gruende = []
+    if not w.get("handel_erlaubt"):
+        gruende.append("wachen.json handel_erlaubt=false")
+    if not (w.get("freigabe") or {}).get("erfuellt"):
+        gruende.append("freigabe.erfuellt=false")
+    if not w.get("journal_zweitziel"):
+        gruende.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
+    if not okxf.schluessel_vorhanden():
+        gruende.append("OKX_API_KEY/SECRET/PASSPHRASE nicht gesetzt")
+    if not zeitfenster_offen():
+        gruende.append("Freigabefenster nicht offen")
+    return gruende
+
+
+def positionsgroesse(w, p):
+    """Kontrakte aus dem Buchrisiko: risiko / (range_hoehe * punkt_wert).
+
+    Ganzzahlig, weil OKX-Perpetuals ganze Kontrakte handeln. 0 heisst: unter
+    einem Kontrakt - nicht handelbar.
+    """
+    range_hoehe = p.get("range_hoehe") or 0.0
+    punkt_wert = p.get("punkt_wert_usdt", 1.0)
+    risiko = p.get("risiko_usdt") or w.get("risiko_pro_trade_usdt", 0.0) or 0.0
+    if range_hoehe <= 0 or punkt_wert <= 0 or risiko <= 0:
+        return 0
+    return int(risiko / (range_hoehe * punkt_wert))
+
+
+def platziere_einstieg(z, w, p, echt=True):
+    """Einstieg + Boersen-Stop + Ziel fuer eine Position ordert.
+
+    echt=False (Vorschau/Dry-Run) rechnet die geplante Order durch und zeigt
+    sie, ruft aber KEINE Boersenfunktion - Tests und Handlauefe pruefen so
+    die Rueckwaertsrechnung, ohne je eine Order zu platzieren. echt=True ist
+    der einzige echte Pfad und steht ausschliesslich hinter lauf('live'),
+    wenn keine Sperre zu ist.
+    """
+    key = p["inst"]
+    konf = w["instrumente"][key]
+    inst = konf["okx"]
+    seite = "buy" if p["richtung"] == "long" else "sell"
+    kontrakte = positionsgroesse(w, p)
+    if kontrakte < 1:
+        print("  %s: Positionsgroesse < 1 Kontrakt - kein Einstieg" % inst)
+        return None
+    if not echt:
+        print("  DRY-RUN %s %s %d Kontrakte @ %.4f (Stop %.4f, Ziel %.4f)"
+              % (seite, inst, kontrakte, p["einstieg"], p["stop"], p["ziel"]))
+        return None
+    ord_id = okxf.order_limit(inst, seite, kontrakte, p["einstieg"])
+    print("  EINSTIEG %s %s %d Kontrakte @ %.4f (Order %s)"
+          % (seite, inst, kontrakte, p["einstieg"], ord_id))
+    okxf.schutz_stop_setzen(inst, p["richtung"], kontrakte, p["stop"],
+                            p["ziel"])
+    print("  Schutz-Stop (Stop %.4f, Ziel %.4f) gesetzt"
+          % (p["stop"], p["ziel"]))
+    p["ord_id"] = ord_id
+    p["kontrakte"] = kontrakte
+    p["modus"] = "live"
+    return p
+
+
 def lauf(modus="papier"):
     w = _wachen()
     z = lade_zustand()
     jetzt = _jetzt()
     z["letzter_lauf"] = jetzt.isoformat()
     meldungen = []
+    # Sicherheits-Gatter AUCH hier (nicht nur in _main): lauf('live') darf nur
+    # echt orden, wenn keine Sperre zu ist - doppelter Boden.
+    live = (modus == "live") and not live_sperren(w)
 
     veraendert, grund = pruefe_ausstiege(z, w, jetzt)
     if veraendert:
@@ -293,7 +386,11 @@ def lauf(modus="papier"):
     if not z.get("position"):
         einstieg, meldung = pruefe_einstieg(z, w, jetzt)
         if einstieg:
-            meldungen.append("EINSTIEG (Papier): " + meldung)
+            if live:
+                platziere_einstieg(z, w, z["position"], echt=True)
+                meldungen.append("EINSTIEG (LIVE): " + meldung)
+            else:
+                meldungen.append("EINSTIEG (Papier): " + meldung)
         elif meldung:
             meldungen.append("kein Einstieg: " + meldung)
 
@@ -349,11 +446,19 @@ def _main(argv=None):
         return 0
     if modus == "vorschau":
         print(zeige_wachen(w))
-        print(GRUND_KEIN_LIVE)
+        print("Live waere gesperrt durch: %s"
+              % ("; ".join(live_sperren(w)) or "nichts"))
         return 0
+    live_modus = "papier"
     if modus == "live":
-        print(GRUND_KEIN_LIVE)
-    meldungen = lauf()
+        gruende = live_sperren(w)
+        if gruende:
+            print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
+            print("-> es wird Papier gehandelt.")
+        else:
+            live_modus = "live"
+            print("--live: alle Sperren offen - LIVE")
+    meldungen = lauf(modus=live_modus)
     for m in meldungen:
         print(m)
     z = lade_zustand()
