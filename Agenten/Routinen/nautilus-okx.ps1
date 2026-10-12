@@ -1,4 +1,4 @@
-# Nautilus-Signalgeber mit echten OKX-Kerzen (nautilus_okx_lauf.py): schreibt neue EMA-Kreuzungen nach
+# Nautilus-Signalgeber (Donchian 55/20, Tageskerzen BTC-USDC; Variante B der Auswertung 12.10.2026) mit echten OKX-Kerzen (nautilus_okx_lauf.py): schreibt neue EMA-Kreuzungen nach
 # Werkstatt\nautilus_intents.jsonl; adapter_lauf.py meldet sie an den Bus. Handelt nie. Kein --live.
 # Aufgerufen von nautilus-okx-aufgabe.ps1 (NICHT registriert).
 $ErrorActionPreference = 'Continue'
@@ -13,7 +13,7 @@ if (-not ((Test-Path $py) -and (Test-Path $skript))) {
   "ENDE FEHLER: nautilus-venv oder nautilus_okx_lauf.py fehlt" | Add-Content $log -Encoding UTF8
   exit 1
 }
-& $py $skript --instrument BTC-USDC --bar 5m 2>&1 | Where-Object { $_ -notmatch 'INFO\]|Pandas4Warning|e\.run' } | Add-Content $log -Encoding UTF8
+& $py $skript --instrument BTC-USDC --bar 1D --strategie donchian 2>&1 | Where-Object { $_ -notmatch 'INFO\]|Pandas4Warning|e\.run' } | Add-Content $log -Encoding UTF8
 $code = $LASTEXITCODE
 "ENDE Code $code" | Add-Content $log -Encoding UTF8
 exit $code
