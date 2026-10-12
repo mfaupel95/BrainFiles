@@ -11,7 +11,7 @@ Papierspur auf 1H-Kerzen, BTC/ETH/SOL-USDT-SWAP, nur Long. Drei Indikator-Kandid
 - **R-Arm:** Einstieg, sobald der Kandidat steht.
 - **L-Arm:** Einstieg nur bei `BUY` mit Konfidenz ≥ 70 % vom lokalen Modell (`qwen35-8k` über die Brücke, Port 11499). Ausfall heißt kein Einstieg.
 
-Stop: 2,3 × ATR14, auf 1,5 bis 5 % begrenzt. Kein festes Ziel. Ausstiege sind in beiden Armen regelbasiert.
+Stop: fest 2,5 % (Hausstandard von `klassik_ema`, innerhalb 1,5 bis 5 %). Kein festes Ziel. Ausstiege sind in beiden Armen regelbasiert. Jeder Strang schreibt nach `laeufe/<variante>-<arm>/`, das LLM-Protokoll nach `llm_entscheide.jsonl`.
 
 Parameter stammen aus Hausläufen (`ema_cross_h1.py`, `klassik_*`) und sind nicht neu gefittet. Die Spur ist Papier: `handel_erlaubt` bleibt `false`, `--live` wird verweigert.
 

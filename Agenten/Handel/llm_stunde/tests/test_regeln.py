@@ -39,19 +39,6 @@ class Kandidat(unittest.TestCase):
         kurs = [10.0] * 20 + [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
         self.assertTrue(regeln.ausstieg("rsi1h", kerzen_aus(kurs), W))
 
-    def test_stop_untergrenze(self):
-        # Spanne +-0,1 % -> ATR 0,2 % -> 2,3 x 0,2 = 0,46 %, also auf 1,5 % geklemmt
-        k = [[i * 3600000, 100.0, 100.1, 99.9, 100.0, 100.0] for i in range(60)]
-        self.assertEqual(regeln.stop_prozent(k, W), 1.5)
-
-    def test_stop_ohne_klemme_bei_mittlerer_spanne(self):
-        # Spanne +-0,5 % -> ATR 1 % -> 2,3 % Stop, innerhalb der Grenzen
-        self.assertAlmostEqual(regeln.stop_prozent(kerzen_aus([100.0] * 60), W), 2.3, places=2)
-
-    def test_stop_obergrenze(self):
-        kurs = [100.0 * (1.2 if i % 2 else 0.8) for i in range(60)]
-        self.assertEqual(regeln.stop_prozent(kerzen_aus(kurs), W), 5.0)
-
     def test_unbekannte_variante_wirft(self):
         with self.assertRaises(ValueError):
             regeln.kandidat("gibtsnicht", kerzen_aus([10.0] * 30), W)

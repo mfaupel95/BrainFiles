@@ -54,12 +54,3 @@ def ausstieg(variante, kerzen, w):
         return kr.einstieg_supertrend(kerzen, _st_werte(w)) == "short"
     raise ValueError(f"unbekannte Variante: {variante}")
 
-
-def stop_prozent(kerzen, w):
-    """ATR-Abstand in Prozent, auf [pflicht_min, pflicht_max] geklemmt."""
-    atr = kr.atr_rm(kerzen, w["atr_perioden"])[-1]
-    kurs = float(kerzen[-1][4])
-    if atr is None or kurs <= 0:
-        return w["stop_prozent_pflicht_max"]
-    roh = w["atr_multiplier"] * atr / kurs * 100.0
-    return min(max(roh, w["stop_prozent_pflicht_min"]), w["stop_prozent_pflicht_max"])
