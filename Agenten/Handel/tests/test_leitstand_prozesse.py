@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 from unittest.mock import patch
 
@@ -18,6 +19,27 @@ class KrakenQuoteNodes(unittest.TestCase):
         nodes = [p for p in lp.PROZESSE if getattr(p, "produkt", None)]
         self.assertEqual([p.produkt for p in nodes], ["spot", "futures"])
         self.assertTrue(all(p.read_only for p in nodes))
+
+    def test_veraltete_pid_datei_findet_node_per_scan(self):
+        node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "spot")
+
+        def proc(pid, ppid, produkt):
+            m = unittest.mock.MagicMock(pid=pid)
+            m.ppid.return_value = ppid
+            m.cmdline.return_value = ["python.exe", str(lp._KRAKEN_NODE)]
+            m.environ.return_value = {"KRAKEN_PRODUKT": produkt} if produkt else {}
+            return m
+
+        launcher, kind, fremd = proc(19412, 1, None), proc(66816, 19412, None), proc(5, 1, "futures")
+        with tempfile.TemporaryDirectory() as tmp:
+            node._prozess = None
+            node._pid_pfad = Path(tmp) / "node.pid"
+            node._pid_pfad.write_text("101976\n", encoding="ascii")
+            with patch.object(lp.hz, "prozess_lebt", return_value=False),                  patch.object(lp.psutil, "process_iter", return_value=[fremd, kind, launcher]):
+                self.assertTrue(node.laeuft())
+            self.assertEqual(node._pid_pfad.read_text(encoding="ascii").strip(), "19412")
+            with patch.object(lp.hz, "prozess_lebt", return_value=False),                  patch.object(lp.psutil, "process_iter", return_value=[fremd]):
+                self.assertFalse(node.laeuft())
 
     def test_zusatz_zeigt_papier_pnl_oder_nichts(self):
         node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "spot")

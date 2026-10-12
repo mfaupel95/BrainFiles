@@ -13,6 +13,7 @@ def buch(tmp, **kw):
     kw.setdefault("schnell", 2)
     kw.setdefault("langsam", 4)
     kw.setdefault("takt_s", 60)
+    kw.setdefault("band", 0.0)
     return pb.Papierbuch("spot", Path(tmp), startkapital=1000.0, gebuehr=0.0026, **kw)
 
 
@@ -67,6 +68,33 @@ class Papierbuch(unittest.TestCase):
             neu = buch(tmp)
             self.assertIsNotNone(neu.position)
             self.assertAlmostEqual(neu.position["einstieg"], 110.5)
+
+    def test_band_unterdrueckt_kleine_kreuzung(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            b = buch(tmp, band=0.05)
+            fuettere(b, [100, 100, 100, 100, 101, 102])
+            self.assertIsNone(b.position)
+            fuettere(b, [130, 140], start=600)
+            self.assertIsNotNone(b.position)
+
+    def test_mids_ueberleben_neustart(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            b = buch(tmp)
+            fuettere(b, [100, 100, 100])
+            neu = buch(tmp)
+            self.assertEqual(list(neu._mids), [100, 100, 100])
+            neu.tick(99.5, 100.5, 120)  # gleicher Takt wie zuletzt: zaehlt nicht
+            self.assertEqual(len(neu._mids), 3)
+
+    def test_sperre_ist_exklusiv(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            erste = pb.sperren("spot", tmp)
+            self.assertIsNotNone(erste)
+            self.assertIsNone(pb.sperren("spot", tmp))
+            erste.close()
+            zweite = pb.sperren("spot", tmp)
+            self.assertIsNotNone(zweite)
+            zweite.close()
 
     def test_lese_stand_ohne_datei(self):
         with tempfile.TemporaryDirectory() as tmp:

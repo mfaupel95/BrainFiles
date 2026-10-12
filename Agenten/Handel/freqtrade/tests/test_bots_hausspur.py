@@ -92,6 +92,21 @@ class Mounts(unittest.TestCase):
         self.assertIn(f"{(bots.HAUS / 'Handel').resolve().as_posix()}:/agenten/Handel:ro", run)
         self.assertIn("127.0.0.1:8085:8085", run)
 
+    def test_speicher_je_bot(self):
+        # Review M7: ein breiter Moon-Dev-Bot darf mehr bekommen als die Vorgabe.
+        aufrufe = []
+
+        def falsch_docker(args):
+            aufrufe.append(args)
+
+            class R:
+                returncode, stdout, stderr = 0, "", ""
+            return R()
+        with patch.object(bots, "docker", falsch_docker),                 patch.object(bots, "container_laeuft", lambda n: False),                 patch.object(Path, "exists", lambda self: True),                 patch.object(bots, "ausgewaehlt", lambda a: [dict(HAUSBOT, speicher="1200m")]):
+            bots.cmd_start(["klassik-ema"])
+        run = [a for a in aufrufe if a and a[0] == "run"][0]
+        self.assertEqual(run[run.index("--memory") + 1], "1200m")
+
 
 class BacktestUrteil(unittest.TestCase):
     """Review I2: ein gescheiterter Lauf darf kein fremdes Urteil erben."""
@@ -171,9 +186,18 @@ class Manifest(unittest.TestCase):
     def test_zeitrahmen_und_paare_wie_wachen(self):
         for b in self.haus:
             self.assertEqual(b["zeitrahmen"], hr.zeitrahmen(b["hausspur"]), b["name"])
-            self.assertEqual(b["whitelist"], hr.paare(b["hausspur"]), b["name"])
+            haus = hr.paare(b["hausspur"])
+            if b.get("_whitelist_vermerk"):
+                # Auftrag Max 11.10.2026: Breite 3 -> 10 Paare, Hauspaare vorn,
+                # gleichzeitig offen bleiben so viele wie im Haus.
+                self.assertEqual(len(b["whitelist"]), 10, b["name"])
+                self.assertEqual(b["whitelist"][:len(haus)], haus, b["name"])
+                self.assertEqual(len(set(b["whitelist"])), 10, b["name"])
+                self.assertEqual(b["max_open_trades"], len(haus), b["name"])
+            else:
+                self.assertEqual(b["whitelist"], haus, b["name"])
+                self.assertEqual(b["max_open_trades"], len(b["whitelist"]))
             self.assertEqual(b["strategie"], "HausSpur")
-            self.assertEqual(b["max_open_trades"], len(b["whitelist"]))
 
 
 ERGEBNIS = {"strategy": {"HausSpur": {
