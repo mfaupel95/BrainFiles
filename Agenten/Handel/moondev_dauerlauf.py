@@ -87,14 +87,33 @@ def _repo_env() -> dict[str, str]:
         pass
     return werte
 
-# Der LOKALE Weg fuer Agenten, die ihre Sprachmodell-Antwort ueber das
-# OpenAI-SDK holen (Zweig: "deepseek" in AI_MODEL): der Ollama-eigene
-# /v1-Adapter liefert bei Denk-Modellen LEEREN content (gemessen
-# 24.09.2026: finish_reason=length, Text im Feld reasoning). Die Bruecke
-# ruft Ollama stattdessen NATIV mit think:false auf.
-BRUECKE_PORT = 11499
-BRUECKE_BASIS = "http://127.0.0.1:11499/v1"
-BRUECKE_WERKZEUG = (HIER / ".." / "Werkzeuge" / "ollama-openai-bruecke.py").resolve()
+# Der LOKALE Weg. Ollama wurde am 11.10.2026 deinstalliert; die Haus-Laufzeit
+# ist jetzt der verwaltete llama-server auf 127.0.0.1:18434. Der spricht NUR
+# OpenAI - `/api/chat`, `/api/tags`, `/api/version` antworten dort mit HTTP 404
+# (nachgemessen 12.10.2026). Die Agenten rufen aber genau Ollamas native Form.
+# Deshalb steht hier jetzt ein Adapter, der Ollama-nativ annimmt und an
+# llama-server weiterreicht - das Gegenstueck der alten Bruecke.
+BRUECKE_PORT = 11498
+BRUECKE_BASIS = "http://127.0.0.1:11498/v1"
+BRUECKE_WERKZEUG = (HIER / ".." / "Werkzeuge" / "llamacpp-ollama-bruecke.py").resolve()
+
+def _bruecke_laeuft(port: int = BRUECKE_PORT) -> bool:
+    """Lauscht ueberhaupt jemand auf dem Port?
+
+    Der Unterschied zu _bruecke_gesund ist die Kernreparatur vom 12.10.2026:
+    "gesund" fragt die GEGENSTELLE, "laeuft" fragt den EIGENEN Port. Vorher
+    entschied nur "gesund" - und als die Gegenstelle (Ollama) fehlte, konnte
+    die Antwort nie gesund werden. Jeder Zyklus startete eine weitere Bruecke,
+    keine wurde je beendet: 776 Prozesse, 7,4 GB, Commit-Limit am Anschlag.
+    Wer nur nach "laeuft" entscheidet, startet hoechstens EINE.
+    """
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=2.0):
+            return True
+    except OSError:
+        return False
+
 
 def _bruecke_gesund(port: int = BRUECKE_PORT, frist: float = 5.0) -> bool:
     """Antwortet die OpenAI-Bruecke auf Ollama?
@@ -117,8 +136,15 @@ def _bruecke_sicherstellen() -> str:
     wird nicht als Kind gefuehrt (ein Kind stuerbe beim Aufraeumen des Treibers
     mit und muesste jeden Zyklus neu starten).
     """
-    if _bruecke_gesund():
-        return ""
+    # ERST den Port fragen, dann die Gegenstelle. Ein belegter Port laesst
+    # keinen zweiten Prozess zu - ein Start waere sinnlos und erzeugt genau
+    # die Schwemme, die am 12.10.2026 776 Prozesse auf den Rechner brachte.
+    if _bruecke_laeuft():
+        if _bruecke_gesund():
+            return ""
+        return ("Bruecke laeuft auf Port %d, meldet aber ungesund - kein "
+                "zweiter Start (der Port ist belegt). Gegenstelle pruefen: "
+                "llama-server auf 127.0.0.1:18434." % BRUECKE_PORT)
     if not BRUECKE_WERKZEUG.exists():
         return ("WARNUNG: Bruecke fehlt (%s) - Sprachmodell-Aufrufe ueber den "
                 "OpenAI-Zweig scheitern." % BRUECKE_WERKZEUG)
@@ -165,9 +191,12 @@ def _bruecke_sicherstellen() -> str:
 # (18.09.2026 mit einer echten Anfrage geprueft: HTTP 200, Antwort "OK").
 NOUS_BASIS = "https://inference-api.nousresearch.com/v1"
 NOUS_MODELL = "deepseek/deepseek-v4-flash-0731"
-OLLAMA_TAGS = "http://127.0.0.1:11434/api/tags"
-LOKAL_STANDARD = "qwen3.5:9b"                # Hausstandard seit 11.10.2026 (Auftrag Max); qwen35-8k ist nicht mehr installiert
-LOKAL_BASIS = "http://127.0.0.1:11434/v1"
+OLLAMA_TAGS = "http://127.0.0.1:11498/api/tags"
+# Der Adapter, nicht Ollama: llm_lokal() haengt "/api" und "/chat" an, also
+# muss hier die nackte Basis ohne /v1 stehen. Mit dem alten "/v1" entstand
+# ".../v1/api/chat" - eine Adresse, die es nie gab.
+LOKAL_STANDARD = "gemma-4-E4B-it-OBLITERATED-Q8_0"   # Hausmodell der llama-server-Laufzeit
+LOKAL_BASIS = "http://127.0.0.1:11498"
 
 def _nous_schluessel() -> str:
     """NOUS_API_KEY aus der Prozessumgebung, sonst aus HKCU\\Environment.
