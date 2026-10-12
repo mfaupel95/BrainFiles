@@ -433,13 +433,20 @@ providers:
       anthropic/claude-sonnet-5.5:batch: {}
       anthropic/claude-sonnet-5:batch: {}
       ~anthropic/claude-sonnet-latest: {}
-  llamacpp:
-    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
+  ollama-launch:
+    api: http://127.0.0.1:11434/v1
+    base_url: http://127.0.0.1:11434/v1
+    default_model: deepseek-r1:7b
     discover_models: true
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: gemma-e4b-8k:latest
     models:
-      - gemma-4-E4B-it-OBLITERATED-Q8_0
-    name: LLaMA.cpp
+      - gemma-e4b-8k:latest
+      - gemma-e4b-8k:cpu
+      - deepseek-chat:latest
+      - glm4:9b
+      - qwen3.5:9b
+      - deepseek-reasoner:latest
+    name: Ollama
   omniroute:
     api: http://localhost:20128/v1
     default_model: auto
@@ -581,7 +588,7 @@ terminal:
     - VISION_TOOLS_DEBUG
     - WEB_TOOLS_DEBUG
   container_cpu: 1
-  container_memory: 8192
+  container_memory: 5120
   container_disk: 51200
   container_persistent: true
   docker_mount_cwd_to_workspace: true
@@ -634,7 +641,7 @@ compression:
   codex_gpt55_autoraise: true
   codex_app_server_auto: native
   codex_responses_native: false
-  idle_compact_after_seconds: 3600
+  idle_compact_after_seconds: 0
 prompt_caching:
   # auto = 1h-Tier fuer alles, was ein Mensch tippt (cli, tui, desktop, Gateway),
   # 5m fuer maschinell getaktete Quellen (subagent, cron, kanban, webhook).
@@ -700,8 +707,8 @@ display:
   long_running_notifications: true
   tool_progress: all
   message_reactions: true
-  in_app_tips: true
-  in_app_tours: true
+  in_app_tips: false
+  in_app_tours: false
 dashboard:
   theme: midnight
   font: ibm-plex-mono
@@ -757,7 +764,7 @@ delegation:
       model: google/gemini-3.1-flash-lite
   max_iterations: 100
   reasoning_effort: high
-  max_concurrent_children: 5
+  max_concurrent_children: 10
   # 180 s war fuer ein grosses Denkmodell zu knapp: der Timeout startet bei JEDEM
   # Fortschritt neu, ein lebender Subagent mit mehreren Werkzeugschritten wurde
   # trotzdem abgeschnitten.
@@ -803,8 +810,8 @@ moa:
         - provider: custom:deepseek
           model: auto/best-chat
           enabled: true
-        - provider: llamacpp
-          model: gemma-4-E4B-it-OBLITERATED-Q8_0
+        - provider: ollama-launch
+          model: gemma-e4b-8k:latest
           enabled: true
       aggregator:
         provider: omniroute
@@ -903,44 +910,6 @@ moa:
       model: nvidia/nemotron-3.5-lightning:free
       enabled: true
 skills:
-  disabled:
-    - apple-notes
-    - apple-reminders
-    - findmy
-    - imessage
-    - architecture-diagram
-    - ascii-video
-    - baoyu-infographic
-    - claude-design
-    - design-md
-    - humanizer
-    - manim-video
-    - p5js
-    - popular-web-designs
-    - songwriting-and-ai-music
-    - himalaya
-    - gif-search
-    - songsee
-    - youtube-content
-    - airtable
-    - box
-    - document-to-action-items
-    - docx
-    - google-workspace
-    - maps
-    - meeting-action-items
-    - notion
-    - pdf
-    - powerpoint
-    - product-price-monitor
-    - teams-meeting-pipeline
-    - weekly-review-planning
-    - xlsx
-    - arxiv
-    - competitor-news-monitor
-    - grounded-citations
-    - llm-wiki
-    - xurl
   creation_nudge_interval: 15
 curator:
   enabled: true
@@ -994,50 +963,6 @@ gateway:
       chat_id: '7648512088'
       profile: default
       enabled: true
-    - name: telegram-gruppe-bots
-      platform: telegram
-      chat_id: '-1003980261765'
-      profile: bots
-      enabled: true
-    # Topic-Verdrahtung der Gruppe -1003980261765 (Thread > Chat "most specific"):
-    # Thread-IDs verifiziert gegen gespeicherte session.thread_id (12.10.2026).
-    # Ganze-Gruppe->bots bleibt als Fallback; ungelistete Threads laufen auf bots.
-    - name: telegram-gruppe-dispatch
-      platform: telegram
-      chat_id: '-1003980261765'
-      thread_id: '1998'
-      profile: bots
-      enabled: true
-    - name: telegram-gruppe-handel
-      platform: telegram
-      chat_id: '-1003980261765'
-      thread_id: '1999'
-      profile: jev-trader
-      enabled: true
-    - name: telegram-gruppe-auswertung
-      platform: telegram
-      chat_id: '-1003980261765'
-      thread_id: '2000'
-      profile: recherche
-      enabled: true
-    - name: telegram-gruppe-wissen
-      platform: telegram
-      chat_id: '-1003980261765'
-      thread_id: '2001'
-      profile: obsidian-skills
-      enabled: true
-    - name: telegram-gruppe-bots-dev
-      platform: telegram
-      chat_id: '-1003980261765'
-      thread_id: '2006'
-      profile: gbrain
-      enabled: true
-    - name: telegram-gruppe-wartung
-      platform: telegram
-      chat_id: '-1003980261765'
-      thread_id: '723'
-      profile: hermes-wartung
-      enabled: true
   platforms:
     a2a:
       enabled: true
@@ -1074,7 +999,7 @@ desktop:
   # Deckel fuer den V8-Heap des Renderers. 0 = Chromium-Standard, und genau der hat
   # am 13.09.2026 einen Rechner-weiten Freeze erzeugt; mit Deckel wird daraus ein
   # begrenzter Renderer-Neustart. 4096 MB passt zu 64 GB RAM neben dem Gateway.
-  renderer_max_old_space_mb: 3072
+  renderer_max_old_space_mb: 4096
 local_runtime:
   enabled: true
 _config_version: 50
@@ -1226,6 +1151,8 @@ mcp_servers:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\.venv\Scripts\python.exe
   okx-agentkit:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\okx-agentkit\start-demo.cmd
+    args:
+      - --read-only
     enabled: true
   pdf-vault:
     args:
@@ -1320,13 +1247,6 @@ mcp_servers:
     url: https://mcp.postman.com/minimal
     auth: oauth
     enabled: false
-  ziplime:
-    command: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\ziplime\.venv\Scripts\python.exe
-    args:
-      - -m
-      - ziplime.mcp
-    enabled: true
-    cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\ziplime
 platform_toolsets:
   cli:
     - a2a
@@ -1415,17 +1335,17 @@ platforms:
           topics:
             - name: Allgemein
               icon_color: 7322096
-              thread_id: 30755
+              thread_id: 32025
             - name: Handel
               icon_color: 9367192
               skill: brainfiles/fremdrepos-signal
-              thread_id: 30757
+              thread_id: 32027
             - name: Markt
               icon_color: 16766590
-              thread_id: 30759
+              thread_id: 32029
             - name: Wissen
               icon_color: 13338331
-              thread_id: 30761
+              thread_id: 32031
 cron:
   catch_up_missed: false
 _left_core_scoped:
