@@ -119,7 +119,7 @@ def main(argv=None):
         return 2
 
     w0 = json.loads((HIER / "wachen.json").read_text(encoding="utf-8"))
-    sp = kr._lade(HANDEL / "spur_buch.py", "spur_buch_llm_stunde")
+    buch = kr._lade(HANDEL / "spur_buch.py", "spur_buch_llm_stunde")
     rc = 0
     for variante in w0["varianten"]:
         for arm in ("R", "L"):
@@ -128,7 +128,7 @@ def main(argv=None):
             w = dict(w0, _variante=variante, _arm=arm)
             (ordner / "wachen.json").write_text(
                 json.dumps(w, ensure_ascii=False, indent=1), encoding="utf-8")
-            rc = max(rc, sp.zyklus(
+            rc = max(rc, buch.zyklus(
                 str(ordner), _quelle,
                 _signal_fabrik(variante, arm, ordner, schreibe=modus != "vorschau"),
                 modus,

@@ -464,6 +464,10 @@ SPUREN = {
                      "skript": "handeln.py"},
     "klassik_supertrend": {"ordner": "klassik_supertrend", "waehrung": "USD",
                            "skript": "handeln.py"},
+    # LLM-STUNDE (12.10.2026): drei Indikator-Kandidaten auf 1H, je Regelarm
+    # und LLM-Arm (sechs Straenge in laeufe/). Papier, kein Live-Zweig.
+    "llm_stunde": {"ordner": "llm_stunde", "waehrung": "USD",
+                   "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im
