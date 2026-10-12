@@ -176,7 +176,7 @@ class HausSpur(IStrategy):
         stop, ziel = self._signalwerte(pair, trade)
         if current_profit <= -stop / 100.0:
             return "stop_schluss"
-        if current_profit >= ziel / 100.0:
+        if ziel < self.hr.OHNE_ZIEL and current_profit >= ziel / 100.0:
             return "ziel_schluss"
         return None
 
@@ -193,6 +193,8 @@ class HausSpur(IStrategy):
         if self._auf_schluss():
             return None
         _, ziel = self._signalwerte(pair, trade)
+        if ziel >= self.hr.OHNE_ZIEL:
+            return None               # festes_ziel false: nur Stop und Regel
         return ziel / 100.0
 
     def leverage(self, pair, current_time, current_rate, proposed_leverage,

@@ -127,7 +127,7 @@ def signale_arrays(hoch, tief, schluss, name: str, w: dict | None = None) -> dic
     # Stop/Ziel aus der Spur-Funktion selbst (feste Prozente: kerzenunabhaengig)
     sp = hr.spur(name)
     stop = sp.stop_prozent([], w) or hr.STOP_VORGABE
-    ziel = sp.ziel_prozent([], w, "long", stop) or 2.0 * stop
+    ziel = hr.ziel_wert(sp, [], w, "long", stop)
     return {"einstieg": einstieg,
             "aus_long": gilt & aus_long,
             "aus_short": gilt & aus_short,

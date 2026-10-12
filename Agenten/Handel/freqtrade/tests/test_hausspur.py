@@ -171,9 +171,21 @@ class StopUndZiel(unittest.TestCase):
         """Review I3: ROI fuellt der Backtest zum Zielpreis, custom_exit erst zum Schluss."""
         self.assertTrue(HausSpur.use_custom_roi)
 
+    def test_ohne_festes_ziel_kein_roi(self):
+        """klassik_ema hat festes_ziel false: kein ROI, auch nicht auf Schluss."""
+        k, df = rahmen()
+        s = strategie(df=None)
+        df = s.populate_indicators(df, {"pair": PAAR})
+        s.dp.get_analyzed_dataframe = lambda pair, tf: (df, None)
+        t = Handel(df["date"].iloc[-2] + timedelta(minutes=1))
+        self.assertIsNone(s.custom_roi(PAAR, t, df["date"].iloc[-1], 60, "klassik_ema", "long"))
+        s.config["hausspur"]["ausloesung"] = "schluss"
+        self.assertIsNone(s.custom_exit(PAAR, t, df["date"].iloc[-1], 200.0, 5.0))
+
     def test_custom_roi_ist_ziel_der_signalkerze(self):
         k, df = rahmen()
         s = strategie(df=None)
+        s.hs_wachen = dict(s.hs_wachen, festes_ziel=True)
         df = s.populate_indicators(df, {"pair": PAAR})
         s.dp.get_analyzed_dataframe = lambda pair, tf: (df, None)
         i = len(df) - 2
