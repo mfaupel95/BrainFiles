@@ -59,6 +59,11 @@ class Reinfunktionen(unittest.TestCase):
                          encoding="utf-8")
             self.assertEqual(lf.zeilen(UEB[:1], fb.bots(str(p)), {})[0][1], "klassik_ema")
 
+    def test_kaputtes_urteil_wirft_nicht(self):
+        # Review M10d: urteile.json ist Fremdtext, der Tk-Hauptthread darf nicht fallen.
+        for u in ("kaputt", 5, ["x"], {"netto_prozent": "abc"}):
+            self.assertEqual(lf._backtest_text(u), "?", u)
+
     def test_live_bot_faellt_auf(self):
         live = [dict(UEB[0], dry_run=False)]
         self.assertTrue(lf.zeilen(live, BOTS, {})[0][2].startswith("LIVE!"))
@@ -94,6 +99,72 @@ class Reiter(unittest.TestCase):
             time.sleep(0.02)
         self.assertEqual(len(r.tabelle.get_children()), 2)
         self.assertEqual(r.titel_zusatz(), " (1/2)")
+
+    def _warte(self, bedingung, sek=5):
+        ende = time.monotonic() + sek
+        while time.monotonic() < ende and not bedingung():
+            self.root.update()
+            time.sleep(0.02)
+
+    def _reiter(self, detail):
+        r = lf.FreqtradeReiter(self.root, None, quelle=lambda **_kw: UEB,
+                               bot_quelle=lambda: BOTS, detail_quelle=detail,
+                               urteile_pfad=Path("gibtsnicht.json"))
+        r.refresh()
+        self._warte(lambda: r.tabelle.get_children())
+        return r
+
+    def test_auswahl_waehrend_abfrage_wird_nachgeholt(self):
+        # Review M10a: unter Bot B duerfen nicht die Trades von Bot A stehen.
+        freigabe = threading.Event()
+        gefragt = []
+
+        def detail(bot):
+            gefragt.append(bot["name"])
+            if bot["name"] == "klassik-ema":
+                freigabe.wait(5)
+            return [], [{"pair": bot["name"], "is_open": False}]
+        r = self._reiter(detail)
+        r.tabelle.selection_set("klassik-ema")
+        self._warte(lambda: gefragt)
+        r.tabelle.selection_set("trading-agent")
+        self.root.update()
+        freigabe.set()
+        self._warte(lambda: gefragt[-1:] == ["trading-agent"] and not r._detail_laeuft)
+        self.assertEqual(gefragt, ["klassik-ema", "trading-agent"])
+
+    def test_gescheiterte_abfrage_sagt_es(self):
+        # Review M10b: keine stumm geleerte Tabelle.
+        def detail(_bot):
+            raise OSError("Zeitgrenze")
+        r = self._reiter(detail)
+        r.tabelle.selection_set("klassik-ema")
+        self._warte(lambda: r.offen.get_children())
+        werte = r.offen.item(r.offen.get_children()[0], "values")
+        self.assertIn("Zeitgrenze", " ".join(str(w) for w in werte))
+
+    def test_detail_mit_kurzer_zeitgrenze(self):
+        # Review M10c: 4 s wie die Uebersicht, nicht ZEITGRENZE der Bruecke.
+        self.assertEqual(lf.DETAIL_ZEITGRENZE, 4)
+
+    def test_nach_zerstoeren_kein_fehler(self):
+        # Review M10e: ein spaetes Ergebnis trifft kein zerstoertes Widget.
+        freigabe = threading.Event()
+
+        def langsam(**_kw):
+            freigabe.wait(5)
+            return UEB
+        r = lf.FreqtradeReiter(self.root, None, quelle=langsam,
+                               bot_quelle=lambda: BOTS,
+                               urteile_pfad=Path("gibtsnicht.json"))
+        fehler = []
+        self.root.report_callback_exception = lambda *a: fehler.append(a[1])
+        r.refresh()
+        r.destroy()
+        freigabe.set()
+        time.sleep(0.3)
+        self.root.update()
+        self.assertEqual(fehler, [])
 
     def test_im_leitstand_eingetragen(self):
         titel = [t for t, _k in lst.REITER]

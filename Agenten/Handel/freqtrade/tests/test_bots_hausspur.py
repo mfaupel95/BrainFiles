@@ -116,6 +116,13 @@ class BacktestUrteil(unittest.TestCase):
     def test_kein_neues_ergebnis_nicht(self):
         self.assertEqual(self._lauf(0, "a.zip", "a.zip"), [])
 
+    def test_schutzschicht_im_backtest(self):
+        # Review M6: StoplossGuard/MaxDrawdown wirken live - im Backtest auch.
+        fenster = []
+        with patch.object(bots, "einweglauf", lambda f, b: fenster.append(f) or 1),                 patch.object(bots, "ausgewaehlt", lambda a: [HAUSBOT]),                 patch.object(bots, "_letzter_zeiger", lambda: None):
+            bots.cmd_backtest(["klassik-ema"])
+        self.assertIn("--enable-protections", fenster[0])
+
     def test_teilzeitraum_nicht(self):
         self.assertEqual(self._lauf(0, "a.zip", "b.zip", timerange="20260101-"), [])
 

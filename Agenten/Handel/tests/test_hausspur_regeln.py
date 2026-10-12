@@ -113,6 +113,22 @@ class Grenzen(unittest.TestCase):
         self.assertLessEqual(m["stop"], 12.0)
 
 
+class Sicher(unittest.TestCase):
+    def test_gleicher_fehler_nur_einmal(self):
+        # Review M9: ein Fehlertext je Lauf, nicht je Kerze.
+        import contextlib
+        import io
+        hr._GEMELDET.clear()
+        puffer = io.StringIO()
+
+        def wirft():
+            raise ValueError("kaputt")
+        with contextlib.redirect_stderr(puffer):
+            for _ in range(5):
+                self.assertIsNone(hr._sicher(wirft))
+        self.assertEqual(puffer.getvalue().count("kaputt"), 1)
+
+
 def orb_tag(ausbruch_bei=5, richtung=1, tag_ms=1_760_054_400_000):
     """Ein UTC-Tag in 15-min-Kerzen; Range 100..110, Ausbruch an Kerze `ausbruch_bei`.
 
@@ -158,6 +174,15 @@ class Orb(unittest.TestCase):
         k = orb_tag(93, +1)                       # 23:15 UTC
         s = hr.signale(k, "orb", paar=self.PAAR, ab=300)
         self.assertIsNone(s[393]["einstieg"])
+
+    def test_letzte_kerze_vor_schluss_zaehlt_nach_ende(self):
+        # Review M3: 22:45 schliesst um 23:00 = Schluss, das Haus lehnt dort ab.
+        k = orb_tag(91, +1)                       # 22:45 UTC
+        s = hr.signale(k, "orb", paar=self.PAAR, ab=300)
+        self.assertIsNone(s[391]["einstieg"])
+        k = orb_tag(90, +1)                       # 22:30 UTC, Ende 22:45
+        s = hr.signale(k, "orb", paar=self.PAAR, ab=300)
+        self.assertEqual(s[390]["einstieg"], "long")
 
     def test_session_ende(self):
         k = orb_tag(5, +1)
