@@ -39,6 +39,20 @@ gezielte Änderung an der Hermes-Konfiguration (`hermes-config-ops`).
      ORDER BY started_at DESC LIMIT 20` — die `title` ist die erste Nutzer-Nachricht
      und benennt den Strang sofort. Liefert `session_search` nur alte Sitzungen,
      obwohl gerade etwas passiert ist, direkt in der DB weiterlesen.
+   - **Die LAUFENDE Sitzung ist fuer `session_search` unsichtbar** (FTS-Index
+     indexiert sie erst nach Abschluss: `count: 0, sessions_searched: 0` heisst
+     NICHT „existiert nicht"). Braucht man eine Angabe aus der gerade
+     kompaktierten Sitzung (z.B. welches Modell ein Kurzbefehl meint), direkt in
+     `state.db` suchen: `SELECT id, role, substr(content,1,120) FROM messages
+     WHERE content LIKE '%<markantes wort>%' ORDER BY id DESC LIMIT 10` — ein
+     markantes Stichwort aus der Nutzerphrase („7,5", „gb", „routen") als Anker,
+     nie „nicht gefunden" melden, solange die DB nicht durchsucht ist.
+   - **Dieselbe LIKE-Suche ueber ALLE Profile fahren.** Ein Kurzbefehl kann sich
+     auf eine Unterhaltung in einem ANDEREN Profil beziehen (z.B. „das 7,5 gb
+     modell" = Modellname, den die bots-Session besprochen hat):
+     `Agenten/Hermes/profiles/<name>/state.db` je Profil durchlaufen, Tabelle
+     `messages`, `content LIKE '%<stichwort>%'`. Der Treffer nennt Profil und
+     Kontext; die umliegenden Zeilen (id-Fenster) liefern den Auftrag dazu.
    - **Eine nackte Ziffer ist ein Verweis, kein Auftrag.** Sie zeigt auf eine
    nummerierte Liste, die in einer anderen Sitzung stand. Also die letzten
    Assistenten-Nachrichten der zwei juengsten fremden Sitzungen lesen

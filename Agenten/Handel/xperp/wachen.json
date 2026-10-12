@@ -41,7 +41,7 @@
       "aktiv": true,
       "instCategory": "3",
       "max_anteil_gesamt": 0.5,
-      "umsatz_bezug_usd": 1000000,
+      "umsatz_bezug_usd": 300000,
       "vola_tor_pa": 0.9
     },
     "krypto": {

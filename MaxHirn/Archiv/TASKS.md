@@ -9,6 +9,10 @@
       Die Geometrie-Umstellung am 04.10. erklaert die Freqtrade-Diskrepanz NICHT.
       Naechster Schritt: Spur nicht live schalten, Papier beobachten; Geometrie-Suche
       auf dem vollen Fenster statt auf 125 Tagen.
+      Geometrie-Suche auf vollem Fenster (24 Monate, 9 Kandidaten, optimieren.py):
+      KEIN Kandidat ueberlebt (alle unter 30 Runden je Fenster, beste 26).
+      Grundlinie -0,388 USD/Runde (Suchrechnung). ziel_r_vielfaches ohne Wirkung.
+      Squeeze traegt ueber 716 Tage in keiner Geometrie - Papier lassen, kein Live.
       Angelegt 2026-10-11 · Zuletzt 2026-10-11 / Betrifft: Agenten/Handel/squeeze
 
 - [x] **T-044 - Gateway-Waechter registriert, Alt-Task deaktiviert, Bus ohne Konsolenfenster**

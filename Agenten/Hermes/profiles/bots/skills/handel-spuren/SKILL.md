@@ -65,6 +65,28 @@ scanner/.venv/Scripts/python.exe optimieren.py --spur squeeze              # sch
 
 `wachen.json`-Parameter zu ändern bewegt die Strategie. **Nicht alleine drehen** — die Befunde und den konkreten Hebel vortragen, Max das Richtungs-OK geben lassen, dann ausführen. Wenn Max alle Vorschläge absegnet, ist das die Freigabe; aber vorher steht kein Wert in der Datei.
 
+## Live schalten: erst die Tore UND den Live-Pfad pruefen
+
+Bittet Max, eine Spur live zu schalten (`handel_erlaubt=true` + in `AUTO_FREIGABE` aufnehmen), ist das eine Echtgeld-Aktivierung gegen dokumentierte Freigabe-Sperren — nicht stillschweigend ausfuehren. Zwei Pruefungen, bevor irgendein Schalter umgelegt wird:
+
+1. **Freigabe-Tore in `wachen.json`:** `freigabe.backtest_bestanden`, `papierlauf_min_wochen`/`papierlauf_min_sessions` gegen das Journal, `netto_positiv`. Die Datei selbst nennt die Bedingungen (`_freigabe`-Kommentar). Sind sie nicht erfuellt, vortragen statt drehen.
+2. **Ob ein Live-Pfad im Code existiert.** `--live` als gueltiger argparse-Wert ist KEIN Beleg — viele Spuren akzeptieren ihn, drucken aber nur `GRUND_KEIN_LIVE` und laufen als Papier weiter (orb, orbk). Vor der Freigabe `grep -n "GRUND_KEIN_LIVE\|order\|live_perp" <spur>/handeln.py` und den `--live`-Zweig lesen. Ohne echten Orderweg bewirkt `handel_erlaubt=true` + `AUTO_FREIGABE` **nichts** — Live-Aktivierung ist dann Codearbeit im Worktree, kein Konfig-Schalter.
+
+**Wie `AUTO_FREIGABE` ueberhaupt feuert (der konkrete Mechanismus):** `dauerlauf.nur_fenster_fehlt()` ruft `handeln.py --vorschau` und verlangt, dass die Ausgabe **genau EINEN** Sperrgrund enthaelt, der das Wort `Freigabefenster` traegt. Nur dann oeffnet der Dauerlauf das Auto-Freigabefenster. Eine Spur, deren `--vorschau` stattdessen `kein Live-Pfad` (oder mehrere Gruende) druckt, kommt nie in die Auto-Freigabe — egal wie `handel_erlaubt`/`freigabe` gesetzt sind. Beim Bau eines Live-Pfads muss die `--vorschau`-Sperrgruende-Logik also so verdrahtet werden, dass bei offenen Toren genau der eine `Freigabefenster`-Grund uebrig bleibt (Muster: `kraken/handeln.py` `live_sperren()` + `Live waere gesperrt durch: ...`).
+
+**Backtest-Urteil richtig lesen:** der `bericht()`-Gate `haelt_81` verlangt Trefferquote ≥ 75 % UND EV>0 UND bestes Quartal>0 UND ≥ 10 Verlierer. Eine Spur kann positiven EV haben und trotzdem mit „unter 10 Verlierer" durchfallen — das ist **nicht beurteilbar (zu wenig Daten)**, nicht negativ. Unterscheide: negativer EV = echtes Strategieproblem (Stilllegungs-Kandidat); zu wenig Daten = weiter Papier laufen lassen, kein Freigabe-Hindernis an sich. Ein positiver Papierlauf ueber wenige Wochen mit einem einzigen grossen Gewinn ist kein Netto-Beleg — nach Gebuehr rechnen und die Runden-/Wochen-Tore zaehlen.
+
+## Anweisungs-Trade: vorbereiten ≠ scharfstellen (kein Auto-Weg)
+
+Ein Anweisungs-Trade (Max nennt Kontrakt, Richtung, Hebel, Einsatz, Stop ueber den Chat) laeuft ueber `bot.py` und landert als **`vorbereitung`-Zeile im Journal** — das ist noch ***keine*** Order. Der Dauerlauf/AUTO_FREIGABE ordert **nur seine eigenen Ranglisten-Kandidaten**; eine manuell vorbereitete Journal-Position wird von keinem Zyklus automatisch aufgegriffen (`zustand.json` `wartende: []`). Es gibt **keinen dokumentierten Auto-Pfad**, der eine angewiesene `vorbereitung` in eine Live-Order verwandelt.
+
+- Frei nach Handelsregeln: *„Das Absenden der scharfen Order tut die Sitzung selbst nicht — ausgeloest wird sie von Max oder von dem gebauten Skript (`handeln.py --live`)."* `handeln.py --live` ordert aber aus seiner Kandidaten-/Zonenlogik, nicht aus dem Journal.
+- Offenes Freigabefenster (`AUTO_FREIGABE`, `handel_erlaubt:true`) bewoehrt die Spur — es schickt die angewiesene Position **nicht** automatisch.
+- **Sauberer Weg:** Max eroeffnet die Position selbst an der Boerse mit den fuenf Werten; die Spur erkennt sie als Handposition (`herkunft=boerse_handgriff`, `handpositionen_automatisch_schliessen`) und verwaltet sie danach (Stop, Ziel, Trailing).
+- **Verifiziere den Fenster- und Buchstatus selbst statt einer Bot-Behauptung zu trauen.** Der delegierte Bot meldete zuerst `handel_erlaubt:false`, dann `true`; die Fakten stehen in der Datei. Fenster-Status: `freigabefenster.py` (`alle()` gibt `Fenster`-Objekte mit `.offen`/`.text`, Zustand in `freigabe_fenster.json` pro Spur, `AUTO_FREIGABE_STUNDEN` in `dauerlauf.py`). Ob eine Position scharf ist, zeigt nur das echte undef wartende/offene Orderbild, nie eine vorbereitende Journal-Zeile.
+
+**Ein delegierter Bot, der in eine Wiederholungsschleife laeuft, ist ein Mechanik-Verdacht, kein Transient.** `markt-recherche` kollabierte (exit 1, Repetition-Loop) genau im Suchen des nicht existierenden Anweisungs-Auto-Wegs. Nach so einem Abbruch nicht blind den gleichen Bot erneut starten — erst im Repo pruefen, was wirklich passiert ist (Commit vorhanden? Fenster offen? Position eingelegt?), und dann den fehlenden Weg als solchen melden statt ihn zu erfinden.
+
 ## Stilllegen: netto-negativ + nicht per Parameter behebbar
 
 Wenn eine belastbare Spur netto negativ ist UND der Parametersuche nichts überlebt, ist der saubere Weg die **Stilllegung** — nicht weiter Daten erzeugen. Muster = wie spiegel („eh absolut nicht profitabel"):
@@ -76,6 +98,14 @@ Wenn eine belastbare Spur netto negativ ist UND der Parametersuche nichts überl
 5. Eine `wachen.json`-Wertänderung ist Betriebskonfig und darf direkt auf master (Commit mit `--author="Hermes <hermes@local>"`); eine `dauerlauf.py`-Spurlisten-Änderung ebenso nach dem spiegel-Muster.
 
 **Eine Stilllegung in `SPUREN` greift erst beim Neustart des Dauerlaufs** — das Dict wird einmal beim Import gelesen, laufende Zyklen sehen die alte Liste. Einen Dauerlauf-Neustart nicht ungefragt machen: er recycelt die Echtgeld-Spuren (scanner/xperp in mittel/hoch) und kann offene Positionen flachstellen. Committen und die Wirkung als „beim nächsten Neustart wirksam" vermerken, Max die Entscheidung über den Neustart überlassen.
+
+## Ziplime — externer Backtesting-Engine
+
+Eine Anfrage, Ziplime (Werkstatt/Repos/ziplime) fuer die Handelsoptimierung zu
+installieren/starten/nutzen, ist eine eigene Klasse: externer Aktien/ETF/Futures-
+Backtester, KEIN Krypto-Perpetual-Engine. Setup, die Polars-Versionsfalle
+(2.0 bricht, 1.24.0 hat WindowsPath-Bug, 1.44.2 funktioniert) und der
+verifizierte Quick-Start: `references/ziplime.md`.
 
 ## Leitstand ausbauen
 

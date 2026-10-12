@@ -113,6 +113,13 @@ that cwd or the `Werkstatt\...` argument will not resolve. The script sets its o
   into a text filter (`grep`) reports "Binary file (standard input) matches" because of
   CRLF/wide characters, so a live port looks unhandled. Probe with `curl` HTTP status
   instead, and use `search_files` rather than shell text filters for anything else.
+- **Fixture-checkout regression test needs a native source path, not a `file://` URL.**
+  `real-candidate-preflight.test.ts` originally cloned via `pathToFileURL(...).href`
+  (`file:///C:/…`); MSYS Git (`/mingw64/bin/git`) cannot resolve that and the clone
+  fails with "does not appear to be a git repository". Pass the source as a plain native
+  path (`sourceWithAttributes`), and raise that test's timeout past vitest's 5s default
+  (it clones + loads the full corpus across multiple checkout modes). The git in the
+  bash terminal is MSYS (`which git` → `/mingw64/bin/git`), not native Windows Git.
 - **A filesystem-wide file search over `C:\Users\faupe` can fail** (ripgrep error).
   For known tooling, list the specific directory (`Werkstatt/auto-prediction-studio`)
   instead of searching the whole tree — the studio start script lives there and never

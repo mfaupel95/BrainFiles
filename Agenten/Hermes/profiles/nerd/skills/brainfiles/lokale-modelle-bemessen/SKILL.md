@@ -186,7 +186,18 @@ die niemand nachzieht. Bei
  eine EXISTIERENDE Binary zeigen (`Test-Path` auf das Ziel), sonst startet der
  Server nie; beide Symptome zusammen lesen sich wie "kein Modell da".
 
- ## References
+- **Der verwaltete llama-server (18434) traegt seinen API-Key in der eigenen
+  Kommandozeile.** Probeaufrufe an ihn (Modell laden, Completion testen)
+  brauchen den Key — er steht als `--api-key <32 Zeichen>` in der
+  CommandLine des Prozesses: `(Get-CimInstance Win32_Process | Where-Object {
+  $_.Name -eq 'llama-server.exe' -and $_.CommandLine -match '<port>' })
+  .CommandLine` parsen und NUR im Request-Header verwenden, nie ausgeben.
+  `401 "Invalid API Key"` OHNE Key ist kein Todesbeweis, sondern Beweis,
+  dass der Server lebt — erst mit Key erneut testen. Welche Modellnamen der
+  Server fuehrt, steht in `runtimes/llamacpp/presets.ini` (Presets, nicht
+  freie Pfade): ein Name daraus (z.B. `gemma-4-E4B-it-OBLITERATED-Q8_0`)
+  laedt autoload, `--load-mode dio` entlaedt nach Inaktivitaet.
+## References
 - `references/vram-faustregeln.md` — Formeln, Bitwerte je Stufe, gemessene
   Werte dieses Rechners und die Grenzwerte für 8 GB VRAM.
 - `scripts/gguf-kopf.py` — liest den GGUF-Kopf und rechnet Gewichte je Stufe

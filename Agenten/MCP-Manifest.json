@@ -207,6 +207,19 @@
         "max_2_docker"
       ],
       "description": "Docker MCP Toolkit als Gateway, Profil max_2_docker. Braucht laufendes Docker Desktop. Eingetragen in Hermes und in Claude Code (~/.claude.json, Nutzerebene), nicht in Claude Desktop - daher agent hermes fuer den Pruefer. Beide Eintraege reichen LOCALAPPDATA, ProgramData und ProgramFiles als env durch. Ins Manifest aufgenommen am 29.09.2026."
+    },
+    {
+      "name": "ziplime",
+      "enabled": true,
+      "agent": "beide",
+      "type": "stdio",
+      "command": "Werkstatt\\Repos\\ziplime\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "ziplime.mcp"
+      ],
+      "cwd": "Werkstatt\\Repos\\ziplime",
+      "description": "Ziplime (Fork mfaupel95/ziplime): Backtesting-Engine (Polars, Zipline-API) mit MCP-Server. 14 Tools: ingest_*, check/write/read_strategy, run_backtest, get/compare_backtests, describe_live_trading. Daten aus ~/.ziplime (Yahoo, 15.376 Aktien). Kein Order-Tool - live nur ueber Lime-SDK, nie durch ein Tool. Registriert am 12.10.2026 fuer Max' Handelsoptimierung (Aktien/ETF + Krypto-CSV)."
     }
   ],
   "disabled": [

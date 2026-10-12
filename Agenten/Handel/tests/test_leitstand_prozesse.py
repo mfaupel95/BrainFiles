@@ -168,6 +168,11 @@ class SpurStatus(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["herzschlag"], "unbekannt")
 
+    def test_modus_faellt_auf_positionen_zurueck_wenn_oben_fehlt(self):
+        self.assertEqual(lp._modus_der_spur({"positionen": [{"modus": "live"}]}), "live")
+        self.assertEqual(lp._modus_der_spur({"modus": "papier", "positionen": [{"modus": "live"}]}), "papier")
+        self.assertEqual(lp._modus_der_spur({}), "-")
+
 
 class ProzessReiterUI(unittest.TestCase):
     def test_statusfilter_zeigt_nautilus_oder_alle_spuren(self):

@@ -155,6 +155,20 @@ class _KrakenQuoteNode:
         self._pid_pfad.unlink(missing_ok=True)
 
 
+def _modus_der_spur(zustand):
+    """Oberer `modus` der Spur; fehlt er, die Modi der Positionen.
+
+    mosaic etc. tragen den Modus nur je Position - ohne diesen Rueckgriff
+    stuende dort faelschlich '-'.
+    """
+    oben = zustand.get("modus")
+    if oben:
+        return str(oben)
+    modi = sorted({str(p.get("modus")) for p in zustand.get("positionen") or []
+                   if isinstance(p, dict) and p.get("modus")})
+    return "/".join(modi) if modi else "-"
+
+
 def spuren_status(jetzt=None):
     """Rein lesende Statuszeilen fuer jede Spur aus dauerlauf.SPUREN (Basis).
 
@@ -173,7 +187,7 @@ def spuren_status(jetzt=None):
         positionen = hz.positionen_der_spur(spur, zustand, wachen)
         zeilen.append({
             "spur": spur,
-            "modus": str(zustand.get("modus") or "-"),
+            "modus": _modus_der_spur(zustand),
             "herzschlag": lage,
             "alter_minuten": alter,
             "positionen": len(positionen),

@@ -11,17 +11,14 @@ terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\claude-red
 providers:
-  ollama-launch:
-    api: http://127.0.0.1:11434/v1
-    base_url: http://127.0.0.1:11434/v1
-    default_model: gemma-e4b-8k:cpu
-    name: Ollama
-    model: gemma-e4b-8k:cpu
+  llamacpp:
+    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    name: LLaMA.cpp
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
     discover_models: true
 fallback_providers:
-  - provider: ollama-launch
-    model: gemma-e4b-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
+  - provider: llamacpp
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
   - provider: omniroute
     model: auto/coding:free
     base_url: http://localhost:20128/v1

@@ -109,6 +109,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | delegate_task "capped at N" reports | `references/delegate-task-concurrency-diagnosis.md` |
 | "Can app X use my Nous Portal subscription/OAuth?" | `references/portal-auth-for-third-party-apps.md` |
 | Connecting a messaging platform (Telegram, Discord, Slack, WhatsApp, …) | docs: `/user-guide/messaging` |
+| Route a Telegram group's forum Topics to different bot profiles (multiplex + `profile_routes`, recover real `thread_id`s) | `references/telegram-topic-routing.md` |
 
 The reference list above is not the feature list — it is the set of topics that
 need more than their docs page. For everything else Hermes ships, fetch
@@ -138,6 +139,27 @@ terminal(command="hermes chat -q 'Research GRPO papers and write summary to ~/re
 # Background for long tasks:
 terminal(command="hermes chat -q 'Set up CI/CD for ~/myapp'", background=true)
 ```
+
+**Long `chat -q` delegation: preserve and retrieve the result.** Start long research/coding bots with `terminal(background=true, notify=true)` so the answer returns on exit; for a foreground run that times out, the process may still be alive while the stdout handle is lost. Poll/wait on the returned process session rather than launching the same assignment again. On Windows, do not trust `ps aux | grep hermes` from git-bash to identify native processes; use a bounded `powershell Get-CimInstance Win32_Process` query or `tasklist`.
+
+**A spawned bot's session can end while the work it started is still running — don't wait for it to "report back".** When a delegated bot (`hermes -p <bot> chat -q`) starts a background process and its final message promises "I'll get a notification and report the result," that promise dies with the bot's own process: the bot exits, the background process keeps running, and no one relays the result. Verify the spawned process is still alive (PowerShell `Get-Process`/`Get-CimInstance` by PID) and read the output artifact the work writes (log/report file) directly instead of waiting for the bot's notification.
+
+**When the completion notification truncates a spawned bot's answer, the full output is on disk.** The gateway stores the complete stdout of every background process at `profiles/<active-profile>/logs/process-results/<proc_id>.json` under the `output` field (the notification shows only the tail). Read it with `execute_code` (json.load + strip ANSI `\x1b[...m` codes) rather than `read_file`, which truncates the JSON line. This is the reliable way to relay a long bot result verbatim to the user — do not re-run the bot to recover text you already have.
+
+**Topic-based group dispatch:** before saying group Topics are routed, inspect the effective `gateway.profile_routes` and verify each actual forum `thread_id`. A profile route selects one runtime profile per inbound message; it does not chain Research into a dispatcher. If Max wants sequential research-then-specialist handling, keep one dispatcher profile on the group and encode the sequence in its operating rules: one research bot, await its result, then at most one specialist. Telegram `t.me/c/.../<id>` links contain a message ID, not a reliable topic ID. Read a real inbound `message_thread_id` or stored session `thread_id`; never guess thread IDs or replace an existing group route until every intended Topic is verified. Keep the unmodified whole-group route as the safe fallback for unmapped Topics.
+
+When routing only to an existing bot profile fails to provide sequencing, update the dispatcher profile's role instructions rather than adding simultaneous profile routes. This prevents every bot from independently taking the same group post and avoids unsupported many-to-many routing assumptions.
+
+**A spawned bot that dies in a repetition loop still finished part of the job — recover its artifacts, don't relaunch it.** If a delegated `hermes -p <bot> chat -q` exits (the "Response Stopped — Repetition Detected" loop, often on weaker models) after many tool calls, it usually wrote real files before the loop closed in. Check the repo/workspace `git status` (uncommitted new/modified files) to learn what it actually produced, finish the remainder yourself, and commit — do not start the same assignment again in a fresh loop that will hit the same wall. Verify the artifacts run (tests/backtest) before committing; the bot's own files may be only partway working. This is the physical counterpart to the text-recovery rule above.
+
+
+**Checking whether a spawned bot is still alive on Windows:** `ps aux | grep hermes` in git-bash does NOT reliably show native Windows processes (it can report nothing while the bot runs). Use `tasklist` or PowerShell instead:
+
+```
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { \$_.CommandLine -match '<bot>' -and \$_.CommandLine -match 'chat' } | Select-Object ProcessId,CreationDate"
+```
+
+Fresh `CreationDate` values mean it is still working; a stable empty result means it finished or died.
 
 ### Interactive PTY Mode (via tmux)
 
@@ -195,6 +217,7 @@ terminal(command="tmux new-session -d -s resumed 'hermes --resume 20260225_14305
 - **Use `hermes chat -q` for fire-and-forget** — no PTY needed
 - **Use tmux for interactive sessions** — raw PTY mode has `\r` vs `\n` issues with prompt_toolkit
 - **For scheduled tasks**, use the `cronjob` tool instead of spawning — handles delivery and retry
+- **Topic-based group dispatch:** verify the effective `gateway.profile_routes` before claiming a topic is routed. A route selects one runtime profile for each inbound message; it does not chain a research bot into a dispatcher. To enforce research-before-specialist dispatch, keep one dispatcher profile on the group and put the sequential workflow in that profile's operating rules. Telegram links identify messages, not forum topics: never copy the link's message ID into `thread_id`; use a verified inbound `message_thread_id`/stored session `thread_id`, and preserve an existing whole-group route until every intended topic ID is confirmed.
 - **"delegate_task is capped at N" reports** — see `references/delegate-task-concurrency-diagnosis.md`. Three real cap paths in Hermes; if none fired, the model is self-limiting and rationalising it as "the runtime caps."
 - **"Can $external_app use my Nous Portal subscription / OAuth?"** — see `references/portal-auth-for-third-party-apps.md`. Walk the user through three layers (plugin-vs-app, what Portal actually exposes, local-broker-proxy option).
 
