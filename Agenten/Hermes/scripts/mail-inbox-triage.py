@@ -158,11 +158,23 @@ def einordnen(absender: str, betreff: str, koerper: str) -> dict:
     punkte = 0.0
     gruende = []
 
-    muster_antwort = [r"\b(frage|fragen)\b", r"\bantwort\w*\b", r"\brückfrage\b",
-                      r"\brueckfrage\b", r"\bwir\s+warten\b", r"\bbitte\s+(melden|"
-                      r"bestätigen|best[aä]tigen|unterschreiben|zahlen|bezahlen)",
-                      r"\bfehlt\s+(noch|ihre?)\b", r"\bnoch\s+nicht\s+(beantwortet|"
-                      r"gesendet|erledigt)\b"]
+    muster_antwort = [
+        # Deutsch (Stammtreppe)
+        r"\b(frage|fragen)\b", r"\bantwort\w*\b", r"\brückfrage\b",
+        r"\brueckfrage\b", r"\bwir\s+warten\b", r"\bbitte\s+(melden|"
+        r"bestätigen|best[aä]tigen|unterschreiben|zahlen|bezahlen)",
+        r"\bfehlt\s+(noch|ihre?)\b", r"\bnoch\s+nicht\s+(beantwortet|"
+        r"gesendet|erledigt)\b",
+        # Englisch: Fragen, die eine Antwort erwarten (Absender ist ein Mensch,
+        # kein no-reply - der kommt ueber AUSSCHLUSS). Gemessen 12.10.2026:
+        # "A quick question ... What were you hoping to ..." scorte 0,0, weil
+        # nur deutsche Muster griffen.
+        r"\b(quick\s+)?question\b", r"\basking\b", r"\bcurious\b",
+        r"\bwhat\s+(were|are|do|did|would|can|could|have)\s+you\b",
+        r"\b(your\s+)?(thoughts|input|feedback|opinion)\b",
+        r"\bwould\s+you\s+(be\s+)?(willing|able)\b",
+        r"\bhow\s+(do|would|can)\s+you\b",
+    ]
     if _trifft(inhalt, muster_antwort):
         punkte += 1.5
         gruende.append("erwartet Antwort")
