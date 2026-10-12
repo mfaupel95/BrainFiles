@@ -139,3 +139,7 @@ Skript `Werkstatt/ema_walkforward.py` (unversioniert). BTC-USDC, OKX-Kerzen, Lon
 | 5m, 120 Tage, 12 Fenster | -4,76 % (3/12 positiv) | **-74,69 %** (1/12) | +33,84 % |
 
 **Ergebnis: Kriterium in beiden Laeufen NICHT erfuellt.** Die live laufende Einstellung (5m, 10/20) verliert Out-of-sample praktisch alles an Kosten und Fehlsignalen. Die Walk-forward-Wahl landet bei langsamen Paaren (20/120), d. h. das Raster flieht vor den Kosten. Kein Vorteil; Strategie taugt nur als Rohrleitungs-Test der Kette. Grenzen: kein Stop simuliert (4 %-Stop aendert auf 5m wenig), ein Instrument, eine Marktphase.
+
+## Auswertung 12.10.2026 - moon-dev-ai-agents (nicht durchfuehrbar)
+
+`ai_analysis_buys.csv`: 95 Zeilen, nur 12.-31.01.2025 (Memecoins). 47x BUY/BUY, 35x BUY/DO NOTHING, 13x DO NOTHING/BUY; keine SELL-Zeilen, keine Ergebnisspalte. **Kein einziges Symbol steht in der Tor-Liste** (kein Token auf OKX-/Kraken-Spot). Kursverlauf zur Pruefung: CoinGecko-Gratisschnittstelle liefert fuer Daten aelter als 365 Tage HTTP 401 (28 von 28 Abfragen), danach 429. Eine Auswertung ist ohne bezahlten Schluessel nicht moeglich; `Werkstatt/moondev_auswertung.py` bleibt als Vorlage (unversioniert). Selbst mit Daten waeren die Signale nicht handelbar (Token nicht gelistet, Survivorship-Bias, Alter der Daten). Der Adapter bleibt, hat aber nichts zu tun, bis das Repo frische Empfehlungen fuer gelistete Paare schreibt.
