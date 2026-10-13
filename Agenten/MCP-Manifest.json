@@ -158,7 +158,7 @@
       "args": [
         "dist/index.js",
         "--stdio",
-        "MaxHirn\\Claude"
+        "MaxHirn\\Referenz\\Claude_prompts"
       ],
       "cwd": "Agenten\\MCP-Server\\ant.dir.gh.anthropic.pdf-server-mcp",
       "description": "PDFs anzeigen, ausfuellen, signieren. Laueft in beiden Agenten (seit 2026-09-10 als aktiv gefuehrt)."

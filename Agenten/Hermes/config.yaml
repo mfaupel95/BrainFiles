@@ -1214,7 +1214,7 @@ mcp_servers:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
       - --stdio
-      - C:\Users\faupe\Documents\BrainFiles\MaxHirn\Claude
+      - C:\Users\faupe\Documents\BrainFiles\MaxHirn\Referenz\Claude_prompts
     command: node
   revolut-x:
     args:
