@@ -336,6 +336,11 @@ Agenten/Bus/skillsbot.ziel.json
 # Durchgangsware: Uebergaben, Zwischenstaende, geklonte Fremd-Repos.
 !Werkstatt/*.md
 
+# Handelsregeln aus moon-dev-READMEs (13.10.2026): Ueberfuehrung der
+# Agenten-/Strategie-/Modell- und API-Doku ins Handelswissen. Liegt in
+# Wissen/ (versionierter Text), nicht in Agenten/Handel/ (Laufzeitstand).
+!Wissen/Handelsregeln.md
+
 # --- 8) Rueckausnahmen: was trotz der Freigaben oben draussen bleibt --------
 
 # Zugangsdaten. Zugaenge.md ist laut CLAUDE.md die einzige Ablage fuer
