@@ -3,7 +3,7 @@ id: 20260830-index
 title: 'Wissen — Index'
 tags: [betrieb]
 created: 2026-08-30
-updated: 2026-10-08
+updated: 2026-10-13
 related: []
 summary: 'Einstiegspunkt für Agenten: vollständiges Verzeichnis aller Notizen in Wissen/ mit Zweck und Pfad.'
 ---
@@ -67,6 +67,10 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260916-repo-bots` — **Repo-Bots: Flottenstand und Telegram-Zugang** — `Wissen/Repo-Bots.md` — Ein Hermes-Profil je Fremd-Repo in Werkstatt/Repos, erreichbar per Telegram über /bots und /bot NAME.
 - `20260916-agent-reach` — **Agent Reach: Internet-Zugang für Agenten** — `Wissen/Agent-Reach.md` — Lesender Internet-Zugang (Twitter/X, Reddit, YouTube, GitHub, RSS, Web) ohne API-Schlüssel: Ablageort, Aufruf, Hermes-Profil.
 - `20260917-openmontage` — **OpenMontage: Agentisches Videoproduktions-Framework** — `Wissen/OpenMontage.md` — Fork von calesthio/OpenMontage: 12 Produktionspipelines für KI-Videos, 41 von 121 Werkzeugen laufen ohne API-Schlüssel.
+
+### Handel-Agenten (Betrieb)
+
+- `20261013-handel-agenten-befund` — **Handel-Agenten: Befund 13.10.2026** — `Wissen/Handel-Agenten-Befund-20261013.md` — Dauerlauf-Überwachung lückenhaft (3 von 4 Wächter-Aufgaben abgeschaltet, Mittel-Stufe tot seit 12.10. 17:07); Backtest-Varianten gesichert und bewusst stehen gelassen; 5,4 GB redundante state.db-Kopien entfernt. Entscheidung über die abgeschalteten Aufgaben offen.
 
 ### System und Hardware
 
