@@ -89,5 +89,28 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
   Posteingang-Sortierung automatisiert.
 - **Offen:** Restliche PDFs im Posteingang, die sich nicht sicher zuordnen ließen.
 
+### Jev Trader
+
+- **Ziel:** Demo-Trading-Bot (`O:\Werkstatt 2\JEV\jev-trader`): Jev (TypeSafe-AI-Modell)
+  entscheidet pro Monad-Block (~300 ms) "buy" oder "sell" für MON-USDC, aus
+  Orderbuch- und Taker-Flow-Daten von Kurus On-Chain-Orderbuch. Backend (Bun)
+  platziert je Block eine Post-only-Limitorder; Next.js-Dashboard zeigt den
+  Feed live per SSE. `MODEL=mock` ist nur eine Heuristik zum Infrastrukturtest,
+  `MODEL=jev` nutzt das echte Modell. `DRY_RUN=true`/fehlender `PRIVATE_KEY`
+  verhindert echte Trades; Positions- und Margin-Limits begrenzen den Einsatz.
+- **Stand (2026-10-13):** Lokal lauffähig, Skill `.claude/skills/run-jev-trader/`
+  angelegt und end-to-end verifiziert (Backend-Smoke-Test + Playwright-Screenshot
+  des Dashboards). Dry-Run-Papiertest mit `mock` lief fehlerfrei. `TYPESAFE_AI_API_KEY`
+  als Windows-Benutzervariable gesetzt (Eintrag in [[Zugaenge]]) und in die
+  Projekt-`.env` übernommen, damit der nächste Papiertest mit dem echten
+  Jev-Modell laufen kann.
+- **Einsatzgrenzen:** Eng an Markt und Venue gebunden — Code und Modell-Prompt
+  sind fest auf MON-USDC/Kuru/Monad zugeschnitten, kein generisches
+  Trading-Framework. Ein anderes Paar oder eine andere Chain braucht
+  Codeänderungen, kein reines Config-Flag.
+- **Nächste Schritte:** Papiertest mit echtem Jev-Modell (weiterhin `DRY_RUN=true`)
+  laufen lassen und auswerten; danach ein zweites Kuru-Marktpaar für einen
+  weiteren Test auswählen.
+
 ## Erledigt
 
