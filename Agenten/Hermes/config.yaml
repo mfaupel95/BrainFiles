@@ -978,6 +978,47 @@ gateway:
       chat_id: '7648512088'
       profile: default
       enabled: true
+    - name: gruppe-bots
+      platform: telegram
+      chat_id: '-1003980261765'
+      profile: bots
+      enabled: true
+    - name: gruppe-dispatch-1998
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '1998'
+      profile: bots
+      enabled: true
+    - name: gruppe-handel-1999
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '1999'
+      profile: jev-trader
+      enabled: true
+    - name: gruppe-auswertung-2000
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '2000'
+      profile: recherche
+      enabled: true
+    - name: gruppe-wissen-2001
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '2001'
+      profile: obsidian-skills
+      enabled: true
+    - name: gruppe-gbrain-2006
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '2006'
+      profile: gbrain
+      enabled: true
+    - name: gruppe-wartung-723
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '723'
+      profile: hermes-wartung
+      enabled: true
   platforms:
     a2a:
       enabled: true

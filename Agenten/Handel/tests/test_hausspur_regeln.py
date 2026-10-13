@@ -123,9 +123,22 @@ class Grenzen(unittest.TestCase):
 
     def test_stop_und_ziel(self):
         k = reihe()
-        s = hr.signale(k, "klassik_ema", ab=len(k) - 1)[-1]
+        w = dict(hr.wachen("klassik_ema"), festes_ziel=True)
+        s = hr.signale(k, "klassik_ema", w, ab=len(k) - 1)[-1]
         self.assertEqual(s["stop"], 2.5)
         self.assertEqual(s["ziel"], 5.0)          # ziel_r_vielfaches 2.0 x 2.5
+
+    def test_ohne_festes_ziel_kein_ziel(self):
+        """festes_ziel false (Auftrag Max 08.10.2026, spur_buch.py): das Haus
+        steigt nur ueber Stop und Regel aus - der Adapter darf kein Ziel setzen."""
+        k = reihe()
+        w = hr.wachen("klassik_ema")
+        self.assertIs(w.get("festes_ziel"), False)
+        s = hr.signale(k, "klassik_ema", ab=len(k) - 1)[-1]
+        self.assertEqual(s["ziel"], hr.OHNE_ZIEL)
+        self.assertEqual(s["stop"], 2.5)
+        ohne_feld = {x: y for x, y in w.items() if x != "festes_ziel"}
+        self.assertEqual(hr.signale(k, "klassik_ema", ohne_feld, ab=len(k) - 1)[-1]["ziel"], 5.0)
         m = hr.signale(k, "macd_mtf", ab=len(k) - 1)[-1]
         self.assertGreaterEqual(m["stop"], 5.0)   # ATR, in [5, 12] gezwungen
         self.assertLessEqual(m["stop"], 12.0)

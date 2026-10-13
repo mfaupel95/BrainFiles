@@ -36,6 +36,7 @@ ALLE = KLASSIK + INDIKATOR + ("trendwende_btc", "orb")
 
 STOP_VORGABE = 6.0          # wie die Moon-Dev-Bots, wenn die Spur keinen nennt
 KEIN_HANDEL = -1.0          # Stop-Antwort "Haus handelt hier nicht" (Review M4)
+OHNE_ZIEL = 1000.0          # Ziel-% fuer "kein festes Ziel" - wird nie erreicht
 
 
 @dataclass(frozen=True)
@@ -298,6 +299,15 @@ def _sicher(fn, *args):
         return None
 
 
+def ziel_wert(s: Spur, k, w: dict, seite, stop: float) -> float:
+    """Ziel-% der Kerze - fuer Adapter und Vektor-Fassung (hausspur_vektor)."""
+    if not w.get("festes_ziel", True):
+        # Wie spur_buch.py (Auftrag Max 08.10.2026, Trendspuren): das Ziel ist
+        # nur Richtmarke, ausgestiegen wird ueber Stop und Regel.
+        return OHNE_ZIEL
+    return _sicher(s.ziel_prozent, k, w, seite or "long", stop) or 2.0 * stop
+
+
 def signale(kerzen: list, name: str, w: dict | None = None,
             paar: str | None = None, ab: int = 0) -> list:
     s = spur(name)
@@ -319,7 +329,7 @@ def signale(kerzen: list, name: str, w: dict | None = None,
         stop = _sicher(s.stop_prozent, k, w) or STOP_VORGABE
         if stop == KEIN_HANDEL:
             seite, stop = None, STOP_VORGABE
-        ziel = _sicher(s.ziel_prozent, k, w, seite or "long", stop) or 2.0 * stop
+        ziel = ziel_wert(s, k, w, seite, stop)
         aus[i] = {"einstieg": seite,
                   "aus_long": _sicher(s.ausstieg, k, "long", w),
                   "aus_short": _sicher(s.ausstieg, k, "short", w),
