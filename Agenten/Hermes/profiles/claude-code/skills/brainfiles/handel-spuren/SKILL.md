@@ -10,6 +10,8 @@ category: brainfiles
 Jede Änderung unter `Agenten/Handel/**`: eine Sperre ergänzen, eine Freigabe
 verdrahten, ein neues Analysemodul bauen, Wachenwerte anfassen, Tests schreiben.
 Auch beim Deuten einer Bus-Meldung, die eine Spur als „Ergebniscode 1“ meldet.
+Auch bei „optimiere die Trading-Agenten" / Bestandsprüfung: welche Spur läuft,
+ welche Wächteraufgabe scharf ist, was der Backtest sagt, wo der Platz geht.
 Spuren: scanner, xperp (Hauptweg), orb, kraken, omnitrade_futures, nautilus_kraken, nautilus_kraken_futures, mosaic, swap, moondev_* (listingarb, topmovers, signalwelle, marktlage, whale, liquidation, sentiment, sniper, funding), klassik_* (sma, ema, macd, rsi, rsi2, bollinger, donchian, donchian_trend, pmax, supertrend, sr_breaks), iv_wand, iv_waelle, liq_wand, macd_mtf, squeeze, supertrend, trendwende_btc, wavetrend, prophet_signal, robinhood_radar, omniquant, omnitrade, gitter, spiegel, orbk, nautilus, nautilus_emacross, nautilus_rc5, ai4trade, scanner_quant, verbesserer, stand, kopier.
 
 ## Landkarte (nur was zum Arbeiten nötig ist)
@@ -33,7 +35,16 @@ nur gelesen, einzige Ausnahme `sperre_zu` true→false), `zustand.json`,
 3. **handelsjournal.csv lesen** — Runden, Trefferquote, Netto-Summe, Zeitraum.
 4. **freigabe_fenster.json lesen** — ob das Fenster für die Spur offen ist und wann es abläuft.
 5. **dauerlauf.log lesen** — letzte Meldungen der Spur, ob der Dauerlauf sie als "ok" meldet.
-6. **Dauerlauf-PIDs prüfen** — `dauerlauf.pid`, `dauerlauf.mittel.pid`, `dauerlauf.hoch.pid` zeigen, ob der Treiber läuft.
+6. **Dauerlauf-Betrieb prüfen — Aufgabenstand, nicht die PID-Datei.** Die
+   `.pid`-Dateien sind **Sperren je Risikostufe** (Basis `dauerlauf.pid`,
+   `dauerlauf.mittel.pid`, `dauerlauf.hoch.pid`), kein Gesundheitszeugnis: eine
+   tote Sperre ist harmlos, `handel-dauerlauf.ps1` erkennt eine nicht lebende
+   (und eine wiederverwendete, per Startzeit) PID und ersetzt sie. Die echte
+   Lücke ist eine **deaktivierte Wächteraufgabe** — dann kommt ein gestorbener
+   Lauf nicht zurück. Also `Get-ScheduledTask` fragen und die Prozessliste per
+   `Get-CimInstance Win32_Process` holen (MSYS-`ps` sieht keine
+   Windows-Prozesse). Befehle, Aufgabennamen und die Wiederbelebung:
+   `references/dauerlauf-betrieb.md`.
 
 ## Spur live schalten
 1. **Sichern** (Stufe 1): `.bak-JJJJMMTT` für jede wachen.json, die angefasst wird.
@@ -68,6 +79,28 @@ nur gelesen, einzige Ausnahme `sperre_zu` true→false), `zustand.json`,
    eigene `!`-Zeile, sonst landet sie still nicht im Verlauf. Gegenprobe:
    `git check-ignore -v <pfad>`.
 
+## Backtest-Ergebnisse auswerten
+- **Mit den Hausfunktionen rechnen, nie mit einer eigenen Formel.**
+  `auswertung_alle.runden_indikator(zeilen)` paart kauf/verkauf über
+  `journalpaarung` — bei skalierten Positionen gilt die LETZTE Kaufzeile, weil
+  `einsatz_usd` dort **kumulativ** ist. `auswertung_alle.kennzahlen(runden,
+  einheit, gebuehr, brutto)` liefert Treffer, Median, Gründe und trennt
+  Störungen ab. Eine Eigenbau-Formel ist eine zweite Wahrheit und lag im
+  Zweifel um Größenordnungen daneben.
+- **Journal über `journalpaarung.zeilen(pfad)` lesen** (utf-8, `newline=""`),
+  nicht per Hand — sonst gehen BOM und CRLF schief.
+- **`daten/backtest/<spur>/<lauf>/` ist die Messgrundlage, nicht Ablage.**
+  `auswertung_alle.backtest_stand(spur)` wählt je Spur den Lauf mit den
+  meisten Journal-Zeilen und füllt damit den Leitstand-Reiter *Backtest*; wer
+  die Ordner verschiebt oder aufräumt, lässt dort `kein Lauf` stehen.
+- **Ein Fenster ist kein Befund.** `optimieren.py` schreibt
+  `daten/backtest/<spur>/optimierung.json` mit dem Feld `ueberlebt` — nur
+  Kandidaten, die ALLE Fenster bestehen, zählen. Positiv aussehende
+  Einzelordner (Hash-Namen) sind Ein-Fenster-Läufe und tragen nichts.
+- **Brutto ist nicht netto.** Die Indikator- und Klassik-Bücher schreiben
+  keine Kosten in die Zeile; die Gebühr steht als `gebuehr_taker` in der
+  `wachen.json` und ist je Börse und je Seite zu rechnen.
+
 ## Pitfalls
 - **Der Sperrtext ist eine Schnittstelle.** `dauerlauf.nur_fenster_fehlt` liest
   die Zeile `Live waere gesperrt durch: …` und stellt nur dann eine
@@ -99,10 +132,25 @@ nur gelesen, einzige Ausnahme `sperre_zu` true→false), `zustand.json`,
   erfinden (xperp war beim Freigabe-Weg zuerst richtig).
 - **Zustandsdateien vergiften sich.** `zustand.json` wächst bei jedem echten
   Lauf; sichern statt reparieren.
+- **Zahlen in `wachen.json` sind in `_..._vermerk`-Feldern begründet — vor
+  jeder Zahlenänderung die Vermerke lesen.** Ein Wert, der in einer
+  Übersichtstabelle wie ein Ausreißer aussieht, ist oft Absicht: ein
+  `max_gesamt_usd` kann der **Nominalwert** der kleinsten handelbaren
+  Kontraktgröße sein (deshalb groß), ein erhöhtes `risiko_je_position_usd`
+  eine ausdrückliche Anordnung. Ein „Harmonisieren" auf einen gefühlten
+  Mittelwert zerschießt eine laufende Spur. Wer nur die Zahl sieht, hält
+  Absicht für Schlamperei.
 - **`.env`, `Wissen/Zugaenge.md`, `proxy.yaml` sind tabu** — nie lesen,
   ausgeben oder protokollieren.
 
 ## Werkzeugfallen am Host
+- **MSYS-`ps aux` sieht KEINE Windows-Prozesse.** „Es läuft nichts" ist damit
+  keine Aussage über den Handel — `dauerlauf.py` und die Spuren erscheinen dort
+  nie. Prozesse immer über `Get-CimInstance Win32_Process` (mit `CommandLine`,
+  `ProcessId`, `ParentProcessId`) prüfen, bevor etwas als tot gemeldet wird.
+- **Eine Volltextsuche über `Agenten/` im Terminal reißt die 180-s-Grenze.**
+  Der Baum trägt `.venv`, `OpenAlice`, `nautilus-rust`; dafür `search_files`
+  nehmen (ripgrep, respektiert `.gitignore`).
 - Das Host-PowerShell-Werkzeug hat eine harte Zeitgrenze (~300 s). Eine
   rekursive Größenmessung über einen großen Baum reißt sie. Stattdessen
   vorher/nachher `Win32_LogicalDisk.FreeSpace` messen oder je Ordner einzeln —
@@ -122,3 +170,6 @@ nur gelesen, einzige Ausnahme `sperre_zu` true→false), `zustand.json`,
   Freigabe nicht kann.
 - `references/tor-kalibrierung.md` — Schwellen setzen, ohne dass sie entweder
   nichts filtern oder nie aufgehen.
+- `references/dauerlauf-betrieb.md` — die drei Risikostufen, ihre Sperr- und
+  Buchdateien, die vier geplanten Aufgaben, der Unterschied zwischen toter
+  Sperre und deaktiviertem Wächter, und wie eine Stufe wiederbelebt wird.

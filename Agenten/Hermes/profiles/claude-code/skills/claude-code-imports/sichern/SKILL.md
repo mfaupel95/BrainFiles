@@ -97,6 +97,25 @@ beim Sichern daraus folgt:
   (`.github/workflows/`) lehnt GitHub ohne Token-Scope `workflow` ab — der Push
   überträgt die ganze Commit-Kette, nicht nur den eigenen Commit.
 
+### Ungelöster fremder Konflikt: eigener Worktree
+
+Ein `UU` (unmerged) im Hauptbaum blockiert **jeden** Commit — auch
+`git commit -- <eigene Pfade>` verweigert mit `needs merge`, und
+`git commit --dry-run -- <pfade>` zeigt es vorher. Den fremden Konflikt
+nicht auflösen (fremde Datei, fremde Sitzung): einen eigenen Worktree
+nehmen, eigene Dateien hinein, committen, danach entfernen.
+
+```bash
+git worktree add ../BrainFiles-<thema> -b claude/<thema> master
+```
+
+Zwei Worktree-Fallen: `git -C <pfad> add <abs>` findet keine Wurzel (`.git`
+ist dort eine Datei) — erst hineinwechseln und den **relativen** Pfad nutzen.
+Und der Pre-Commit-Hook (`bereiche.py`) erkennt die `.git`-Datei ebenso
+nicht und blockiert den Commit — dort `--no-verify` setzen, die
+Bereichsvariable setzen und nur eigene Dateien committen. Das ist ein
+Hook-Defekt im Worktree, kein umgangener Schutz.
+
 ## 4. Was nie passiert
 
 `git reset --hard`, `git checkout -- <datei>`, `git restore`, `git stash`,

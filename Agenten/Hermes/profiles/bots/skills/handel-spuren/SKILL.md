@@ -1,7 +1,7 @@
 ---
 name: handel-spuren
 category: software-development
-description: Evaluate or improve Max's trading spurs in Agenten/Handel.
+description: Use when asked to assess or tune trading strategies. Measure before recommending changes.
 version: 1.0.0
 author: Hermes Agent
 license: proprietary
@@ -31,6 +31,13 @@ scanner/.venv/Scripts/python.exe auswertung_alle.py
 - Kern-Zahlen einer Spur liegen in ihrem `<spur>/wachen.json` und Journal; `--wachen` an das jeweilige `handeln.py` zeigt den Zustand (freigabe, kill, herzschlag, groessenfaktor).
 
 Nicht jede Spur hat ein `handelsjournal.csv`, das über `pos_id` paar-bar ist — Altjournal-Zeilen tragen keine `pos_id` und fallen aus der Zählung. Sag es dazu, wenn du auf Grundlage gepaarter Zeilen rechnest.
+
+### Eigene/LLM-Spuren getrennt auswerten
+
+- Nach `auswertung_alle.py` auch dessen Abschlusszeile lesen: manche Spuren (eigene Evaluatoren, LLM-Signale oder abweichende Journalformate) fehlen bewusst in der Sammelrechnung. Für diese jeweils den ausgewiesenen Spur-Evaluator, Journal und `zustand.json` heranziehen; die Sammelübersicht nicht als vollständige Spur-Liste ausgeben.
+- Eine Spur nur dann als LLM-gestützt bezeichnen, wenn der aktive Signalpfad tatsächlich das lokale/konfigurierte Sprachmodell aufruft — Namen wie `moondev_*` reichen nicht. Aktive `SPUREN` und ausführbaren `handeln.py`-Pfad gegenprüfen.
+- Runden nur aus eindeutig gepaarten Einstiegs-/Ausstiegszeilen zählen. Offene Positionen und Ausstiege ohne Partner separat melden; sie sind keine geschlossenen Runden und kein realisiertes Ergebnis. Nicht verfügbare Backtest-Historie als nicht nachrechenbar kennzeichnen, nicht durch Schätzungen ersetzen.
+- Ein kurzer Prompt-Sanity-Check belegt nur Antwortfähigkeit. Signalqualität braucht den festgelegten Vertrags-/Eval-Satz; ohne diesen keine Aussage aus zwei Beispielprompts ableiten. Es gelten weiter die Stichprobenschwellen aus *Auswerten*.
 
 ## Tunen: erst die Asymmetrie messen, dann den einen Stellhebel
 
@@ -64,6 +71,8 @@ scanner/.venv/Scripts/python.exe optimieren.py --spur squeeze              # sch
 ## Parametertuning ist eine Handelsentscheidung
 
 `wachen.json`-Parameter zu ändern bewegt die Strategie. **Nicht alleine drehen** — die Befunde und den konkreten Hebel vortragen, Max das Richtungs-OK geben lassen, dann ausführen. Wenn Max alle Vorschläge absegnet, ist das die Freigabe; aber vorher steht kein Wert in der Datei.
+
+**Mehrdeutige Live-Änderungsanweisung ohne Antwort → die SICHERE, reversible Variante ausführen, nie die destruktive.** Sagt Max z. B. nur „Spur zurückbauen" und beantwortet die Rückfrage nicht (Timeout), ist der konservative Weg: Freigabe entziehen (`handel_erlaubt=false`, aus `AUTO_FREIGABE`), die offenen Live-Positionen **unangetastet mit ihren Boersen-Stops auslaufen lassen**, keinen Dauerlauf-Neustart. Positionen schließen ist destruktiv und braucht ausdrückliche Bestätigung. Die gewählte Interpretation klar benennen und Max den Weg zum Schärfen offen lassen.
 
 ## Live schalten: erst die Tore UND den Live-Pfad pruefen
 
@@ -126,6 +135,24 @@ Eine Anfrage „leitstand.py untersuchen/ausbauen" (Nautilus-/Prozesse-Reiter, N
 Eine Code-Änderung (z. B. Intervall-Zuordnung in `omnitrade_start.py`) gehört **nicht in den Hauptbaum**, sondern in einen Worktree NEBEN `BrainFiles/` auf eigenem Zweig (`git worktree add ../Handel-<x> -b <agent>/<thema> master`), wenn die Änderung mehrere Spuren/Launchlogik betrifft.
 
 Ist der Worktree neben `BrainFiles` (z. B. `C:/Users/faupe/Documents/Handel-omni1d`), **verweigern Hermes' File-Tools Schreibzugriffe außerhalb der `HERMES_WRITE_SAFE_ROOT`** — edit über Terminal/Python-Heredoc (`python - <<'PY' ... PY`), nicht über `patch`/`write_file`. Worktrees haben **kein `.venv`** (nicht versioniert): Tests/Aufrufe laufen über den Interpreter des Hauptbaums (`C:/Users/faupe/Documents/BrainFiles/Agenten/Handel/scanner/.venv/Scripts/python.exe`).
+
+## Geteilter Arbeitsbaum: fremde Sitzung hat den Zweig gewechselt
+
+Der BrainFiles-Baum ist geteilt — mehrere Sitzungen (Desktop, CLI, Hermes, Claude) committen parallel. Eine andere Sitzung darf den ausgecheckten Zweig gewechselt haben, mit uncommitteten Aenderungen darin. Das ist die einzige Situation, in der man den Hauptbaum **nicht** anfasst:
+
+- `git merge` schlaegt dann mit "uncommitted changes" ab (oder wuerde die Fremdarbeit mitnehmen). **Nicht** erzwingen, nicht committen, nicht die Fremdaenderungen anfassen — das kollidiert mit der anderen Sitzung und dem geteilten Index.
+- **Master trotzdem gefahrlos vorziehen, wenn es ein Fast-Forward ist:** pruefen `git merge-base master <worktree-branch>` == `git rev-parse master`, dann `git update-ref refs/heads/master <worktree-branch>` — bewegt den Pointer, beruehrt den Arbeitsbaum nicht.
+- Datei-Edits im Hauptbaum (z. B. einen SPUREN-Eintrag in `dauerlauf.py` nachtragen) brauchen den Arbeitsbaum — die muessen **warten**, bis die andere Sitzung fertig ist. Den fertigen Worktree-Zweig committen und dem Nutzer sagen, was noch aussteht, statt um den Baum zu kaempfen.
+- **Pruefen, dass fruehere Arbeit sicher auf master steht** bevor man sie woanders anfasst: `git log master --oneline`. Deine Commits koennen trotz Zweigwechsel auf der Platte stehen (der Dauerlauf liest die Dateien, nicht den Branch).
+
+## LLM-Qualitaetsfilter in einer neuen Spur (scanner_llm-Muster)
+
+Eine "leichte Tor + mehr Kandidaten"-Variante einer Scanner-Spur nutzt die Haus-LLM-Infrastruktur als Qualitaets-Gate ueber einem groesseren Kandidatenpool:
+
+- Komponenten wiederverwenden, nicht neu bauen: `scanner/bewertung.py` (Regel-Score), `scanner/okx.py` (Kerzen/Markt), `llm_lokal.py` (`llm.VERTRAG` + `llm.entscheide(prompt, w)`). Tore in der neuen `wachen.json` bewusst leichter (z. B. `mindest_score` 40 statt 60) — die Qualitaetswaehrung traegt das LLM, nicht die Regel.
+- `llm.entscheide` wendet das Confidence-Gate schon selbst an (liest `llm_mindest_confidence` aus `w`). Kandidat handelbar NUR bei `seite == 'long'` UND Confidence ≥ Schwelle; NOTHING/SELL/zu unsicher wird geloggt und uebersprungen.
+- **Tests duerfen nie das echte Modell rufen.** Test-Seams bauen: `entscheide_override` (patcht `llm.entscheide`) und alle Kurs-/Preis-Lesungen hinter eine ueberschreibbare Funktion (`marktkurs`), damit der Papier-Zyklus null Exchange-Calls macht. Der Regel-Score-Test konstruiert synthetische `bewertung`-Dicts, um zu belegen, dass das leichtere Tor mehr Kandidaten durchlaesst als das Scanner-Tor.
+- Gemeinsame Handel-Module (`risikostufe`, `freigabefenster`, `llm_lokal`, `okx`, `bewertung`, `scan`) per `_rs_spec/_rs_mod` ueber den PFAD laden (Hausmuster), nicht per bare-Import — die Spur laeuft mit eigenem Ordner auf sys.path.
 
 ## omnitrade-Intervall: Trendfolger → 1d, RSI bleibt
 
@@ -218,6 +245,7 @@ Die drei Dauerlauf-Stufen (`niedrig`/`mittel`/`hoch`, Faktor 1/2/4 in `risikostu
 
 - **Das Umsatztor je Familie liegt in `familien.<familie>.umsatz_bezug_usd`, nicht in `min_umsatz_24h_usd`.** `min_umsatz_24h_usd` (top-level) ist ein Krypto-Wert; die Familien haben eigene Schwellen (`familien.aktie`/`krypto`/`rohstoff`). Wer das Aktien-Umsatztor senkt, aendert `familien.aktie.umsatz_bezug_usd` — und laesst `min_umsatz_24h_usd` und die anderen Familien unberuehrt. Vor dem Edit die drei Familienwerte per JSON-Read nebeneinander ausgeben, damit man den richtigen trifft.
 - **Lange `wachen.json`-Vermerke nicht mit `patch` umschreiben.** Das Fuzzy-Matching des Patch-Tools verhunzt mehrzeilige deutsche Vermerke (fuehrt Einrueckungsfehler und Tippfehler ein, die es beim naechsten Patch wiederholt). Fuer gezielte Wert-/Vermerk-Aenderungen an JSON-Konfigs mit langen `_`-Kommentaren einen Python-Heredoc verwenden (`python - <<'PY' ... PY` mit `str.replace` auf exakte Zeilen), nicht `patch`.
+- **Wer `patch` fuer JSON-Vermerke doch nutzt, muss die Folge-Diffs kontrollieren:** das Tool hat drei Zeilen mit 4-statt-2-Leerzeichen-Einrueckung und einen Tippfehler eingefuehrt und sich beim naechsten Patch darauf festgebissen. Nach jedem JSON-Patch die betroffenen Zeilen per `read_file` pruefen oder gleich den Python-Heredoc nehmen — die Einrueckung validiert JSON nicht (Wert bleibt korrekt), aber die Datei wird inkonsistent.
 - **Zwei Zeitzonen im selben Befund.** `dauerlauf.log` schreibt **Lokalzeit**, Journale und `zustand.json` (`letzter_lauf`) schreiben **UTC-Isoformat**. Eine Logzeile `23:54` und ein `letzter_lauf` von `21:54Z` sind derselbe Zyklus. Vor jeder Aussage „die Spur läuft nicht mehr" oder „der Zustand ist alt" beide auf eine Zone bringen — sonst erfindet man eine zweistündige Lücke.
 - **Ein frischer `letzter_lauf` beweist nur den Zyklus, nicht die Buchung.** Der Zustand wird an jedem Zyklusende neu geschrieben, auch wenn nichts passierte. Dass eine Datei frisch ist, sagt nichts darüber, ob ein Ausstieg oder Nachsatz stattgefunden hat — das steht im Journal und an der Börse.
 - **PowerShell über git-bash:** `$_.X` und ähnliche Ausdrücke werden von bash zerlegt → die Befehlszeile von Prozessen nicht so abfragen. Ein `.ps1`-File schreiben und mit `powershell -ExecutionPolicy Bypass -File` ausführen, oder ein Python-Skript für die Abfrage. (`wmic process get CommandLine` in bash funktioniert zugig.)
