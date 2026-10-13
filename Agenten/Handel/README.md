@@ -1,4 +1,41 @@
-# DCA-Simulator
+# Handel — Sammeldokumentation
+
+Dies ist die ausführliche Dokumentation des Ordners `Agenten/Handel/`, über
+Wochen gewachsen und nach Themen gegliedert. **Kein Einstieg:** für einen
+Überblick und für die Frage, was man nicht liest, reicht [AGENTS.md](AGENTS.md).
+Die laufenden Spuren stehen in `dauerlauf.py` (Dict `SPUREN`), jede mit eigenem
+`README.md`, `wachen.json` und Tests in ihrem Ordner.
+
+Der erste Abschnitt (DCA-Simulator) war der Anfang dieser Datei und trug früher
+den Titel der ganzen Datei; seine Unterabschnitte stehen bis „Dateien“.
+
+## Inhalt
+
+- [DCA-Simulator (`dca.py`)](#dca-simulator-dcapy)
+- [Was es beantwortet](#was-es-beantwortet)
+- [Aufrufe](#aufrufe)
+- [Die Modellannahmen](#die-modellannahmen)
+- [Grenzen des Backtests — bitte lesen](#grenzen-des-backtests--bitte-lesen)
+- [Der Titelvergleich (`vergleich.py`)](#der-titelvergleich-vergleichpy)
+- [Dateien](#dateien)
+- [Handelbarkeit über OKX (Stand 10.08.2026)](#handelbarkeit-über-okx-stand-10082026)
+- [Coins statt tokenisierter Aktien (Stand 10.08.2026)](#coins-statt-tokenisierter-aktien-stand-10082026)
+- [Swap-Kosten (gemessen 10.08.2026)](#swap-kosten-gemessen-10082026)
+- [Der Agent (`agent.py`)](#der-agent-agentpy)
+- [Grid — kaufen unten, verkaufen oben](#grid--kaufen-unten-verkaufen-oben)
+- [Grid mit Hebel — die Konstruktion trägt nicht](#grid-mit-hebel--die-konstruktion-trägt-nicht)
+- [Reinvestition — was sich wie oft anlegen lässt](#reinvestition--was-sich-wie-oft-anlegen-lässt)
+- [Journal außer Haus (`spiegelstand.py`) — Bedingung 4](#journal-außer-haus-spiegelstandpy--bedingung-4)
+- [Risikostufen (`risikostufe.py`) — derselbe Handel, größere Beträge](#risikostufen-risikostufepy--derselbe-handel-größere-beträge)
+- [Was noch fehlt](#was-noch-fehlt)
+- [Freigabefenster (`freigabe.py`)](#freigabefenster-freigabepy)
+- [Prognose (`prognose.py`)](#prognose-prognosepy)
+- [NautilusTrader-Node (`nautilus/`, Paper)](#nautilustrader-node-nautilus-paper)
+- [Gitter-Spur (`gitter/`) — dasselbe Grid, im laufenden Betrieb](#gitter-spur-gitter--dasselbe-grid-im-laufenden-betrieb)
+- [Handelszentrale (`handelszentrale.py`) — alle acht Spuren in einem Fenster](#handelszentrale-handelszentralepy--alle-acht-spuren-in-einem-fenster)
+- [Handelsagenten und Auswertungs-Aufgaben (Kopien, 11.10.2026)](#handelsagenten-und-auswertungs-aufgaben-kopien-11102026)
+
+## DCA-Simulator (`dca.py`)
 
 Rechnet Sparplan-Strategien auf historischen Kursen durch — mit und ohne Hebel.
 **Das Werkzeug rechnet. Es handelt nicht und ist mit keinem Broker verbunden.**
@@ -140,6 +177,10 @@ sich aus der Vergangenheit schätzen, die künftige Rendite nicht.
 - `hausspur_regeln.py` — 17 Haus-Spuren als eine Signal-Schnittstelle für die
   Freqtrade-Strategie `freqtrade/user_data/strategies/HausSpur.py` (seit
   10.10.2026, Bots in `freqtrade/bots.json`, Urteile über `bots.py backtest`)
+- `hausspur_vektor.py` — Phase 2: dieselben Spuren als numpy-Rechnung, Kerze
+  für Kerze gleich mit `hausspur_regeln` (Test `tests/test_hausspur_vektor.py`).
+  Ein Bot nutzt sie mit `"hausspur_rechnung": "vektor"` in `bots.json`; bisher
+  nur `klassik_donchian_trend` (seit 12.10.2026)
 - `leitstand_freqtrade.py` — Leitstand-Reiter FreqTrade (Strg+8): alle Bots,
   Zustand, Runden, Backtest-Urteil; nur lesend über `freqtrade_bridge.py`
 
