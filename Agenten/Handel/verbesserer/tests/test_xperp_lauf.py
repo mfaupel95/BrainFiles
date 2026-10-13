@@ -53,6 +53,17 @@ class Basis(unittest.TestCase):
         self.wachen = self.dir / "wachen.json"
         self.wachen.write_text(ECHTE_WACHE.read_text("utf-8"), "utf-8",
                                newline="")
+        # Die Suchschluessel auf die FIXTURE-Werte (BASIS_W) zuruecksetzen:
+        # der Test prueft, dass der Vorschlag genau die gefundenen Schluessel
+        # aendert. Seit T-396 (11.10.) traegt die echte xperp/wachen.json die
+        # bereits angewendeten Werte - ein Vergleich gegen den Live-Stand
+        # waere zustandsabhaengig und leer.
+        w = json.loads(self.wachen.read_text("utf-8"))
+        for k, v in BASIS_W.items():
+            if k in xs.SCHRITT:
+                w[k] = v
+        self.wachen.write_text(json.dumps(w, ensure_ascii=False, indent=2),
+                               "utf-8", newline="")
         for p in (
                 mock.patch.object(lauf.xk, "laden_universum",
                                   return_value=UNI),
