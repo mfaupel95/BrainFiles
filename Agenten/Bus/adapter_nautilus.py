@@ -55,6 +55,9 @@ def signal_aus_zeile(z, size_pct=0.2, expiry_s=180, mode="paper"):
          "ts_utc": _sekunden(z["ts_event"]), "expiry_s": expiry_s, "mode": mode}
     if side == "BUY":
         s["size_pct"] = size_pct
+        sz = z.get("size_pct")
+        if isinstance(sz, (int, float)) and not isinstance(sz, bool) and sz > 0:
+            s["size_pct"] = float(sz)
     return s
 
 

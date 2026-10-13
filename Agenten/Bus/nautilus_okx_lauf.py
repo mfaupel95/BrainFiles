@@ -2,7 +2,7 @@
 """Echte OKX-Kerzen durch die Signalgeber-Strategie (Nautilus) -> nautilus_intents.jsonl.
 
 Nur in der Nautilus-Umgebung: Werkstatt/nautilus-venv/Scripts/python.exe nautilus_okx_lauf.py
-          [--instrument BTC-USDC] [--bar 5m|1H|4H|1D] [--strategie ema|donchian] [--rein 55] [--raus 20] [--ziel Pfad] [--vorschau]
+          [--instrument BTC-USDC] [--bar 5m|1H|4H|1D] [--strategie ema|donchian|ensemble] [--rein 55] [--raus 20] [--ziel Pfad] [--vorschau]
 Holt die letzten abgeschlossenen Kerzen (oeffentlicher OKX-Markt, kein Schluessel), rechnet sie
 im Backtest-Motor und haengt NUR die Kreuzung der juengsten Kerze an die Zieldatei an
 (ts_event = Kerzenschluss, jede Kreuzung einmal). Aeltere Kreuzungen werden nicht nachgeholt:
@@ -28,21 +28,32 @@ from nautilus_trader.model.identifiers import TraderId
 from nautilus_trader.model.objects import Money, Price, Quantity
 from nautilus_trader.test_kit.providers import TestInstrumentProvider
 
-from nautilus_signalgeber import (DonchianConfig, DonchianSignalgeber, Signalgeber,
-                                  SignalgeberConfig)
+from nautilus_signalgeber import (DonchianConfig, DonchianSignalgeber, EnsembleConfig,
+                                  EnsembleSignalgeber, Signalgeber, SignalgeberConfig)
 
 BAR_S = {"1m": 60, "5m": 300, "15m": 900, "1H": 3600, "4H": 14400, "1D": 86400}
 STANDARD_ZIEL = os.path.join(os.path.dirname(os.path.dirname(HIER)), "Werkstatt", "nautilus_intents.jsonl")
 
 
 def kerzen(instrument, bar, n=300):
-    url = "https://www.okx.com/api/v5/market/candles?instId=%s&bar=%s&limit=%d" % (instrument, bar, n)
-    req = urllib.request.Request(url, headers={"User-Agent": "brainfiles/1.0"})
-    with urllib.request.urlopen(req, timeout=15) as r:
-        d = json.load(r)["data"]
-    # neueste zuerst; nur abgeschlossene (confirm == "1"); aufsteigend sortieren
-    fertig = [x for x in d if x[8] == "1"]
-    return sorted(([int(x[0]), float(x[1]), float(x[2]), float(x[3]), float(x[4])] for x in fertig))
+    """Letzte n abgeschlossene Kerzen (aufsteigend). Ueber 300 wird mit history-candles geblaettert."""
+    basis = "https://www.okx.com/api/v5/market/%s?instId=%s&bar=%s&limit=%d"
+    bis, z = "", {}
+    while len(z) < n:
+        pfad = "candles" if not bis else "history-candles"
+        url = basis % (pfad, instrument, bar, 300 if pfad == "candles" else 100) + (("&after=" + bis) if bis else "")
+        req = urllib.request.Request(url, headers={"User-Agent": "brainfiles/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            d = json.load(r)["data"]
+        if not d:
+            break
+        for x in d:
+            if x[8] == "1":
+                z[int(x[0])] = [int(x[0]), float(x[1]), float(x[2]), float(x[3]), float(x[4])]
+        bis = d[-1][0]
+        if n <= 300:
+            break
+    return [z[k] for k in sorted(z)][-n:]
 
 
 def rechne(zeilen, bar_s, ziel_id, strategie="ema", rein=55, raus=20):
@@ -63,8 +74,19 @@ def rechne(zeilen, bar_s, ziel_id, strategie="ema", rein=55, raus=20):
                         Quantity(1, 5), close_ns, close_ns))
     e.add_data(bars)
     pfad = os.path.join(tempfile.mkdtemp(), "i.jsonl")
-    e.add_strategy(Signalgeber(SignalgeberConfig(instrument_id=inst.id, bar_type=bt,
-                                                 ziel_id=ziel_id, intents_pfad=pfad)))
+    if strategie == "ensemble":
+        e.add_strategy(EnsembleSignalgeber(EnsembleConfig(
+            instrument_id=inst.id, bar_type=bt, ziel_id=ziel_id, intents_pfad=pfad,
+            bars_pro_tag=86400 // bar_s)))
+    elif strategie == "donchian":
+        e.add_strategy(DonchianSignalgeber(DonchianConfig(
+            instrument_id=inst.id, bar_type=bt, ziel_id=ziel_id, intents_pfad=pfad,
+            rein=rein, raus=raus)))
+    elif strategie == "ema":
+        e.add_strategy(Signalgeber(SignalgeberConfig(instrument_id=inst.id, bar_type=bt,
+                                                     ziel_id=ziel_id, intents_pfad=pfad)))
+    else:
+        raise ValueError("strategie unbekannt: %r" % (strategie,))
     e.run()
     e.dispose()
     if not os.path.exists(pfad):
@@ -81,7 +103,7 @@ def main(argv):
     strategie = opt("--strategie", "ema")
     rein, raus = int(opt("--rein", 55)), int(opt("--raus", 20))
     bar_s = BAR_S[bar]
-    zeilen = kerzen(inst, bar)
+    zeilen = kerzen(inst, bar, 2400 if strategie == "ensemble" else 300)
     if len(zeilen) < 40:
         print("zu wenige Kerzen: %d" % len(zeilen))
         return 1
