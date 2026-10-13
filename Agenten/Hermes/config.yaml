@@ -911,6 +911,21 @@ moa:
       enabled: true
 skills:
   creation_nudge_interval: 15
+  disabled:
+    - brainfiles
+    - note-taking
+    - software-development
+    - web
+    - autonomous-ai-agents
+    - creative
+    - email
+    - media
+    - productivity
+    - research
+    - social-media
+    - apple
+    - claude-design
+    - design-md
 curator:
   enabled: true
   interval_hours: 168
