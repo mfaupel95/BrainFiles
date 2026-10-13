@@ -180,7 +180,7 @@
       "enabled": true,
       "agent": "hermes",
       "type": "stdio",
-      "command": "Agenten\\Werkzeuge\\projectatlas\\bin\\projectatlas.exe",
+      "command": "bin\\projectatlas.exe",
       "args": [
         "--require-version",
         "0.4.5",
@@ -213,7 +213,7 @@
       "enabled": true,
       "agent": "beide",
       "type": "stdio",
-      "command": "Werkstatt\\Repos\\ziplime\\.venv\\Scripts\\python.exe",
+      "command": ".venv\\Scripts\\python.exe",
       "args": [
         "-m",
         "ziplime.mcp"
