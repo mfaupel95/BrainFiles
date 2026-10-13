@@ -70,7 +70,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 
 ### Handel-Agenten (Betrieb)
 
-- `20261013-handel-agenten-befund` — **Handel-Agenten: Befund 13.10.2026** — `Wissen/Handel-Agenten-Befund-20261013.md` — Dauerlauf-Überwachung lückenhaft (3 von 4 Wächter-Aufgaben abgeschaltet, Mittel-Stufe tot seit 12.10. 17:07); Backtest-Varianten gesichert und bewusst stehen gelassen; 5,4 GB redundante state.db-Kopien entfernt. Entscheidung über die abgeschalteten Aufgaben offen.
+- `20261013-handel-agenten-befund` — **Handel-Agenten: Befund 13.10.2026** — `Wissen/Handel-Agenten-Befund-20261013.md` — Dauerlauf-Überwachung wieder vollständig (alle vier Wächter-Aufgaben Ready, drei Stufen laufen auf Papier); Backtest-Varianten mit Hausfunktionen verglichen und bewusst stehen gelassen; 5,4 GB redundante state.db-Kopien entfernt.
 
 ### System und Hardware
 
