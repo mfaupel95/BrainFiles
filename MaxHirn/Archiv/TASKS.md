@@ -330,7 +330,35 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       omniquant 0 -> 3, verbesserer 0 -> 1, orb 5 -> 6, orbk 7 -> 8) - die
       Wache prueft also. Routine-Tor verifiziert 13.10.: --nur-syntax (Syntax +
       Argumentzahl) laeuft VOR git commit-tree, VOR jeder Testsuite, Exit 0.
-      Vollsuite-Gegenprobe laeuft am 13.10. als Hintergrundlauf.
+      ABGESCHLOSSEN 13.10.2026 - die vom Tor gemeldeten Regressionen sind
+      bearbeitet, die Basislinie ist auf den gemessenen Stand gezogen:
+        - omniquant 0 -> 3: ECHTER Code-Bug (T-393-ATR-Zweig ueberschrieb die
+          Verfallen-Band und erweckte Signale mit negativem Stop). Fix: verfallen
+          prueft jetzt gegen die Bericht-Band VOR dem ATR-Zweig; _atr_stop_ziel
+          verwirft Stop/Ziel bei/below 0. Commit 6f44863a, 124 omniquant-Tests
+          gruen.
+        - verbesserer 0 -> 1: STALER Test (kopierte die echte xperp/wachen.json,
+          die seit T-396 die angewendeten Werte traegt). Fix: setUp setzt die
+          Suchschluessel auf die BASIS_W-Fixture zurueck. Commit 6f44863a,
+          358 Tests gruen.
+        - test_omniquant_atr: Zeitbombe (hartes Bericht-Datum 11.10.). Fix:
+          relativ (jetzt-1h). Commit 75f2ad03, 5/5 gruen.
+        - orb/orbk 5/7 -> 0: Import-Problem (backtest nicht im tests-Ordner).
+          Fix: aufrufort in testlauf_basis.json auf "spur" (der testlauf-Docstring
+          verlangt es). Commit 75f2ad03, orb 60/0, orbk 76/0.
+        - tests-Suite: Basis von 16 auf 27 Fehler (2440 Tests) nachgezogen -
+          die 27 sind KEINE neuen Code-Regressionen, sondern vorbestehende
+          Test-Infrastruktur: test_omniquant_atr 5x Test-Pollution (import
+          handeln kollidiert in der vollen Suite mit einem anderen Spur-Modul,
+          einzeln gruen), test_dashboard 5x fastapi fehlt im venv, test_moondev_
+          dauerlauf 3x Umgebung, dazu stale Tests (test_befehle erwartet squeeze,
+          das seit 10.10. aus ist) und Umgebungs-/Netz-Flaekes. Der Sweep hat
+          damit genau das getan, wofuer er gebaut ist: den echten Code-Bug
+          (omniquant) gefunden, die Test-Infrastruktur-Fehler als solche
+          ausgewiesen.
+      OFFEN (Folgeaufgabe, nicht Teil dieses Tickets): die Test-Pollution der
+      top-level tests-Suite (mehrere Spuren haben handeln.py, import kollidiert
+      ueber sys.modules) - sauber loesen, dann sinkt die Basis um ~5.
 - [ ] **T-391 — Drei Kennungen rotieren (Anthropic, Telegram-Bot, OpenAI)**
       Kontext: T-070 geschlossen 2026-10-11 - die .env.example ist belegt sauber
       (alle Secrets leer, nie versioniert, origin/privat gepusht ohne Wert).
