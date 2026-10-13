@@ -27,7 +27,7 @@ mcp__kraken__kraken_guthaben   # Kontostände je Währung
 liegt das Geld, mit dem Rechnungen bezahlt werden. Kraken zeigt Krypto- und
 Fiat-Bestände auf der Börse, nicht die Liquidität im Alltag.
 
-Deshalb gilt: **Nie „du kannst dir das leisten" sagen.** Der skill_view zeigt, was
+Deshalb gilt: **Nie „du kannst dir das leisten" sagen.** Der Skill zeigt, was
 er sieht, und benennt ausdrücklich, was er nicht sieht. Die Lücke schließt nur
 Max, indem er den Kontostand nennt.
 
@@ -69,7 +69,7 @@ nicht „der Swap", sondern die konkreten Werte.
 
 Seit dem 02.09.2026 steht das für Kraken nicht mehr nur hier: `kraken_order_aufgeben`
 und `kraken_order_stornieren` sind in [[Handelsregeln]] gesperrt. Der Unterschied
-ist wichtig — eine skill_view-Regel gilt nur, solange dieser skill_view läuft, eine
+ist wichtig — eine Skill-Regel gilt nur, solange dieser Skill läuft, eine
 Handelsregel immer.
 
 ## Regeln

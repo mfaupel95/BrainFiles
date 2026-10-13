@@ -31,7 +31,7 @@ Sofort bei: Docker unerreichbar/haengt, Heap-Corruption 3221225786
 erschoepft, MCP-Server-Spawn-Sturm, unkontrollierte Neustarts geplanter
 Aufgaben.
 
-NICHT fuer: einzelne Prozessprobleme (delegate_task-Manager), Docker-Konfiguration
+NICHT fuer: einzelne Prozessprobleme (Task-Manager), Docker-Konfiguration
 (Docker-CLI), einzelne Aufgabenfehler (erst diagnostizieren).
 
 ## Diagnose zuerst
@@ -64,7 +64,7 @@ Start-Sleep -Seconds 3
 $dockerExe = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 if (Test-Path $dockerExe) {
   & $dockerExe
-  write_file-Host "Docker Desktop gestartet (Daemon braucht ~15 s)"
+  Write-Host "Docker Desktop gestartet (Daemon braucht ~15 s)"
   Start-Sleep -Seconds 15
 }
 ```
@@ -88,7 +88,7 @@ $toKill | ForEach-Object {
     try { Stop-Process -Id $_.Id -Force -ErrorAction Stop; $killed++ } catch {}
   }
 }
-write_file-Host "Beendet: $killed Zombie-Prozesse"
+Write-Host "Beendet: $killed Zombie-Prozesse"
 ```
 
 Warum: Der Spawn-Kreis erzeugt hunderte verwaiste Prozesse; das Beenden gibt
@@ -117,12 +117,12 @@ manuelle Lauf raeumt jetzt auf und verhindert das Wiederanwachsen.
 
 # Python-Prozesse
 $remaining = @(Get-Process python*, pythonw -ErrorAction SilentlyContinue).Count
-write_file-Host "Python-Prozesse: $remaining (Ziel: < 50)"
+Write-Host "Python-Prozesse: $remaining (Ziel: < 50)"
 
 # Commit-Speicher
 $os = Get-WmiObject -Class Win32_OperatingSystem
 $commitFree = [math]::Round(($os.TotalVirtualMemorySize - $os.TotalVisibleMemorySize) / 1MB / 1024, 1)
-write_file-Host "Frei: ${commitFree} GB Commit (Ziel: > 10 GB)"
+Write-Host "Frei: ${commitFree} GB Commit (Ziel: > 10 GB)"
 ```
 
 Erwartet: Docker-Containerliste statt Verbindungsfehler; 20-40 statt 100+
@@ -133,7 +133,7 @@ Python-Prozesse; 20-40 GB statt 1-2 GB freies Commit.
 1. **Abgestuetzte geplante Aufgaben manuell neu starten** (sie laufen jetzt):
    ```powershell
    @("MaxHirn-Nautilus-Docker", "MaxHirn-OmniRoute", "MaxHirn-Paperclip") | ForEach-Object {
-     Get-Scheduleddelegate_task -delegate_taskName $_ | Start-Scheduleddelegate_task
+     Get-ScheduledTask -TaskName $_ | Start-ScheduledTask
    }
    ```
 2. **Logs der betroffenen Aufgaben pruefen** - sie muessen jetzt fehlerfrei
@@ -161,13 +161,13 @@ System instabil.
 `mcp-zombie-wache.py` laeuft alle 15 min (Hermes-Cron `mcp-zombie-wache`):
 
 ```powershell
-Get-Scheduleddelegate_task -delegate_taskName "*zombie*" -ErrorAction SilentlyContinue | Select-Object delegate_taskName, State, LastRunTime
+Get-ScheduledTask -TaskName "*zombie*" -ErrorAction SilentlyContinue | Select-Object TaskName, State, LastRunTime
 ```
 
 Wache deaktiviert? Wieder einschalten:
 
 ```powershell
-Get-Scheduleddelegate_task -delegate_taskName "*mcp-zombie-wache*" | Enable-Scheduleddelegate_task
+Get-ScheduledTask -TaskName "*mcp-zombie-wache*" | Enable-ScheduledTask
 ```
 
 ## Fehlersuche
@@ -187,4 +187,4 @@ pruefen. 3221225786 muss weg sein; ein anderer Fehler ist ein eigener Befund.
 - Ursachenanalyse: `MaxHirn/Wiki/Betrieb/Systemleistung-2026-09-29.md`
 - Wachen-Skript: `Agenten/Hermes/scripts/mcp-zombie-wache.py`
 - Cron: `mcp-zombie-wache` (Hermes-Cron, 15 min)
-- Verwandt: skill_view `systemdiagnose` (systempruefung.ps1-Bloecke)
+- Verwandt: Skill `systemdiagnose` (systempruefung.ps1-Bloecke)

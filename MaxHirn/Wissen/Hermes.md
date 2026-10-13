@@ -96,7 +96,15 @@ In `../Agenten/Hermes/.env`:
 dort eine Kopie, keine Luecke. Neu seit 13.10.2026: `docker-cascade-repair` und
 `geld` (Quelle `MaxHirn/.claude/skills/`, kopiert und Werkzeugnamen auf
 Hermes umgesetzt). `i-have-adhd` steht bewusst unter `skills/productivity/`,
-nicht in `claude-code-imports/`. Dazu `data-guard-audit` under `skills/productivity/`.
+nicht in `claude-code-imports/`. Dazu `data-guard-audit` unter `skills/productivity/`.
+Gemessen 13.10.2026 (`hermes skills list`, HERMES_HOME gesetzt): **157 Skills aktiv**
+(140 local, 15 builtin, 2 hub). `geld` ist `enabled`. Offen: `docker-cascade-repair`
+liegt doppelt (`skills/system/` und `claude-code-imports/`) — Entscheidung, welche Fassung bleibt.
+Korrektur: die ersten Kopien vom 13.10. waren durch Wortersetzung beschaedigt
+(`Write-Host` → `write_file-Host`, `Get-ScheduledTask` → `Get-Scheduleddelegate_task`).
+Byte-genau aus dem Vault neu kopiert; die kaputte Fassung steht in Git (Commit `d70d8566`)
+und als Nachweis unter `Agenten/Hermes/.sicherung/skills-import-20261013/`.
+Lehre: Werkzeugnamen nur bei echten Werkzeugaufrufen umsetzen, nie per Textsuche.
 
 **Der Abgleich vom 07.10.2026 hat sich selbst ins Knie geschossen — und ist
 repariert.** Der Import-Commit `0b7b5158` (07.10., 20:54) setzte drei Hermes-Kopien
