@@ -125,51 +125,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
       Betrifft: Agenten/Hermes/profiles/*/config.yaml, Agenten/Hermes/config.yaml
 
-- [ ] **T-396 — xperp-Vorschlag vom 11.10. ist blockiert: er will Max' eigene Auftraege zuruecknehmen**
-      Kontext: Der Verbesserer hat um **04:38** einen Vorschlag erzeugt
-      (`Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/`, Marker `ANGEFRAGT`
-      seit 04:45). Drei Parameter, alle innerhalb ihrer Baender, die Zahlen sind
-      gut: OOS netto je Runde **-0.2187 -> 1.2429**, Holdout **-1.2744 -> 0.1011**
-      bei n=28, Siebregeln a-e bestanden.
-        - `stop_atr_faktor`        1.5 -> 1.25  (Band 1.0..2.5)
-        - `trailing_stop_prozent`  1.5 -> 1.0   (Band 0.75..3.0)
-        - `trailing_trigger_r`     1.0 -> 1.25  (Band 0.5..2.0)
-      BLOCKER: der Vorschlag traegt zwei weitere geaenderte Schluessel, die
-      nicht auf der Whitelist stehen - `_ev_entfaellt` und
-      `handpositionen_automatisch_schliessen`. `anwenden.py:311` bricht bei
-      JEDEM solchen Schluessel ab (`{"ok": False, "grund": "nicht auf der
-      Whitelist: _ev_entfaellt"}`), es wird also NICHTS angewendet - auch die
-      drei guten Parameter nicht. Live nachgerechnet, nicht gelesen.
-      URSACHE (Zeitfolge): der Vorschlag ist vom **04:38**, Max' Auftraege sind
-      vom **04:39** (`handpositionen_automatisch_schliessen` auf true) und
-      **04:43** (`_ev_entfaellt`). Der Verbesserer hat die `wachen.json` VOR
-      beiden gelesen und den Stand von damals eingefroren; beim Anwenden wuerde
-      er beide Auftraege zuruecknehmen wollen. Dass das nicht passiert, ist
-      die Whitelist bei der Arbeit - der Schaden ist verhindert, der Vorschlag
-      ist blockiert, nicht kaputt.
-      **ERLEDIGT 11.10.2026 - der Vorschlag ist neu gefahren und ANGEWENDET.** Der
-      blockierte Stand war der Lauf vom **04:38**; er ist unter `berichte/erledigt/
-      2026-10-11-spur2/` abgelegt und zu Recht abgewiesen (zwei Waechter: Whitelist
-      anwenden.py:311 fuer `_ev_entfaellt`, Basis-Pruefsumme anwenden.py:340-348).
-      Danach lief ein ZWEITER Lauf, der den Stand NACH Max' Auftraegen gelesen hat:
-        - `anwendungslog.json`: `"anwendung_ts": "2026-10-11T09:01:19Z"`,
-          `"entscheidung": "angewendet"` (09:01 UTC = 11:01 CEST).
-        - Commit **8967e4ec** (11.10. 11:01:19 +0200) aendert `xperp/wachen.json`,
-          3 insertions / 3 deletions - genau die drei Parameter.
-      Live nachgeprueft in `xperp/wachen.json`: `stop_atr_faktor=1.25`,
-      `trailing_stop_prozent=1.0`, `trailing_trigger_r=1.25` - identisch mit dem
-      Kandidaten. Die zwei umstrittenen Schluessel stehen dort jetzt so, wie Max sie
-      gesetzt hat (`_ev_entfaellt` = Max-Vermerk, `handpositionen_automatisch_
-      schliessen` = true) und sind im eingefrorenen Kandidaten BYTEGLEICH - der
-      neue Lauf hat den spaeteren Stand gelesen, das Problem ist damit weg.
-      Keine Entscheidung mehr offen; Ticket kann zu.
-      Naechster Schritt (Entscheidung Max): Vorschlag NEU fahren lassen (liest
-      den aktuellen Stand und traegt nur die drei Parameter ein), oder die zwei
-      Schluessel bewusst freigeben - Letzteres hiesse, der Verbesserer darf
-      kuenftig Max' Schalter umdrehen, vermutlich nicht gewollt.
-      Betrifft: Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/,
-      Agenten/Handel/verbesserer/spuren.json, Agenten/Handel/xperp/wachen.json
-      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
 - [x] **T-393 — omniquant hat kein Pflichtband: der Stop kommt ungeprueft aus dem Bericht**
       **WEG (a) GESETZT 11.10.2026 (Auftrag Max: a wie xperp).**
       `omniquant/wachen.json` traegt jetzt `stop_atr_faktor: 1.5` und
@@ -356,7 +311,26 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (Fingerabdruck aendert sich) - auch das waere ein Test-, kein Code-Fehler.
       Betrifft: Agenten/Handel/tests/, Agenten/Handel/testlauf.py,
       Agenten/Handel/testlauf_basis.json
-      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-13
+      STAND 13.10.2026 (gemessen): die Schritte (1)+(2) sind getan - Zeitlimit
+      in testlauf_basis.json 2100 s, tests-Suite als 16 Fehler statt -1
+      (Commits 94a47d85, c0eccd3d, 69e4edaa); der volle Lauf braucht nach
+      Messung 1444-1522 s und endet mit Zusammenfassung, -1 kommt nicht mehr vor.
+      NEUER BEFUND: der Cron `syntax-tor-wache` (Id 3139b9d19ea9) lag NIE in
+      der Haus-jobs.json, sondern im Store des Bot-Profils fomo-radar
+      (profiles/fomo-radar/cron/jobs.json, deliver telegram auf den
+      Gruppen-Ursprung, created 11.10. 06:42 aus einer Telegram-Sitzung) - die
+      Doku "Cron 6 h" behauptete eine Haus-Wache, die es nicht gab; ein Ausfall
+      des Bot-Gateways haette die Pruefung stumm gemacht. UMGESETZT 13.10.:
+      Job im Haus-Store neu angelegt (Agenten/Hermes/cron/jobs.json, id
+      cd4e1a7a921a, every 360m, deliver telegram:-1004430752246) und aus
+      fomo-radar entfernt (hermes -p fomo-radar cron remove 3139b9d19ea9).
+      Erster Haus-Lauf 14.10. 00:33; der Merker cache/syntax-tor-wache.json
+      meldet heute echte Regressions-Befunde (tests 16 -> 22, scanner 0 -> 1,
+      omniquant 0 -> 3, verbesserer 0 -> 1, orb 5 -> 6, orbk 7 -> 8) - die
+      Wache prueft also. Routine-Tor verifiziert 13.10.: --nur-syntax (Syntax +
+      Argumentzahl) laeuft VOR git commit-tree, VOR jeder Testsuite, Exit 0.
+      Vollsuite-Gegenprobe laeuft am 13.10. als Hintergrundlauf.
 - [ ] **T-391 — Drei Kennungen rotieren (Anthropic, Telegram-Bot, OpenAI)**
       Kontext: T-070 geschlossen 2026-10-11 - die .env.example ist belegt sauber
       (alle Secrets leer, nie versioniert, origin/privat gepusht ohne Wert).
@@ -365,8 +339,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       werden. Kein nachgewiesener Leak, Rotation ist die saubere Antwort.
       Naechster Schritt (Entscheidung Max): Anthropic-Key neu ausstellen,
       Telegram-Bot-Token bei BotFather neu holen, OpenAI-Key neu ausstellen.
-      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
-      Betrifft: Agenten/Hermes/.env, Werkstatt/Repos/fomo-robinhood-radar/.env
+      STAND 13.10.2026 (gemessen, nur Namen/Laengen/Hashes, keine Werte):
+      Rotation weiter offen (Entscheidung Max). Bestand heute - Haus-.env:
+      TELEGRAM_BOT_TOKEN (46), OPENAI_API_KEY (164), GITHUB_TOKEN (93);
+      ANTHROPIC_API_KEY ist weder in der .env noch als Windows-Benutzervariable
+      mehr vorhanden. fomo-robinhood-radar/.env: ANTHROPIC_API_KEY leer, aber
+      TELEGRAM_BOT_TOKEN (46) gefuellt - per sha256 identisch mit dem Token
+      des Profils fomo-radar (4d6e508202), NICHT identisch mit dem Haus-Token
+      (3ecf504f2f): der Bot-Token liegt also weiter im ungeschuetzten Klon.
+      moon-dev-ai-agents/.env: ANTHROPIC_KEY (108) und OPENAI_KEY (92)
+      gefuellt (Namensform ohne _API_); skillspector: kein .env mehr.
+      .env.example (hermes-agent) sauber (nur Nicht-Secret-Defaults gefuellt,
+      T-070 bestaetigt). Rotation muss ALLE Ablageorte ersetzen (Haus-.env,
+      profiles/fomo-radar/.env, Klon-.env), sonst laeuft der Bot nach dem
+      Token-Tausch mit dem alten weiter.
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-13
+      Betrifft: Agenten/Hermes/.env, Werkstatt/Repos/fomo-robinhood-radar/.env,
+      Werkstatt/Repos/moon-dev-ai-agents/.env
 
 - [ ] **T-366 - mosaic-Trailing wartet auf einen Weg, der den Stop aendern kann**
   - Kontext: Trailing-Rechnung liegt in `Agenten/Handel/trailing.py` (19 Tests),
@@ -1934,6 +1923,52 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-396 — xperp-Vorschlag vom 11.10. ist blockiert: er will Max' eigene Auftraege zuruecknehmen**
+      Kontext: Der Verbesserer hat um **04:38** einen Vorschlag erzeugt
+      (`Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/`, Marker `ANGEFRAGT`
+      seit 04:45). Drei Parameter, alle innerhalb ihrer Baender, die Zahlen sind
+      gut: OOS netto je Runde **-0.2187 -> 1.2429**, Holdout **-1.2744 -> 0.1011**
+      bei n=28, Siebregeln a-e bestanden.
+        - `stop_atr_faktor`        1.5 -> 1.25  (Band 1.0..2.5)
+        - `trailing_stop_prozent`  1.5 -> 1.0   (Band 0.75..3.0)
+        - `trailing_trigger_r`     1.0 -> 1.25  (Band 0.5..2.0)
+      BLOCKER: der Vorschlag traegt zwei weitere geaenderte Schluessel, die
+      nicht auf der Whitelist stehen - `_ev_entfaellt` und
+      `handpositionen_automatisch_schliessen`. `anwenden.py:311` bricht bei
+      JEDEM solchen Schluessel ab (`{"ok": False, "grund": "nicht auf der
+      Whitelist: _ev_entfaellt"}`), es wird also NICHTS angewendet - auch die
+      drei guten Parameter nicht. Live nachgerechnet, nicht gelesen.
+      URSACHE (Zeitfolge): der Vorschlag ist vom **04:38**, Max' Auftraege sind
+      vom **04:39** (`handpositionen_automatisch_schliessen` auf true) und
+      **04:43** (`_ev_entfaellt`). Der Verbesserer hat die `wachen.json` VOR
+      beiden gelesen und den Stand von damals eingefroren; beim Anwenden wuerde
+      er beide Auftraege zuruecknehmen wollen. Dass das nicht passiert, ist
+      die Whitelist bei der Arbeit - der Schaden ist verhindert, der Vorschlag
+      ist blockiert, nicht kaputt.
+      **ERLEDIGT 11.10.2026 - der Vorschlag ist neu gefahren und ANGEWENDET.** Der
+      blockierte Stand war der Lauf vom **04:38**; er ist unter `berichte/erledigt/
+      2026-10-11-spur2/` abgelegt und zu Recht abgewiesen (zwei Waechter: Whitelist
+      anwenden.py:311 fuer `_ev_entfaellt`, Basis-Pruefsumme anwenden.py:340-348).
+      Danach lief ein ZWEITER Lauf, der den Stand NACH Max' Auftraegen gelesen hat:
+        - `anwendungslog.json`: `"anwendung_ts": "2026-10-11T09:01:19Z"`,
+          `"entscheidung": "angewendet"` (09:01 UTC = 11:01 CEST).
+        - Commit **8967e4ec** (11.10. 11:01:19 +0200) aendert `xperp/wachen.json`,
+          3 insertions / 3 deletions - genau die drei Parameter.
+      Live nachgeprueft in `xperp/wachen.json`: `stop_atr_faktor=1.25`,
+      `trailing_stop_prozent=1.0`, `trailing_trigger_r=1.25` - identisch mit dem
+      Kandidaten. Die zwei umstrittenen Schluessel stehen dort jetzt so, wie Max sie
+      gesetzt hat (`_ev_entfaellt` = Max-Vermerk, `handpositionen_automatisch_
+      schliessen` = true) und sind im eingefrorenen Kandidaten BYTEGLEICH - der
+      neue Lauf hat den spaeteren Stand gelesen, das Problem ist damit weg.
+      Keine Entscheidung mehr offen; Ticket kann zu.
+      Naechster Schritt (Entscheidung Max): Vorschlag NEU fahren lassen (liest
+      den aktuellen Stand und traegt nur die drei Parameter ein), oder die zwei
+      Schluessel bewusst freigeben - Letzteres hiesse, der Verbesserer darf
+      kuenftig Max' Schalter umdrehen, vermutlich nicht gewollt.
+      Betrifft: Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/,
+      Agenten/Handel/verbesserer/spuren.json, Agenten/Handel/xperp/wachen.json
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Verifiziert 13.10.: Commit 8967e4ec angewendet (3 Parameter 1.25/1.0/1.25 in xperp/wachen.json), blockierter Stand archiviert in berichte/erledigt/2026-10-11-spur2, Max-Auftraege (_ev_entfaellt, handpositionen_automatisch_schliessen=true) unangetastet
 - [x] **T-377 - carry.py Wache fertig gestellt**
       Kontext: 07.10.2026. carry.py fertig: Cross-Venue-Carry-Scanner, rein lesend,
       OKX+Kraken, 5 Basen negativ (netto bp -34,1…-37,0), 16/16 Tests gruen.
