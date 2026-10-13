@@ -1,5 +1,17 @@
 ## Offen
 
+- [ ] **T-400 - Werkstatt-Junction-Verlust: Wache fehlt**
+      Kontext: Am 13.10.2026 war BrainFiles\Werkstatt erneut ein echter Ordner
+      statt der Junction auf O:\Werkstatt (2. Mal, wie 05.10.). Ursache unklar,
+      vermutlich parallele Sitzung. 3,03 GB Rettung nach O:\Werkstatt-Rettung-20261013,
+      Dokumente nach O:\Werkstatt gemerged, Junction repariert (73 Eintraege).
+      Es gibt KEINE Wache, die Junction-Verlust meldet (konfig-doktor hat
+      LAUFZEIT-JUNCTION-* als KRITISCH, laeuft aber nur auf Aufruf).
+      Naechster Schritt: Wache bauen (Cron, prueft LinkType+Target von Werkstatt
+      und Modelle, meldet Verlust) ODER konfig-doktor taeglich einplanen.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Routinen, Werkstatt
+
 - [ ] **T-392 - Squeeze: 716-Tage-Backtest negativ, kein Live**
       Kontext: Vergleich Haus-Backtest vs. Freqtrade (541 Runden, -4,45%) ueber
       2024-10-24 bis 2026-10-10 (Binance-Historie, BTC/ETH/SOL 1h, Gebuehr 0,1%/Seite).
