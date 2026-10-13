@@ -16,5 +16,8 @@ if (-not ((Test-Path $py) -and (Test-Path $skript))) {
 }
 & $py $skript --instrument BTC-USDC --bar 4H --strategie ensemble 2>&1 | Where-Object { $_ -notmatch 'INFO\]|Pandas4Warning|e\.run' } | Add-Content $log -Encoding UTF8
 $code = $LASTEXITCODE
+# Schattenbuch (Prozent-Bewertung der Strategie, unabhaengig vom Papierbuch): schreibt logs\schattenbuch.txt
+$schatten = Join-Path $wurzel 'Agenten\Bus\schattenbuch.py'
+if (Test-Path $schatten) { & $py $schatten 2>&1 | Out-Null }
 "ENDE Code $code" | Add-Content $log -Encoding UTF8
 exit $code
