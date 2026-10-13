@@ -71,6 +71,15 @@ def test_fehlende_datei_wirft_nicht():
     assert an.lauf("/gibt/es/nicht", "/tmp/x.json")[0] == "fehler"
 
 
+def test_size_pct_aus_der_zeile_wird_uebernommen():
+    s = an.signal_aus_zeile({"ts_event": T, "instrument_id": "BTC-USDC.OKX", "side": "BUY", "size_pct": 0.05})
+    assert s["size_pct"] == 0.05
+    s = an.signal_aus_zeile({"ts_event": T, "instrument_id": "BTC-USDC.OKX", "side": "BUY", "size_pct": "x"})
+    assert s["size_pct"] == 0.2
+    s = an.signal_aus_zeile({"ts_event": T, "instrument_id": "BTC-USDC.OKX", "side": "BUY", "size_pct": -1})
+    assert s["size_pct"] == 0.2
+
+
 if __name__ == "__main__":
     for n, f in sorted(globals().items()):
         if n.startswith("test_"):

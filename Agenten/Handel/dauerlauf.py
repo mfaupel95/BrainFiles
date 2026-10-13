@@ -547,7 +547,12 @@ TAKT_MAX_MINUTEN = 15
 # Der Orderweg auf Kraken Futures ist gebaut (omniquant/kraken_perp.py +
 # live_perp.py, Hebel 6 als Sizing-Regel). Bindende Grenze ist die freie
 # Margin im flex-Konto (mindest_guthaben_usd 31).
-AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "kraken",
+# SCANNER AM 13.10.2026 ENTZOGEN (Auftrag Max: "Scanner zurueckbauen", T-322):
+# keine neuen Einstiege/Freigaben mehr. Die Spur laeuft weiter und laesst ihre
+# offenen Live-Positionen mit Boersen-Stop auslaufen; nur die Auto-Freigabe
+# entfaellt. handel_erlaubt und freigabe.erfuellt stehen in scanner/wachen.json
+# auf false.
+AUTO_FREIGABE = ("xperp", "mosaic", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
                  "trendwende_btc", "liq_wand", "omniquant",
                  "moondev_marktlage", "nautilus_kraken",
