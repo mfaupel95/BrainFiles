@@ -148,7 +148,7 @@ Symptom: `hermes mcp test <server>` returns "MCP server '<x>' requires the 'mcp'
 
 Root cause: Hermes's own MCP client runs under the **launcher's interpreter** (e.g. `hermes.exe` in `AppData/.../Python313/Scripts`, system Python), not under any MCP-server venv. If that interpreter lacks `mcp`, MCP support is **silently disabled** at startup regardless of what the server venvs contain.
 
-Check it directly, not via server venvs: `python -c "import mcp"` under the interpreter that launches `hermes`. Fix: `python -m pip install mcp` into that runtime, then `hermes gateway restart` (twice — once after install, and MCP tools only load in processes started *after* the install). Already-running sessions won't hot-reload MCP tools; start a new one.
+Check it in the interpreter that actually launches `hermes`, not via server venvs and not with a bare `python`: on this host the launcher is `<checkout>/.hermes/bin/hermes` and it runs the staged runtime venv that `hermes doctor` prints (`Runtime venv staged (<path>)`). Probe THAT: `<venv>/Scripts/python.exe -c "import mcp"`. A bare `python` on PATH is Hermes's own tools interpreter (3.14.7 here) and legitimately has no `mcp` — a failure there proves nothing. Cross-check the real state with `hermes mcp list` (per-server Status column) before concluding MCP is disabled. Fix: `python -m pip install mcp` into that runtime, then `hermes gateway restart` (twice — once after install, and MCP tools only load in processes started *after* the install). Already-running sessions won't hot-reload MCP tools; start a new one.
 
 ## Windows scheduling and terminal quoting (pitfalls that cost a session)
 
@@ -181,6 +181,21 @@ which should show the proxy agent as `Running`.
 
 Note: The iron-proxy is required only for outbound connections; local file reads and terminal commands are unaffected.
 
+
+## Fast health pass (measured on this host, 2026-10-14)
+
+    hermes doctor | head -40        # SQLite line, "Runtime venv staged", config version
+    hermes egress status            # Enabled / Binary / Process
+    command -v uv && uv --version   # uv must exist or the SQLite repair never fires
+    hermes mcp list                 # per-server enabled/disabled
+
+- `hermes doctor` alone costs 1-2 min here (44 connectivity checks, 33 profiles).
+  Do not chain more commands after it in the same terminal call — a following
+  `hermes config get` hit the 180 s tool timeout from contention alone, not a hang.
+- `hermes config get|show` takes ~12 s per call on this host. Slow, not stuck.
+- Healthy baseline seen: Python 3.14.7, SQLite 3.53.1 (no WAL-reset bug), uv 0.12.10,
+  egress disabled with no iron-proxy binary (correct on Windows), 11 MCP servers,
+  most enabled, config v50.
 
 ## Other update warnings (mostly benign)
 

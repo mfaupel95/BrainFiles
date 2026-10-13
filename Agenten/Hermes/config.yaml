@@ -958,6 +958,7 @@ plugins:
     - okx-a2a
     - one-skill-to-rule-them-all
     - rss-reader
+    - security-guidance
     - self-hosted
   disabled: []
 security:

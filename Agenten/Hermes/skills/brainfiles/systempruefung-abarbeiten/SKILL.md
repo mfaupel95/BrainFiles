@@ -133,8 +133,13 @@ belegt, nicht nur umgebaut):
   neuere Wahrheit — das Manifest auf `false` anheben (gleiche Bauart wie
   blender), NICHT den Server erzwingen. Danach `mcp-sync-check.ps1` erneut:
   muss "ALLES IN ORDNUNG" melden.
-- **Fremd-Grenze "Ordner liegt nicht auf der Platte"** — erst pruefen, ob der
-  Ordner verschoben wurde (z. B. nach `Werkstatt/Repos/`). Liegt er unter einem
+- **Fremd-Grenze "Ordner liegt nicht auf der Platte"** — meldet der Block
+  PLOTZLICH alle oder viele `Werkstatt/...`-Eintraege, ist zuerst die
+  `Werkstatt`-Junction zu pruefen (`(Get-Item Werkstatt -Force).LinkType` —
+  leer statt `Junction` = zerstoert, Reparatur in `systemdiagnose`
+  `references/windows-junctions.md`), NICHT die Eintraege umschreiben. Erst
+  wenn die Junction steht, weiter im Einzelfall: pruefen, ob der Ordner
+  verschoben wurde (z. B. nach `Werkstatt/Repos/`). Liegt er unter einem
   bereits gelisteten Elternordner (`Werkstatt/Repos` ist als Ganzes gelistet),
   ist der Einzeleintrag REDUNDANT und wird entfernt, nicht auf den neuen Pfad
   umgeschrieben. `fremd.py --pruefen` nennt die Redundanz selbst ("ein Eintrag

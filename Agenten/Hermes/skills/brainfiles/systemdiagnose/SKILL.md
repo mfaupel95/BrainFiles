@@ -220,6 +220,31 @@ fehlgedeutet.
   sie, meldet sie auf einem Weg, der den Ausfall ueberlebt (direkter Versand oder
   ein fremder Scheduler), meldet sie **nur** im Fehlerfall (sonst wird sie
   ignoriert) und steht die Ausfallhaeufigkeit irgendwo sichtbar.
+- **Der Hermes-Gateway hat keine eingebaute Neustart-Instanz — die EINZIGE ist
+  die geplante Aufgabe `MaxHirn-Gateway-Waechter`.** Die Exit-75-Meldung
+  ("exiting ... so the service supervisor can restart it") benennt KEINEN
+  Dienst: ist die Aufgabe DISABLED, bleibt ein gecrashter Gateway stundenlang
+  tot und Telegram-/Cron-Zustellungen schweigen in der ganzen Luecke. Vor
+  jeder Gateway-Diagnose ZUERST den Aufgabenzustand lesen — deaktiviert ist
+  ein Befund, kein "laeuft irgendwie". Crash-Beleg im Log: `CRITICAL
+  gateway.shutdown_watchdog: missed 3 consecutive liveness probes ... exiting
+  with code 75` mit einem `MemoryError` kurz davor = Speicherdruck-Crash.
+  Reaktivieren (`Enable-ScheduledTask`) braucht Erhoehung (einmal UAC ansagen,
+  nie wiederholen); danach den Waechter EINMAL von Hand laufen lassen und im
+  Bus-Journal (`Agenten/Bus/journal/<datum>.jsonl`) die Zeile "Gateway laeuft ...
+  kein Start" suchen — das ist der Churn-Gegenbeweis. Achtung: direkt nach
+  einem Neustart steht `gateway_state.json` auf "starting", die
+  Primaer-Pruefung des Waechters (`gateway_state == 'running'`) greift dann
+  noch nicht — der Kommandozeilen-Rueckfall traegt, also dessen Muster VOR dem
+  Aktivieren gegen die echte Kommandozeile des Prozesses testen.
+- **Zerstoerte Junction erkennen, bevor Werkzeug-Ausfaelle einzeln untersucht
+  werden.** Meldet `fremd.py` auf einmal ALLE `Werkstatt/...`-Eintraege "nicht
+  auf der Platte" oder tauchen `konfig-doktor-<datum>.md` an der
+  Werkstatt-Wurzel auf, ist `BrainFiles\Werkstatt` kein Verweis mehr auf
+  `O:\Werkstatt` (zweimal zerstoert; dort liegt eine echte Ordner-Teilkopie
+  mit eingebetteter Repos-Junction). Pruefung: `(Get-Item Werkstatt -Force).LinkType`
+  (leer = kaputt) und Eintraegezahl gegen `O:\Werkstatt`; verlustfreie
+  Reparatur (Rettungskopie → Junction neu): `references/windows-junctions.md`.
 - **`Get-Process ... | Sort-Object CPU` zeigt Lebenszeit, nicht Last.** `CPU` ist
   die aufsummierte Prozessorzeit seit Prozessstart — oben stehen damit
   langlebige Anwendungen (Terminal, Browser, Afterburner), nicht die aktuelle
@@ -370,6 +395,12 @@ Control Manager 7000/7023/7031/7034/7043): `references/ereignis-ids.md`.
 Auftrag „RAM freigeben“ / „System beschleunigen“: Reihenfolge, idle-CPU-Modell,
 MCP-Knoten-Generationen, Memory Compression als Symptom, PowerShell-Falle beim
 Gruppieren: `references/ram-und-cpu-freigeben.md`.
+
+## Junctions
+`Werkstatt`/`Modelle` als Verweise statt echter Ordner: Zerstoerungs-Symptome
+(alle Werkstatt-Pfade „nicht auf der Platte", konfig-doktor-Dateien tauchen an
+der Werkstatt-Wurzel auf), verlustfreie Reparatur:
+`references/windows-junctions.md`.
 
 ## Bericht
 - Ergebnis zuerst, dann Belege. Tabellen fuer Zustandswerte, keine Prosa.
