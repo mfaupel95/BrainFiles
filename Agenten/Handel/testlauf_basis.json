@@ -1,4 +1,8 @@
 {
+  "aufrufort": {
+    "orb/tests": "spur",
+    "orbk/tests": "spur"
+  },
   "stand": {
     "ai4trade/tests": {
       "fehler": 1,
@@ -105,12 +109,12 @@
       "tests": 8
     },
     "orb/tests": {
-      "fehler": 5,
-      "tests": 10
+      "fehler": 0,
+      "tests": 60
     },
     "orbk/tests": {
-      "fehler": 7,
-      "tests": 12
+      "fehler": 0,
+      "tests": 76
     },
     "robinhood_radar/tests": {
       "fehler": 0,
