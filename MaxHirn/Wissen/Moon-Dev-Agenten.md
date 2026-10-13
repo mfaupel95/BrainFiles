@@ -128,3 +128,40 @@ Jede dieser Spuren folgt derselben Vorlage: `moondev_daten.py` (Abruf),
 `moondev_buch.py` (Buch), eigene `handeln.py` mit `quelle()` und `signal()`,
 `wachen.json`, README, Tests mit Modulwaechter und Eintrag in
 `dauerlauf.SPUREN`.
+
+## Die 47 Agenten im Ueberblick (Repo-README, 13.10.2026)
+
+Vollstaendige Liste aus `Werkstatt/Repos/moon-dev-ai-agents/README.md` — die
+Original-Beschreibung jedes Agenten, wie sie im Repo steht:
+
+| Agent | Beschreibung |
+|---|---|
+| `trading_agent` | Analysiert Token-Daten per LLM fuer einfache Handelsentscheidungen |
+| `strategy_agent` | Verwaltet und fuehrt Strategien aus dem `strategies/`-Ordner aus |
+| `risk_agent` | Ueberwacht Portfolio-Risiko, erzwingt Positionslimits und PnL-Schwellen |
+| `copy_agent` | Ueberwacht Copy-Bot auf potenzielle Trades |
+| `whale_agent` | Ueberwacht Whale-Aktivitaeten, meldet Waleinstiege |
+| `sentiment_agent` | Analysiert Twitter-Sentiment für Krypto-Tokens mit Sprachansagen |
+| `listingarb_agent` | Identifiziert vielversprechende Solana-Tokens auf CoinGecko vor dem Listing bei Binance/Coinbase, parallele AI-Analyse |
+| `focus_agent` | Sammelt waehrend Codingsessions zufaellige Audio-Proben fuer Fokus-Scores und Sprachwarnungen |
+| `funding_agent` | Ueberwacht Funding-Raten ueber Boersen hinweg, AI-Analyse mit Sprachansagen |
+| `liquidation_agent` | Verfolgt Liquidationen mit konfigurierbaren Zeitfenstern (15min/1hr/4hr), AI-Analyse |
+| `chartanalysis_agent` | Analysiert Krypto-Charts per LLM fuer Kauf/Verkauf/Empfehlung |
+| `fundingarb_agent` | Verfolgt Funding-Raten auf Hyperliquid fuer Arbitrage zwischen HL und Solana |
+| `rbi_agent` | Nutzt DeepSeek zum Recherchieren von Handelsstrategien aus Videos/PDFs/Worten, schickt an Backtest-Agent |
+| `tweet_agent` | Erstellt Tweets aus Text per DeepSeek oder anderen Modellen |
+| `video_agent` | Erstellt Videos aus Text per ElevenLabs-Audio und Rohmaterial |
+| `new_or_top_agent` | Betrachtet neue und Top-Coins von CoinGecko |
+| `chat_agent` | Ueberwacht YouTube-Live-Chat, moderiert und beantwortet bekannte Fragen |
+| `clips_agent` | Schneidet lange Videos in kurze Clips |
+| `phone_agent` | KI-Agent fuer Telefonanrufe |
+| `sniper_agent` | Ueberwacht neue Solana-Token-Launches, analysiert und snipet |
+| `tx_agent` | Verfolgt Transaktionen der Copy-Liste, druckt sie aus |
+| `solana_agent` | Kombiniert Sniper- und TX-Agent zur Auswahl interessanter Memes |
+| `million_agent` | Nutzt Million-Token-Kontext von Gemini als Wissensbasis |
+| `tiktok_agent` | Scrollt TikTok, macht Screenshots von Videos und Kommentaren fuer Consumer-Daten |
+| `compliance_agent` | Prueft Arbitrage-Werbung auf Facebook/Tiktok auf Compliance |
+| `research_agent` | Fuellt `ides.txt` fuer den RBI-Agent |
+
+**Haus-Stand:** Vier davon laufen als Papier-Spuren (Tabelle obig), die
+anderen sind nach Blockern gruppiert (Abschnitt "Vorgemerkt" obig).

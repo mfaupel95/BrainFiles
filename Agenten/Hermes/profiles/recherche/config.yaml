@@ -448,3 +448,8 @@ onboarding:
 agent:
   max_turns: '5'
   service_tier: fast
+telemetry:
+  shared_metrics:
+    enabled: true
+    send: false
+    offer_version: 2
