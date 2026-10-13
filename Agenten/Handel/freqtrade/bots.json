@@ -159,6 +159,8 @@
       "container": "freqtrade-klassik-donchian-trend",
       "strategie": "HausSpur",
       "hausspur": "klassik_donchian_trend",
+      "hausspur_rechnung": "vektor",
+      "_hausspur_rechnung": "12.10.2026 Phase 2: numpy-Fassung (hausspur_vektor.py), Kerze fuer Kerze gleich mit dem Adapter (BTC/ETH/SOL 4h, 2 J.: 0 Abweichungen; Backtest A=B 98 Runden +28,48 %). Zurueck: Feld loeschen.",
       "port": 8091,
       "zeitrahmen": "4h",
       "max_open_trades": 3,
