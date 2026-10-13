@@ -7196,5 +7196,7 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
       Nicht ohne Freigabe mergen. Dazu: `MaxHirn/Wissen/KB/data/spur-metriken.json` steht
       im Arbeitsbaum als 'needs merge' (fremde Sitzung, nicht meine Datei).
       Nachweis-Ordner `Agenten/Hermes/.sicherung/skills-import-20261013/` nach Entscheidung loeschen.
+      Entscheidung Max 13.10.2026: Zweig liegen lassen, kein PR, kein Merge, kein Push.
+      Grund: Konflikte in Hermes.md und spur-metriken.json; 13 fremde Commits (Handel, rule_repo-bots.md).
   - Angelegt: 2026-10-13
   - Betrifft: Git-Zweige BrainFiles, MaxHirn/Wissen/Hermes.md
