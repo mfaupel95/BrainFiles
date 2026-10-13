@@ -229,6 +229,12 @@ Agenten/Handel/stand/
 !Agenten/Handel/orbk/*.json
 !Agenten/Handel/orbk/tests/*.py
 !Agenten/Handel/orbk/tests/fixtures/*.json
+# jev_trader-Spur (Papierbuch ueber das Block-Event-Log des jev-trader-Bots,
+# Monad/Kuru). Code, Wachen und Tests; Laufzeitdaten unten in der Sperrliste.
+!Agenten/Handel/jev_trader/*.py
+!Agenten/Handel/jev_trader/*.md
+!Agenten/Handel/jev_trader/*.json
+!Agenten/Handel/jev_trader/tests/*.py
 # Wachen-Datei des omnitrade-Projekts (Rust-Terminal/Bot). Nur die
 # Grenzen, kein Laufzeitstand - gleiche Rolle wie scanner/wachen.json.
 !Agenten/Handel/omnitrade_wachen.json
@@ -437,6 +443,8 @@ Agenten/Handel/orb/daten/**
 Agenten/Handel/orbk/zustand.json
 Agenten/Handel/orbk/handelsjournal.csv
 Agenten/Handel/orbk/daten/**
+Agenten/Handel/jev_trader/zustand.json
+Agenten/Handel/jev_trader/handelsjournal.csv
 
 # Omniquant-Spur: dieselbe Aufteilung. wachen.json ist oben freigegeben
 # (Grenzen von Hand); Zustand und Journal schreibt jeder Zyklus.
