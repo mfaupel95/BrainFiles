@@ -3,7 +3,7 @@ id: 20260830-projekte
 title: 'Projekte'
 tags: [profil, betrieb]
 created: 2026-08-24
-updated: 2026-09-03
+updated: 2026-10-13
 related: [20260830-profil]
 summary: 'Was gerade läuft, ein Abschnitt je Projekt, Erledigtes bleibt unten stehen.'
 ---
@@ -55,6 +55,31 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
 - **Offen:** Stufe 2 — lokales Sprachmodell über dieselbe Ollama-Laufzeit für
   alles mit Personenbezug. Grenze ist der VRAM: 8 GB reichen für 7–8B in Q4/Q5,
   12–14B nur knapp. Vorher festlegen, welche Ordner schützenswert sind.
+
+### Windows-Profilstruktur (Teilprojekt B)
+
+- **Ziel:** Die Windows-Profilebene für eine spätere Linux-/WSL-Nutzung ordnen;
+  `BrainFiles/` selbst bleibt unverändert. WSL als Hauptumgebung und eine
+  vollständige Linux-Migration sind spätere, getrennte Teilprojekte.
+- **Festgelegt:** Dotfolder pragmatisch behandeln — nur Anwendungen verschieben,
+  die XDG, Umgebungsvariablen oder `--config-dir` nativ unterstützen; übrige
+  Speicherorte dokumentieren, keine erzwungenen Symlinks.
+- **Stand (2026-10-13):** User-PATH bereinigt: fünf bestätigte tote und zwei
+  fehlerhafte Einträge entfernt; 29 Einträge verbleiben. Volta und Python 3.13
+  bleiben die maßgeblichen Interpreter. Direkte Node.js-Installation unter
+  `Program Files` nur dokumentieren, nicht deinstallieren; `.local\\Python\\bin`
+  unverändert lassen. Eine erste Bestandsaufnahme fand rund 80 Dotfolder/-dateien.
+- **Offen:** Bestandsaufnahme und Entscheidungsmatrix für Dotfolder/XDG erstellen.
+  `.claude.json`-Backups und -Temp-Dateien sowie drei als archiviert markierte
+  Hermes-Verzeichnisse sollten sofort bereinigt werden. Die Hermes-Verzeichnisse
+  sind jedoch ungeklärt: direkte Abfrage ergab im ersten Ordner nur zwei Dateien,
+  während rekursive Messungen für alle drei jeweils rund 237 GB und 3,54 Mio.
+  Elemente meldeten. Nichts davon löschen, bevor Ursache und tatsächlicher Inhalt
+  nachvollziehbar verifiziert sind. Die jüngsten Detailabfragen konnten wegen
+  vorübergehender Nichtverfügbarkeit des Ausführungsdienstes nicht abgeschlossen
+  werden.
+- **Nächste Schritte:** Erst die Kandidaten mit einer sicheren, begrenzten Prüfung
+  klären; danach das pragmatische Dotfolder-/XDG-Design fortsetzen.
 
 ### Digitales Archiv
 

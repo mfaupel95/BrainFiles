@@ -445,3 +445,6 @@ platforms:
 onboarding:
   seen:
     tool_progress_prompt: true
+agent:
+  max_turns: '5'
+  service_tier: fast

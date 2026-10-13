@@ -15,7 +15,8 @@ Vollständige Begründung in [[Schutzregeln]]; hier steht der Ablauf.
 Arbeitsbaum, in dem die eigene Änderung noch offen steht, meldet sie als „fremd"
 — die Ruheschwelle sieht nur das Alter, nicht den Urheber. Erst die eigene Arbeit
 namentlich committen, dann den Baum lesen; was danach noch liegt, ist wirklich
-fremd.
+fremd. Vor jedem Commit `git branch --show-current` lesen: der gemeinsame Hauptbaum
+kann zwischen zwei Aufrufen den Zweig gewechselt haben.
 
 ```powershell
 ..\Agenten\Routinen\arbeitsbaum-pruefen.ps1
@@ -96,6 +97,20 @@ beim Sichern daraus folgt:
   Push in einen Fork braucht Rückfrage, und Workflow-Dateien
   (`.github/workflows/`) lehnt GitHub ohne Token-Scope `workflow` ab — der Push
   überträgt die ganze Commit-Kette, nicht nur den eigenen Commit.
+
+### Vor einem PR oder Merge: Konflikte messen
+
+Zuerst ohne Veränderung prüfen, ob der Zweig in `master` passt:
+
+```bash
+git merge-tree --write-tree master <zweig>   # rc=1 = Konflikt, Liste der Dateien folgt
+```
+
+Ein Zweig, der fremde Commits enthält, wird nicht im Ganzen gemergt: erst melden,
+welche Commits drinliegen; nur die eigenen per `git cherry-pick <sha>` nehmen. Ein
+Cherry-Pick einer Datei, die `master` inzwischen gelöscht hat, erzeugt einen
+modify/delete-Konflikt und stellt die Datei wieder her, wenn man ihn falsch auflöst.
+Für PRs `gh auth status` vorher prüfen.
 
 ### Ungelöster fremder Konflikt: eigener Worktree
 

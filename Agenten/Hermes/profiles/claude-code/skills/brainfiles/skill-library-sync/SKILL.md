@@ -67,7 +67,9 @@ Anforderung (~25 statt ~14.700 Tokens je Anfrage). Ein Symlink des Fremd-Baums i
    zuordnen. *Fertig, wenn* kein Fund aus einem Fremd-Baum stammt und jede der
    beiden Zielablagen einzeln aufgelistet ist.
 2. **Drift prüfen — mit dem Werkzeug, nicht mit dem Auge.**
-   `python Agenten/Hermes/scripts/skill-abgleich.py` bestimmt je Datei die
+   Vor dem Aufruf prüfen, ob `Agenten/Hermes/scripts/skill-abgleich.py` existiert (`search_files`).
+   Fehlt es, die Richtung von Hand nach dem Abschnitt „Vor dem Ersetzen" bestimmen.
+   Existiert es: `python Agenten/Hermes/scripts/skill-abgleich.py` bestimmt je Datei die
    **Richtung** (`gleich` / `rueckstand` / `kopie_weiter` / `beidseitig` / `zu_jung`),
    nicht nur gleich/ungleich. Ein reiner Hash-Vergleich genuegt hier nicht — er
    sagt nur *dass* etwas abweicht, nie *wer* weiter ist. *Fertig, wenn* kein
@@ -94,14 +96,20 @@ Anforderung (~25 statt ~14.700 Tokens je Anfrage). Ein Symlink des Fremd-Baums i
    *Fertig, wenn* keine abweichende Kopie mehr Zeilen enthält, die in der Quelle fehlen.
 5. **Nacharbeit nur in den Kopien.** Werkzeugnamen auf Hermes umsetzen
    ([references/werkzeugnamen-claude-hermes.md](references/werkzeugnamen-claude-hermes.md)),
-   im Vault bleiben sie stehen. *Fertig, wenn* unverändert übernommene Skills per Hash
+   im Vault bleiben sie stehen.
+   Nur echte Werkzeugaufrufe umsetzen, nie per Textersetzung: eine Ersetzung ohne
+   Wortgrenzen verändert PowerShell- und Prosa-Wörter (`Write-Host` wird `write_file-Host`).
+   Skills ohne Werkzeugaufrufe unverändert kopieren. *Fertig, wenn* unverändert übernommene Skills per Hash
    weiterhin gleich sind.
 6. **Prüfen.** Frontmatter (beginnt mit `---`, `name` und `description` vorhanden),
    LF, kein BOM, keine doppelt kodierten Umlaute; dann `hermes skills list`.
    *Fertig, wenn* jeder neue Eintrag als `local` und `enabled` erscheint.
 7. **Vault-Notiz nachziehen.** Abschnitt `## Skills` in `Wissen/Hermes.md`
    (Stufe 1: vorher `.bak-<JJJJMMTT>`), dann namentlich committen — `git add <pfad>`,
-   Autor `Hermes <hermes@local>`.
+   Autor `Hermes <hermes@local>`. Vorher `git branch --show-current` und `git log -1 -- <pfad>`
+   lesen: der gemeinsame Hauptbaum kann zwischen zwei Aufrufen den Zweig gewechselt haben,
+   und eine andere Sitzung kann die Datei schon committet haben. Dann nichts doppelt committen.
+   Die Notiz geht nur direkt auf `master`, wenn sie reine Pflege ist (siehe `sichern`).
 
 ## Fremden Skill einzeln übernehmen
 
@@ -342,11 +350,26 @@ Stand sichern — steht in
   ohne dass ein Hash das zeigt. Ist es ein Fork, ihn aus der **aktuellen** Quelle neu
   erzeugen und dabei nur die Agenten-Identität umsetzen — die alte Umbenennung
   fortzuschreiben lässt Pfade stehen, die auf den früheren Vault-Namen zeigen.
+- **Vor jeder Aktion den Git-Stand neu lesen (`git branch --show-current`, `git log -3 -- <pfad>`).**
+  Andere Sitzungen im selben Arbeitsbaum wechseln den Branch und entfernen Dubletten
+  zwischen zwei Schritten. Am 13.10.2026 war eine geplante Dublettenentfernung schon
+  durch Commit `ad1e8a43` erledigt, und der Branch stand auf `master`. Zuerst prüfen, dann handeln.
+- **Nachweis-Kopien nie unter `skills/` ablegen.** Ein Ordner `<name>.kaputt-<datum>/` mit
+  SKILL.md wird vom Skill-Lader als eigener Skill eingelesen. Sicherungen direkt nach
+  `.sicherung/skills-import-<datum>/` verschieben.
+- **`hermes skills list` in eine Datei umleiten** (`> pfad.txt`) und dann `grep` darauf
+  laufen lassen. Die Pipe `| grep | tail` lieferte am 13.10.2026 leere Ausgabe, obwohl der
+  Lauf erfolgreich war.
+- **Vor einem Merge eines fremden Zweigs `git merge-tree --write-tree master <zweig>`**
+  lesen. Zeigt es Konflikte, nicht raten, sondern melden. Ein Zweig mit fremden Commits
+  wird nur nach ausdrücklicher Entscheidung gemergt.
 - Kopien werden erst in einer **neuen Sitzung** geladen; `skills_list` und `skill_view`
   zeigen in der laufenden Sitzung weiter den alten Stand. Das ist kein Fehlschlag.
 
 ## Nachweis
 
+- Die Ausgabe von `hermes skills list` in eine Datei umleiten und dann lesen
+  (`> datei`). Ein Pipe in `tail` oder `grep` lieferte mehrfach keine Ausgabe.
 - `hermes skills list` (mit gesetztem `HERMES_HOME`) listet jeden neuen Skill als
   `local`/`enabled`, und die Gesamtzahl passt zur erwarteten Bibliothek.
 - `Get-FileHash` der Bestandsskills: Vault und Kopie gleich.

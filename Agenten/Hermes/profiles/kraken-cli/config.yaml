@@ -34,3 +34,6 @@ mcp_servers:
     env:
       KRAKEN_PAPER_MODE: "true"
     enabled: true
+onboarding:
+  seen:
+    tool_progress_prompt: true

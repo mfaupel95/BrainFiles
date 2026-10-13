@@ -53,9 +53,10 @@ auxiliary:
     timeout: 180
 telemetry:
   shared_metrics:
-    enabled: false
+    enabled: true
     send: false
 
+    offer_version: 2
 skills:
   disabled:
     - apple-notes

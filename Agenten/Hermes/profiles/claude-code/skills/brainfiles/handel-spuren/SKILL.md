@@ -46,6 +46,16 @@ nur gelesen, einzige Ausnahme `sperre_zu` true→false), `zustand.json`,
    Windows-Prozesse). Befehle, Aufgabennamen und die Wiederbelebung:
    `references/dauerlauf-betrieb.md`.
 
+## Dauerlauf-Modus prüfen (Papier vs. Live)
+- **Freigabefenster aller Spuren lesen**, nicht nur eine: In
+  `freigabe_fenster.json` steht `offen_bis`. Ist kein Fenster offen, läuft der
+  Basislauf auf Papier — auch wenn `wachen.json` `handel_erlaubt: true` trägt.
+- **Stufenläufe (mittel/hoch) sind immer Papier**, nie `--live` — der Code
+  (`dauerlauf.py`, Kommentar „DATENSAMMLER") erzwingt das. Nur der Basislauf
+  (Stufe `niedrig`) kann über ein Freigabefenster live werden.
+- **„Nicht zu leistungsintensiv“ prüfen, nicht behaupten:** CPU-Last und freier
+  RAM vorher messen (`Win32_Processor.LoadPercentage`, `Win32_OperatingSystem.FreePhysicalMemory`).
+
 ## Spur live schalten
 1. **Sichern** (Stufe 1): `.bak-JJJJMMTT` für jede wachen.json, die angefasst wird.
 2. **wachen.json ändern:**
