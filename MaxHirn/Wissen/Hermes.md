@@ -92,12 +92,17 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
-Dazu seit 09.10.2026 `docker-cascade-repair` unter `skills/system/`
-(Quelle `~/.claude/skills`, einzeln uebernommen, Vault-Kopie in `MaxHirn/.claude/skills/`). 
-**24 eigene** unter `Hermes/skills/claude-code-imports/` — jeder Vault-Skill hat
-dort eine Kopie, keine Luecke. Dazu `data-guard-audit` unter `skills/productivity/`.
-`hermes skills list` (HERMES_HOME gesetzt): **161 Skills geladen** (145 local,
-15 builtin, 1 hub), alle vier neuen `local`/`enabled`.
+Stand 13.10.2026: `docker-cascade-repair` liegt nur unter `skills/system/` (byte-identisch
+zum Vault, Dublette per Commit `ad1e8a43` entfernt). `geld` liegt unter `skills/geld/`
+(identisch bis Zeilenenden). Vault-Skills ohne Kopie unter `claude-code-imports/`: sie sind
+dort bewusst weg, nicht vergessen. `i-have-adhd` liegt unter `skills/productivity/`.
+Dazu `data-guard-audit` unter `skills/productivity/`.
+Gemessen 13.10.2026 (`hermes skills list`, HERMES_HOME gesetzt): **157 Skills aktiv**
+(140 local, 15 builtin, 2 hub).
+Lehre 13.10.2026: Werkzeugnamen beim Kopieren nur bei echten Werkzeugaufrufen umsetzen,
+nie per Textersetzung. Die erste Kopie hat PowerShell zerstoert (`Write-Host` wurde
+`write_file-Host`). Korrigiert per Byte-Kopie aus dem Vault; kaputte Fassung in Git
+(`d70d8566`).
 
 **Der Abgleich vom 07.10.2026 hat sich selbst ins Knie geschossen — und ist
 repariert.** Der Import-Commit `0b7b5158` (07.10., 20:54) setzte drei Hermes-Kopien
