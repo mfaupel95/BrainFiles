@@ -23,7 +23,8 @@ def _sma(werte, n):
 def momentaufnahme(kerzen, variante, kandidat_seite, stop_pct):
     """Kennzahlen nach dem Vorbild moondev trading_agent: MA20/MA40, Volumen, 24-h-Rendite."""
     c = [float(z[4]) for z in kerzen]
-    v = [float(z[5]) for z in kerzen]
+    # Ohne Volumenspalte (Bestandsdatei mit 5 Spalten) bleibt das Feld leer, statt zu brechen.
+    v = [float(z[5]) for z in kerzen] if all(len(z) > 5 for z in kerzen) else None
     kurs = c[-1]
     return {
         "variante": variante,
@@ -33,7 +34,7 @@ def momentaufnahme(kerzen, variante, kandidat_seite, stop_pct):
         "ma40": _sma(c, 40),
         "stop_prozent": round(stop_pct, 2),
         "rendite_24h_pct": round((kurs / c[-25] - 1) * 100, 2) if len(c) > 24 else None,
-        "volumen_rel_20": round(v[-1] / (_sma(v, 20) or 1.0), 2),
+        "volumen_rel_20": round(v[-1] / (_sma(v, 20) or 1.0), 2) if v else None,
     }
 
 

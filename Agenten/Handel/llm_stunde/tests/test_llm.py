@@ -58,6 +58,12 @@ class Momentaufnahme(unittest.TestCase):
             self.assertIn(feld, s)
         self.assertEqual(s["ma20"], 100.0)
 
+    def test_ohne_volumenspalte_bricht_nicht(self):
+        fuenf = [[i * 3600000, c, c, c, c] for i, c in enumerate([100.0] * 60)]
+        s = llm.momentaufnahme(fuenf, "ema1h", "long", 2.5)
+        self.assertIsNone(s["volumen_rel_20"])
+        self.assertEqual(s["ma20"], 100.0)
+
 
 if __name__ == "__main__":
     unittest.main()
