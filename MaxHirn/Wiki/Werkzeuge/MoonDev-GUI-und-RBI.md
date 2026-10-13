@@ -128,3 +128,36 @@ immer neue dazu.
   `kraken_agent`).
 - Ein RBI-Lauf **schreibt weiter Ideen ab** (Zähler im Fenster), auch wenn eine
   Idee scheitert — 4482 Zeilen sind kein Vorrat, sondern ein Verbrauch.
+
+## Stand 13.10.2026 (Nachtrag)
+
+> **Hinweis:** Ollama ist seit 11.10.2026 deinstalliert. Die Abschnitte oben
+> zu `qwen35-8k`, `11434` und `11499` beschreiben den alten Stand. Gültig ist
+> der folgende Abschnitt.
+
+- **LLM:** Die Haus-Laufzeit ist der llama-server der Hermes-Runtime
+  (127.0.0.1:18434). Der Adapter `Agenten/Werkzeuge/llamacpp-ollama-bruecke.py`
+  stellt auf Port 11498 Ollamas native API bereit. Standardmodell der GUI:
+  `gemma-4-E4B-it-OBLITERATED-Q8_0` (Testchat am 12.10. abends: „bereit").
+  Am Vormittag des 12.10. waren alle Modelle mit Exit 1 gescheitert; die
+  Ursache ist nicht geklärt.
+- **Agenten-Stopp:** `terminate()` beendete nur den venv-Launcher, der echte
+  Interpreter lief weiter. Jetzt beendet `taskkill /T` den ganzen Baum
+  (Commit `8b19552`). Die Launcher-Kette ist die Falle: Jeder Agent hat einen
+  Launcher und einen Kindprozess.
+- **Start:** Die README-Suche per `rglob` lief über `.venv` und `src/data`,
+  über zwei Minuten im Hauptthread. Jetzt `os.walk` mit Ausschluss, 0,13 s.
+- **Optik:** Doppelte Agentenliste (zweite Treeview-Spalte) und unlesbare
+  Dropdowns im clam-Theme behoben (Commit `f53fab6`).
+- **Strategie-PDFs:** `moondevonyt/Moon-Dev-Code` nach `mfaupel95/Moon-Dev-Code`
+  geforkt, nach `O:\Werkstatt\Repos\Moon-Dev-Code` geklont (`upstream` = Original,
+  flacher Klon). Der PDF-Tab zeigt die drei Dateien im Ordner `strategy_pdfs`.
+  Mehr liefert das Original nicht, auch nicht in der Historie. Die drei
+  Dateien sind die Paper aus [[Moon-Dev-Code-Studien]].
+- **Web-Suche nach Moon-Dev-Strategie-PDFs:** ohne Treffer. Archiv (9712
+  Dateien) und GitHub-Codesuche nach `strategy_pdfs` bringen ebenfalls nichts.
+- **Laufende Agenten:** Am 13.10. gestoppt. Vorher liefen `kraken_agent`,
+  `sniper_agent` und `trading_agent` seit 16:30 Uhr als verwaiste Prozesse, also
+  ohne Verbindung zur GUI. Der Trading-Agent war per
+  `Agenten/Handel/moondev_trading_freigabe.json` (`handel_erlaubt=false`) auf
+  Papier beschränkt. Der Sniper hat keinen Kaufpfad.
