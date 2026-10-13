@@ -45,7 +45,7 @@
   "sperrfrist_nach_ziel_stunden": 2.0,
   "_freigabe": "Bedingung 1 aus Wissen/Schutzregeln.md, Abschnitt 'Damit der Automat unbeaufsichtigt laufen darf'. handel_erlaubt darf erst auf true, wenn alle vier Werte erfuellt sind. handeln.py liest den Block und verweigert --live, solange erfuellt=false.",
   "freigabe": {
-    "erfuellt": true,
+    "erfuellt": false,
     "papierlauf_min_wochen": 3,
     "_netto_positiv_entfaellt": "19.09.2026 Max: Bedingung 'netto positiv' entfaellt fuer spot/scanner (Handelsregeln Bedingung 1).",
     "groesster_ruecklauf_papierlauf_usd": null,
@@ -60,7 +60,7 @@
   "_herzschlag_regel": "REGEL 19.09.2026: 180 Minuten fuer Papier-Spuren UND fuer Live-Spuren (handel_erlaubt=true); Live-Angleichung an 3 h wegen ungeklaerter Abschaltungen (T-004). Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Seit 19.09.2026 gilt fuer diese Live-Spur ebenfalls 180: ein Herzschlag-Fehlschluss nach einem PC-Ausfall (T-004) wuerde die offene Position am Markt schliessen - Verlust in echtem Geld; die Position loest die Spur ueber Stop-/Risiko-Logik auf, nicht der Herzschlag. Vorher standen hier 2880 (48 h) aus der Zeit, als die Aufgabe MaxHirn-Marktscanner sie einmal taeglich fuhr - im Viertelstundentakt waere das eine Woche unbewachter Handel.",
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal",
-  "handel_erlaubt": true,
+  "handel_erlaubt": false,
   "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true stellen erst, wenn (1) OKX_API_KEY/OKX_API_SECRET/OKX_API_PASSPHRASE als Windows-Benutzervariablen gesetzt sind, (2) das Papier-Handelsjournal ueber mehrere Wochen tragfaehig aussieht. Siehe Wissen/Schutzregeln.md, Abschnitt 'Marktscanner'.",
   "_max_volatilitaet_pa_erhoeht_20260925": "ERHOEHT 25.09.2026 (Auftrag Max: erlaubte Volatilitaet erhoehen): 1,20 -> 2,00. Gemessen mit scan.py: die JA-Kandidaten lagen bei 0,67-1,18, direkt darueber RAY 1,39 / ENA 1,27 / ARB 1,27 (fallen ohnehin am Score) - die Grenze war heute NICHT der Blocker, sondern mindest_score 60. Ueber 2,0 bleibt gesperrt, weil der Stop der Spur (stop_prozent 7) dann kleiner ist als eine normale Tagesspanne.",
   "_min_guthaben_quote": "Freies Kontoguthaben der Basiswaehrung, unterhalb dessen NICHT gekauft wird. Fehlt der Wert (0), gilt die alte Regel: nur der Gesamtdeckel max_gesamt_usd begrenzt, die Boerse weist zurueck. Anlass 02.10.2026: der Scanner hatte KEIN solches Tor - bei 442 von 444 USDC gebunden und 1,76 frei (4 offene Positionen plus Stops) lief er in jeden Kandidaten und bekam 'insufficient balance'. 30 USD ist eine Positionsgroesse (risiko 6 / stop 5 % = 120 Nominal, gebraucht wird der kleinste darauf moegliche) und keine neue Risikogrenze: sie verhindert nur Orders, die auch so nicht durchgehen wuerden.",
