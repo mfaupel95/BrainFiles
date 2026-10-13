@@ -7161,3 +7161,12 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
   - Naechster Schritt: nach Stufe-1.5-Merge als eigener Commit
   - Angelegt: 2026-10-07
   - Betrifft: Agenten/Handel/verbesserer/anwenden.py
+- [ ] **T-399 — Hermes-Skills: Zweig claude/messung-configs-klassik gegen master klaeren**
+      Stand 13.10.2026: Die Korrektur der Hermes-Notiz (Commit ac946d05 auf master) ist
+      uebernommen. Auf dem Zweig liegen noch 22 Commits, davon 20 fremde (Handel, Telegram,
+      Wiki). Entscheidung Max: Zweig per PR nach master, oder verwerfen/liegen lassen.
+      Nicht ohne Freigabe mergen. Dazu: `MaxHirn/Wissen/KB/data/spur-metriken.json` steht
+      im Arbeitsbaum als 'needs merge' (fremde Sitzung, nicht meine Datei).
+      Nachweis-Ordner `Agenten/Hermes/.sicherung/skills-import-20261013/` nach Entscheidung loeschen.
+  - Angelegt: 2026-10-13
+  - Betrifft: Git-Zweige BrainFiles, MaxHirn/Wissen/Hermes.md
