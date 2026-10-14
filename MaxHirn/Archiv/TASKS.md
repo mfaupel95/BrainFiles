@@ -11,7 +11,10 @@
       Angelegt 14.10.2026 · Zuletzt 14.10.2026
       Betrifft: Agenten/Routinen/scanner-papier.ps1
 
-- [ ] **T-402 - Session-Bestand ueber alle Speicher aufraeumen**
+- [x] **T-402 - Session-Bestand ueber alle Speicher aufraeumen**
+      **Erledigt 2026-10-14.** Hermes: 87 beendete Sitzungen archiviert
+      (--older-than 1d; beendet+unarchiviert 132 -> 45, nur noch <1 d).
+      Codex/Claude bleiben unberuehrt (fremd, nur lesen).
       Kontext: Bestandsaufnahme 14.10.: Hermes 884 (167 offen, 102 beendet
       unarchiviert), Claude CLI ~/.claude/projects (groesste: caveman 208,
       BrainFiles 87), Claude Desktop MSIX 168 local_*.json, Codex 300 Sessions
