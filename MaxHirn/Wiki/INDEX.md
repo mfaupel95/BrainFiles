@@ -3,7 +3,7 @@ id: 20260921-wiki-index
 title: 'Wiki — Index'
 tags: [betrieb, wiki]
 created: 2026-09-21
-updated: 2026-10-01
+updated: 2026-10-14
 related: ['[[LEITFADEN]]', '[[Wissen/INDEX]]']
 summary: 'Einstieg in das Agenten-Wiki: Verzeichnis aller Seiten mit Zweck, plus die Regel, wann hier etwas abgelegt wird.'
 ---
@@ -58,6 +58,7 @@ Arbeitsanweisung (was wohin gehoert, Hausformat, harte Regeln): [LEITFADEN.md](L
 | [Betrieb/Interpreter-Landkarte.md](Betrieb/Interpreter-Landkarte.md) | Welcher Python gehoert zu welcher Komponente, und wie man den falschen erkennt (Muster: 41 Sitzungen mit `ModuleNotFoundError`) |
 | [Betrieb/Wachen-und-Aufgaben.md](Betrieb/Wachen-und-Aufgaben.md) | Geplante Aufgaben, Cron-Wachen, Muster „leere Ausgabe = nichts senden" — und warum dieselbe Stille auch „die Pruefung lief nie" heissen kann (Fehlpfad-Befund 05.10.2026, `audit-werkzeugpfad.py`); zwei gleichnamige Ablageorte; gbrain-maintenance-Wache (08.10.) |
 | [Betrieb/Kanban-Boards.md](Betrieb/Kanban-Boards.md) | Die Boards des Hauses, der Board-Satz, `ready` wird sofort ausgefuehrt, gemessener Stand 30.09.2026 |
+| [Betrieb/Plaene-und-Artefakte.md](Betrieb/Plaene-und-Artefakte.md) | Wo Plaene des Hauses liegen (`Werkstatt/Projekte/`), Kanban-Artefakte in drei Klassen durchgehen (Plan/Code/Bericht), eingesammelter Bestand 14.10.2026 |
 | [Betrieb/Sicherung-und-Laufwerke.md](Betrieb/Sicherung-und-Laufwerke.md) | C:/O:/G:/Q:, Junctions, Was versioniert und was gesichert wird |
 | [Betrieb/Docker-und-Sandbox.md](Betrieb/Docker-und-Sandbox.md) | Docker-Terminal, windows-mcp als Rueckfallweg, weitergeleitete Variablen | **Entscheidung 08.10.2026: `local` bleibt** (10 Docker-Abstuerze in 30 Tagen, alle am 30.09.; Windows-venvs und 62 PowerShell-Routinen laufen im Container nicht) |
 | [Betrieb/Systemleistung-2026-09-29.md](Betrieb/Systemleistung-2026-09-29.md) | Commit-Erschoepfung und MCP-Spawn-Sturm: Befund, Kur, zwei Lehren (30.09.2026 nachgetragen); vor jeder RAM-Aktion erst CPU messen (Idle-Ollama auf CPU) |
