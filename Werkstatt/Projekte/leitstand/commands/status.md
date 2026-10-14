@@ -4,7 +4,7 @@ description: Zeigt den Handelsstand (Omnitrade-Auswertung), rein lesend
 
 Antworte auf Deutsch.
 
-Fuehre im Wurzelordner `C:\Users\faupe\Documents\BrainFiles` die rein lesende Auswertung aus:
+Fuehre im Repo-Wurzelordner (`git rev-parse --show-toplevel`) die rein lesende Auswertung aus:
 
 `Agenten/Handel/scanner/.venv/Scripts/python.exe Agenten/Handel/omnitrade_auswertung.py`
 
