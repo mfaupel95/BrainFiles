@@ -1,4 +1,23 @@
 ## Offen
+- [ ] **T-401 - scanner-papier: "Python oder Ordner fehlt" (Task=1)**
+      Kontext: MaxHirn-Scanner-Papier Task LastTaskResult=1, Log 13.10. 08:10
+      'ENDE FEHLER: Python oder Ordner fehlt'. Wrapper prueft Test-Path auf
+      Agenten\Handel\.venv\Scripts\python.exe und Werkstatt\scanner-varianten.
+      Naechster Schritt: pruefen, welcher der beiden Pfade fehlt (venv oder
+      Ordner), Ursache beheben, Task neu starten.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Routinen/scanner-papier.ps1
+
+- [ ] **T-402 - Session-Bestand ueber alle Speicher aufraeumen**
+      Kontext: Bestandsaufnahme 14.10.: Hermes 884 (167 offen, 102 beendet
+      unarchiviert), Claude CLI ~/.claude/projects (groesste: caveman 208,
+      BrainFiles 87), Claude Desktop MSIX 168 local_*.json, Codex 300 Sessions
+      in sessions/2026 + archived_sessions. Cursor nur config.
+      Naechster Schritt: Hermes beendete Sitzungen archivieren (--older-than
+      aus Alters-Buckets waehlen), Codex/Claude nur lesen (fremd).
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Hermes/state.db, ~/.claude, ~/.codex
+
 
 - [ ] **T-400 - Werkstatt-Junction-Verlust: Wache fehlt**
       Kontext: Am 13.10.2026 war BrainFiles\Werkstatt erneut ein echter Ordner

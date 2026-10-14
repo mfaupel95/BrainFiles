@@ -21,6 +21,7 @@ Git-Index und die leeren Kanban-Boards — beides ist erwartet, kein Befund.
 ## When to Use
 
 - "durchsuche das arbeitsverzeichnis, merke dir alles wichtige"
+- "suche in allen Ordnern ab C:/Users/faupe nach chats und sessions"
 - "uebertrage den inhalt und die ergebnisse nach Hermes"
 - "offene Aufgaben mit kanban angehen"
 - Bestandsaufnahme zu Beginn einer neuen Session / nach einer Pause
@@ -48,6 +49,10 @@ python <skill>/scripts/konflikt_aufloesen.py <unmerged-datei>
 kanban_list   # je Board; Duplikat-Ausgabe = wiederholen
 kanban_create # gruppiert, mit assignee + priority, T-Nummern im body
 ```
+
+Alle Session-/Chat-Speicher (Hermes state.db, Claude CLI, Claude Desktop MSIX,
+Codex, Cursor, BrainFiles intern) und ihre Formate: `references/session-orte.md`
+(laden mit `skill_view`).
 
 ## Procedure
 
