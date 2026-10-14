@@ -22,17 +22,6 @@
       Betrifft: Agenten/Hermes/state.db, ~/.claude, ~/.codex
 
 
-- [ ] **T-400 - Werkstatt-Junction-Verlust: Wache fehlt**
-      Kontext: Am 13.10.2026 war BrainFiles\Werkstatt erneut ein echter Ordner
-      statt der Junction auf O:\Werkstatt (2. Mal, wie 05.10.). Ursache unklar,
-      vermutlich parallele Sitzung. 3,03 GB Rettung nach O:\Werkstatt-Rettung-20261013,
-      Dokumente nach O:\Werkstatt gemerged, Junction repariert (73 Eintraege).
-      Es gibt KEINE Wache, die Junction-Verlust meldet (konfig-doktor hat
-      LAUFZEIT-JUNCTION-* als KRITISCH, laeuft aber nur auf Aufruf).
-      Naechster Schritt: Wache bauen (Cron, prueft LinkType+Target von Werkstatt
-      und Modelle, meldet Verlust) ODER konfig-doktor taeglich einplanen.
-      Angelegt 14.10.2026 · Zuletzt 14.10.2026
-      Betrifft: Agenten/Routinen, Werkstatt
 
 - [ ] **T-392 - Squeeze: 716-Tage-Backtest negativ, kein Live**
       Kontext: Vergleich Haus-Backtest vs. Freqtrade (541 Runden, -4,45%) ueber
@@ -1985,6 +1974,15 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x] **T-400 - Werkstatt-Junction-Verlust: Wache existiert (KORREKTUR)**
+      KORREKTUR meines Eintrags vom 14.10.: junction-wache.py existiert seit
+      11.10.2026 (T-390, Commit 924ed9d3) und hat den Verlust am 13.10. 22:12
+      um 23:38 gemeldet (Merkdatei cache/junction-wache.json). Mein Satz
+      "es gibt KEINE Wache" war falsch. Einziger Rest: der Cron-Takt stand auf
+      60 m, die Doku nennt 10 m - am 14.10.2026 auf 10 m korrigiert (jobs.json).
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Routinen, Werkstatt
+      
 - [x] **T-396 — xperp-Vorschlag vom 11.10. ist blockiert: er will Max' eigene Auftraege zuruecknehmen**
       Kontext: Der Verbesserer hat um **04:38** einen Vorschlag erzeugt
       (`Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/`, Marker `ANGEFRAGT`
