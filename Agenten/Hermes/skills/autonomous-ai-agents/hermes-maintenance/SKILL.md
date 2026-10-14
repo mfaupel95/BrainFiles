@@ -443,6 +443,15 @@ und ist der Weg, den der Nutzer dann nimmt.
 
 ## Gateway-Ausfall: Diagnose und Waechter (Windows)
 
+**Erst pruefen, ob der Waechter-Task ueberhaupt ENABLED ist - ein deaktivierter Task ist
+die haeufigste Ursache eines unbemerkten Ausfalls, kein Erkennungsfehler.**
+`Get-ScheduledTask -TaskName 'MaxHirn-Gateway-Waechter'` muss `Ready` zeigen; ist er
+deaktiviert, lief er im Ausfall-Fenster gar nicht und konnte nichts neu starten. Ein
+deaktivierter Task reaktiviert sich nicht selbst - die einzige Verteidigung ist eine
+taegliche Pruefung, dass er Enabled ist. Ob er in einem Zeitfenster lief, belegt
+`wevtutil qe "Microsoft-Windows-TaskScheduler/Operational"` mit Zeitfilter (Get-WinEvent
+laeuft in Timeouts). Details: `references/gateway-identitaet-und-wachen.md` Abschnitt 5(f).
+
 Zuerst `logs/gateway-exit-diag.log` lesen (Exit 75 = Neustart-Verbleib, echter Crash hinterlaesst
 `previous_unclean_exit`) und Kernel-Power-41-Ereignisse zaehlen - keine heissen Prozess-, nicht
 Hardware-Ausfall. "Another gateway instance … started" ist ein DOPPELSTART, kein Absturz: den

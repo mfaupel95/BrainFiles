@@ -93,6 +93,11 @@ unterstuetzt das CUDA des Frameworks nicht): `references/docker-legacy-python.md
 (Junctions loesen sich auf), apt-Archive fuer EOL-Distros, era-Pines mit
 Begruendung, und der Nachweislauf ohne Waisen-Container.
 
+Fuer den JEV-Trading-Bot auf Kuru/Monad (andere Paare vorbereiten):
+`references/kuru-markt-erkundung.md` — aktive Maerkte ueber die Kuru-API,
+Margin-Account ueber Storage-Slot 73 des OrderBook-Proxys, Groessen in
+Basis-Asset-Einheiten (nicht MON), Multi-Markt-Parametrisierung.
+
 **Ein leerer Rahmen ist kein System.** Ein Repo, dessen Dienstordner nur
 `.gitkeep` enthalten und dem die `Dockerfile`s fehlen, die die
 `docker-compose.yml` als Build-Kontext nennt, ist ein Bauplan: `up` bricht
@@ -374,6 +379,23 @@ origin <fork> && git fetch origin`.
   immer `ast.parse()` gegen den FERTIGEN Text. Wird trotzdem ein kaputter
   Block geschrieben, den ganzen Bereich neu konstruieren statt in dem
   kaputten Block weiterzupatchen.
+- **Hardcodierte Strings in einem Fork parametrisieren (z.B. ein Ein-Markt-Bot
+  wird Multi-Markt): die Modell-Prompt-Strings muessen Template-Literale
+  (Backticks) werden.** `${var}` in einfachen/doppelten Anfuehrungszeichen ist
+  Literaltext, keine Interpolation — der Prompt nennt dann weiter den alten
+  Markt, waehrend die Daten schon der neue sind. Und beim Schreiben eines
+  solchen Blocks per Python-Patchskript ist die Backslash-Backtick-Escapierung
+  fehleranfaellig (Python-Escape-Zaehlerei, doppelte Zeilen durch ueberzaehlige
+  Anker): den korrekten Block per write_file in eine Temp-Datei schreiben
+  (schreibt woertlich) und mit einem Python-Skript einspleissen, statt ihn im
+  Patchskript-String zu bauen. Nach dem Schreiben `git diff` pruefen — er muss
+  genau die gewollten Zeilen zeigen, keine Ganzdatei- oder Duplikat-Aenderung.
+- **Zweite Instanz eines laufenden Bots aus einem SEPARATEN Arbeitsverzeichnis
+  starten, damit ihr data/-Ordner (events.jsonl) nicht mit dem laufenden
+  Prozess vermischt wird.** bun loest node_modules relativ zum Skript auf, nicht
+  zum cwd — also laeuft `bun run <absoluter-pfad>/src/index.ts` aus einem
+  Temp-cwd sauber und legt sein data/ dort an. So kann man einen zweiten Markt
+  im Dry-Run testen, ohne das Journal des Produktiv-Laufs zu verschmutzen.
 - **Erster Zyklus dauert:** lokales Modell kalt 15-40 s je Analyse plus
   Rate-Limit-Delays — 3-5 min warten, bevor ein Fehler diagnostiziert wird.
 - **Fremd-Code, fremde Keys:** nie echte Schluessel in die .env des Repos

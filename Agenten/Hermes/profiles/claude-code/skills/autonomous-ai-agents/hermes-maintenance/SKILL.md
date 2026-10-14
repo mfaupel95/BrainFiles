@@ -197,6 +197,21 @@ Note: The iron-proxy is required only for outbound connections; local file reads
   egress disabled with no iron-proxy binary (correct on Windows), 11 MCP servers,
   most enabled, config v50.
 
+## Filesystem checkpoints above the cap (disk, not corruption)
+
+`hermes doctor` warns when `/rollback` snapshots exceed the size cap (seen: 2.4 GB
+across 5 projects against a 500 MB cap). The store is a shadow git repo per project,
+so most of the weight is usually unreachable objects, not snapshots.
+
+    hermes checkpoints status     # per-project breakdown: COMMITS / LAST TOUCH / STATE
+    hermes checkpoints prune      # orphan + stale, GC the store; keeps one snapshot per project
+
+`prune` is the conservative fix — it deleted 0 named snapshots and reclaimed 2.4 GB
+(2.4 GB -> 2.6 MB) with all 5 projects intact; the doctor warning cleared on the next
+run. `hermes checkpoints clear` wipes all rollback history, so reach for `prune` first.
+If /rollback is not used at all, `hermes config set checkpoints.enabled false` is the
+permanent answer.
+
 ## Other update warnings (mostly benign)
 
 - "Checkout is current, but the venv is unhealthy: venv python missing" —
