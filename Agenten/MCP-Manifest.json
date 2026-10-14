@@ -1,7 +1,7 @@
 {
   "description": "Single source of truth for all MCP servers. Both Claude Desktop (via claude_desktop_config.json) and Hermes (via Agenten/Hermes/config.yaml) read from this.",
   "version": "1.2",
-  "updated": "2026-09-29",
+  "updated": "2026-10-14",
   "note": "Keep this file in sync with both claude_desktop_config.json mcpServers and Hermes/config.yaml mcp_servers. Automated check runs in systempruefung.ps1 via mcp-sync-check.ps1. Feld 'agent': 'beide' (Standard) oder 'hermes'/'claude', wenn nur ein Agent den Server eintragen soll. ACHTUNG: Beide Apps (Claude Desktop, Hermes) ueberschreiben ihre Konfiguration aus dem eigenen Speicher - am 10./11.09.2026 ist so mcp-memory aus beiden Konfigurationen verschwunden. Der Pruefer meldet Konfigurationen, die neuer als das Manifest sind.",
   "servers": [
     {

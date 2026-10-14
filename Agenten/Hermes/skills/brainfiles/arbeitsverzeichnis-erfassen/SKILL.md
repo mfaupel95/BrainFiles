@@ -94,7 +94,11 @@ Codex, Cursor, BrainFiles intern) und ihre Formate: `references/session-orte.md`
 git-Prozesse zaehlen (alle `git.exe` sind `git fsmonitor--daemon` und beweisen
 nichts — nach 'fsmonitor' in der CommandLine filtern). 0 Byte + 0 echte
 Prozesse = Wrack: UMBENENNEN (`mv .git/index.lock .git/index.lock.verwaist-JJJJMMTT`),
-nie loeschen. Bei >0 echten Prozessen warten.
+nie loeschen. Bei >0 echten Prozessen warten. NACH dem Umbenennen `git diff
+--cached --name-only` pruefen: ein paralleler Commit, der die Sperre hinterliess
+oder der waehrend des Wartens lief, hat den Index neu aufgebaut und eigene
+gerade gestagte Pfade entstagt — sie sind dann weg und der Commit endet mit
+"no changes added to commit". Eigene Pfade vor dem Commit erneut stagen.
 - **kanban_list liefert `[Duplicate tool output]`:** wiederholen, bis echte
 Ergebnisse kommen (in dieser Session brauchte es 4 Anlaeufe).
 - **CRLF-Dateien:** Konflikte/JSON per `read_bytes()`/`write_bytes()` mit
