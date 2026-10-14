@@ -41,7 +41,7 @@
       "enabled": true,
       "agent": "hermes",
       "type": "stdio",
-      "command": "O:\\Werkstatt\\Repos\\kraken-cli\\target\\release\\kraken.exe",
+      "command": "O:\\Werkstatt\\kraken-cli\\target\\release\\kraken.exe",
       "args": [
         "mcp"
       ],
@@ -218,7 +218,7 @@
         "-m",
         "ziplime.mcp"
       ],
-      "cwd": "Werkstatt\\Repos\\ziplime",
+      "cwd": "Werkstatt\\ziplime",
       "description": "Ziplime (Fork mfaupel95/ziplime): Backtesting-Engine (Polars, Zipline-API) mit MCP-Server. 14 Tools: ingest_*, check/write/read_strategy, run_backtest, get/compare_backtests, describe_live_trading. Daten aus ~/.ziplime (Yahoo, 15.376 Aktien). Kein Order-Tool - live nur ueber Lime-SDK, nie durch ein Tool. Registriert am 12.10.2026 fuer Max' Handelsoptimierung (Aktien/ETF + Krypto-CSV)."
     }
   ],
