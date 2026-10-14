@@ -1,3 +1,10 @@
 description: 'Wartet den Skill-Stack one-skill-to-rule-them-all: Repo pflegen, Skills
   pruefen, Updates einspielen.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+    group: Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+_ui_meta_revisions:
+  hermes-bots: 1
