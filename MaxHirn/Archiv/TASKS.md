@@ -1,4 +1,29 @@
 ## Offen
+- [ ] **T-403 - GitHub-Privates loeschen: gh-Token braucht delete_repo-Scope**
+      Kontext: Auftrag Max 14.10.2026 'alle auf github als privat laufenden repos entfernen, nur lokal betreiben'. 90 private Repos identifiziert (mfaupel95/*, davon ~85 *-privat-Mirrors + Werks-Repos nautilus/omnitrade/rltrader/alice/handel-stack/OmniQuant u.a.), aber gh repo delete gibt fuer ALLE HTTP 403 'Must have admin rights' - der Token traegt nur Scope 'repo', GitHub verlangt Scope 'delete_repo'. NICHTS wurde geloescht (0/90). Ausgenommen: mfaupel95/BrainFiles (Workspace-Remote, Push-Routinen haengen dran - Entscheidung Max offen).
+      Naechster Schritt: Max fuehrt in seiner PowerShell 'gh auth refresh -h github.com --scopes delete_repo' aus (Browser-Flow), danach Loeschung + lokale Remotes umziehen (origin -> upstream, Remote 'privat' entfernen; Doktrin in AGENTS.md/CLAUDE.md nachziehen).
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: GitHub mfaupel95/*, Agenten/Werkzeuge/repos-updaten.py
+- [ ] **T-404 - 17 leere Repos-Huellen unter Werkstatt/Repos nach Reboot raeumen**
+      Kontext: Umzug 14.10.2026 (Werkstatt/Repos/* -> Werkstatt/*): die 17 von unsichtbaren CWD-Haltern gesperrten Top-Ordner wurden per Inhaltsverschiebung geleert; die leeren Huellen (agent-trade-kit, awesome-systematic-trading, basic-memory, caveman, claude-code, claudian, deepseek-harness, EasyCLIProxyAPI, everything-claude-code, fomo-robinhood-radar, gbrain, Harvard-Algorithmic-Trading-with-AI, moon-dev-ai-agents, obsidian-skills, one-skill-to-rule-them-all, openmontage, OpenTerminal) verweigern das Loeschen bis der Halter (vermutlich Dienst/Neustart) weg ist. Inhalt ist vollstaendig am Ziel (59 gueltige Repos direkt in Werkstatt).
+      Naechster Schritt: nach dem naechsten Reboot 'Get-ChildItem Werkstatt/Repos' pruefen und leere Ordner entfernen.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Werkstatt/Repos/*
+- [ ] **T-405 - AGENTS.md/CLAUDE.md: Fremd-Repos-Abschnitt auf neuen Stand bringen**
+      Kontext: Umzug 14.10.2026 zieht die Doktrin nach (Klone direkt in Werkstatt, origin=upstream statt Fork-Mirror), die Wurzel-AGENTS.md/CLAUDE.md sind aber geschuetzte Agent-Dateien - der Patch wurde von der Freigabe abgelehnt (Timeout). Textvorschlag liegt bereit.
+      Naechster Schritt: Max genehmigt die Aenderung (Freigabe-Dialog), dann beide Dateien identisch patchen; Paar-Regel beachten (AGENTS.md == CLAUDE.md).
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: AGENTS.md, CLAUDE.md
+- [ ] **T-406 - repos-zentrale: 2 Tests rot wegen 15 'ausgemustert'-Manifesteintraegen ohne Ordner**
+      Kontext: Vorbestehend seit 11.10.2026 (Manifest-Commit 2b07dbe2), NICHT durch den Umzug verursacht: 15 Eintraege (graphify, Kronos, superpowers, skills, winget-cli, santiment u.a.) tragen gruppe 'ausgemustert', ihre Ordner liegen seit 07.10. in Werkstatt/Ausgemustert/*-20261007. test_jeder_eintrag_liegt_in_seiner_wurzel_auf_der_platte und test_alle_repos_klone_sind_fremd kennen die Gruppe nicht -> rot.
+      Naechster Schritt: Entscheidung - Manifest regenerieren (fuellen --anwenden + Pruning) oder Tests auf die 'ausgemustert'-Regel umstellen.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, tests/test_manifest.py, tests/test_fremd_grenze.py
+- [ ] **T-407 - Werkstatt/rule_repo-bots.md: versionieren oder loeschen?**
+      Kontext: Beim Umzug der 6 losen Dateien aus Werkstatt/Repos nach Werkstatt/ landet rule_repo-bots.md im whitelisteten Bereich (!Werkstatt/*.md) und ist sichtbar untracked. Die .bak-Varianten bleiben ignoriert. Kein Code liest die Datei (nur Cache-/Lern-Bestaende).
+      Naechster Schritt: Entscheidung Max - mitversionieren oder nach Werkstatt/Ausgemustert schieben.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Werkstatt/rule_repo-bots.md
 - [x] **T-401 - scanner-papier: "Python oder Ordner fehlt" (Task=1)**
       **Erledigt 2026-10-14.** Ursache war die Werkstatt-Junction-Zerstörung
       vom 13.10. (T-400): Werkstatt/scanner-varianten war über den BrainFiles-Pfad
