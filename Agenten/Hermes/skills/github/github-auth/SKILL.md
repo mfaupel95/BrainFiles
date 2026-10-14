@@ -236,6 +236,32 @@ Note: on Windows winget installs, gh lands at `/c/Program Files/GitHub CLI` — 
 > keyring, so they work immediately. Proven on a headless x86_64 VPS
 > (gh 2.97.0, Aug 2026) after `--with-token` hung twice.
 
+### Adding a Scope to an Existing Login (`gh auth refresh` — agent-driven)
+
+When gh is already logged in but an operation returns `HTTP 403: Must have
+admin rights to Repository` (e.g. `gh repo delete`), the token lacks a scope
+(`delete_repo`) — it is NOT a wrong token or a network problem. Extend the
+existing login instead of re-authenticating from scratch:
+
+1. Run `gh auth refresh -h github.com -s delete_repo` as a **background pty
+   process** — in the foreground with closed stdin it hangs silently and eats
+   the whole tool timeout without printing anything.
+2. Read the one-time code from the process log (`! One-time code (XXXX-XXXX)
+   copied to clipboard`) and give it to the user: open
+   https://github.com/login/device, enter the code, authorize.
+3. `process(submit)` one Enter so gh leaves the "Press Enter to open the
+   browser" prompt and starts polling; after authorization it prints
+   `✓ Authentication complete` and exits on its own.
+4. Verify with `gh auth status` — the new scope must appear in `Token scopes`.
+
+For a BATCH destructive operation (deleting many repos), verify the scope is
+present before running the batch, clear `GITHUB_TOKEN`/`GH_TOKEN` from the
+process environment (an env token shadows the keyring token gh would use),
+and verify the result by re-listing (`gh repo list ... --json name,visibility`).
+After deleting mirror remotes, sweep the local clones for now-dead remotes
+(`git remote -v` per clone, `git remote remove <name>` for URLs pointing at
+deleted repos) — a dead remote breaks every future fetch/push of that clone.
+
 ### Token-Based Login (Headless / SSH Servers)
 
 ```bash

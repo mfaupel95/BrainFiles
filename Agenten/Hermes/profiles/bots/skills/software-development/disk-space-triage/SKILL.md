@@ -59,6 +59,19 @@ Die groesste frisch geschriebene Datei ist der Verursacher. Ein statischer gross
 Ordner (z. B. eine `*-Zweitkopie` von gestern) ist NICHT der aktive Schreiber —
 separat als Freigabe-Kandidat melden, nicht als Ursache.
 
+## PowerShell vom Hermes-Terminal: nie mit `$_` inline, immer als .ps1-Datei
+
+Die `terminal`-Shell auf diesem Host ist git-bash. Eine inline-PowerShell
+(`powershell.exe -Command "...$_..."") wird dort zerlegt, sobald sie `$_`,
+`{n=...;e={[math]::Round($_.Free/1GB)}}`-Ausdruecke oder andere `$`-Tokens
+traegt — MSYS interpretiert `$_`/`$(`/Pfade im -Command-String als eigene
+Substitution (Fehlermeldung: "Unerwartetes Token", "wird gesucht"). Das bricht
+Mess-, Pruef- und Kompaktschritte zuverlaessig. Fix: jede PowerShell, die `$_`
+benutzt (Get-PSDrive-Free-Berechnung, Get-ChildItem-Summen, jede
+ForEach-Object-Transformation), **in eine `.ps1`-Datei schreiben** (write_file,
+utf-8) und mit `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ...`
+aufrufen. Inline-`-Command` nur fuer `$`-freie Einzeiler.
+
 ## Docker Desktop: `docker_data.vhdx` waechst unbegrenzt
 
 Docker Desktop legt sein WSL-Disk-Image unter `O:\Modelle\DockerDesktopWSL\disk\docker_data.vhdx`
@@ -74,13 +87,66 @@ belegen.
 - **Der vhdx schrumpft nicht von selbst.** Prune befreit Platz im Image, aber die
   Datei bleibt gross; erst eine Kompaktierung (Docker Desktop "Compact disk" /
   `Optimize-VHD`) gibt den Platz wirklich an die Platte zurueck.
+- **`wsl --shutdown` haelt das `docker-desktop`-vhdx NICHT frei** — der
+  Docker-Daemon startet die Distro im selben Atemzug wieder (`docker ps` zeigt
+  die Container weiter "up"). Die Distro gezielt beenden:
+  `wsl --terminate docker-desktop`, danach `wsl -l -v` auf ``Stopped`` pruefen,
+  erst dann ist das vhdx ungemountet und kompaktierbar.
+- **`Optimize-VHD -Path <vhdx> -Mode Full` braucht eine elevated (Admin-) Shell**;
+  aus einer normalen Shell schlaegt es mit "nicht die erforderliche Berechtigung
+  ... Administrator". `wsl --manage <distro> --set-sparse true` ist dagegen
+  absichtlich deaktiviert (Datenbeschaeidigungs-Waechter) und laesst sich nur mit
+  `--allow-unsafe` erzwingen — nicht tun. Der adminfreie Weg existiert nicht;
+  die Kompaktierung gehoert in ein Admin-Terminal (Befehl dem User geben).
+- **Ein Container mit `RestartPolicy=unless-stopped` kommt nach einem expliziten
+  `docker stop <name>` NICHT selbst wieder hoch** — der manuelle Stop setzt den
+  Zustand auf "gestoppt" und ueberstimmt die Policy. Nach so einem Stop (oder
+  nach `wsl --terminate`) die Handels/Demo-Container namentlich wieder starten:
+  `docker start nautilus-demo`, und nur per `docker ps` als ``Up`` bestaetigen.
+  Erst nach `docker stop` verliert man den automatischen Restart bewusst; wer
+  Kerne herunterfaeren will, stoppt die Distro (`wsl --terminate`), nicht den
+  einzelnen Container.
 
 ## Loeschen nur auf ausdrueckliche Anweisung
 
 Einen grossen Ordner, den du nicht erzeugt hast (Backup, Zweitkopie, Cache), nie
-ohne Freigabe loeschen — auch wenn die Platte kritisch ist. Befund + Groesse +
+ohne Freigabe loeschen - auch wenn die Platte kritisch ist. Befund + Groesse +
 Redundanz-Vermutung vortragen und das OK abwarten. `docker system prune -a` und
 eine Pagefile-Verschiebung ebenso nur nach Freigabe.
+
+## Windows-Reservierungsnamen (`nul`) blockieren das Loeschen
+
+Eine Kopie mit einem `nul`-Eintrag (NTFS-Reservierungsname) bricht `Remove-Item
+-Recurse` mit "Unzulaessige Funktion" ab und `cmd rmdir` mit "Syntax falsch"
+(Pfad-Komposition wird gemangled). `\?\`-Präfix in Python/`os.remove` liefert
+FileNotFoundError. Der zuverlaessige Weg ist `ctypes.windll.kernel32.DeleteFileW`
+mit dem `\?\`-Pfad, aus einer Pythondatei heraus (Factory liefert `\?\` intakt),
+nicht ueber die mehrschichtig gequotete Shell:
+
+```python
+import ctypes
+ok = ctypes.windll.kernel32.DeleteFileW(r"\\?\O:\MaxHirn-Zweitkopie\nul")
+# False => Fehler; ist es ein Unterordner, RemoveDirectoryW statt DeleteFileW
+```
+
+Erst die normalen Dateien via `Remove-Item`, den Reserved-Eintrag zuletzt als
+Datei/Ordner pruefen (ist es ein Ordner, RemoveDirectoryW). Shell-Uebergabe
+mangelt Backslashes (Drive `\?\O` wird gesucht); Datei vermeidet das (Befund
+13.10.2026: 32,7-GB-Zweitkopie mit `nul`).
+
+## Archiv-Relokation: Ordner auf HDD verschieben und Junction legen
+
+Um einen grossen Kaltdaten-Ordner von `O:` (voll) auf eine HDD (`G:`) zu bringen,
+ohne absolute Pfade zu brechen: `robocopy O:\Archiv G:\Archiv /E /COPY:DAT
+/R:2 /W:1 /MT:16` als Hintergrundjob (44 GB dauern Minuten; `/LOG:` fuers
+Protokoll), Groesse byte-gleich verifizieren (`Get-ChildItem ... |
+Measure-Object -Sum`), dann Quelle `Remove-Item -Recurse` und
+`New-Item -ItemType Junction -Path O:\Archiv -Target G:\Archiv`. Der Pfad
+`O:\Archiv` bleibt danach transparent (Bilder/Dokumente/... + Schreibzugriff
+pruefen). Robocopy-Exit 1 = erfolgreich kopiert (0-7 sind Erfolg).
+Robocopy vorher nicht mit timeout=60 im Vordergrund starten - das killt das
+Handle nach 60 s, der Kopiervorgang haengt dann unzuverlaessig; mit
+`background=true, notify=true` laufen lassen.
 
 ## Kaltdaten von der SSD auf die HDD umziehen (statt Pagefile anfassen)
 

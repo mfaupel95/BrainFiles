@@ -1,3 +1,11 @@
 description: 'Tageschronist: durchsucht das System nach allem, was heute passiert
   ist, schreibt die Tagesnote ins Vault und pflegt TASKS.md + Kanban daraus.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+      - Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
+    group: Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+_ui_meta_revisions:
+  hermes-bots: 2

@@ -1,3 +1,10 @@
 description: 'Betreuer des Repos okx/agent-trade-kit (Trade-Kit v1.4.7): Agenten-Baukasten
   fuer Krypto-Handel, Referenz und lokale Laeufe.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Grill Me, Awesome Systematic Trading, Agent Trade Kit, Harvard T
+    group: Grill Me, Awesome Systematic Trading, Agent Trade Kit, Harvard T
+_ui_meta_revisions:
+  hermes-bots: 1

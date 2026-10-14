@@ -50,9 +50,11 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   Repo pruefen, was wirklich passiert ist (Commit da? Fenster offen? Position
   eingelegt?), dann den Auftrag an einen Bot mit stabilem Modell geben.
 - Modell-Karte (gemessen): `recherche` = deepseek-v4-flash (stabil, auch fuer
-  Handel-Baum-Analyse, cwd BrainFiles); `markt-recherche`/`lotse` = longcat
+  Handel-Baum-Analyse, cwd BrainFiles), aber LESEN-only; `jev-trader` = wird
+  jetzt ebenso auf deepseek-v4-flash gefahren (seit 14.10.2026, Umbau der
+  fuer schreibende Handel-Codearbeit); `markt-recherche`/`lotse` = longcat
   (kollabiert bei offenen Such-/Bau-Aufgaben in Wiederholungsschleifen). Fuer
-  Analyse/Recherche im Handel-Baum `recherche` bevorzugen, nicht den longcat-Bot.
+  Analyse/Recherche im Handel-Baum `recherche` bevorzugen, nicht den longcat-Bot; fuer einen Bau/Commit einen deepseek-fahrenden schreibfaehigen Bot nehmen.
 - **Iterationsbudget-Erschoepfung ist ein eigener Abbruchmodus, kein Kollaps.**
   Ein Bot kann mit exit 0 enden, aber "Iteration budget exhausted (5/5)"
   melden — er hat das Tool-Budget ausgeschoepft, bevor er fertig wurde, und
@@ -63,6 +65,19 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   nicht den ganzen mehrteiligen Auftrag wiederholen. Ein mehrteiliger
   Analyse-Auftrag (Asymmetrie + Parametersuche + Tore) gehoert in getrennte
   Einzelauftraege, sonst frisst der erste Teil das Budget.
+- **Bau-Bot gibt "exhausted (5/5)" zurueck, aber die Dateien sind geschrieben
+  und die Tests zeigen konkrete rote Faelle: direkt auf dem Zweig verifizieren,
+  die benannten Bugs selbst patchen, NICHT den Bau neu delegieren.** Ein
+  Bau-Auftrag, der `fetch.py`+`config.json`+`README`+`tests/` schreibt und dann
+  am Budget scheitert (Symptom: exit 1, nur `asyncio``closed pipe``-Teardown-am
+  Ende), hat die Kernarbeit schon geleistet; der Bericht nennt die Parser-Bugs
+  (z. B. stooq-Hinweiszeilen vor der Kopfzeile, leere Eingabe), die seine eigenen
+  Tests gerade rot machen. Diese benannten Randfaelle sind vom Interpool direkt
+  behebbar (ein `parse_stooq_csv`-Patch), statt einen zweiten Botlauf zu starten
+  — ein Neustart zaehlt nur ein neues Tool-Budget auf einem fast fertigen Bau.
+  Die Delegationsregel "nicht selbst ausfuehren" gilt fuer den Repo-Baum und
+  fremde Fachbots; einen toten, benannten Klein-Bug im eigenen Build zu patchen
+  ist Abschlussarbeit, kein Fremdeingriff.
 - **Ein Analyse-/Bestandsaufnahme-Auftrag muss benennen, WELCHE Dateien zu
   lesen sind (README, Einstiegsdateien, ggf. eine wachen.json) und darf
   teure Sondierungs-Kommandos ausdruecklich VERBIETEN.** Ohne das
@@ -75,6 +90,56 @@ geschieht
   du/du -sh/venv-Groessenchecks (haengen 180s)", "lies nur <Liste>,
   nicht das ganze Repo", und explizit, dass KEIN Code eingespielt werden soll,
   wenn die Aufgabe rein bewertend ist.
+
+## Neuen Repo-Bot anlegen (Klon + Profil + Doku)
+
+Auftrag "<repo> zur Werkstatt und Agent anbinden" ist Pool-Infrastruktur, die
+ich selbst ausfuehre — kein Fall fuer einen Fachbot. Reihenfolge:
+
+1. **Klonen:** `git clone --quiet https://github.com/mfaupel95/<repo>.git
+   Werkstatt/<repo>` (Junction → O:). `origin` = mfaupel95-Fork, dann
+   `git remote add upstream <original>` (nur lesen, nie pushen).
+2. **Profil anlegen:** `mkdir -p profiles/<repo>/skills`. config.yaml nach
+   Vorlage eines kompakten Repo-Bots (z. B. `lotse`), aber `model.default` =
+   `deepseek/deepseek-v4-flash-0731` (stabil) statt longcat (kollabiert in
+   Schleifen); `terminal.cwd` auf `Werkstatt/<repo>`. SOUL.md nach Hausmuster
+   (verweist auf `..\rule_repo-bots.md`), Repo-Skill `skills/<repo>-betrieb/`.
+3. **Verifizieren:** `hermes profile list` zeigt das Profil; Smoke-Test
+   `hermes -p <repo> chat -q "<eine Frage>"` (Kaltstart ~18 s, Antwort muss
+   das Repo korrekt nennen).
+4. **Committen:** nur eigene Pfade stagen (`git add <pfad>`), nie `-A`;
+   `git commit --author="Hermes <hermes@local>"`. Danach `git branch
+   --show-current` pruefen — muss `master` sein.
+5. **Doku:** Zeile in die Flottenstand-Tabelle von
+   `MaxHirn/Wissen/Repo-Bots.md` (alphabetisch einsortieren) + `updated` im
+   Frontmatter hochsetzen; committen.
+
+Fallen:
+- **`hermes profiles` ist kein Befehl** — es heisst `hermes profile list`.
+- **`write_file` verweigert das Ueberschreiben von `SOUL.md`**, weil das
+  Profil-Scaffold beim `mkdir` schon eine Default-SOUL.md (nur der
+  Standard-Text) anlegt. Erst `read_file` auf die vorhandene SOUL.md, dann
+  ueberschreiben.
+- **Verwaister `.git/index.lock`:** `git commit` bricht mit "index.lock
+  exists" ab, obwohl kein Git-Prozess laeuft (`ps aux | grep git` leer).
+  Lock-Datei aelter als ~2 min ohne laufenden Prozess ist tot — `rm -f
+  .git/index.lock` und erneut committen. Nicht blind loeschen, wenn ein
+  echter Prozess laeuft.
+- **Kein automatischer Live-Betrieb.** Ein neuer Repo-Bot baut/testet/bewertet
+  Strategien, oeffnet aber keine Positionen und bekommt keine Spur im
+  `dauerlauf`. Eine echte Handelsspur (Statusdateien lesen → ins Buch buchen)
+  ist ein separater Bau in `Agenten/Handel/` mit `wachen.json` — nur auf
+  ausdruecklichen Auftrag, dann an den passenden Handel-Bot delegieren.
+  - **Den Handel-Bau-Bot ueber `terminal.cwd` waehlen, nicht ueber den Namen.**
+    Eine Spur im Betriebsbereich wird nur von einem Profil gebaut, dessen
+    `cwd` auf `Agenten/Handel` zeigt (hier: `markt-recherche`) — die
+    Repo-Fork-Bots (`jev-trader`, `agent-trade-kit`, `awesome-systematic-trading`,
+    `harvard-trading`, `fomo-radar`, ...) starten alle in `Werkstatt/Repos/<repo>`/
+    bzw. `Werkstatt/<repo>` und bauen/testsen Strategien, schreiben aber nicht
+    in den Betriebsbereich. Vor dem Delegieren aller Profile die `cwd`-Zeile
+    der `config.yaml` pruefen (`grep -A3 'terminal:' <p>/config.yaml | grep cwd`
+    oder `grep -rl 'Agenten/Handel' */config.yaml`) statt nach einem
+    Bot-Namen mit "handel" zu suchen.
 
 ## Lokale Modelltests delegieren
 
@@ -153,6 +218,24 @@ geschieht
   das nicht (anderes Profil). `/loop` ist reiner Chat-Befehl, kein CLI-Weg.
 - TASKS.md-Punkte (T-0xx): Nummer = Auftrag an den passenden Bot. Im Zweifel
   Bot-Liste pruefen (`profiles/`) statt selbst anzufangen.
+
+## MAGDA-Gedaedchtnis (Auftrag Max 13.10.2026)
+Jedes Profil fuehrt eine Markdown-Gedaedchtnisdatei, gelesen VOR jedem Lauf,
+fortgeschrieben NACH jedem Lauf. Eine zentrale Datei zeigt den aktuellen Stand
+aller Bots auf einen Blick.
+
+- **Profil-Datei:** `Agenten/Hermes/profiles/<bot>/MAGDA.md` — Abschnitte:
+  Letzter Stand / Offene Punkte / Erinnerungen / Ziel des naechsten Laufs.
+- **Zentrale Datei:** `Agenten/Hermes/MAGDA.aktuell.md` — eine Zeile je Profil
+  (letzter Stand, laeuft gerade, offener Punkt).
+- **Beim Dispatch:** jedem `hermes -p <bot> chat -q "..."` dem Auftrag
+  voranstellen: "Lies zuerst `Agenten/Hermes/profiles/<bot>/MAGDA.md` und
+  `Agenten/Hermes/MAGDA.aktuell.md`, arbeite daraus deinen Kontext, und schreibe
+  nach Abschluss deinen Stand in beide zurueck."
+- **Ich selbst (Profil bots):** lese `MAGDA.aktuell.md`, bevor ich Auftraege
+  verteile, und schreibe nach jeder Verteilung meinen Stand hinein.
+- Pfade sind relativ zur Wurzel (`cd "$HERMES_HOME/../.."`). Die MAGDA-Dateien
+  sind Betriebsdateien, nicht versioniert.
 - **TASKS.md-Beschreibungen koennen veraltet sein — vor dem Delegieren den
   IST-Stand verifizieren, nicht den Text glauben.** Ein Eintrag kann einen
   Punkt als "blockiert"/"offen" beschreiben, der laengst erledigt ist (z. B.
@@ -167,9 +250,27 @@ geschieht
   behaupten, obwohl nichts davon existiert (Modell-Halluzination). Vor der
   Rueckmeldung an den Nutzer belegen: `git branch -a | grep <zweig>`,
   `git log --oneline -1 <zweig>`, `git diff master..<zweig> -- <pfad>`,
-  `git status --short <pfad>`. Ist nichts da, den Auftrag an einen stabilen
-  Bot (z. B. `recherche`) neu vergeben mit expliziter Anweisung, die Aenderung
-  WIRKLICH auf der Platte zu machen und mit Commit-Hash + diff zu belegen.
+  `git status --short <pfad>`. Ist nichts da, den Auftrag an einen BOT
+  NEU VERGEBEN, der (a) ein stabiles Modell hat UND (b) tatsaechlich
+  schreiben darf — nicht automatisch an `recherche`.
+- **Der stabile Bot kann der False mit LESEN sein.** `recherche`
+  (deepseek-v4-flash, stabil) verweigert schreibende Arbeit aus eigenen
+  Regeln ("als Recherche-Agent committest du nichts") und der
+  Bereichs-Besitz-Regel (`Agenten/Handel/` gehoert laut `BEREICHE.json` dem
+  `handel`-Besitzer). Ein stabiler Lese-Bot ist fuer Analyse gut, fuer einen
+  Bau/Commit aber der falsche Adressat — der erste Versuch endet dann mit
+  einer legitim begruendeten Weigerung, nicht mit Arbeit. Vor einem
+  Bau-Auftrag pruefen, ob das Zielprofil Schreiberlaubnis hat.
+- **Fehlt fuer einen Bereich ein Bau-Bot mit stabilem Modell, EINEN der
+  vorhandenen Profile umpolen statt raten.** Die handelsnahen Fork-Profile
+  (jev-trader, agent-trade-kit, awesome-systematic-trading, harvard-trading)
+  defaulten auf longcat (kollabiert bei Bau); `recherche` ist stabil aber
+  lesen. Wenn Max freigibt, `model.default` eines handelsnahen Profils auf
+  `deepseek/deepseek-v4-flash-0731` setzen, `terminal.cwd` auf
+  `C:\Users\faupe\Documents\BrainFiles` (damit es in `Agenten/Handel`
+  arbeitet), config committen (profiles/ gehoert dem bot-Bereich), danach
+  den Bau delegieren. Das ist Config-Arbeit im eigenen bot-Bereich, kein
+  Fremdeingriff.
 - **Nach dem Bot-Bericht den IST-Wert aus der frischen Quelle melden, nicht aus der naheliegenden Datei.** Bei parallelen Stufen-Buechern (`zustand.json` Basis vs. `zustand.mittel/hoch.json`) kann die Basis-Datei stale sein; melde offene Positionen/Status nur aus der Datei mit dem juengsten `letzter_lauf`. Eine verstaendliche, aber falsche Masse ("3 offene Live-Positionen") aus einer toten Datei ist schlimmer als ein ehrliches "welche Stufe?" — der Nutzer korrigiert die Zahl, und das Vertrauen in jede weitere Zahl sinkt.
 - **PR-Body mit Backticks/Code nicht in eine doppelt-gequotete Shell-Commandline packen.** In `gh pr create --body "...`<code>`..."` wertet die Shell die Backticks als Command-Substitution aus und frisst die Stellen aus dem Body. Als Here-Doc mit einfachen Quotes (`--body-file - <<'EOF'`) uebergeben und danach den Body per `gh pr view <n> --json body --jq .body` zuruecklesen und auf die Code-Stellen pruefen, statt nach dem Erstellen zu vertrauen.
 - **Worktree-Commit, der mit "keine .git-Wurzel gefunden" abbricht, aber `git rev-parse --show-toplevel`/`status` gruen sind, haengt am pre-commit-Hook:** der `.githooks/pre-commit` ruft das Bereichs-Skript (`bereiche.py --staged`) und kann im Worktree-Kontext scheitern. Worktree-Commits mit `git -c core.hooksPath=/dev/null commit -m ...` durchfuehren (einmalig, area-Hook wirkt nur mit gesetzter `BRAINFILES_BEREICH`).
