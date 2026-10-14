@@ -60,6 +60,7 @@ Arbeitsbaum      powershell -NoProfile -ExecutionPolicy Bypass -File Agenten/Rou
 Fremdarbeit      powershell -NoProfile -ExecutionPolicy Bypass -File Agenten/Routinen/fremdarbeit-einziehen.ps1 -Testlauf
 Aufgaben         Get-ScheduledTask -TaskName 'MaxHirn-*' | ForEach-Object { $i=Get-ScheduledTaskInfo $_.TaskName; '{0,-42} {1,-9} {2,-4} {3}' -f $_.TaskName,$_.State,$i.LastTaskResult,$i.LastRunTime }
 Sicherung prüfen powershell -NoProfile -ExecutionPolicy Bypass -File Agenten/sichern.ps1   (Handlauf, ~4 min)
+Aufgabe aktivieren schtasks /Change /TN '<TaskName>' /ENABLE   (OHNE Admin; Enable-ScheduledTask braucht Erhoehung!)
 ```
 
 Nicht-0-Codes: `0` sauber, `267009` laeuft, `267014`/`1073807364` von aussen
@@ -97,6 +98,9 @@ zum Befund mit dem eigenen Protokoll daneben.
    Python: `scanner/.venv/Scripts/python.exe -m py_compile <datei>` plus eine
    Pfadprobe (`Path(__file__).resolve().parents[n]` gegen eine Datei testen, die
    es geben muss). PowerShell: Parser-Syntaxpruefung, dann der Handlauf.
+   Fasst die Aenderung Scheduled Tasks an, laeuft der Beweis ueber den
+   Wegwerf-Task-Weg (anlegen+deaktivieren+TEMP-Eintrag+Lauf+Rueckbau) statt am
+   echten Waechter — Rezept in `references/selbstheilende-waechter.md`.
 7. **Aufgaben, die nur bei Anmeldung laufen** (`MaxHirn-Nautilus-Docker`,
    `-Optimierungen-Finden`), per `Start-ScheduledTask -TaskName <name>` einmal
    anstossen — die sind idempotent und erneuern `LastTaskResult` auf `0`.
@@ -158,6 +162,14 @@ belegt, nicht nur umgebaut):
   derselben wachen.json anheben: sie koennen den Stand VOR der Regelanderung
   beschreiben und widersprechen sonst dem neuen Wert. Wert + Feldtexte in
   einem Zug, mit `.bak-JJJJMMTT`.
+- **"Kritischer Waechter war deaktiviert" (Block 9, Selbstheilung)** — ein
+  deaktivierter Waechter ist schutzloser Betrieb, und ein Check, der das nur
+  meldet, verhindert nichts (13.10.2026: morgens gemeldet, abends 5-h-
+  Gateway-Ausfall, weil niemand reparierte). Block 9 aktiviert `$kritischeWaechter`
+  (derzeit `MaxHirn-Gateway-Waechter`) bei Deaktivierung selbst wieder per
+  `schtasks /Change /ENABLE` und meldet es als `[erledigt]`; `$gewolltDeaktiviert`
+  (Allowlist) bleibt unangetastet. `Enable-ScheduledTask` braucht Admin
+  (0x80070005), schtasks.exe nicht. Muster und Testweg: `references/selbstheilende-waechter.md`.
 
 ## Pitfalls
 
@@ -177,6 +189,19 @@ belegt, nicht nur umgebaut):
 - **Protokolle werden je Tag ueberschrieben** (`systempruefung-<heute>.log`):
   ein zweiter Lauf am selben Tag macht den ersten unfindbar. Vor dem Neulauf
   die Befunde notieren.
+- **Ein Check, der nur meldet, ist kein Schutz.** Block 9 meldete den
+  deaktivierten Gateway-Waechter im Morgenbericht; der Ausfall kam 8 h spaeter.
+  Kritische Waechter brauchen Selbstheilung, Dauerfehlalarme eine Whitelist —
+  beide Muster in `references/selbstheilende-waechter.md`.
+- **`Enable-ScheduledTask` braucht Admin, `schtasks /Change /ENABLE` nicht.**
+  Auch fuer Limited/faupe-Tasks kommt 0x80070005; schtasks.exe laeuft ohne
+  Erhoehung (Exit 0). Selbstheilung im user-Kontext MUSS schtasks nutzen.
+- **Der volle Prueflauf dauert ~150 s** (Block 5 wandert den Baum) — im
+  Hintergrund fahren (`background=true, notify=true`), nie mit 400-s-Timeout im
+  Vordergrund warten (gemessen: erster Vordergrund-Versuch lief in den Timeout).
+- **Testlaeufe ueberschreiben die Tagesberichte.** Vor einem Lauf mit
+  Wegwerf-Task die drei `systempruefung-*.md/.log` als `.bak-test` sichern und
+  danach zurueckschieben — sonst ist der offizielle Bericht ein Test-Artefakt.
 - **`$LASTEXITCODE` nach einer Pipe pruefen, nicht erst nach dem Filtern mit
   `read_file`-Aequivalenten der Shell** — sonst misst man den Exit des letzten
   Rohrglieds und haelt einen toten Dienst fuer gesund.
