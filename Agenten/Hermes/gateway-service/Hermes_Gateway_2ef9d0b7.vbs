@@ -15,4 +15,4 @@ Else
   env.Item("PYTHONPATH") = "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\hermes-agent"
 End If
 sh.CurrentDirectory = "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes"
-sh.Run "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\tools\python-3.14.7+20260901-win32-x64\python.exe -m hermes_cli.main gateway run", 0, False
+sh.Run "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\tools\python-3.14.7+202****0901-win32-x64\pythonw.exe -m hermes_cli.main gateway run", 0, False

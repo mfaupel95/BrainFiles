@@ -657,12 +657,12 @@ try {
 # Bedingung 3 schliesst alle offenen Positionen, wenn der letzte gesunde Lauf
 # aelter ist als herzschlag_max_minuten. Der Waechter startet einen toten
 # Dauerlauf alle 30 Minuten neu, ein Zyklus dauert 1-2 Minuten - eine Stoerung
-# heilt also nach hoechstens rund 32 Minuten von selbst. Jede Grenze darunter
-# stellt bei JEDER solchen Stoerung flach und verbucht eine Runde, die keine
-# Handelsentscheidung war (am 11./12.09.2026 mit 30 Minuten in xperp und swap
-# geschehen). Regel vom 19.09.2026: 180 Minuten fuer ALLE Spuren - auch fuer
-# Spuren mit Handelserlaubnis (Live); die 45-Live-Grenze vom 14.09. ist aufgehoben. Diese Pruefung haelt sie fest - ohne sie
-# verfaellt die Regel wie die gewachsenen Zahlen davor (30/45/90/180/2880).
+# heilt also nach hoechstens rund 32 Minuten von selbst. Regel (14.09., am
+# 13.10.2026 wiedereingesetzt nach Ruecknahme der 19.09.-"180 fuer alle"-Regel):
+# 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis
+# (Live) - Live haelt keine offene Marktposition laenger als 45 Minuten
+# ungesichert. Diese Pruefung haelt sie fest - ohne sie verfaellt die Regel wie
+# die gewachsenen Zahlen davor (30/45/90/180/2880).
 try {
   Notiz "`n--- 11b) Handel: Herzschlag-Regel ---"
   $handelsSpuren = @(Get-ChildItem (Join-Path $wurzel 'Agenten\Handel') -Directory |
@@ -685,9 +685,11 @@ try {
     $wj = Get-Content (Join-Path $hs.FullName 'wachen.json') -Raw | ConvertFrom-Json
     $hm = [int]$wj.herzschlag_max_minuten
     $erlaubt = ($wj.handel_erlaubt -eq $true)
-    $soll = 180   # eine Grenze fuer alle Spuren (Papier UND Live) seit 19.09.2026
+    # Regel 13.10.2026: 45 fuer Spuren mit Handelserlaubnis (Live), 180 fuer Papier.
+    $soll = if ($erlaubt) { 45 } else { 180 }
     if ($hm -ne $soll) {
-      Entscheiden "Handel/$($hs.Name): Herzschlag $hm min statt $soll - seit 19.09.2026 gilt 180 fuer alle Spuren (Papier UND Live); ein Live-Wert darunter schliesst eine offene Position bei einem PC-Ausfall am Markt. Ableitung und Folge stehen im Feld _herzschlag_regel dieser wachen.json."
+      $art = if ($erlaubt) { 'Spuren mit Handelserlaubnis (Live)' } else { 'Papier-Spuren' }
+      Entscheiden "Handel/$($hs.Name): Herzschlag $hm min statt $soll - Regel 13.10.2026: $soll min fuer $art. Ableitung und Folge stehen im Feld _herzschlag_regel dieser wachen.json."
     } else {
       $regelkonform++
     }

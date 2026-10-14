@@ -634,6 +634,12 @@ Ausloeser → Referenz:
    BENANNT: was schon erledigt war, was anders geloest wird und warum, mit Test.
 2. **Sichern** (Stufe 1): `.bak-JJJJMMTT` für jede Datei, die angefasst wird —
    auch `wachen.json` und `zustand.json`, wenn ein Testlauf sie berühren kann.
+   **Wachen-Aenderungen belegt man mit `<spur>/handeln.py --vorschau`, nicht mit
+   `import`: nicht jede Spur hat ein `wachen_pruefung`-Modul (macd_mtf und die
+   Indikator-Spuren laden ihre Wachen selbst) - `import <spur>.wachen_pruefung`
+   bricht mit ModuleNotFoundError, obwohl die Spur gesund laeuft. Der Aufruf
+   aus dem Spurenordner ist genau der, den der Dauerlauf je Zyklus startet,
+   und `--vorschau` schreibt nichts ("Vorschau: keine Dateien geschrieben").
 3. **Ändern:** Sperren gehören in `sperren_live()` bzw. die gleichnamige Funktion
    der Spur, nicht verstreut in den Rumpf von `lauf()`.
 4. **Ohne Broker testen - mit dem Aufruf, der im TESTKOPF der Spur steht.**

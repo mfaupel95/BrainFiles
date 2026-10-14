@@ -107,6 +107,7 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
 9. **`hermes doctor` triage:** fix a `WAL-reset bug` line (SQLite repair section); npm advisories
    have their own fix; the photon duplicate lines are a false alarm of the shared credential
    store — measure before deleting anything.
+   **Danach tools-Runtime und Launcher pruefen — beide schreibt der Lauf neu, und beide sind die stillen Posten.** Der Import im tools-Python ist der Massstab, nicht `ls site-packages` und nicht die Gateway-Gesundheit: laufende Prozesse tragen die Module im Speicher und wirken gesund, waehrend JEDER neue Prozess auf diesem Python abstuerzt. `tools\python-3.14.7…\python.exe -c "import pydantic_core, hermes_cli.main"` — `ModuleNotFoundError` heisst, die Deps fehlen, nachziehen mit `pip install -e hermes-agent`. Und in `gateway-service\Hermes_Gateway_<suffix>.vbs` muss `pythonw.exe` stehen: `python.exe` mit Fensterstil 0 startet als Konsolenprogramm **gar nicht** — kein Prozess, keine Fehlermeldung. Ein `EXIT=0` im Lauf-Log sagt nichts ueber beide Posten.
 10. **Legacy gateway starters:** measure the task list before believing `gateway status`; usually
     only the FILES are left. Move them into `<HERMES_HOME>/.sicherung/gateway-service-legacy-<datum>/`
     — do not run `gateway uninstall`, it replaces the live launcher.
