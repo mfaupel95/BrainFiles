@@ -8,7 +8,7 @@
 #                      algolia sind dort AKTIV, Profile bekommen sie nicht).
 # profile.<n>.einschluss          nimmt einen Server aus alle.ausschluss heraus
 # profile.<n>.ersetze             Textersetzung im Server-Abschnitt [alt, neu]
-# profile.<n>.projectatlas_repo   Atlas-DB/-Config unter Werkstatt\Repos\<repo>\
+# profile.<n>.projectatlas_repo   Atlas-DB/-Config unter Werkstatt\<repo>\
 #                                 statt Werkstatt\omnitrade\
 # profile.<n>.zusatz              Server, den die Haupt-Config nicht hat (zusatzbloecke)
 alle:

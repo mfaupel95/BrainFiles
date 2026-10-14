@@ -10,7 +10,7 @@ summary: 'Vier Klone aus der Jev/TypeSafe-Welt: was jeder tut, was davon laeuft,
 
 # Die Jev-Familie im Haus
 
-Alle vier liegen als Klone in `Werkstatt/Repos` (Fork `mfaupel95/...`). Gemeinsam ist
+Alle vier liegen als Klone in `Werkstatt` (Fork `mfaupel95/...`). Gemeinsam ist
 ihnen **ein Modell**: Jev von TypeSafe — kein Chat-Modell, sondern ein **Richter**, der
 einen Zustand gegen typisierte Fragen auswertet (`noul` = ja/nein-Wahrscheinlichkeit,
 `choice`, `score`). Deshalb sprechen sie alle denselben Endpunkt an:

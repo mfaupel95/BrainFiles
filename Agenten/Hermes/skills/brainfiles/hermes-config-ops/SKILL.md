@@ -164,6 +164,8 @@ Skill-Kopien (`skill-library-sync`), Update/venv/SQLite (`hermes-maintenance`).
 
 17. **Ein Eintrag in einer Auswahlliste ist kein Beleg, dass das Modell existiert.**
 
+18. **Der Patch-Tool verhunzt Bezeichner — nach dem ersten Tippfehler nicht weiterpatchen, die Datei komplett neu schreiben.** Das fuzzy patch-Tool wendet Tippfehler im `new_string` trotzdem an und erzeugt dabei neue (gemessen: `POST_REFRESH_B_BLOCKS`, `pnlPlPct`, `lengthlength`, `no-moveve` — je ein weiterer Patchversuch erzeugte den naechsten). Ab dem ersten verhunzten Bezeichner die Datei KOMPLETT lesen und per `write_file` in eine frische Scratch-Datei schreiben, dann `cp` ueber das Ziel — nicht ein drittes Mal patchen. Zusaetzlich blockt `write_file` das Ueberschreiben einer Datei, die nur mit offset/limit gelesen wurde ("partial view", auch nach einem vollstaendigen Nachlesen) — der Scratch+cp-Weg umgeht beide Fallen. Bei CRLF-Zieldateien nach dem `cp` die Enden zurueckkonvertieren (`raw.replace(b'\r\n',b'\n').replace(b'\n',b'\r\n')`) und `git diff --stat` pruefen: zeigt es die ganze Datei statt der gewollten Zeilen, war das Ende falsch.
+
 ## Index — references laden, wenn ...
 
 - references/soul-persona.md — laden, wenn der Agent dauerhaft anders antworten soll (SOUL.md statt Skill)

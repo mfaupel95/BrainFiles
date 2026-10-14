@@ -263,7 +263,7 @@ Vollstaendigkeit der Statusfuehrung.
 | T-075 | 145 | PARALLEL | kraken_rest.guthaben() scheitert sporadisch mit EGeneral:Permission denied | blocked | echter Blocker: kraken_rest.guthaben scheitert sporadisch - Fehlerfall mitschreiben, Diagnose. |
 | T-074 | 146 | ORDERED | nautilus_kraken (Spot) hat noch nicht gekauft - drei gemessene Tore | blocked | gleiche Ursache wie T-065: 1-EUR-Endabnahme soll aufs Spot-Konto |
 | T-071 | 147 | PARALLEL | Bot-Profil fuer intelligent-trading-bot fehlt | blocked | echter Blocker: Bot-Profil fuer intelligent-trading-bot - entscheiden, ob ueberhaupt. |
-| T-070 | 148 | PARALLEL | echte Zugangsdaten in `Werkstatt/Repos/fomo-robinhood-radar/.env.example` | blocked | echter Blocker: zwei echte Kennungen in einer VERSIONIERTEN Vorlagendatei (fomo-robinhood-radar/.env.example). Der Eintrag sagt ausdruecklich: die Datei selbst ist Stufe 0 und wird nicht geblaettert, und die Schluesse... |
+| T-070 | 148 | PARALLEL | echte Zugangsdaten in `Werkstatt/fomo-robinhood-radar/.env.example` | blocked | echter Blocker: zwei echte Kennungen in einer VERSIONIERTEN Vorlagendatei (fomo-robinhood-radar/.env.example). Der Eintrag sagt ausdruecklich: die Datei selbst ist Stufe 0 und wird nicht geblaettert, und die Schluesse... |
 | T-067 | 149 | ORDERED | Kraken-Futures-Orderweg LIVE bewiesen, Spur auf PF_SOLUSD umgestellt (armt noch nicht) | FEHLT | kein Status im Handoff t_df4b5161 |
 | T-066 | 150 | PARALLEL | nautilus_kraken_futures: Futures-Gebuehr 0,05% verifizieren | blocked | echter Blocker: Futures-Gebuehr an einer echten Order messen - live, gesperrt. |
 | T-065 | 151 | ORDERED | nautilus_kraken: echter ~1-EUR-Spot-Live-Test (Freigabekette) | blocked | Freigabekette oeffnen, nur Max |

@@ -1243,7 +1243,7 @@ erweitern.
 **Die Ursache lag tiefer als erwartet.** `BrainFiles\Werkstatt` ist ein **Symlink auf
 `O:\Werkstatt`** (Laufwerk O:, nicht unterhalb von BrainFiles). Die Sandbox stand nur auf
 `BrainFiles`, der Pruefer loest den Symlink auf und lehnte jeden Schreibzugriff in die
-Repos unter `Werkstatt\Repos` ab (AGENTS.md-Schreiben scheiterte dreimal). Lesen und
+Repos unter `Werkstatt` ab (AGENTS.md-Schreiben scheiterte dreimal). Lesen und
 Terminal waren nie betroffen - deshalb lief die Analyse, nur das Schreiben nicht.
 
 **Gesetzt wurde es NICHT in der Registry und nicht in `config.yaml`** (Zeile 630 dort ist
@@ -1264,8 +1264,8 @@ Trennzeichen ist `os.pathsep` (`;` unter Windows), mehrere Wurzeln sind vorgeseh
 
 - Frische Instanz aus der Profil-.env: aufgeloeste Wurzeln =
   `C:\Users\faupe\Documents\BrainFiles` **und** `O:\Werkstatt`.
-- Schreibpruefung: `O:\Werkstatt\Repos\claude-code\AGENTS.md` ERLAUBT,
-  `O:\Werkstatt\Repos\codex\AGENTS.md` ERLAUBT,
+- Schreibpruefung: `O:\Werkstatt\claude-code\AGENTS.md` ERLAUBT,
+  `O:\Werkstatt\codex\AGENTS.md` ERLAUBT,
   `C:\Windows\System32\drivers\etc\hosts` GESPERRT,
   `C:\Users\faupe\.ssh\id_rsa` GESPERRT.
 - Genau eine Zeile je Datei geaendert (`diff` gegen die Sicherung), BOM-Status und
@@ -1334,7 +1334,7 @@ Rauschen. Aufraeumen braucht einen Auftrag (Schutzregeln, Stufe 1).
 Sicherungen: `.claude.json.bak-20261007`, `.claude/settings.json.bak-20261007`
 (beide byte-identisch zurueck bis auf `autoUpdates`),
 `versions/2.1.285.bak-20261007` (Rueckfall-Binary).
-Gelerntes auch in `Werkstatt/Repos/rule_repo-bots.md`.
+Gelerntes auch in `Werkstatt/rule_repo-bots.md`.
 
 ## Wirkungslose Write-Regeln bereinigt (07.10.2026)
 

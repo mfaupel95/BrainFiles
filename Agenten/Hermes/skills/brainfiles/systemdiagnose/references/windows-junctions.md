@@ -3,7 +3,7 @@
 ## Karte
 `Werkstatt` → `O:\Werkstatt` und `Modelle` → `O:\Modelle` sind Junctions
 (physisch auf O:); ausserdem `O:\Wiki` → `MaxHirn\Wiki`, einzelne
-`Werkstatt\Repos\*`-Verweise und die sieben `Agenten\Hermes\skills\okx-*`.
+`Werkstatt\*`-Verweise und die sieben `Agenten\Hermes\skills\okx-*`.
 `Werkstatt` ist die einzige, die bereits ZWEIMAL zerstoert wurde: dann ist
 `BrainFiles\Werkstatt` ein ECHTER Ordner (meist eine Teilkopie des O:-Inhalts),
 `LinkType` leer, `Attributes` nur `Directory`.
@@ -17,7 +17,7 @@
   Folge derselben Ursache.
 - Eintraegezahl von `Werkstatt` weicht von `O:\Werkstatt` ab.
 - Die Teilkopie enthaelt oft selbst eine `Repos`-Junction zurueck auf
-  `O:\Werkstatt\Repos` — eine teilweise Rekonstruktion, die den wichtigsten
+  `O:\Werkstatt` — eine teilweise Rekonstruktion, die den wichtigsten
   Teil wiederherstellt, den Rest aber als echten Ordner liegen laesst. Vor dem
   Loeschen des Elternordners JEDES Kind auf `LinkType` pruefen.
 
@@ -37,7 +37,7 @@ ausgeben und lesen.
    (`/XJ` ueberspringt Junctions — die eingebettete Repos-Junction wird nicht
    doppelt kopiert).
 2. Eingebettete Junctions einzeln als LINK loesen:
-   `[System.IO.Directory]::Delete('C:\...\Werkstatt\Repos')` — loescht nur den
+   `[System.IO.Directory]::Delete('C:\...\Werkstatt')` — loescht nur den
    Link, das Ziel bleibt unberuehrt. `cmd /c rmdir` funktioniert aus der
    bash/MSYS-Shell NICHT (startet cmd interaktiv, Banner, kein Effekt);
    `Remove-Item` auf eine Junction wirft in PS 5.1 eine `NullReferenceException`.

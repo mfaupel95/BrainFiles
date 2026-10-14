@@ -23,7 +23,7 @@ from pathlib import Path
 HIER = Path(__file__).resolve().parent
 JG = HIER / "jg.cmd"
 NODE_INDEX = HIER / "node_modules" / "@dzhng" / "jevgrep" / "dist" / "bin" / "index.js"
-REPO = HIER.parents[2] / "Werkstatt" / "Repos" / "jevgrep"
+REPO = HIER.parents[2] / "Werkstatt" / "jevgrep"
 SUCHWURZEL = REPO / "apps"
 
 anfragen: list[dict] = []

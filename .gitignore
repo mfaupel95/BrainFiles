@@ -608,7 +608,7 @@ Agenten/Hermes/skills/.archive/
 # Zwei Gruende fuer die Sperre: ein verschachteltes Repo wird nie versioniert (Git
 # merkt nur einen Zeiger an), und eines OHNE Commit macht den ganzen Lauf unmoeglich.
 # Der Inhalt (SKILL.md) liegt vollstaendig im jeweiligen Fremd-Repo; der Fundus und
-# Werkstatt/Repos sind der richtige Ort fuer so etwas, nicht die Bibliothek.
+# Werkstatt sind der richtige Ort fuer so etwas, nicht die Bibliothek.
 Agenten/Hermes/skills/EasyCLIProxyAPI/
 Agenten/Hermes/skills/OmniRoute/
 Agenten/Hermes/skills/acoustid-index/
@@ -747,7 +747,7 @@ Agenten/Hermes/automatik/spez/inventar.md
 # wie bei repos-launcher.ps1 oben). logs/ bleiben gesperrt.
 !Agenten/Werkzeuge/codex-remote-control.ps1
 # FOMO-RADAR AUF LOKALEM MODELL (23.09.2026): Das Fremd-Repo
-# Werkstatt/Repos/fomo-robinhood-radar bewertet Trader-Wallets mit Claude. Ohne
+# Werkstatt/fomo-robinhood-radar bewertet Trader-Wallets mit Claude. Ohne
 # Guthaben faellt das Urteil lokal (Ollama) - ueber die Export/Import-Naht, die
 # das Repo selbst verlangt. Ohne diese Zeilen laege das Werkzeug nur auf dieser
 # Platte; der Export-/Ergebnis-Zwischenstand liegt bewusst AUSSERHALB des Repos
@@ -1021,7 +1021,7 @@ kraken-lockout-stand.json
 !Agenten/Werkzeuge/breite.py
 Agenten/Werkzeuge/breite-reihe.jsonl
 
-# Zweitklon der parallelen Sitzung in der Wurzel (gehoert nach Werkstatt/Repos/):
+# Zweitklon der parallelen Sitzung in der Wurzel (gehoert nach Werkstatt/):
 /kraken-cli/
 
 # Arbeitsbaeume der Sitzungs-Oberflaeche (Claude Code Desktop) in der Wurzel:

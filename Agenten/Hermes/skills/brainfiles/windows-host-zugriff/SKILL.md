@@ -298,10 +298,14 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   schlimmer, eine **halb-leere, kaputte Ausgabe**, die wie eine Messung
   aussieht: gemessen lieferte `'{0}`t{1}' -f $name, $wert` Namen ohne Zahl, und
   die Liste fiel auf drei von 15 Zeilen zusammen. Richtig: die Logik mit
-  `write_file` als `.ps1` unter `Agenten/Hermes/cache/scratch/` ablegen
-  (`$ErrorActionPreference='Continue'`, keine Backtick-Formatstrings noetig),
-  mit `powershell -NoProfile -ExecutionPolicy Bypass -File <pfad> > <out> 2>&1`
-  starten und `<out>` mit `read_file` lesen. Dieselbe Regel gilt fuer jedes
+ `write_file` als `.ps1` unter `Agenten/Hermes/cache/scratch/` ablegen
+ (`$ErrorActionPreference='Continue'`, keine Backtick-Formatstrings noetig),
+ mit `powershell -NoProfile -ExecutionPolicy Bypass -File <pfad> > <out> 2>&1`
+ starten und `<out>` mit `read_file` lesen. Der `<pfad>` aus der bash-Schicht
+ braucht SCHRAEGSTRICHE (`Agenten/Routinen/x.ps1`) — Backslashes im Argument
+ werden von bash gefressen (`-File Agenten\Routinen\x.ps1` wird zu
+ `AgentenRoutinenx.ps1` und PowerShell meldet „nicht vorhanden", obwohl die
+ Datei liegt); PowerShell nimmt Vorwaerts-Slashes genauso an. Dieselbe Regel gilt fuer jedes
   Fremdwerkzeug mit `$`, Backtick oder `%` in den Argumenten — Datei statt
   Einzeiler, und `2>/dev/null` weglassen, sonst verschluckt sie die Ursache.
   **Auch ein doppelt-quotierter `-Command "…"`-String ist bash-Land:** bash

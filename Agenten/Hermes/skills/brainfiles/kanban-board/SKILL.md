@@ -86,7 +86,7 @@ eindeutig.
 
 | Slug | Zweck | Zuerst zustaendig |
 |---|---|---|
-| `repos` | Klone in `Werkstatt/Repos`, Bots/Profile, Rueckstand, Sicherung | `default`, `hermes-wartung` |
+| `repos` | Klone in `Werkstatt`, Bots/Profile, Rueckstand, Sicherung | `default`, `hermes-wartung` |
 | `wartung` | Hermes selbst: Gateway, Dashboard, MCP-Spawn-Kette, Updates, Leistung | `hermes-wartung` |
 | `handel` | Spuren bauen/rechnen/pruefen, Backtest, Befunde | `default`, `markt-recherche` |
 | `wissen` | Wiki, Skills, Fundus, Vault-Doku | `obsidian-skills`, `basic-memory` |

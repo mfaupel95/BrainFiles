@@ -118,7 +118,7 @@ L1614 [## Offen] - [ ] **T-075 — kraken_rest.guthaben() scheitert sporadisch m
 L1636 [## Offen] - [ ] **T-074 — nautilus_kraken (Spot) hat noch nicht gekauft - drei gemessene Tore**
 L1655 [## Offen] - [ ] **T-072 — repos-zentrale: Manifest nennt Bots, deren Profil geloescht ist**
 L1687 [## Offen] - [ ] **T-071 — Bot-Profil fuer intelligent-trading-bot fehlt**
-L1702 [## Offen] - [ ] **T-070 — echte Zugangsdaten in `Werkstatt/Repos/fomo-robinhood-radar/.env.example`**
+L1702 [## Offen] - [ ] **T-070 — echte Zugangsdaten in `Werkstatt/fomo-robinhood-radar/.env.example`**
 L1741 [## Offen] - [ ] **T-067 — Kraken-Futures-Orderweg LIVE bewiesen, Spur auf PF_SOLUSD umgestellt (armt noch nicht)**
 L1836 [## Offen] - [ ] **T-066 — nautilus_kraken_futures: Futures-Gebuehr 0,05% verifizieren**
 L1855 [## Offen] - [ ] **T-065 — nautilus_kraken: echter ~1-EUR-Spot-Live-Test (Freigabekette)**

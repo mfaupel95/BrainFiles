@@ -447,8 +447,11 @@ und ist der Weg, den der Nutzer dann nimmt.
 die haeufigste Ursache eines unbemerkten Ausfalls, kein Erkennungsfehler.**
 `Get-ScheduledTask -TaskName 'MaxHirn-Gateway-Waechter'` muss `Ready` zeigen; ist er
 deaktiviert, lief er im Ausfall-Fenster gar nicht und konnte nichts neu starten. Ein
-deaktivierter Task reaktiviert sich nicht selbst - die einzige Verteidigung ist eine
-taegliche Pruefung, dass er Enabled ist. Ob er in einem Zeitfenster lief, belegt
+deaktivierter Task reaktiviert sich nicht selbst, und ein NUR-meldender taeglicher
+Check laesst das Fenster bis zum naechsten Crash offen - die Systempruefung aktiviert
+kritische Waechter deshalb SELBST wieder (Block 9, $kritischeWaechter, per
+`schtasks /Change /ENABLE`, ohne Admin; gewollt Deaktivierte bleiben in der Allowlist).
+Ob er in einem Zeitfenster lief, belegt
 `wevtutil qe "Microsoft-Windows-TaskScheduler/Operational"` mit Zeitfilter (Get-WinEvent
 laeuft in Timeouts). Details: `references/gateway-identitaet-und-wachen.md` Abschnitt 5(f).
 

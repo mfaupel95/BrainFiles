@@ -9,7 +9,7 @@ eigener Stack nicht hat und die auch nicht aus OKX-Kerzen nachbaubar ist.
 
 HERKUNFT DES WISSENS
 --------------------
-`Werkstatt/Repos/santiment` (Fork von `api-evangelist/santiment`, reine
+`Werkstatt/santiment` (Fork von `api-evangelist/santiment`, reine
 Dokumentation + vollstaendiges GraphQL-Schema, 83 KB). Das Schema ist die
 Wahrheit ueber Feldnamen - vor jeder neuen Abfrage dort nachsehen statt raten.
 

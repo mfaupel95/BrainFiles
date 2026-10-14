@@ -32,7 +32,7 @@ wird dreistufig:
 
 | Stufe | Ort | Zweck |
 |---|---|---|
-| halten | `Werkstatt/Repos/<name>` (gitignored) | Klon, bleibt aktualisierbar |
+| halten | `Werkstatt/<name>` (gitignored) | Klon, bleibt aktualisierbar |
 | finden | `MaxHirn/Wissen/<name>-Index.md` + `fundus-suche.ps1` | null Ladepreis |
 | benutzen | eigenes Bot-Profil (`/bot <name> ...`) | zahlt nur im eigenen Kontext |
 
@@ -150,7 +150,7 @@ bekannte Baeume und Klassifikationstabelle: `references/fremde-skills-finden.md`
 
 1. **Bekannte Baeume zuerst hashen** (Fundus `%USERPROFILE%/Documents/GitHub`
    — ausserhalb BrainFiles, der alte Ordner `MaxHirn/skills` existiert nicht
-   mehr; aktueller Pfad in `fundus-suche.ps1` — plus Werkstatt/Repos,
+   mehr; aktueller Pfad in `fundus-suche.ps1` — plus Werkstatt,
    Hausbibliothek, MaxHirn/.claude/skills + .agents/skills): byte-identisch
    = bereits uebernommen, nur Hash-Neue sind Kandidaten. Ohne diesen Abgleich
    zaehlt jede Install-Kopie eines bekannten Repos als "neu".
@@ -168,7 +168,7 @@ bekannte Baeume und Klassifikationstabelle: `references/fremde-skills-finden.md`
 
 ## Vorgehen
 
-1. **Klon voll** nach `Werkstatt/Repos/<name>` (kein `--depth 1`): ein shallow
+1. **Klon voll** nach `Werkstatt/<name>` (kein `--depth 1`): ein shallow
    Klon laesst sich spaeter nicht in den eigenen Fork pushen. `origin` = eigener
    Fork, `upstream` = Original - wie bei allen Repo-Klonen hier.
 2. **Format pruefen, bevor konvertiert wird:** YAML-Frontmatter vorhanden?
@@ -184,7 +184,7 @@ bekannte Baeume und Klassifikationstabelle: `references/fremde-skills-finden.md`
    Ziel `<klon>/hermes-skills/<kategorie>/<skill>/SKILL.md`. Nie von Hand
    nachbessern, was der Konverter erzeugen soll.
 5. **Index schreiben:** je Skill Name, Kategorie, Groesse, Einzeiler, Pfad -
-   damit "finden" ohne Ladepreis geht (Fundus-Skript deckt `Werkstatt/Repos`
+   damit "finden" ohne Ladepreis geht (Fundus-Skript deckt `Werkstatt`
    schon ab).
 6. **Bot-Profil anlegen** und die konvertierten Skills in dessen
    `skills/`-Baum legen. `hermes profile create <name>` OHNE `--clone` erzeugt

@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `sniper_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` scannt neue
+Der Agent `sniper_agent` aus `Werkstatt/moon-dev-ai-agents` scannt neue
 Solana-Token-Launches und zeigt sie an (mit Animation und Sound). Er faellt
 KEIN eigenes Kauf- oder Verkaufsurteil - er ist ein Anzeige-Scanner. Seine
 Datenquelle (`http://api.moondev.com:8000/files/new_token_addresses.csv`) ist

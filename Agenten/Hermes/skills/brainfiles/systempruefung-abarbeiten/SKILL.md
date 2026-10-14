@@ -143,8 +143,8 @@ belegt, nicht nur umgebaut):
   leer statt `Junction` = zerstoert, Reparatur in `systemdiagnose`
   `references/windows-junctions.md`), NICHT die Eintraege umschreiben. Erst
   wenn die Junction steht, weiter im Einzelfall: pruefen, ob der Ordner
-  verschoben wurde (z. B. nach `Werkstatt/Repos/`). Liegt er unter einem
-  bereits gelisteten Elternordner (`Werkstatt/Repos` ist als Ganzes gelistet),
+  verschoben wurde (z. B. nach `Werkstatt/`). Liegt er unter einem
+  bereits gelisteten Elternordner (`Werkstatt` ist als Ganzes gelistet),
   ist der Einzeleintrag REDUNDANT und wird entfernt, nicht auf den neuen Pfad
   umgeschrieben. `fremd.py --pruefen` nennt die Redundanz selbst ("ein Eintrag
   genuegt (der kuerzere)").
@@ -165,11 +165,14 @@ belegt, nicht nur umgebaut):
 - **"Kritischer Waechter war deaktiviert" (Block 9, Selbstheilung)** — ein
   deaktivierter Waechter ist schutzloser Betrieb, und ein Check, der das nur
   meldet, verhindert nichts (13.10.2026: morgens gemeldet, abends 5-h-
-  Gateway-Ausfall, weil niemand reparierte). Block 9 aktiviert `$kritischeWaechter`
-  (derzeit `MaxHirn-Gateway-Waechter`) bei Deaktivierung selbst wieder per
-  `schtasks /Change /ENABLE` und meldet es als `[erledigt]`; `$gewolltDeaktiviert`
-  (Allowlist) bleibt unangetastet. `Enable-ScheduledTask` braucht Admin
-  (0x80070005), schtasks.exe nicht. Muster und Testweg: `references/selbstheilende-waechter.md`.
+  Gateway-Ausfall, weil niemand reparierte). Block 9 aktiviert die Aufgaben in
+  `$kritischeWaechter` (derzeit Gateway-Waechter, Basis-Dauerlauf,
+  Dauerlauf-Waechter) bei Deaktivierung selbst wieder per `schtasks /Change
+  /ENABLE` und meldet es als `[erledigt]`; `$gewolltDeaktiviert` (Allowlist,
+  dokumentiert abgeschaltete Stufen) bleibt unangetastet. In die kritische
+  Liste gehoert nur, wessen Neustart KEINE Handels-Gates umgeht.
+  `Enable-ScheduledTask` braucht Admin (0x80070005), schtasks.exe nicht.
+  Muster, Auswahlregel und Testweg: `references/selbstheilende-waechter.md`.
 
 ## Pitfalls
 

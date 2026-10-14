@@ -10,8 +10,9 @@ Reparatur. Nie behaupten "es gibt keinen Check".
 
 ## Das Muster in systempruefung.ps1, Block 9 (ASCII-Kommentare, Hauskonvention)
 
-- `$kritischeWaechter = @('MaxHirn-Gateway-Waechter')` — Waechter, die NIE
-  deaktiviert sein duerfen. Kommentar daneben nennt den Anlass mit Datum.
+- `$kritischeWaechter` — Waechter, die NIE deaktiviert sein duerfen (Stand
+  14.10.2026: Gateway-Waechter, Basis-Dauerlauf, Dauerlauf-Waechter). Kommentar
+  daneben nennt den Anlass mit Datum.
 - Im Zweig `if ($t.State -eq 'Disabled')` bleibt die Reihenfolge: erst
   `$gewolltDeaktiviert` (Allowlist, bleibt unangetastet), dann
   `elseif ($t.TaskName -in $kritischeWaechter)` (Selbstheilung), sonst
@@ -78,10 +79,25 @@ auchen und "entschieden" werden.
 - `schtasks /Query` zeigt den deaktivierten Zustand lokalisiert als
   "Nicht zutreffend" — kein Fehler, nur die deutsche Schedule-Statusmeldung.
 
+## Was in die kritische Liste gehoert (Auswahlregel)
+
+- **Ein Neustart des Ziels darf KEINE Sicherheits-Gates umgehen.** Der
+  Dauerlauf respektiert handel_erlaubt/Freigabefenster/Kill — ein Auto-Start
+  stellt nur die Ueberwachung wieder her, das ist der Grund fuer die Aufnahme
+  von Basis-Dauerlauf + -Waechter (14.10.2026).
+- **Dokumentiert abgeschaltete Stufen bleiben in der Allowlist**
+  (`$gewolltDeaktiviert`): ein gewolltes Abschalten wird nie angefight
+  (Mittel-Waechter, Mittel-Stufe dokumentiert abgeschaltet).
+- **Vor der Aufnahme Ist-Zustand messen** (Task-State, laeuft der Prozess,
+  letzte Zyklen im Log) — die Aufnahme ist Versicherung, keine Reparatur.
+- **Verifikation einer LISTEN-Erweiterung** (kein Mechanismus-Umbau): Syntax
+  + voller Lauf, erwartet `0 erledigt` bei allen Ready — der Auto-Zweig feuert
+  nicht = kein Churn, keine falschen Meldungen. Der Wegwerf-Task-Test ist nur
+  fuer Umbauten am Mechanismus noetig.
+
 ## Uebertragbar auf
 
 - Jeden Waechter, der NIE deaktiviert sein darf (Gateway, Dauerlauf-Waechter,
-  Bus). Fuer MaxHirn-Handel-Dauerlauf-Waechter steht die Aufnahme in
-  `$kritischeWaechter` noch offen (Entscheidung Max, 14.10.2026).
+  Bus).
 - Jede Aenderung an einem Pruef-Skript, das Scheduled Tasks anfasst — immer
   ueber den Wegwerf-Task-Weg testen, nie am echten Waechter.

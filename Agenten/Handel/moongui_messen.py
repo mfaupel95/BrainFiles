@@ -17,7 +17,7 @@ import os
 import sys
 
 HANDEL = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.join(os.path.dirname(HANDEL), "..", "Werkstatt", "Repos",
+REPO = os.path.join(os.path.dirname(HANDEL), "..", "Werkstatt",
                     "moon-dev-ai-agents")
 REPO = os.path.abspath(REPO)
 if REPO not in sys.path:

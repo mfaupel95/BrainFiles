@@ -65,8 +65,8 @@ class HandelsansichtTest(unittest.TestCase):
         (handel / "werkzeug.py").write_text(
             "import argparse\nif __name__ == '__main__':\n    pass\n", encoding="utf-8")
 
-        (self.bf / "Werkstatt" / "Repos" / "ein-repo" / ".git").mkdir(parents=True)
-        (self.bf / "Werkstatt" / "Repos" / "ein-repo" / "README.md").write_text("# x\n")
+        (self.bf / "Werkstatt" / "ein-repo" / ".git").mkdir(parents=True)
+        (self.bf / "Werkstatt" / "ein-repo" / "README.md").write_text("# x\n")
         (self.bf / "profiles").mkdir()
 
         self.manifest = self.bf / "repos-zentrale.json"

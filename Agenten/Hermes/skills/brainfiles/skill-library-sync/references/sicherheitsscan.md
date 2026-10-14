@@ -1,6 +1,6 @@
 # Fremde Skills vor dem Import scannen (SkillSpector)
 
-Ein Skill aus dem Fundus oder aus `Werkstatt/Repos` ist fremder Text, der dem
+Ein Skill aus dem Fundus oder aus `Werkstatt` ist fremder Text, der dem
 Agenten Anweisungen gibt — das Gate vor jedem Uebernehmen.
 
 ## Aufruf
@@ -59,7 +59,7 @@ aus der Kennung raten.
 ## Ganze Bibliotheken scannen
 
 Muster: alle Ordner sammeln, die DIREKT eine `SKILL.md` tragen; byte-identische
-per MD5 der `SKILL.md` ueberspringen (Fundus und `Werkstatt/Repos` fuehren
+per MD5 der `SKILL.md` ueberspringen (Fundus und `Werkstatt` fuehren
 dieselben Skills mehrfach, `copilot-worktrees` kopiert Schwester-Repos); je
 Skill ein JSON, dann in Python aggregieren:
 

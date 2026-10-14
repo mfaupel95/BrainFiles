@@ -12,7 +12,7 @@ Aufruf (das EXE liegt unter O:, NICHT ueber die Werkstatt-Junction):
 
     O:/Werkstatt/skillspector/.venv/Scripts/python.exe skillbibliothek-scan.py \
         --basis C:/Users/<user>/Documents/GitHub \
-        --basis O:/Werkstatt/Repos \
+        --basis O:/Werkstatt \
         --out C:/Users/<user>/Documents/BrainFiles/Agenten/Hermes/cache/skillspector-fundus \
         --arbeiter 8
 

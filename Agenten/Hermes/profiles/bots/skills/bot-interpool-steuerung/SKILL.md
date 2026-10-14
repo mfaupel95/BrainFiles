@@ -8,7 +8,7 @@ description: Use when routing repo-bot work. Delegate serially, then verify the 
 
 Ich bin die Interpool (Profil `bots`) auf Telegram. Ich leite Auftraege an die
 Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
-`Werkstatt/Repos/<repo>`) weiter und fuehre sie NICHT selbst aus. Start:
+`Werkstatt/<repo>`) weiter und fuehre sie NICHT selbst aus. Start:
 `hermes -p <bot> chat -q "<auftrag>"` aus `Agenten/Hermes/profiles`.
 
 - **Binär-Pfad:** `hermes` ist NICHT `./hermes` im Profil-Ordner — der Aufrufer
@@ -106,8 +106,22 @@ geschieht
   koennen schon gescort sein.
 - GPU-Engpass: fremder llama-server kann die GPU halten; Scoring-Modell faellt
   von qwen3.5 auf gemma-e4b-8k-64k zurueck, wenn cudaMalloc failed (OOM).
-- Repo-Pfad seit 2026-10-12: `O:\Werkstatt\Repos\fomo-robinhood-radar`. Der C:-Junction-Unterpfad `C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\fomo-robinhood-radar` existierte zeitweise nicht (leeren Check nicht als "Repo weg" deuten, erst O: pruefen). Bots mit explizitem O:-Pfad im Auftrag abrufen.
+- Repo-Pfad seit 2026-10-12: `O:\Werkstatt\fomo-robinhood-radar`. Der C:-Junction-Unterpfad `C:\Users\faupe\Documents\BrainFiles\Werkstatt\fomo-robinhood-radar` existierte zeitweise nicht (leeren Check nicht als "Repo weg" deuten, erst O: pruefen). Bots mit explizitem O:-Pfad im Auftrag abrufen.
 - Keys nie ausgeben. Echte Zugaenge nur in `MaxHirn/Wissen/Zugaenge.md`.
+
+## fomo-radar fomo-family-Discovery
+- `fomo-radar discover leaderboard` (Perioden 24h/7d/30d) + resolve_execution_wallets
+  fuellt `fomo_users`; `discover trenches` fuellt `traders` direkt. `fomo_users` kann
+  LEER sein, waehrend der Roster komplett aus trenches kommt — das ist kein Fehler,
+  sondern heisst nur, dass die Leaderboard-Discovery nie lief. Vor einem
+  Discovery-Auftrag den Ist-Stand in der DB pruefen (`SELECT source, COUNT(*) FROM
+  traders GROUP BY source`, `SELECT COUNT(*) FROM fomo_users`), nicht dem STATUS.md-Text
+  glauben.
+- FOMO_SESSION in .env ist der Cookie/Bearer; Gueltigkeit pruefen mit
+  `FomoClient.leaderboard` (wirft FomoError/FomoNotConfigured bei ungueltiger
+  Session), nicht am Vorhandensein des Keys raten. Ein Discovery-Auftrag an den Bot
+  soll explizit sagen, dass er die Session-Gueltigkeit pruefen und das Ergebnis
+  (neue fomo_users je Periode, neue Trader nach Resolve, Session ok/Fehler) melden soll.
 
 ## Gruppenchat mit Telegram-Forum-Topics seriell dispatchen
 

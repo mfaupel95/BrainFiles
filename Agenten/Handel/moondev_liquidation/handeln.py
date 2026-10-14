@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `liquidation_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` summiert
+Der Agent `liquidation_agent` aus `Werkstatt/moon-dev-ai-agents` summiert
 die Zwangsschluesse der letzten Minuten getrennt nach Seite (long/short),
 vergleicht sie mit dem vorigen Stand und laesst ein Sprachmodell urteilen -
 genau drei Zeilen: BUY, SELL oder NOTHING, ein Grund, eine Confidence. Sein

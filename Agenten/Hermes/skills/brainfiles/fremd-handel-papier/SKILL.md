@@ -14,7 +14,7 @@ metadata:
 
 # Fremd-Handelswerkzeuge: nur Papier und Demo
 
-Zwei Forks unter `Werkstatt/Repos/` sind als MCP an Hermes angeschlossen. Beide
+Zwei Forks unter `Werkstatt/` sind als MCP an Hermes angeschlossen. Beide
 handeln hier **nie echt**: Papier (Kraken) und Demo (OKX). Echtes Geld bewegt
 weiterhin nur die Kette aus `okx-live-anbinden` und den Wachen in `Agenten/Handel/`.
 
@@ -26,7 +26,7 @@ weiterhin nur die Kette aus `okx-live-anbinden` und den Wachen in `Agenten/Hande
 
 ## Prerequisites
 
-- **kraken-papier** (MCP, an): `Werkstatt/Repos/kraken-cli/target/release/kraken.exe mcp`.
+- **kraken-papier** (MCP, an): `Werkstatt/kraken-cli/target/release/kraken.exe mcp`.
   Standarddienste Markt, Konto lesen, Papier. Futures-Papierkonto 10 000 USD
   initialisiert (`kraken futures paper init`). Neu bauen: `cargo build --release`.
 - **okx-agentkit** (MCP, **an, schreibend, nur DEMO**): Starter
@@ -62,6 +62,7 @@ CLI-Gegenprobe ohne MCP: `kraken futures paper status -o json`.
   anfassen, sonst springt der Live-Pfad der Spuren um.
 - Keys nie ausgeben, nur Vorhandensein und Laenge.
 - Papier ist kein Beweis fuer Live: Slippage und Gebuehren sind simuliert.
+- **Vor dem Live-Schalten eines per-Block/per-Tick On-Chain-Bots die Gas-Oekonomie messen, nicht schaetzen.** Blockrate zweimal `eth_blockNumber` im Abstand von 10 s (Monad: ~3,4 Bloecke/s = 12 240/h), Gas/Block aus Limit x Basis-Fee, dann Burn-Rate = Gas/Block x Bloecke/h gegen die Wallet-Balance stellen. Ein Wallet kann weniger wert sein als zwei Stunden Gas (691 MON = ~17 $ gegen ~437 MON/h = ~10,80 $/h) — Live-Schalten ist dann wirtschaftlich sinnlos, egal ob die Strategie gewinnt. Der README-Beispielwert des Bots (0,0357 MON/Block) mal der echten Blockrate ist die Zahl, die entscheidet. Details: `references/monad-kuru.md`.
 
 ## Verification
 

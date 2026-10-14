@@ -5,7 +5,7 @@ das ein Kauf oder ein Verkauf ist.
 
 ## Woher die Idee kommt
 
-Der Agent `whale_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` beobachtet das
+Der Agent `whale_agent` aus `Werkstatt/moon-dev-ai-agents` beobachtet das
 offene Interesse ueber ein Zeitfenster, erkennt eine Anomalie gegen den
 Durchschnitt (`WHALE_THRESHOLD_MULTIPLIER = 1.31`) und laesst dann ein
 Sprachmodell antworten: Zeile 1 `BUY`/`SELL`/`NOTHING`, Zeile 2 ein Grund,

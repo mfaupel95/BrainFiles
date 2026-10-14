@@ -365,7 +365,7 @@ SPUREN = {
     #                  "skript": "spiegel_weit.py"},
     # MOONDEV_FUNDING (16.09.2026): Papierbuch auf den Funding-Extremen von
     # Hyperliquid. Die Zahlen liefert der geklonte Bot
-    # (Werkstatt/Repos/moon-dev-ai-agents, src/nice_funcs_hl.get_funding_rates),
+    # (Werkstatt/moon-dev-ai-agents, src/nice_funcs_hl.get_funding_rates),
     # gerufen in DESSEN venv - kein Sprachmodell, kein Orderpfad, kein Live.
     # Die Spur laeuft unter dem gemeinsamen venv, weil sie selbst nur stdlib
     # braucht; fremde Pakete bleiben im Bot. Siehe moondev_funding/README.md.

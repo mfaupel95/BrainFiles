@@ -1,5 +1,5 @@
 {
-  "_zweck": "Quellen fuer adapter_lauf.py. Pfade relativ zur BrainFiles-Wurzel (Werkstatt/Repos liegt auf O:, siehe 'basis'). enabled=false = wird uebersprungen.",
+  "_zweck": "Quellen fuer adapter_lauf.py. Pfade relativ zur BrainFiles-Wurzel (Werkstatt liegt auf O:, siehe 'basis'). enabled=false = wird uebersprungen.",
   "_basis_werkstatt": ["Werkstatt", "O:/Werkstatt"],
   "quellen": [
     {"name": "nautilus_trader", "typ": "nautilus", "enabled": true,

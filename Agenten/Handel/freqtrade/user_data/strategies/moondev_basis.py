@@ -5,7 +5,7 @@
 
 WARUM DIESE DATEI EXISTIERT
 ---------------------------
-Die Trading-Agenten aus `Werkstatt/Repos/moon-dev-ai-agents` sind ueberwiegend
+Die Trading-Agenten aus `Werkstatt/moon-dev-ai-agents` sind ueberwiegend
 DATENSAMMLER: `funding_agent` liest Funding-Raten, `whale_agent` das offene
 Interesse, `liquidation_agent` Zwangsschluesse, `sentiment_agent` Schlagzeilen.
 Freqtrade sieht ausschliesslich OHLCV-Kerzen des gehandelten Paares. Ein Agent,

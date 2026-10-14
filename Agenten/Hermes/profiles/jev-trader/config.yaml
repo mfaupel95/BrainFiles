@@ -4,7 +4,7 @@ model:
 _config_version: 50
 terminal:
   backend: local
-  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\jev-trader
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\jev-trader
 platforms:
   photon:
     enabled: false

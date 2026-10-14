@@ -2,7 +2,7 @@
 
 WOHER DIE REGELN KOMMEN
 -----------------------
-`Werkstatt/Repos/moon-dev-ai-agents/src/agents/risk_agent.py` ueberwacht dort
+`Werkstatt/moon-dev-ai-agents/src/agents/risk_agent.py` ueberwacht dort
 jede offene Position und stoppt den Handel, wenn ueber die letzten
 `MAX_LOSS_GAIN_CHECK_HOURS` (12) ein Limit gerissen wird:
 

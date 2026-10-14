@@ -5,7 +5,7 @@ venv, node_modules, .git, README und die Einstiegsmerkmale, aus denen die Art
 des Projekts folgt. Alles Weitere (Gruppe, Startbefehl, Bot) entscheidet
 manifest.py.
 
-Seit 30.09.2026 liest sie nicht mehr nur `Werkstatt/Repos`, sondern jede Wurzel
+Seit 30.09.2026 liest sie nicht mehr nur `Werkstatt`, sondern jede Wurzel
 aus `quellen.py`. Zwei Regeln unterscheiden die Wurzeln:
 
 - `nur_git=True` (Bereich REPOS): nur Ordner mit eigenem `.git` werden eine
@@ -184,10 +184,15 @@ def ordner_scannen(
     wurzel: str = "repos",
     nur_git: bool = False,
     ohne: tuple[str, ...] | frozenset[str] = (),
+    ohne_git: bool = False,
     dateien: bool = False,
 ) -> list[Repo]:
     """Alle Ordner einer Wurzel, alphabetisch. Gefiltert nach der Sperrliste.
 
+    Mit `nur_git=True` (Bereich REPOS) kommen nur Ordner mit eigenem `.git`.
+    Mit `ohne_git=True` (Bereich WERKSTATT seit 14.10.2026) werden Git-Klone
+    uebersprungen - seit dem Umzug liegen die Klone direkt unter Werkstatt und
+    gehoeren zum Bereich REPOS, nicht zur Ablage-Zeile.
     Mit `dateien=True` kommen zusaetzlich die Werkzeugdateien der Wurzel selbst
     dazu (`scan.ist_werkzeug`).
     """
@@ -201,6 +206,8 @@ def ordner_scannen(
             if d.name in gesperrt or d.name.startswith("."):
                 continue
             if nur_git and not (d / ".git").is_dir():
+                continue
+            if ohne_git and (d / ".git").is_dir():
                 continue
             gefunden.append(_ein_repo(d, wurzel=wurzel, pfad_rel=d.name))
         elif dateien and ist_werkzeug(d, d.name):
@@ -244,7 +251,8 @@ def tief_scannen(wurzel_obj: quellen.Wurzel, basis: Path | str) -> list[Repo]:
     basis = Path(basis)
     ergebnis = ordner_scannen(
         basis, wurzel=wurzel_obj.kennung, nur_git=wurzel_obj.nur_git,
-        ohne=wurzel_obj.ohne, dateien=wurzel_obj.dateien,
+        ohne=wurzel_obj.ohne, ohne_git=wurzel_obj.ohne_git,
+        dateien=wurzel_obj.dateien,
     )
     if wurzel_obj.tiefe <= 1 or not basis.is_dir():
         return ergebnis

@@ -35,7 +35,7 @@ geplante Aufgabe und Handstart haben vier verschiedene Pythons.
 | `Agenten/Hermes/tools/python-3.14.7…` | 3.14.7 | Gateway/Launcher; `site-packages` traegt **nur pip**, Fremdpakete liegen in `installs/<hash>/environments/<id>/venv` |
 | `Agenten/MCP-Server/<server>/.venv` | 3.13.15 | je MCP-Server (`.venv.bak-20260918` = alte uv-Bauer) |
 | `Agenten/Werkzeuge/repos-zentrale/.venv` | 3.13.15 | Startfenster der Repos |
-| `Werkstatt/Repos/<repo>/.venv` | je Repo | Fremd-Repo-Agenten (10 Klone) |
+| `Werkstatt/<repo>/.venv` | je Repo | Fremd-Repo-Agenten (10 Klone) |
 | Docker-Sandbox (`hermes-*`) | eigener Python | `terminal`/`execute_code`; Host-Pfade (`C:/…`) sind dort nicht dieselbe Welt |
 
 **Hermes-Cron-Wachen laufen unter dem Interpreter von Hermes, nicht in der venv

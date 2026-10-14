@@ -28,11 +28,11 @@
 
 $ErrorActionPreference = 'Continue'
 
-$exe = Join-Path $PSScriptRoot '..\..\Werkstatt\Repos\kraken-cli\target\release\kraken.exe'
+$exe = Join-Path $PSScriptRoot '..\..\Werkstatt\kraken-cli\target\release\kraken.exe'
 if (-not (Test-Path $exe)) {
     Write-Error ("kraken-cli nicht gebaut: $exe`n" +
         "Bauen (dauert beim ersten Mal laenger, braucht Rust):`n" +
-        "  cd <BrainFiles>\Werkstatt\Repos\kraken-cli`n" +
+        "  cd <BrainFiles>\Werkstatt\kraken-cli`n" +
         "  cargo build --release --bin kraken")
     exit 1
 }

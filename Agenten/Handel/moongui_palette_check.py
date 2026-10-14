@@ -30,7 +30,7 @@ from tkinter import font as tkfont
 HANDEL = os.path.dirname(os.path.abspath(__file__))
 WERKZEUGE = os.path.join(os.path.dirname(HANDEL), "Werkzeuge")
 REPO = os.path.abspath(os.path.join(
-    os.path.dirname(HANDEL), "..", "Werkstatt", "Repos",
+    os.path.dirname(HANDEL), "..", "Werkstatt",
     "moon-dev-ai-agents"))
 ZIEL = os.path.join(REPO, "moongui.py")
 

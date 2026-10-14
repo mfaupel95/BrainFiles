@@ -145,7 +145,7 @@ einer **Boersenliste**:
 
 `kraken` (Spot-Spur, EUR) · `nautilus_kraken` / `nautilus_kraken_futures` (Papier-Arme,
 nautilus-venv) · `moondev_marktlage.live_kraken.py` (abgetrennter Live-Zweig, nicht verdrahtet)
-· `kraken_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` (Fremd-Bot, eigener Treiber
+· `kraken_agent` aus `Werkstatt/moon-dev-ai-agents` (Fremd-Bot, eigener Treiber
 `MaxHirn-MoonDev-Dauerlauf`).
 
 ## Dasselbe Paar, zwei Schreibweisen (Kraken)

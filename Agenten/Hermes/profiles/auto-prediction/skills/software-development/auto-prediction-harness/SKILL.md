@@ -15,8 +15,8 @@ metadata:
 Research-only prediction-market harness (fork `mfaupel95/Auto-Prediction`, upstream
 `TraderAlice/Auto-Prediction`). Studio UI + control plane + discovery + fixtures.
 Repo: `C:\Users\faupe\Documents\BrainFiles\Agenten\Handel\OpenAlice\workspaces\workspaces\auto-prediction-modest-birch-bridge`.
-It lives outside `Werkstatt\Repos\` on purpose (no junction on O:); relocation to
-`Werkstatt\Repos\auto-prediction` requires updating `terminal.cwd`.
+It lives outside `Werkstatt\` on purpose (no junction on O:); relocation to
+`Werkstatt\auto-prediction` requires updating `terminal.cwd`.
 
 ## When to Use
 

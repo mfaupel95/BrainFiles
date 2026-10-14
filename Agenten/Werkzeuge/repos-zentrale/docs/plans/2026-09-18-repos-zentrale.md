@@ -4,7 +4,7 @@
 `docs/design/2026-09-18-repos-zentrale-design.md` §10). Der Plan bleibt als
 Begruendung der Aufteilung stehen.
 
-**Ziel:** Ein Startfenster fuer alle Projekte unter `Werkstatt/Repos/`, mit je
+**Ziel:** Ein Startfenster fuer alle Projekte unter `Werkstatt/`, mit je
 Repo belegtem Startbefehl, Bot-Knopf und sichtbarem Zustand.
 **Architektur:** Vier Module mit je einer Verantwortung (Platte lesen, Manifest
 und Gruppe bestimmen, Kommandos bauen/ausfuehren, Fenster) plus ein

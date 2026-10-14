@@ -56,3 +56,39 @@ Dry-Run gegen einen anderen Markt: `bun run src/index.ts` mit den env-Vars aus
 einem Temp-cwd, ~40 s laufen lassen — die Logzeile muss den neuen Marktpreis
 zeigen (WETH ~2506 USDC, nicht MON ~0.024) und Sim-Orders in den neuen
 Basis-Einheiten posten. `bun test` gruen halten.
+
+## Monad-Wallet-Key erzeugen (PRIVATE_KEY fuer einen echten Lauf)
+
+Monad ist EVM-kompatibel — ein Standard-Ethereum-Key signiert dort. Frischen
+Key mit ethers erzeugen und IMMER die Gegenprobe fahren (Adresse
+deterministisch aus dem privaten Key ableiten und vergleichen):
+
+```bash
+cd <repo>   # node_modules mit ethers muss hier liegen
+KEYOUT='C:/.../cache/scratch/key_out.txt' node -e "const {Wallet}=require('ethers'); const fs=require('fs'); const w=Wallet.createRandom(); const p=new Wallet(w.privateKey); if(p.address.toLowerCase()!==w.address.toLowerCase()) throw new Error('Gegenprobe'); fs.writeFileSync(process.env.KEYOUT,'ADRESSE='+p.address+'\nPRIVATE_KEY='+w.privateKey+'\n');"
+```
+
+- **bun scheitert bei ethers:** bun 1.4.2 bricht mit `Cannot find module
+  '@noble/hashes/crypto'` ab (eigene noble-Implementierung gegen das
+  npm-Paket des Repos). Fuer JS-Krypto-Aufrufe in einem bun-Repo immer
+  `node -e` aus dem Repo-cwd (Node 26 aus den Hermes-tools tut es).
+- **Ein ESM-Skript AUSSERHALB des Repos findet ethers nicht** (`node
+  /pfad/skript.mjs` gibt ERR_MODULE_NOT_FOUND): ESM-Imports werden relativ zum
+  SKRIPT aufgeloest, nicht zum cwd. `node -e` (CJS-require) loest vom
+  Arbeitsverzeichnis auf — deshalb der Einzeiler statt einer Skriptdatei.
+- Der Key landet in die .env nach dem Muster der SKILL.md (Backup, byte-
+  genauer Zeilenersatz, `git check-ignore -v .env` VOR und NACH dem
+  Schreiben); Scratch-Dateien mit dem Key danach loeschen.
+- **`PRIVATE_KEY` gesetzt allein schaltet NICHTS scharf:** jev-trader bleibt
+  im Trockenlauf, solange `DRY_RUN=true` steht (oder `MODEL=mock`). Live wird
+  es erst durch Entfernen von DRY_RUN plus Freigabekette (handel_erlaubt +
+  Freigabefenster) — der Key ist nur die Voraussetzung, nicht der Schalter.
+- **Vor Live: pruefen, dass das Modell WIRKLICH antwortet — ein gesetzter
+  API-Key ist kein Beweis fuer ein funktionierendes Modell.** `MODEL=jev`
+  mit gesetztem `TYPESAFE_AI_API_KEY` schlug mit `billing_error: "Your
+  organization has no available TypeSafe API credits"` fehl — der Key war
+  da, die Credits nicht. Ein Key ohne Guthaben ist ein harter Live-Blocker,
+  getrennt von "Key fehlt". Vor jeder Live-Zusage einen kurzen Lauf mit
+  `MODEL=jev` machen und eine ECHTE Entscheidung (nicht nur die
+  Startup-Zeile) im Log sehen; ein `billing_error` je `decide()`-Aufruf ist
+  der Befund. Nie mit `MODEL=mock` echtes Geld handeln (Zufalls-SELL/BUY).

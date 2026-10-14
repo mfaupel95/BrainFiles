@@ -69,7 +69,7 @@ Drei Regeln, die daraus folgen:
 
 Nicht fremd sind: neue eigene Spuren, eigene Werkzeuge, generierte
 Laufzeitstaende (die sind *unser* Betrieb, nur nicht versioniert), und
-`Werkstatt/Repos` als Ganzes (das ist eine *Ablage* von Klonen, kein einzelner
+`Werkstatt` als Ganzes (das ist eine *Ablage* von Klonen, kein einzelner
 Fremdbaum — sie steht schon in `repo-flotte`).
 
 ## 3. Die eine Quelle: `Agenten/FREMD-Liste.json`
@@ -142,7 +142,7 @@ gross-/kleinschreibungs-tolerant (Windows).
 | `repos-zentrale/fuellen.py` | `KURATIERT` verliert die Fremd-Eintraege, die aus der Liste kommen — eine Quelle, nicht zwei |
 | `repos-zentrale/fenster.py` | Statuszeile nennt bei einem fremden Projekt "fremd — nur lesen"; Zaehlung im Kopf ohne Fremde |
 | `Agenten/Werkzeuge/bestand.py` (neu, aus dem Pruefskript) | `--mit-fremd` zeigt beide Zahlen; Standard ohne |
-| `Agenten/Werkzeuge/fundus-suche.ps1` | liest die Liste und meldet fremde Baeume getrennt (heute durchsucht es `Werkstatt/Repos` und `MaxHirn/skills` nach eigenem Wissen) |
+| `Agenten/Werkzeuge/fundus-suche.ps1` | liest die Liste und meldet fremde Baeume getrennt (heute durchsucht es `Werkstatt` und `MaxHirn/skills` nach eigenem Wissen) |
 | `Agenten/Hermes/scripts/systempruefung.ps1` | ein Block "Grenze": Liste lesbar, Eintraege vorhanden, keine Ueberschneidung |
 
 `FREMD.md` daneben ist die **lesbare** Fassung fuer Max (Tabelle: Pfad, Was,

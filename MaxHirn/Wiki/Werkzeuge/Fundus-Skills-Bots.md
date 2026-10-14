@@ -16,7 +16,7 @@ summary: 'Wo Skills liegen, wie der Fundus durchsucht wird, welche Bots existier
 |---|---|---|
 | `Agenten/Hermes/skills/` | **geladene** Bibliothek (jede Anfrage zahlt mit) | entdoppelt: 331 SKILL.md → **90 aktiv** (`hermes skills list` 88 enabled) |
 | `Agenten/Hermes/skills/.archive/` | weggelegte Skills (werden NICHT geladen) | zurueck per `hermes curator restore <name>` |
-| `MaxHirn/skills/` + `Werkstatt/Repos/*` | **Fremd-Fundus** (660 MB / 238 SKILL.md bzw. 356/293 in 18 Repos) | bewusst NICHT importiert (frueher ~14.700 Tokens je Anfrage) |
+| `MaxHirn/skills/` + `Werkstatt/*` | **Fremd-Fundus** (660 MB / 238 SKILL.md bzw. 356/293 in 18 Repos) | bewusst NICHT importiert (frueher ~14.700 Tokens je Anfrage) |
 
 **Nichts aus fremden Baeumen importieren** (Skill `skill-library-sync`). Fremde SKILL.md sind
 Material zum Nachlesen, keine Faehigkeiten dieses Hauses.
@@ -74,7 +74,7 @@ mitgeschriebene Referenzdateien. Wer dort ergaenzen will, muss zuerst Inhalt nac
 ## Bots
 
 - **26 Repo-Bots** = Hermes-Profile unter `Agenten/Hermes/profiles/<name>/` mit
-  `terminal.cwd = Werkstatt/Repos/<name>`; `copilot-worktrees` ist KEINE Repo (Worktree-Sammlung).
+  `terminal.cwd = Werkstatt/<name>`; `copilot-worktrees` ist KEINE Repo (Worktree-Sammlung).
   Dazu Sonderprofile ohne Repo (`nous`, `hermes-wartung`, `lotse`).
 - Aufruf im Chat: `/bots` (Liste), `/bot NAME NACHRICHT` = frischer Einzelauftrag
   (`hermes -p NAME chat -q`, Kaltstart 30-60 s).

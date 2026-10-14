@@ -243,7 +243,7 @@ Zwei Regeln fuer den Umgang mit solchen Funden:
   ohne dass ein Geheimnis im Protokoll steht.
 
 Werkzeug fuer den Scan (liest `*.env`, `.env.example/.template/.sample` in Wurzel
-und `Werkstatt/Repos`, meldet Pfad + Schluesselname + Laenge, nie den Wert):
+und `Werkstatt`, meldet Pfad + Schluesselname + Laenge, nie den Wert):
 `Agenten/Hermes/cache/scratch/keys_bereinigen.py`. Ausgenommen bleiben
 `Wissen/Zugaenge.md` (Stufe 0) und die per `.gitignore` gesperrten `.env`-Dateien.
 

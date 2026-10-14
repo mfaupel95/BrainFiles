@@ -631,7 +631,7 @@
       ],
       "venv_pflicht": true,
       "port": 8000,
-      "anleitung": "Ein Server, drei Rollen: uvicorn liefert REST-API, die TERMINAL-Oberflaeche und die Marketing-Seite (frontend/dist ist gebaut, 279 Dateien / 33,8 MB). WICHTIG - die Adressen sind NICHT austauschbar: die Oberflaeche liegt auf http://127.0.0.1:8000/app.html, waehrend '/' die Marketing-Startseite ausliefert (34 KB, kein root-div). Die API-Doku ist /docs (Swagger UI). Das venv steht (Python 3.13.15, 295 Pakete, 'pip check' sauber). Die .env ist aus der Vorlage erzeugt; JWT_SECRET_KEY, CACHE_SIGNING_KEY und BOOTSTRAP_ADMIN_PASSWORD sind mit Zufallswerten gefuellt - die erste Anmeldung lautet BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD aus dieser .env (Passwort nach der ersten Anmeldung aendern). ALLE Marktdaten-Schluessel sind freiwillig: ohne sie laeuft die Oberflaeche auf eingebauten Ersatzdaten. Fuer lokale Sprachmodelle zeigt OLLAMA_BASE_URL schon auf 127.0.0.1:11434. FALLE: 'npm run build' im Frontend SCHEITERT, wenn es aus dem C:-Pfad laeuft - vite loest die Junction auf O: auf und lehnt den absoluten Eingabepfad ab; ein gescheiterter Lauf LEERT dabei frontend/dist. Deshalb geht der Bau-Befehl unten ausdruecklich ueber O:\\Werkstatt\\Repos\\OpenTerminalUI\\frontend (so geprueft, exit 0, 58,9 s). Schluessel setzt laut README der Assistent (make keys bzw. scripts/setup-keys.sh); sie landen alle in derselben .env. Docker-Weg waere 'docker compose up -d' (backend + redis + postgres). GEMESSEN beim Beleglauf: der Server ist nach rund 57 s bereit, '/' antwortet 200 (text/html), '/api/health' antwortet 401 - die API ist authentifiziert, ohne Anmeldung geht dort nichts. Zwei Dienste fehlen und werden sauber abgefangen: Redis ist nicht da (L2-Cache und Quote-Bus fallen auf Speicher zurueck) und die Kite-Anbindung meldet fehlende Zugangsdaten - beides still, kein Startfehler. Wer Redis will: 'docker compose up -d'.",
+      "anleitung": "Ein Server, drei Rollen: uvicorn liefert REST-API, die TERMINAL-Oberflaeche und die Marketing-Seite (frontend/dist ist gebaut, 279 Dateien / 33,8 MB). WICHTIG - die Adressen sind NICHT austauschbar: die Oberflaeche liegt auf http://127.0.0.1:8000/app.html, waehrend '/' die Marketing-Startseite ausliefert (34 KB, kein root-div). Die API-Doku ist /docs (Swagger UI). Das venv steht (Python 3.13.15, 295 Pakete, 'pip check' sauber). Die .env ist aus der Vorlage erzeugt; JWT_SECRET_KEY, CACHE_SIGNING_KEY und BOOTSTRAP_ADMIN_PASSWORD sind mit Zufallswerten gefuellt - die erste Anmeldung lautet BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD aus dieser .env (Passwort nach der ersten Anmeldung aendern). ALLE Marktdaten-Schluessel sind freiwillig: ohne sie laeuft die Oberflaeche auf eingebauten Ersatzdaten. Fuer lokale Sprachmodelle zeigt OLLAMA_BASE_URL schon auf 127.0.0.1:11434. FALLE: 'npm run build' im Frontend SCHEITERT, wenn es aus dem C:-Pfad laeuft - vite loest die Junction auf O: auf und lehnt den absoluten Eingabepfad ab; ein gescheiterter Lauf LEERT dabei frontend/dist. Deshalb geht der Bau-Befehl unten ausdruecklich ueber O:\\Werkstatt\\OpenTerminalUI\\frontend (so geprueft, exit 0, 58,9 s). Schluessel setzt laut README der Assistent (make keys bzw. scripts/setup-keys.sh); sie landen alle in derselben .env. Docker-Weg waere 'docker compose up -d' (backend + redis + postgres). GEMESSEN beim Beleglauf: der Server ist nach rund 57 s bereit, '/' antwortet 200 (text/html), '/api/health' antwortet 401 - die API ist authentifiziert, ohne Anmeldung geht dort nichts. Zwei Dienste fehlen und werden sauber abgefangen: Redis ist nicht da (L2-Cache und Quote-Bus fallen auf Speicher zurueck) und die Kite-Anbindung meldet fehlende Zugangsdaten - beides still, kein Startfehler. Wer Redis will: 'docker compose up -d'.",
       "befehle": [
         {
           "was": "App im Browser oeffnen (/app.html, NICHT /)",
@@ -647,7 +647,7 @@
           "cmd": [
             "cmd",
             "/c",
-            "cd /d O:\\Werkstatt\\Repos\\OpenTerminalUI\\frontend && npm run build"
+            "cd /d O:\\Werkstatt\\OpenTerminalUI\\frontend && npm run build"
           ],
           "hinweis": "58,9 s; ueber C: scheitert vite und leert dist/ - dann diesen Befehl nutzen"
         }
@@ -977,9 +977,9 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "python",
-      "notiz": "ML-Backtest-Pruefstand (dieselbe Ablage wie Werkstatt/Repos/intelligent-trading-bot: die Wurzel Repos erreicht diesen Ordner ueber eine Junction)",
+      "notiz": "ML-Backtest-Pruefstand (dieselbe Ablage wie Werkstatt/intelligent-trading-bot: die Wurzel Repos erreicht diesen Ordner ueber eine Junction)",
       "warnungen": [
-        "Junction-Ziel von Werkstatt/Repos/intelligent-trading-bot - eine physische Ablage, kein zweites Exemplar"
+        "Junction-Ziel von Werkstatt/intelligent-trading-bot - eine physische Ablage, kein zweites Exemplar"
       ]
     },
     {

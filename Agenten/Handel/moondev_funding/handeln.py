@@ -3,7 +3,7 @@
 QUELLE IST DER BOT, NICHT EIN NACHBAU
 ------------------------------------
 Die Zahlen kommen aus dem geklonten Fremd-Repo
-`Werkstatt/Repos/moon-dev-ai-agents` - konkret aus
+`Werkstatt/moon-dev-ai-agents` - konkret aus
 `src.agents.fundingarb_agent`, das ueber `src.nice_funcs_hl.get_funding_rates()`
 alle Perpetuals von Hyperliquid abfragt und bei einer Jahres-Funding-Rate ueber
 seiner Schwelle (`YEARLY_FUNDING_THRESHOLD = 100`) einsteigt. Dieses Modul ruft
@@ -100,7 +100,7 @@ SCHREIBEN = True
 
 # Wo der Bot liegt. Das Repo ist Fremdware (Durchgangsware) und darf fehlen -
 # dann sagt diese Spur das und tut nichts, statt Zahlen zu erfinden.
-BOT = os.path.join(HANDEL, os.pardir, os.pardir, "Werkstatt", "Repos",
+BOT = os.path.join(HANDEL, os.pardir, os.pardir, "Werkstatt",
                    "moon-dev-ai-agents")
 BOT_MODUL = os.path.join(BOT, "src", "nice_funcs_hl.py")
 # Die Funktion des Bots braucht ihre eigenen Pakete (pandas, requests). Sie

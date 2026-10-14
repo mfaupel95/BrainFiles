@@ -37,7 +37,7 @@ foreach ($s in $skripte) {
         # Die Quelle eine Ebene hoeher.
         [regex]::Escape("'$alteQuelle'") = "'$neueQuelle'"
         # Modelle in die Ausschlussliste von robocopy. GitHub steht dort noch
-        # aus alter Zeit - der Ordner heisst jetzt Werkstatt\Repos.
+        # aus alter Zeit - der Ordner heisst jetzt Werkstatt.
         '/XD GitHub'                     = '/XD Modelle Repos Sitzungen Worktrees'
     } -DryRun:$DryRun
     $gesamt += $n

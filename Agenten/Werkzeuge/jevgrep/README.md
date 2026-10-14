@@ -1,7 +1,7 @@
 # jevgrep (`jg`) — Quelltext finden durch Fragen
 
 Haus-Installation von [jevgrep](https://github.com/dzhng/jevgrep) (MIT), gepinnt auf
-**0.7.0**. Der Klon liegt daneben in `Werkstatt/Repos/jevgrep` (origin =
+**0.7.0**. Der Klon liegt daneben in `Werkstatt/jevgrep` (origin =
 `mfaupel95/jevgrep`, upstream = `dzhng/jevgrep`).
 
 ## Aufruf

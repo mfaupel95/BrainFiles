@@ -40,7 +40,7 @@ dort angemeldet.
    | .full_name] | sort'` zaehlt **alle** Forks des Kontos, also auch die schon
    vorhandenen. Die Zahl gegen Erwartung **plus** Altbestand halten.
 4. **Lokal arbeitsfaehig machen.** Ein Verzeichnis je Repo unter
-   `Werkstatt/Repos/` (Fremd-Repos sind Durchgangsware, nie im Vault):
+   `Werkstatt/` (Fremd-Repos sind Durchgangsware, nie im Vault):
    `git clone --quiet --depth 1 https://github.com/<konto>/<name>.git <dir>`,
    danach `git -C <dir> remote add upstream https://github.com/<upstream>.git`.
    Shallow genuegt fuer Bot-Arbeitsplaetze; `git fetch --unshallow` holt die volle
@@ -70,7 +70,7 @@ dort angemeldet.
    hochstufen. Dazu die Flotten-Doku `MaxHirn/Wissen/Repo-Bots.md` (Zahl +
    Tabelle) aktualisieren. `/bots` liest Profile von der Platte - kein
    SkillsBot-Neustart noetig (der ist nur fuer NEUE Befehle).
-6. **Zaehlen, welche Bots fehlen, gegen die Platte:** `ls Werkstatt/Repos/` gegen
+6. **Zaehlen, welche Bots fehlen, gegen die Platte:** `ls Werkstatt/` gegen
    `ls Agenten/Hermes/profiles/` halten — ein Ordner in profiles/ mit config.yaml
    ist ein Bot. Ein Verzeichnis unter Repos/ OHNE `.git` (z. B. eine
    Worktree-Sammlung) ist keine Repo und bekommt keinen Bot. Die Zaehlung als
@@ -229,7 +229,7 @@ dort angemeldet.
   dem Klon. Vor jedem Push in ein eigenes Repo erst
   `git fetch --unshallow <upstream>` und die Tiefe gegenpruefen
   (`git rev-list --count HEAD`), dann laeuft der Push durch. Betrifft die ganze
-  Flotte: die Klone unter `Werkstatt/Repos/` sind shallow angelegt.
+  Flotte: die Klone unter `Werkstatt/` sind shallow angelegt.
 - **Ein Klon, dessen `origin` aufs ORIGINAL zeigt, ist KEIN Flotten-Klon.**
   Kommt ein Repo als Direkt-Klon des Upstreams an, nachtraeglich auf die
   Flotten-Form bringen: `gh api -X POST "repos/<upstream>/forks"`, in einer
@@ -314,7 +314,7 @@ dort angemeldet.
   `auth.json` des Profils. Ein frisch aus `profiles/.deleted/` zurueckgeholtes
   Profil hat noch keine Sitzung und faellt sofort durch.
 - **`profiles/.deleted/` sind keine Bots.** Weggelegte Profile zaehlen bei keiner
-  Flottenzaehlung mit (sonst stimmt `ls profiles/` gegen `ls Werkstatt/Repos/`
+  Flottenzaehlung mit (sonst stimmt `ls profiles/` gegen `ls Werkstatt/`
   nicht) und sind per `/bot` nicht erreichbar. Bei "Bot fehlt" zuerst hier
   nachsehen, bevor ein Profil neu angelegt wird.
 - **`hermes config set` schneidet den Kommentar-Schluss der `config.yaml` ab.**

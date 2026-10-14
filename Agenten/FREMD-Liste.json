@@ -157,11 +157,12 @@
       "warum": "Siehe OmniRoute."
     },
     {
-      "pfad": "Werkstatt/Repos",
+      "pfad": "Werkstatt",
       "art": "Klonsammlung",
-      "herkunft": "47 Klone fremder Projekte, je mit origin=Fork und upstream=Original",
+      "herkunft": "53+ Klone fremder Projekte direkt in Werkstatt (seit 14.10.2026; vorher Werkstatt/Repos), nur Git-Ordner zaehlen",
       "regel": "nur lesen; Pflege ausschliesslich ueber Agenten/Werkzeuge/repos-updaten.py",
-      "warum": "Eigene Ablage, aber fremder Inhalt: Bestandszahlen des Hauses gehoeren ohne sie gerechnet."
+      "warum": "Eigene Ablage, aber fremder Inhalt: Bestandszahlen des Hauses gehoeren ohne sie gerechnet. Nur_git-Regel: Ablagen und Projekte unter Werkstatt sind NICHT fremd.",
+      "nur_git": true
     },
     {
       "pfad": "Werkstatt/Ausgemustert",

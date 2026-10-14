@@ -127,7 +127,7 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
    Sicherheitsscan mit Verdikt (`SAFE` / `BLOCKED`), dann
    `Installed: <kategorie>/<name>`. `--force` nur bei blockiertem Verdikt und nur
    nach dem Lesen der Scanbegründung. Fehlt ein `name:` im Frontmatter, `--name` setzen.
-   Fuer einen Kandidaten aus einem Klon (Fundus, `Werkstatt/Repos`) gibt es **keinen**
+   Fuer einen Kandidaten aus einem Klon (Fundus, `Werkstatt`) gibt es **keinen**
    Hub-Scan — den vor dem Uebernehmen selbst scannen: Ablauf, Regelbedeutungen und
    die zwei Fallen des Scanners in `references/sicherheitsscan.md`. Die fertige
    Schleife (alle Skill-Ordner einer oder mehrerer Wurzeln, Hash-Dedupe,
@@ -149,7 +149,7 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
 Fallen:
 
 - **Mehrere Skills aus einem Klon: parallele Delegation mit Adoptionsauftrag.**
-  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt/Repos) ins Spiel, ist je
+  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt) ins Spiel, ist je
   Skill dieselbe Adaption faellig: Kern behalten, fremde Werkzeugnamen auf
   Hermes-Werkzeuge umsetzen, auf ~6.000 Zeichen kuerzen, Beschreibung kurz und
   selbsttragend. Harte Grenze fuer die Beschreibung: **60 Zeichen gesamt**, ein

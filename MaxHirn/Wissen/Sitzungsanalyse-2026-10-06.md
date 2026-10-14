@@ -83,7 +83,7 @@ liq_wand -0,30 %, macd_mtf +0,172 %).
 - [[20260830-hermes|Hermes-Agent]] (Python) als Hauptagent
 - Claude-Code (CLI) als zweiter Agent
 - Codex (Rust) als dritter Agent
-- [[20260916-repo-bots|26 Repo-Bots]] (je Profil in Werkstatt/Repos)
+- [[20260916-repo-bots|26 Repo-Bots]] (je Profil in Werkstatt)
 - [[20260916-agent-reach|Agent-Reach]] (lesender Internet-Zugang)
 - 13 MCP-Server (4-18 je Gruppe)
 - [[20260910-brainfiles-bus|Telegram-Bus]] (BrainFiles-Bus)
@@ -116,7 +116,7 @@ Routinen (PowerShell): `sichern.ps1`, `zweitkopie.ps1`, `ausserhaus-kopie.ps1`,
   LogiOptions, ROCCAT SWARM, cua-driver)
 - Python-Versionen (3.13, 3.14, venv-Konfigurationen)
 - Node.js/npm (Volta, globale Tools, PATH)
-- Git/GitHub (BrainFiles-Repo, Handel-Stack-Repo, 47 Klone in Werkstatt/Repos)
+- Git/GitHub (BrainFiles-Repo, Handel-Stack-Repo, 47 Klone in Werkstatt)
 - SQLite-Datenbanken (state.db, zustand.db, *_index.db)
 - Obsidian-Vault (Wissen/, Archiv/, Wiki/, Dashboard.md, INDEX.md, TASKS.md)
 - [[20260913-projektatlas|Projektatlas]] (Rust-Werkzeug, SQLite-Karte je Repo)

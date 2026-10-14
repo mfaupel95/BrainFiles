@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `sentiment_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` sammelt
+Der Agent `sentiment_agent` aus `Werkstatt/moon-dev-ai-agents` sammelt
 Texte zu seinen Tokens, bewertet sie (Stimmung zwischen -1 und +1) und meldet,
 wenn der Betrag ueber `SENTIMENT_ANNOUNCE_THRESHOLD` (0.4) liegt. Seine Texte
 kommen von Twitter ueber `twikit` (Cookies, Konto noetig), seine Bewertung aus

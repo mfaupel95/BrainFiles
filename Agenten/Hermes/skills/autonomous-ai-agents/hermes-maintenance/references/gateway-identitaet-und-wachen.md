@@ -174,8 +174,22 @@ mit `last_heartbeat_at` - das ist der Zeitpunkt, ab dem die Datei nicht mehr gil
 Der 5-h-Ausfall (13.10.2026) war KEIN Erkennungsfehler: der Waechter-Task war
 **deaktiviert** (letzter Lauf 12.10. 17:43, erst ~23:53 wieder aktiviert), also lief
 er im Ausfall-Fenster gar nicht und konnte den Gateway nicht neu starten. Ein
-deaktivierter Task kann sich nicht selbst reaktivieren - die einzige Verteidigung
-ist eine unabhaengige Pruefung, dass der Task ENABLED ist (taegliche Systempruefung).
+deaktivierter Task kann sich nicht selbst reaktivieren, und ein NUR-meldender Check
+laesst das Fenster bis zum naechsten Crash offen (13.10.: der Morgenbericht meldete
+den deaktivierten Waechter, 8 h spaeter kam der Ausfall). Die Systempruefung aktiviert
+kritische Waechter deshalb SELBST wieder: Block 9 fuehrt die Liste $kritischeWaechter
+(derzeit MaxHirn-Gateway-Waechter), reaktiviert per `schtasks /Change /ENABLE` und
+meldet es als ``[erledigt]`` - gewollt Deaktivierte bleiben in der Allowlist
+$gewolltDeaktiviert unangetastet. ZWEI FALLEN: (1) `Enable-ScheduledTask` scheitert
+auf diesen Tasks mit 0x80070005 (Administrationsrechte, auch fuer den eigenen
+Limited-Task) - `schtasks /Change /ENABLE`|`/DISABLE` laeuft ohne Elevation; eine
+nicht-erhoehte Routine nimmt IMMER schtasks. (2) Eine Selbstheilung nie am ECHTEN
+Waechter testen (das hiesse, ihn zum Test zu deaktivieren = schutzlos): einen
+Wegwerf-Task anlegen (`schtasks /Create /TN 'MaxHirn-<x>Test' /TR '...' /SC ONCE /ST
+23:59 /F`) und deaktivieren, den Namen TEMPORAER in die kritische Liste aufnehmen,
+den Lauf ausfuehren, die ``[erledigt] wieder aktiviert``-Zeile im Protokoll
+nachweisen, dann Liste zurueckbauen, Task loeschen und die vom Testlauf
+ueberschriebenen Berichte aus einer Sicherung zurueckschreiben.
 Diagnose, ob ein Task in einem Zeitfenster ueberhaupt lief: `wevtutil qe
 "Microsoft-Windows-TaskScheduler/Operational" /q:"*[System[TimeCreated[@SystemTime>=
 '<start>Z' and @SystemTime<='<end>Z']]]" /f:text /c:200` und nach dem Tasknamen

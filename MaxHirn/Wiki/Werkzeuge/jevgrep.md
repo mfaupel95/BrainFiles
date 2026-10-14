@@ -27,7 +27,7 @@ benutzbar.**
 | Installation | `Agenten/Werkzeuge/jevgrep/` (npm-Paket `@dzhng/jevgrep` **0.7.0** in `node_modules`) |
 | Aufruf | `Agenten\Werkzeuge\jevgrep\jg.cmd` oder Wurzel-Aufrufer `.\jevgrep.cmd` (aus jedem Verzeichnis) |
 | Voraussetzung | Node 22+ auf dem PATH (hier Node 26.7.0); kein npm, kein Bun, kein ripgrep noetig |
-| Klon | `Werkstatt/Repos/jevgrep` (origin `mfaupel95/jevgrep`, upstream `dzhng/jevgrep`) |
+| Klon | `Werkstatt/jevgrep` (origin `mfaupel95/jevgrep`, upstream `dzhng/jevgrep`) |
 | Nachweis | `python Agenten/Werkzeuge/jevgrep/test_jevgrep.py` — 6 Tests, 6,7 s, ohne Netz und ohne Schluessel |
 
 ## Was fehlt: der Schluessel
@@ -286,5 +286,5 @@ jg "Wie wird ein Freigabebeleg geprueft, bevor eine Order ausgefuehrt wird?" Age
 TypeSafe-kompatiblen Endpunkts auf einem freien Port, biegt `XDG_CONFIG_HOME` auf einen
 Tempordner (die echte Anmeldung bleibt unberuehrt) und prueft: Version, `files` ohne
 Netzanfrage, `auth` gegen die Attrappe, `doctor`, eine echte Suche ueber
-`Werkstatt/Repos/jevgrep/apps` — und dass die Anfragen wirklich `/systemone` mit
+`Werkstatt/jevgrep/apps` — und dass die Anfragen wirklich `/systemone` mit
 Bearer-Kopf und mitgeschicktem Zustand treffen.

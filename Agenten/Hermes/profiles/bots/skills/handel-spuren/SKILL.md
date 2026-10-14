@@ -124,7 +124,7 @@ Wenn eine belastbare Spur netto negativ ist UND der Parametersuche nichts überl
 
 ## Ziplime — externer Backtesting-Engine
 
-Eine Anfrage, Ziplime (Werkstatt/Repos/ziplime) fuer die Handelsoptimierung zu
+Eine Anfrage, Ziplime (Werkstatt/ziplime) fuer die Handelsoptimierung zu
 installieren/starten/nutzen, ist eine eigene Klasse: externer Aktien/ETF/Futures-
 Backtester, KEIN Krypto-Perpetual-Engine. Setup, die Polars-Versionsfalle
 (2.0 bricht, 1.24.0 hat WindowsPath-Bug, 1.44.2 funktioniert) und der

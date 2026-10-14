@@ -5,12 +5,12 @@ tags: [ki-agenten, betrieb]
 created: 2026-09-16
 updated: 2026-09-21
 related: [20260830-hermes, 20260830-routinen]
-summary: 'Ein Hermes-Profil je Fremd-Repo in Werkstatt/Repos, erreichbar per Telegram ueber /bots und /bot NAME im SkillsBot.'
+summary: 'Ein Hermes-Profil je Fremd-Repo in Werkstatt, erreichbar per Telegram ueber /bots und /bot NAME im SkillsBot.'
 ---
 
 # Repo-Bots: Flottenstand und Telegram-Zugang
 
-Je Fremd-Repo in `Werkstatt/Repos/` betreibt ein Hermes-Bot (Profil unter
+Je Fremd-Repo in `Werkstatt/` betreibt ein Hermes-Bot (Profil unter
 `Agenten/Hermes/profiles/<name>/`, Arbeitsverzeichnis `terminal.cwd` auf den
 Klon). Die Profile wurden mit `hermes profile create --clone` angelegt; sie
 erben Modell, Werkzeuge und die getrimmte Skill-Bibliothek des Startprofils.
@@ -44,7 +44,7 @@ vom Arbeitsverzeichnis des SkillsBot abhaengt.
 Stand am 23.09.2026 aus `profiles/*/config.yaml` gezaehlt (nicht aus dieser
 Tabelle); die Platte bleibt die Wahrheit.
 
-| Repo (Werkstatt/Repos) | Bot | Besonderheit |
+| Repo (Werkstatt) | Bot | Besonderheit |
 |---|---|---|
 | Agent-Reach | agent-reach | Internet lesen ohne API-Gebuehren |
 | agent-trade-kit | agent-trade-kit | OKX Trading-MCP-Server, neu 19.09.2026 |
@@ -136,7 +136,7 @@ Worktree-Sammlung zu den Schwester-Repos.
 ## Profil ohne Repo: hermes-wartung (21.09.2026)
 
 Kein Fremd-Repo, sondern der Hermes-Baum selbst: Arbeitsverzeichnis
-`Agenten/Hermes` statt `Werkstatt/Repos/<name>`. Angelegt mit
+`Agenten/Hermes` statt `Werkstatt/<name>`. Angelegt mit
 `hermes profile create hermes-wartung` (frisches Profil, kein `--clone`),
 dann `providers.omniroute` (aus einem Bot-Profil kopiert),
 `model.provider=omniroute` / `model.default=auto/best-coding`,
@@ -213,14 +213,14 @@ nicht angefasst; ebenso bleibt der Router als Zweitweg unrepariert.
 
 ## clipproxy angelegt, alle Bots auf Nous (21.09.2026)
 
-- **Neuer Bot `easycliproxyapi`** (Repo `Werkstatt\Repos\EasyCLIProxyAPI`,
+- **Neuer Bot `easycliproxyapi`** (Repo `Werkstatt\EasyCLIProxyAPI`,
   router-for-me: Tauri-Konsole fuer CLIProxyAPI). Angelegt mit
   `hermes profile create easycliproxyapi --clone-from openterminal --no-alias`,
   danach `terminal.cwd` auf sein Repo gezogen (3 Vorkommen: `cwd` plus die zwei
   projectatlas-Pfade), eigene `SOUL.md`, `profile.yaml`-Beschreibung und
   `auth.json` als Symlink auf den Root-Store. Beleg:
   `hermes -p easycliproxyapi chat -q "..." -Q -t terminal` antwortet
-  `deepseek-v4-flash-0731 / nous / Werkstatt\Repos\EasyCLIProxyAPI`.
+  `deepseek-v4-flash-0731 / nous / Werkstatt\EasyCLIProxyAPI`.
   `repos-zentrale.py --pruefen` fuehrt ihn (17 Bot-Profile, Gruppe EINRICHTEN -
   fuer das Repo ist noch kein Startbefehl belegt).
 - **Alle Bots auf `nous / deepseek/deepseek-v4-flash-0731`:** 15 standen schon
@@ -244,7 +244,7 @@ nicht angefasst; ebenso bleibt der Router als Zweitweg unrepariert.
 
 ## Bot `nerd` fuer claude-red (22.09.2026)
 
-- **Repo:** `Werkstatt\Repos\claude-red` = Fork `mfaupel95/claude-red` von
+- **Repo:** `Werkstatt\claude-red` = Fork `mfaupel95/claude-red` von
   `SnailSploit/Claude-Red` (MIT), vollstaendiger Klon, 7,3 MB, 44 Commits.
   Offensive-Security-Nachschlagewerk: **79 `SKILL.md` in 23 Kategorien**, kein
   startbares Programm. Als Faehigkeit im Fundus gefuehrt (Werkstatt-Index:
@@ -267,5 +267,5 @@ nicht angefasst; ebenso bleibt der Router als Zweitweg unrepariert.
   Virus"). Von 79 Dateien sind damit 75 nutzbar. `ls` beweist hier nichts -
   die Probe ist ein echter Lesevorgang, der Fundort `Get-MpThreatDetection`.
 - **Offen (Entscheidung Max):** Defender-Ausnahme fuer den Ordner
-  (`Add-MpPreference -ExclusionPath 'O:\Werkstatt\Repos\claude-red'`), danach
+  (`Add-MpPreference -ExclusionPath 'O:\Werkstatt\claude-red'`), danach
   sind die vier Dateien lesbar. Details: [[Claude-Red-und-nerd-Bot]].

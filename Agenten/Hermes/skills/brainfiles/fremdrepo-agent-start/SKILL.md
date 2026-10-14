@@ -10,7 +10,7 @@ metadata:
 
 # Fremd-Repo-Agenten/-Tools lokal starten
 
-Geklonte Fremd-Repos (Werkstatt/Repos/) bringen Agenten und Tools mit: Python-
+Geklonte Fremd-Repos (Werkstatt/) bringen Agenten und Tools mit: Python-
 Agenten mit eigenem venv, .env, LLM-Aufrufen, Dauerlaeufen — oder
 Node/TypeScript-MCP/CLI-Tools. Dieses Skill ist der Weg, so etwas LAUFFAEHIG
 zu bekommen, ohne echte Schluessel einzutragen — die lokale
@@ -24,7 +24,7 @@ aus der awesome-trading-agents-Liste (okx/agent-trade-kit …).
 
 **Wenn Max nur eine Repo-URL schickt („aneignen, lernen, anbinden")**, gilt
 diese Reihenfolge, und der Bericht liefert die Zahlen aus Schritt 4:
-Klon/Fork nach `Werkstatt/Repos/<name>` (ein Fork kann schon existieren —
+Klon/Fork nach `Werkstatt/<name>` (ein Fork kann schon existieren —
 `gh repo fork <orig> --clone=false` meldet das und ist kein Fehler),
 `upstream` setzen, eigenes `.venv` mit dem Haus-Python, Abhaengigkeiten
 installieren, `pytest` laufen lassen, und dann **zuerst den schluessellosen
@@ -96,7 +96,10 @@ Begruendung, und der Nachweislauf ohne Waisen-Container.
 Fuer den JEV-Trading-Bot auf Kuru/Monad (andere Paare vorbereiten):
 `references/kuru-markt-erkundung.md` — aktive Maerkte ueber die Kuru-API,
 Margin-Account ueber Storage-Slot 73 des OrderBook-Proxys, Groessen in
-Basis-Asset-Einheiten (nicht MON), Multi-Markt-Parametrisierung.
+Basis-Asset-Einheiten (nicht MON), Multi-Markt-Parametrisierung; dort auch
+„Monad-Wallet-Key erzeugen“ (EVM-Key mit ethers via `node -e`, Gegenprobe,
+PRIVATE_KEY in die `.env` — `DRY_RUN=true` haelt den Bot trotz Key im
+Trockenlauf).
 
 **Ein leerer Rahmen ist kein System.** Ein Repo, dessen Dienstordner nur
 `.gitkeep` enthalten und dem die `Dockerfile`s fehlen, die die
@@ -126,8 +129,12 @@ wert, nicht nur eine Zeile im Protokoll.
 - **Secrets einer frisch gebrauchten `.env` erzeugen, nie ausgeben.** Viele
   Repos brauchen `JWT_SECRET_KEY`-artige Werte schon beim ersten Start. Mit
   `secrets.token_urlsafe(48)` erzeugen, direkt in die Datei schreiben, im
-  Protokoll nur "gesetzt" melden — und danach `git check-ignore -v .env`, damit
-  der Wert nicht versehentlich in einen Commit wandert.
+  Protokoll nur "gesetzt" melden — und `git check-ignore -v .env` VOR und
+  NACH dem Schreiben, damit der Wert nicht versehentlich in einen Commit
+  wandert. **Die Terminal-Ausgabe maskiert Zeilen unter Schluesselnamen**
+  (`cat` zeigt `PRIVATE_KEY=***`, egal ob leer oder gesetzt) — den wahren
+  Zustand einer `.env` nie aus der Konsole schliessen, sondern byte-weise
+  pruefen (Diff gegen das Backup, Python-Read).
 - **Jede Logdatei LESEN, nicht nur ihre Existenz zaehlen.** Ein Log mit
   `command not found` erfuellt jede "Beleg vorhanden"-Pruefung und beweist
   trotzdem nichts. Erst die Zeile, die den Dienst meldet (`Ready in ...`,
@@ -289,7 +296,7 @@ origin <fork> && git fetch origin`.
   Ein Bau-Befehl, der erst leert und dann baut, ist kein harmloser Fehlversuch.
 - **Bricht ein CLI-Unterbefehl mit einer Plattform-Einschraenkung ab, suche den Prozess-Schalter darunter.** Die Meldung nennt die Einschraenkung selbst (`... lifecycle is only supported on Unix platforms`) — das ist kein Defekt, sondern eine gebaute Luecke des Unterbefehls. Der direkt darunterliegende Prozess hat oft einen **versteckten** Schalter fuer genau diese Faehigkeit (in der Rust-CLI als `hide = true` am Argument). Weg: `<cli> <unterbefehl> --help` und `strings`/Quelltext nach dem Subsystem, dann den Prozess mit dem versteckten Schalter von Hand starten und pruefen, ob der Zustand `connected` lautet. **Die Einschraenkung nicht zum Anlass nehmen, den Befehl fuer unbrauchbar zu erklaeren** — sie gilt fuer den Unterbefehl, nicht fuer die Faehigkeit. Umgekehrt: ein belegter Statuswert (`status/read` statt Health-Check) ist das, was am Ende zaehlt; ein exit-0 des gestarteten Prozesses nicht.
 - **Wenn JEDER Aufruf desselben Werkzeugs mit demselben Konfigurationsfehler stirbt, ist es die Konfigurationsdatei — nicht der Aufruf.** Ein Syntaxfehler in der TOML/YAML/JSON-Datei des Werkzeugs (fehlender Trenner, Tippfehler in Zeile 1) bricht auch die Diagnosebefehle ab; die Meldung zeigt Datei und Zeile. Erst die Konfigurationsdatei byteweise lesen und reparieren (Sicherung daneben), dann die Diagnose erneut fahren — jede Beurteilung des Werkzeugs vor dem Fix ist wertlos.
-- **Ein Projekt, das NICHT unter `Werkstatt/Repos` liegt, wird per Junction erreichbar gemacht**
+- **Ein Projekt, das NICHT unter `Werkstatt` liegt, wird per Junction erreichbar gemacht**
   erreichbar gemacht** - nicht verschoben (im venv steht der Pfad absolut,
   `Scripts/python.exe` bricht danach) und nicht kopiert (verdoppelt ein venv von
   mehreren hundert MB). Beleg in zwei Zeilen: `os.path.samefile(original, klon)`
@@ -390,6 +397,29 @@ origin <fork> && git fetch origin`.
   (schreibt woertlich) und mit einem Python-Skript einspleissen, statt ihn im
   Patchskript-String zu bauen. Nach dem Schreiben `git diff` pruefen — er muss
   genau die gewollten Zeilen zeigen, keine Ganzdatei- oder Duplikat-Aenderung.
+- **Ein Patch, der einen Tippfehler einfuehrt, ist das Signal, die Methode zu
+  wechseln — nicht weiterzupatchen.** Jeder weitere patch-Versuch auf denselben
+  Block riskiert einen NEUEN Tippfehler (gemessen: `verifiedMarketet`,
+  `privateteKey`, `confignfig`, `market:ket:` in Folge). Ab dem ersten
+  Tippfehler die Datei KOMPLETT lesen und per write_file in eine Scratch-Datei
+  schreiben + `cp` ueber das Ziel legen, oder ein Python-Skript mit
+  byte-exaktem Ersatz (old-Block im Skript, `if old not in data: print` und
+  Abbruch statt still zu ersetzen). Danach die kritischen Zeilen per
+  `grep`/`sed` gegenlesen — eine falsche Adresse oder ein falscher
+  Variablenname in einem Trading-Bot ist ein Geldverlust, kein Lint-Fehler.
+- **Mehrere Klone desselben Forks koennen auf verschiedenen Branches mit
+  verschiedenen Code-Staenden liegen — die Credential kann in einem ANDEREN
+  Klon stecken als dem, an dem man arbeitet.** Zeigt der Nutzer auf einen
+  Ort fuer einen Schluessel ("wallet key in venv"), erst die Klon-Topologie
+  pruefen: `find . -maxdepth 3 -type d -iname "*venv*"` UND nach `.env` mit
+  dem Schluesselnamen suchen (`grep -rliE "PRIVATE_KEY|MONAD" --include=".env"`),
+  dann `git remote -v`/`git branch` je Fund. Im JEV-Fall lag der Key in
+  `O:\Werkstatt\jev-trader` (main), die Multi-Markt-Arbeit in
+  `O:\Werkstatt 2\JEV\jev-trader` (pipeline-jev-decisions) — zwei Klone
+  desselben Forks. Der Klon, der die Credential haelt, ist der
+  Live-/Produktions-Klon: die Code-Aenderungen dorthin konsolidieren, nicht
+  die Credential in den Arbeits-Klon kopieren. Und ein "venv"-Hinweis kann
+  schlicht die `.env` des Projekt-Klons meinen, kein Python-venv.
 - **Zweite Instanz eines laufenden Bots aus einem SEPARATEN Arbeitsverzeichnis
   starten, damit ihr data/-Ordner (events.jsonl) nicht mit dem laufenden
   Prozess vermischt wird.** bun loest node_modules relativ zum Skript auf, nicht

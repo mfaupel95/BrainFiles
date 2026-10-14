@@ -1,5 +1,5 @@
 {
-  "_zweck": "Zuordnung der Trading-Agenten aus Werkstatt/Repos/moon-dev-ai-agents zu Freqtrade-Bots. Ein Eintrag unter 'bots' ist ein startbarer Bot; ein Eintrag unter 'nicht_portierbar' ist eine Absage MIT Grund. Diese Tabelle ist die Wahrheit - wer einen Agenten vermisst, findet ihn hier wieder.",
+  "_zweck": "Zuordnung der Trading-Agenten aus Werkstatt/moon-dev-ai-agents zu Freqtrade-Bots. Ein Eintrag unter 'bots' ist ein startbarer Bot; ein Eintrag unter 'nicht_portierbar' ist eine Absage MIT Grund. Diese Tabelle ist die Wahrheit - wer einen Agenten vermisst, findet ihn hier wieder.",
   "_stand": "2026-10-10",
   "_regel": "Freqtrade sieht ausschliesslich OHLCV-Kerzen des gehandelten Paares - plus, im Futures-Modus, die Funding-Rate und den Mark-Preis (beide laedt `download-data --trading-mode futures` als eigene Reihen mit). Portierbar ist deshalb genau das, was sich aus der Kerze ODER aus diesen beiden Reihen rechnen laesst. Alles andere braucht eine Fremdquelle, die im Haus archiviert sein muss - was nicht archiviert wurde, ist fuer einen Ruecklauf verloren (Zwangsschluesse zum Beispiel).",
   "_basis_geometrie": "Stop und Ziel kommen NICHT aus dem Bot-Repo, sondern aus den Haus-Zahlen der Feed-Spuren (Agenten/Handel/moondev_*/wachen.json): stop_prozent 6.0-8.0 und ziel_r_vielfaches 1.5. Ein Bot erbt die Zahlen der Regel, die er abbildet.",

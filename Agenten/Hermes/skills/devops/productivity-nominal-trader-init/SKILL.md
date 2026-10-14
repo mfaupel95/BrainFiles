@@ -19,9 +19,15 @@ Use when setting up a crypto trading engine/agent (e.g. Nautilus) as a separate 
 5) Validate configs by starting in “feed-only” mode (no orders / paper only).
 6) Apply strategy as a second step, using the user’s risk-rule parameters (e.g. Hebel-Deckel, stop ATR, grid steps).
 7) Verify with read-only logs/status; if you hit schema errors like “unknown field”, inspect the engine’s config types and fix the specific key, not randomness.
+8) Before the go-live flip, confirm WHICH copy of the repo the running process uses and that only ONE bot will touch the account.
+9) After the flip, verify the first order on-chain (tx receipt status + gasUsed), not just the log line.
 
 ## Pitfalls
 - Typed-schema errors: treat them as a config contract mismatch; don’t iterate by trial-and-error.
 - Instrument IDs: case/spacing matters; validate each symbol.
 - Paper vs execution: never assume “paper” means “no orders”; confirm the engine’s execution mode.
+- Multiple repo copies: a parallel session can clone the same repo into a second path (e.g. `O:\Werkstatt 2\...`) with its own branch, and the running bot may use THAT copy while you edit the one you think is live. Before going live, identify the active copy by the mtime of its state/events file (the one still being written) and the running process's cwd/branch — never assume the copy you edited is the one that runs. Two bots on one account = double orders.
+- Live with a mock/deterministic model is an ORDER-PATH TEST, not a real strategy. A `MODEL=mock` stand-in (momentum + noise) proves the order path works but makes no real decisions. Say so plainly before flipping live; real strategy needs the real model + its API key.
+- Gas budget after margin deposit: a large startup margin deposit (e.g. 600 MON into Kuru) can leave the wallet nearly empty of gas. Check the wallet balance AFTER the deposit math, not before — a too-generous deposit starves the bot of gas within ~2 h.
+- Gas-heavy chains (Monad ~3.4 blocks/s): posting a post-only order every block burns the wallet fast (~0.035 MON/order ≈ 437 MON/h). Add a gas saver: only post when the mid moved >= N bps since the last post OR after N blocks, keeping the resting order untouched in between; always post when nothing is resting. Measure the real gas price (base fee × gas limit) before sizing the budget.
 

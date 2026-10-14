@@ -109,7 +109,7 @@ Beleg: `status partial`, `execution_successful true`, ein MEDIUM-Befund
 ## Fundus und Repos (22.09.2026)
 
 Zweiter Lauf, dieselbe Schleife, 1231 Skill-Ordner gefunden, nach MD5 der
-`SKILL.md` bleiben **654** (Fundus `C:\Users\faupe\Documents\GitHub` + `O:\Werkstatt\Repos`;
+`SKILL.md` bleiben **654** (Fundus `C:\Users\faupe\Documents\GitHub` + `O:\Werkstatt`;
 Fundus und Repos fuehren viele Skills doppelt, `copilot-worktrees` kopiert die
 Schwester-Repos). 27 min, 8 parallel. Ergebnis:
 `Agenten/Hermes/cache/skillspector-fundus/`, Werkzeuge `cache/scratch/skillspector-fundus*.py`.
