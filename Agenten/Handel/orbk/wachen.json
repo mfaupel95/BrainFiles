@@ -67,8 +67,8 @@
   "kill_switch_gesamt_usd": 150,
   "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert jede weitere Positionsgroesse; ab kill_switch Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ein ABSOLUTER BETRAG und wird von ratschen.py gelesen - EINE Umsetzung fuer alle Spuren. Der Prozentsatz drawdown_halbierung_prozent ist am 15.09.2026 entfallen: er koppelte die Schwelle an eine fremde Groesse, sodass dieselbe Zahl 15.0 je Spur einen anderen Betrag bedeutete und eine Aenderung am Kapitaldeckel eine Schutzschwelle lautlos verschob. HERGELEITET, seit 15.09.2026: 10.00 USD = 1.0 x Buchrisiko = risiko_pro_trade_usd 10 x max_offene_positionen 1. Vorher 22.50 als Betriebswert (alte Quote 15% x kill_switch_gesamt_usd 150), also 2.25 x Buchrisiko - nicht falsch, aber an den Kill-Switch gekoppelt, eine Groesse, mit der ein Gewinnruecklauf nichts zu tun hat: wer den Kill-Switch verstellt, haette die Ratsche mitverschoben. Die 10.00 sind strenger und greifen noch innerhalb des Gewinns. pruefe_ratschen.py rechnet nach, ob der Betrag noch 1.0 x Buchrisiko ist.",
   "drawdown_halbierung_usd": 10.0,
-  "herzschlag_max_minuten": 45,
-  "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Seit 14.10.2026 wieder 45 (handel_erlaubt=true, Auftrag Max 'Orbk live schalten'). 180 galt vom 14.10. bis 14.10.2026 (Ruecknahme).",
+  "herzschlag_max_minuten": 180,
+  "_herzschlag_regel": "REGEL 13.10.2026 (Option 2): 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis (Live). orbk ist Papier (handel_erlaubt=false seit Befund 14.10.2026: die Spur verliert live 1,14 %/Runde gegen Kraken-Gebuehr 1,2 %) - deshalb 180, bis f_max die Kosten deckt. Der fruehere 'live schalten-45'-Vermerk ist aufgehoben (Korrektur 15.10.2026).",
   "journal_zweitziel": "Q:\\Handel_Journal\\orbk",
   "freigabe": {
     "erfuellt": false,
