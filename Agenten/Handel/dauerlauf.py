@@ -552,6 +552,14 @@ TAKT_MAX_MINUTEN = 15
 # offenen Live-Positionen mit Boersen-Stop auslaufen; nur die Auto-Freigabe
 # entfaellt. handel_erlaubt und freigabe.erfuellt stehen in scanner/wachen.json
 # auf false.
+# ORBK AM 14.10.2026 ENTZOGEN (Auftrag Max 'letzte Aufgabe der
+# Handelsauswertung fertig machen', Befund 13.10.): Punktebuch ohne Einsatz,
+# Kosten 1,2 %/Runde gegen f_max +0,06 % - die Live-Freigabe vom 12.10. ist
+# zurueckgenommen (handel_erlaubt=false, freigabe.erfuellt=false in
+# orbk/wachen.json). orb bleibt live (OKX, 0,1 %/Runde).
+# ORBK AM 14.10.2026 WIEDER LIVE (Auftrag Max 'Orbk live schalten'):
+# ueberstimmt die Ruecknahme vom selben Tag. handel_erlaubt=true,
+# freigabe.erfuellt=true in orbk/wachen.json.
 AUTO_FREIGABE = ("xperp", "mosaic", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
                  "trendwende_btc", "liq_wand", "omniquant",
