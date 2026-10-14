@@ -8,7 +8,7 @@
   "waehrung": "USD",
   "handel_erlaubt": true,
   "_handel_erlaubt_vermerk": "03.10.2026 scharf auf Auftrag Max (\"Signalwelle scharf\", dann \"Andere Spuren weiter untersuchen und freigeben und Anbindung verifizieren\"). Belege, auf die sich das stuetzt: (1) Gebuehren-Tor offen - Excess +1,25 % minus 0,10 % Gebuehr je Runde = +1,15 %, bei 16 Runden mit Basislinie, Audit ohne Befund; (2) Anbindung an der Boerse belegt - OKX-Spot, Schluessel vorhanden, Demo aus, 152,55 USDC frei, Kurs abrufbar; (3) Orderweg vorhanden und geprueft (weg.py mit 5 Tests). EINSCHRAENKUNG, die nicht weglaeuft: die 16 Runden stammen aus der Zeit VOR dem Signal-Gatter. Die Freigabe stuetzt sich damit auf Zahlen, die unter den Bedingungen entstanden sind, die ich heute abgeschafft habe. Das ist Max's Entscheidung und steht hier datiert.",
-  "herzschlag_max_minuten": 180,
+  "herzschlag_max_minuten": 45,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 3 = 15.0 USD.",
   "risiko_je_position_usd": 5.0,
   "max_offene_positionen": 3,

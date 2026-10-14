@@ -76,7 +76,12 @@ if ($weg.Count -ne 0) {
 Schreib "alte Prozesse beendet (Loop $loop, Wurzel $root)"
 
 Remove-Item $sperre -Force -ErrorAction SilentlyContinue
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'handel-dauerlauf.ps1') @risikoArgs
+# Der Start-Skript liegt NICHT hier (Agenten/Handel), sondern in Routinen/ -
+# bis 14.10.2026 zeigte dieser Aufruf auf 'handel-dauerlauf.ps1' im eigenen
+# Ordner, der dort nicht existiert, und der Neustart liess den Dauerlauf tot
+# (gemessen 12.10.2026 beim ersten orb/orbk-Neustart).
+$routinen = Join-Path (Split-Path $PSScriptRoot -Parent) 'Routinen'
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $routinen 'handel-dauerlauf.ps1') @risikoArgs
 Start-Sleep -Seconds 5
 $neu = (Get-Content $sperre -ErrorAction SilentlyContinue | Select-Object -First 1)
 Schreib "neu gestartet, Sperre zeigt PID $neu"

@@ -18,7 +18,7 @@
     "_ruecknahme_20261005": "05.10.2026, Auftrag Max 'zurueck auf papier'. Erst am selben Tag true gesetzt, dann zurueck - das Gebuehren-Tor ist die entscheidende Sperre, nicht der Haken. Wartebedingung: Excess > Gebuehr (0,20 %)."
   },
   "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
-  "herzschlag_max_minuten": 180,
+  "herzschlag_max_minuten": 45,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 3 = 15.0 USD.",
   "risiko_je_position_usd": 5.0,
   "max_offene_positionen": 3,

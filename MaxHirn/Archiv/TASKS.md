@@ -116,6 +116,16 @@
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-408 — Sicherungs-Warnung: secrets-archivieren.ps1 fehlt**
+      Kontext: Sicherung 14.10. 20:00 meldet WARNUNG, secrets-archivieren.ps1 fehlt - Klartextdateien (Wissen/Zugaenge.md, OKX_API.env) sind ausgeschlossen und NICHT in dieser Sicherung. (sicherung-letzter-lauf.log)
+      Naechster Schritt: pruefen, ob secrets-archivieren.ps1 existiert/geplant ist; wenn nicht, Ersatz anlegen.
+      Angelegt: 2026-10-14 · Zuletzt: 2026-10-14
+      Betrifft: Agenten/Routinen/sicherung.ps1, Agenten/Routinen/logs/sicherung-letzter-lauf.log
+- [ ] **T-409 — Fremdarbeit-Push-Reject: 4e5ff0e non-fast-forward**
+      Kontext: Fremdarbeit-Lauf 20:20 committete 321 Dateien (4e5ff0e) und meldete Push-Rueckweisung gegen GitHub (non-fast-forward), lokaler master haengt hinter remote. (fremdarbeit-letzter-lauf.log)
+      Naechster Schritt: git pull/push-Abgleich auf master, dann Push der 321 Dateien nachholen.
+      Angelegt: 2026-10-14 · Zuletzt: 2026-10-14
+      Betrifft: master-Zweig vs. origin/master
 - [x] **T-397 — Karten-Worker: kausale Gegenprobe fuer den Token-Fix (Commit 2389eeba) fehlt**
       **Erledigt 2026-10-11.** Die verlangte Gegenprobe liegt vor - an DERSELBEN
       Karte, nicht nur am selben Profil (staerker als verlangt):
