@@ -78,4 +78,4 @@ platforms:
   photon:
     enabled: false
 display:
-  busy_input_mode: interrupt
+  busy_input_mode: queue

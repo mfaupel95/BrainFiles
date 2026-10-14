@@ -994,31 +994,31 @@ gateway:
       platform: telegram
       chat_id: '-1003980261765'
       thread_id: '1999'
-      profile: jev-trader
+      profile: bots
       enabled: true
     - name: gruppe-auswertung-2000
       platform: telegram
       chat_id: '-1003980261765'
       thread_id: '2000'
-      profile: recherche
+      profile: bots
       enabled: true
     - name: gruppe-wissen-2001
       platform: telegram
       chat_id: '-1003980261765'
       thread_id: '2001'
-      profile: obsidian-skills
+      profile: bots
       enabled: true
     - name: gruppe-gbrain-2006
       platform: telegram
       chat_id: '-1003980261765'
       thread_id: '2006'
-      profile: gbrain
+      profile: bots
       enabled: true
     - name: gruppe-wartung-723
       platform: telegram
       chat_id: '-1003980261765'
       thread_id: '723'
-      profile: hermes-wartung
+      profile: bots
       enabled: true
   platforms:
     a2a:
