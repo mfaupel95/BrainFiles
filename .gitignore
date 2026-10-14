@@ -482,6 +482,9 @@ MaxHirn/Archiv/.claude/scheduled_tasks.lock
 # Unterordner selbst werden ignoriert: Sonst zeigt Git eingebettete Fremd-Repos
 # als "?? Werkstatt/<repo>/" und das gefaehrliche Status-Rauschen bleibt.
 Werkstatt/*/
+!Werkstatt/Projekte/
+!Werkstatt/Projekte/leitstand/
+!Werkstatt/Projekte/leitstand/**
 Agenten/Hermes/hermes-agent/**
 Modelle/**
 
