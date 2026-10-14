@@ -874,6 +874,16 @@ Agenten/Handel/trendwende_btc/handelsjournal.csv
 !Agenten/Handel/omnitrade/wachen.json
 !Agenten/Handel/omnitrade/tests/*.py
 !Agenten/Handel/omnitrade/strategien/*.omni
+# OMNI2-Spur (14.10.2026, Auftrag Interpool): Fork von omnitrade auf
+# Werkstatt/omnitrade2. Dasselbe Muster: Code, Wachen, README und Tests frei;
+# Zustand und Journal gesperrt (schreibt jeder Zyklus). Spur ist deaktiviert
+# im Dauerlauf (omnitrade2 schreibt noch keine Statusdatei).
+!Agenten/Handel/omnitrade2/*.py
+!Agenten/Handel/omnitrade2/*.md
+!Agenten/Handel/omnitrade2/wachen.json
+!Agenten/Handel/omnitrade2/tests/*.py
+Agenten/Handel/omnitrade2/zustand.json
+Agenten/Handel/omnitrade2/handelsjournal.csv
 !Agenten/Handel/omnitrade_futures/*.py
 !Agenten/Handel/omnitrade_futures/*.md
 !Agenten/Handel/omnitrade_futures/wachen.json
