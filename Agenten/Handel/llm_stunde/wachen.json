@@ -1,0 +1,42 @@
+{
+ "_zweck": "LLM-Stunde: drei Indikator-Kandidaten auf 1H, je mit Regelarm (R) und LLM-Arm (L). Papier.",
+ "_kein_live": "Kein Live-Zweig, kein Orderweg: Papier. --live verweigert.",
+ "_grund": "llm_stunde",
+ "waehrung": "USD",
+ "boerse": "okx",
+ "instrumente": ["BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP"],
+ "kerzen_zeitrahmen": "1H",
+ "kerzen_anzahl": 400,
+ "mindest_kerzen": 240,
+ "varianten": ["ema1h", "st1h", "rsi1h"],
+ "ema_schnell_n": 33,
+ "ema_langsam_n": 135,
+ "st_atr_n": 10,
+ "st_atr_multiplier": 3.0,
+ "rsi_n": 14,
+ "rsi_unten": 30.0,
+ "rsi_aus_long": 55.0,
+ "trend_ema_n": 200,
+ "stop_prozent": 2.5,
+ "stop_prozent_pflicht_min": 1.5,
+ "stop_prozent_pflicht_max": 5.0,
+ "nur_long": true,
+ "festes_ziel": false,
+ "ausstieg_bei_regel": true,
+ "gebuehr_taker": 0.0005,
+ "llm": {
+   "modell": "phi4-mini:latest",
+   "bruecke": "http://127.0.0.1:11499/v1",
+   "temperatur": 0,
+   "konfidenz_min": 70,
+   "timeout_s": 60
+ },
+ "risiko_je_position_usd": 5.0,
+ "max_offene_positionen": 3,
+ "handel_erlaubt": false,
+ "freigabe": {
+   "erfuellt": false,
+   "papierlauf_min_wochen": 6,
+   "_stand": "Angelegt 12.10.2026. Keine Runde gemessen; der Haken wird von Hand gesetzt (Handelsregeln Punkt 3)."
+ }
+}
