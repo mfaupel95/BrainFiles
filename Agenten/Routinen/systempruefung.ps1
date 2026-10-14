@@ -429,12 +429,34 @@ try {
   $gewolltDeaktiviert = @{
     'MaxHirn-MoonDev-Agent' = 'ersetzt durch MaxHirn-MoonDev-Dauerlauf'
   }
+  # Waechter-Aufgaben, die NIE deaktiviert sein duerfen: ein deaktivierter
+  # Waechter ist schutzloser Betrieb. Am 12.10.2026 war der Gateway-Waechter
+  # deaktiviert worden; der Gateway-Ausfall am 13.10. (18:13-23:06, Code 75,
+  # Liveness-Watchdog) blieb deshalb 5 h unbemerkt. Diese Aufgaben aktiviert
+  # die Pruefung selbst wieder (schtasks /Change /ENABLE, keine Admin-Rechte)
+  # und meldet es als erledigt.
+  $kritischeWaechter = @('MaxHirn-Gateway-Waechter')
   $schlecht = 0
   foreach ($t in $tasks) {
     $i = Get-ScheduledTaskInfo -TaskName $t.TaskName -TaskPath $t.TaskPath -EA SilentlyContinue
     if ($t.State -eq 'Disabled') {
       if ($gewolltDeaktiviert.ContainsKey($t.TaskName)) {
         Info "Aufgabe $($t.TaskName) ist deaktiviert (gewollt: $($gewolltDeaktiviert[$t.TaskName]))."
+      } elseif ($t.TaskName -in $kritischeWaechter) {
+        # Deaktivieren stoppt die Neustart-Serie - aber dann laeuft der
+        # Gateway ohne Netz. Aktivieren ist immer richtig: ein Waechter wird
+        # nicht fuer spaeter deaktiviert, die Ursache gehoert behoben.
+        $altEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        try {
+          $r = & schtasks /Change /TN $t.TaskName /ENABLE 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Getan "Kritischer Waechter $($t.TaskName) war deaktiviert - wieder aktiviert (schtasks /Change /ENABLE)."
+          } else {
+            $schlecht++; Entscheiden "Kritischer Waechter $($t.TaskName) ist deaktiviert und liess sich nicht aktivieren: $($r -join ' ')"
+          }
+        } catch {
+          $schlecht++; Entscheiden "Kritischer Waechter $($t.TaskName) ist deaktiviert, Aktivierung fehlgeschlagen: $_"
+        } finally { $ErrorActionPreference = $altEAP }
       } else {
         $schlecht++; Entscheiden "Aufgabe $($t.TaskName) ist deaktiviert."
       }
