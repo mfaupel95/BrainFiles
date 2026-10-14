@@ -1,5 +1,8 @@
 ## Offen
-- [ ] **T-401 - scanner-papier: "Python oder Ordner fehlt" (Task=1)**
+- [x] **T-401 - scanner-papier: "Python oder Ordner fehlt" (Task=1)**
+      **Erledigt 2026-10-14.** Ursache war die Werkstatt-Junction-Zerstörung
+      vom 13.10. (T-400): Werkstatt/scanner-varianten war über den BrainFiles-Pfad
+      unsichtbar. Junction repariert, Task neu gestartet: LastTaskResult=0, 'ENDE Code 0'.
       Kontext: MaxHirn-Scanner-Papier Task LastTaskResult=1, Log 13.10. 08:10
       'ENDE FEHLER: Python oder Ordner fehlt'. Wrapper prueft Test-Path auf
       Agenten\Handel\.venv\Scripts\python.exe und Werkstatt\scanner-varianten.
