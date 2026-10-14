@@ -17,7 +17,10 @@ class TestWachenJson(unittest.TestCase):
         self.assertIs(self.w["handel_erlaubt"], True)
         self.assertIs(self.w["freigabe"]["erfuellt"], True)
         self.assertIs(self.w["freigabe"]["backtest_bestanden"], False)
-        self.assertIn(self.w["instrument_aktiv"], ("BTC_USDT", "ETH_USDT"))
+        # Mehr-Instrument-Erweiterung 14.10.2026: Liste statt Einzelwert.
+        self.assertIn("instrumente_aktiv", self.w)
+        self.assertTrue(set(self.w["instrumente_aktiv"]) >= {"BTC_USDT", "ETH_USDT"})
+        self.assertIn("max_offene_positionen", self.w)
         self.assertTrue(self.w["journal_zweitziel"])
 
     def test_pflichtfelder_da(self):

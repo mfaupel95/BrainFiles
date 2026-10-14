@@ -106,8 +106,9 @@ def lade_zustand():
     z = atomar.lade_json(ZUSTAND, lambda: None)
     if z is not None:
         z.setdefault("modus", "papier")
+        z.setdefault("positionen", [])
         return z
-    return {"position": None, "letzter_lauf": None, "modus": "papier"}
+    return {"positionen": [], "letzter_lauf": None, "modus": "papier"}
 
 
 def schreibe_zustand(z):
@@ -126,13 +127,6 @@ def journal(*felder):
         w.writerow(felder)
 
 
-def _inst_konf(w):
-    key = w.get("instrument_aktiv")
-    if not key:
-        return None, None
-    return key, w["instrumente"][key]
-
-
 def _range_fenster(w, key, tag):
     return sess.opening_range_fenster(w["instrumente"][key], tag)
 
@@ -148,34 +142,37 @@ def ziel_kurs(w, key, richtung, einstieg, range_hoehe):
 
 
 def pruefe_ausstiege(z, w, jetzt=None):
-    """Offene Papier-Position gegen Stop/Ziel/Zwangsschluss."""
-    p = z.get("position")
-    if not p:
-        return False, None
-    jetzt = jetzt or _jetzt()
-    konf = w["instrumente"][p["inst"]]
-    tag = p["tag"] if isinstance(p["tag"], date) else date.fromisoformat(p["tag"])
-    # MAE/MFE ueber die LEBENDAUER messen, nicht erst beim Ausstieg -
-    # sonst waere die Zahl der Ausstiegskurs selbst und damit wertlos.
-    if p.get("letzter_kurs"):
-        mae.merke_extrem(p, p["letzter_kurs"])
+    """Alle offenen Positionen gegen Stop/Ziel/Zwangsschluss.
 
-    if p["richtung"] == "long":
-        stop_verletzt = p["letzter_kurs"] <= p["stop"]
-        ziel_verletzt = p["letzter_kurs"] >= p["ziel"]
-    else:
-        stop_verletzt = p["letzter_kurs"] >= p["stop"]
-        ziel_verletzt = p["letzter_kurs"] <= p["ziel"]
-    if jetzt >= sess.zwangsschluss(konf, tag):
-        _schliesse(p, p["letzter_kurs"], "zwangsschluss")
-        return True, "zwangsschluss"
-    if stop_verletzt:
-        _schliesse(p, p["stop"], "stop")
-        return True, "stop"
-    if ziel_verletzt:
-        _schliesse(p, p["ziel"], "ziel")
-        return True, "ziel"
-    return False, None
+    Rueckgabe: Liste (position, grund) der GESCHLOSSENEN Positionen. Die
+    offenen bleiben in z['positionen'], die geschlossenen werden entfernt.
+    """
+    jetzt = jetzt or _jetzt()
+    offen, geschlossen = [], []
+    for p in z.get("positionen", []):
+        konf = w["instrumente"][p["inst"]]
+        tag = p["tag"] if isinstance(p["tag"], date) else date.fromisoformat(p["tag"])
+        if p.get("letzter_kurs"):
+            mae.merke_extrem(p, p["letzter_kurs"])
+        if p["richtung"] == "long":
+            stop_verletzt = p["letzter_kurs"] <= p["stop"]
+            ziel_verletzt = p["letzter_kurs"] >= p["ziel"]
+        else:
+            stop_verletzt = p["letzter_kurs"] >= p["stop"]
+            ziel_verletzt = p["letzter_kurs"] <= p["ziel"]
+        if jetzt >= sess.zwangsschluss(konf, tag):
+            _schliesse(p, p["letzter_kurs"], "zwangsschluss")
+            geschlossen.append((p, "zwangsschluss"))
+        elif stop_verletzt:
+            _schliesse(p, p["stop"], "stop")
+            geschlossen.append((p, "stop"))
+        elif ziel_verletzt:
+            _schliesse(p, p["ziel"], "ziel")
+            geschlossen.append((p, "ziel"))
+        else:
+            offen.append(p)
+    z["positionen"] = offen
+    return geschlossen
 
 
 def _schliesse(p, kurs, grund):
@@ -228,56 +225,81 @@ def breakout_signal(kerzen, hoch, tief):
 kerzen_quelle = None
 
 
-def _schon_gehandelt_heute(z, tag):
-    """Ein Trade je UTC-Tag (ORB-Regel). Das Merkzeichen ueberlebt den
-    Ausstieg - sonst steigt derselbe Breakout im selben Zyklus wieder ein."""
-    p = z.get("position")
-    if p and p.get("tag") == tag.isoformat():
-        return True
-    return z.get("zuletzt_gehandelt_tag") == tag.isoformat()
+def _schon_gehandelt_heute(z, inst, tag):
+    """Ein Trade je Instrument und UTC-Tag (ORB-Regel).
+
+    Das Merkzeichen ueberlebt den Ausstieg - sonst steigt derselbe Breakout
+    im selben Zyklus wieder ein. Geprueft wird je Instrument getrennt, damit
+    zwei Instrumente unabhaengig je einen Trade pro Tag machen koennen.
+    """
+    heute = tag.isoformat()
+    for p in z.get("positionen", []):
+        if p.get("inst") == inst and p.get("tag") == heute:
+            return True
+    ztl = z.get("zuletzt_gehandelt_tag") or {}
+    return ztl.get(inst) == heute
 
 
 def pruefe_einstieg(z, w, jetzt=None):
+    """Einstiege ueber ALLE aktiven Instrumente (BTC_USDT + ETH_USDT).
+
+    Je Instrument: ein Trade pro UTC-Tag, hoechstens max_offene_positionen
+    gleichzeitig. Fuer jedes openbare Instrument wird die Position an
+    z['positionen'] angehaengt. Rueckgabe: Liste der NEU eroeffneten
+    Positionen (nur fuer die Meldung). Kein Signal -> leere Liste.
+    """
     jetzt = jetzt or _jetzt()
-    key, konf = _inst_konf(w)
-    if not key:
-        return None, "kein instrument_aktiv (Backtest-Urteil offen)"
     tag = sess.handelstag(jetzt)
-    start, ende = _range_fenster(w, key, tag)
-    if jetzt < ende:
-        return None, "Range laeuft noch (%s bis %s)" % (
-            start.strftime("%H:%M"), ende.strftime("%H:%M"))
-    if jetzt >= sess.zwangsschluss(konf, tag):
-        return None, "Session vorbei"
-    if jetzt >= sess.letzter_einstieg(konf, tag,
-                                      w.get("letzter_einstieg_min_vor_schluss", 60)):
-        return None, "zu spaet fuer einen Einstieg"
-    if _schon_gehandelt_heute(z, tag):
-        return None, "heute schon gehandelt"
-    kerzen = (kerzen_quelle(w, key) if kerzen_quelle else _kerzen_heute(w, key))
-    hr = opening_range(kerzen, w, key, tag)
-    if hr is None:
-        return None, "keine komplette Range (Daten?)"
-    hoch, tief = hr
-    hoehe = hoch - tief
-    if hoehe < w["mindest_range_punkte"][key]:
-        return None, "Range zu klein (%.2f Pkt)" % hoehe
-    if hoehe > w["max_range_punkte"][key]:
-        return None, "Range zu gross (%.2f Pkt)" % hoehe
-    richtung, kurs = breakout_signal(kerzen, hoch, tief)
-    if not richtung:
-        return None, "kein Breakout (Range %.2f..%.2f)" % (tief, hoch)
-    stop = tief if richtung == "long" else hoch
-    ziel = ziel_kurs(w, key, richtung, kurs, hoehe)
-    z["position"] = {"inst": key, "richtung": richtung, "einstieg": kurs,
-                     "stop": stop, "ziel": ziel, "tag": tag.isoformat(),
-                     "letzter_kurs": kurs,
-                     "punkt_wert_usdt": konf.get("punkt_wert_usdt", 1.0),
-                     "range_hoehe": hoehe,
-                     "risiko_usdt": w.get("risiko_pro_trade_usdt")}
-    z["zuletzt_gehandelt_tag"] = tag.isoformat()
-    return "papier", "%s %s @ %.4f (Stop %.4f, Ziel %.4f, Range %.2f)" % (
-        richtung, key, kurs, stop, ziel, hoehe)
+    offen_insts = {p.get("inst") for p in z.get("positionen", [])}
+    max_pos = int(w.get("max_offene_positionen", 2))
+    geoeffnet = []
+    for key in w.get("instrumente_aktiv", []):
+        if len(z.get("positionen", [])) >= max_pos:
+            break
+        if key in offen_insts:
+            continue
+        if _schon_gehandelt_heute(z, key, tag):
+            continue
+        konf = w["instrumente"].get(key)
+        if not konf:
+            continue
+        start, ende = _range_fenster(w, key, tag)
+        if jetzt < ende:
+            continue
+        if jetzt >= sess.zwangsschluss(konf, tag):
+            continue
+        if jetzt >= sess.letzter_einstieg(konf, tag,
+                                          w.get("letzter_einstieg_min_vor_schluss", 60)):
+            continue
+        kerzen = (kerzen_quelle(w, key) if kerzen_quelle else _kerzen_heute(w, key))
+        hr = opening_range(kerzen, w, key, tag)
+        if hr is None:
+            continue
+        hoch, tief = hr
+        hoehe = hoch - tief
+        mie = w.get("mindest_range_punkte", {}).get(key)
+        maxe = w.get("max_range_punkte", {}).get(key)
+        if mie is None or maxe is None:
+            continue
+        if hoehe < mie:
+            continue
+        if hoehe > maxe:
+            continue
+        richtung, kurs = breakout_signal(kerzen, hoch, tief)
+        if not richtung:
+            continue
+        stop = tief if richtung == "long" else hoch
+        ziel = ziel_kurs(w, key, richtung, kurs, hoehe)
+        p = {"inst": key, "richtung": richtung, "einstieg": kurs,
+             "stop": stop, "ziel": ziel, "tag": tag.isoformat(),
+             "letzter_kurs": kurs,
+             "punkt_wert_usdt": konf.get("punkt_wert_usdt", 1.0),
+             "range_hoehe": hoehe,
+             "risiko_usdt": w.get("risiko_pro_trade_usdt")}
+        z.setdefault("positionen", []).append(p)
+        z.setdefault("zuletzt_gehandelt_tag", {})[key] = tag.isoformat()
+        geoeffnet.append(p)
+    return geoeffnet
 
 
 def _letzter_kurs(w, key):
@@ -377,43 +399,46 @@ def lauf(modus="papier"):
     # echt orden, wenn keine Sperre zu ist - doppelter Boden.
     live = (modus == "live") and not live_sperren(w)
 
-    veraendert, grund = pruefe_ausstiege(z, w, jetzt)
-    if veraendert:
-        p = z.pop("position", None)
-        meldungen.append("AUSSTIEG (Papier, %s): %s %s, Einstieg %.4f" % (
-            grund, p["richtung"], p["inst"], p["einstieg"]))
+    for p, grund in pruefe_ausstiege(z, w, jetzt):
+        art = "LIVE" if p.get("modus") == "live" else "Papier"
+        meldungen.append("AUSSTIEG (%s, %s): %s %s, Einstieg %.4f" % (
+            art, grund, p["richtung"], p["inst"], p["einstieg"]))
 
-    if not z.get("position"):
-        einstieg, meldung = pruefe_einstieg(z, w, jetzt)
-        if einstieg:
-            if live:
-                platziere_einstieg(z, w, z["position"], echt=True)
-                meldungen.append("EINSTIEG (LIVE): " + meldung)
-            else:
-                meldungen.append("EINSTIEG (Papier): " + meldung)
-        elif meldung:
-            meldungen.append("kein Einstieg: " + meldung)
+    for p in pruefe_einstieg(z, w, jetzt):
+        if live:
+            platziere_einstieg(z, w, p, echt=True)
+            meldungen.append("EINSTIEG (LIVE): %s %s @ %.4f" % (
+                p["richtung"], p["inst"], p["einstieg"]))
+        else:
+            meldungen.append("EINSTIEG (Papier): %s %s @ %.4f" % (
+                p["richtung"], p["inst"], p["einstieg"]))
 
-    if z.get("position"):
-        z["position"]["letzter_kurs"] = _letzter_kurs(w, z["position"]["inst"])
+    for p in z.get("positionen", []):
+        try:
+            p["letzter_kurs"] = _letzter_kurs(w, p["inst"])
+        except Exception:  # noqa: BLE001
+            pass
     schreibe_zustand(z)
     return meldungen
 
 
 def zeige_wachen(w):
-    key, konf = _inst_konf(w)
     z = lade_zustand()
     kopie = ("   |   Journal-Zweitziel %s%s"
              % (w.get("journal_zweitziel") or "-- nicht gesetzt",
                 "" if "journal_zweitziel_ok" not in z
                 else " (letzte Kopie %s)" % z["journal_zweitziel_ok"]))
-    if not konf:
-        return ("kein instrument_aktiv - Spur gesperrt (Backtest-Urteil: "
-                "negativ fuer beide Instrumente)")
+    aktive = w.get("instrumente_aktiv", [])
     f = w.get("freigabe") or {}
-    return ("%s (%s): handel_erlaubt=%s, aktiv=%s, freigabe=%s, backtest=%s%s"
-            % (key, konf["okx"], w["handel_erlaubt"], key,
+    text = ("handel_erlaubt=%s, aktiv=%s, freigabe=%s, backtest=%s%s"
+            % (w["handel_erlaubt"], ",".join(aktive) or "-",
                f.get("erfuellt"), f.get("backtest_bestanden"), kopie))
+    offene = z.get("positionen", [])
+    if offene:
+        text += "\n  Offene Positionen: " + ", ".join(
+            "%s %s @ %.4f" % (p["richtung"], p["inst"], p["einstieg"])
+            for p in offene)
+    return text
 
 
 def main(argv=None):
@@ -472,3 +497,4 @@ def _main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
+
