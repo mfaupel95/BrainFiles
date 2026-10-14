@@ -98,8 +98,14 @@ nie loeschen. Bei >0 echten Prozessen warten.
 - **kanban_list liefert `[Duplicate tool output]`:** wiederholen, bis echte
 Ergebnisse kommen (in dieser Session brauchte es 4 Anlaeufe).
 - **CRLF-Dateien:** Konflikte/JSON per `read_bytes()`/`write_bytes()` mit
-`b"\r\n"`-Erhalt loesen. Danach `git diff --numstat` pruefen — eine gewollte
-Zeile muss 1/1 zeigen, nie die ganze Datei.
+`b"\r\n"`-Erhalt loesen. Neue Zeilen IMMER direkt mit dem Ziel-Zeilenende
+bauen (`L = "\r\n" if b"\r\n" in raw else "\n"`, dann `L.join([...])`) —
+NIE ein globales `out.replace(b"\n", b"\r\n")` auf eine bereits CRLF-Datei
+anwenden: es verdoppelt jedes CR zu `\r\r\n` und schreibt die ganze Datei
+neu (diff zeigt 7000+/7000+ statt der gewollten Zeilen). Danach `git diff
+--numstat` pruefen — eine gewollte Zeile muss 1/1 zeigen, nie die ganze
+Datei; bei Ganzdatei-Diff `git checkout HEAD -- <datei>` und mit korrektem
+Zeilenende neu einfuegen.
 - **Fremdarbeit im Index ist kein Fehler:** Skills/config.yaml einer
 parallelen Sitzung liegen gelassen, nur eigene Pfade committen.
 - **Komprimiertes Wissen nicht erfinden:** Titel/Befunde offener TASKS, die

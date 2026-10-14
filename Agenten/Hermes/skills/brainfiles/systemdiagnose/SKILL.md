@@ -409,3 +409,10 @@ der Werkstatt-Wurzel auf), verlustfreie Reparatur:
 - Genau eine Empfehlung, begruendet — keine Optionsliste.
 - Zum Schluss: was bewusst nicht angefasst wurde und was eine Entscheidung von
   Max braucht.
+
+## Aufraeumen
+Nach der Pruefung die Pruef-Artefakte loeschen (Max: „nach pruefung loeschen") — Scratch-Dateien, Aktivierungs-Skripte samt Log, und Rettungskopien, sobald
+ihr Inhalt verifiziert in den Zielort gemerged ist. Eine Rettungskopie ist kein
+Dauerlager: sie bleibt nur bis zur Verifikation stehen, dann weg. Destruktive
+Loeschung im Approval-Terminal als EIGENER Aufruf ansagen, nie in eine Kette
+gebuendelt.

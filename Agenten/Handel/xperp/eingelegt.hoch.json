@@ -1,0 +1,14 @@
+[
+  {
+    "instId": "NVDA-USD_UM_XPERP-310613",
+    "seite": "long",
+    "hebel": 5.0,
+    "einstieg": 231.87,
+    "stop": 230.39,
+    "ziel": 235.43,
+    "einsatz": 80.0,
+    "zeithorizont": 48,
+    "gueltig_bis": "2026-10-15T13:15:00+00:00",
+    "gestellt": "2026-10-13T13:15:00+00:00"
+  }
+]

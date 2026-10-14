@@ -150,7 +150,9 @@ origin <fork> && git fetch origin`.
    niemals anzeigen/ausgeben. Orderfaehige Agenten (trading/copybot/sniper im
    Namen) nicht blind starten: erst pruefen, ob die Schleife echte Orders
    platzieren kann; beobachtende Agenten (whale/funding/chart/listing) sind
-   der sichere Start. Live-Handel nur nach expliziter Freigabe.
+   der sichere Start. Live-Handel nur nach expliziter Freigabe UND mit
+   vorhandenem Wallet-Key — ohne Key (PRIVATE_KEY leer) bleibt der Bot im
+   Dry-Run; das vorher pruefen, statt Live zu versprechen.
    Ein Repo mit vielen Agentenmodulen (z.B. 30 Dateien unter src/agents/) gilt
    erst als lauffaehig, wenn JEDES Modul einzeln importiert wurde —
    `requirements.txt` deckt oft nur die zuletzt benutzten Module ab, nicht den
@@ -244,6 +246,19 @@ origin <fork> && git fetch origin`.
     setzen. Belegt: RBI lief nach dem Fix lokal bis Research-Phase.
 
 ## Pitfalls
+- **Ein Fremd-Repo, an dem eine Claude/Claude-Code-Session gearbeitet hat,
+  uebernimmt man ueber deren Sitzungsprotokoll, nicht ueber den Dateibaum.**
+  Die Absicht der Session steht in `~/.claude/projects/<projekt-verzeichnis>/*.jsonl`
+  (der Ordnername ist der Repo-Pfad mit `\`/`:` durch `-` ersetzt, z.B.
+  `O--Werkstatt-2-JEV-jev-trader`). Die USER-Nachrichten daraus extrahieren
+  (`type=="user"`, `message.content` ist str oder Liste von `{type:"text"}`) —
+  dort steht, was der Nutzer tatsaechlich wollte, nicht was der Assistent gebaut
+  hat; dazu `git reflog` fuer die letzte Aktion. Und: **bevor man "starten"
+  sagt, pruefen, ob der Prozess schon laeuft** — curl auf den Port, Log-Tail,
+  Smoke-Test; einen laufenden Trading-Bot blind neu zu starten riskiert
+  Doppel-Orders. Der vom Nutzer genannte Pfad kann ausserdem angenaehert sein
+  (`O:/werkstatt 2/jevtrader` war real `O:/Werkstatt 2/JEV/jev-trader`) — die
+  echte Ordnerstruktur verifizieren, nicht den Pfad uebernehmen.
 - **Ein natives Fremd-Werkzeug auf einen Pfad unter `Werkstatt/` zeigen und sich
   ueber den Abbruch wundern:** `Werkstatt/` ist eine Junction auf `O:\`.
   Programme, die ihre Eingabe aufloesen, verweigern das mit `Refusing to
