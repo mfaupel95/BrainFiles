@@ -435,7 +435,16 @@ try {
   # Liveness-Watchdog) blieb deshalb 5 h unbemerkt. Diese Aufgaben aktiviert
   # die Pruefung selbst wieder (schtasks /Change /ENABLE, keine Admin-Rechte)
   # und meldet es als erledigt.
-  $kritischeWaechter = @('MaxHirn-Gateway-Waechter')
+  $kritischeWaechter = @(
+    'MaxHirn-Gateway-Waechter',
+    # Live-Spuren brauchen ein Netz: am 12./13.10.2026 waren Basis-Dauerlauf und
+    # sein Waechter deaktiviert, die Live-Positionen liefen ohne Ueberwachung.
+    # Ein Neustart des Dauerlaufs umgeht KEINE Handels-Gates (handel_erlaubt,
+    # Freigabefenster, Kill) - er stellt nur die Ueberwachung wieder her.
+    # Mittel-Waechter bewusst NICHT hier: Mittel-Stufe ist dokumentiert abgeschaltet.
+    'MaxHirn-Handel-Dauerlauf',
+    'MaxHirn-Handel-Dauerlauf-Waechter'
+  )
   $schlecht = 0
   foreach ($t in $tasks) {
     $i = Get-ScheduledTaskInfo -TaskName $t.TaskName -TaskPath $t.TaskPath -EA SilentlyContinue
