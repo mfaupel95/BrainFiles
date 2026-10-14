@@ -47,7 +47,7 @@
   "_grund": "omnitrade_hebel",
   "_journal_zweitziel": "Bedingung 4: Journal und Zustand ausser Haus.",
   "journal_zweitziel": "Q:\\Handel_Journal\\omnitrade_futures",
-  "herzschlag_max_minuten": 180,
+  "herzschlag_max_minuten": 45,
   "statusdatei": "live_rsi_noema_BTCUSDC.json",
   "_instrument_vermerk": "02.10.2026 von PF_SOLUSD auf PF_XBTUSD gewechselt, Auftrag Max ('Ja baue'). Grund ist eine Messung, keine Meinung: adx_macd 15m haette auf SOL 42 Runden bei 28,6 % Treffer und +1,61 USD, auf BTC 44 Runden bei 29,6 % und +755,71 USD (60 Tage, 0,05 %/Seite, intervalle_messen.py). Die Trefferquote ist gleich, das Ergebnis nicht - die Kante sitzt auf BTC. Dazu passt, dass Kraken Futures BTC nur als 1 Kontrakt = 1 BTC anbietet: die kleinste handelbare Einheit ist rund 84.900 USD Nennwert und rund 10.575 USD Einschuss.",
   "_statusdatei_vermerk": "Die Statusdatei ist GEPINNT, und der Pin wurde am 05.10.2026 von adx_macd auf rsi_noema umgestellt (Auftrag Max, \"Pin auf rsi_noema\"). Grund ist der Sweep ueber alle 42 .omni-Fassungen mit FESTEM Fensterende (04.10. 23:45, BTC 15m, 0,05 %/Seite, intervalle_messen.py --bis): adx_macd war im 28-Tage-Fenster +187,47 USD, im 42-Tage-Fenster -18,59 USD - die Kante haelt nicht. rsi_noema (`if rsi(14) < 30 { buy() }` / `> 70 { sell() }`) waechst dagegen mit dem Fenster: 9 Runden +64,43 (28 T, 66,7 %) und 14 Runden +243,64 (42 T, 71,4 %), DD 2,72 % - das einzige Muster der Positivliste, das mit der Fensterlaenge waechst statt zu schrumpfen, und der niedrigste Drawdown darin. Vorsicht: 14 Runden sind keine Stichprobe fuer 7x-Hebel, die Spur bleibt Papier. Naht: OMNITRADE_STATUS in omnitrade/lesen.py.",

@@ -1,5 +1,5 @@
 model:
-  default: inclusionai/ling-3.0-flash-fin:free
+  default: stepfun/step-5-preview:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
