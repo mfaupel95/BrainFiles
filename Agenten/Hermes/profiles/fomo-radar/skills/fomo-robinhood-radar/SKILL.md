@@ -22,7 +22,7 @@ Load for any work on this repo: running its CLI, operating or debugging the live
 ## Always-on rules
 
 - Read `docs/STATUS.md` at session start; update it at session end — every session appends an entry. Style: newest first, right under the `Обновлено:` line, one dense paragraph, bold the headline.
-- Run everything with `.venv/Scripts/python` / `./.venv/Scripts/fomo-radar`, and export `PYTHONIOENCODING=utf-8` before live runs — token names break the Windows cp1251 console. Full command list is in CLAUDE.md.
+- Run everything with `.venv/Scripts/python` / `./.venv/Scripts/fomo-radar`, and export `PYTHONIOENCODING=utf-8` before live runs — token names break the Windows cp1251 console. **Start every CLI run with `env -u PYTHONPATH`** (e.g. `env -u PYTHONPATH PYTHONIOENCODING=utf-8 ./.venv/Scripts/python -m fomo_agent.cli ...`): the Hermes session sets PYTHONPATH to a cp314-pydantic_core environment that breaks imports in this cp313 venv (`ModuleNotFoundError: fomo_agent.pipeline.provenance`, track error #2064). Full command list is in CLAUDE.md.
 - The Codex budget (10k req/month) binds: check the `fomo-radar init` projection before adding any Codex call; prefer free sources (Robinhood RPC, rhtrenches) first.
 - A fix touching `sources/` or `pipeline/` is not done until the real CLI command ran against the live chain AND `pytest -q` is fully green. Do not claim a fix on reasoning alone.
 - Thresholds live in `config.py` + `.env`; `.env` is gitignored, never print or commit secrets.
