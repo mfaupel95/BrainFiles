@@ -464,6 +464,10 @@ SPUREN = {
                      "skript": "handeln.py"},
     "klassik_supertrend": {"ordner": "klassik_supertrend", "waehrung": "USD",
                            "skript": "handeln.py"},
+    # LLM-STUNDE (12.10.2026): drei Indikator-Kandidaten auf 1H, je Regelarm
+    # und LLM-Arm (sechs Straenge in laeufe/). Papier, kein Live-Zweig.
+    "llm_stunde": {"ordner": "llm_stunde", "waehrung": "USD",
+                   "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im
@@ -506,6 +510,23 @@ SPUREN = {
                        "skript": "handeln.py"},
     "fib_retrace": {"ordner": "fib_retrace", "waehrung": "USD",
                     "skript": "handeln.py"},
+    # OMNI2 (Papierbuch auf den Rust-Laeufen des Forks, angelegt 14.10.2026,
+    # Auftrag Interpool): spiegelt die POSITION der omnitrade2-Laeufe in
+    # Werkstatt/omnitrade2/status/ in ein eigenes Buch. Muster ist die
+    # bestehende omnitrade-Spur (Agenten/Handel/omnitrade/), geteilt sind
+    # omnitrade_bridge.py und omnitrade_lauf.py.
+    # AUS DEM DAUERLAUF GENOMMEN (14.10.2026): omnitrade2 schreibt aktuell
+    # KEINE Statusdatei - sein CLI kennt nur 'backtest' und 'validate', keinen
+    # 'live'-Befehl. Der Statuspfad ist definiert
+    # (Werkstatt/omnitrade2/status/live.json), die Datei existiert aber nicht.
+    # Die Spur wuerde nur "keine Statusdatei" melden und nichts tun - sie
+    # erfindet keine Position. Sobald der Rust-Klon einen Live-Modus bekommt,
+    # kann die Spur hier re-einkommentiert werden.
+    # WIEDER ANSCHALTEN: die Zeile hier re-einkommentieren und in
+    # omnitrade2/zustand.json "letzter_lauf" auf jetzt setzen - sonst stellt
+    # der erste Zyklus offene Papierpositionen flach (herzschlag_alt).
+    # "omnitrade2": {"ordner": "omnitrade2", "waehrung": "USD",
+    #                "skript": "handeln.py"},
 }
 
 # Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe
