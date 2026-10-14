@@ -2131,12 +2131,15 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
               % (a["inst"], a["seite"], a["stop"], g["abstand"] * 100,
                  a["ziel"], g["liq"], p["liq_abstand"] * 100))
         print("      %-22s %-5s  Pflicht: Funding %s, Gebuehr %.3f%%, "
-              "Quote noetig %.1f%% / beobachtet %.1f%%"
+              "Quote noetig %s / beobachtet %s"
               % (a["inst"], a["seite"],
                  "n/a" if p["funding_pct"] is None
                  else "%+.3f%%" % (p["funding_pct"] * 100),
-                 p["gebuehren_pct"] * 100, p["quote_noetig"] * 100,
-                 p["quote_beobachtet"] * 100))
+                 p["gebuehren_pct"] * 100,
+                 "n/a" if p["quote_noetig"] is None
+                 else "%.1f%%" % (p["quote_noetig"] * 100),
+                 "n/a" if p["quote_beobachtet"] is None
+                 else "%.1f%%" % (p["quote_beobachtet"] * 100)))
 
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="eroeffnen", inst=a["inst"],
@@ -2150,8 +2153,10 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                 funding_pct=("" if p["funding_pct"] is None
                              else "%.6f" % p["funding_pct"]),
                 gebuehr_pct="%.6f" % p["gebuehren_pct"],
-                quote_noetig="%.4f" % p["quote_noetig"],
-                quote_beob="%.4f" % p["quote_beobachtet"],
+                quote_noetig=("" if p["quote_noetig"] is None
+                             else "%.4f" % p["quote_noetig"]),
+                quote_beob=("" if p["quote_beobachtet"] is None
+                           else "%.4f" % p["quote_beobachtet"]),
                 grund="punkte %.1f, %s" % (a["punkte"], a["grund"]))
         _tracking.track_position_eroeffnet(
             spur_name="xperp",
