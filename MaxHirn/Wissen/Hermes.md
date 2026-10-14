@@ -99,6 +99,10 @@ dort bewusst weg, nicht vergessen. `i-have-adhd` liegt unter `skills/productivit
 Dazu `data-guard-audit` unter `skills/productivity/`.
 Gemessen 13.10.2026 (`hermes skills list`, HERMES_HOME gesetzt): **157 Skills aktiv**
 (140 local, 15 builtin, 2 hub).
+Stand 14.10.2026: Fremd-Skill `grill-me` einzeln uebernommen (RobMitt/grill-me-skill,
+Sicherheits-Verdikt SAFE): Hermes-Fassung unter `skills/software-development/grill-me/`
+(`AskUserQuestion` -> `clarify` uebersetzt, Beschreibung auf 60 Zeichen gekuerzt),
+Vault-Original unter `.claude/skills/grill-me/`.
 Lehre 13.10.2026: Werkzeugnamen beim Kopieren nur bei echten Werkzeugaufrufen umsetzen,
 nie per Textersetzung. Die erste Kopie hat PowerShell zerstoert (`Write-Host` wurde
 `write_file-Host`). Korrigiert per Byte-Kopie aus dem Vault; kaputte Fassung in Git
