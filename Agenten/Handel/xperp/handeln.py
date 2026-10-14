@@ -2240,6 +2240,9 @@ def zeige_wachen(w):
              s["runden_stoerung"], s["erste_runde"] or "-"))
     print("  2 Ruecklauf              %.2f USD von Hoechststand %.2f  -> Faktor %.2f"
           % (s["ruecklauf_usd"], s["hoechststand_usd"], s["groessenfaktor"]))
+    print("    Konto-Ruecklauf        %.2f USD (alle Runden, %d davon Handgriffe)%s"
+          % (s["konto_ruecklauf_usd"], s["runden_hand"],
+             "   >>> KONTOWARNUNG (nur Meldung)" if s["konto_warnung"] else ""))
     print("  3 Herzschlag frisch      %s   (%s min alt, Grenze %d)"
           % (s["herzschlag_frisch"],
              "?" if s["herzschlag_alter_min"] is None
@@ -2360,6 +2363,13 @@ def lauf(modus):
 
     z = lade_zustand()
     s = wx.lage(w, JOURNAL, z)
+    if s.get("konto_warnung"):
+        # Nur melden: das Konto ist mehr als die Strategie, aber ein Verlust aus
+        # Handgriffen schliesst keine Strategieposition und sperrt nichts.
+        print("- KONTOWARNUNG: Konto-Ruecklauf %.2f USD >= %g (Strategie-Ruecklauf "
+              "%.2f USD, %d Handgriff-Runden) - nur Meldung, keine Aktion -"
+              % (s["konto_ruecklauf_usd"], w.get("konto_warnschwelle_usd"),
+                 s["ruecklauf_usd"], s["runden_hand"]))
 
     live = False
     if modus == "live":
