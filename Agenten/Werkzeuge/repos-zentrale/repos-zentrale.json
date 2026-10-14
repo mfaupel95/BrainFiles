@@ -278,6 +278,14 @@
       ]
     },
     {
+      "ordner": "grill-me-skill",
+      "rolle": "Skills",
+      "art": "doku",
+      "bot": "grill-me",
+      "gruppe": "doku",
+      "notiz": "Skill grill-me (RobMitt): interviewt dich zu Plan/Design bis zum gemeinsamen Verstaendnis - kein Startprogramm, der Bot grillt auf Anforderung"
+    },
+    {
       "ordner": "Harvard-Algorithmic-Trading-with-AI",
       "rolle": "Doku",
       "art": "doku",

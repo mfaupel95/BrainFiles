@@ -59,6 +59,7 @@ Tabelle); die Platte bleibt die Wahrheit.
 | everything-claude-code | everything-claude-code | Doku/Plugins/Best Practices |
 | gbrain | gbrain | neu 16.09.2026 |
 | graphify | graphify | neu 16.09.2026 |
+| grill-me-skill | grill-me | Skill grill-me (RobMitt): interviewt dich zu Plan/Design, neu 14.10.2026 |
 | Harvard-Algorithmic-Trading-with-AI | harvard-trading | |
 | moon-dev-ai-agents | moon-dev-agents | 46 Agenten |
 | Moon-Dev-Code | moon-dev-code | nur PDFs, nichts zu installieren |
