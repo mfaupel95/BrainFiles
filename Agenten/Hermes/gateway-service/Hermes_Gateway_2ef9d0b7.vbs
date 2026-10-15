@@ -1,18 +1,11 @@
 ' Hermes Agent Gateway - Messaging Platform Integration
+' Umgebung wie gehabt; Start aber ueber cmd -> python.exe statt pythonw:
+' pythonw starb im Update-Completion-Tail (03:10-03:30 drei Fehlschlaege,
+' darunter 2,5 h Waechter-Neustart-Schleife), python.exe startet durch.
+' Der CMD-Weg setzt die Umgebung selbst (setlocal) und startet python.exe
+' fensterlos per start /b. Fensterstil 0 mit cmd.exe ist belegt startfaehig.
 Option Explicit
-Dim sh, env, existing_pp
+Dim sh
 Set sh = CreateObject("WScript.Shell")
-Set env = sh.Environment("PROCESS")
-env.Item("HERMES_HOME") = "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes"
-env.Item("PYTHONIOENCODING") = "utf-8"
-env.Item("HERMES_GATEWAY_DETACHED") = "1"
-env.Item("HERMES_SUPERVISED_CHILD") = "1"
-env.Item("VIRTUAL_ENV") = "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\tools"
-existing_pp = env.Item("PYTHONPATH")
-If Len(existing_pp) > 0 Then
-  env.Item("PYTHONPATH") = "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\hermes-agent;" & existing_pp
-Else
-  env.Item("PYTHONPATH") = "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\hermes-agent"
-End If
 sh.CurrentDirectory = "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes"
-sh.Run "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\tools\python-3.14.7+202****0901-win32-x64\pythonw.exe -m hermes_cli.main gateway run", 0, False
+sh.Run "cmd.exe /c ""C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\gateway-service\gateway-direkt.cmd""", 0, False

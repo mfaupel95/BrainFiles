@@ -437,3 +437,6 @@ _config_version: 50
 terminal:
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\OmniTrade3
   backend: local
+platforms:
+  photon:
+    enabled: false
