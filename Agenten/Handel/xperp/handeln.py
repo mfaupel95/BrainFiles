@@ -1790,8 +1790,32 @@ def buche_funding(z, live, w):
               % (p["inst"], betrag, perioden, satz * 100))
 
 
-def flach_stellen(z, live, grund, w=None):
+def kill_verkauf_ohne_freigabe(w):
+    """Darf der KILL echte Live-Positionen auch bei geschlossener Freigabekette verkaufen?
+
+    Auftrag Max 14.10.2026 (Entscheidung 2): ja, als reiner Notausstieg. Die
+    Freigabekette (`sperren_live`) soll NEUES Risiko begrenzen; ein reduceOnly-
+    Marktverkauf schafft keines. Sie schliesst sich aber oft genau dann, wenn
+    Verluste auflaufen (negativer EV, Herzschlag, Fenster zu) - dann konnte der
+    Kill bisher nicht handeln, und nur der Boersen-Stop schuetzte die Position.
+
+    Voraussetzungen, die IMMER bleiben: Schalter `kill_verkauf_ohne_freigabekette`
+    in der Wache, nur die Basisstufe (`risikostufe.live_erlaubt`, eine Stufe hat
+    nie echtes Geld) und ein gesetzter OKX-Schluessel. Verkauft werden nur
+    Positionen mit modus=live (siehe `flach_stellen`), nie Papierpositionen und
+    - ausser `handpositionen_automatisch_schliessen` - keine Handpositionen.
+    """
+    return bool((w or {}).get("kill_verkauf_ohne_freigabekette")
+                and risikostufe.live_erlaubt() and okxf.schluessel_vorhanden())
+
+
+def flach_stellen(z, live, grund, w=None, notaus_live=False):
     """Alle Positionen sofort schliessen - Bedingung 2 und 3.
+
+    `notaus_live` (Standard falsch): verkauft Positionen mit modus=live an der
+    Boerse (reduceOnly-Market), auch wenn `live` falsch ist - nur fuer den Kill,
+    siehe `kill_verkauf_ohne_freigabe`. Papierpositionen werden dabei nur im
+    Buch geschlossen, nie an der Boerse.
 
     ECHTE POSITIONEN GEHOEREN DEM LIVE-LAUF (21.09.2026): Laeuft die Spur im
     Papier (kein Freigabefenster oder handel_erlaubt=false) und loest dabei der
@@ -1818,7 +1842,8 @@ def flach_stellen(z, live, grund, w=None):
                   % (p.get("inst"), grund))
             behalten.append(p)
             continue
-        if not live and p.get("modus") == "live":
+        echt = p.get("modus") == "live"
+        if not live and echt and not notaus_live:
             print("  %s bleibt im Buch: echte Position (modus=live) wird nur "
                   "vom Live-Lauf geschlossen" % p.get("inst"))
             behalten.append(p)
@@ -1830,7 +1855,8 @@ def flach_stellen(z, live, grund, w=None):
                   file=sys.stderr)
             behalten.append(p)
             continue
-        if live:
+        verkauf = live or (notaus_live and echt)
+        if verkauf:
             try:
                 okxf.markt_schliessen(p["inst"], p["kontrakte"], p["seite"])
             except Exception as e:                       # noqa: BLE001
@@ -1841,7 +1867,7 @@ def flach_stellen(z, live, grund, w=None):
         erloes = _ergebnis(p, kurs)
         print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], p["seite"], kurs, erloes - p["margin"]))
-        journal(zeit=_jetzt(), modus="live" if live else "papier",
+        journal(zeit=_jetzt(), modus="live" if verkauf else "papier",
                 aktion="schliessen", inst=p["inst"],
                 pos_id=p.get("pos_id", ""), seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
@@ -2436,7 +2462,8 @@ def lauf(modus):
     if s["kill"]:
         print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"
               % (s["ruecklauf_usd"], w["kill_switch_gesamt_usd"]))
-        flach_stellen(z, live, "kill_switch", w)
+        flach_stellen(z, live, "kill_switch", w,
+                      notaus_live=(not live and kill_verkauf_ohne_freigabe(w)))
         if wx.sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
             print("  wachen.json handel_erlaubt -> false")
         schreibe_zustand(z)

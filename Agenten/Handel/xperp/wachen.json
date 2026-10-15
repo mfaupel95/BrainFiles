@@ -85,6 +85,8 @@
   "kill_switch_gesamt_usd": 1500.0,
   "handergebnis_in_kapitalkurve": false,
   "_handergebnis": "Auftrag Max 14.10.2026 (Variante C): Ergebnisse uebernommener Handpositionen (Eroeffnungsgrund fremdposition_uebernommen) steuern Halbierung und Kill NICHT mit. Anlass: Kill vom 06.10.2026 (Ruecklauf 835 USD) kam von einer uebernommenen Handposition (STRK), die Halbierung (30 USD) lag mit rund -400 USD Handergebnis dauerhaft darunter. true = wie vorher, alle gebuchten Runden zaehlen.",
+  "kill_verkauf_ohne_freigabekette": true,
+  "_kill_verkauf": "Auftrag Max 14.10.2026 (Entscheidung 2): der KILL verkauft echte Live-Positionen (modus=live, reduceOnly-Market) auch bei geschlossener Freigabekette. Bleibt: nur Basisstufe, OKX-Schluessel gesetzt, keine Papierpositionen an der Boerse, Handpositionen nur mit handpositionen_automatisch_schliessen. fehlt/false = wie vorher (nur der Live-Lauf verkauft).",
   "konto_warnschwelle_usd": 250.0,
   "_konto_warnschwelle": "Nur Meldung, keine Aktion: Ruecklauf der Kapitalkurve ueber ALLE Runden (inkl. Handgriffe). 250 USD = der Kill-Deckel vor der Erhoehung vom 07.10.2026 - eine Annahme, keine Messung, jederzeit aenderbar.",
   "llm_aktiv": true,

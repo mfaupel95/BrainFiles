@@ -987,8 +987,21 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
             if status == "frei":
                 faktor = groessenfaktor(ruecklauf, w)
             else:
+                # Notausstieg ohne Freigabekette (Auftrag Max 14.10.2026,
+                # Entscheidung 2): `kill_verkauf_ohne_freigabekette` erlaubt dem
+                # Kill, echte Live-Positionen reduceOnly zu verkaufen, auch wenn
+                # die Kette (Freigabefenster, EV, Herzschlag ...) zu ist. Es
+                # bleiben: nur die Basisstufe, ein Orderweg mit gesetztem
+                # Schluessel, und verkauft wird nur, was modus=live ist
+                # (pruefe_ausstiege) - Papierpositionen nur im Buch.
+                kill_live, kill_weg = live, weg
+                if (not live and w.get("kill_verkauf_ohne_freigabekette")
+                        and risikostufe.live_erlaubt()):
+                    nw = orderweg(w)
+                    if nw is not None and nw.schluessel_vorhanden():
+                        kill_live, kill_weg = True, nw
                 offen = kill_schliessen(z, w, quelle, preis_fuer, journal_pfad,
-                                        zustand_pfad, live=live, weg=weg)
+                                        zustand_pfad, live=kill_live, weg=kill_weg)
                 if offen:
                     print("  %d Position(en) noch offen (kein Kurs oder Verkauf "
                           "fehlgeschlagen) - naechster Zyklus versucht es erneut." % offen)
