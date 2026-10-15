@@ -38,6 +38,17 @@ jeder kleine echte Ruecklauf gegen den riesigen Phantom-Peak misst.
   alten Phantom-Werte weiter und spiegelstand meldet Abweichung. Und einen
   lokalen `.bak` im Spurordner NICHT als Beweis nutzen: der Dauerlauf schreibt
   das Journal weiter, der `.bak` kann verschwinden; der dauerhafte Zeuge ist Q:.
+- **Buchhaltungszeilen sind ein DRITTER Peak-Treiber, ganz ohne Nominal-Fehler.**
+  `buchbereinigung`-Zeilen (Altlast-Ausbuchungen aus dem Buch) sind korrekt
+  gebucht und trotzdem Peak-Material: die Kapitalkurve rechnet auf ALLEN
+  Buchungen, eine Buchbereinigung ist aber keine Handelsentscheidung und hat
+  kein Geld bewegt. Gemessen: 13 Buchbereinigungen a ~100 USD Einsatz bauten in
+  einer Papier-Live-Spur einen Ruecklauf von 65,68 USD gegen einen Kill-Deckel
+  von 40 auf. Vor jedem Kill-Befund das Journal mit
+  `stoerungen.teile_runden(rows)` teilen (die Auswertung trennt Buchhaltung
+  bereits, der Kill liest die Rohkurve) und den Ruecklauf OHNE Buchhaltung
+  nachrechnen. Unterschied: „der Kill hat richtig zugeschlagen" gegen „der Kill
+  rechnet gegen eine Buchhaltungsblase".
 - **Kurve danach pruefen:** Peak muss auf den realen Wert fallen (gemessen
   639.977 -> 690) und der Kill aufhoeren, Gewinner zu schliessen (0
   kill_switch-Ereignisse danach). Der Code-Fix selbst (Marge statt Nominal an
@@ -105,6 +116,10 @@ ohne dass ein Stop ausloest.
    vier Zeilen mit `nominal_usd == margin_usd` - QUANT, NIGHT (2x), STRK -
    bauten den Hoechststand auf 639.977; nur QUANT hatte einen Boersenzeugen
    (realizedPnl -32.30), NIGHT/STRK wurden neutral gebucht).
+6. Buchhaltung abziehen, BEVOR der Kill-Befund steht:
+   `stoerungen.teile_runden(rows)` auf das Journal, `buchbereinigung`-Zeilen
+   zaehlen und den Ruecklauf ohne sie nachrechnen - liegt der Deckel dann
+   ausser Reichweite, war die Buchhaltung der Peak, nicht der Markt.
 
 Fuer den Boersenzeugen (`okxf.geschlossene_position` / positions-history):
 OKX paginiert rueckwaerts - `after=<ts>` liefert AE...LTERE Eintraege,
@@ -117,6 +132,8 @@ eines Fensters `before=<ende>`.
 
 - Ein Kill, der GEWINNER schliesst, ist ein Messfehler der Kurve, kein
   Markturteil. Deckel erhoehen daempft nur - die Wurzel ist die Blasenzeile.
+  Die Blase kann aus korrekt gebuchter BUCHHALTUNG bestehen, nicht nur aus
+  Nominal-Fehlern.
 - "Position geoeffnet und direkt geschlossen" hat drei unabhaengige Ursachen;
   nur eine zu finden und zu reparieren laesst die anderen stehen.
 - `modus=live` im Journal ist ein BUCHVERMERK, kein Orderbeleg - der Beleg ist

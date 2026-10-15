@@ -1,0 +1,4 @@
+description: 'jev-hyperliquid: Hyperliquid-Perps-Marktmacher (Bun/TypeScript) im jev-trader-Repo
+  — Jev-Entscheidungskern auf ENGINE=hyperliquid, Testnet/Dry-Run, post-only Limit,
+  Hebel + Funding getrennt von Kuru/Monad.'
+description_auto: false

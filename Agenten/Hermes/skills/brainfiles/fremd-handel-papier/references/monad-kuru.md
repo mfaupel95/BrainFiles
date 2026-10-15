@@ -20,6 +20,36 @@ Fuer den Monad-Marktmacher `Werkstatt/jev-trader` (Kuru, MON-USDC).
 - `DRY_RUN=true` oder fehlender `PRIVATE_KEY` = Simulation (echtes Buch, simulierte Fills).
 - Repo liegt unter `Werkstatt/jev-trader` (nicht `Werkstatt/Repos/`); privater Backup-Bare unter `O:/privkopie-cache/jev-trader-privat.git`.
 
-## Live-Freigabe-Gate
+## Hyperliquid-Engine (seit Port)
+
+Der Bot laesst sich ueber `ENGINE=hyperliquid` in `.env` vom Kuru-On-Chain-Marktmacher auf Hyperliquid-Perps umschalten. Dann greifen:
+
+- `HL_TESTNET=true|false`, `HL_COIN=BTC` (oder ETH/SOL/...), `HL_LEVERAGE=0` (0 = nicht setzen).
+- SDK `@nktkas/hyperliquid`: `InfoClient({transport: new HttpTransport({isTestnet})})`, `ExchangeClient({transport, wallet})`.
+- `info.clearinghouseState({user})` = Konto (accountValue, totalMarginUsed, assetPositions).
+- `info.l2Book({coin})` = Book. `info.meta()` = Universe (maxLeverage, szDecimals je Coin).
+- `info.userRole({user})` = `"missing"` wenn das Wallet noch nie auf HL eingezahlt hat.
+- **Testnet-Faucet (`app.hyperliquid-testnet.xyz/drip`) braucht $5+ Mainnet-Deposit** auf demselben Wallet. Ohne Mainnet-Historie kein Testnet-USDC. Bridge laeuft ueber Arbitrum — MON auf Monad ist keine Quelle.
+
+## Wallet-Guthaben pruefen (ethers v5)
+
+Das Repo nutzt ethers 5.8. Die v5-API weicht von v6 ab:
+
+- `new ethers.providers.JsonRpcProvider(url)` — nicht `new ethers.JsonRpcProvider(url)`.
+- `new ethers.Contract(addr, abi, provider)` — nicht `new ethers.utils.Contract(...)`.
+- `ethers.utils.Interface` — nicht `ethers.Interface`.
+- `ethers.BigNumber.from(raw)` — nicht `new ethers.BigNumber(raw)`.
+- Fuer Tuple-Rueckgaben (z. B. `getMarketParams`) die ABI mit `components` bauen; ein flaches `returns (address,...)` parst falsch.
+- USDC auf Monad: `0xf817257fed379853cDe0fa4F97AB987181B1E5Ea` (6 Dezimalen).
 
 Vor dem Scharfschalten: Blockrate messen, Gas/Block x Bloecke/h gegen die Wallet-Balance stellen (siehe SKILL.md-Pitfall). Ohne Gas-Sparmodus reicht ein 691-MON-Konto ~1,6 h (437 MON/h) — nicht tragfaehig. Mit dem Sparmodus (nur bei Bewegung/Refresh posten) sinkt die Last auf ~22 MON/h worst case (nur Refresh alle 20 Bloecke) bis ~55 MON/h realistisch (alle ~8 Bloecke) — das Konto reicht dann ~13-32 h. Vor dem Scharfschalten die echte Post-Rate im Dry-Run messen (wie oft postet er wirklich), nicht die worst-case-Zahl glauben.
+
+## Prozess-Diagnose
+
+Der Bot laeuft als `bun run src/index.ts`. PID-Datei (`Agenten/Hermes/cache/jev-trader.pid`) kann eine tote PID tragen — immer den echten Prozess pruefen:
+
+```powershell
+Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'bun' -and $_.CommandLine -match 'src/index.ts' }
+```
+
+Nur `Name -match 'bun'` matcht auch Hermes-eigene bun-Server. Der Wrapper `Agenten/Routinen/jev-trader-start.ps1` prueft genau dieses Muster vor dem Start (Einzelinstanz). Log: `Agenten/Routinen/logs/jev-trader.out.log`. Geplante Aufgabe `MaxHirn-Jev-Trader` (Logon + 15 Min, IgnoreNew) kann deaktiviert sein — `Enable-ScheduledTask` reaktiviert sie.

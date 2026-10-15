@@ -65,6 +65,29 @@ Live-Lauf nicht die Tests verschmutzt.
 ## Beispiel-Implementierung
 
 Fertiges, getestetes Muster: `Agenten/KryptoBrief/` (`fetch.py`, `config.json`,
-`tests/test_fetch.py`, `README.md`). Live-Lauf sammelt alle 5 Kategorien und
-schreibt nach `Werkstatt/KryptoBrief/daten/`. Tests: `python
+`tests/test_fetch.py`, `README.md`, plus `render_briefing.py`, `send_telegram.py`,
+`krypto-brief.py`). Live-Lauf sammelt alle 5 Kategorien und schreibt nach
+`Werkstatt/KryptoBrief/daten/`. Tests: `python
 Agenten/KryptoBrief/tests/test_fetch.py`.
+
+## Versand + Taktung (KryptoBrief)
+
+- **Interpreter:** die Skripte brauchen `requests`; der `python` im Hermes-
+tools-Pfad HAT es NICHT, `Agenten/Handel/.venv/Scripts/python.exe` HAT es.
+Immer den Handel-Interpreter nutzen (`Agenten/Handel/.venv/Scripts/python.exe`),
+nicht den Standard-`python`.
+- **Telegram-Versand** ueber eigenen BotFather-Chat (nicht den Gruppen-Token):
+  Token/chat nur als Env (`KRYPTO_BRIEF_TOKEN`, `KRYPTO_BRIEF_CHAT_ID`), nie
+  in Code/Config/Repo. Senden via `send_telegram.py`, enthaelt 4096-Zeichen-
+  Split fuer lange Briefings.
+- **Einstiegspunkt** `krypto-brief.py` laeuft die drei Schichten (fetch →
+  render → send) in einem Lauf. Windows-Task `KryptoBrief` (07:00, taeglich)
+  ruft `Agenten/Routinen/krypto-brief.ps1`; der WRAPPER leitet die Ausgabe
+  nach `logs/krypto-brief-letzter-lauf.log` um und krypto-brief.py loggt
+  selbst nach `logs/krypto-brief-intern.log` (nicht dieselbe Datei: die von
+  PowerShell per `*>>` geoeffnete Datei ist gesperrt → PermissionError).
+- **Pfad-Fahlle `repo_root`:** in Modulen unter `Agenten/<Modul>/` zaehlt
+  `dirname(abspath(__file__))` einmal den MODUL-Ordner, dann sind es von
+  `SCRIPT_DIR` (= <Modul>) NUR ZWEI `dirname` bis zur BrainFiles-Wurzel, vom
+  FILE selbst DREI. Nicht verwechseln — `fetch.py` ist eine Datei (3 hoch),
+  `render_briefing.py`/`krypto-brief.py` nehmen SCRIPT_DIR als Ordner (2 hoch).
