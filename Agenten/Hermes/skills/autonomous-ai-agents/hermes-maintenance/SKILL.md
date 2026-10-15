@@ -466,11 +466,32 @@ Endzustand: genau EIN Launcher-Task plus Waechter.
 Messstelle - nicht der Dienst.** `WScript.Shell.Run <zeile>, 0, False` (Fensterstil 0,
 versteckt) startet ein **Konsolen**programm gar nicht: kein Prozess, keine Fehlermeldung, der
 Aufruf kehrt sauber zurueck. Eine Launcher-VBS, die `python.exe` mit Stil 0 startet, kann
-deshalb nie etwas starten; versteckt geht nur mit `pythonw.exe` (GUI-Subsystem). Beweis fuehrt
+deshalb nie etwas starten. Beweis fuehrt
 man mit einem VBS-Einzeiler, der eine Datei schreibt, plus `Test-Path` darauf - nie mit der
 Erfolgsmeldung von `sh.Run`. Und: eine Prozesswache, die nur `python.exe` sucht, sieht den
 umgestellten Gateway nicht mehr - immer beide Namen abfragen. `hermes update` schreibt die
-Launcher-VBS neu und setzt sie auf `python.exe` zurueck; nach jedem Lauf nachsehen. Stiltabelle,
+Launcher-VBS neu; nach jedem Lauf nachsehen.
+
+**KORREKTUR 15.10.2026 (2,5 h Ausfall, gemessen): `pythonw.exe` mit Stil 0 ist NICHT der
+funktionierende Weg - es ist der AUSFALL-Weg.** Der Waechter loeste von 00:10 bis 02:59 alle
+zwei Minuten "kein Gateway-Prozess - Neustart ausgeloest" aus, ohne dass ein Prozess hochkam:
+der pythonw-Start bleibt im Source-Update-Completion-Tail haeng (`pm: worker exited without a
+result` im stdout, sonst nichts) und erreicht den Gateway-Loop nie. `python.exe -m
+hermes_cli.main gateway run` startet denselben Befehl sofort durch und lief 16 Minuten stabil
+(bis ein MemoryError unter Commit-Druck den Liveness-Watchdog ausloeste - ein ZWEITER,
+getrennter Befund). Der gemessene, funktionierende Launcher ist die Kette **VBS ->
+`cmd.exe /c gateway-direkt.cmd` (Stil 0 - cmd.exe ist mit Stil 0 startfaehig, per
+Probe-Datei bewiesen) -> `start /b python.exe`**; der CMD setzt die Umgebung per `setlocal`
+selbst (HERMES_HOME, PYTHONPATH, VIRTUAL_ENV, HERMES_GATEWAY_DETACHED,
+HERMES_SUPERVISED_CHILD). Nachweis: VBS-Neustart brachte den Gateway in 12 s hoch,
+`state=running`, 22/22 Plattformen connected. Sicherung desalten VBS als `.bak-<datum>`
+daneben.
+
+**Merksatz fuer die Diagnose:** schreibt der Waechter minuetlich "Neustart ausgeloest" und es
+passiert nichts, ist der LAUNCHER der Befund, nicht der Watchdog. Den Launcher-Weg isoliert
+messen (wscript direkt aufrufen, PID-Vergleich per `tasklist /FO CSV` - **nicht** per
+`Get-CimInstance`, das warf unter Last `ResourceBusy`/"Nicht genuegend Arbeitsspeicher"), und
+python.exe gegen pythonw gegeneinander fahren, bevor man am Watchdog oder am Dienst sucht. Stiltabelle,
 Reparatur und die zugehoerige Wachen-Falle: `references/gateway-identitaet-und-wachen.md`,
 Abschnitte 3 und 5(c).
 **Start-Tot-Schleife: erst die KINDER zaehlen, nicht den Dienst verdaechtigen.** Startet der
