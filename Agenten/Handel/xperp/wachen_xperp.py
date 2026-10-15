@@ -294,6 +294,15 @@ def lage(w, journal_pfad, zustand):
         kurve = runden
     else:
         kurve = [r for r in runden if r.get("herkunft") != HAND]
+    # ZWEITER Filter, unabhaengig davon: Stichtag (wachen.json
+    # "kapitalkurve_ab", ISO-Datum "JJJJ-MM-TT"). Runden VOR dem Stichtag
+    # zaehlen fuer Statistik und Erwartungswert weiter, aber nicht fuer
+    # Hoechststand/Ruecklauf/Kill - sonst traegt ein aufgeblaehter Alt-Peak
+    # (Phantomzeilen, alte Buchungsart) den Kill-Switch ueber Wochen.
+    # Auftrag Max 15.10.2026; der Hand-Filter oben bleibt davon unberuehrt.
+    ab = w.get("kapitalkurve_ab")
+    if ab:
+        kurve = [r for r in kurve if r["zeit"][:10] >= ab]
     hoch, rueck = drawdown(kurve)
     # KONTO-RUECKLAUF: dieselbe Rechnung auf ALLEN Runden. Nur zum Melden, nie
     # zum Handeln - er schliesst nichts und sperrt nichts.

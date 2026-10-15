@@ -7,8 +7,8 @@
   "handel_erlaubt": true,
   "_handel_erlaubt_vermerk_22092026": "true auf Auftrag Max 22.09.2026: 'Weitere nach auswertung bereite spur an kraken anschliessen um das potential ganz auszuschoepfen' + 'auf kraken sind ~240 EUR/USDC nicht bewegt'. Bereite Spur laut kosten_wendepunkt.py: eigene Messung f_max +9.00 % je Runde gegen 1.2 % Kraken-Runde - die einzige verdrahtete Kraken-Spur, die die gemessene Gebuehr schlaegt.",
   "_live_einsatz": "Untergrenze und Obergrenze des Live-Einsatzes in EUR, dynamisch nach Signalstaerke (live_kraken.einsatz_spanne). Obergrenze ist zusaetzlich durch max_pro_trade_usd gedeckelt - eine Zahl, ein Deckel.",
-  "live_einsatz_min_eur": 60.0,
-  "live_einsatz_max_eur": 150.0,
+  "live_einsatz_min_eur": 30.0,
+  "live_einsatz_max_eur": 75.0,
   "_live_paar": "XXBTZEUR (live_kraken.PAAR). Vorher XBTUSD: das Konto haelt EUR (189.15 frei), nur 12.27 USD - ein USD-Kauf waere am Guthaben gescheitert. Die Waehrung des PAARES muss die Waehrung des Guthabens sein.",
   "_grenzen_22092026": "Einsatz 100 -> 150 EUR und Buchrisiko 5 -> 9 USD (150 x Stop 6 %). EIN Platz bleibt: das Signal ist EINE Marktlage-Wette (BTC-Regime), zwei Plaetze waeren dieselbe Wette doppelt. 150 von 189 freien EUR werden damit bewegt.",
   "freigabe": {
@@ -66,5 +66,6 @@
   "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": trigger_modus=signal. Der Dauerlauf legt einen Auftrag nur in die Queue, wenn sich die Signalrichtung AENDERT - nicht alle 15 Minuten. Die Ausfuehrung uebernimmt der signal-executor (Cron 50921798e27a, jede Minute) unabhaengig vom Dauerlauf. Ohne diese Trennung hat eine Spur bei erfuelltem Signal bis zu 96 gleiche Einstiege am Tag gebucht - das war die Quelle der Ueberhandelung, nicht ein falsches Signal. WIRKT NUR, WEIL DIESE SPUR DAS BUCH UEBER spur_buch FUEHRT; Spuren mit eigenem handeln.py (xperp, scanner, mosaic, kraken, nautilus-Arme) brauchen dieselbe Aenderung an eigener Stelle.",
   "moeglich": [
     "perp"
-  ]
+  ],
+  "_live_einsatz_halbiert": "HALBIERT 15.10.2026 auf Auftrag Max ('Risiko zuerst'): live_einsatz_min_eur 60 -> 30, live_einsatz_max_eur 150 -> 75. Das Paar XXBTZEUR kostet 1,20 %/Runde an Kraken Spot; eine Position ist auf 1 Platz begrenzt, die Groesse ist damit die einzige Stellschraube."
 }

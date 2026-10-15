@@ -11,8 +11,8 @@
   "risiko_je_position_usd": 2.0,
   "max_offene_positionen": 1,
   "_max_pro_trade": "max_pro_trade_usd >= risiko / pflicht_stop_prozent_min = 2.0 / 0.01 = 200; gesetzt auf 130, damit genau 1 Kontrakt passt (130 // 117 = 1).",
-  "max_pro_trade_usd": 90000.0,
-  "max_gesamt_usd": 90000.0,
+  "max_pro_trade_usd": 130.0,
+  "max_gesamt_usd": 130.0,
   "_kill_switch": "kill_switch_gesamt_usd = 3 x Buchrisiko (2.0) = 6.0. Mit einem einzigen Kontrakt ist das Risiko je Runde ~1,76 USD (1,5 % Stop auf 117 USD Nominal) - der Kill greift also erst nach mehreren Verlustrunden.",
   "kill_switch_gesamt_usd": 6.0,
   "_kill_wiederaufnahme": "Live-faehige Spur: nach dem Kill KEIN Selbstanlauf (Max 09.10.2026). Die Frist laeuft ab, hebt aber nichts auf; Freigabe nur von Hand (kill_seit aus dem Zustand entfernen).",
@@ -37,9 +37,9 @@
   "_guthaben": "Futures-Konto = flex-Konto: availableMargin zaehlt, cash.balances steht auf 0 (gemessen 25.09.2026). Das Tor fragt USD, nicht USDC.",
   "mindest_guthaben": 25.0,
   "_mindest_guthaben": "1 Kontrakt bei 7x kostet ~17 USD Margin; 25 USD lassen Luft fuer Gebuehr und Kursrutsch. Ausgestoßen 25.09.2026 war das Konto bei 141,59 USD frei.",
-  "live_max_pro_trade_usd": 90000.0,
+  "live_max_pro_trade_usd": 130.0,
   "live_max_offene_positionen": 1,
-  "live_max_gesamt_usd": 90000.0,
+  "live_max_gesamt_usd": 130.0,
   "_live_grenzen": "Ein Platz, ein Kontrakt. 'Aggressiver dann weniger' umgekehrt gelesen: der Anfang ist klein, Groesse kommt spaeter ueber max_offene_positionen/kontrakte - nie durch groesseres Risiko je Runde.",
   "freigabe": {
     "erfuellt": true,
@@ -55,5 +55,6 @@
   "_statusdatei_vermerk": "Die Statusdatei ist GEPINNT, und der Pin wurde am 05.10.2026 von adx_macd auf rsi_noema umgestellt (Auftrag Max, \"Pin auf rsi_noema\"). Grund ist der Sweep ueber alle 42 .omni-Fassungen mit FESTEM Fensterende (04.10. 23:45, BTC 15m, 0,05 %/Seite, intervalle_messen.py --bis): adx_macd war im 28-Tage-Fenster +187,47 USD, im 42-Tage-Fenster -18,59 USD - die Kante haelt nicht. rsi_noema (`if rsi(14) < 30 { buy() }` / `> 70 { sell() }`) waechst dagegen mit dem Fenster: 9 Runden +64,43 (28 T, 66,7 %) und 14 Runden +243,64 (42 T, 71,4 %), DD 2,72 % - das einzige Muster der Positivliste, das mit der Fensterlaenge waechst statt zu schrumpfen, und der niedrigste Drawdown darin. Vorsicht: 14 Runden sind keine Stichprobe fuer 7x-Hebel, die Spur bleibt Papier. Naht: OMNITRADE_STATUS in omnitrade/lesen.py.",
   "_groessen_vermerk": "90000 USD ist der NOMINALwert, nicht die Margin: weg.menge_fuer rechnet int(Einsatz // Kurs), und 1 Kontrakt PF_XBTUSD IST 1 BTC (rund 84.700 USD am 02.10.2026). Der Wert ergibt genau einen Kontrakt, solange BTC zwischen 45.000 und 90.000 steht. Steigt BTC darueber, verweigert die Spur laut (0 Kontrakte, 'Einsatz kleiner als ein Kontrakt') - sie weicht NICHT auf eine kleinere Groesse oder einen anderen Markt aus. Die Margin, die Kraken wirklich bindet, ist der Margenplan des Marktes: bei Hebel 7 rund 12.130 USD von 83,38 USD frei. Ein Stop bei 1,5 % kostet 1.273 USD und passt zu risiko_je_position_usd 2,0.",
   "trigger_modus": "signal",
-  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": trigger_modus=signal. Der Dauerlauf legt einen Auftrag nur in die Queue, wenn sich die Signalrichtung AENDERT - nicht alle 15 Minuten. Die Ausfuehrung uebernimmt der signal-executor (Cron 50921798e27a, jede Minute) unabhaengig vom Dauerlauf. Ohne diese Trennung hat eine Spur bei erfuelltem Signal bis zu 96 gleiche Einstiege am Tag gebucht - das war die Quelle der Ueberhandelung, nicht ein falsches Signal. WIRKT NUR, WEIL DIESE SPUR DAS BUCH UEBER spur_buch FUEHRT; Spuren mit eigenem handeln.py (xperp, scanner, mosaic, kraken, nautilus-Arme) brauchen dieselbe Aenderung an eigener Stelle."
+  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": trigger_modus=signal. Der Dauerlauf legt einen Auftrag nur in die Queue, wenn sich die Signalrichtung AENDERT - nicht alle 15 Minuten. Die Ausfuehrung uebernimmt der signal-executor (Cron 50921798e27a, jede Minute) unabhaengig vom Dauerlauf. Ohne diese Trennung hat eine Spur bei erfuelltem Signal bis zu 96 gleiche Einstiege am Tag gebucht - das war die Quelle der Ueberhandelung, nicht ein falsches Signal. WIRKT NUR, WEIL DIESE SPUR DAS BUCH UEBER spur_buch FUEHRT; Spuren mit eigenem handeln.py (xperp, scanner, mosaic, kraken, nautilus-Arme) brauchen dieselbe Aenderung an eigener Stelle.",
+  "_live_grenzen_korrigiert": "KORRIGIERT 15.10.2026 auf Auftrag Max: alle vier Deckel standen auf 90000, der eigene Vermerk sagt 130 (2.0 Risiko / 1 % Stop = 200 Minimum, auf 130 gesetzt damit GENAU 1 Kontrakt PF_SOLUSD passt: 130 // 117 = 1). 90000 kam aus Commit 8960c0ae. Latent bisher, weil die Sizing aus dem Risiko kommt - ein Deckel, der nie bindet, ist trotzdem eine Falle fuer jeden kuenftigen Aufrufer, der die Nominale aus dem Deckel liest."
 }

@@ -51,6 +51,11 @@ W = json.loads((SPUR / "wachen.json").read_text(encoding="utf-8"))
 W.update(drawdown_halbierung_usd=30.0, kill_switch_gesamt_usd=100.0,
          handergebnis_in_kapitalkurve=True)
 W.pop("konto_warnschwelle_usd", None)
+# Der Stichtag der echten Wachen (2026-10-12) liegt HINTER den Testdaten
+# (01.-04.10.) und wuerde die Kurve leeren - dieser Test prueft den
+# HAND-Filter, nicht den Stichtag. Der Stichtag hat seinen eigenen Test
+# (test_kapitalkurve_stichtag). Auftrag Max 15.10.2026.
+W.pop("kapitalkurve_ab", None)
 
 
 class HandKurveTest(unittest.TestCase):

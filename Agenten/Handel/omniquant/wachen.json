@@ -36,9 +36,9 @@
   "_boerse_vermerk": "01.10.2026 Max: 'aber mit perp und hebel x6'. Zielboerse ist Kraken FUTURES (futures.kraken.com/derivatives/api/v3), nicht der Spot-Markt. Gemessen am 01.10.2026 gegen /instruments: neun von Omniquants zehn Instrumenten haben einen PF_-Markt (ORDI eingeschlossen), nur MAGIC-USDT nicht. DOGE heisst dort PF_DOGEUSD, nicht XDG. Orderweg: nautilus_kraken/kraken_futures.py, uebersetzt von omniquant/kraken_perp.py.",
   "hebel": 6,
   "_live_grenzen": "Eigene Grenzen fuer den Live-Lauf. Hebel 6 heisst NICHT, dass die Boerse 6-fach besichert: Kraken Futures verlangt den Margenplan des Marktes (EEA 10 %), 'Hebel 6' ist eine SIZING-Regel - Nennwert = Einsatz x 6. Ein Stop von x % kostet damit rund 6x % des Einsatzes. Stufe 1 bewusst EIN Platz; Stufe 2 (drei Plaetze) erst nach einer sauber gebuchten und ausgebuchten Runde. mindest_guthaben_usd 31 = Einschuss 30.00 + 1 Puffer; der Puffer ist duenn, die eigentliche Absicherung ist der boersenseitige Stop.",
-  "live_einsatz_usd": 50,
+  "live_einsatz_usd": 25,
   "live_max_offene_positionen": 1,
-  "live_max_gesamt_usd": 50,
+  "live_max_gesamt_usd": 25,
   "mindest_guthaben_usd": 31.0,
   "live_pf_ableitung": true,
   "_live_pf_ableitung_vermerk": "true auf Auftrag Max 01.10.2026. Bis dahin waren nur die elf von Hand geprueften Namen im kraken_perp-Kern freigegeben; ein Kandidat, den der Prognose-Bericht erst spaeter brachte (HBAR-USDT, ONDO-USDT am 01.10. abends), wurde abgewiesen, obwohl der Zielmarkt ihn fuehrt. Diese Ableitung ist GEGEN /instruments geprueft - ein Name ohne Markt dort bleibt ein lauter Fehler und wird nie in einen anderen Markt umgelenkt. Zuruecknehmen: live_pf_ableitung auf false.",
@@ -50,5 +50,6 @@
     "geprueft_am": "2026-10-01",
     "_vermerk": "Bedingung 1 als INPUT fuer die Entscheidung von Max - der Code rechnet sie NICHT nach. `erfuellt` ist der von Hand gesetzte Haken und stand am 01.10.2026 auf false: gebaut ist der Orderweg, scharf ist nichts. Zuruecknehmen: erfuellt auf false.",
     "_erfuellt_vermerk": "true auf Auftrag Max 01.10.2026 ('auto freigabe erlaubt'). Bedingung 1 ist damit von Hand abgenommen; die Kriterienfelder daneben bleiben als INPUT stehen und werden vom Code NICHT nachgerechnet. Zuruecknehmen: erfuellt auf false."
-  }
+  },
+  "_live_grenzen_halbiert": "HALBIERT 15.10.2026 auf Auftrag Max ('Risiko zuerst'): live_einsatz_usd 50 -> 25, live_max_gesamt_usd 50 -> 25. Hier laeuft Kraken FUTURES (0,05 %/Seite) - die Halbierung folgt der Auftragslage 'nur Kraken-Spuren', nicht der Gebuehrenstruktur dieses Arms. Ein Kontrakt PF_SOLUSD braucht ~16.80 USD Margin bei Hebel 7; 25 USD Einsatz bleibt orderbar."
 }
