@@ -244,6 +244,16 @@ Spuren, die ueber `spur_buch.zyklus()` laufen (moondev_whale/-liquidation/-senti
 
 `spur_buch.orderweg` kennt die Boersen: `okx` (Spot), `kraken` (Spot), `kraken_futures`, `okx_perp` (Futures, `mosaic/okx_perp.py`), `signalwelle`. **Vor dem Bau eines neuen Orderweg-Adapters pruefen, ob `spur_buch.orderweg` schon einen passenden Weg hat** — und ob die Adapter-Datei schon existiert (siehe Falle unten).
 
+## Spur zwischen Boersen umziehen (Venue-Migration)
+
+Hat eine Spur ein Venue-Problem (z. B. Kraken-Spot-Gebuehr 1,2 %/Runde frisst den Edge) und Max will sie auf eine andere Boerse stellen, ist das ein Code-Umbau, kein wachen-Wert. Die Entscheidung zuerst klaeren, dann bauen:
+
+- **Venue-Optionen abwaegen, bevor man baut.** (a) Venue behalten + Gebuehren-Modell ehrlich machen (Abo-Satz statt 0 %-Annahme); (b) auf Futures umziehen — aber pruefen, ob der Ziel-Adapter Take-Profit UND OHLC-Daten hat (Kraken-Futures hat beides oft NICHT: kein `take_profit`, keine Kerzenquelle — dann fehlt dem ORB die Opening-Range und dem Ziel der Boersen-Exit); (c) auf OKX-Perp umziehen (bewaehrt, aber gleiche Venue wie eine bestehende Spur = Redundanz, verliert Diversifikation). Max' "sonst okx wenn besser" ist ein Fallback-Signal: wenn der bevorzugte Weg unzuverlaessig baut, den bewaehrten nehmen.
+- **Der Umbau ist ein Venue-Tausch an fuenf Stellen:** Datenquelle (`kraken.kerzen` → `okxf.kerzen`), Orderweg (`markt_kauf`/`stop_setzen`/`take_profit_setzen` → `order_limit` + `schutz_stop_setzen`, das Stop UND Ziel setzt), Waehrung (EUR → USDT), Instrumentennamen (`ETH_USD` → `ETH_USDT` mit `okx`-Key), Gebuehr (`gebuehr_taker` 0,006 → 0,0005). Der ORB-Kern (Range, Breakout, Stop/Ziel, Einzel-Position) bleibt unveraendert.
+- **Nach dem Venue-Tausch ALLE Alt-Venue-Referenzen greppen.** `grep -n 'kraken\.\|konf\["kraken"\]\|\["kraken"\]' <spur>/handeln.py` — `zeige_wachen` und `_letzter_kurs` werden beim Tausch leicht uebersehen und crashen mit `KeyError: 'kraken'` erst im `--vorschau`-Lauf. Auch Docstrings koennen den alten Modulnamen tragen (kosmetisch, aber irrefuehrend).
+- **Der Ueberverkaufs-Schutz wechselt die Pruefung:** statt `stop_gefuellt` auf zwei txids (Kraken) prueft OKX, ob die Position an der Boerse noch offen ist (`any(pos.get('instId')==inst for pos in okxf.positionen())`), bevor eine Market-Close kommt. Unlesbar → UNGEKLAERT, keine Order.
+- **Tests des alten Venue-Modells brechen komplett** (importieren das entfernte Modul, testen take_profit/Short-Verweigerung). Der Code-Umbau ist der harte Teil und committet sich zuerst; die Test-Umstellung ist ein eigener groesserer Schritt — nicht halbfertig hinrotzen, sondern als offenen Rest benennen.
+
 ## Dauerlauf-Neustart und Prozess-Wahrheit
 
 Live-Schalten endet im Dauerlauf-Neustart. Der Neustart ist der Moment, in dem man den laufenden Betrieb am leichtesten kaputtmacht — vier Regeln:

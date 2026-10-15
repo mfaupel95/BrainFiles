@@ -58,10 +58,40 @@ def mon_stand():
     except Exception:
         return None
 
+def fills_statistik():
+    """Fills und Reverts der letzten 24h aus events.jsonl, plus Alter der letzten Order (min)."""
+    try:
+        lines = (BOT_ORDNER / "data" / "events.jsonl").read_text(encoding="utf-8", errors="ignore").strip().splitlines()
+        if not lines:
+            return 0, 0, None
+        grenze = datetime.now(timezone.utc).timestamp() * 1000 - 24 * 3600 * 1000
+        fills = 0
+        reverts = 0
+        letzte_order_ts = None
+        for l in lines:
+            try:
+                e = json.loads(l)
+            except Exception:
+                continue
+            if e["ts"] < grenze:
+                continue
+            q = e.get("quote")
+            if q and q.get("txHash"):
+                letzte_order_ts = e["ts"]
+                if q.get("status") == "reverted":
+                    reverts += 1
+            if e.get("fill"):
+                fills += 1
+        letzte_min = round((datetime.now(timezone.utc).timestamp() * 1000 - letzte_order_ts) / 60000, 1) if letzte_order_ts else None
+        return fills, reverts, letzte_min
+    except Exception:
+        return 0, 0, None
+
 def main():
     pids = bot_laeuft()
     frische_events, alter_min = events_frisch()
     mon = mon_stand()
+    fills_24h, reverts_24h, letzte_order_min = fills_statistik()
 
     meldungen = []
     if not pids:
@@ -83,16 +113,22 @@ def main():
         except Exception:
             vorher = {}
 
-    jetzt = {"pid_vorhanden": bool(pids), "alter_min": alter_min, "mon": mon}
+    jetzt = {"pid_vorhanden": bool(pids), "alter_min": alter_min, "mon": mon, "fills_24h": fills_24h, "reverts_24h": reverts_24h}
+    # Tageszusammenfassung: einmal am Tag die Fill-Zahl senden (Max will wissen, ob Fills kommen).
+    heute = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    bereit_meldung = meldungen + ([f"Fills 24h: {fills_24h} | Reverts 24h: {reverts_24h} | letzte Order vor {letzte_order_min} min"] if letzte_order_min is not None else [])
+    neu_tag = vorher.get("tag") != heute
     if meldungen and json.dumps(vorher.get("meldungen")) != json.dumps(meldungen):
         print("Jev-Trader Status:\n" + "\n".join("- " + m for m in meldungen))
-        MERK.write_text(json.dumps({"meldungen": meldungen, "jetzt": jetzt}, ensure_ascii=False), encoding="utf-8")
-    elif mon is not None and vorher.get("mon") and mon - vorher["mon"] > 200:
-        # MON wurde nachgeladen -> kurze Bestaetigung einmalig
-        print(f"Jev-Trader: MON nachgeladen ({vorher['mon']} -> {mon}), Bot {'laeuft' if pids else 'LÄUFT NICHT'}")
-        MERK.write_text(json.dumps({"meldungen": meldungen, "jetzt": jetzt}, ensure_ascii=False), encoding="utf-8")
+        MERK.write_text(json.dumps({"meldungen": meldungen, "jetzt": jetzt, "tag": heute}, ensure_ascii=False), encoding="utf-8")
+    elif neu_tag:
+        print("Jev-Trader (24h-Zusammenfassung):\n" + "\n".join("- " + m for m in bereit_meldung))
+        MERK.write_text(json.dumps({"meldungen": meldungen, "jetzt": jetzt, "tag": heute}, ensure_ascii=False), encoding="utf-8")
+    elif mon is not None and vorher.get("jetzt", {}).get("mon") and mon - vorher["jetzt"]["mon"] > 200:
+        print(f"Jev-Trader: MON nachgeladen ({vorher['jetzt']['mon']} -> {mon}), Bot {'laeuft' if pids else 'LÄUFT NICHT'}")
+        MERK.write_text(json.dumps({"meldungen": meldungen, "jetzt": jetzt, "tag": heute}, ensure_ascii=False), encoding="utf-8")
     else:
-        MERK.write_text(json.dumps({"meldungen": meldungen, "jetzt": jetzt}, ensure_ascii=False), encoding="utf-8")
+        MERK.write_text(json.dumps({"meldungen": meldungen, "jetzt": jetzt, "tag": heute}, ensure_ascii=False), encoding="utf-8")
 
 if __name__ == "__main__":
     main()

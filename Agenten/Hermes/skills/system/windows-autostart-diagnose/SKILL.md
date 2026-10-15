@@ -154,6 +154,17 @@ Get-CimInstance Win32_Process -Filter "Name='Notepad.exe'" | Select-Object Proce
   Zustand der Aufgabe, nicht des gestarteten Prozesses. Nachweis ist
   `Get-ScheduledTaskInfo -TaskName <name>` (LastRunTime/LastTaskResult) **plus**
   der Lauscher bzw. der Prozess.
+- **Eine Aufgabe MIT `LogonTrigger` aus nicht-erhoehtem Kontext anzulegen schlaegt
+  fehl, die House-Form nicht.** `schtasks /create /xml` mit `LogonTrigger` im
+  XML antwortet "Zugriff verweigert" (auch mit `/ru faupe`), waehrend derselbe
+  Import ohne LogonTrigger durchgeht — gemessen an `MaxHirn-Jev-Trader`. Die
+  House-Form fuer Selbstheilungs-Aufgaben ist deshalb `TimeTrigger` mit
+  `StartBoundary` + `<Repetition><Interval>PT15M</Interval></Repetition>` +
+  `StartWhenAvailable` + `IgnoreNew`; nach einem Neustart greift der
+  Wiederholungs-Trigger so schnell wie das Intervall. Kein LogonTrigger noetig,
+  kein Admin. (XML in UTF-16LE, `-ExecutionPolicy Bypass -WindowStyle Hidden`
+  im Action-Argument, Wrapper-Skript prueft selbst auf Einzelinstanz und
+  startet den Prozess mit `Start-Process -PassThru` + PID-Datei.)
 - **Ein Skript-Filter kann still ausfallen.** Ein `tasklist`/`find` ohne
   Systempfad gewinnt in einer Shell mit fremdem PATH die Version aus Git-Bash
   und die Pruefung ergibt "nichts gefunden" — der zweite Lauf startet dann

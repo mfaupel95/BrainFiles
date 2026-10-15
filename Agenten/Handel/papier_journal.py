@@ -113,12 +113,18 @@ def bots() -> list[dict]:
     return [b for b in roh if isinstance(b, dict) and b.get("name")]
 
 
-def _zeile(quelle: str, art: str, name: str, z: dict, j: dict) -> dict:
-    """Eine Journalzeile ins zentrale Format bringen."""
+def _zeile(quelle: str, art: str, name: str, z: dict, j: dict,
+           handel_erlaubt: bool = False) -> dict:
+    """Eine Journalzeile ins zentrale Format bringen.
+
+    `handel_erlaubt` kommt aus der wachen.json der Spur (nicht aus zustand.json
+    - dort steht es nicht, gemessen 15.10.2026 an xperp: True im wachen.json,
+    im zutand.json der Schluessel unbekannt).
+    """
     live = 0
     # Live erkennt sich an `handel_erlaubt` in der Wache UND an einer
     # `live`-Spalte im Journal - beides zusammen, sonst ist es Papier.
-    if z.get("handel_erlaubt") is True or j.get("live") in ("1", "true", "True"):
+    if handel_erlaubt is True or j.get("live") in ("1", "true", "True"):
         live = 1
     return {
         "zeit": j.get("zeit") or j.get("einstieg_zeit") or "",
@@ -126,7 +132,7 @@ def _zeile(quelle: str, art: str, name: str, z: dict, j: dict) -> dict:
         "art": art,
         "name": name,
         "inst": j.get("inst") or j.get("symbol") or "",
-        "seite": j.get("aktion") or j.get("seite") or "",
+        "seite": j.get("aktion") or j.get("seite") or j.get("modus") or "",
         "einsatz_usd": j.get("einsatz_usd") or "",
         "wert_usd": j.get("wert_usd") or j.get("erloes") or "",
         "live": live,
@@ -139,14 +145,17 @@ def sammeln() -> list[dict]:
     zeilen = []
     for name in spuren():
         ordner = HIER / name
-        z = _lies(ordner / "zustand.json") or {}
+        # `handel_erlaubt` steht in der wachen.json, nicht im zustand.json -
+        # eine Buchung ist LIVE, wenn die Spur erlaubt ist (gemessen 15.10.2026:
+        # xperp True, scanner False).
+        erlaubt = bool((_lies(ordner / "wachen.json") or {}).get("handel_erlaubt"))
         for j in _journal_zeilen(ordner / "handelsjournal.csv"):
-            zeilen.append(_zeile("spur", "spur", name, z, j))
+            zeilen.append(_zeile("spur", "spur", name, {}, j, erlaubt))
     for name in agenten():
         ordner = HIER / name
-        z = _lies(ordner / "zustand.json") or {}
+        erlaubt = bool((_lies(ordner / "wachen.json") or {}).get("handel_erlaubt"))
         for j in _journal_zeilen(ordner / "handelsjournal.csv"):
-            zeilen.append(_zeile("agent", "agent", name, z, j))
+            zeilen.append(_zeile("agent", "agent", name, {}, j, erlaubt))
     for b in bots():
         name = b.get("name", "")
         # Der Bot schreibt in seine eigene Datenbank; hier zaehlt die Zeile
@@ -210,11 +219,15 @@ def main(argv=None) -> int:
         if len(teile) > 5:
             print("       ... und %d mehr" % (len(teile) - 5))
     if args.live:
-        print("\n=== Live-Zeilen ===")
-        for z in live:
+        print("\n=== Live-Zeilen (%d) ===" % len(live))
+        if not live:
+            print("  (keine - alle Spuren sind auf Papier)")
+        for z in live[:40]:
             print("  %-22s %-10s %8s %8s  %s"
                   % (z["name"], z["seite"], z["einsatz_usd"],
                      z["wert_usd"], z["inst"]))
+        if len(live) > 40:
+            print("  ... und %d mehr" % (len(live) - 40))
     return 0
 
 
