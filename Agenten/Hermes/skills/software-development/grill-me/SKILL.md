@@ -15,7 +15,7 @@ The call shape is `clarify(questions=[{question, choices, multi_select?}])` — 
 
 Ask **one question at a time**. Wait for the user's answer before moving to the next question. This keeps the conversation focused and prevents overwhelm.
 
-For each question, provide 2–4 concrete multiple-choice options representing the most likely answers or directions. Think about what the user would realistically choose — generic options like "Yes" / "No" aren't helpful unless the question is genuinely binary. Put the recommended option FIRST (the UI marks it as recommended). The user always has the "Other" field available to write something custom.
+For each question, provide 2–4 concrete multiple-choice options representing the most likely answers or directions. Think about what the user would realistically choose — generic options like "Yes" / "No" aren't helpful unless the question is genuinely binary. Put the recommended option FIRST (the UI marks it as recommended). The user always has the "Other" field available to write something custom. **An "Other" answer that MODIFIES an offered option ("not switching anything, just the sizes down") is the governing constraint, not a rejection of every option** — keep it verbatim as the frame and recompute the remaining branches against it.
 
 ## Flow
 
