@@ -1258,6 +1258,27 @@ mcp_servers:
       - C:\Users\faupe\Documents\BrainFiles\Werkstatt\omnitrade\.projectatlas\config.toml
       - mcp
     enabled: true
+    tools:
+      include:
+        - atlas_scan
+        - atlas_watch_once
+        - atlas_watch_status
+        - atlas_health
+        - atlas_health_resolve
+        - atlas_files
+        - atlas_file_summary
+        - atlas_search
+        - atlas_overview
+        - atlas_map
+        - atlas_outline
+        - atlas_symbols
+        - atlas_slice
+        - atlas_next
+        - atlas_task_status
+        - atlas_purpose_queue
+        - atlas_purpose_review
+        - atlas_purpose_set
+        - atlas_root
   gitlab:
     url: https://gitlab.com/api/v4/mcp
     auth: oauth
