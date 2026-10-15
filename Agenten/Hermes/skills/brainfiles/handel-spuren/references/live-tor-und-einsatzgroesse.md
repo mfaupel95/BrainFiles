@@ -548,10 +548,21 @@ der naechste Ruecklauf feuerte erneut. **Ein Kurven-Reset ist eine Entscheidung
 von Max, keine Hygiene:** die gemessenen Zahlen (Peak alt, Ruecklauf alt,
 Deckel, Stand nach dem Stichtag) benennen, dann schalten.
 
+Stehen inzwischen ZWEI Filter an derselben Stelle (z. B. ein Hand-Ergebnis-
+Filter aus einer frueheren Session und der Stichtag), werden sie VERKETTET,
+nicht gegeneinander ersetzt: fremden Filter behalten, den Stichtag als eigenen
+Schritt DANACH setzen. Ein Filter, der den anderen verdraengt, verliert die
+Wirkung des alten — und genau das faellt erst auf, wenn jemand den Kill wieder
+ohne Handschutz braucht. Reihenfolge im Test festhalten: je Filter eine Zeile,
+damit ein Ausfall benennt, WELCHER Schritt fehlt.
+
 Testfalle: ein Test, der die echte `wachen.json` kopiert, **erbt den echten
 Stichtag** und faelscht den Fall „kein Feld". Jeden Fall das Feld AUSDRUECKLICH
 setzen (`None` = alle Runden) — eine Konfiguration, um die es geht, wird vom
-Fall gesetzt, nicht geerbt.
+Fall gesetzt, nicht geerbt. **Dieselbe Falle gilt fuer JEDES neue Feld der
+Wachen:** ein Test, der die echte Datei als Vorlage nimmt, erbt jede spaetere
+Erweiterung mit und prueft dann die Konfiguration, nicht die Regel. Gegenprobe:
+neues Feld in den Wachen setzen und den Alt-Test rot werden sehen.
 
 Nachweis: `lage()` vor/nach (Hoechststand, Ruecklauf, Kill-Flag) messen und die
 Gegenprobe fahren — wird der Code-Pfad zurueckgenommen, muessen die
