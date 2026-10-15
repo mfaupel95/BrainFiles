@@ -268,7 +268,16 @@ def lage(w, journal_pfad, zustand):
     runden = runden_aus_journal(journal_pfad)
     papier = [r for r in runden if r["modus"] == "papier"]
     echt, stoer = teile_runden(runden)
-    hoch, rueck = drawdown(runden)
+    # Kapitalkurve optional ab einem Stichtag (wachen.json "kapitalkurve_ab",
+    # ISO-Datum "JJJJ-MM-TT"). Runden VOR dem Stichtag zaehlen fuer Statistik
+    # und Erwartungswert weiter, aber nicht fuer Hoechststand/Ruecklauf -
+    # sonst traegt ein aufgeblaehter Alt-Peak (Phantomzeilen, Handpositionen)
+    # den Kill-Switch ueber Wochen. Auftrag Max 15.10.2026.
+    ab = w.get("kapitalkurve_ab")
+    kurve = runden
+    if ab:
+        kurve = [r for r in runden if r["zeit"][:10] >= ab]
+    hoch, rueck = drawdown(kurve)
     frisch, alter = herzschlag_frisch(
         zustand, w.get("herzschlag_max_minuten", 30))
     # Bedingung 5 rechnet auf HANDELSRUNDEN: ein Herzschlag-Zwangsschluss

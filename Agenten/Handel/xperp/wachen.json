@@ -108,5 +108,7 @@
   "vola_tor_pa": 1.2,
   "wartungsmarge": 0.005,
   "wochenend_faktor": 0.5,
-  "ziel_atr_faktor": 3.0
+  "ziel_atr_faktor": 3.0,
+  "kapitalkurve_ab": "2026-10-12",
+  "_kapitalkurve_ab_vermerk": "Stichtag der Kapitalkurve fuer Hoechststand/Ruecklauf/Kill. Auftrag Max 15.10.2026: Runden ab 2026-10-12 zaehlen fuer die Kurve, alles davor nur noch fuer Statistik und Erwartungswert. Grund: der alte Peak 690.19 USD trug noch die aufgeblaehten Handpositions-Buchungen (05.-12.10.) und haette den Kill-Switch (Deckel 1500) an einen Ruecklauf von 709 gebunden, der mit dem heutigen Buch nichts mehr zu tun hat. Die Phantomzeilen selbst (margin=NOMINAL) sind am 15.10. nicht mehr im Journal - der Stichtag nimmt den Rest der Altlast aus der Kurve. Leer = alle Runden zaehlen."
 }

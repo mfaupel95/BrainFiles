@@ -47,12 +47,12 @@
   "_drawdown_halbierung": "drawdown_halbierung_usd = 1.0 x buch_risiko = 20.0. Steht explizit statt prozent.",
   "drawdown_halbierung_usd": 20.0,
   "_live": "Stufe A (2026-09-19, MOSAIC-LIVE-PLAN-OKX.md): eigener Spot-Orderweg, seit 21.09.2026 ueber Kraken (mosaic/kraken_spot.py). Live nutzt die live_*-Grenzen (Stand 23.09.2026: 100 je Trade / 5 Plaetze / 400 gesamt); Papier rechnet mit max_pro_trade_usd 150/max_offene_positionen 4/max_gesamt_usd 600. Scharf nur ueber Freigabekette UND handel_erlaubt=true.",
-  "live_max_pro_trade_usd": 60.0,
+  "live_max_pro_trade_usd": 30.0,
   "_je_trade_vermerk": "60 je Trade auf Auftrag Max 05.10.2026 (Antwort auf Frage 2: \"Wie viel USD Margin pro Instrument?\" -> 60 USD; vorher 100). Bei Hebel 6 ist das ein Nennwert von 360 USD je Instrument (Margin x Hebel, nominal_aus_betrag). Der Gesamtdeckel 400 bleibt; live_max_offene_positionen 5. Der Einsatz wird weiter auf das freie Guthaben gedeckelt (betrag_gedeckelt). MARGIN und NOMINAL sind getrennt zu lesen - das Feld heisst _usd, ist hier die Margin.",
   "gebuehr_taker": 0.001,
   "_gebuehr_quelle": "OKX-Spot, gemessen 01.10.2026 (Tarif Lv1 taker 0,10 %/Seite + echte Fuellung HYPE-USDC 0,1000 %). Die Spur handelt SPOT: ihre wachen.json bzw. ihr Code nennt <SYM>-USDC bzw. BTC-USDT.",
   "live_max_offene_positionen": 5,
-  "live_max_gesamt_usd": 400.0,
+  "live_max_gesamt_usd": 200.0,
   "_live_grenzen_vermerk": "400 USD gesamt auf Auftrag Max 21.09.2026 (vorher 200). Stand 23.09.2026 binden JE TRADE 100 (Auftrag Max 'Mosaic 100') und der Deckel 400 (4 x 100); darunter bindet das Kraken-Guthaben (88.56 EUR frei, Tor 60 EUR). Die Grenzen sind derzeit NICHT der Engpass - mehr Einsatz verlangt Guthaben.",
   "freigabe": {
     "erfuellt": true,
@@ -76,5 +76,6 @@
   "trigger_modus": "signal",
   "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": Signal-Wechsel-Gatter auch fuer Spuren mit EIGENEM Buch. Ein Einstieg wird nur zugelassen, wenn sich die Signalrichtung fuer das Instrument geaendert hat - sonst kein erneuter Einstieg im 15-Minuten-Takt. Gatter: Handel/signal_wechsel.py, verdrahtet VOR dem Orderaufruf. xperp traegt das Gatter auch im Papierbetrieb: es bleibt auf Papier (Entscheidung Max), aber das Papierbuch soll dieselbe Regel messen wie die Live-Buecher - sonst waere die Zahl, an der wir messen, genau die, die nicht mehr gilt.",
   "_hebel_vermerk": "Hebel 6 (Auftrag Max 05.10.2026: \"mosaic live schalten mit 6x hebel\", danach \"mosaic auf futures ... anbinden\"). Der Wert steht als WACHEN-Feld, damit er im Buch und in lage.py sichtbar ist - angewendet wird er in handeln.hebel_aus() mit dem harten Deckel HEBEL_MAX=6, also nie ueber 6 hinaus. Zwei Zahlen sind getrennt zu lesen: MARGIN (was das Konto bindet, live_max_pro_trade_usd) und NOMINAL (die Wette, = Margin x 6). Gemessen am 05.10.2026: 100 USD Margin = 600 USD Nennwert; Liquidationsmarke bei 6x 16,17 % entfernt, der Stop der Spur (5-12 %) kommt immer vorher - okx_perp.stop_vor_liq() verweigert den Einstieg, falls das je nicht mehr gilt. Freie USDC-Margin am 05.10.2026: 302,39 USD (davon sind 429 in Staking und 543 in Positionen/Stops gebunden), Tor liegt bei 30.",
-  "hebel": 6
+  "hebel": 6,
+  "_live_grenzen_halbiert": "HALBIERT 15.10.2026 auf Auftrag Max ('Risiko zuerst'): live_max_pro_trade_usd 60 -> 30, live_max_gesamt_usd 400 -> 200. Papiergrenzen (150/600) unveraendert. Kraken Spot kostet 1,20 %/Runde, der gemessene Excess liegt bei 0,01 % - Halbierung mindert das Risiko je Runde um die Haelfte."
 }
