@@ -1,38 +1,30 @@
 {
-  "gebuehr_taker": 0.006,
-  "_gebuehr_quelle": "Kraken taker 0,600 %/Seite, gemessen an der Fuellung 22.09.2026 (siehe kraken/wachen.json _gebuehren_abo_widerlegt)",
-  "_zweck": "Harte Grenzen der fuenften Spur (ORB auf Kraken-Spot, USD/EUR). Eine Datei, eine Wahrheit. Gelesen von backtest.py, nie von ihm geschrieben. Duplikat der OKX-ORB-Spur (orbk), angelegt 2026-09-13 fuer den HYPE-Papiertest.",
-  "_waehrung": "Kraken rechnet je Paar in der Quotierungswaehrung. HYPE_USD in USD, HYPE_EUR in EUR. Positionsrechnung wie Spur 3 (Kraken): EUR als Hauswaehrung, jedes Paar traegt ein _usd-Aequivalent.",
-  "waehrung": "EUR",
+  "gebuehr_taker": 0.0005,
+  "_gebuehr_quelle": "OKX taker 0,05 %/Seite (Hauswert wie swap/xperp/liq_wand)",
+  "_zweck": "Harte Grenzen der Spur orbk (ORB auf OKX-Perpetuals, USDT). Umgestellt von Kraken-Spot auf OKX-Perp am 15.10.2026 (Auftrag Max 'mach kraken future' -> Fallback OKX).",
+  "_waehrung": "OKX-Perpetuals rechnen in USDT.",
+  "waehrung": "USDT",
   "handel_erlaubt": false,
   "_handel_erlaubt_vermerk": "false auf Befund 14.10.2026: f_max +0,06 %/Runde gegen Kraken-Gebuehr 1,200 %/Runde (0,6 %/Seite) - die Spur verliert live 1,14 % je Runde. Live-Freigabe 12.10.2026 basierte auf einem Punktebuch ohne Einsatz (Gebuehr dort nicht abziehbar). Zurueck auf Papier, bis f_max die Kosten deckt.",
   "_handel_erlaubt_hinweis": "false = nur Papierhandel. Auf true erst, wenn die vier Werte in freigabe erfuellt sind, mindest_marge_frei_eur frei ist und journal_zweitziel gesetzt ist.",
-  "instrument_aktiv": "ETH_USD",
-  "_instrument_aktiv": "Welches Instrument die Papierphase faehrt. null bis der Backtest ein Urteil hat. Danach 'HYPE_USD' oder 'HYPE_EUR'.",
+  "instrument_aktiv": "ETH_USDT",
+  "_instrument_aktiv": "OKX-Perpetual ETH-USDT-SWAP (Umstellung von Kraken-Spot auf OKX-Perp, 15.10.2026, Auftrag Max).",
   "instrumente": {
-    "ETH_USD": {
-      "kraken": "ETHUSD",
+    "ETH_USDT": {
+      "okx": "ETH-USDT-SWAP",
       "zone": "UTC",
       "eroeffnung": "00:00",
       "session_ende": "24:00",
-      "spread_punkte": 0.1,
-      "punkt_wert_usd": 1.0
+      "spread_punkte": 2.5,
+      "punkt_wert_usdt": 1.0
     },
-    "HYPE_USD": {
-      "kraken": "HYPEUSD",
+    "BTC_USDT": {
+      "okx": "BTC-USDT-SWAP",
       "zone": "UTC",
       "eroeffnung": "00:00",
       "session_ende": "24:00",
-      "spread_punkte": 0.3,
-      "punkt_wert_usd": 1.0
-    },
-    "HYPE_EUR": {
-      "kraken": "HYPE/EUR",
-      "zone": "UTC",
-      "eroeffnung": "00:00",
-      "session_ende": "24:00",
-      "spread_punkte": 0.3,
-      "punkt_wert_usd": 1.0
+      "spread_punkte": 1.5,
+      "punkt_wert_usdt": 1.0
     }
   },
   "_instrumente": "spread_punkte Startannahme in Preispunkten. HYPE notiert ~79 USD / ~69 EUR (2026-09-13); die Range-Grenzen sind Startwerte aus der beobachteten Volatilitaet und werden vom Backtest gedeckt.",
