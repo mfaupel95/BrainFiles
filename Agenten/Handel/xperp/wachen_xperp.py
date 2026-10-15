@@ -56,6 +56,10 @@ teile_runden = basis.teile_runden
 
 # --- Runden aus dem Journal ------------------------------------------------
 
+HAND = "handgriff"
+STRATEGIE = "strategie"
+
+
 def runden_aus_journal(journal_pfad):
     """Jede abgeschlossene Runde mit ihrem Ergebnis in USD, FIFO je Kontrakt.
 
@@ -73,6 +77,7 @@ def runden_aus_journal(journal_pfad):
         return []
     offen = {}
     funding = {}
+    herkunft = {}
     runden = []
     with p.open("r", newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
@@ -86,6 +91,14 @@ def runden_aus_journal(journal_pfad):
             if aktion == "eroeffnen":
                 offen.setdefault(inst, []).append(betrag)
                 funding.setdefault(inst, []).append(0.0)
+                # Herkunft steht in der Eroeffnungszeile: eine von Hand an der
+                # Boerse eroeffnete und ins Buch uebernommene Position
+                # (`fremdposition_uebernommen`) ist keine Entscheidung der
+                # Strategie. Kein neues Journalfeld noetig - der Kopf einer
+                # bestehenden Datei bestimmt, welche Spalten geschrieben werden.
+                herkunft.setdefault(inst, []).append(
+                    HAND if str(r.get("grund") or "").startswith("fremdposition")
+                    else STRATEGIE)
             elif aktion == "funding" and funding.get(inst):
                 # Auf die aelteste offene Position dieses Kontrakts. Positiv
                 # = gezahlt, negativ = bekommen.
@@ -93,9 +106,10 @@ def runden_aus_journal(journal_pfad):
             elif aktion == "schliessen" and offen.get(inst):
                 einsatz = offen[inst].pop(0)
                 fd = funding[inst].pop(0) if funding.get(inst) else 0.0
+                her = herkunft[inst].pop(0) if herkunft.get(inst) else STRATEGIE
                 runden.append({
                     "zeit": r["zeit"], "inst": inst, "modus": r["modus"],
-                    "seite": r.get("seite", ""),
+                    "seite": r.get("seite", ""), "herkunft": her,
                     "einsatz": einsatz, "erloes": betrag,
                     "funding": fd,
                     "gv": betrag - einsatz - fd,
@@ -268,16 +282,33 @@ def lage(w, journal_pfad, zustand):
     runden = runden_aus_journal(journal_pfad)
     papier = [r for r in runden if r["modus"] == "papier"]
     echt, stoer = teile_runden(runden)
-    # Kapitalkurve optional ab einem Stichtag (wachen.json "kapitalkurve_ab",
-    # ISO-Datum "JJJJ-MM-TT"). Runden VOR dem Stichtag zaehlen fuer Statistik
-    # und Erwartungswert weiter, aber nicht fuer Hoechststand/Ruecklauf -
-    # sonst traegt ein aufgeblaehter Alt-Peak (Phantomzeilen, Handpositionen)
-    # den Kill-Switch ueber Wochen. Auftrag Max 15.10.2026.
+    # STRATEGIE-KAPITALKURVE (Auftrag Max 14.10.2026, Variante C): Ergebnisse
+    # von Positionen, die von Hand eroeffnet und ins Buch uebernommen wurden,
+    # steuern Halbierung und Kill der Strategie NICHT mit
+    # (`handergebnis_in_kapitalkurve: false`). Anlass: Der Kill vom 06.10.2026
+    # (Ruecklauf 835 USD) kam von einer uebernommenen Handposition (STRK), und
+    # die Halbierung (30 USD) lag mit rund -400 USD Handergebnis dauerhaft
+    # darunter. Ohne das Feld (Standard true) bleibt alles wie bisher: die
+    # Kurve zaehlt alle gebuchten Runden.
+    if w.get("handergebnis_in_kapitalkurve", True):
+        kurve = runden
+    else:
+        kurve = [r for r in runden if r.get("herkunft") != HAND]
+    # ZWEITER Filter, unabhaengig davon: Stichtag (wachen.json
+    # "kapitalkurve_ab", ISO-Datum "JJJJ-MM-TT"). Runden VOR dem Stichtag
+    # zaehlen fuer Statistik und Erwartungswert weiter, aber nicht fuer
+    # Hoechststand/Ruecklauf/Kill - sonst traegt ein aufgeblaehter Alt-Peak
+    # (Phantomzeilen, alte Buchungsart) den Kill-Switch ueber Wochen.
+    # Auftrag Max 15.10.2026; der Hand-Filter oben bleibt davon unberuehrt.
     ab = w.get("kapitalkurve_ab")
-    kurve = runden
     if ab:
-        kurve = [r for r in runden if r["zeit"][:10] >= ab]
+        kurve = [r for r in kurve if r["zeit"][:10] >= ab]
     hoch, rueck = drawdown(kurve)
+    # KONTO-RUECKLAUF: dieselbe Rechnung auf ALLEN Runden. Nur zum Melden, nie
+    # zum Handeln - er schliesst nichts und sperrt nichts.
+    konto_hoch, konto_rueck = drawdown(runden)
+    schwelle = w.get("konto_warnschwelle_usd")
+    konto_warnung = bool(schwelle) and konto_rueck >= float(schwelle)
     frisch, alter = herzschlag_frisch(
         zustand, w.get("herzschlag_max_minuten", 30))
     # Bedingung 5 rechnet auf HANDELSRUNDEN: ein Herzschlag-Zwangsschluss
@@ -299,6 +330,10 @@ def lage(w, journal_pfad, zustand):
         "erste_runde": erste,
         "hoechststand_usd": hoch,
         "ruecklauf_usd": rueck,
+        "runden_hand": len([r for r in runden if r.get("herkunft") == HAND]),
+        "konto_hoechststand_usd": konto_hoch,
+        "konto_ruecklauf_usd": konto_rueck,
+        "konto_warnung": konto_warnung,
         "groessenfaktor": groessenfaktor(rueck, w),
         "kill": kill_ausgeloest(rueck, w),
         "herzschlag_frisch": frisch,
