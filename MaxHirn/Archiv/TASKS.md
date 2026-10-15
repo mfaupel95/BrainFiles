@@ -1,4 +1,14 @@
 ## Offen
+- [ ] **T-410 - Gateway-Absturz 15.10. 00:08: Exit 75 (Liveness-Watchdog) - Ursache MemoryError**
+      Kontext: In derselben Nacht, in der der Launcher-Fix (Commit 02598be6) den Gateway wieder hochbrachte, zeigte der Thread-Dump des abgestuerzten Vorgaengers (PID 43492, Exit 75 um 03:16:50) ein 'MemoryError' - das Event-Loop blieb stehen, weil das System unter Commit-Druck stand (CommitFrei 6,9 GB bei 48 python-Prozessen, darunter Waisen aus der Waechter-Neustart-Schleife). Der Watchdog hat korrekt gehandelt (Exit 75 = Supervisor-Neustart). Die Gefahr bleibt: bei naechster Speicherknappheit fehlt dem Gateway die Luft.
+      Naechster Schritt: Waechter messen FreeVirtualMemory und bei < 8 GB einmal melden (Muster: mcp-zombie-wache); Python-Prozess-Leichen (Waisen aus abgebrochenen Completion-Tails) aufraeumen; Quelle der 48 Prozesse pruefen (Handels-Dauerlauf, MoonDev, MCP-Zombies).
+      Angelegt 15.10.2026 · Zuletzt 15.10.2026
+      Betrifft: Agenten/Hermes/gateway-service/, Agenten/Routinen/gateway-waechter.ps1
+- [ ] **T-411 - SkillsBot weist alle Gruppennachrichten als '(fremd)' ab**
+      Kontext: skillsbot.py:1142 vergleicht chat != chat_id(); TELEGRAM_CHAT_ID (User-Store) ist 7648512088 (Max' DM), die Telegram-Gruppe 'MaximilianundClaude-Code' ist -1003980261765. Jede Nachricht aus der Gruppe laeuft in _log(chat,'(fremd)',...,'abgewiesen') - seit 23:32 am 14.10. durchgehend (48 der letzten 50 Zeilen). Der SkillsBot bedient ABSICHTLICH nur die DM; fuer Gruppenauftraege ist der bots-Verteiler (@Maximilian420_bot, /bot NAME) zustaendig - der laeuft. Nichts kaputt, aber die Protokollflut suggeriert einen Ausfall.
+      Naechster Schritt: Entscheidung Max - entweder Gruppen-ID als zweite erlaubte Chat in skillsbot.py freigeben, oder die Abweisung still protokollieren (nur 1. je Chat/Stunde statt je Nachricht). Kein Eingriff ohne Max.
+      Angelegt 15.10.2026 · Zuletzt 15.10.2026
+      Betrifft: Agenten/Bus/skillsbot.py
 - [ ] **T-403 - GitHub-Privates loeschen: gh-Token braucht delete_repo-Scope**
       Kontext: Auftrag Max 14.10.2026 'alle auf github als privat laufenden repos entfernen, nur lokal betreiben'. 90 private Repos identifiziert (mfaupel95/*, davon ~85 *-privat-Mirrors + Werks-Repos nautilus/omnitrade/rltrader/alice/handel-stack/OmniQuant u.a.), aber gh repo delete gibt fuer ALLE HTTP 403 'Must have admin rights' - der Token traegt nur Scope 'repo', GitHub verlangt Scope 'delete_repo'. NICHTS wurde geloescht (0/90). Ausgenommen: mfaupel95/BrainFiles (Workspace-Remote, Push-Routinen haengen dran - Entscheidung Max offen).
       Naechster Schritt: Max fuehrt in seiner PowerShell 'gh auth refresh -h github.com --scopes delete_repo' aus (Browser-Flow), danach Loeschung + lokale Remotes umziehen (origin -> upstream, Remote 'privat' entfernen; Doktrin in AGENTS.md/CLAUDE.md nachziehen).
