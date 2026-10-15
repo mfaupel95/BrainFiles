@@ -26,7 +26,7 @@
 ## Nächste Schritte (Reihenfolge)
 
 1. **Hyperliquid-API erkunden** — REST `exchange/placeOrder`, WebSocket-Subscriptions (book, trades, userFills), Info-Endpoint (meta, l2Book). Beleg: lesender Aufruf gegen Testnet. **ERLEDIGT 15.10.2026:** Testnet erreichbar (allMids, l2Book BTC, meta). Orderweg = REST POST /exchange, Signatur ed25519, TIF Alo = post-only. Book-Struktur `levels`=[[bids],[asks]] (px/sz/n) — anders als Kuru, Reader muss umgebaut werden.
-2. **Orderweg-Client bauen** — **ENTSCHEIDUNG: TS-Client direkt gegen die REST-API** (kein Python-SDK). Gründe: jev-trader ist TS/bun (eine Sprache), API simpel (2 Endpoints), ed25519 in bun eingebaut, Jev-Kern bleibt byte-identisch. Nur `market.ts` wird ersetzt.
+2. **Orderweg-Client bauen** — **ENTSCHEIDUNG: TS-Client direkt gegen die REST-API** (kein Python-SDK). Gründe: jev-trader ist TS/bun (eine Sprache), API simpel (2 Endpoints), ed25519 in bun eingebaut, Jev-Kern bleibt byte-identisch. Nur `market.ts` wird ersetzt. **ERLEDIGT 15.10.2026:** `src/market-hl.ts` gebaut (Drop-in fuer die Kuru-Market-Schnittstelle, `@nktkas/hyperliquid` uebernimmt ed25519-Signatur), `ENGINE=hyperliquid`-Schalter in config + index.ts, Hyperliquid-Takt 300ms. Dry-Run belegt: liest echtes BTC-PERP-Buch, postet sim-Orders, Jev-Modell aktiv. Commit `ad951b0`.
 3. **Perps-Anpassung** — Hebel, Funding-Kosten in die Kostenrechnung, Liquidation-Schutz (Stop), Position-Cap in USD.
 4. **Papier/Testnet zuerst** — Hyperliquid hat ein Testnet. Paper-first, Live nur auf expliziten Befehl (Hausregel).
 5. **Autostart + Wache** — nach dem Muster des jev-trader (Wrapper, Aufgabe, Morgen-Check).
