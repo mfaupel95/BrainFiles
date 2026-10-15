@@ -1,4 +1,9 @@
 ## Offen
+- [ ] **T-412 — Hyperliquid Market-Making als neues Projekt**
+    - Kontext: Kuru (Monad) hat zu wenig Taker-Flow fuer post-only Market-Making (0 Fills in 6h bei 4550 Orders, MON UND WETH-USDC). Jev-Kern (model.ts, decision-pipeline.ts, trader.ts) ist marktunabhaengig und bleibt. Hyperliquid = Perps-L1 mit echtem Orderbook-Volumen, offizielles Python-SDK.
+    - Naechster Schritt: Hyperliquid-API erkunden (REST placeOrder, WebSocket book/trades/userFills, Info-Endpoint), dann TS-Client vs. Python-Neubau entscheiden.
+    - Angelegt 15.10.2026 · Zuletzt 15.10.2026
+    - Betrifft: Werkstatt/Projekte/Hyperliquid-Market-Making.md, Werkstatt/jev-trader (Kern-Quelle)
 - [ ] **T-410 - Gateway-Absturz 15.10. 00:08: Exit 75 (Liveness-Watchdog) - Ursache MemoryError**
       Kontext: In derselben Nacht, in der der Launcher-Fix (Commit 02598be6) den Gateway wieder hochbrachte, zeigte der Thread-Dump des abgestuerzten Vorgaengers (PID 43492, Exit 75 um 03:16:50) ein 'MemoryError' - das Event-Loop blieb stehen, weil das System unter Commit-Druck stand (CommitFrei 6,9 GB bei 48 python-Prozessen, darunter Waisen aus der Waechter-Neustart-Schleife). Der Watchdog hat korrekt gehandelt (Exit 75 = Supervisor-Neustart). Die Gefahr bleibt: bei naechster Speicherknappheit fehlt dem Gateway die Luft.
       Naechster Schritt: Waechter messen FreeVirtualMemory und bei < 8 GB einmal melden (Muster: mcp-zombie-wache); Python-Prozess-Leichen (Waisen aus abgebrochenen Completion-Tails) aufraeumen; Quelle der 48 Prozesse pruefen (Handels-Dauerlauf, MoonDev, MCP-Zombies).
