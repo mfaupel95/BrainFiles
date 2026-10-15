@@ -581,6 +581,23 @@ TAKT_MAX_MINUTEN = 15
 # ORBK AM 14.10.2026 WIEDER LIVE (Auftrag Max 'Orbk live schalten'):
 # ueberstimmt die Ruecknahme vom selben Tag. handel_erlaubt=true,
 # freigabe.erfuellt=true in orbk/wachen.json.
+#
+# STAND 15.10.2026 (Auftrag Max 'Ja autofreigabe fuer live handel komplett'):
+# Die Liste ist die Abwicklung der Live-Spuren, KEIN Schalter. Ein Eintrag
+# oeffnet ein Fenster nur, wenn NUR noch das Fenster fehlt (nur_fenster_fehlt,
+# genau ein Grund) - handel_erlaubt, Freigabe, Bedingung 1/5 muessen offen
+# sein. Gemessen heute mit spuren_stand + Wachten: 11 der 14 Eintraege haben
+# handel_erlaubt=true UND einen Live-Pfad im Code (xperp, orb, kraken, mosaic,
+# omniquant, nautilus_kraken, moondev_listingarb, moondev_marktlage,
+# moondev_signalwelle, omnitrade_futures, moondev_topmovers). Keine Spur mit
+# Live-Pfad fehlt. Drei Eintraege sind derzeit WIRKUNGSLOS, weil ihre Wachen
+# sperren: orbk (handel_erlaubt=false seit 14.10., f_max +0,06 % gegen
+# 1,2 % Kosten), trendwende_btc (handel_erlaubt=false), liq_wand
+# (handel_erlaubt=false, und orderweg() findet keinen Orderpfad). Sie
+# bleiben stehen: sobald Max die Schalter umlegt, braucht es keinen zweiten
+# Eingriff an dieser Stelle. moondev_topmovers steht ebenfalls drin, hat aber
+# laut Wachen handel_erlaubt=true und keinen Orderpfad - der Eintrag wartet
+# auf den Live-Pfad. SCANNER fehlt hier seit 13.10. absichtlich (T-322).
 AUTO_FREIGABE = ("xperp", "mosaic", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
                  "trendwende_btc", "liq_wand", "omniquant",
