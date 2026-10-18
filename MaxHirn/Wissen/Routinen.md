@@ -94,10 +94,13 @@ auf, weil die SYSTEM-Aufgaben (Datensortierung) weiterliefen. Am 18.10.2026
 wurden 29 Aufgaben per Wegwerf-Task-Vorprobe (S4U sieht HKCU-Umgebungsvariablen
 und G:/O:/Q: nachgewiesen) auf `LogonType S4U` umgestellt — sie laufen jetzt
 auch ohne Anmeldung, ohne Passwort. Beleg + Umstellungslog:
-`Routinen/logs/aufgaben-s4u-umstellung-20261018.log`. **NICHT umgestellt**
+`Routinen/logs/aufgaben-s4u-umstellung-20261018.log`. Der Telegram-Bus
+(`BrainFiles-Bus`) wurde nachgezogen (gleiche Umstellung, 18.10.2026).
+**NICHT umgestellt**
 (brauchen eine Sitzung oder sind bewusst interaktiv): `MaxHirn-Handelszentrale`
-(Fenster), `MaxHirn-MoonDev-GUI` (Fenster), `MaxHirn-Handel-Dauerlauf-*` sind
-umgestellt, `MaxHirn-Datensortierung` lief schon als SYSTEM.
+(Fenster), `MaxHirn-MoonDev-GUI` (Fenster), `Hermes_Gateway_2ef9d0b7` (der
+Gateway selbst; sein Wächter startet ihn ohne Anmeldung neu),
+`MaxHirn-Datensortierung` lief schon als SYSTEM.
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts
