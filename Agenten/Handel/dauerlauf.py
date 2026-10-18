@@ -337,8 +337,15 @@ SPUREN = {
     #                 "skript": "squeeze_eth.py"},
     # Schattenarm squeeze_eth (03.10.2026, Auftrag Max "Schattenarm"):
     # dieselbe Regel fest auf ETH, Hauptarm unveraendert als Vergleich.
-    "supertrend": {"ordner": "supertrend", "waehrung": "USD",
-                  "skript": "handeln.py"},
+    # SUPERTREND AUS seit 18.10.2026 (Hermes, Auftrag Max "beide stilllegen"):
+    # Parameter-Suche (optimieren.py, 9 Kandidaten) fand keinen Kandidaten -
+    # die Spur ist von keinem Stop/Ziel-Wert behebbar, Live netto -0.11 %
+    # (10 Runden), Backtest +0.116 %/Runde grenzwertig. Journal bleibt als
+    # Vergleichsbuch stehen.
+    # WIEDER ANSCHALTEN: die Zeile hier re-einkommentieren und in
+    # supertrend/zustand.json "letzter_lauf" auf jetzt setzen.
+    # "supertrend": {"ordner": "supertrend", "waehrung": "USD",
+    #               "skript": "handeln.py"},
     "wavetrend": {"ordner": "wavetrend", "waehrung": "USD",
                  "skript": "handeln.py"},
     # MOSAIC (Mehr-Zeitrahmen-Preisaktion, angelegt 15.09.2026):
