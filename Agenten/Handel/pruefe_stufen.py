@@ -117,6 +117,31 @@ def zustand_fuer(wachen_pfad, stufe_):
     return kandidat if os.path.exists(kandidat) else None
 
 
+def nutzt_das_hausbuch(spur_ordner):
+    """Laeuft diese Spur ueber `spur_buch.zyklus`?
+
+    Nur dann greift der Stufen-Kill. Fuenfzehn Dauerlauf-Spuren bringen ihren
+    eigenen Zyklus mit (scanner, xperp, kraken, gitter, omniquant, orb, orbk,
+    mosaic, kopier, prophet_signal, macd_mtf, wavetrend, nautilus*) - dort ist
+    die Pruefung NICHT eingebaut, und genau dort stand am 19.10.2026 der
+    Altbestand ueber der Grenze. Die Spalte gehoert in dieses Werkzeug, weil
+    "0 koennen reissen" sonst wie eine Entwarnung aussieht, obwohl die Frage
+    nur fuer einen Teil der Flotte beantwortet ist.
+    """
+    ordner = os.path.join(HIER, spur_ordner)
+    for name in sorted(os.listdir(ordner)) if os.path.isdir(ordner) else []:
+        if not (name.startswith("handeln") and name.endswith(".py")):
+            continue
+        try:
+            with open(os.path.join(ordner, name), encoding="utf-8",
+                      errors="replace") as fh:
+                if "spur_buch" in fh.read():
+                    return True
+        except OSError:
+            continue
+    return False
+
+
 def zeilen():
     """Eine Zeile je Wachen-Datei - die Struktur-Frage ist stufeninvariant.
 
@@ -149,9 +174,11 @@ def zeilen():
                             "ueber": (g_s is not None and o_s > g_s + 1e-9)})
         yield {
             "spur": os.path.relpath(wachen_pfad, HIER).replace("\\", "/"),
+            "ordner": os.path.basename(os.path.dirname(wachen_pfad)),
             "risiko": risiko, "plaetze": plaetze, "buch": buch,
             "grenze": grenze, "quelle": quelle, "max_offen": max_offen,
             "bestand": bestand,
+            "erfasst": nutzt_das_hausbuch(os.path.basename(os.path.dirname(wachen_pfad))),
             "kann_binden": (max_offen is not None and grenze is not None
                             and max_offen > grenze + 1e-9),
         }
@@ -170,15 +197,17 @@ def main():
     ueber = [(z, b) for z in alle for b in z["bestand"] if b["ueber"]]
 
     if not args.still:
-        print("%-36s %-16s %10s %10s  %s"
-              % ("wachen", "grenze (Quelle)", "buch", "max_offen", "kann reissen?"))
+        print("%-36s %-16s %10s %10s  %-8s %s"
+              % ("wachen", "grenze (Quelle)", "buch", "max_offen",
+                 "Hausbuch", "kann reissen?"))
         for z in alle:
-            print("%-36s %-16s %10s %10s  %s"
+            print("%-36s %-16s %10s %10s  %-8s %s"
                   % (z["spur"],
                      ("%.2f (%s)" % (z["grenze"], z["quelle"])) if z["grenze"] is not None
                      else "(keine)",
                      "%.2f" % z["buch"] if z["buch"] else "-",
                      "%.2f" % z["max_offen"] if z["max_offen"] is not None else "-",
+                     "ja" if z["erfasst"] else "NEIN",
                      "JA" if z["kann_binden"] else "nein"))
         print()
 
@@ -187,17 +216,31 @@ def main():
         for b in z["bestand"]:
             if args.still and not b["ueber"]:
                 continue
-            print("%-6s %-34s %-8s offen %9.2f  Grenze %8.2f  %d Pos.  %s"
+            print("%-6s %-34s %-8s offen %9.2f  Grenze %8.2f  %d Pos.  %-22s %s"
                   % ("REISST" if b["ueber"] else "", z["spur"], b["stufe"],
                      b["offen"], b["grenze"] if b["grenze"] is not None else -1,
-                     b["positionen"], b["datei"]))
+                     b["positionen"], b["datei"],
+                     "" if z["erfasst"] else "<- NICHT erfasst (eigener Zyklus)"))
     print()
     print("%d Wachen-Dateien: %d koennen reissen, %d koennen es nicht, "
           "%d haben keine herleitbare Grenze."
           % (len(alle), len(binden), len(tot), len(ohne)))
+    print("%d von %d laufen ueber `spur_buch.zyklus` - nur dort ist der "
+          "Stufen-Kill eingebaut." % (len([z for z in alle if z["erfasst"]]), len(alle)))
+    nicht_erfasst_ueber = [(z, b) for z, b in ueber if not z["erfasst"]]
+    if nicht_erfasst_ueber:
+        print("%d Bestand/Bestaende ueber der Grenze liegen in Spuren mit EIGENEM "
+              "Zyklus: %s. Der Stufen-Kill in `spur_buch` erreicht sie nicht - sie "
+              "brauchen denselben Aufruf in ihrer eigenen Ausstiegsfunktion."
+              % (len(nicht_erfasst_ueber),
+                 ", ".join(sorted({z["ordner"] for z, _b in nicht_erfasst_ueber}))))
     if ueber:
-        print("%d Bestand/Bestände stehen JETZT ueber ihrer Grenze - der naechste "
-              "Zyklus schliesst sie (Grund %s)." % (len(ueber), SB.STUFEN_GRUND))
+        erfasst_ueber = [(z, b) for z, b in ueber if z["erfasst"]]
+        print("%d Bestand/Bestände stehen JETZT ueber ihrer Grenze: %d davon in "
+              "erfassten Spuren (der naechste Zyklus schliesst sie, Grund %s), "
+              "%d unwirksam (eigener Zyklus)."
+              % (len(ueber), len(erfasst_ueber), SB.STUFEN_GRUND,
+                 len(ueber) - len(erfasst_ueber)))
     if not binden and not ueber:
         print("Damit der Kill bindet, muss `max_offenes_risiko_usd` UNTER das "
               "Buchrisiko der Spur gesetzt werden - auf dem Buchrisiko kann er "
