@@ -627,21 +627,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Bereichsabfrage in die Hauswerkzeuge-Aufnahme (`Agenten/Werkzeuge/`) aufnehmen,
       damit ein neues Werkzeug die Regel von Anfang an hat.
       Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/bereiche.py.
-- [ ]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
-      Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
-      Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
-      `merge-base --is-ancestor` = Kopf, `rev-list --count` = Zahlen). Gemessen:
-      6 wegwerfbar (2 lokale claude/*, 3 auf origin, Worktree C:/tmp/head_wt),
-      1 mit ECHTEM Vorlauf: `claude/wizardly-brown-69qfnp` (5bff1231, 1 Commit,
-      "handel: UTC-Zeiten umrechnen statt abschneiden" - steht in KEINER anderen
-      Zweiglinie und in keinem Worktree), 1 Grenzfall: `claude/trading-stack-
-      setup-40ef0d` (aeeac180, inhaltlich schon in master als 6ccb94e4, aber
-      andere sha - `branch -d` verweigert dort, `-D` waere blind).
-      Naechster Schritt: Max entscheidet fuer 5bff1231 (Master einziehen mit
-      `git branch -f master claude/wizardly-brown-69qfnp`, oder als eigenen
-      Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
-      --push` fuer die belegten Faelle.
-      Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
 
 
 
@@ -2029,6 +2014,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
+      Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
+      Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
+      `merge-base --is-ancestor` = Kopf, `rev-list --count` = Zahlen). Gemessen:
+      6 wegwerfbar (2 lokale claude/*, 3 auf origin, Worktree C:/tmp/head_wt),
+      1 mit ECHTEM Vorlauf: `claude/wizardly-brown-69qfnp` (5bff1231, 1 Commit,
+      "handel: UTC-Zeiten umrechnen statt abschneiden" - steht in KEINER anderen
+      Zweiglinie und in keinem Worktree), 1 Grenzfall: `claude/trading-stack-
+      setup-40ef0d` (aeeac180, inhaltlich schon in master als 6ccb94e4, aber
+      andere sha - `branch -d` verweigert dort, `-D` waere blind).
+      Naechster Schritt: Max entscheidet fuer 5bff1231 (Master einziehen mit
+      `git branch -f master claude/wizardly-brown-69qfnp`, oder als eigenen
+      Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
+      --push` fuer die belegten Faelle.
+      Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
+      **Erledigt 2026-10-18.** Entscheidung obsolet, gemessen: 5bff1231 ist Vorfahre von master, aeeac180 ebenfalls; Zweige claude/wizardly-brown-69qfnp und claude/trading-stack-setup-40ef0d existieren weder lokal noch auf origin - die Option 'Master einziehen' wurde bereits vollzogen.
 - [x] **T-400 - Werkstatt-Junction-Verlust: Wache existiert (KORREKTUR)**
       KORREKTUR meines Eintrags vom 14.10.: junction-wache.py existiert seit
       11.10.2026 (T-390, Commit 924ed9d3) und hat den Verlust am 13.10. 22:12
