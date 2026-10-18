@@ -513,3 +513,5 @@ _left_core_scoped:
   - homeassistant
 _left_core_installed:
   - homeassistant
+cron:
+  bot_chat_delivery_timeout_seconds: 1200
