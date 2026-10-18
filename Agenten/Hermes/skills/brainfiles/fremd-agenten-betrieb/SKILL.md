@@ -508,6 +508,56 @@ die Zeit spart:
   zurueckgebliebene `tcsetattr: Inappropriate ioctl` im Log ist dann das
   einzige Symptom.
 
+## Laufenden Fremd-Trader auswerten (Status, nicht Prosa)
+
+Ein fremnder Trading-Bot unter Windows-Aufgabe ist aus drei Quellen zu beurteilen —
+behauptet wird NUR, was eine davon belegt:
+
+- **Die Laufzeit-Schnittstelle ist die Wahrheit, nicht die `.env`.** Viele dieser
+  Repos fuehren einen HTTP-Snapshot (`GET /` mit `engine`, `dryRun`, `wallet`,
+  `totals`, `latest`). Erst den curlen, dann berichten. Kosmetische `.env`-Felder
+  (`MARKET_LABEL`, `MARKET`, `BASE_SYMBOL`) sind Beschriftungen aus einem anderen
+  Markt — ein Engine-Feld entscheidet, welcher Weg wirklich laeuft. Ein
+  Statusbericht aus Beschriftungen kann komplett falsch sein.
+- **`status: "sim"` + `txHash: null` + `wallet: null` ist Trockenlauf, kein
+  Fehler.** Der Orderweg gibt bewusst `sim` zurueck, wenn keine Wallet
+  konstruiert wurde (`dryRun = DRY_RUN=true || !PRIVATE_KEY`). Vor „der Bot
+  handelt nicht" die Trockenlauf-Bedingung der Config lesen und als Ursache
+  nennen.
+- **Ein lebender Prozess kann ein totes Gehirn haben.** Wiederholt `err.log`
+  denselben Modell-Fehler je Block (`decide() ... billing_error`, `no credits`),
+  laeuft der Loop weiter und haengt auf hold. Bei jeder Auswertung die
+  Fehler-Logs auf wiederholte Entscheidungs-Fehler pruefen — sonst meldet man
+  einen gesunden Bot, der seit Stunden nichts entscheidet.
+- **Guthaben read-only pruefen, Key nie ausgeben.** Kurzes Probe-Skript genuegt
+  (Wallet aus der Config ableiten, Balance-Endpoint); Ausgabe auf Adresse und
+  Zahl beschraenken. **Bun-/TS-Repos: eine Probe, die die TS-Config importiert,
+  muss `.ts` heissen** — in `.mjs` faellt der TS-Non-Null-Operator beim Parsen.
+- **Vor jedem Neuanlegen in `TASKS.md` nach einem bestehenden Eintrag zum
+  SELBEN Thema suchen** — parallele Sitzungen legen denselben Punkt unabhaengig
+  an (Stichwort der Ueberschrift, nicht nur die hoechste ID lesen).
+
+## Live-Test isoliert vorbereiten (ohne den laufenden Bot zu beruehren)
+
+Ein fremnder Trader schreibt seine Laufzeitdaten (`data/events.jsonl`)
+relativ zum Startordner — eine zweite Instanz im selben Ordner schreibt in
+DIESELBE Datei. Vorbereitung deshalb immer isoliert:
+
+- **`git worktree add --detach <pfad>`**, `.env` rueberkopieren und NUR DORT
+  patchen (Live-Variante + Trocken-Variante). Die Datei des laufenden Bots
+  bleibt unberuehrt — sonst startet der Task beim naechsten Mal mit neuen
+  Werten. Worktree braucht eigenen `bun install`/`npm install` (node_modules ist
+  nicht im Git).
+- Eigener Port und eigener Datenordner kommen aus der kopierten `.env`; der
+  Trockenlauf startet via `--env-file=<trocken>` mit hartem `timeout`. Beleg:
+  Engine + Testnet + `DRY RUN` im Logkopf, `(sim)`-Order mit der NEUEN Groesse.
+- **Der Start selbst laeuft nur ueber ein Skript mit Kette** (Vorlage +
+  vollstaendige Reihenfolge: `references/livetest-vorbereiten.md`):
+  Venue-/Testnet-Pflicht, Dry-Run-Schalter, Engine-Wert, Wallet-Guthaben,
+  Einzelinstanz. Die Kette EINMAL absichtlich scheiternd fahren (leeres Wallet)
+  — beweist, dass nichts startet, wenn eine Bedingung offen ist. Live-Start nur
+  auf ausdrueckliches Wort des Nutzers.
+
 ## Autostart als geplante Aufgabe
 
 - Wrapper nach `Agenten/Routinen/` (Bus-Meldungen `Melde-Start`/`Melde-Ende`,
@@ -576,6 +626,10 @@ Aufgabe:
   Anleitung, `tensorflow.contrib`): auf keinem Host-Python >= 3.9 installierbar —
   Docker-Bild mit legacy-Pinen, Filesharing-Grenze und Volumen-Regeln:
   `references/legacy-docker.md`.
+- Einen laufenden Fremd-Trader auswerten (Laufzeit-Snapshot statt .env-Kosmetik,
+  sim = Trockenlauf, totes Modell bei lebendem Prozess) und fuer einen echten
+  Testnet-Lauf vorbereiten (isolierter Worktree, Guthaben-Probe, Start-Skript
+  mit Sicherheitskette): `references/livetest-vorbereiten.md`.
 
 ## Abgrenzung
 
