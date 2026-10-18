@@ -161,6 +161,16 @@ Fallen:
 - Ablauf: `score --export` -> Verdicts beurteilen (ok/skip, per LLM-Workflow des
   Bots oder im Chat) -> `score --import <results>`. Ein `--import` ohne neue
   Verdicts ergibt NICHTS.
+- **Parallele fomo-radar-Sitzungen koennen dieselbe Queue abarbeiten — vor einem
+  Score-Job den IST-Stand in der DB pruefen, nicht dem letzten Bericht glauben.**
+  Mehrere delegierte Auftraege (Cron + Chat) koennen dieselben Wallets schon
+  gescort haben; ein neuer `score --export` findet dann `exported: 0` und ein
+  Re-Score wuerde heutige Kontexte ueberschreiben und die Rescore-Fenster
+  (72 h watch / 14 d dropped) verletzen. Vor dem Start die Verteilung in der DB
+  lesen (`SELECT status, COUNT(*) FROM traders GROUP BY status`,
+  `SELECT COUNT(*) FROM score_history WHERE date(ts,'unixepoch')=date('now')`)
+  und `docs/STATUS.md`-Session-Eintraege; ist die Queue leer, KEINEN Score-Job
+  starten und das als erledigt melden.
 - `pending_scores.json` liegt im Repo-Root. Struktur: dict mit
   `wallets` (52+), je Wallet: address, chain, source, fomo, indexer_stats
   (fills, buys, sells, closed_trades, wins, win_rate, realized/unrealized/net
@@ -171,7 +181,8 @@ Fallen:
   koennen schon gescort sein.
 - GPU-Engpass: fremder llama-server kann die GPU halten; Scoring-Modell faellt
   von qwen3.5 auf gemma-e4b-8k-64k zurueck, wenn cudaMalloc failed (OOM).
-- Repo-Pfad seit 2026-10-12: `O:\Werkstatt\fomo-robinhood-radar`. Der C:-Junction-Unterpfad `C:\Users\faupe\Documents\BrainFiles\Werkstatt\fomo-robinhood-radar` existierte zeitweise nicht (leeren Check nicht als "Repo weg" deuten, erst O: pruefen). Bots mit explizitem O:-Pfad im Auftrag abrufen.
+- Repo-Pfad ist UNSTABIL und wechselt zwischen `O:\Werkstatt\Repos\fomo-robinhood-radar` und `C:\Users\faupe\Documents\BrainFiles\Werkstatt\fomo-robinhood-radar` (beide wurden 2026-10 beobachtet; der C:-Junction-Unterpfad existierte zeitweise nicht). Einen leeren Check nicht als "Repo weg" deuten — erst beide Pfade pruefen. Im Auftrag an den Bot beide Kandidaten nennen und ihn das Repo selbst lokalisieren lassen, statt einen Pfad hart zu verdrahten.
+- **Das fomo-radar-Profil hat einen EIGENEN Pipeline-Cron** (`profiles/fomo-radar/cron/jobs.json`, Job `0708b8f2725d`, alle 6 h `run --once` gegen das Repo). Vor dem Anlegen eines "fomo-radar Loop"-Crons im bots-Profil erst pruefen, ob das fomo-radar-Profil selbst schon einen laufenden Loop hat — ein zweiter ist Doppelarbeit und wird pausiert. Der fomo-radar-eigene Cron ist der echte Pipeline-Loop; ein bots-Cron dafuer ist redundant.
 - Keys nie ausgeben. Echte Zugaenge nur in `MaxHirn/Wissen/Zugaenge.md`.
 
 ## fomo-radar fomo-family-Discovery
