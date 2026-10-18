@@ -214,6 +214,25 @@ Fallen:
 - **Vor einem Routing-Vorschlag erst die BESTEHENDE Wahrheit lesen.** `Agenten/Hermes/config.yaml` → `gateway.profile_routes` kann schon verdrahtet sein (Dispatch→bots, Handel→jev-trader, Auswertung→recherche, Wissen→obsidian-skills, Bots→gbrain, Wartung→hermes-wartung fuer -1003980261765). Keine Zuordnung von Grund auf entwerfen und als "neu" anbieten, bevor man die aktive Route gelesen hat; haeufig deckt sie den Entwurf bereits ab. Die Zuordnungs-Doku fuer die Gruppe: `profiles/bots/Telegram-Themen-Bot-Zuordnung.md`.
 - Eine SOUL-/Profilregel-Aenderung beweist nicht, dass bereits laufende Topic-Sitzungen sie geladen haben: erst in einer neuen Sitzung pruefen; keinen Gateway-Neustart ausloesen, wenn er alle laufenden Profile beeintraechtigen kann.
 
+## "Weiter" ohne Kontext: erst rekonstruieren, dann pruefen, ob schon erledigt
+
+Sagt Max nur "Weiter" (oder "weiter wo aufgehoert wurde") ohne Auftrag, ist der
+letzte echte Auftrag NICHT im aktuellen Kontext — er liegt in einer frueheren
+Sitzung. Vor jeder Aktion:
+
+1. **Den letzten echten Auftrag aus der Sitzungshistorie rekonstruieren**
+   (`session_search` mit `sort=newest`, dann in die gefundene Sitzung scrollen
+   bis zur letzten User-Nachricht). Nicht raten, was gemeint sein koennte.
+2. **Pruefen, ob die Arbeit schon erledigt und committet ist, BEVOR man sie
+   wiederholt.** Eine parallele Sitzung kann den Auftrag laengst ausgefuehrt
+   und committet haben. `git diff HEAD -- <pfad>` leer UND `git log -1 --
+   <pfad>` zeigt einen passenden Commit = die Arbeit ist getan; das als
+   erledigt melden statt sie neu zu machen. Das gilt besonders fuer
+   Stilllegungen/SPUREN-Aenderungen, die eine andere Sitzung schon committet
+   haben kann.
+3. Erst wenn weder Historie noch HEAD die Arbeit belegen, den Auftrag
+   ausfuehren oder delegieren.
+
 ## Systempruefung (systempruefung.ps1)
 
 `Agenten/Routinen/systempruefung.ps1` ist die taegliche Diagnose (~7 min).
