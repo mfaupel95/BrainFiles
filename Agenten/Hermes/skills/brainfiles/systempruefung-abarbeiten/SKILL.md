@@ -101,11 +101,13 @@ zum Befund mit dem eigenen Protokoll daneben.
    Fasst die Aenderung Scheduled Tasks an, laeuft der Beweis ueber den
    Wegwerf-Task-Weg (anlegen+deaktivieren+TEMP-Eintrag+Lauf+Rueckbau) statt am
    echten Waechter — Rezept in `references/selbstheilende-waechter.md`.
-7. **Aufgaben, die nur bei Anmeldung laufen** (`MaxHirn-Nautilus-Docker`,
-   `-Optimierungen-Finden`), per `Start-ScheduledTask -TaskName <name>` einmal
-   anstossen — die sind idempotent und erneuern `LastTaskResult` auf `0`.
-   Dauerkopierer wie `MaxHirn-Sicherung` NICHT zur Unzeit doppelt starten; ein
-   Handlauf am Tag ist der Nachweis.
+7. **Aufgaben, die nur bei Anmeldung laufen**, per `Start-ScheduledTask
+   -TaskName <name>` einmal anstossen — die sind idempotent und erneuern
+   `LastTaskResult` auf `0`. Seit 18.10.2026 laufen die MaxHirn-Aufgaben mit
+   `LogonType S4U` (ohne Anmeldung) — nur noch fruehere Sonderfaelle und
+   GUI-Fenster sind an eine Sitzung gebunden. Dauerkopierer wie
+   `MaxHirn-Sicherung` NICHT zur Unzeit doppelt starten; ein Handlauf am Tag
+   ist der Nachweis.
 8. **Fremdarbeit einziehen und den Index geradeziehen.**
    `fremdarbeit-einziehen.ps1 -Testlauf` zeigt, was ruht. Nach dem echten Lauf
    kann `git status` ein Paar `D <pfad>` + `?? <pfad>` zeigen: Datei existiert,
@@ -202,6 +204,25 @@ belegt, nicht nur umgebaut):
 - **Der volle Prueflauf dauert ~150 s** (Block 5 wandert den Baum) — im
   Hintergrund fahren (`background=true, notify=true`), nie mit 400-s-Timeout im
   Vordergrund warten (gemessen: erster Vordergrund-Versuch lief in den Timeout).
+- **Block 5 (Pfade in Skripten) haengt, sobald der Baum gross wird — auf rg
+  umstellen, nicht Select-String je Datei schleifen.** Gemessen 18.10.2026:
+  bei 203k Dateien/55.830 Code-Dateien brauchte Select-String je Datei 34 min
+  (5000 Dateien in 183 s) und der ganze Prueflauf hing. Ersatz: EIN
+  `rg -F -n`-Aufruf ueber `$agenten` mit `-g`-Globs (`.venv`, node_modules,
+  hermes-agent, .git, __pycache__, umzug, Hermes/cache/tmp/.sicherung,
+  profiles/*/cache) — 28-87 s statt 34 min; `rg.exe` liegt unter
+  `Agenten/Hermes/tools/ripgrep-*`. DREI Fallen dabei, alle belegt:
+  (1) `-F` (literal) verwenden, sonst matcht der Regex mit doppelten
+  Backslashes nichts und der Block meldet 0 Treffer wie ein gesunder Lauf;
+  (2) Muster, die im Skript selbst vorkommen (`C:\Users\faupe`,
+  `BrainFiles\MaxHirn\Claude`), matchen sich selbst — Literale aus
+  Variablen-Teilstrings zusammensetzen (`$claudeMh = 'BrainFiles\MaxHirn\' +
+  'Claude'`), sonst meldet der Block die eigene Zeile als Treffer;
+  (3) im PowerShell-Array-Literal gewinnt das Komma gegen das Plus:
+  `@('-e','\' + 'Claude\' + 'Worktrees')` sind DREI Elemente, nicht eins —
+  die Konkatenation in eine Variable legen, dann ins Array. Parse-Fehler
+  pruefen mit dem Parser, und den Block IMMER isoliert testen (Stub-Funktionen
+  Notiz/Entscheiden/Info), bevor der volle Lauf laeuft.
 - **Testlaeufe ueberschreiben die Tagesberichte.** Vor einem Lauf mit
   Wegwerf-Task die drei `systempruefung-*.md/.log` als `.bak-test` sichern und
   danach zurueckschieben — sonst ist der offizielle Bericht ein Test-Artefakt.
@@ -269,3 +290,12 @@ belegt, nicht nur umgebaut):
 Schwelle ist (Standard 26 h, `--stunden N`). Gedacht fuer einen Cronjob
 (`cronjob_manage`, no_agent, taeglich nach dem Prueflauf): leere Ausgabe = still.
 Invoke through the `terminal` tool.
+
+## Aufgaben ohne Anmeldung (S4U)
+
+Meldet der Bericht "Aufgabe seit N Tagen nicht mehr gestartet" fuer MEHRERE
+Aufgaben gleichzeitig und laufen die Kurztakte weiter, ist zuerst die
+interaktive Sitzung zu pruefen (Boot vor Anmeldung = InteractiveToken-Luecke,
+siehe systemdiagnose), nicht der Trigger. Die S4U-Umstellung selbst
+(Wegwerf-Task-Vorprobe, XML-Ersatz, Nicht-Umstellen-Liste, Wirkungsnachweis):
+`references/aufgaben-ohne-anmeldung.md`.
