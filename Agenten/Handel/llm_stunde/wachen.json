@@ -4,11 +4,19 @@
  "_grund": "llm_stunde",
  "waehrung": "USD",
  "boerse": "okx",
- "instrumente": ["BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP"],
+ "instrumente": [
+  "BTC-USDT-SWAP",
+  "ETH-USDT-SWAP",
+  "SOL-USDT-SWAP"
+ ],
  "kerzen_zeitrahmen": "1H",
  "kerzen_anzahl": 400,
  "mindest_kerzen": 240,
- "varianten": ["ema1h", "st1h", "rsi1h"],
+ "varianten": [
+  "ema1h",
+  "st1h",
+  "rsi1h"
+ ],
  "ema_schnell_n": 33,
  "ema_langsam_n": 135,
  "st_atr_n": 10,
@@ -25,18 +33,20 @@
  "ausstieg_bei_regel": true,
  "gebuehr_taker": 0.0005,
  "llm": {
-   "modell": "phi4-mini:latest",
-   "bruecke": "http://127.0.0.1:11499/v1",
-   "temperatur": 0,
-   "konfidenz_min": 70,
-   "timeout_s": 60
+  "modell": "phi4-mini:latest",
+  "bruecke": "http://127.0.0.1:11499/v1",
+  "temperatur": 0,
+  "konfidenz_min": 70,
+  "timeout_s": 60
  },
  "risiko_je_position_usd": 5.0,
  "max_offene_positionen": 3,
  "handel_erlaubt": false,
  "freigabe": {
-   "erfuellt": false,
-   "papierlauf_min_wochen": 6,
-   "_stand": "Angelegt 12.10.2026. Keine Runde gemessen; der Haken wird von Hand gesetzt (Handelsregeln Punkt 3)."
- }
+  "erfuellt": false,
+  "papierlauf_min_wochen": 6,
+  "_stand": "Angelegt 12.10.2026. Keine Runde gemessen; der Haken wird von Hand gesetzt (Handelsregeln Punkt 3)."
+ },
+ "herzschlag_max_minutes": 180,
+ "_herzschlag_regel": "Regel 13.10.2026: 180 min fuer Papier-Spuren. Feld ergaenzt 18.10.2026 (fehlte, Spur nie gelaufen)."
 }
