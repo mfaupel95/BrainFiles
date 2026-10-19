@@ -127,6 +127,20 @@ und die Signale, die einen offenen Punkt bedeuten (Session-Limit-Abbruch,
 HANDOVER-Open-Questions, ungemergte Worktree-Zweige), stehen in
 `references/claude-sessions.md`.
 
+**Ungemergte Arbeit in anderen Arbeitsbaeumen finden (Worktree-Zweige):**
+`git worktree list` zeigt die Worktrees; `git log master..<zweig>` zaehlt aber
+Merge-Commits mit und uebertreibt. Der saubere Filter ist `git cherry master
+<zweig>` — er nutzt die Patch-ID und markiert nur Commits, deren INHALT wirklich
+nicht in master steckt (`+` = nicht enthalten, `-` = schon da). Ein Zweig, der
+nur Merge-Commits traegt, ist kein offener Punkt. Danach je Zweig pruefen, ob
+die Arbeit schon in master existiert: `git cat-file -e master:<pfad>` — ACHTUNG
+der Rueckgabewert ist der EXITCODE (0 = existiert), nicht die Ausgabe; ein leerer
+String ist Erfolg, nicht "fehlt". Und: `git rev-list --count master..<zweig>`
+gibt die Zahl der echten Commits. Neue Spuren auf einem Zweig sind erst dann
+"verdrahtet", wenn sie in dauerlauf.SPUREN/lage.HOLER/befehl.FAMILIE/
+auswertung_alle auftauchen — ein Zweig mit 0 Treffern dort ist eine unfertige
+Papier-Spur, kein Live-Kandidat.
+
 ### 2. Lebende von toten Ständen trennen
 
 - **Vor dem Schreiben erneut messen** (`sitzungs-rekonstruktion`): eine „tote“

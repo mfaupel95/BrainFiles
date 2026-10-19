@@ -31,9 +31,18 @@ jeder hat ein eigenes Format und eigene Signale fuer offene Punkte.
 
 ## 4. Codex (~/.codex/)
 
-- `sessions/2026/*.jsonl` — aktive Sessions (Stand 14.10.: 300).
-- `archived_sessions/rollout-*.jsonl` — archivierte.
-- `history.jsonl`, `session_index.jsonl`, `transcription-history.jsonl` — Indizes.
+- `sessions/2026/<MM>/<TT>/rollout-*.jsonl` — AKTIVE Sessions, NESTED nach Datum
+  (nicht flach; Stand 19.10.: 74 Dateien). `archived_sessions/rollout-*.jsonl` —
+  archivierte. `history.jsonl`, `session_index.jsonl`,
+  `transcription-history.jsonl` — Indizes.
+- JSON-Struktur ist NICHT die von Claude: jede Zeile `{timestamp, ordinal, type,
+  payload}` mit `type` in `session_meta` / `event_msg` / `response_item`. Es gibt
+  KEIN `message`-Feld — ein Parser, der nach `message` sucht, findet nichts.
+  Text steht in `event_msg.payload.item.content[].text` (Typ `AgentMessage`).
+- **App-Server-Rollouts sind abgeschlossene Subtasks, kein offener Punkt:** ein
+  Lauf, der mit `event_msg type=task_complete` endet, ist fertig. Viele Rollouts
+  mit demselben Startzeitstempel = EIN App-Server-Spawn vieler paralleler
+  Subtasks, keine Duplikate.
 - `..codex-global-state.json` (2 MB) + `.bak` + mehrere `.tmp-*` (Wracks).
 
 ## 5. Cursor (~/.cursor/)
