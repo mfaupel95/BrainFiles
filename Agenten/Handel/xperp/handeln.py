@@ -1883,6 +1883,18 @@ def papier_w(w, live):
     return w2
 
 
+def _phi_pruefen(kandidat, live, w):
+    """True, wenn der LLM-Filter fuer diesen Kandidaten laeuft.
+
+    NVDA-Phi (Auftrag Max 13.10.2026): Das LLM (Phi) wird NUR im
+    Papierlauf und NUR fuer NVDA-Kandidaten gefragt. Live ruft Phi
+    nie auf - ein Regressionstest beweist es (test_llm_phi_nvda.py).
+    """
+    return (not live
+            and kandidat.get("basis", "").upper() == "NVDA"
+            and bool(w.get("llm_aktiv")))
+
+
 def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
     w = papier_w(w, live)
 
@@ -1949,6 +1961,24 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
         if kandidat.get("auftrag"):
             a = _anlauf_aus_auftrag(w, kandidat, z)
         else:
+            # NVDA-Phi: LLM-Filter nur im Papierlauf und nur fuer NVDA.
+            if _phi_pruefen(kandidat, live, w):
+                try:
+                    k_phi = okxf.kerzen(kandidat["instId"], bot.BAR, 300)
+                    lage_phi = indikatoren.lage(k_phi, inst=kandidat["instId"])
+                except Exception:
+                    k_phi, lage_phi = None, None
+                position = next((p for p in z["positionen"]
+                                if p.get("basis") == kandidat["basis"]), None)
+                # Per-Aufruf-Override: NVDA paper bekommt Phi (phi4-mini auf
+                # Ollama), nicht Bonsai. Die gemeinsame wachen.json bleibt
+                # unveraendert - nur diese Kopie bekommt phi4-mini/ollama.
+                w_phi = dict(w, llm_modell="phi4-mini", llm_weg="ollama")
+                seite, info = llm_filter.urteile_kandidat(kandidat, lage_phi,
+                                                         k_phi, w_phi, position)
+                if seite is None:
+                    continue
+
             a = anlauf(w, kandidat)
         if not a:
             continue

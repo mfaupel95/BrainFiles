@@ -3,7 +3,11 @@
 # per BRAINFILES_BEREICH=handel|bot|wissen ausweist, kann nicht in fremde
 # Bereiche committen. Ohne die Variable passiert nichts.
 # Einmalig je Klon:  git config core.hooksPath .githooks
-ROOT=$(git rev-parse --show-toplevel) || exit 0
+# Die bereiche.py kommt IMMER aus dem Hauptbaum (--git-common-dir), nie aus
+# dem Worktree: ein Worktree haelt eine alte Kopie, und der Hook wuerde mit
+# "keine .git-Wurzel gefunden" abbrechen (gemessen 19.10.2026).
+GIT_COMMON=$(git rev-parse --path-format=absolute --git-common-dir) || exit 0
+ROOT=$(dirname "$GIT_COMMON")
 PY=python3
 command -v python3 >/dev/null 2>&1 || PY=python
 command -v "$PY" >/dev/null 2>&1 || exit 0
