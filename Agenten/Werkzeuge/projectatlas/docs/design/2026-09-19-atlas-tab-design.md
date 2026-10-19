@@ -10,7 +10,7 @@
 ## Zweck
 
 Die Repos-Zentrale (`Agenten/Werkzeuge/repos-zentrale/`) ist das eine
-Fenster fuer alle Repos unter `Werkstatt/Repos/`. Sie zeigt heute Start,
+Fenster fuer alle Repos unter `Werkstatt/`. Sie zeigt heute Start,
 Bot, Doku — aber nicht, ob ein Repo eine ProjectAtlas-Karte hat und wie
 gross sie ist. C ergaenzt einen **Atlas-Tab**: je Repo Index-Status und
 DB-Groesse, plus ein Suchfeld „welche Datei fuer X“, dessen Treffer die

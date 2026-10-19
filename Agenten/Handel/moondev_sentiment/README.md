@@ -5,7 +5,7 @@ oder nichts.
 
 ## Woher die Idee kommt
 
-Der Agent `sentiment_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` sammelt
+Der Agent `sentiment_agent` aus `Werkstatt/moon-dev-ai-agents` sammelt
 Texte zu seinen Tokens, bewertet die Stimmung (zwischen -1 und +1) und meldet
 erst, wenn der Betrag ueber `SENTIMENT_ANNOUNCE_THRESHOLD` (0.4) liegt. Seine
 Texte kommen von Twitter ueber `twikit` (Konto/Cookies noetig), seine Bewertung

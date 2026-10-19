@@ -1,7 +1,7 @@
 # Moon-Dev-Funding-Spur (Papier)
 
 Ein Haus-Buch auf den Funding-Extremen von Hyperliquid. Die **Zahlen liefert
-der geklonte Bot**, nicht ein Nachbau: `Werkstatt/Repos/moon-dev-ai-agents`,
+der geklonte Bot**, nicht ein Nachbau: `Werkstatt/moon-dev-ai-agents`,
 `src/nice_funcs_hl.get_funding_rates()`. Die Regel kommt aus
 `src/agents/fundingarb_agent.py` (dort `YEARLY_FUNDING_THRESHOLD = 100`).
 
@@ -25,7 +25,7 @@ falsch:
 moondev_funding/handeln.py                      (Haus-Spur, scanner-venv)
         │  subprocess
         ▼
-Werkstatt/Repos/moon-dev-ai-agents/.venv/Scripts/python.exe
+Werkstatt/moon-dev-ai-agents/.venv/Scripts/python.exe
         │  import nice_funcs_hl; get_funding_rates("BTC")
         ▼
 https://api.hyperliquid.xyz/info  (öffentlich, kein Schlüssel)

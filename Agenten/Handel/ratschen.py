@@ -78,6 +78,49 @@ def buch_risiko(w):
     return None
 
 
+def offenes_risiko(z):
+    """Was das OFFENE Buch verliert, wenn jede Position zugleich den Stop trifft.
+
+    Die EINE Definition dieser Groesse. Sie stand bisher zweimal in
+    `risikovorfilter.py` (Einstiegsseite); ein drittes Mal in `spur_buch.py`
+    waere die naechste Stelle, an der dieselbe Zahl auseinanderlaeuft.
+
+    Risiko einer Position = `nominal x stop_pct/100`. Fehlt `stop_pct`
+    (Altbestaende: am 19.10.2026 fehlten 14 von 139 offenen Positionen in
+    gitter, kraken, omniquant und scanner), wird der Abstand aus der STOP-LINIE
+    geholt. Vorher zaehlte so eine Position mit 0.0 - ein Loch in jeder
+    Bestandsgrenze: das Buch stand unter dem Deckel, obwohl es darueber war.
+    """
+    summe = 0.0
+    for p in (z.get("positionen") or []):
+        try:
+            nominal = float(p.get("nominal") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if nominal <= 0:
+            continue
+        summe += nominal * stop_prozent(p) / 100.0
+    return summe
+
+
+def stop_prozent(p):
+    """Stop-Abstand EINER Position in Prozent - aus `stop_pct`, sonst aus der Linie."""
+    try:
+        pct = float(p.get("stop_pct"))
+    except (TypeError, ValueError):
+        pct = 0.0
+    if pct > 0:
+        return pct
+    try:
+        einstieg = float(p.get("einstieg") or 0.0)
+        stop = float(p.get("stop") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+    if einstieg <= 0 or stop <= 0:
+        return 0.0
+    return abs(einstieg - stop) / einstieg * 100.0
+
+
 def halbierungsschwelle(w):
     """Der Ruecklauf, ab dem die Groesse halbiert wird - als Betrag.
 

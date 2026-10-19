@@ -55,7 +55,7 @@ Abweichung von der Vorlage im Commit benennen.
 
 ## Dateien im Repo aendern
 
-`Werkstatt/Repos/*` sind Junctions auf `O:` und liegen ausserhalb von
+`Werkstatt/*` sind Junctions auf `O:` und liegen ausserhalb von
 HERMES_WRITE_SAFE_ROOT — `write_file`/`patch` verweigern. Entweder nach
 `Agenten/Hermes/cache/` schreiben und per `cp` ins Repo legen, oder
 byte-sauber auf der Datei patchen: Zeilen-Ersetzung mit Trefferzahl-Assertion

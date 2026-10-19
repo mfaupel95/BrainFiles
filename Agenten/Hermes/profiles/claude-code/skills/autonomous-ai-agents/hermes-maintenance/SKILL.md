@@ -148,7 +148,7 @@ Symptom: `hermes mcp test <server>` returns "MCP server '<x>' requires the 'mcp'
 
 Root cause: Hermes's own MCP client runs under the **launcher's interpreter** (e.g. `hermes.exe` in `AppData/.../Python313/Scripts`, system Python), not under any MCP-server venv. If that interpreter lacks `mcp`, MCP support is **silently disabled** at startup regardless of what the server venvs contain.
 
-Check it directly, not via server venvs: `python -c "import mcp"` under the interpreter that launches `hermes`. Fix: `python -m pip install mcp` into that runtime, then `hermes gateway restart` (twice — once after install, and MCP tools only load in processes started *after* the install). Already-running sessions won't hot-reload MCP tools; start a new one.
+Check it in the interpreter that actually launches `hermes`, not via server venvs and not with a bare `python`: on this host the launcher is `<checkout>/.hermes/bin/hermes` and it runs the staged runtime venv that `hermes doctor` prints (`Runtime venv staged (<path>)`). Probe THAT: `<venv>/Scripts/python.exe -c "import mcp"`. A bare `python` on PATH is Hermes's own tools interpreter (3.14.7 here) and legitimately has no `mcp` — a failure there proves nothing. Cross-check the real state with `hermes mcp list` (per-server Status column) before concluding MCP is disabled. Fix: `python -m pip install mcp` into that runtime, then `hermes gateway restart` (twice — once after install, and MCP tools only load in processes started *after* the install). Already-running sessions won't hot-reload MCP tools; start a new one.
 
 ## Windows scheduling and terminal quoting (pitfalls that cost a session)
 
@@ -181,6 +181,65 @@ which should show the proxy agent as `Running`.
 
 Note: The iron-proxy is required only for outbound connections; local file reads and terminal commands are unaffected.
 
+
+## Fast health pass (measured on this host, 2026-10-14)
+
+    hermes doctor | head -40        # SQLite line, "Runtime venv staged", config version
+    hermes egress status            # Enabled / Binary / Process
+    command -v uv && uv --version   # uv must exist or the SQLite repair never fires
+    hermes mcp list                 # per-server enabled/disabled
+
+- `hermes doctor` alone costs 1-2 min here (44 connectivity checks, 33 profiles).
+  Do not chain more commands after it in the same terminal call — a following
+  `hermes config get` hit the 180 s tool timeout from contention alone, not a hang.
+- `hermes config get|show` takes ~12 s per call on this host. Slow, not stuck.
+- Healthy baseline seen: Python 3.14.7, SQLite 3.53.1 (no WAL-reset bug), uv 0.12.10,
+  egress disabled with no iron-proxy binary (correct on Windows), 11 MCP servers,
+  most enabled, config v50.
+
+## Legacy custom_providers (doctor warning, all profiles)
+
+`hermes doctor` warns per profile when a `custom_providers:` list entry has no `providers:` twin:
+"Legacy custom_providers entry 'smart' has no providers: twin (still read from the retired list store)".
+The check (`hermes_cli/doctor_config.py::_drift_legacy_custom_providers`) compares endpoint URLs
+AS TEXT (`str(url).strip().rstrip("/").lower()`), so the same server spelled
+`http://localhost:20128/v1` and `http://127.0.0.1:20128/v1` reads as TWO endpoints → warning.
+
+Fix per doctor: move the entry into `providers:` and delete it from the list. The key comes from the
+display name (`config_migrations._migrate_to_12`: name lowercased, spaces→dashes, parens stripped).
+Entry shape is produced by `_custom_provider_entry_to_provider_config` (hermes_cli/config_providers.py):
+`api` = base_url, plus name/key_env/models and `default_model` from `model`. Run it profile by profile:
+
+    cp config.yaml config.yaml.bak-<date>            # once per profile
+    hermes -p <profile> config set providers.<key>.api <base_url>
+    hermes -p <profile> config set providers.<key>.name <name>
+    hermes -p <profile> config set providers.<key>.key_env <env var>
+    hermes -p <profile> config set providers.<key>.default_model <model>
+    hermes -p <profile> config set 'providers.<key>.models.<model>' '{}'   # empty model map
+    hermes -p <profile> config unset custom_providers
+
+Notes: `hermes config set` takes ONE key/value (~10-12 s per call on a loaded host — 17 profiles
+≈ 20 min, run as a background script, not a foreground loop). `--args`/dot-paths with a slash
+(`models.auto/smart`) work. Never DELETE a legacy entry as "just a duplicate of an existing provider" —
+compare the KEY VARS first (names only, never the values): a twin can carry a different credential.
+Verify per profile (file: `providers.<key>` present, `custom_providers:` gone; `hermes -p <profile> doctor`:
+the warning is gone; the remaining doctor issues are npm vulns, which `hermes doctor --fix` does not clear
+because they need an upstream lockfile bump).
+
+## Filesystem checkpoints above the cap (disk, not corruption)
+
+`hermes doctor` warns when `/rollback` snapshots exceed the size cap (seen: 2.4 GB
+across 5 projects against a 500 MB cap). The store is a shadow git repo per project,
+so most of the weight is usually unreachable objects, not snapshots.
+
+    hermes checkpoints status     # per-project breakdown: COMMITS / LAST TOUCH / STATE
+    hermes checkpoints prune      # orphan + stale, GC the store; keeps one snapshot per project
+
+`prune` is the conservative fix — it deleted 0 named snapshots and reclaimed 2.4 GB
+(2.4 GB -> 2.6 MB) with all 5 projects intact; the doctor warning cleared on the next
+run. `hermes checkpoints clear` wipes all rollback history, so reach for `prune` first.
+If /rollback is not used at all, `hermes config set checkpoints.enabled false` is the
+permanent answer.
 
 ## Other update warnings (mostly benign)
 

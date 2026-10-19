@@ -144,7 +144,7 @@ Pruefe '(3) ohne FEHLER/WARN: erste Zeilen als Beleg' (($null -ne $b) -and ($b.b
 Schreibe $stub "Start-Sleep -Seconds 7`nexit 0`n"
 $r = Lauf $fx @('mcp-pfade') @{ OhneExtern = $false; ModulLimitSek = 8 }
 $b = @($r | Where-Object { $_.id -eq 'MCP-SYNC-ZEITLIMIT' }) | Select-Object -First 1
-Pruefe '(b) Sync-Zeitlimit liegt unter dem Modul-Limit (5 s)' (($null -ne $b) -and ($b.beleg -match 'nach 5 s') -and (-not (Hat $r 'ZEITLIMIT-mcp-pfade'))) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
+Pruefe '(b) Sync-Zeitlimit liegt unter dem Modul-Limit (3 s bei 8)' (($null -ne $b) -and ($b.beleg -match 'nach 3 s') -and (-not (Hat $r 'ZEITLIMIT-mcp-pfade'))) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
 
 Write-Host '--- Modul hermes ---'
 $fx = Neue-Wurzel
@@ -220,12 +220,12 @@ $exe = Join-Path $stubExe 'hermes.exe'
 Add-Type -TypeDefinition $src -OutputAssembly $exe -OutputType ConsoleApplication
 $altPath = $env:Path
 $env:Path = $stubCmd + ';' + $stubExe + ';' + $altPath
-Schreibe (Join-Path $stubExe 'out.txt') "[FAIL] auth: Authorization Bearer GEHEIMBEARERWERT`n[FAIL] cfg api_key=GEHEIMAPIWERT`n"
+Schreibe (Join-Path $stubExe 'out.txt') "[FAIL] auth: Authorization Bearer GEHEIMBEARERWERT Authorization: Basic GEHEIMBASICWERT`n[FAIL] cfg api_key=GEHEIMAPIWERT`n"
 $r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false }
 $alles = ($r | ConvertTo-Json -Depth 4)
 Pruefe '(1) .exe wird vor hermes.cmd gewaehlt' ((-not (Hat $r 'HERMES-DOCTOR-NICHT-AUFRUFBAR')) -and (Hat $r 'HERMES-DOCTOR')) "ids=$(($r | ForEach-Object { $_.id }) -join ',')"
 Pruefe '(1) Ausgabe stammt vom Stub, nicht vom .cmd' ($alles -notmatch 'falscher Starter')
-Pruefe '(3) Bearer-/api_key-Werte maskiert' (($alles -notmatch 'GEHEIMBEARERWERT') -and ($alles -notmatch 'GEHEIMAPIWERT') -and ($alles -match 'api_key=\*\*\*'))
+Pruefe '(3) Bearer-/api_key-Werte maskiert' (($alles -notmatch 'GEHEIMBEARERWERT') -and ($alles -notmatch 'GEHEIMAPIWERT') -and ($alles -notmatch 'GEHEIMBASICWERT') -and ($alles -match 'api_key=\*\*\*'))
 Schreibe (Join-Path $stubExe 'out.txt') "Checks: 0 errors`nno errors found`nOK`n"
 $r = Lauf $fx @('hermes') @{ Kurz = $false; OhneExtern = $false }
 Pruefe '(4) "0 errors"/"no errors found": kein Befund' (-not (Hat $r 'HERMES-DOCTOR')) "beleg=$((@($r | Where-Object { $_.id -eq 'HERMES-DOCTOR' }) | Select-Object -First 1).beleg)"
@@ -513,7 +513,7 @@ Pruefe 'Unbekanntes als HINWEIS' (($null -ne $h) -and ($h.schwere -eq 'HINWEIS')
 Pruefe 'Erlaubtes wird nicht gemeldet' ((($w.beleg + $h.beleg) -notmatch 'omnitrade\.cmd|\.claude|\.githooks|README|AGENTS\.md \('))
 
 Write-Host '--- echte Wurzel (Gegenprobe) ---'
-$echteWurzel = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
+$echteWurzel = Split-Path ((& git -C $PSScriptRoot rev-parse --path-format=absolute --git-common-dir) -replace "[\/]$", "") -Parent
 $vorher = (& git -C $echteWurzel status --porcelain 2>$null) -join "`n"
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $k = Lauf-Kind @('-Kurz')

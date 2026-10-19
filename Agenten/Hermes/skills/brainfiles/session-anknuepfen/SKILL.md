@@ -90,6 +90,13 @@ mitcommittet.
 
 - `git add -A` verboten: es nimmt Fremdarbeit mit (Sibling-Subagent fuehrt
   Aenderungen auf demselben Baum, z. B. Bus/stand.json).
+- Die gefundene "letzte Session" kann NOCH LAUFEN: vor dem ersten eigenen
+  Schreibzugriff ihre letzte Aktivitaet messen (juengste Message im
+  session_search-Scroll, frische mtimes, neue Commits). Ist sie aktiv oder
+  eben erst aktiv gewesen, nichts schreiben und nicht committen - geteilter
+  Index heisst, ihr Commit nimmt eigene Dateien mit oder umgekehrt. Kurz
+  warten, erneut pruefen, erst bei Ruhe uebernehmen; ihre uncommittete
+  Arbeit faellt sonst dem Fremdarbeit-Lauf in den eigenen Namen.
 - Selbstberichte sind keine Belege: einen gemeldeten Commit/Push vor dem
   Weitermachen gegen Git pruefen (Hash in origin/master?).
 - `taskkill //F` im bash scheitert mit "Argument/Option ungueltig" - dort

@@ -4,7 +4,7 @@
 
 ## Was gemessen wird
 
-Der FOMO-Robinhood-Radar (`Werkstatt/Repos/fomo-robinhood-radar`, Fremd-Repo,
+Der FOMO-Robinhood-Radar (`Werkstatt/fomo-robinhood-radar`, Fremd-Repo,
 Fork `mfaupel95`) liest die On-Chain-Aktivität von Tradern auf **Robinhood
 Chain (Chain-ID 4663)** und bewertet die Wallets mit einem Sprachmodell
 (Score 0–100). Diese Spur kopiert **nicht die Rangliste** — das wäre

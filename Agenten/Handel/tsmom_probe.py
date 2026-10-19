@@ -149,7 +149,7 @@ def qqq():
         print("-> Rotation auf EIGENEN Daten nicht messbar (Datenluecke).")
         return
     zeit, c = _laden(pfad)
-    if len(c) < 150:
+    if len(c) < 60:
         print(f"QQQ 1D nur {len(c)} Kerzen ({zeit[0].date()}..{zeit[-1].date()}) - "
               f"fuer eine Donchian(50)-Messung ueber 2019..2026 zu kurz.")
         print("-> Datenluecke: QQQ-Tageskerzen nachladen (T-210).")

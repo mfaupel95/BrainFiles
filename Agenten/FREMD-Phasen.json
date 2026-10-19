@@ -14,7 +14,7 @@
     "status bezieht sich auf phase_aktuell: 'fertig' heisst, diese Phase ist abgeschlossen; das Repo wartet dann auf die naechste Entscheidung.",
     "blockiert braucht blockiert_weil; ohne Begruendung kein blockiert.",
     "Rolle 'referenz' hat keinen Anschluss geplant; Phasenstand bleibt 0.",
-    "name entspricht dem Verzeichnisnamen unter Werkstatt/Repos/ (bei den Handels-Repos ohne Fork-Pfad)."
+    "name entspricht dem Verzeichnisnamen unter Werkstatt/ (bei den Handels-Repos ohne Fork-Pfad)."
   ],
   "repos": [
     {"name": "agent-trade-kit", "rolle": "handel", "phase_aktuell": 1, "status": "blockiert", "blockiert_weil": "Demo-Key fehlt (Max); okx-agentkit ist gebaut, MCP steht aus", "notiz": "Phase 0 fertig 09.10.; startet nur mit --demo --profile demo", "geaendert": "2026-10-11"},

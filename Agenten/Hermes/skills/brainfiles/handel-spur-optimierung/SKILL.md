@@ -570,6 +570,24 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
   als vier gelesen entsteht eine Schein-Stichprobe (gleichzeitige Korrelation,
   zu kleine Streuung). Vor jeder Kennzahl pruefen, ob die Positionen unabhaengige
   Einstiege sind oder ein Vorbild-Signal vervielfacht haben.
+- **Ein Punktebuch (kein Einsatz) kann eine Live-Freigabe NIE tragen.** Fuehrt
+  das Buch keinen Einsatz, ist die Gebuehr dort nicht abziehbar - `netto_positiv`
+  aus einem Punktebuch ist nicht kostenbereinigt und sieht gesund aus, waehrend
+  jede Live-Runde an der Boersengebuehr verliert (gemessen 14.10.2026: orbk
+  +0,180 R/Runde im Punktebuch, aber f_max +0,06 % gegen 1,20 %/Runde Kraken-
+  Gebuehr = -1,14 % je Live-Runde). Vor jeder Live-Freigabe `f_max` gegen
+  `2 x gebuehr_taker` pruefen; die Wache `Agenten/Hermes/scripts/live-kosten-wache.py`
+  (Cron alle 6 h, no_agent) macht das automatisch fuer alle scharfen Spuren
+  (Orderweg + handel_erlaubt) und meldet jede, deren f_max die Kosten nicht deckt.
+- **Ein Filter, der bei einer Wand-Spur half, uebertraegt sich nicht auf die
+  Schwester - erst die Rueckrechnung ueber das Journal fahren.** Der
+  Mindest-Zielabstand-Filter (iv_wand, 02.10.) reparierte iv_wand, aber auf
+  liq_wand angewandt blieb der Rest negativ (Filter >= 0,3 %: 13 Runden,
+  -4,73 %). Ein Filter ist kein universeller Fix: vor der Uebernahme den Filter
+  auf dem Journal der Ziel-Spur rueckrechnen (Runden unter der Schwelle
+  verwerfen, Summe der verbleibenden pruefen) - nur wenn der Rest positiv wird,
+  ist er ein Kandidat. Die Gegenprobe gehoert in den Test, nicht nur in die
+  Ueberlegung.
 
 ## Nachweis
 Ein Optimierungsauftrag ist fertig, wenn (a) die Messung mit Stichprobenzahlen

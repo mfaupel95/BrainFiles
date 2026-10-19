@@ -60,7 +60,7 @@ repos-zentrale` (Startfenster aller Repos), `Werkzeuge/fundus-suche.ps1`
 (Skills in fremden Bäumen), `Hermes/scripts/` (Wachen, Berichte).
 
 **Bots** (`Agenten/Hermes/profiles/`): je Fremd-Repo ein Profil mit gleichem
-Namen (`ls Werkstatt/Repos/`), dazu `hermes-wartung` (Hermes selbst reparieren),
+Namen (`ls Werkstatt/`), dazu `hermes-wartung` (Hermes selbst reparieren),
 `nous` (Portal/Modellfragen), `lotse` (du). Die Beschreibung steht in
 `profiles/<name>/profile.yaml`.
 

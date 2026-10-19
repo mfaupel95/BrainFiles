@@ -4,7 +4,7 @@ model:
 _config_version: 50
 terminal:
   backend: local
-  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\openterminalui
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\openterminalui
 platforms:
   photon:
     enabled: false

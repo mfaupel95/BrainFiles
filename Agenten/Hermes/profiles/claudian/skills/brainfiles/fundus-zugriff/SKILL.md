@@ -1,15 +1,15 @@
 ---
 name: fundus-zugriff
-description: "Use when eine Faehigkeit fehlt: Skill-Fundus (Documents/GitHub + Werkstatt/Repos) durchsuchen."
+description: "Use when eine Faehigkeit fehlt: Skill-Fundus (Documents/GitHub + Werkstatt) durchsuchen."
 ---
 
-# Skill-Fundus (Documents/GitHub + Werkstatt/Repos) nutzen
+# Skill-Fundus (Documents/GitHub + Werkstatt) nutzen
 
 **Der Fundus liegt seit 18.09.2026 unter `%USERPROFILE%\Documents\GitHub`**
 (ausserhalb BrainFiles; der fruehere Ordner `MaxHirn/skills` existiert nicht
-mehr). Dazu die Bot-Klone `Werkstatt/Repos`. Der aktuelle Pfad steht IMMER in
+mehr). Dazu die Bot-Klone `Werkstatt`. Der aktuelle Pfad steht IMMER in
 `fundus-suche.ps1` (`$fundus`/`$werkstatt`), nicht in einer Notiz. Stand
-11.10.2026: Fundus 1 SKILL.md, Werkstatt/Repos 34 Repos / 871 eindeutige
+11.10.2026: Fundus 1 SKILL.md, Werkstatt 34 Repos / 871 eindeutige
 Skills / 1022 Dateien - nachmessbar mit dem `-Index`-Lauf des Skripts, nie
 aus dem Gedaechtnis.
 
@@ -47,7 +47,7 @@ die Fremdinhalte erst, wenn wirklich gebraucht.
 
 3. **Uebersicht fuer Menschen und fuer Agenten ohne Terminal:**
    `MaxHirn/Wissen/Fundus-Index.md` (Fundus) und
-   `MaxHirn/Wissen/Fundus-Index-Werkstatt.md` (Werkstatt/Repos), je Repo
+   `MaxHirn/Wissen/Fundus-Index-Werkstatt.md` (Werkstatt), je Repo
    gruppiert. Beide neu bauen: `-Index` am selben Skript - auch nach `git pull`
    in einem Klon; die Kopfzeile nennt die echten Repos-/Skill-Zahlen, die
    Doku im Skriptkopf darf nicht davon abweichen.
@@ -59,7 +59,7 @@ die Fremdinhalte erst, wenn wirklich gebraucht.
    anwenden und nichts speichern.
 
 5. **Klone aktuell halten:** der Hermes-Cron `repo-updates-check` (montags
-   09:15, `no_agent`) meldet, welche Werkstatt/Repos hinter upstream
+   09:15, `no_agent`) meldet, welche Werkstatt hinter upstream
    zurueckliegen; nach einem `git pull` den `-Index` neu bauen lassen.
 
 ## Fallen

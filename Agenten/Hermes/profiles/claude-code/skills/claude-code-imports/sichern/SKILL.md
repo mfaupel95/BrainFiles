@@ -92,7 +92,7 @@ beim Sichern daraus folgt:
 - **Fremdarbeit aus einem anderen Zweig-Arbeitsbaum** (Zweig `wt/…`, `t_…`)
   wird nicht still nach `master` geschoben: erst melden, was drinliegt, dann
   per PR oder auf ausdrückliche Freigabe mergen. Liegenlassen ist erlaubt.
-- **Fremd-Repos** in `Werkstatt/Repos/` haben ihre eigenen Zweignamen (meist
+- **Fremd-Repos** in `Werkstatt/` haben ihre eigenen Zweignamen (meist
   `main`). Die Regel „alles auf master" gilt nur fürs BrainFiles-Repo; ein
   Push in einen Fork braucht Rückfrage, und Workflow-Dateien
   (`.github/workflows/`) lehnt GitHub ohne Token-Scope `workflow` ab — der Push
@@ -130,6 +130,20 @@ Und der Pre-Commit-Hook (`bereiche.py`) erkennt die `.git`-Datei ebenso
 nicht und blockiert den Commit — dort `--no-verify` setzen, die
 Bereichsvariable setzen und nur eigene Dateien committen. Das ist ein
 Hook-Defekt im Worktree, kein umgangener Schutz.
+
+### Verwaiste `index.lock`: umbenennen, nie löschen
+
+`fatal: Unable to create '.git/index.lock': File exists` blockiert `add` und
+`commit` gleichermaßen — nicht nur der eigene Schritt ist dann schuld. Erst
+**messen, wer die Sperre hält**, dann handeln:
+
+- Lock jung und `GitHubDesktop.exe` offen → ein echter hängender Commit.
+  Nicht anfassen; den Besitzer schließen lassen, dann wiederholen.
+- Lock alt (Minuten, 0 Byte) und als `git.exe` laufen nur
+  `git fsmonitor--daemon`-Prozesse — die halten die Lock **nicht**. Dann ist
+die Sperre verwaist: **umbenennen** (`mv .git/index.lock
+.git/index.lock.verwaist-JJJJMMTT`), nie löschen, danach `add`/`commit`
+wiederholen.
 
 ## 4. Was nie passiert
 

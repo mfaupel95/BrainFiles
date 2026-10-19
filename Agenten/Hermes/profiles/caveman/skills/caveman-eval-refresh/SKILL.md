@@ -11,7 +11,7 @@ metadata:
 
 # Caveman Repo Eval Refresh
 
-Bot-Routine fuer das caveman-Repo (O:\Werkstatt\Repos\caveman, = C:\...\BrainFiles\Werkstatt via Junction): Repo aktuell halten, Token-Ersparnisse der Skills MESSEN statt glauben, Eval-Snapshot frisch erzeugen. Misst Zeichen UND Token (tiktoken o200k_base). Misst NICHT Antwort-Fidelity oder Latenz — nur Laenge.
+Bot-Routine fuer das caveman-Repo (O:\Werkstatt\caveman, = C:\...\BrainFiles\Werkstatt via Junction): Repo aktuell halten, Token-Ersparnisse der Skills MESSEN statt glauben, Eval-Snapshot frisch erzeugen. Misst Zeichen UND Token (tiktoken o200k_base). Misst NICHT Antwort-Fidelity oder Latenz — nur Laenge.
 
 ## When to Use
 - "run" / Bot-Durchlauf fuer caveman-Repo.
@@ -20,7 +20,7 @@ Bot-Routine fuer das caveman-Repo (O:\Werkstatt\Repos\caveman, = C:\...\BrainFil
 - Frage "wie viel kuerzer wird das" mit Beleg, vorher/nachher in Zeichen und Token.
 
 ## Prerequisites
-- Repo: O:\Werkstatt\Repos\caveman (git clone, main). C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\caveman ist DIESELBE Datei (Junction auf O:).
+- Repo: O:\Werkstatt\caveman (git clone, main). C:\Users\faupe\Documents\BrainFiles\Werkstatt\caveman ist DIESELBE Datei (Junction auf O:).
 - claude CLI eingeloggt. NATIVE Binaries: C:\Users\faupe\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe.
 - uv installiert (fuer tiktoken und llm_run.py).
 - Optional: CAVEMAN_EVAL_MODEL=claude-haiku-4-5 (klein, billig — README empfiehlt es).
@@ -28,7 +28,7 @@ Bot-Routine fuer das caveman-Repo (O:\Werkstatt\Repos\caveman, = C:\...\BrainFil
 ## How to Run
 Ueber das `terminal`-Tool:
 ```bash
-cd 'O:/Werkstatt/Repos/caveman'
+cd 'O:/Werkstatt/caveman'
 git fetch origin && git status -sb          # Stand pruefen (Aufgabe 1)
 CAVEMAN_EVAL_MODEL=claude-haiku-4-5 uv run python evals/llm_run.py   # Snapshot erzeugen
 uv run --with tiktoken python evals/measure.py                        # Zahlen lesen
@@ -62,7 +62,7 @@ uv run --with tiktoken python evals/measure.py                        # Zahlen l
 
 ## Repo-Dateien aendern (Junction-Workaround)
 ```bash
-cd 'O:/Werkstatt/Repos/caveman' && python - <<'EOF'
+cd 'O:/Werkstatt/caveman' && python - <<'EOF'
 import io
 p='evals/llm_run.py'
 s=io.open(p,encoding='utf-8').read()

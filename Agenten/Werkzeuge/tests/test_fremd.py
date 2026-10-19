@@ -68,7 +68,7 @@ class EchteListe(unittest.TestCase):
     def test_kein_eintrag_ist_eine_wurzel_unseres_codes(self):
         """Die Wurzeln, die eigenen Code tragen, duerfen nicht als Ganzes fremd sein.
 
-        `Werkstatt/Repos` ist bewusst NICHT dabei: das ist die Klonsammlung, deren
+        `Werkstatt` ist bewusst NICHT dabei: das ist die Klonsammlung, deren
         Inhalt zu 100 % fremd ist - eine eigene Wurzel der Zentrale, aber kein
         eigener Code. Genau diesen Unterschied prueft der Fall.
         """

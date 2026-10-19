@@ -5,7 +5,7 @@ Ausloeser: „Santiment" - oder eine Kennzahl, die unsere Kerzen nicht hergeben
 
 ## Woran man arbeitet
 
-- `Werkstatt/Repos/santiment` - Fork `mfaupel95/santiment` von
+- `Werkstatt/santiment` - Fork `mfaupel95/santiment` von
   `api-evangelist/santiment`. **Keine Software**: Dokumentation plus das
   vollstaendige GraphQL-Schema (`graphql/santiment-schema.graphql`, 83 KB,
   179 Query-Felder) und eine MCP-Beschreibung (`mcp/santiment-mcp.yml`).

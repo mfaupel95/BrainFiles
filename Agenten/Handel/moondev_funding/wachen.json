@@ -1,6 +1,6 @@
 {
-  "_zweck": "Moon-Dev-Spur: Funding-Extreme auf Hyperliquid als Papierbuch. Quelle der Zahlen ist der geklonte Bot in Werkstatt/Repos/moon-dev-ai-agents (src/nice_funcs_hl.get_funding_rates), Regel aus src/agents/fundingarb_agent.py.",
-  "_quelle": "Werkstatt/Repos/moon-dev-ai-agents (= O:/Werkstatt/Repos/moon-dev-ai-agents). Fehlt das Repo, tut die Spur nichts und sagt es - sie erfindet keine Zahlen.",
+  "_zweck": "Moon-Dev-Spur: Funding-Extreme auf Hyperliquid als Papierbuch. Quelle der Zahlen ist der geklonte Bot in Werkstatt/moon-dev-ai-agents (src/nice_funcs_hl.get_funding_rates), Regel aus src/agents/fundingarb_agent.py.",
+  "_quelle": "Werkstatt/moon-dev-ai-agents (= O:/Werkstatt/moon-dev-ai-agents). Fehlt das Repo, tut die Spur nichts und sagt es - sie erfindet keine Zahlen.",
   "_regel": "Jahres-Rate = funding_rate * 24 * 365 * 100 (Hyperliquid rechnet stuendlich). Ab +100 %/Jahr: short (Funding kassieren), ab -100 %/Jahr: long. Unter der Schwelle: kein Geschaeft - genau wie YEARLY_FUNDING_THRESHOLD im Bot.",
   "_kein_sprachmodell": "Der Bot laesst Claude/DeepSeek ueber jede Gelegenheit urteilen. Hier ist die Regel deterministisch, damit das Buch nachrechenbar bleibt.",
   "_kein_orderpfad": "Kein Live-Zweig. Die Fremd-Agenten handeln auf Hyperliquid/Solana mit echten Schluesseln; ein --live verweigert mit diesem Grund.",

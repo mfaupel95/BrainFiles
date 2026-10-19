@@ -14,7 +14,7 @@ Fork [mfaupel95/awesome-systematic-trading](https://github.com/mfaupel95/awesome
 von [paperswithbacktest/awesome-systematic-trading](https://github.com/paperswithbacktest/awesome-systematic-trading)
 (0 Sterne beim Original selbst wenig bekannt, aber Traeger-Firma
 paperswithbacktest.com hat 4.843 Strategie-Papers real repliziert und die
-Kennzahlen offengelegt). Klon: `Werkstatt/Repos/awesome-systematic-trading`
+Kennzahlen offengelegt). Klon: `Werkstatt/awesome-systematic-trading`
 (depth 1, `origin`=Fork, `upstream`=Original). Bot-Profil
 `awesome-systematic-trading` (getrimmter Skillstand wie santiment/openmontage).
 
@@ -69,7 +69,7 @@ eingebunden.
 ## Aufruf
 
 ```
-cd Werkstatt/Repos/awesome-systematic-trading
+cd Werkstatt/awesome-systematic-trading
 ```
 
 Kein Setup, keine `.venv`, keine Schluessel - nur lesen.

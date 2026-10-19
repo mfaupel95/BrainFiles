@@ -5,7 +5,7 @@ tags: [handel]
 created: 2026-10-13
 updated: 2026-10-13
 related: ['20260902-handelsregeln', '20260830-routinen', '20260830-hardware']
-summary: 'Dauerlauf-Überwachung lückenhaft (3 von 4 Wächter-Aufgaben abgeschaltet, Mittel-Stufe tot), Backtest-Varianten gesichert und bewusst stehen gelassen, 5,4 GB redundante Hermes-Datenbank-Kopien entfernt.'
+summary: 'Dauerlauf-Überwachung wieder vollständig (alle vier Wächter-Aufgaben Ready, drei Stufen laufen auf Papier), Backtest-Varianten mit Hausfunktionen verglichen und bewusst stehen gelassen, 5,4 GB redundante Hermes-Datenbank-Kopien entfernt.'
 ---
 
 # Handel-Agenten: Befund 13.10.2026
@@ -15,36 +15,41 @@ Prüfung des Handelssystems (Spuren, Dauerlauf, Wächter, Plattenplatz) am
 angetastet; nur Laufende wurde gelesen und eine begrenzte Menge an
 dokumentierten Sicherungen entfernt.
 
-## 1. Dauerlauf: zwei von drei Stufen laufen, die Überwachung ist lückenhaft
+## 1. Dauerlauf: drei Stufen laufen, alle vier Wächter scharf
 
 ```
-laeuft  --risiko niedrig   PID 11324
-laeuft  --risiko hoch      PID 6024
-tot     --risiko mittel    seit 12.10.2026 17:07
+laeuft  --risiko niedrig   auf Papier
+laeuft  --risiko mittel    auf Papier (nachmittags neu gestartet)
+laeuft  --risiko hoch      auf Papier
 ```
 
-Vier geplante Aufgaben in der Windows-Aufgabenplanung, drei davon
-**Disabled** (`Get-ScheduledTask` am 13.10.2026):
+Vier geplante Aufgaben in der Windows-Aufgabenplanung, alle **Ready**
+(`Get-ScheduledTask` am 13.10.2026 nachmittags):
 
-| Aufgabe | Zustand | Letzter Lauf |
-|---|---|---|
-| `MaxHirn-Handel-Dauerlauf` | Disabled | 12.10. 17:07 |
-| `MaxHirn-Handel-Dauerlauf-Waechter` | Disabled | 12.10. 16:54 |
-| `MaxHirn-Handel-Dauerlauf-Mittel-Waechter` | Disabled | 12.10. 17:05 |
-| `MaxHirn-Handel-Dauerlauf-Hoch-Waechter` | Ready | 13.10. 00:35 |
+| Aufgabe | Zustand |
+|---|---|
+| `MaxHirn-Handel-Dauerlauf` | Ready |
+| `MaxHirn-Handel-Dauerlauf-Waechter` | Ready |
+| `MaxHirn-Handel-Dauerlauf-Mittel-Waechter` | Ready |
+| `MaxHirn-Handel-Dauerlauf-Hoch-Waechter` | Ready |
 
-**Folge: der Basislauf hat kein Netz.** Der Basislauf (Stufe `niedrig`)
-führt die Bücher `handelsjournal.csv` und `zustand.json` — die Aufzeichnung,
-die zählt. Stirbt er, startet ihn nichts neu. Genau dagegen wurden die
-Wächter am 29.09.2026 nachgerüstet, weil nach einem Kernel-Power-41-Neustart
-ohne Anmeldung Basis und Stufen still lagen (s. [[20260830-routinen]]).
+Alle drei Stufen laufen auf Papier: kein offenes Freigabefenster, und die
+Stufenläufe (mittel/hoch) sind im Code ohnehin fest auf Papier verdrahtet.
+Systemlast zum Zeitpunkt der Reaktivierung: CPU 37 %, ~20 GB RAM frei von
+65 GB — die Reaktivierung war also nicht leistungsintensiv.
 
-Die Mittel-Stufe ist dokumentiert abgeschaltet
-(`Disable-ScheduledTask -TaskName MaxHirn-Handel-Dauerlauf-Mittel-Waechter`,
-[[20260902-handelsregeln]]), der Sperrpfad `Handel/dauerlauf.mittel.pid`
-blieb aber als Leiche liegen (PID 46400, existiert nicht). Harmlos:
-`Agenten/Routinen/handel-dauerlauf.ps1` erkennt eine tode PID und ersetzt
-die Sperre.
+Der Basislauf (Stufe `niedrig`) führt die Bücher `handelsjournal.csv` und
+`zustand.json` — die Aufzeichnung, die zählt. Genau gegen einen Ausfall
+dieser Bücher wurden die Wächter am 29.09.2026 nachgerüstet, weil nach
+einem Kernel-Power-41-Neustart ohne Anmeldung Basis und Stufen still lagen
+(s. [[20260830-routinen]]).
+
+Am Morgen des 13.10. waren drei der vier Aufgaben noch `Disabled` und die
+Mittel-Stufe tot (seit 12.10. 17:07). Die Mittel-Abschaltung war dokumentiert
+erlaubt (`Disable-ScheduledTask -TaskName
+MaxHirn-Handel-Dauerlauf-Mittel-Waechter`, [[20260902-handelsregeln]]); die
+Basis-Abschaltung nicht — sie wurde im Laufe des Tages wieder aufgehoben,
+und alle drei Stufen sind neu auf Papier gestartet worden.
 
 ## 2. Backtest-Varianten: gesichert und bewusst stehen gelassen
 

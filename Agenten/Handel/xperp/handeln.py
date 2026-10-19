@@ -1790,8 +1790,32 @@ def buche_funding(z, live, w):
               % (p["inst"], betrag, perioden, satz * 100))
 
 
-def flach_stellen(z, live, grund, w=None):
+def kill_verkauf_ohne_freigabe(w):
+    """Darf der KILL echte Live-Positionen auch bei geschlossener Freigabekette verkaufen?
+
+    Auftrag Max 14.10.2026 (Entscheidung 2): ja, als reiner Notausstieg. Die
+    Freigabekette (`sperren_live`) soll NEUES Risiko begrenzen; ein reduceOnly-
+    Marktverkauf schafft keines. Sie schliesst sich aber oft genau dann, wenn
+    Verluste auflaufen (negativer EV, Herzschlag, Fenster zu) - dann konnte der
+    Kill bisher nicht handeln, und nur der Boersen-Stop schuetzte die Position.
+
+    Voraussetzungen, die IMMER bleiben: Schalter `kill_verkauf_ohne_freigabekette`
+    in der Wache, nur die Basisstufe (`risikostufe.live_erlaubt`, eine Stufe hat
+    nie echtes Geld) und ein gesetzter OKX-Schluessel. Verkauft werden nur
+    Positionen mit modus=live (siehe `flach_stellen`), nie Papierpositionen und
+    - ausser `handpositionen_automatisch_schliessen` - keine Handpositionen.
+    """
+    return bool((w or {}).get("kill_verkauf_ohne_freigabekette")
+                and risikostufe.live_erlaubt() and okxf.schluessel_vorhanden())
+
+
+def flach_stellen(z, live, grund, w=None, notaus_live=False):
     """Alle Positionen sofort schliessen - Bedingung 2 und 3.
+
+    `notaus_live` (Standard falsch): verkauft Positionen mit modus=live an der
+    Boerse (reduceOnly-Market), auch wenn `live` falsch ist - nur fuer den Kill,
+    siehe `kill_verkauf_ohne_freigabe`. Papierpositionen werden dabei nur im
+    Buch geschlossen, nie an der Boerse.
 
     ECHTE POSITIONEN GEHOEREN DEM LIVE-LAUF (21.09.2026): Laeuft die Spur im
     Papier (kein Freigabefenster oder handel_erlaubt=false) und loest dabei der
@@ -1818,7 +1842,8 @@ def flach_stellen(z, live, grund, w=None):
                   % (p.get("inst"), grund))
             behalten.append(p)
             continue
-        if not live and p.get("modus") == "live":
+        echt = p.get("modus") == "live"
+        if not live and echt and not notaus_live:
             print("  %s bleibt im Buch: echte Position (modus=live) wird nur "
                   "vom Live-Lauf geschlossen" % p.get("inst"))
             behalten.append(p)
@@ -1830,7 +1855,8 @@ def flach_stellen(z, live, grund, w=None):
                   file=sys.stderr)
             behalten.append(p)
             continue
-        if live:
+        verkauf = live or (notaus_live and echt)
+        if verkauf:
             try:
                 okxf.markt_schliessen(p["inst"], p["kontrakte"], p["seite"])
             except Exception as e:                       # noqa: BLE001
@@ -1841,7 +1867,7 @@ def flach_stellen(z, live, grund, w=None):
         erloes = _ergebnis(p, kurs)
         print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], p["seite"], kurs, erloes - p["margin"]))
-        journal(zeit=_jetzt(), modus="live" if live else "papier",
+        journal(zeit=_jetzt(), modus="live" if verkauf else "papier",
                 aktion="schliessen", inst=p["inst"],
                 pos_id=p.get("pos_id", ""), seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
@@ -1957,6 +1983,24 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
         fam = fam_stand.get(kandidat["kategorie"])
         if fam and fam["voll"]:
             continue
+
+        # NVDA-Phi: LLM-Filter nur im Papierlauf und nur fuer NVDA.
+        if _phi_pruefen(kandidat, live, w):
+            try:
+                k_phi = okxf.kerzen(kandidat["instId"], bot.BAR, 300)
+                lage_phi = indikatoren.lage(k_phi, inst=kandidat["instId"])
+            except Exception:
+                k_phi, lage_phi = None, None
+            position = next((p for p in z["positionen"]
+                            if p.get("basis") == kandidat["basis"]), None)
+            # Per-Aufruf-Override: NVDA paper bekommt Phi (phi4-mini auf
+            # Ollama), nicht Bonsai. Die gemeinsame wachen.json bleibt
+            # unveraendert - nur diese Kopie bekommt phi4-mini/ollama.
+            w_phi = dict(w, llm_modell="phi4-mini", llm_weg="ollama")
+            seite, info = llm_filter.urteile_kandidat(kandidat, lage_phi, k_phi,
+                                                     w_phi, position)
+            if seite is None:
+                continue
 
         if kandidat.get("auftrag"):
             a = _anlauf_aus_auftrag(w, kandidat, z)
@@ -2161,12 +2205,15 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
               % (a["inst"], a["seite"], a["stop"], g["abstand"] * 100,
                  a["ziel"], g["liq"], p["liq_abstand"] * 100))
         print("      %-22s %-5s  Pflicht: Funding %s, Gebuehr %.3f%%, "
-              "Quote noetig %.1f%% / beobachtet %.1f%%"
+              "Quote noetig %s / beobachtet %s"
               % (a["inst"], a["seite"],
                  "n/a" if p["funding_pct"] is None
                  else "%+.3f%%" % (p["funding_pct"] * 100),
-                 p["gebuehren_pct"] * 100, p["quote_noetig"] * 100,
-                 p["quote_beobachtet"] * 100))
+                 p["gebuehren_pct"] * 100,
+                 "n/a" if p["quote_noetig"] is None
+                 else "%.1f%%" % (p["quote_noetig"] * 100),
+                 "n/a" if p["quote_beobachtet"] is None
+                 else "%.1f%%" % (p["quote_beobachtet"] * 100)))
 
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="eroeffnen", inst=a["inst"],
@@ -2180,8 +2227,10 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                 funding_pct=("" if p["funding_pct"] is None
                              else "%.6f" % p["funding_pct"]),
                 gebuehr_pct="%.6f" % p["gebuehren_pct"],
-                quote_noetig="%.4f" % p["quote_noetig"],
-                quote_beob="%.4f" % p["quote_beobachtet"],
+                quote_noetig=("" if p["quote_noetig"] is None
+                             else "%.4f" % p["quote_noetig"]),
+                quote_beob=("" if p["quote_beobachtet"] is None
+                           else "%.4f" % p["quote_beobachtet"]),
                 grund="punkte %.1f, %s" % (a["punkte"], a["grund"]))
         _tracking.track_position_eroeffnet(
             spur_name="xperp",
@@ -2235,6 +2284,9 @@ def zeige_wachen(w):
              s["runden_stoerung"], s["erste_runde"] or "-"))
     print("  2 Ruecklauf              %.2f USD von Hoechststand %.2f  -> Faktor %.2f"
           % (s["ruecklauf_usd"], s["hoechststand_usd"], s["groessenfaktor"]))
+    print("    Konto-Ruecklauf        %.2f USD (alle Runden, %d davon Handgriffe)%s"
+          % (s["konto_ruecklauf_usd"], s["runden_hand"],
+             "   >>> KONTOWARNUNG (nur Meldung)" if s["konto_warnung"] else ""))
     print("  3 Herzschlag frisch      %s   (%s min alt, Grenze %d)"
           % (s["herzschlag_frisch"],
              "?" if s["herzschlag_alter_min"] is None
@@ -2355,6 +2407,13 @@ def lauf(modus):
 
     z = lade_zustand()
     s = wx.lage(w, JOURNAL, z)
+    if s.get("konto_warnung"):
+        # Nur melden: das Konto ist mehr als die Strategie, aber ein Verlust aus
+        # Handgriffen schliesst keine Strategieposition und sperrt nichts.
+        print("- KONTOWARNUNG: Konto-Ruecklauf %.2f USD >= %g (Strategie-Ruecklauf "
+              "%.2f USD, %d Handgriff-Runden) - nur Meldung, keine Aktion -"
+              % (s["konto_ruecklauf_usd"], w.get("konto_warnschwelle_usd"),
+                 s["ruecklauf_usd"], s["runden_hand"]))
 
     live = False
     if modus == "live":
@@ -2421,7 +2480,8 @@ def lauf(modus):
     if s["kill"]:
         print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"
               % (s["ruecklauf_usd"], w["kill_switch_gesamt_usd"]))
-        flach_stellen(z, live, "kill_switch", w)
+        flach_stellen(z, live, "kill_switch", w,
+                      notaus_live=(not live and kill_verkauf_ohne_freigabe(w)))
         if wx.sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
             print("  wachen.json handel_erlaubt -> false")
         schreibe_zustand(z)

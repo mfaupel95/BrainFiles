@@ -71,6 +71,7 @@ onboarding:
 # fallback_model:
 #   provider: openrouter
 #   model: anthropic/claude-sonnet-4
+    profile_build_offered: true
 auxiliary:
   compression:
     provider: nous

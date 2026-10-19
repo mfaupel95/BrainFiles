@@ -35,9 +35,9 @@ kostet null Tokens je Anfrage, solange er dort bleibt. Zurueckholen per
 
 Strategie: `Bollinger-Squeeze + Keltner-Kanal (TTM-Squeeze) + ADX > 25`,
 Ausbruch long/short, Ziel 5 %, Stop 3 % — Original aus
-`Werkstatt/Repos/Harvard-Algorithmic-Trading-with-AI/backtest/bb_squeeze_adx.py`.
+`Werkstatt/Harvard-Algorithmic-Trading-with-AI/backtest/bb_squeeze_adx.py`.
 Unveraendert uebernommen, nur Datenquelle und Gebuehr parametrisiert.
-Lauffaehig im venv `Werkstatt/Repos/moon-dev-ai-agents/.venv` (pandas, talib,
+Lauffaehig im venv `Werkstatt/moon-dev-ai-agents/.venv` (pandas, talib,
 backtesting.py).
 
 | Daten | Zeitraum | Kerzen | Gebuehr/Seite | Rendite | Trades | Treffer | Erwartung je Trade |
@@ -79,7 +79,7 @@ Beleg, dass der Kostenmassstab vor der Uebernahme gehoert — genau wie bei
 
 ## 4. Wo der echte Mehrwert liegt
 
-1. **Die Kursdaten der Fremd-Repos.** `Werkstatt/Repos/Harvard-…/backtest/data/`
+1. **Die Kursdaten der Fremd-Repos.** `Werkstatt/Harvard-…/backtest/data/`
    traegt `BTC-1h-1000wks-data.csv` (77.375 Stundenkerzen ab 2015), dazu BTC-6h,
    ETH-1d, SOL-1d sowie BTC-15m/1d. Rund **neun Jahre Historie lokal**, ohne
    Netzzugriff — bislang von keiner eigenen Spur genutzt.
@@ -93,7 +93,7 @@ Beleg, dass der Kostenmassstab vor der Uebernahme gehoert — genau wie bei
 
 Nachrechnen (Skript liegt versioniert neben dem Handel):
 `Agenten/Handel/backtest_archiv_strategie.py`,
-Aufruf mit `Werkstatt/Repos/moon-dev-ai-agents/.venv/Scripts/python.exe`.
+Aufruf mit `Werkstatt/moon-dev-ai-agents/.venv/Scripts/python.exe`.
 
 ## 5. Was nicht angefasst wurde
 
@@ -101,6 +101,6 @@ Aufruf mit `Werkstatt/Repos/moon-dev-ai-agents/.venv/Scripts/python.exe`.
   (`traderhub` fehlt weiter) — beide ohne Bibliothekslast lesbar.
 - Keine laufende Spur, kein `wachen.json`, kein Dauerlauf beruehrt; es wurden
   nur Daten gelesen und ein befristeter Backtest gefahren.
-- `Werkstatt/Repos/Harvard-…` ist unveraendert (Original-Code nur kopiert,
+- `Werkstatt/Harvard-…` ist unveraendert (Original-Code nur kopiert,
   Mac-Pfad nicht editiert).
 - Kein Modell, kein Schluessel, kein Guthaben bewegt.

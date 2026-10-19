@@ -42,6 +42,7 @@ class Fremd:
     herkunft: str
     regel: str
     warum: str
+    nur_git: bool = False   # nur Git-Klone unter pfad sind fremd (Werkstatt seit 14.10.2026)
 
     def __str__(self) -> str:                                  # pragma: no cover
         return f"{self.pfad} ({self.art})"
@@ -60,6 +61,19 @@ def _normal(rel: str) -> str:
     return str(rel).replace("\\", "/").strip("/").lower()
 
 
+def _ist_git_kloon(rel_pfad: str) -> bool:
+    """Liegt unter dem Pfad ein Git-Klon? (fuer Eintraege mit nur_git=True).
+
+    Die Liste kennt nur relative Pfade; die Platte entscheidet. Ein Pfad ohne
+    Ordner oder ohne .git ist kein Klon und damit nicht fremd.
+    """
+    try:
+        p = wurzel() / rel_pfad.replace("\\", "/").strip("/")
+    except OSError:
+        return False
+    return (p / ".git").exists()
+
+
 def laden(wurzel_dir: Path | None = None) -> list[Fremd]:
     """Die Liste lesen. Eine fehlende oder kaputte Datei ergibt eine leere Liste -
     `pruefen()` sagt dann, was fehlt, statt hier zu werfen."""
@@ -71,7 +85,10 @@ def laden(wurzel_dir: Path | None = None) -> list[Fremd]:
     eintraege = []
     for e in roh.get("eintraege", []):
         if all(isinstance(e.get(f), str) for f in FELDER):
-            eintraege.append(Fremd(**{f: e[f] for f in FELDER}))
+            eintraege.append(Fremd(
+                **{f: e[f] for f in FELDER},
+                nur_git=bool(e.get("nur_git", False)),
+            ))
     return eintraege
 
 
@@ -87,6 +104,8 @@ def ist_fremd(rel_pfad, eintraege: list[Fremd] | None = None) -> Fremd | None:
     for e in eintraege:
         p = _normal(e.pfad)
         if ziel == p or ziel.startswith(p + "/"):
+            if getattr(e, "nur_git", False) and not _ist_git_kloon(rel_pfad):
+                continue
             if treffer is None or len(p) > len(_normal(treffer.pfad)):
                 treffer = e
     return treffer
@@ -124,6 +143,7 @@ def pruefen(
         return ["Die Liste hat keine Eintraege."]
 
     gesehen: set[str] = set()
+    nur_git_eintraege: set[str] = set()
     for i, e in enumerate(rohe):
         kopf = f"Eintrag {i + 1}"
         for feld in FELDER:
@@ -143,17 +163,27 @@ def pruefen(
         if n in gesehen:
             befunde.append(f"{kopf}: doppelt in der Liste.")
         gesehen.add(n)
+        nur_git = bool(e.get("nur_git", False))
+        if nur_git:
+            nur_git_eintraege.add(n)
         if not (w / pfad).exists():
             befunde.append(f"{kopf}: Ordner liegt nicht auf der Platte.")
         for eigene in eigene_wurzeln:
             if n == _normal(eigene):
+                if nur_git:
+                    # Ein nur_git-Eintrag liegt BEWUSST auf der eigenen Wurzel:
+                    # er markiert nur die Git-Klone darunter (Werkstatt seit
+                    # 14.10.2026), die Ablage selbst bleibt eigen.
+                    continue
                 befunde.append(f"{kopf}: ist eine EIGENE Wurzel ({eigene}) - "
                                f"eigen und fremd kann nicht beides gelten.")
 
-    # Kein Baum im Baum: der genauere Eintrag waere toter Text.
+    # Kein Baum im Baum: der genauere Eintrag waere toter Text. Ein nur_git-Netz
+    # darf explizite Eintraege enthalten - die koennen eine eigene Regel tragen
+    # und gewinnen ueber den laengsten Treffer.
     for a in gesehen:
         for b in gesehen:
-            if a != b and a.startswith(b + "/"):
+            if a != b and a.startswith(b + "/") and b not in nur_git_eintraege:
                 befunde.append(f"'{a}' liegt in '{b}' - ein Eintrag genuegt (der kuerzere).")
     return befunde
 

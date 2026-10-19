@@ -28,14 +28,16 @@ $wurzel = Split-Path $PSScriptRoot -Parent
 $manifest = Join-Path $PSScriptRoot 'MCP-Manifest.json'
 $confHermes = Join-Path $wurzel 'Agenten\Hermes\config.yaml'
 
-# Claude-Konfiguration suchen: erst klassischer Pfad, dann MSIX-Container
+# Claude-Konfiguration suchen: erst der MSIX-Container (Pfad der installierten App),
+# dann der klassische Pfad %APPDATA%\Claude. Eine verwaiste klassische Datei daneben
+# wuerde den Abgleich verfaelschen - sie wird unten gemeldet.
 $confClaude = $null
 $kandidaten = @()
-$kandidaten += (Join-Path $env:APPDATA 'Claude\claude_desktop_config.json')
 $pakete = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Packages') -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue
 foreach ($p in $pakete) {
   $kandidaten += (Join-Path $p.FullName 'LocalCache\Roaming\Claude\claude_desktop_config.json')
 }
+$kandidaten += (Join-Path $env:APPDATA 'Claude\claude_desktop_config.json')
 foreach ($k in $kandidaten) {
   if (Test-Path $k) { $confClaude = $k; break }
 }
@@ -81,6 +83,10 @@ if (-not $confClaude) {
   $warnungen += 'Claude-Konfiguration nicht gefunden (weder %APPDATA% noch MSIX-Container)'
 } else {
   Schreibe 'OK' ('Claude-Konfiguration: ' + $confClaude)
+  $zweiteClaude = @($kandidaten | Where-Object { $_ -ne $confClaude -and (Test-Path $_) })
+  if ($zweiteClaude.Count -gt 0) {
+    $warnungen += 'Zweite Claude-Konfiguration vorhanden, nicht gelesen: ' + ($zweiteClaude -join ', ') + ' - verwaiste Datei kann den Abgleich verfaelschen'
+  }
   try {
     $claude = @((Get-Content $confClaude -Raw | ConvertFrom-Json).mcpServers.PSObject.Properties.Name | Sort-Object)
   } catch {

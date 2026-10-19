@@ -44,8 +44,7 @@ Verdichten ist Teil der laufenden Arbeit, keine eigene Aufgabe und keine Rueckfr
   `.gitignore` ueber `!Agenten/Hermes/profiles/*/rule_maXtrade.md`).
 - Nachweis, dass diese Datei geladen wird: frische Sitzung
   `hermes.exe -p awesome-systematic-trading chat -q "Welche Regeldatei zuerst?" -Q -t memory`
-  (vorher PYTHONHOME/PYTHONPATH entfernen, HERMES_HOME auf Agenten\Hermes) - die Antwort
-  stammt allein aus `SOUL.md`, also aus dem Verweis hierher.
+  (vorher PYTHONHOME/PYTHONPATH entfernen, HERMES_HOME auf Agenten\Hermes).
 - Freigabe in Git pruefen: `git check-ignore -v <pfad>` zeigt die `!`-Zeile selbst; ignoriert
   ist die Datei dann NICHT, sonst stuende sie nicht als `??` in `git status`.
 - `skills/brainfiles/handel-spuren/SKILL.md` ist am Groessenlimit (100.663/100.000 Zeichen):
@@ -57,7 +56,29 @@ Verdichten ist Teil der laufenden Arbeit, keine eigene Aufgabe und keine Rueckfr
 - 18.09.2026 Werkzeugfalle: das MCP-PowerShell-Werkzeug verschluckt bei mehreren
   Here-Strings in EINEM Befehl still den Inhalt (0-Byte-Dateien, kein Fehler), und
   `Get-FileHash` fehlt in dieser PowerShell - Pruefungen darauf sind wertlos. Eine Datei
-  je Aufruf schreiben, danach Groesse und Identitaetszeile pruefen.- ProjectAtlas, Steuerzeichen (18.09.2026): Steuerzeichen in QUELLDATEIEN (NUL, ESC, Backspace in .md/.ts/.mjs) landen in der Graph-Identitaet (Signatur, Ueberschrift) und lassen die Projektion mit "identity text contains control characters" scheitern - der Atlas bleibt leer. Abhilfe je Datei: `projectatlas ignore add --kind path-prefix <pfad>` (nur dir-name und path-prefix, kein Datei-Kind). Finder: Agenten/Werkzeuge/projectatlas/steuerzeichen-finden.py. Behoben: caveman (5 Dateien), gbrain (7).
-- Grosse Repos: `init` laeuft aus dem Ruder (OmniRoute 12 min, 3,2 GB RAM, WAL stand still, kein Ergebnis) - nur per PID beenden, nie per Prozessname. Danach `reset-index --apply` (2,6 GB WAL weg) und die zurueckbleibende `repository-graph-stage.lock` von Hand loeschen.
-- MCP-Aufrufe brechen nach 300 s ab, das Kind laeuft weiter: lange Inits abgesetzt starten und den Stand im LOG lesen, nicht im Rueckgabewert. Vor dem ersten init die Ausschlussliste erweitern (.build fehlte bei OmniRoute).
-- 01.10.2026 TSMOM (#0118) auf eigenen BTC/ETH/SOL 1D (2021-01..2026-09, 56 Monate): 12-Monats-Signal, inverse Vol, monatliche Neuverteilung, Gebuehr je Seite. BTC t=+1,68, Sharpe p.a. 0,78, brutto +12,3 % p.a., netto 0,1 %/Seite +9,5 %, max. Rueckgang -14 % (Buy & Hold +20,2 %/-77 %); ETH t=+0,58 und SOL t=+0,74 sind netto 0,1 %/Seite Null. TSMOM ueberlebt die Haus-Gebuehren NUR auf BTC - eine Papierspur waere eine BTC-Strategie. QQQ-Rotation (T-210) ist Datenluecke: nur 92 QQQ-1D-Kerzen im feed ab 2026-06-30, Blog braucht 2019..2026. Probe: `Agenten/Handel/tsmom_probe.py` (rein lesend). Donchian(30) bleibt Kandidat (netto +17,8 % p.a. / -43 % / t=+1,25).
+  je Aufruf schreiben, danach Groesse und Identitaetszeile pruefen.
+- ProjectAtlas (18.09.2026): Steuerzeichen in Quelldateien lassen die Projektion mit
+  "identity text contains control characters" scheitern (Atlas bleibt leer); Abhilfe je
+  Datei `projectatlas ignore add --kind path-prefix <pfad>`. `init` grosser Repos laeuft aus
+  dem Ruder (OmniRoute 12 min) - nur per PID beenden, danach `reset-index --apply` und
+  `repository-graph-stage.lock` von Hand loeschen. MCP-Aufrufe brechen nach 300 s ab, das
+  Kind laeuft weiter: Stand im LOG lesen, nicht im Rueckgabewert.
+- 19.10.2026 STUFEN-KILL (PLAN §4.2, `spur_buch.pruefe_stufen`): Bestandskontrolle HINTER
+  `pruefe_ausstiege` (Stop/Ziel sind die teurere Wahrheit), schliesst ueber
+  `kill_schliessen(grund=STUFEN_GRUND)` = "stufenueberschreitung_zwangsschluss" - das Wort
+  "zwangsschluss" macht die Zeile zur Stoerung, nicht zur Handelsrunde. Dieselbe Grenze
+  (`stufen_schwelle`: `max_offenes_risiko_usd` > `risiko_buchdeckel_usd` > Buchrisiko) gilt
+  auch in `einstieg()` - sonst Pendeln (zu/auf/zu). GEMESSEN: `offenes_risiko <= buch_risiko`
+  per Konstruktion (Nominale = risiko/stop_pct), ein Deckel AUF dem Buchrisiko kann deshalb
+  nicht reissen (45 von 56 Wachen tot, 10 ohne Grenze); bindet nur UNTER dem Buchrisiko, das
+  ist eine Betreiberentscheidung. Werkzeug `pruefe_stufen.py`. Altbestand reisst trotzdem:
+  macd_mtf 377,50 gegen 20, dazu squeeze/wavetrend (Positionen aus der falsch-skaliert-Zeit,
+  macd_mtf mit Stop UEBER dem Einstieg).
+- 19.10.2026 FUND: `pruefe_ausstiege` riss den Zyklus ab, wenn `stop_pct` fehlt
+  (`"%.2f" % p["stop_pct"]`) - betraf 14 von 139 offenen Positionen (gitter, kraken,
+  omniquant, scanner); jetzt ueber `ratschen.stop_prozent` aus der Stop-Linie. Regel: jedes
+  neue Feld, das in Buchrisiko ausgedrueckt ist, MUSS in `risikostufe.SKALIEREN` stehen,
+  sonst feuert der Kill im Mittel-Lauf bei jedem Zyklus. Messfehler-Falle: ein Stufen-Buch
+  (zustand.mittel/hoch.json) NIE gegen die Basis-Wachen messen - ergab 17 statt 3 Befunde;
+  richtig ist `risikostufe.skaliere` + `datei_fuer` je Stufe.
+- 01.10.2026 TSMOM (#0118) auf eigenen BTC/ETH/SOL 1D (2021-01..2026-09, 56 Monate): 12-Monats-Signal, inverse Vol, monatliche Neuverteilung, Gebuehr je Seite. BTC t=+1,68, Sharpe p.a. 0,78, netto 0,1 %/Seite +9,5 %, max. Rueckgang -14 % (Buy & Hold +20,2 %/-77 %); ETH t=+0,58 und SOL t=+0,74 sind netto Null. TSMOM ueberlebt die Haus-Gebuehren NUR auf BTC. QQQ-Rotation (T-210) ist Datenluecke (nur 92 QQQ-1D-Kerzen ab 2026-06-30). Probe: `Agenten/Handel/tsmom_probe.py` (rein lesend). Donchian(30) bleibt Kandidat (netto +17,8 % p.a. / -43 % / t=+1,25).

@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `whale_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` beobachtet das
+Der Agent `whale_agent` aus `Werkstatt/moon-dev-ai-agents` beobachtet das
 offene Interesse (Open Interest) ueber ein Zeitfenster, erkennt eine ANOMALIE
 gegen den Durchschnitt (`WHALE_THRESHOLD_MULTIPLIER = 1.31`) und laesst dann
 ein Sprachmodell ueber die Richtung urteilen - genau drei Zeilen: BUY, SELL oder

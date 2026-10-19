@@ -12,9 +12,9 @@ set "OKX_API_KEY=%OKX_DEMO_API_KEY%"
 set "OKX_SECRET_KEY=%OKX_DEMO_API_SECRET%"
 set "OKX_PASSPHRASE=%OKX_DEMO_API_PASSPHRASE%"
 set "OKX_API_SECRET=%OKX_DEMO_API_SECRET%"
-rem Werkstatt/Repos liegt auf O: (Junction fehlt auf diesem Rechner, 10.10.2026): erst relativ, dann O:.
-set "KIT=%~dp0..\..\..\Werkstatt\Repos\agent-trade-kit\packages\mcp\dist\index.js"
-if not exist "%KIT%" set "KIT=O:\Werkstatt\Repos\agent-trade-kit\packages\mcp\dist\index.js"
+rem Werkstatt liegt auf O: (Junction fehlt auf diesem Rechner, 10.10.2026): erst relativ, dann O:.
+set "KIT=%~dp0..\..\..\Werkstatt\agent-trade-kit\packages\mcp\dist\index.js"
+if not exist "%KIT%" set "KIT=O:\Werkstatt\agent-trade-kit\packages\mcp\dist\index.js"
 node "%KIT%" --demo --site eea --modules market,spot,swap,account %*
 exit /b %errorlevel%
 :fehlt

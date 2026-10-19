@@ -30,6 +30,13 @@ providers:
     discover_models: true
     models:
       sha256:5f60862074a4c585126288d08555e5ad9ef65044bf490ff3a64855fc84d06823: {}
+  smart:
+    api: http://127.0.0.1:20128/v1
+    name: smart
+    key_env: HERMES_CUSTOM_127_0_0_1_20128_API_KEY
+    default_model: auto/smart
+    models:
+      auto/smart: {}
 fallback_providers:
   - provider: anthropic
     model: claude-sonnet-5
@@ -51,7 +58,7 @@ agent:
   verbose: false
 terminal:
   backend: local
-  cwd: C:/Users/faupe/Documents/BrainFiles/Werkstatt/Repos/awesome-systematic-trading
+  cwd: C:/Users/faupe/Documents/BrainFiles/Werkstatt/awesome-systematic-trading
   font_family: ''
   timeout: 180
   home_mode: auto
@@ -310,13 +317,6 @@ a2a_agents:
       - skills
   '8741749061':
     url: http://127.0.0.1:9900/
-custom_providers:
-  - base_url: http://127.0.0.1:20128/v1
-    key_env: HERMES_CUSTOM_127_0_0_1_20128_API_KEY
-    model: auto/smart
-    models:
-      auto/smart:
-    name: smart
 group_sessions_per_user: true
 image_gen:
   provider: nous
@@ -452,9 +452,9 @@ mcp_servers:
       - --require-version
       - 0.4.5
       - --db
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\awesome-systematic-trading\.projectatlas\projectatlas.db
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\awesome-systematic-trading\.projectatlas\projectatlas.db
       - --config
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\awesome-systematic-trading\.projectatlas\config.toml
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\awesome-systematic-trading\.projectatlas\config.toml
       - mcp
     enabled: true
 platform_toolsets:

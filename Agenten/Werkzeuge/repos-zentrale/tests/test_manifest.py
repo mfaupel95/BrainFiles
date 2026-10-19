@@ -117,7 +117,7 @@ class ZeilenBauenTest(unittest.TestCase):
         z = self.zeilen([repo("demo")], [e])
         self.assertEqual(z["demo"].gruppe, "startbar")
         # `gruende` traegt Blocker UND Hinweise: seit 30.09.2026 kommt hier der
-        # Fremd-Hinweis dazu (der Demo-Eintrag liegt unter Werkstatt/Repos, also
+        # Fremd-Hinweis dazu (der Demo-Eintrag liegt unter Werkstatt, also
         # in der Klonsammlung). Was gelten soll, ist: NICHTS blockiert den Start -
         # und das sagt die Gruppe. Auf einen leeren Liste zu pruefen hiesse, einen
         # Zustand einzufrieren statt die Regel.
@@ -177,8 +177,8 @@ class EchtesManifestTest(unittest.TestCase):
     def test_jeder_eintrag_liegt_in_seiner_wurzel_auf_der_platte(self):
         hier = Path(__file__).resolve().parent.parent
         brainfiles = hier.parents[2]
-        if not (brainfiles / "Werkstatt" / "Repos").is_dir():
-            self.skipTest(f"kein Bestand unter {brainfiles / 'Werkstatt' / 'Repos'}")
+        if not (brainfiles / "Werkstatt").is_dir():
+            self.skipTest(f"kein Bestand unter {brainfiles / 'Werkstatt'}")
         fehlend = []
         for e in manifest.manifest_laden(hier / "repos-zentrale.json"):
             w = quellen.wurzel_von(e.wurzel)

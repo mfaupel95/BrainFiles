@@ -1,10 +1,10 @@
 <#
   fundus-suche.ps1 - Zugang zum Skill-Fundus (Documents/GitHub) UND zu den
-  Skill-Klonen unter Werkstatt/Repos, ohne Token-Last.
+  Skill-Klonen unter Werkstatt, ohne Token-Last.
 
   Zwei Quellen:
     Fundus:        %USERPROFILE%\Documents\GitHub  (alle Skill-Klone dort)
-    Werkstatt:     Werkstatt/Repos (34 Repos mit SKILL.md, ~1022 Dateien)
+    Werkstatt:     Werkstatt (34 Repos mit SKILL.md, ~1022 Dateien)
   Wuerde man alle in die Hermes-Bibliothek legen, kostet das ~14.700 Tokens
   bei JEDER Anfrage. Dieses Skript haelt sie draussen und sucht nur auf
   Anforderung - in beiden Baeumen zugleich.
@@ -36,7 +36,7 @@ $ErrorActionPreference = 'Continue'
 $stamm   = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 # Fundus liegt seit 18.09.2026 unter Documents/GitHub (ausserhalb BrainFiles).
 $fundus  = Join-Path $env:USERPROFILE 'Documents\GitHub'
-$werkstatt = Join-Path $stamm 'Werkstatt\Repos'
+$werkstatt = Join-Path $stamm 'Werkstatt'
 $ziel    = Join-Path $stamm 'MaxHirn\Wissen\Fundus-Index.md'
 $zielWk  = Join-Path $stamm 'MaxHirn\Wissen\Fundus-Index-Werkstatt.md'
 
@@ -185,17 +185,17 @@ if ($Index) {
   # Fundus-Index.md bleibt unveraendert im Format (rueckwaertskompatibel).
   Schreib-Index $ziel 'Fundus-Index' $eindeutigFundus $fundusSkills.Count $doppeltF
   # Werkstatt-Index ist die zweite Uebersicht, mit Ueberlappungs-Vermerk.
-  Schreib-Index $zielWk 'Fundus-Index - Werkstatt/Repos' $eindeutigWerkstatt $werkstattSkills.Count $doppeltW
+  Schreib-Index $zielWk 'Fundus-Index - Werkstatt' $eindeutigWerkstatt $werkstattSkills.Count $doppeltW
   $ueberlapp = @($eindeutigWerkstatt | Where-Object { $_.Beide }).Count
   Write-Output ('Ueberlappung: ' + $ueberlapp + ' Werkstatt-Skills liegen byte-identisch auch im Fundus')
-  Write-Output (Get-FremdZeile 'Werkstatt/Repos' 'Werkstatt/Repos')
+  Write-Output (Get-FremdZeile 'Werkstatt' 'Werkstatt')
   return
 }
 
 if (-not $Begriff) {
   Write-Output ('Fundus:        ' + $eindeutigFundus.Count + ' eindeutige Skills in ' + ($eindeutigFundus.Repo | Sort-Object -Unique).Count + ' Repos (' + $fundusSkills.Count + ' Dateien, ' + $doppeltF + ' identische Kopien)')
-  Write-Output ('Werkstatt/Repos: ' + $eindeutigWerkstatt.Count + ' eindeutige Skills in ' + ($eindeutigWerkstatt.Repo | Sort-Object -Unique).Count + ' Repos (' + $werkstattSkills.Count + ' Dateien, ' + $doppeltW + ' identische Kopien, ' + @($eindeutigWerkstatt | Where-Object { $_.Beide }).Count + ' auch im Fundus)')
-  Write-Output (Get-FremdZeile 'Werkstatt/Repos' 'Werkstatt/Repos')
+  Write-Output ('Werkstatt: ' + $eindeutigWerkstatt.Count + ' eindeutige Skills in ' + ($eindeutigWerkstatt.Repo | Sort-Object -Unique).Count + ' Repos (' + $werkstattSkills.Count + ' Dateien, ' + $doppeltW + ' identische Kopien, ' + @($eindeutigWerkstatt | Where-Object { $_.Beide }).Count + ' auch im Fundus)')
+  Write-Output (Get-FremdZeile 'Werkstatt' 'Werkstatt')
   Write-Output ('Fremd-Grenze: Fundus (Documents\GitHub) -> ausserhalb von BrainFiles, von der Liste nicht erfasst; Inhalt: geklonte Fremd-Repos')
   Write-Output ''
   Write-Output 'Fundus:'
@@ -203,7 +203,7 @@ if (-not $Begriff) {
     Write-Output ('  {0,-30} {1,4} Skills' -f $_.Name, $_.Count)
   }
   Write-Output ''
-  Write-Output 'Werkstatt/Repos:'
+  Write-Output 'Werkstatt:'
   $eindeutigWerkstatt | Group-Object Repo | Sort-Object Count -Descending | ForEach-Object {
     Write-Output ('  {0,-30} {1,4} Skills   ({2} auch im Fundus)' -f $_.Name, $_.Count, @($_.Group | Where-Object { $_.Beide }).Count)
   }

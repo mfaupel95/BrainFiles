@@ -25,5 +25,5 @@ Standing order von Max (11.10.2026): zu Beginn JEDER neuen Session die Superpowe
 
 Die Muster stammen aus obra/superpowers (Claude-Code-Skill-Sammlung, Fork mfaupel95/superpowers). Im Haus sind sie als Kategorie `software-development` integriert (z. B. `writing-plans` traegt den Vermerk "Adaptiert aus obra/superpowers").
 
-- Der Fremd-Klon liegt NICHT mehr im Baum: `Werkstatt/Repos/superpowers` existiert nicht (Stand 11.10.2026); `docs/superpowers/` ist ein lokaler Plan-/Spec-Ordner, keine Skill-Sammlung; `profiles/.deleted/superpowers` ist ein 9-Byte-Rest.
+- Der Fremd-Klon liegt NICHT mehr im Baum: `Werkstatt/superpowers` existiert nicht (Stand 11.10.2026); `docs/superpowers/` ist ein lokaler Plan-/Spec-Ordner, keine Skill-Sammlung; `profiles/.deleted/superpowers` ist ein 9-Byte-Rest.
 - Fremde SKILL.md werden laut `skill-library-sync` NICHT importiert — die Haus-Skills sind die geltende Fassung.

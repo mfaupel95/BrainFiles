@@ -2,7 +2,7 @@
 
 Beweis: die drei Papierspuren `moondev_whale`, `moondev_liquidation`,
 `moondev_sentiment` vom 17.09.2026 (Vorbilder: `whale_agent`,
-`liquidation_agent`, `sentiment_agent` aus `Werkstatt/Repos/moon-dev-ai-agents`).
+`liquidation_agent`, `sentiment_agent` aus `Werkstatt/moon-dev-ai-agents`).
 
 Hinweis: `SKILL.md` ist gross, aber NICHT am Zeichenlimit (gemessen ~53 kB
 gegen 100.000) - ein Eintrag dieser Datei in die Ausloeser-Liste oben ist

@@ -1,0 +1,27 @@
+providers:
+  omniroute:
+    api: http://localhost:20128/v1
+    default_model: auto
+    name: OmniRoute
+    base_url: http://localhost:20128/v1
+    model: auto
+    discover_models: true
+    models:
+      auto: {}
+    key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
+terminal:
+  backend: local
+  cwd: C:\Usersaupe\Documents\BrainFiles\Werkstatt\jev-trader
+  font_family: ''
+  timeout: 180
+  home_mode: auto
+model:
+  default: deepseek/deepseek-v4-flash-0731
+  provider: nous
+plugins:
+  enabled: []
+_config_version: 50
+agent: {}
+platforms:
+  photon:
+    enabled: false

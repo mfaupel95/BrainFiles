@@ -75,7 +75,7 @@ auf Laufwerk O: und lehnt ab.
 Erkennen, statt zu raten:
 
 ```bash
-ls -ld Werkstatt; readlink -f Werkstatt/Repos/<repo>
+ls -ld Werkstatt; readlink -f Werkstatt/<repo>
 ```
 
 **In git-bash sehen Junction und Symlink gleich aus** (`lrwxrwxrwx`) — die
@@ -97,7 +97,7 @@ fehlt** (alte Sitzung mit alter Umgebung, noch nicht nachgezogenes Profil):
 
 1. Inhalt in die Sandbox schreiben (`.../profiles/<profil>/cache/scratch/`).
 2. Per `terminal` ans Ziel kopieren, mit **nativem** Pfad:
-   `cp "$SRC" "O:/Werkstatt/Repos/<repo>/DATEI"`.
+   `cp "$SRC" "O:/Werkstatt/<repo>/DATEI"`.
 3. Gegenprobe: `md5sum` auf Quelle und Ziel, dann `wc -l -c` und `head -c 3 | od`
    (BOM) am Ziel.
 

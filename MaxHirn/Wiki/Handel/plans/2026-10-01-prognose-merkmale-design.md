@@ -18,7 +18,7 @@ traegt, kommt nicht in die Tabelle.
 
 ## 2. Befund: woher die Ideen kommen — und was sie wert sind
 
-**moondev (RBI-Bibliothek, `Werkstatt/Repos/moon-dev-ai-agents/src/data/rbi`)**, selbst
+**moondev (RBI-Bibliothek, `Werkstatt/moon-dev-ai-agents/src/data/rbi`)**, selbst
 gezaehlt am 01.10.2026: **4003 Backtest-Dateien, 804 eindeutige Strategienamen**, dazu
 4482 Zeilen `ideas.txt` und 4671 Zeilen `strategy_ideas.csv`. Haufigkeit der Familien im
 Namensbestand:

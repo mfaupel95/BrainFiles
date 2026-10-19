@@ -23,7 +23,7 @@ powershell -ExecutionPolicy Bypass -File Agenten\Werkzeuge\desktop-verknuepfunge
 | Handelszentrale | `powershell -File Agenten\Routinen\handelszentrale.ps1` | `Agenten\Routinen` |
 | Werkzeug-Zentrale | `repos-zentrale\.venv\Scripts\pythonw.exe repos_zentrale.py` | `Agenten\Werkzeuge\repos-zentrale` |
 | Freqtrade-Bots | `cmd /c start` der drei Web-UIs 8081/8082/8083 | `Agenten\Handel\freqtrade` |
-| MoonDev-GUI | `moon-dev-ai-agents\.venv\Scripts\pythonw.exe moongui.py` | `Werkstatt\Repos\moon-dev-ai-agents` |
+| MoonDev-GUI | `moon-dev-ai-agents\.venv\Scripts\pythonw.exe moongui.py` | `Werkstatt\moon-dev-ai-agents` |
 
 ## Warum ein Skript und nicht vier Klicks
 

@@ -12,7 +12,7 @@ metadata:
 # Zentrale: Repos, Werkstatt und Handel erreichen
 
 `Agenten/Werkzeuge/repos-zentrale` ist das Startfenster fuer **drei Bereiche**:
-`Werkstatt/Repos` (46 Klone mit eigenem Bot), `Werkstatt` samt
+`Werkstatt` (46 Klone mit eigenem Bot), `Werkstatt` samt
 `Werkstatt/Projekte` (eigene Projekte, Datenfelder, Ablagen) und
 `Agenten/Handel` (45 Ordner und die Werkzeugdateien der Wurzel). Es ersetzt das
 Suchen nach dem "richtigen" Startweg je Projekt: die Befehle stehen im Manifest,
@@ -43,7 +43,7 @@ Die Wurzeln stehen in `quellen.py` - Pfade **relativ**, keine absoluten:
 
 | Bereich | Wurzel | Was eine Zeile bekommt |
 |---|---|---|
-| REPOS | `Werkstatt/Repos` | nur Ordner mit `.git` |
+| REPOS | `Werkstatt` | nur Ordner mit `.git` |
 | WERKSTATT | `Werkstatt` + `Werkstatt/Projekte` | jeder Ordner |
 | HANDEL | `Agenten/Handel` | jeder Ordner **und** jede Werkzeugdatei mit `__main__` UND `argparse` |
 
@@ -196,11 +196,11 @@ ein Repo gilt erst als ungenutzt, wenn ALLE sechs Zeugen schweigen:
 1. **Bot-Profil über die `cwd`, nicht über den Profilnamen.** Profilnamen sind
    klein und weichen vom Reponamen ab (`nerd` → `claude-red`, `fomo-radar` →
    `fomo-robinhood-radar`). Maßgeblich ist `config.yaml` → `terminal.cwd`;
-   ein Repo hat einen Bot, wenn ein Profil-cwd auf `Werkstatt/Repos/<name>`
+   ein Repo hat einen Bot, wenn ein Profil-cwd auf `Werkstatt/<name>`
    zeigt. Die Namensgleichheit allein verliert die Hälfte der Bots.
 2. **Startbefehl im Manifest** (`repos-zentrale.json` → `start` nicht leer).
 3. **Laufender Prozess:** `Get-CimInstance Win32_Process` mit exaktem
-   Pfadmuster `Werkstatt\\Repos\\<name>` in CommandLine ODER ExecutablePath —
+   Pfadmuster `Werkstatt\\<name>` in CommandLine ODER ExecutablePath —
    und die EIGENE PID ausschließen (`$_.ProcessId -ne $PID`): der Prüfaufruf
    selbst trägt die Pfade in seiner Kommandozeile und matcht sich sonst
    selbst. Ein bloßer Namens-Regex trifft außerdem fremde Prozesse („skills“
@@ -301,7 +301,7 @@ nur aus Befehls-Fehlern. Ein Vermerk, den niemand sieht, ist keiner.
 
 ## Fallen
 
-- **Ein Duplikat-Scan laeuft ueber Junctions in die Irre.** `Werkstatt/Repos/
+- **Ein Duplikat-Scan laeuft ueber Junctions in die Irre.** `Werkstatt/
   intelligent-trading-bot` ist eine **Junction** auf `Werkstatt/
   intelligent-trading-bot`: derselbe Inhalt unter zwei Pfaden, gleicher
   Fingerabdruck, gleiche Groesse - das sieht wie eine Dublette aus und ist EINE

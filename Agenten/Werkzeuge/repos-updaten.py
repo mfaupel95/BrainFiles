@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fremd-Klone in Werkstatt/Repos auf den Stand ihrer Quelle bringen.
+"""Fremd-Klone in Werkstatt auf den Stand ihrer Quelle bringen.
 
 WARUM ALS WERKZEUG: die Flotte waechst (29 Klone am 21.09.2026) und jede
 Handbewegung je Repo ist eine Gelegenheit, den falschen Zweig zu ziehen. Das
@@ -43,7 +43,7 @@ import sys
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[2]
-REPOS = WURZEL / "Werkstatt" / "Repos"
+REPOS = WURZEL / "Werkstatt"
 STAND = WURZEL / "Agenten" / "Hermes" / "cache" / "repos-update.json"
 
 # Nur messen, nie vorspulen: in diesen Klonen laeuft ein Prozess, der an
@@ -151,7 +151,20 @@ def main() -> int:
     if not REPOS.is_dir():
         print("Repos-Ordner fehlt: %s" % REPOS)
         return 2
-    ordner = sorted(d for d in REPOS.iterdir() if (d / ".git").exists())
+    # Seit dem Umzug 14.10.2026 liegen die Klone direkt in Werkstatt. Nicht zur
+    # Flotte gehoeren Ablagen, Archive und Arbeitsbaeume - dort nichts holen.
+    SKIP_NAMEN = {
+        "Ausgemustert", "Worktrees", "repos-verschoben-aus-skills", "privkopie",
+        "Sitzungen", "Ablage", "Austausch", "Projekte", "Logs", "Protokolle",
+        "Ausgabe", "node_modules", "Altlasten", "Autostart",
+    }
+    ordner = sorted(
+        d for d in REPOS.iterdir()
+        if (d / ".git").exists()
+        and d.name not in SKIP_NAMEN
+        and not d.name.startswith(("Altlasten", "Sicherung-eingebettet",
+                                   "zustand-sicherung", "zusammenfuehrung"))
+    )
     if a.nur:
         wollen = {n.lower() for n in a.nur}
         ordner = [d for d in ordner if d.name.lower() in wollen]

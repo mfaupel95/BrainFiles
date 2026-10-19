@@ -1,6 +1,6 @@
 # Fremd-Agenten-Repos kartieren (Teilprojekt A) — Implementierungsplan
 
-**Ziel:** Acht Fremd-Agenten-Repos unter `Werkstatt/Repos/` mit einer
+**Ziel:** Acht Fremd-Agenten-Repos unter `Werkstatt/` mit einer
 ProjectAtlas-Karte ausstatten und sieben Repo-Bots an ihre Karte haengen.
 **Architektur:** `indexieren.sh` bekommt einen Repo-Filter und eine
 Ausschluss-Vorphase (`.next`/`.turbo` bedingt; `.venv`/`node_modules`/
@@ -16,7 +16,7 @@ das vorhandene `bot-verdrahten.sh`.
 - `init --no-scan` legt `.projectatlas/config.toml` an, ohne zu scannen; erst danach funktioniert `ignore add` (gemessen 19.09.2026).
 - `.projectatlas/` gehoert in `.git/info/exclude` (macht `indexieren.sh`), nicht in die `.gitignore` des Originals.
 - Vor jedem Commit nur eigene Pfade stagen, nie `git add -A` (Schutzregeln, Mehrere-Sitzungen).
-- Werkstatt/Repos ist eine Junction nach O: — Pfade ueber `Werkstatt/Repos/<name>` ansprechen.
+- Werkstatt ist eine Junction nach O: — Pfade ueber `Werkstatt/<name>` ansprechen.
 
 **Ziel-Repos (8):** Agent-Reach, agent-trade-kit, awesome-systematic-trading,
 Harvard-Algorithmic-Trading-with-AI, moon-dev-ai-agents, openmontage,
@@ -34,11 +34,11 @@ moon-dev-agents, openmontage, santiment, tradingview-mcp.
 
 **Interfaces:**
 - Produziert: `indexieren.sh [name...]` — mit Argumenten nur die genannten
-  Repos (Name = Ordnername unter `Werkstatt/Repos/`), ohne Argumente alle
+  Repos (Name = Ordnername unter `Werkstatt/`), ohne Argumente alle
   (bisheriges Verhalten). Vor jedem `init` ergaenzt das Skript die
   Ausschlussliste um `.next`/`.turbo`, falls diese Ordner im Repo existieren.
 
-- [ ] **Schritt 1: Repo-Filter einbauen.** Die Schleife `for d in "$ROOT"/Werkstatt/Repos/*/` durch eine gefilterte Liste ersetzen. Wenn `$# -gt 0`, nur die genannten Namen aufnehmen (Pfad = `$ROOT/Werkstatt/Repos/$name`, nur wenn `.git` existiert); sonst wie bisher alle. Die zusaetzlichen Repos (Werkstatt/omnitrade usw., nautilus, hermes-agent) bleiben nur im Alles-Modus aktiv.
+- [ ] **Schritt 1: Repo-Filter einbauen.** Die Schleife `for d in "$ROOT"/Werkstatt/*/` durch eine gefilterte Liste ersetzen. Wenn `$# -gt 0`, nur die genannten Namen aufnehmen (Pfad = `$ROOT/Werkstatt/$name`, nur wenn `.git` existiert); sonst wie bisher alle. Die zusaetzlichen Repos (Werkstatt/omnitrade usw., nautilus, hermes-agent) bleiben nur im Alles-Modus aktiv.
 - [ ] **Schritt 2: Ausschluss-Vorphase.** Vor dem `init`-Aufruf je Repo:
   ```bash
   # config.toml muss existieren, sonst schlaegt ignore add fehl (gemessen 19.09.)

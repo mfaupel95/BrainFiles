@@ -65,7 +65,7 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
    Unterbefehl einen Einmal-Lauf hat (`<cli> run --once`). Zahlen aus einer Datenbank
    gehoeren ohnehin nicht in einen Modelllauf: `no_agent` kann sich nicht verplaudern
    und kostet keine Tokens. Braucht ein Modelllauf den Klon, `workdir` auf das Repo
-   setzen — ein Agent startet im Home des Profils und findet `Werkstatt/Repos/` von
+   setzen — ein Agent startet im Home des Profils und findet `Werkstatt/` von
    dort nicht.
 5. **Gegenproben in beide Richtungen, vor dem Bericht:**
    (a) Prozess laeuft -> Wache gibt 0 Zeichen aus, Exit 0;
@@ -512,7 +512,7 @@ Pipe), und erst dann urteilen.
   eigenen Profil auf, siehe Schritt 4) — eine feste Zahl von `dirname`-Aufrufen
   ist in der einen der beiden Ablagen falsch, und der Fehler faellt erst zur
   Laufzeit auf. Die Wurzel aufwaerts suchen: vom eigenen Ordner nach oben, bis ein
-  Verzeichnis die erwartete Struktur traegt (z. B. `Werkstatt/Repos/<name>`), mit
+  Verzeichnis die erwartete Struktur traegt (z. B. `Werkstatt/<name>`), mit
   einer Umgebungsvariable als Uebersteuerung und einem Rueckfall auf den
   Vorgabepfad.
 - **Ein abgeloester Auftrag bleibt scharf, auch in einem fremden Profil.** Wird eine

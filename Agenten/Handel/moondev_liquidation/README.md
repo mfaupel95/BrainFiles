@@ -5,7 +5,7 @@ dabei einen Boden oder einen Top bildet.
 
 ## Woher die Idee kommt
 
-Der Agent `liquidation_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` summiert
+Der Agent `liquidation_agent` aus `Werkstatt/moon-dev-ai-agents` summiert
 die Zwangsschluesse der letzten Minuten getrennt nach Seite, vergleicht sie mit
 dem vorigen Stand und laesst ein Sprachmodell antworten (`LIQUIDATION_ANALYSIS_
 PROMPT`): Zeile 1 `BUY`/`SELL`/`NOTHING`, Zeile 2 ein Grund, Zeile 3
