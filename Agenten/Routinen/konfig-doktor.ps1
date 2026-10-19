@@ -37,7 +37,7 @@ $marke = Melde-Start -Wer 'routine/konfig-doktor' `
 function Maske([string]$t) {
     if ($null -eq $t) { return '' }
     # auch JSON-/YAML-Form: "api_key": "wert" (Schluessel in Anfuehrungszeichen, Wert mit Leerzeichen)
-    $t = $t -replace '(?i)(bearer\s+|(api[_-]?key|token|secret|password)["'']?\s*[:=]\s*)("[^"]*"|''[^'']*''|\S+)', '${1}***'
+    $t = $t -replace '(?i)((bearer|basic)\s+|(api[_-]?key|token|secret|password)["'']?\s*[:=]\s*)("[^"]*"|''[^'']*''|\S+)', '${1}***'
     $t = $t -replace '(?i)\b(sk|pk|ghp|gho|xox[abp]|AKIA)[-_A-Za-z0-9]{12,}', '***'
     $t = $t -replace '(?=[A-Za-z0-9_\-]*\d)(?=[A-Za-z0-9_\-]*[A-Za-z])[A-Za-z0-9_\-]{40,}', '***'
     return $t
@@ -148,6 +148,7 @@ function Get-Eig($Objekt, [string]$Name) {
 }
 
 function Pruefe-McpPfade {
+    $uhr = [System.Diagnostics.Stopwatch]::StartNew()
     $mf = Join-Path $Wurzel 'Agenten/MCP-Manifest.json'
     if (-not (Test-Path -LiteralPath $mf)) {
         Add-Befund -Id 'MCP-MANIFEST-FEHLT' -Modul 'mcp-pfade' -Schwere 'KRITISCH' -Titel 'MCP-Manifest fehlt' `
@@ -245,7 +246,7 @@ function Pruefe-McpPfade {
     if ((Test-Path -LiteralPath $sc) -and -not $OhneExtern) {
         $ps = (Get-Process -Id $PID).Path
         # Eigenes Limit unter dem Modul-Limit, damit der Befund noch vor dem Modul-Abbruch entsteht
-        $to = [Math]::Max(5, $ModulLimitSek - 5)
+        $to = [Math]::Max(1, [Math]::Min($ModulLimitSek - 5, (Get-RestBudget $uhr) - 2))
         $r = Invoke-Extern -Datei $ps -Argumente @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $sc) -TimeoutSek $to
         if ($r.TimedOut) {
             Add-Befund -Id 'MCP-SYNC-ZEITLIMIT' -Modul 'mcp-pfade' -Schwere 'UNKLAR' -Titel 'mcp-sync-check.ps1 antwortet nicht im Zeitlimit' `

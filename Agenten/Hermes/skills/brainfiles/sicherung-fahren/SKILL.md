@@ -65,20 +65,27 @@ Fehlermeldung.
    oder beschaedigt. Deshalb NICHT die erste Ausnahme-freie Kodierung nehmen,
    sondern die Kandidaten durchprobieren und das Ergebnis PRUEFEN: BOM strippen,
    dann je Kodierung den Anteil druckbarer Zeichen in den ersten ~2000 Zeichen
-   messen (> 85 % = plausibel) und erst die beste nehmen, sonst `utf-8` mit
-   `errors="replace"`. Als Einzeiler:
+   messen. ZWEI Fallen im Pruefschritt selbst: (1) die Plausibilitaet muss
+   ASCII-druckbare Zeichen zaehlen (`c.isascii() and c.isprintable()`), nicht
+   `c.isprintable()` allein — CJK-Ideogramme SIND druckbar, und ein
+   utf-16-le-Fehldecode einer UTF-8-Datei besteht eine printable-Quote von 85 %
+   locker (gemessen: Ausserhaus-Log war UTF-8, die Heuristik waehlte utf-16-le
+   und lieferte CJK-Salat); (2) taegliche Wrapper-Logs sind oft schlicht
+   UTF-8 — `utf-8` VOR `utf-16-le` probieren. Erst die beste Kodierung nehmen,
+   sonst `utf-8` mit `errors="replace"`. Als Einzeiler:
 
 ```python
 b = open(p, "rb").read()
 if b.startswith(b"\xef\xbb\xbf"):
     b = b[3:]
-for enc in ("utf-16-le", "utf-8", "cp1252"):
+for enc in ("utf-8", "utf-16-le", "cp1252"):
     try:
         t = b.decode(enc)
     except Exception:
         continue
     kopf = t[:2000]
-    if sum(1 for c in kopf if c.isprintable() or c in "\r\n\t") > len(kopf) * 0.85:
+    ok = sum(1 for c in kopf if c.isascii() and (c.isprintable() or c in "\r\n\t"))
+    if ok > len(kopf) * 0.85:
         break
 ```
 2. **Ziele pruefen.** Angesteckt und Platz frei?
@@ -91,8 +98,10 @@ for enc in ("utf-16-le", "utf-8", "cp1252"):
    und taugt nicht als Zeuge. Fehlt die Aufgabe, laeuft die Kopie nicht mehr,
    auch wenn ihr Protokoll einen frischen Lauf zeigt — das war ein Handlauf.
 3. **Hauptlauf fahren** — idempotent und schnell, wenn nichts geaendert wurde.
-   Abgekoppelt starten, sonst reisst der Aufruf die Zeitgrenze des
-   Host-Werkzeugs (~300 s):
+   IMMER abgekoppelt starten (Kommando unten): ein Vordergrund-Aufruf mit
+   eigenem Werkzeug-Timeout endet damit, dass der Timeout die Kopie MITTEN im
+   Lauf killt — kein `ENDE ok`, kein robocopy-Ende, niemand weiss, wo der Lauf
+   stand, und ein Poll auf das Protokoll sieht danach wie ein „Haenger" aus.
    `Start-Process powershell -ArgumentList '-ExecutionPolicy','Bypass','-NoProfile','-File','<pfad>' -WindowStyle Hidden`,
    danach auf die ENDE-Zeile im Protokoll warten.
 4. **Ausser-Haus zuerst trocken** (`-NurPruefen`). Der Trockenlauf nennt je
@@ -181,3 +190,8 @@ for enc in ("utf-16-le", "utf-8", "cp1252"):
 - **Ein Eingriff in die Sicherungsquelle gehoert VOR den Lauf.** Waehrend der
   Kopie keine Stufe-1-Dateien aendern (`.ps1`, Wachen, `AGENTS.md`) — sonst
   sichert man einen halben Stand und weiss hinterher nicht, welchen.
+- **Vor einer Kopie, deren Quelle eine Junction kreuzt, die Junction pruefen.**
+  Eine zerstoerte `Werkstatt`-Junction (echter Teil-Ordner statt Verweis auf
+  `O:\Werkstatt`) laesst robocopy den Teil-Ordner nehmen, ohne zu meckern —
+  der Pfad existiert ja, nur der Inhalt ist der falsche. Check und verlustfreie
+  Reparatur: `systemdiagnose` → `references/windows-junctions.md`.

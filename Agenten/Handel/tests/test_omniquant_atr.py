@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 HANDEL = os.path.dirname(HIER)
@@ -99,7 +100,8 @@ class AtrStopZielTest(unittest.TestCase):
         """kandidaten() reicht die ATR-Werte durch, der Bericht bleibt Preis."""
         okx_mod.kerzen = lambda inst, bar, anzahl: _kerzen_steigend()
         h.bericht_quelle = {
-            "erzeugt": "2026-10-11T10:00:00+00:00",
+            "erzeugt": (datetime.now(timezone.utc) - timedelta(hours=1))
+                          .isoformat(),
             "treffer": [{"inst": "SOL-USDT", "richtung": "long",
                          "stop": 9.0, "ziel": 11.0,
                          "score": 60.0, "cr": 2.0}],

@@ -1,7 +1,7 @@
 # OpenMontage (Video- und Bilderzeugung)
 
 Agentisches Videoproduktions-System, liegt als Klon in
-`Werkstatt/Repos/openmontage`. Eigenes `.venv` (Python 3.14). Rendert Videos
+`Werkstatt/openmontage`. Eigenes `.venv` (Python 3.14). Rendert Videos
 ueber Remotion, Bilder ueber austauschbare Anbieter.
 
 ## Was ohne jeden Schluessel laeuft

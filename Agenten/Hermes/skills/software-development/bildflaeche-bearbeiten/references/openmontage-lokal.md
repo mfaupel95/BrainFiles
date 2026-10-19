@@ -1,6 +1,6 @@
 # openmontage lokal: Bildwerkzeuge und Grenzen
 
-Fremd-Repo `Werkstatt/Repos/openmontage`, eigener venv mit Python 3.14,
+Fremd-Repo `Werkstatt/openmontage`, eigener venv mit Python 3.14,
 Diffusers/Torch lokal. Alle Cloud-Schluessel sind tot (OpenAI ohne Guthaben,
 Google-Bildmodelle ratenlimit, OpenRouter Monatslimit), AI Horde hat
 Warteschlange — **lokale Diffusion ist der einzige freie Weg**.

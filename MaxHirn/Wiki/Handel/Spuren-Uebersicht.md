@@ -133,7 +133,7 @@ EINEN Grund). Wer die Liste aendert, prueft das gegen die Spalte „Orderweg im 
 ## robinhood_radar — Papier auf bewerteten Wallets (Robinhood Chain)
 
 Angelegt 22.09.2026 (Auftrag „Radar -papierspur und -bot"). Quelle ist die SQLite
-`fomo_agent.db` des Fremd-Repos `Werkstatt/Repos/fomo-robinhood-radar` — **nur lesend**
+`fomo_agent.db` des Fremd-Repos `Werkstatt/fomo-robinhood-radar` — **nur lesend**
 (`lesen.py` oeffnet mit `mode=ro` und lehnt jede Anweisung ab, die nicht mit `SELECT`/`WITH`/
 `PRAGMA` beginnt).
 

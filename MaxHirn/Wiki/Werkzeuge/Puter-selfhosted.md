@@ -9,9 +9,9 @@ tags: [werkzeug, docker, selfhosting, fremd]
 Der Fork-Klon von [HeyPuter/puter] ("The Open-Source Internet Computer" - ein
 Web-Desktop/Personal-Cloud-OS, MIT) als `mfaupel95/puter` (origin),
 `upstream` = `HeyPuter/puter`, liegt seit **10.10.2026** in
-`Werkstatt/Repos/puter` (vorher an der BrainFiles-Wurzel, umgezogen, T-380).
+`Werkstatt/puter` (vorher an der BrainFiles-Wurzel, umgezogen, T-380).
 Dazu gehoert der laufende `docker compose`-Stack in
-`Werkstatt/Repos/puter/puter-selfhosted/`.
+`Werkstatt/puter/puter-selfhosted/`.
 
 ## Was laeuft (gemessen 10.10., 6 Container, alle up)
 
@@ -24,7 +24,7 @@ Dazu gehoert der laufende `docker compose`-Stack in
 | puter-dynamo | amazon/dynamodb-local | 8000 intern |
 | puter-valkey | valkey/valkey:8-alpine | 6379 intern |
 
-Compose-Datei: `Werkstatt/Repos/puter/puter-selfhosted/docker-compose.yml`
+Compose-Datei: `Werkstatt/puter/puter-selfhosted/docker-compose.yml`
 (Services valkey, mariadb, dynamo, s3, s3-init, ollama, ollama-init, puter,
 puter-smtp, caddy; Ollama-Baustein mit Volume `./puter/data/ollama`). Alle
 Container laufen mit `restart: unless-stopped` - sie ueberleben Neustarts von

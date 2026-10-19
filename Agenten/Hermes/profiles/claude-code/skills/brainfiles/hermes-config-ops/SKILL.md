@@ -122,6 +122,59 @@ Nicht in der Registry und nicht in `config.yaml` — in der **`.env`**. Zeile 63
   Der Pruefer loest auf, eine Sandbox auf `BrainFiles` allein sperrt also alle
   Werkstatt-Repos.
 
+## Profil-Configs: eine Änderung trifft immer nur ein Profil
+
+Jedes Profil hat eine **eigene** `config.yaml` unter `profiles/<name>/`; die Wurzel
+`Agenten/Hermes/config.yaml` gehört zum Profil `default`. `hermes -p <name> <befehl>`
+zielt auf ein Profil, ohne `-p` auf das eigene. Blöcke wie `providers:`,
+`mcp_servers:`, `model:` existieren also mehrfach (hier 34 Configs).
+
+- Vor jeder Änderung, die "Hermes" meint, den Bestand **zählen** statt annehmen:
+  `grep -rln '^custom_providers:' Agenten/Hermes/profiles/*/config.yaml` plus die
+  Wurzel-Config getrennt. Danach dieselbe Zählung — Zahl vorher/nachher nennen.
+- Die Wurzel-Config ist nicht automatisch betroffen: sie kann den Block leer führen
+  (`custom_providers: []`) — einzeln prüfen, nicht mitzählen.
+- Sind die Blöcke identisch, per Skript über die Liste laufen und je Profil
+  `config.yaml.bak-JJJJMMTT` sichern; in Batches oder als Hintergrundlauf, denn jeder
+  `hermes`-Aufruf braucht hier rund 12 s (ein Umzug über 17 Profile ≈ 20 min).
+  Erfolgszeilen mitschreiben (`tee`) und am Ende maschinell nachzählen.
+
+## Legacy-Provider-Eintrag nach `providers:` überführen
+
+Symptom im Doctor: `Legacy custom_providers entry '<name>' has no providers: twin`.
+Ursache: die v11→v12-Migration hat die Liste **einmal** beim Versionssprung übernommen;
+ein danach von Hand geschriebener Eintrag lebt im stillgelegten Listenspeicher weiter
+und ist nur noch dort sichtbar. `hermes migrate` kennt nur `xai`/`relay`, `doctor --fix`
+meldet es als **manuellen** Punkt — es gibt keinen Automatismus.
+
+1. Zielform aus der offiziellen Migration nachbauen
+   (`hermes_cli/config_migrations.py::_migrate_to_12`): Schlüssel = Anzeigename,
+   kleingeschrieben, Leerzeichen zu `-`; Felder `api` (aus `base_url`), `name`,
+   `key_env`, `default_model` (aus `model`) und `models: {<modell>: {}}`.
+2. Je Profil setzen — ein Aufruf pro Zeile, die Modell-Liste als `'{}'`:
+
+   ```bash
+   hermes -p <profil> config set providers.<key>.api <base_url>
+   hermes -p <profil> config set providers.<key>.name <key>
+   hermes -p <profil> config set providers.<key>.key_env <VARIABLE>
+   hermes -p <profil> config set providers.<key>.default_model <modell>
+   hermes -p <profil> config set 'providers.<key>.models.<modell>' '{}'
+   hermes -p <profil> config unset custom_providers
+   ```
+
+   `config set` ist hier richtig, nicht der chirurgische Ersatz: es erhält CRLF und
+   ändert genau die genannten Schlüssel — der Diff gegen die Sicherung zeigt nur die
+   neuen Zeilen plus den entfernten Block. Genau diesen Diff zeigen.
+3. **Vor dem Löschen eines angeblichen Zwillings prüfen, ob er ein eigenes Geheimnis
+   trägt.** Der Doctor vergleicht Endpunkte als **Text** (`rstrip('/').lower()`), also
+   gelten `localhost:20128` und `127.0.0.1:20128` als verschiedene Endpunkte, obwohl es
+   derselbe Dienst ist. Umgekehrt kann ein Eintrag mit gleichem Endpunkt eine **andere**
+   `key_env` führen: die Werte in der `.env` per SHA-256-Anfang vergleichen (nie per
+   Auge, nie ausgeben). Unterscheiden sie sich, überführen statt löschen — sonst
+   verschwindet ein eigener Zugang still.
+4. Belegen: `hermes -p <profil> doctor` — die Legacy-Zeile ist weg und die Issue-Zahl
+   sinkt. Nur ein `grep` auf die Datei ist kein Beleg.
+
 ## Claude Code CLI aktualisieren (nicht Hermes)
 
 Nicht der eigene Befehl, aber oft gefragt und mit zwei Fallen. Installationsart
@@ -140,6 +193,12 @@ pruefen: `claude doctor` sagt `native` oder `npm`.
   laufende Sitzungen und das Gateway laufen weiter, kein Neustart noetig.
 - Ablauf: Launcher sichern -> `autoUpdates: true` -> Kanal `latest` -> `claude update`
   (~240 MB, im Hintergrund) -> **beide Schalter zurueck** auf `stable`/`false`.
+- **`claude doctor` ist beim Schalter irrefuehrend.** Es meldet `Auto-updates: enabled`
+  und den Kanal `stable`, auch wenn `.claude.json` `autoUpdates: false` fuehrt — die
+  Zeile ist keine Quelle. Massgeblich sind die Dateien:
+  `grep -o '"autoUpdates[^,]*' C:/Users/faupe/.claude.json` und `autoUpdatesChannel` in
+  `C:/Users/faupe/.claude/settings.json`. Nach dem Update beide zurueckstellen und das
+  gegenpruefen.
 - Erfolg belegen: `claude --version`, `claude doctor` (Version **und** `Commit:`
   gegen `manifest.json`), dann ein echter Lauf `claude -p "Antworte mit genau: OK"`.
 

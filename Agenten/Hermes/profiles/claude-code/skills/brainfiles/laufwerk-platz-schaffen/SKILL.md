@@ -41,7 +41,13 @@ Für den eigentlichen Ordnerumzug mit Verweissuche gilt der Skill `umzug`
      Papierkorb gehört dem Nutzer; Größe nennen, nicht leeren.
 5. **Löschen mit Nachweis.** Größe vorher messen, löschen, `Test-Path`
    nachher, am Ende die Differenz des freien Platzes. Die Differenz ist die
-   Zahl, die der Nutzer sehen will.
+   Zahl, die der Nutzer sehen will. Ist die Löschung unwiderruflich (kein
+   Papierkorb, keine Version), vorher je Datei **Größe und MD5** notieren —
+   das ist der einzige Nachweis, was gelöscht wurde; gleiche MD5 bedeutet
+   dieselbe Datei, dann genüft die Prüfung einmal. Und vor dem Abarbeiten
+   der Liste prüfen, dass darin **keine lebendige Datei** enthalten ist:
+   Live-Pfade gegen die Zielliste halten und im Code `assert`ieren, nicht
+   im Kopf merken.
 6. **Umziehen statt löschen**, wo die Daten noch gebraucht werden: auf einen
    **anderen physischen Datenträger** (`Get-Partition` / `Get-Disk`), danach
    den alten Pfad als Junction stehen lassen, damit kein Verweis bricht.
@@ -64,6 +70,24 @@ Für den eigentlichen Ordnerumzug mit Verweissuche gilt der Skill `umzug`
 - **Junctions verfälschen jede Größenmessung** in beide Richtungen: der
   Quellpfad zeigt auf das Ziel, und ein rekursives Aufsummieren zählt die
   Daten doppelt, wenn beide Wege erfasst werden.
+- **Eine Messung, die überall „nichts" findet, ist kaputt — nicht das Laufwerk
+  leer.** Bevor ein Ergebnis in den Bericht wandert, den Messweg an EINEM Fall
+  mit bekannter Größe prüfen (`Test-Path` auf einen Ordner, der sicher
+  existiert; eine Datei, deren Größe man kennt). Sonst steht „0 MB" oder
+  „fehlt" für jeden Kandidaten da, und die echten Verbraucher bleiben
+  unentdeckt.
+- **Rekursive Größenmessung kann still UNTERtreffen, nicht nur zu langsam
+  sein.** `Get-ChildItem -Recurse | Measure-Object Length -Sum` lieferte für
+  einen Ordner mit mehreren hundert MB großen Dateien wenige MB — die
+  Zusammenfassung sah trotzdem gültig aus, weil die Fehler der übersprungenen
+  Pfade unterdrückt wurden. Für belastbare Zahlen den robocopy-Listlauf nehmen
+  (siehe unten) und das Ergebnis gegen einen zweiten Weg halten.
+- **Vor der Suche nach großen Einzeldateien nach Kopien DERSELBEN Datei
+  gruppieren.** Der häufigste Großverbraucher sind nicht die großen Dateien,
+  sondern dieselbe Datei viele Male mit Zeitstempel im Namen (`*.bak`,
+  `pre-update-*`, `*-snapshot*`, `*__state.db.*`). Nach Namensmuster zählen und
+  aufsummieren — das ergibt die Zahl, die den Platz erklärt; Original und
+  jüngste Kopie bleiben, der Rest gehört mit Anzahl und Größe in den Bericht.
 - **Rekursive Größenmessung großer Bäume reißt die Zeitgrenze des
   Host-PowerShell-Werkzeugs (~300 s).** Stattdessen: je Ordner einzeln messen,
   oder ganz auf die Differenz des freien Platzes vor/nach der Aktion stützen.

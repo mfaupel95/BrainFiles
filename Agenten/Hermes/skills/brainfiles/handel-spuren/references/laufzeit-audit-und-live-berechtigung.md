@@ -254,6 +254,59 @@ fehlte die Boersen-Stop-Kennung".
   Reparatur mit Beleg aufgenommen, im Bericht aber als **Fremdarbeit**
   benannt und nicht als eigener Fund.
 
+## Stand-Check: Freigabe und Herzschlag (der kurze Vorab-Check)
+
+Auftrag der Form "pruefe die Handelsspuren auf Freigabe und Herzschlag": nicht
+das volle Audit, sondern der Stand der zwei Schalter, die eine Spur scharf
+machen. Drei Befehle, einer je Frage:
+
+```
+../scanner/.venv/Scripts/python.exe spuren_stand.py   # erlaubt / hs / Fenster / frei
+cat freigabe_fenster.json                             # offen_bis je Spur (JSON)
+schtasks /query /fo csv | grep -i dauerlauf           # Waechter-Tasks: "Bereit"
+```
+
+**Die Herzschlag-Regel ist eine Maschine, keine Notiz.** `handel_erlaubt=true`
+MUSS `herzschlag_max_minuten=45` tragen (Regel 13.10.), Papier 180 - ein Glob
+ueber `*/wachen*.json` prueft alle Spuren in einem Lauf:
+
+```python
+import json; from pathlib import Path
+for p in sorted(Path('.').glob('*/wachen*.json')):
+    w = json.loads(p.read_text(encoding='utf-8'))
+    if w.get('handel_erlaubt') is True and w.get('herzschlag_max_minuten') != 45:
+        print('ABWEICHUNG', p)
+```
+
+Drei Fallen, die dabei wie ein Befund aussehen:
+
+1. **Eine Spur mit eigenem Wachen-Dateinamen.** Der Dauerlauf-Eintrag
+   `nautilus_kraken_futures` zeigt auf Ordner `nautilus_kraken` mit Skript
+   `handeln_futures.py`, das per `os.environ['KRAKEN_WACHEN']` eine ANDERE Datei
+   liest (`wachen.futures.json`). Ein Glob ueber `*/wachen.json` liefert fuer
+   die Spur None - falscher Pfad, keine fehlende Konfiguration. Die Wahrheit
+   steht in der Datei, die das SKRIPT liest, nicht in der, die der Ordnername
+   vermuten laesst.
+2. **Ein fehlendes Feld ist kein Wert.** Eine Spur ohne
+   `herzschlag_max_minuten` faellt auf den Code-Default zurueck
+   (`wachen_pruefung` liest `w.get('herzschlag_max_minuten', 30)`) - die
+   Hausregel steht dann nicht drin. Als Luecke melden, nicht als 180.
+3. **Fenster zu heisst nicht Auto-Freigabe kaputt.** Eine Spur in
+   `AUTO_FREIGABE` oeffnet ihr Fenster nur, wenn die Vorschau GENAU EINEN
+   Grund nennt UND das Wort 'Freigabefenster' darin vorkommt
+   (`dauerlauf.nur_fenster_fehlt`). Zwei Gruende (Bedingung 5 EV negativ PLUS
+   Fenster, oder `freigabe.erfuellt=false` PLUS Fenster) halten das Fenster zu -
+   richtig so, aber der Bericht muss den ZWEITEN Grund nennen, sonst liest es
+   sich wie ein Defekt.
+
+**Der Lebendigkeits-Check der drei Stufen liest ZWEI Zeugen:** die PID-Datei
+(`dauerlauf.pid` / `.mittel.pid` / `.hoch.pid`, Format "PID Zeitstempel") und
+die Frische des zugehoerigen Logs (mtime). Ein Lauf mit altem Startdatum und
+frischem Log ist gesund; die Log-Frische ist der Zeuge, der unabhaengig von
+der Shell immer geht. Die Waechter-Tasks muessen "Bereit" melden - eine
+deaktivierte Wache ist ein eigener Befund, und Block 9 der Systempruefung
+aktiviert kritische Waechter inzwischen selbst wieder.
+
 ## Gegenproben, die diese Runde tragen
 
 - **Ein roter Test in der Suite beweist nicht, dass die eigene Aenderung ihn

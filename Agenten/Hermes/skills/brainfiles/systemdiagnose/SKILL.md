@@ -181,6 +181,22 @@ fehlgedeutet.
   weiter, weil das Ersetzen den Text verkuerzt, die Laenge aber noch vom
   Original stammt. Erst in eine Variable legen, dann ersetzen, dann messen:
   `$t = $m -replace ...; $t.Substring(0, [Math]::Min(N, $t.Length))`.
+- **Alle taeglichen Aufgaben stehen seit demselben Zeitpunkt still, waehrend
+  die kurzen Takte laufen: KEINE interaktive Sitzung seit dem letzten Boot.**
+  InteractiveToken-Aufgaben (faupe) werden an ihren Zeitpunkten
+  stillschweigend UEBERSPRUNGEN, wenn niemand angemeldet ist; SYSTEM-Aufgaben
+  laufen weiter und lassen den Betrieb gesund aussehen. Gemessen 18.10.2026:
+  Windows-Update-Reboot 01:07, Anmeldung erst 2,5 Tage spaeter; Systempruefung
+  (07:00), Sicherung (20:00), Posteingang, DCA und der Handels-Dauerlauf
+  standen alle an demselben Tag still, Datensortierung (SYSTEM) lief. Vor
+  jedem "Trigger oder Aufgabenplanung pruefen" bei MEHREREN gleichzeitig
+  gestoppten Aufgaben die zwei Zeiten vergleichen:
+  `(Get-CimInstance Win32_OperatingSystem).LastBootUpTime` gegen die
+  `explorer`-Startzeit (`Get-Process explorer | Select StartTime`) — liegt der
+  Boot VOR der Anmeldung, ist die Luecke erklaert und heilt mit der naechsten
+  Anmeldung von selbst, kein Scheduler-Defekt. Seit 18.10.2026 sind die
+  MaxHirn-Aufgaben auf S4U umgestellt (laufen ohne Anmeldung), das Muster
+  gilt aber fuer jede fremde InteractiveToken-Aufgabe weiter.
 - **Zwei Prozesse mit gleichem Namen sind nicht automatisch ein Doppelstart.**
   Vor der Alarmmeldung `ParentProcessId` pruefen: laeuft der zweite als Kind
   des ersten, ist es ein gewolltes Gespann (Fall: der Dauerlauf startet einen
@@ -220,6 +236,31 @@ fehlgedeutet.
   sie, meldet sie auf einem Weg, der den Ausfall ueberlebt (direkter Versand oder
   ein fremder Scheduler), meldet sie **nur** im Fehlerfall (sonst wird sie
   ignoriert) und steht die Ausfallhaeufigkeit irgendwo sichtbar.
+- **Der Hermes-Gateway hat keine eingebaute Neustart-Instanz — die EINZIGE ist
+  die geplante Aufgabe `MaxHirn-Gateway-Waechter`.** Die Exit-75-Meldung
+  ("exiting ... so the service supervisor can restart it") benennt KEINEN
+  Dienst: ist die Aufgabe DISABLED, bleibt ein gecrashter Gateway stundenlang
+  tot und Telegram-/Cron-Zustellungen schweigen in der ganzen Luecke. Vor
+  jeder Gateway-Diagnose ZUERST den Aufgabenzustand lesen — deaktiviert ist
+  ein Befund, kein "laeuft irgendwie". Crash-Beleg im Log: `CRITICAL
+  gateway.shutdown_watchdog: missed 3 consecutive liveness probes ... exiting
+  with code 75` mit einem `MemoryError` kurz davor = Speicherdruck-Crash.
+  Reaktivieren (`Enable-ScheduledTask`) braucht Erhoehung (einmal UAC ansagen,
+  nie wiederholen); danach den Waechter EINMAL von Hand laufen lassen und im
+  Bus-Journal (`Agenten/Bus/journal/<datum>.jsonl`) die Zeile "Gateway laeuft ...
+  kein Start" suchen — das ist der Churn-Gegenbeweis. Achtung: direkt nach
+  einem Neustart steht `gateway_state.json` auf "starting", die
+  Primaer-Pruefung des Waechters (`gateway_state == 'running'`) greift dann
+  noch nicht — der Kommandozeilen-Rueckfall traegt, also dessen Muster VOR dem
+  Aktivieren gegen die echte Kommandozeile des Prozesses testen.
+- **Zerstoerte Junction erkennen, bevor Werkzeug-Ausfaelle einzeln untersucht
+  werden.** Meldet `fremd.py` auf einmal ALLE `Werkstatt/...`-Eintraege "nicht
+  auf der Platte" oder tauchen `konfig-doktor-<datum>.md` an der
+  Werkstatt-Wurzel auf, ist `BrainFiles\Werkstatt` kein Verweis mehr auf
+  `O:\Werkstatt` (zweimal zerstoert; dort liegt eine echte Ordner-Teilkopie
+  mit eingebetteter Repos-Junction). Pruefung: `(Get-Item Werkstatt -Force).LinkType`
+  (leer = kaputt) und Eintraegezahl gegen `O:\Werkstatt`; verlustfreie
+  Reparatur (Rettungskopie → Junction neu): `references/windows-junctions.md`.
 - **`Get-Process ... | Sort-Object CPU` zeigt Lebenszeit, nicht Last.** `CPU` ist
   die aufsummierte Prozessorzeit seit Prozessstart — oben stehen damit
   langlebige Anwendungen (Terminal, Browser, Afterburner), nicht die aktuelle
@@ -371,6 +412,12 @@ Auftrag „RAM freigeben“ / „System beschleunigen“: Reihenfolge, idle-CPU-
 MCP-Knoten-Generationen, Memory Compression als Symptom, PowerShell-Falle beim
 Gruppieren: `references/ram-und-cpu-freigeben.md`.
 
+## Junctions
+`Werkstatt`/`Modelle` als Verweise statt echter Ordner: Zerstoerungs-Symptome
+(alle Werkstatt-Pfade „nicht auf der Platte", konfig-doktor-Dateien tauchen an
+der Werkstatt-Wurzel auf), verlustfreie Reparatur:
+`references/windows-junctions.md`.
+
 ## Bericht
 - Ergebnis zuerst, dann Belege. Tabellen fuer Zustandswerte, keine Prosa.
 - Zahlen konkret: frei/belegt je Laufwerk, Uptime, RAM frei, PID und Startzeit
@@ -378,3 +425,10 @@ Gruppieren: `references/ram-und-cpu-freigeben.md`.
 - Genau eine Empfehlung, begruendet — keine Optionsliste.
 - Zum Schluss: was bewusst nicht angefasst wurde und was eine Entscheidung von
   Max braucht.
+
+## Aufraeumen
+Nach der Pruefung die Pruef-Artefakte loeschen (Max: „nach pruefung loeschen") — Scratch-Dateien, Aktivierungs-Skripte samt Log, und Rettungskopien, sobald
+ihr Inhalt verifiziert in den Zielort gemerged ist. Eine Rettungskopie ist kein
+Dauerlager: sie bleibt nur bis zur Verifikation stehen, dann weg. Destruktive
+Loeschung im Approval-Terminal als EIGENER Aufruf ansagen, nie in eine Kette
+gebuendelt.

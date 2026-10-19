@@ -10,7 +10,7 @@
 ## Zweck
 
 Die acht `moondev_*`-Spuren lesen ihre Signale aus dem geklonten
-`Werkstatt/Repos/moon-dev-ai-agents` (je Agent eine Datei unter
+`Werkstatt/moon-dev-ai-agents` (je Agent eine Datei unter
 `src/agents/`, Datenfunktionen in `src/nice_funcs_hl.py`). Die Zuordnung
 „welche Datei ist fuer Signal X zustaendig“ steht heute nur verstreut in
 den `wachen.json`-Kommentaren und den `handeln.py`-Kopfkommentaren. B

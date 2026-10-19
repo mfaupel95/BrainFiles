@@ -1,6 +1,6 @@
 # Ein fremdes Agenten-Repo auf das lokale Ollama ziehen
 
-Gilt fuer geklonte LLM-Agenten-Repos unter `Werkstatt/Repos/` (z. B.
+Gilt fuer geklonte LLM-Agenten-Repos unter `Werkstatt/` (z. B.
 moon-dev-ai-agents), die ab Werk auf bezahlte Anbieter zeigen. Ziel: die Agenten
 laufen ohne einen einzigen Schluessel gegen `127.0.0.1:11434`.
 

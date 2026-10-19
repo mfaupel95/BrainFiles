@@ -50,7 +50,7 @@ import csv
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HIER)
@@ -120,6 +120,14 @@ SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "familie", "preis",
 # Wie oft der Kandidatenscan die Rangliste neu rechnet. Ein voller Lauf ueber
 # 164 Kontrakte dauert rund zwei Minuten - bei einem 15-Minuten-Takt waere
 # das ein Achtel der Zeit fuer eine Liste, die sich in 4H-Kerzen bewegt.
+# Eingelegte Auftraege (Orderweg, 13.10.2026). Eine Liste von Auftraegen in
+# eingelegt.json - der MENSCH legt sie ein, der Automat arbeitet sie in
+# pruefe_einstiege () ab statt der Rangliste, solange welche liegen.
+# Entscheidung A (Max): eine eingelegte Order ist maximal zeithorizont
+# Stunden gueltig und verfaellt ungefuellt (gueltig_bis = Gueltigkeit der
+# WARTELISTE); eine GEFUELLTE Position hat KEINEN Zeitausstieg.
+EINGELEGT = risikostufe.datei(os.path.join(HIER, "eingelegt.json"))
+
 SCAN_ALTER_MINUTEN = 120
 
 
@@ -223,6 +231,208 @@ def kandidaten(werte, w, anzahl=6):
                         "seite": seite, "kategorie": x["kategorie"],
                         "punkte": x["punkte"][seite], "deckel": deckel})
     return aus
+
+
+# --- Eingelegte Auftraege (Orderweg) -----------------------------------
+# Entscheidung A (Max, Bauplan 12.10.2026): die eingelegte Order ist maximal
+# zeithorizont Stunden gueltig (gueltig_bis) und verfaellt danach UNGEFUELLT.
+# Eine GEFUELLTE Position hat KEINEN Zeitausstieg - sie laeuft bis Stop,
+# Ziel, Trailing oder Kill-Switch.
+
+def lade_eingelegt():
+    """eingelegt.json lesen (atomar wie zustand.json).
+
+    Fehlt die Datei oder ist sie defekt, wird sie als LEERE Liste behandelt
+    (der lauf bricht deshalb nicht ab, Bauplan-Abschnitt 6/Test 1). Ein
+    Defekt wird aber laut gemeldet, nicht verschluckt: der Punkt, an dem man
+    eine defekte Datei still ignoriert, uebersieht auch den naechsten.
+    """
+    try:
+        liste = atomar.lade_json(EINGELEGT, lambda: [])
+    except Exception as e:                                             # noqa: BLE001
+        print("  eingelegt.json nicht lesbar (%s) - Orderweg ohne Auftraege "
+              "behandelt (Rangliste bleibt weg)" % e)
+        return []
+    if not isinstance(liste, list):
+        print("  eingelegt.json ist kein Array - Orderweg ohne Auftraege behandelt")
+        return []
+    return liste
+
+
+def schreibe_eingelegt(auftraege):
+    atomar.schreibe_json(EINGELEGT, auftraege)
+
+
+def _auftrag_abgelaufen(auftrag, jetzt=None):
+    """Ist die WARTELISTE dieses Auftrags abgelaufen (Entscheidung A)?"""
+    bis = (auftrag or {}).get("gueltig_bis")
+    if not bis:
+        return False
+    jetzt = jetzt or datetime.now(timezone.utc)
+    try:
+        t = datetime.fromisoformat(str(bis).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return jetzt >= t
+
+
+def _auftrag_verbraucht(z, auftrag):
+    """Einen verbrauchten Auftrag aus der Warteliste nehmen. Nach Wertsache."""
+    ein = z.get("eingelegt") or []
+    if auftrag in ein:
+        z["eingelegt"] = [a for a in ein if a is not auftrag]
+        return True
+    return False
+
+
+def _entferne_eingeleggten(z, inst_id, seite):
+    """Auftrege auf genau dieses Instrument+Seite aus der Liste nehmen."""
+    ein = z.get("eingelegt") or []
+    neu = [a for a in ein
+           if not (a.get("instId") == inst_id and a.get("seite") == seite)]
+    if len(neu) != len(ein):
+        z["eingelegt"] = neu
+        return True
+    return False
+
+
+def _wartender_abgelaufen(a, jetzt=None):
+    """Ist eine WARTENDE eingelegte Order ueber ihre Zeit gelaufen?
+
+    Entscheidung A: auch eine wartende Order verfaellt nach
+    gestellt + zeithorizont UNGEFUELLT. Der Warteeintrag traegt beim Anlegen
+    den zeithorizont des Auftrags; eine wartende Ranglisten-Order ohne
+    zeithorizont verfaellt nicht (kein Zeitfenster).
+    """
+    zh = a.get("zeithorizont")
+    ges = a.get("gestellt")
+    if not zh or not ges:
+        return False
+    jetzt = jetzt or datetime.now(timezone.utc)
+    try:
+        gestellt = datetime.fromisoformat(str(ges).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if gestellt.tzinfo is None:
+        gestellt = gestellt.replace(tzinfo=timezone.utc)
+    return jetzt >= gestellt + timedelta(hours=float(zh))
+
+
+def kandidaten_aus_auftraegen(z, w):
+    """Ein Pseudokandidat je eingelegtem Auftrag (Bauplan-Abschnitt 2).
+
+    Die Form ist die von `kandidaten()` (basis/instId/kategorie/seite/punkte/
+    deckel), damit `pruefe_einstiege` sie unveraendert abarbeiten kann. Der
+    `auftrag`-Verweis markiert den Kandidaten: seine Einstiegswerte liegen
+    bereits fest und kommen NICHT aus `anlauf()`.
+    """
+    aus = []
+    for a in z.get("eingelegt") or []:
+        if not isinstance(a, dict) or not a.get("instId"):
+            continue
+        basis = a["instId"].split("-")[0]
+        kategorie = _familie_von(a["instId"], z) or "krypto"
+        # hebel_grenze braucht max_hebel; ohne Wachen (Test) gilt der
+        # Hauswert 5.0 als Deckel.
+        deckel = wx.hebel_grenze(w, kategorie) if w.get("max_hebel") else 5.0
+        aus.append({"basis": basis, "instId": a["instId"],
+                    "seite": a.get("seite", "long"),
+                    "kategorie": kategorie, "punkte": 0.0, "deckel": deckel,
+                    "auftrag": a})
+    return aus
+
+
+def _anlauf_aus_auftrag(w, kandidat, z):
+    """Das Anlauf-Dict aus dem eingelegten Auftrag - ohne Signal, ohne Netz.
+
+    anlauf() wuerde ein Signal aus indikatoren.lage() verlangen ("der Bot
+    erfindet kein Signal"). Der eingelegte Auftrag ist ein MENSCHLICHER
+    Auftrag und hat diese Berechtigung (Analog zu Handpositionen in
+    bueche_fremde_positionen_uebernehmen): seine Einstiegs-, Stop-, Ziel-,
+    Hebel- und Einsatzwerte stehen fest. Positionsgroesse und Liquidation
+    rechnet derselbe bot.groesse() wie sonst, mit der festen Hebel-Anweisung
+    und dem festen Einsatz.
+    """
+    a = kandidat.get("auftrag") or {}
+    instr = okxf.instrument(kandidat["basis"])
+    if not instr:
+        return None
+    seite = a.get("seite", "long")
+    einstieg = float(a.get("einstieg") or 0.0)
+    stop = float(a.get("stop") or 0.0)
+    ziel = float(a.get("ziel") or 0.0)
+    wf = wx.fuer_familie(w, kandidat["kategorie"])
+    hebel_wunsch = float(a.get("hebel") or wf["max_hebel"])
+    einsatz = a.get("einsatz")
+    g = bot.groesse(wf, instr, einstieg, stop, seite, kandidat["deckel"],
+                    hebel_wunsch=hebel_wunsch,
+                    einsatz=(float(einsatz) if einsatz is not None else None))
+    if not g:
+        return None
+    liq = g["liq"]
+    p = {
+        "liq_abstand": abs(einstieg - liq) / einstieg if einstieg else 0.0,
+        "liq_preis": liq,
+        "hebel": g["hebel"],
+        "hebel_deckel": kandidat["deckel"],
+        "hebel_traegt": g["hebel"] <= kandidat["deckel"],
+        "funding_pct": None,
+        "funding_satz": None,
+        "gebuehren_pct": 2 * wf.get("gebuehr_taker", 0.0005),
+        "gewinn_pct": abs(ziel - einstieg) / einstieg if einstieg else 0.0,
+        "verlust_pct": abs(einstieg - stop) / einstieg if einstieg else 0.0,
+        "kosten_pct": 2 * wf.get("gebuehr_taker", 0.0005),
+        "quote_noetig": None,
+        "quote_beobachtet": None,
+        "quote_ziel": None,
+        "quote_stop": None,
+        # Ein MENSCHLICHER Auftrag wird nicht an der beobachteten
+        # Trefferquote aufgehalten (die haelt kaempfende Ranglisten-Einstiege
+        # zurueck). Markiert als signallos im Journal.
+        "traegt": True,
+    }
+    return {"instr": instr, "inst": instr["instId"], "basis": kandidat["basis"],
+            "seite": seite, "kategorie": kandidat["kategorie"],
+            "einstieg": einstieg, "stop": stop, "ziel": ziel,
+            "groesse": g, "pflicht": p, "punkte": 0.0,
+            "grund": "eingelegter Auftrag"}
+
+
+def _pruefe_eingeleggte_vor_lauf(z, live, w=None):
+    """Verfall, Pflicht-Stop und Einsatz-Grenze der Warteliste - beim Laden.
+
+    Verworfen wird mit Journalzeile (aktion=verwerfen), KEINE Order. Rueck-
+    gabe: Anzahl verworfen. Bauplan-Abschnitt 2.2 und 5.
+    """
+    ein = z.get("eingelegt") or []
+    verworfen = 0
+    behalten = []
+    for a in ein:
+        if not isinstance(a, dict):
+            print("  eingelegter Auftrag ohne Objekt - verworfen")
+            verworfen += 1
+            continue
+        if _auftrag_abgelaufen(a):
+            grund = "auftrag_abgelaufen"
+        elif not (float(a.get("stop") or 0.0) > 0):
+            grund = "auftrag_ohne_stop"
+        elif (w and float(a.get("einsatz") or float("inf"))
+              > float(w.get("max_margin_je_anlauf_usd") or 1e18)):
+            grund = "auftrag_zu_gross"
+        else:
+            behalten.append(a)
+            continue
+        journal(zeit=_jetzt(), modus="live" if live else "papier",
+                aktion="verwerfen", inst=a.get("instId", ""),
+                seite=a.get("seite", ""), grund=grund)
+        print("  Eingelegter Auftrag %s => verworfen (%s)"
+              % (a.get("instId") or "?", grund))
+        verworfen += 1
+    if len(behalten) != len(ein):
+        z["eingelegt"] = behalten
+    return verworfen
 
 
 def anlauf(w, kandidat):
@@ -437,6 +647,29 @@ def wartende_auftraege(z, live, w, still=False):
         return 0
     behalten, gebucht = [], 0
     for a in wartend:
+        # Entscheidung A: eine WARTENDE eingelegte Order verfaellt nach
+        # gestellt+zeithorizont UNGEFUELLT. Die Order wird an der Boerse
+        # storniert (sofern live und schutz aktiv - im Papierlauf wird kein
+        # Boerseneingriff gemacht), der Warteeintrag entfernt, gebucht als
+        # verwerfen/auftrag_abgelaufen.
+        if _wartender_abgelaufen(a):
+            if live and a.get("ord_id"):
+                try:
+                    okxf.order_stornieren(a["inst"], a["ord_id"])
+                    if not still:
+                        print("  Wartende eingelegte Order %s abgelaufen - "
+                              "an der Boerse storniert" % a["inst"])
+                except Exception as e:                               # noqa: BLE001
+                    print("  Storno der abgelaufenen Order %s fehlgeschlagen: %s"
+                          % (a["inst"], e))
+            elif not still:
+                print("  Wartende eingelegte Order %s abgelaufen - Warteeintrag "
+                      "entfernt (Papierlauf storniert nichts)" % a["inst"])
+            journal(zeit=_jetzt(), modus="live" if live else "papier",
+                    aktion="verwerfen", inst=a["inst"],
+                    seite=a.get("seite", ""), familie=a.get("familie", ""),
+                    grund="auftrag_abgelaufen")
+            continue
         stand = okxf.order_stand(a["inst"], a["ord_id"]) if a.get("ord_id") else {}
         zustand = (stand or {}).get("state") or ""
         if zustand == "filled":
@@ -480,6 +713,9 @@ def wartende_auftraege(z, live, w, still=False):
                     ziel="%.6f" % (a.get("ziel") or 0.0),
                     liq="%.6f" % (a.get("liq") or 0.0),
                     grund="order_gefuellt")
+            # Gefuellter eingelegter Auftrag ist verbraucht.
+            if a.get("auftrag_inst"):
+                _entferne_eingeleggten(z, a["auftrag_inst"], pos["seite"])
             continue
         if zustand in ("canceled", "mmp_canceled"):
             if not still:
@@ -1554,8 +1790,32 @@ def buche_funding(z, live, w):
               % (p["inst"], betrag, perioden, satz * 100))
 
 
-def flach_stellen(z, live, grund, w=None):
+def kill_verkauf_ohne_freigabe(w):
+    """Darf der KILL echte Live-Positionen auch bei geschlossener Freigabekette verkaufen?
+
+    Auftrag Max 14.10.2026 (Entscheidung 2): ja, als reiner Notausstieg. Die
+    Freigabekette (`sperren_live`) soll NEUES Risiko begrenzen; ein reduceOnly-
+    Marktverkauf schafft keines. Sie schliesst sich aber oft genau dann, wenn
+    Verluste auflaufen (negativer EV, Herzschlag, Fenster zu) - dann konnte der
+    Kill bisher nicht handeln, und nur der Boersen-Stop schuetzte die Position.
+
+    Voraussetzungen, die IMMER bleiben: Schalter `kill_verkauf_ohne_freigabekette`
+    in der Wache, nur die Basisstufe (`risikostufe.live_erlaubt`, eine Stufe hat
+    nie echtes Geld) und ein gesetzter OKX-Schluessel. Verkauft werden nur
+    Positionen mit modus=live (siehe `flach_stellen`), nie Papierpositionen und
+    - ausser `handpositionen_automatisch_schliessen` - keine Handpositionen.
+    """
+    return bool((w or {}).get("kill_verkauf_ohne_freigabekette")
+                and risikostufe.live_erlaubt() and okxf.schluessel_vorhanden())
+
+
+def flach_stellen(z, live, grund, w=None, notaus_live=False):
     """Alle Positionen sofort schliessen - Bedingung 2 und 3.
+
+    `notaus_live` (Standard falsch): verkauft Positionen mit modus=live an der
+    Boerse (reduceOnly-Market), auch wenn `live` falsch ist - nur fuer den Kill,
+    siehe `kill_verkauf_ohne_freigabe`. Papierpositionen werden dabei nur im
+    Buch geschlossen, nie an der Boerse.
 
     ECHTE POSITIONEN GEHOEREN DEM LIVE-LAUF (21.09.2026): Laeuft die Spur im
     Papier (kein Freigabefenster oder handel_erlaubt=false) und loest dabei der
@@ -1582,7 +1842,8 @@ def flach_stellen(z, live, grund, w=None):
                   % (p.get("inst"), grund))
             behalten.append(p)
             continue
-        if not live and p.get("modus") == "live":
+        echt = p.get("modus") == "live"
+        if not live and echt and not notaus_live:
             print("  %s bleibt im Buch: echte Position (modus=live) wird nur "
                   "vom Live-Lauf geschlossen" % p.get("inst"))
             behalten.append(p)
@@ -1594,7 +1855,8 @@ def flach_stellen(z, live, grund, w=None):
                   file=sys.stderr)
             behalten.append(p)
             continue
-        if live:
+        verkauf = live or (notaus_live and echt)
+        if verkauf:
             try:
                 okxf.markt_schliessen(p["inst"], p["kontrakte"], p["seite"])
             except Exception as e:                       # noqa: BLE001
@@ -1605,7 +1867,7 @@ def flach_stellen(z, live, grund, w=None):
         erloes = _ergebnis(p, kurs)
         print("  AUSSTIEG (%s): %s %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], p["seite"], kurs, erloes - p["margin"]))
-        journal(zeit=_jetzt(), modus="live" if live else "papier",
+        journal(zeit=_jetzt(), modus="live" if verkauf else "papier",
                 aktion="schliessen", inst=p["inst"],
                 pos_id=p.get("pos_id", ""), seite=p["seite"],
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
@@ -1647,6 +1909,18 @@ def papier_w(w, live):
     return w2
 
 
+def _phi_pruefen(kandidat, live, w):
+    """True, wenn der LLM-Filter fuer diesen Kandidaten laeuft.
+
+    NVDA-Phi (Auftrag Max 13.10.2026): Das LLM (Phi) wird NUR im
+    Papierlauf und NUR fuer NVDA-Kandidaten gefragt. Live ruft Phi
+    nie auf - ein Regressionstest beweist es (test_llm_phi_nvda.py).
+    """
+    return (not live
+            and kandidat.get("basis", "").upper() == "NVDA"
+            and bool(w.get("llm_aktiv")))
+
+
 def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
     w = papier_w(w, live)
 
@@ -1672,6 +1946,8 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
     for kandidat in kand:
         if len(belegt) >= w["max_offene_anlaeufe"]:
             return
+        auftrag_inst = (kandidat.get("auftrag") or {}).get("instId")
+        auftrag_zh = (kandidat.get("auftrag") or {}).get("zeithorizont")
         # Signal-Wechsel-Gatter (03.10.2026, Auftrag Max "Erweitern"): ein
         # Einstieg nur, wenn sich die Richtung fuer diese Basis seit dem
         # letzten Einstieg geaendert hat. Es steht VOR `anlauf()`, also vor
@@ -1682,9 +1958,20 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
         # Markt erscheint als XBT-USD und als BTC-USD-um_XPERP. Am
         # Instrument-Schluessel wuerde jeder Richtungswechsel als Wechsel
         # zaehlen und die Regel waere wirkungslos.
-        if zugelassen(z, w, kandidat["basis"], kandidat["seite"]) is not ERLAEUT:
-            continue
-        if kandidat["basis"] in offen or in_abklingzeit(kandidat["basis"], z, w):
+        # Signal-Wechsel-Gatter und Abklingzeit gelten fuer RANGLISTEN-
+        # Einstiege. Ein eingelegter Auftrag ist ein MENSCHLICHER Auftrag und
+        # hat diese Berechtigung (Bauplan-Abschnitt 2, analog zu
+        # Handpositionen): er wird nicht an einem Signal-Wechsel oder einer
+        # Abklingzeit aufgehalten. Die Sperren aus Abschnitt 5 (offen,
+        # Hebel-Deckel, Stop, max_offene, Margin) gelten weiter.
+        if not kandidat.get("auftrag"):
+            if zugelassen(z, w, kandidat["basis"], kandidat["seite"]) is not ERLAEUT:
+                continue
+            if kandidat["basis"] in offen or in_abklingzeit(kandidat["basis"], z, w):
+                continue
+        elif kandidat["basis"] in offen:
+            # Duplikat-Guarde (Abschnitt 5): kein zweiter Auftrag auf einer
+            # Basis, auf der schon ein offener Auftrag oder eine Position liegt.
             continue
 
         # Wochenende: keine neuen Anlaeufe in Familien, deren Basiswert
@@ -1697,7 +1984,28 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
         if fam and fam["voll"]:
             continue
 
-        a = anlauf(w, kandidat)
+        # NVDA-Phi: LLM-Filter nur im Papierlauf und nur fuer NVDA.
+        if _phi_pruefen(kandidat, live, w):
+            try:
+                k_phi = okxf.kerzen(kandidat["instId"], bot.BAR, 300)
+                lage_phi = indikatoren.lage(k_phi, inst=kandidat["instId"])
+            except Exception:
+                k_phi, lage_phi = None, None
+            position = next((p for p in z["positionen"]
+                            if p.get("basis") == kandidat["basis"]), None)
+            # Per-Aufruf-Override: NVDA paper bekommt Phi (phi4-mini auf
+            # Ollama), nicht Bonsai. Die gemeinsame wachen.json bleibt
+            # unveraendert - nur diese Kopie bekommt phi4-mini/ollama.
+            w_phi = dict(w, llm_modell="phi4-mini", llm_weg="ollama")
+            seite, info = llm_filter.urteile_kandidat(kandidat, lage_phi, k_phi,
+                                                     w_phi, position)
+            if seite is None:
+                continue
+
+        if kandidat.get("auftrag"):
+            a = _anlauf_aus_auftrag(w, kandidat, z)
+        else:
+            a = anlauf(w, kandidat)
         if not a:
             continue
 
@@ -1781,7 +2089,7 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                     print("  Eroeffnen %s: Limit %.6f liegt hinter dem Markt "
                           "(bid %s / ask %s) und wartet - Auftrag bleibt liegen"
                           % (a["inst"], o_preis, bid, ask))
-                    z.setdefault("wartende", []).append({
+                    wart = {
                         "inst": a["inst"], "basis": a["basis"], "seite": a["seite"],
                         "familie": a["kategorie"], "einstieg": o_preis,
                         "stop": a["stop"], "ziel": a["ziel"], "liq": g["liq"],
@@ -1789,7 +2097,14 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                         "margin": g["margin"], "hebel": g["hebel"],
                         "gebuehr_taker": w["gebuehr_taker"],
                         "ord_id": ord_antwort, "gestellt": _jetzt(),
-                    })
+                    }
+                    if auftrag_inst:
+                        # Die 48-h-Gueltigkeit traegt die wartende Order weiter
+                        # (Entscheidung A): gestellt+zeithorizont in
+                        # wartende_auftraege. Auftrag bleibt in der Warteliste.
+                        wart["zeithorizont"] = float(auftrag_zh or 48.0)
+                        wart["auftrag_inst"] = auftrag_inst
+                    z.setdefault("wartende", []).append(wart)
                     journal(zeit=_jetzt(), modus="live", aktion="order_offen",
                             inst=a["inst"], seite=a["seite"],
                             familie=a["kategorie"], preis="%.6f" % o_preis,
@@ -1814,6 +2129,10 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                         nominal_usd="%.2f" % g["nominal"],
                         margin_usd="%.2f" % g["margin"],
                         grund="order_nicht_gefuellt")
+                if auftrag_inst:
+                    _entferne_eingeleggten(z, auftrag_inst, a["seite"])
+                    print("  Eingelegter Auftrag %s storniert/ungefuellt - "
+                          "aus der Warteliste entfernt (verbraucht)" % a["inst"])
                 continue
             if gehandelt < kontrakte:
                 # Teilverfuellung: den Rest stornieren, nur das Gehandelte buchen.
@@ -1847,6 +2166,10 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
             "funding_zuletzt": _jetzt(), "funding_summe": 0.0,
         }
         z["positionen"].append(pos)
+        if auftrag_inst:
+            _entferne_eingeleggten(z, auftrag_inst, a["seite"])
+            print("  Eingelegter Auftrag %s gefuellt - aus der Warteliste "
+                  "entfernt (verbraucht)" % a["inst"])
         margin_gebunden += g["margin"]
         offen.add(a["basis"])
         fam_stand = wx.familien_belegung(z["positionen"], w)
@@ -1864,12 +2187,15 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
               % (a["inst"], a["seite"], a["stop"], g["abstand"] * 100,
                  a["ziel"], g["liq"], p["liq_abstand"] * 100))
         print("      %-22s %-5s  Pflicht: Funding %s, Gebuehr %.3f%%, "
-              "Quote noetig %.1f%% / beobachtet %.1f%%"
+              "Quote noetig %s / beobachtet %s"
               % (a["inst"], a["seite"],
                  "n/a" if p["funding_pct"] is None
                  else "%+.3f%%" % (p["funding_pct"] * 100),
-                 p["gebuehren_pct"] * 100, p["quote_noetig"] * 100,
-                 p["quote_beobachtet"] * 100))
+                 p["gebuehren_pct"] * 100,
+                 "n/a" if p["quote_noetig"] is None
+                 else "%.1f%%" % (p["quote_noetig"] * 100),
+                 "n/a" if p["quote_beobachtet"] is None
+                 else "%.1f%%" % (p["quote_beobachtet"] * 100)))
 
         journal(zeit=_jetzt(), modus="live" if live else "papier",
                 aktion="eroeffnen", inst=a["inst"],
@@ -1883,8 +2209,10 @@ def pruefe_einstiege(z, kand, w, live, s, faktor=1.0):
                 funding_pct=("" if p["funding_pct"] is None
                              else "%.6f" % p["funding_pct"]),
                 gebuehr_pct="%.6f" % p["gebuehren_pct"],
-                quote_noetig="%.4f" % p["quote_noetig"],
-                quote_beob="%.4f" % p["quote_beobachtet"],
+                quote_noetig=("" if p["quote_noetig"] is None
+                             else "%.4f" % p["quote_noetig"]),
+                quote_beob=("" if p["quote_beobachtet"] is None
+                           else "%.4f" % p["quote_beobachtet"]),
                 grund="punkte %.1f, %s" % (a["punkte"], a["grund"]))
         _tracking.track_position_eroeffnet(
             spur_name="xperp",
@@ -1938,6 +2266,9 @@ def zeige_wachen(w):
              s["runden_stoerung"], s["erste_runde"] or "-"))
     print("  2 Ruecklauf              %.2f USD von Hoechststand %.2f  -> Faktor %.2f"
           % (s["ruecklauf_usd"], s["hoechststand_usd"], s["groessenfaktor"]))
+    print("    Konto-Ruecklauf        %.2f USD (alle Runden, %d davon Handgriffe)%s"
+          % (s["konto_ruecklauf_usd"], s["runden_hand"],
+             "   >>> KONTOWARNUNG (nur Meldung)" if s["konto_warnung"] else ""))
     print("  3 Herzschlag frisch      %s   (%s min alt, Grenze %d)"
           % (s["herzschlag_frisch"],
              "?" if s["herzschlag_alter_min"] is None
@@ -2058,6 +2389,13 @@ def lauf(modus):
 
     z = lade_zustand()
     s = wx.lage(w, JOURNAL, z)
+    if s.get("konto_warnung"):
+        # Nur melden: das Konto ist mehr als die Strategie, aber ein Verlust aus
+        # Handgriffen schliesst keine Strategieposition und sperrt nichts.
+        print("- KONTOWARNUNG: Konto-Ruecklauf %.2f USD >= %g (Strategie-Ruecklauf "
+              "%.2f USD, %d Handgriff-Runden) - nur Meldung, keine Aktion -"
+              % (s["konto_ruecklauf_usd"], w.get("konto_warnschwelle_usd"),
+                 s["ruecklauf_usd"], s["runden_hand"]))
 
     live = False
     if modus == "live":
@@ -2068,10 +2406,25 @@ def lauf(modus):
         else:
             live = True
 
-    werte, alter = rangliste(z, still=True)
-    kand = kandidaten(werte, w)
-    print("=== XPERP handeln (%s) | %d Werte, %d Kandidaten | Rangliste %.0f min alt ==="
-          % ("LIVE" if live else "Papier", len(werte), len(kand), alter))
+    # EINGELEGTE AUFTRAEGE (Orderweg, Bauplan 13.10.2026): solange welche
+    # liegen, ist der eingelegte Auftrag die EINZIGE Einstiegsquelle - die
+    # Rangliste wird in diesem Modus nicht eroeffnet. Verfall, Pflicht-Stop
+    # und Einsatz-Grenze werden beim Laden geprueft (verworfen, keine Order).
+    z["eingelegt"] = lade_eingelegt()
+    n_verworfen = _pruefe_eingeleggte_vor_lauf(z, live, w)
+    if n_verworfen:
+        print("  %d eingelegte(r) Auftrag/Auftraege verworfen (Verfall/Stop/Einsatz)"
+              % n_verworfen)
+    if z["eingelegt"]:
+        kand = kandidaten_aus_auftraegen(z, w)
+        werte, alter = [], 0.0
+        quelle = "eingelegt (%d)" % len(z["eingelegt"])
+    else:
+        werte, alter = rangliste(z, still=True)
+        kand = kandidaten(werte, w)
+        quelle = "Rangliste"
+    print("=== XPERP handeln (%s) | %d Kandidaten | %s | Rangliste %.0f min alt ==="
+          % ("LIVE" if live else "Papier", len(kand), quelle, alter))
 
     if modus == "vorschau":
         for kandidat in kand[:10]:
@@ -2109,7 +2462,8 @@ def lauf(modus):
     if s["kill"]:
         print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"
               % (s["ruecklauf_usd"], w["kill_switch_gesamt_usd"]))
-        flach_stellen(z, live, "kill_switch", w)
+        flach_stellen(z, live, "kill_switch", w,
+                      notaus_live=(not live and kill_verkauf_ohne_freigabe(w)))
         if wx.sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
             print("  wachen.json handel_erlaubt -> false")
         schreibe_zustand(z)
@@ -2142,6 +2496,10 @@ def lauf(modus):
         print("- Stop-Luecke: neue Einstiege gesperrt, Ausstiege laufen weiter -")
     else:
         pruefe_einstiege(z, kand, w, live, s, faktor)
+
+    # Verbrauchte eingelegte Auftraege (gefuellt/storniert) zurueckschreiben.
+    if z.get("eingelegt") is not None:
+        schreibe_eingelegt(z["eingelegt"])
 
     gebunden = sum(p["margin"] for p in z["positionen"])
     print("\nBestand: %d Positionen, %.2f von %g USD Margin gebunden"

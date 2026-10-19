@@ -39,7 +39,7 @@ um 20:00).
 
 - Schwelle 30 Minuten ohne Aenderung (dieselbe wie `arbeitsbaum-pruefen.ps1` und die
   Schutzregeln). Was juenger ist, gehoert einer Sitzung, die gerade schreibt.
-- Ein Pfad in einem eingebetteten Repo (`Werkstatt/Repos/*`, `Agenten/Handel/nautilus`)
+- Ein Pfad in einem eingebetteten Repo (`Werkstatt/*`, `Agenten/Handel/nautilus`)
   wird uebersprungen - dort fuehrt ein anderes `.git` die Versionierung.
 - Eine GELOESCHTE Datei hat keine mtime: Ersatzwahrheit ist `LastWriteTime` ihres
   Elternordners (Windows schreibt sie beim Loeschen fort).
@@ -71,6 +71,29 @@ heilt auch ein Lauf, der ohne den Nachtrag beendet wurde. Idempotent.
 
 `git update-index` braucht `.git/index.lock`: in einer Schleife wiederholen
 (12 x 5 s), damit die Sperre einer anderen Sitzung nicht den ganzen Lauf kostet.
+
+## Unmerged File (`UU`) aufloesen: beide Seiten lesen, neuere gewinnt
+
+Ein `UU <pfad>` im `git status --porcelain` ist ein Konflikt zwischen zwei Seiten,
+keine kaputte Datei. Die eine Seite ist der HEAD-Stand (`git show HEAD:<pfad>`), die
+andere liegt im Arbeitsbaum mit `<<<<<<<`/`=======`/`>>>>>>>`-Markern. Die Seiten
+unterscheiden sich oft nur im Zeitstempel und ein paar Werten (z. B. `generiert_at`
+und Rundenzahlen einer Metrik-Datei) - die NEUERE Seite gewinnen lassen, nicht die
+erste. Ablauf:
+
+1. Beide Seiten lesen: `git show HEAD:<pfad>` fuer die committete, den Arbeitsbaum
+   fuer die andere. Die Marker zeigen, welche Seite welche ist (`Updated upstream`
+   = HEAD, `Stashed changes` = die andere).
+2. Die Marker-Zeilen entfernen und die gewaehlte Seite behalten. Bei mehreren
+   Konflikt-Bloecken je Block die neuere Seite nehmen.
+3. Das Ergebnis VALIDIEREN (`json.loads` fuer JSON) - sonst committet man eine
+   kaputte Datei.
+4. Das Zeilenende der Datei erhalten (CRLF-Datei mit `\r\n` zurueckschreiben, sonst
+   wird der Diff zur Ganzdatei).
+5. Mit eigenem Index committen (`GIT_INDEX_FILE` + `read-tree HEAD` + `git add --
+   <pfad>`), damit die fremde Vormerkung anderer Sitzungen nicht mitreist.
+6. Die Pfade danach im ECHTEN Index nachziehen (`git add -- <pfad>`) - sonst meldet
+   `git status` die frisch committete Datei als `D ` plus `??`.
 
 ## Von Hand committen, waehrend FREMDE Dateien vorgemerkt sind
 

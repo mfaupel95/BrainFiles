@@ -5,7 +5,7 @@ Tradern auf **Robinhood Chain (Chain-ID 4663)** ueber die Handelsplattform
 `fomo.family`, bewertet Wallets mit einem Sprachmodell und baut daraus ein
 20-Sekunden-Tape, eine HTML-Seite, einen Telegram-Bot und eine API.
 
-Fork `mfaupel95/fomo-robinhood-radar`, Klon `Werkstatt/Repos/fomo-robinhood-radar`
+Fork `mfaupel95/fomo-robinhood-radar`, Klon `Werkstatt/fomo-robinhood-radar`
 (`origin`=Fork, `upstream`=Original), eigenes `.venv`, installiert
 (`pip install -e ".[dev]"`).
 
@@ -53,7 +53,7 @@ dieselben Regeln hat wie das Urteil der API, und aendert am Fremd-Repo nichts.
 
 Aufruf (Interpreter ist der Repo-venv, weil das Werkzeug `fomo_agent` liest):
 
-    Werkstatt/Repos/fomo-robinhood-radar/.venv/Scripts/python.exe \
+    Werkstatt/fomo-robinhood-radar/.venv/Scripts/python.exe \
         Agenten/Werkzeuge/fomo_lokal.py [--anzahl N] [--adresse 0x..] [--trocken] [--alle] [--modell M]
 
 - Je Wallet EIN Ollama-Aufruf gegen `127.0.0.1:11434`, `think:false`,

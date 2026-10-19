@@ -92,12 +92,21 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
-Dazu seit 09.10.2026 `docker-cascade-repair` unter `skills/system/`
-(Quelle `~/.claude/skills`, einzeln uebernommen, Vault-Kopie in `MaxHirn/.claude/skills/`). 
-**24 eigene** unter `Hermes/skills/claude-code-imports/` — jeder Vault-Skill hat
-dort eine Kopie, keine Luecke. Dazu `data-guard-audit` unter `skills/productivity/`.
-`hermes skills list` (HERMES_HOME gesetzt): **161 Skills geladen** (145 local,
-15 builtin, 1 hub), alle vier neuen `local`/`enabled`.
+Stand 13.10.2026: `docker-cascade-repair` liegt nur unter `skills/system/` (byte-identisch
+zum Vault, Dublette per Commit `ad1e8a43` entfernt). `geld` liegt unter `skills/geld/`
+(identisch bis Zeilenenden). Vault-Skills ohne Kopie unter `claude-code-imports/`: sie sind
+dort bewusst weg, nicht vergessen. `i-have-adhd` liegt unter `skills/productivity/`.
+Dazu `data-guard-audit` unter `skills/productivity/`.
+Gemessen 13.10.2026 (`hermes skills list`, HERMES_HOME gesetzt): **157 Skills aktiv**
+(140 local, 15 builtin, 2 hub).
+Stand 14.10.2026: Fremd-Skill `grill-me` einzeln uebernommen (RobMitt/grill-me-skill,
+Sicherheits-Verdikt SAFE): Hermes-Fassung unter `skills/software-development/grill-me/`
+(`AskUserQuestion` -> `clarify` uebersetzt, Beschreibung auf 60 Zeichen gekuerzt),
+Vault-Original unter `.claude/skills/grill-me/`.
+Lehre 13.10.2026: Werkzeugnamen beim Kopieren nur bei echten Werkzeugaufrufen umsetzen,
+nie per Textersetzung. Die erste Kopie hat PowerShell zerstoert (`Write-Host` wurde
+`write_file-Host`). Korrigiert per Byte-Kopie aus dem Vault; kaputte Fassung in Git
+(`d70d8566`).
 
 **Der Abgleich vom 07.10.2026 hat sich selbst ins Knie geschossen — und ist
 repariert.** Der Import-Commit `0b7b5158` (07.10., 20:54) setzte drei Hermes-Kopien
@@ -1234,7 +1243,7 @@ erweitern.
 **Die Ursache lag tiefer als erwartet.** `BrainFiles\Werkstatt` ist ein **Symlink auf
 `O:\Werkstatt`** (Laufwerk O:, nicht unterhalb von BrainFiles). Die Sandbox stand nur auf
 `BrainFiles`, der Pruefer loest den Symlink auf und lehnte jeden Schreibzugriff in die
-Repos unter `Werkstatt\Repos` ab (AGENTS.md-Schreiben scheiterte dreimal). Lesen und
+Repos unter `Werkstatt` ab (AGENTS.md-Schreiben scheiterte dreimal). Lesen und
 Terminal waren nie betroffen - deshalb lief die Analyse, nur das Schreiben nicht.
 
 **Gesetzt wurde es NICHT in der Registry und nicht in `config.yaml`** (Zeile 630 dort ist
@@ -1255,8 +1264,8 @@ Trennzeichen ist `os.pathsep` (`;` unter Windows), mehrere Wurzeln sind vorgeseh
 
 - Frische Instanz aus der Profil-.env: aufgeloeste Wurzeln =
   `C:\Users\faupe\Documents\BrainFiles` **und** `O:\Werkstatt`.
-- Schreibpruefung: `O:\Werkstatt\Repos\claude-code\AGENTS.md` ERLAUBT,
-  `O:\Werkstatt\Repos\codex\AGENTS.md` ERLAUBT,
+- Schreibpruefung: `O:\Werkstatt\claude-code\AGENTS.md` ERLAUBT,
+  `O:\Werkstatt\codex\AGENTS.md` ERLAUBT,
   `C:\Windows\System32\drivers\etc\hosts` GESPERRT,
   `C:\Users\faupe\.ssh\id_rsa` GESPERRT.
 - Genau eine Zeile je Datei geaendert (`diff` gegen die Sicherung), BOM-Status und
@@ -1325,7 +1334,7 @@ Rauschen. Aufraeumen braucht einen Auftrag (Schutzregeln, Stufe 1).
 Sicherungen: `.claude.json.bak-20261007`, `.claude/settings.json.bak-20261007`
 (beide byte-identisch zurueck bis auf `autoUpdates`),
 `versions/2.1.285.bak-20261007` (Rueckfall-Binary).
-Gelerntes auch in `Werkstatt/Repos/rule_repo-bots.md`.
+Gelerntes auch in `Werkstatt/rule_repo-bots.md`.
 
 ## Wirkungslose Write-Regeln bereinigt (07.10.2026)
 

@@ -218,6 +218,12 @@ Agenten/Handel/stand/
 # Fremd-Signal-Tor (Wache fuer Signale aus kraken-cli/agent-trade-kit): Wache in den Verlauf.
 !Agenten/Handel/fremd_signale/wachen.json
 !Agenten/Handel/fremd_signale/*.py
+!Agenten/Handel/fremd_signale/werkzeuge/
+!Agenten/Handel/fremd_signale/werkzeuge/*.py
+!Agenten/Handel/fremd_signale/werkzeuge/*.ps1
+!Agenten/Handel/fremd_signale/werkzeuge/*.cmd
+!Agenten/MCP-Server/okx-agentkit/
+!Agenten/MCP-Server/okx-agentkit/start-demo.cmd
 !Agenten/Handel/orb/*.py
 !Agenten/Handel/orb/*.md
 !Agenten/Handel/orb/*.json
@@ -337,6 +343,11 @@ Agenten/Bus/skillsbot.ziel.json
 # Aus Werkstatt/ ist nur das versioniert, was Verhalten steuert. Der Rest ist
 # Durchgangsware: Uebergaben, Zwischenstaende, geklonte Fremd-Repos.
 !Werkstatt/*.md
+
+# Handelsregeln aus moon-dev-READMEs (13.10.2026): Ueberfuehrung der
+# Agenten-/Strategie-/Modell- und API-Doku ins Handelswissen. Liegt in
+# Wissen/ (versionierter Text), nicht in Agenten/Handel/ (Laufzeitstand).
+!Wissen/Handelsregeln.md
 
 # --- 8) Rueckausnahmen: was trotz der Freigaben oben draussen bleibt --------
 
@@ -484,6 +495,9 @@ MaxHirn/Archiv/.claude/scheduled_tasks.lock
 # Unterordner selbst werden ignoriert: Sonst zeigt Git eingebettete Fremd-Repos
 # als "?? Werkstatt/<repo>/" und das gefaehrliche Status-Rauschen bleibt.
 Werkstatt/*/
+!Werkstatt/Projekte/
+!Werkstatt/Projekte/leitstand/
+!Werkstatt/Projekte/leitstand/**
 Agenten/Hermes/hermes-agent/**
 Modelle/**
 
@@ -610,7 +624,7 @@ Agenten/Hermes/skills/.archive/
 # Zwei Gruende fuer die Sperre: ein verschachteltes Repo wird nie versioniert (Git
 # merkt nur einen Zeiger an), und eines OHNE Commit macht den ganzen Lauf unmoeglich.
 # Der Inhalt (SKILL.md) liegt vollstaendig im jeweiligen Fremd-Repo; der Fundus und
-# Werkstatt/Repos sind der richtige Ort fuer so etwas, nicht die Bibliothek.
+# Werkstatt sind der richtige Ort fuer so etwas, nicht die Bibliothek.
 Agenten/Hermes/skills/EasyCLIProxyAPI/
 Agenten/Hermes/skills/OmniRoute/
 Agenten/Hermes/skills/acoustid-index/
@@ -749,7 +763,7 @@ Agenten/Hermes/automatik/spez/inventar.md
 # wie bei repos-launcher.ps1 oben). logs/ bleiben gesperrt.
 !Agenten/Werkzeuge/codex-remote-control.ps1
 # FOMO-RADAR AUF LOKALEM MODELL (23.09.2026): Das Fremd-Repo
-# Werkstatt/Repos/fomo-robinhood-radar bewertet Trader-Wallets mit Claude. Ohne
+# Werkstatt/fomo-robinhood-radar bewertet Trader-Wallets mit Claude. Ohne
 # Guthaben faellt das Urteil lokal (Ollama) - ueber die Export/Import-Naht, die
 # das Repo selbst verlangt. Ohne diese Zeilen laege das Werkzeug nur auf dieser
 # Platte; der Export-/Ergebnis-Zwischenstand liegt bewusst AUSSERHALB des Repos
@@ -876,6 +890,16 @@ Agenten/Handel/trendwende_btc/handelsjournal.csv
 !Agenten/Handel/omnitrade/wachen.json
 !Agenten/Handel/omnitrade/tests/*.py
 !Agenten/Handel/omnitrade/strategien/*.omni
+# OMNI2-Spur (14.10.2026, Auftrag Interpool): Fork von omnitrade auf
+# Werkstatt/omnitrade2. Dasselbe Muster: Code, Wachen, README und Tests frei;
+# Zustand und Journal gesperrt (schreibt jeder Zyklus). Spur ist deaktiviert
+# im Dauerlauf (omnitrade2 schreibt noch keine Statusdatei).
+!Agenten/Handel/omnitrade2/*.py
+!Agenten/Handel/omnitrade2/*.md
+!Agenten/Handel/omnitrade2/wachen.json
+!Agenten/Handel/omnitrade2/tests/*.py
+Agenten/Handel/omnitrade2/zustand.json
+Agenten/Handel/omnitrade2/handelsjournal.csv
 !Agenten/Handel/omnitrade_futures/*.py
 !Agenten/Handel/omnitrade_futures/*.md
 !Agenten/Handel/omnitrade_futures/wachen.json
@@ -1023,7 +1047,7 @@ kraken-lockout-stand.json
 !Agenten/Werkzeuge/breite.py
 Agenten/Werkzeuge/breite-reihe.jsonl
 
-# Zweitklon der parallelen Sitzung in der Wurzel (gehoert nach Werkstatt/Repos/):
+# Zweitklon der parallelen Sitzung in der Wurzel (gehoert nach Werkstatt/):
 /kraken-cli/
 
 # Arbeitsbaeume der Sitzungs-Oberflaeche (Claude Code Desktop) in der Wurzel:
@@ -1106,6 +1130,14 @@ Agenten/Handel/klassik_pmax/handelsjournal.csv
 !Agenten/Handel/klassik_supertrend/wachen.json
 Agenten/Handel/klassik_supertrend/zustand.json
 Agenten/Handel/klassik_supertrend/handelsjournal.csv
+
+# LLM-Stunde (12.10.2026, Papierspur auf 1H mit LLM-Arm)
+!Agenten/Handel/llm_stunde/*.py
+!Agenten/Handel/llm_stunde/*.md
+!Agenten/Handel/llm_stunde/wachen.json
+!Agenten/Handel/llm_stunde/tests/*.py
+Agenten/Handel/llm_stunde/zustand*.json
+Agenten/Handel/llm_stunde/handelsjournal*.csv
 
 # Prophet-Signal-Spur (02.10.2026, CryptoPredictions-Papier)
 !Agenten/Handel/prophet_signal/*.py

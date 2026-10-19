@@ -1,4 +1,77 @@
 ## Offen
+- [ ] **T-413 — Bedingung 4 llm_stunde: 6 Arme spiegeln nicht nach Q:**
+    - Kontext: spiegelstand.py meldet 'llm_stunde kein Ziel (journal_zweitziel leer)'. Die Spur faehrt 6 Arme (laeufe/ema1h-{L,R}, rsi1h-{L,R}, st1h-{L,R}) ueber spur_buch, aber keine wachen.json der Arme traegt journal_zweitziel; Q:\Handel_Journal\llm_stunde wurde am 18.10.2026 angelegt, ist aber leer. Die Spur lief (letzter Arm-Lauf 18.10. 18:23), nur der Spiegel fehlt. Dazu: Haupt-wachen.json hatte kein herzschlag_max_minutes-Feld (Pruefer meldete 0 statt 180) - am 18.10.2026 ergaenzt (180, _herzschlag_regel-Vermerk).
+    - Naechster Schritt: journal_zweitziel=Q:\Handel_Journal\llm_stunde in die 6 Arm-wachen.json eintragen (oder die Arme ueber die Haupt-wachen erben lassen), dann spiegelstand.py muss 45/45 melden.
+    - Angelegt 18.10.2026 · Zuletzt 18.10.2026
+    - Betrifft: Agenten/Handel/llm_stunde/
+- [ ] **T-412 — Hyperliquid Market-Making als neues Projekt**
+    - Kontext: Kuru (Monad) hat zu wenig Taker-Flow fuer post-only Market-Making (0 Fills in 6h bei 4550 Orders, MON UND WETH-USDC). Jev-Kern (model.ts, decision-pipeline.ts, trader.ts) ist marktunabhaengig und bleibt. Hyperliquid = Perps-L1 mit echtem Orderbook-Volumen, offizielles Python-SDK.
+    - Naechster Schritt: Hyperliquid-API erkunden (REST placeOrder, WebSocket book/trades/userFills, Info-Endpoint), dann TS-Client vs. Python-Neubau entscheiden. ERLEDIGT 15.10.: Testnet erreichbar (allMids/l2Book/meta), Orderweg REST+ed25519, TIF Alo=post-only. Entscheidung: TS-Client (Jev-Kern bleibt, nur market.ts ersetzt).
+    - Naechster Schritt: Orderweg-Client bauen (TS, REST /exchange, ed25519-Signatur), dann Perps-Anpassung (Hebel/Funding/Stop). ERLEDIGT 15.10.: market-hl.ts gebaut (Drop-in, @nktkas/hyperliquid), ENGINE=hyperliquid, Dry-Run liest echtes BTC-PERP-Buch + postet sim-Orders, Jev aktiv. Commit ad951b0.
+    - Naechster Schritt: Perps-Anpassung (Hebel, Funding-Kosten, Liquidation-Stop, Position-Cap in USD), dann Testnet-Live-Test.
+    - Angelegt 15.10.2026 · Zuletzt 15.10.2026
+    - Betrifft: Werkstatt/Projekte/Hyperliquid-Market-Making.md, Werkstatt/jev-trader (Kern-Quelle)
+- [ ] **T-410 - Gateway-Absturz 15.10. 00:08: Exit 75 (Liveness-Watchdog) - Ursache MemoryError**
+      Kontext: In derselben Nacht, in der der Launcher-Fix (Commit 02598be6) den Gateway wieder hochbrachte, zeigte der Thread-Dump des abgestuerzten Vorgaengers (PID 43492, Exit 75 um 03:16:50) ein 'MemoryError' - das Event-Loop blieb stehen, weil das System unter Commit-Druck stand (CommitFrei 6,9 GB bei 48 python-Prozessen, darunter Waisen aus der Waechter-Neustart-Schleife). Der Watchdog hat korrekt gehandelt (Exit 75 = Supervisor-Neustart). Die Gefahr bleibt: bei naechster Speicherknappheit fehlt dem Gateway die Luft.
+      Naechster Schritt: Waechter messen FreeVirtualMemory und bei < 8 GB einmal melden (Muster: mcp-zombie-wache); Python-Prozess-Leichen (Waisen aus abgebrochenen Completion-Tails) aufraeumen; Quelle der 48 Prozesse pruefen (Handels-Dauerlauf, MoonDev, MCP-Zombies).
+      Angelegt 15.10.2026 · Zuletzt 15.10.2026
+      Betrifft: Agenten/Hermes/gateway-service/, Agenten/Routinen/gateway-waechter.ps1
+- [ ] **T-411 - SkillsBot weist alle Gruppennachrichten als '(fremd)' ab**
+      Kontext: skillsbot.py:1142 vergleicht chat != chat_id(); TELEGRAM_CHAT_ID (User-Store) ist 7648512088 (Max' DM), die Telegram-Gruppe 'MaximilianundClaude-Code' ist -1003980261765. Jede Nachricht aus der Gruppe laeuft in _log(chat,'(fremd)',...,'abgewiesen') - seit 23:32 am 14.10. durchgehend (48 der letzten 50 Zeilen). Der SkillsBot bedient ABSICHTLICH nur die DM; fuer Gruppenauftraege ist der bots-Verteiler (@Maximilian420_bot, /bot NAME) zustaendig - der laeuft. Nichts kaputt, aber die Protokollflut suggeriert einen Ausfall.
+      Naechster Schritt: Entscheidung Max - entweder Gruppen-ID als zweite erlaubte Chat in skillsbot.py freigeben, oder die Abweisung still protokollieren (nur 1. je Chat/Stunde statt je Nachricht). Kein Eingriff ohne Max.
+      Angelegt 15.10.2026 · Zuletzt 15.10.2026
+      Betrifft: Agenten/Bus/skillsbot.py
+- [ ] **T-403 - GitHub-Privates loeschen: gh-Token braucht delete_repo-Scope**
+      Kontext: Auftrag Max 14.10.2026 'alle auf github als privat laufenden repos entfernen, nur lokal betreiben'. 90 private Repos identifiziert (mfaupel95/*, davon ~85 *-privat-Mirrors + Werks-Repos nautilus/omnitrade/rltrader/alice/handel-stack/OmniQuant u.a.), aber gh repo delete gibt fuer ALLE HTTP 403 'Must have admin rights' - der Token traegt nur Scope 'repo', GitHub verlangt Scope 'delete_repo'. NICHTS wurde geloescht (0/90). Ausgenommen: mfaupel95/BrainFiles (Workspace-Remote, Push-Routinen haengen dran - Entscheidung Max offen).
+      Naechster Schritt: Max fuehrt in seiner PowerShell 'gh auth refresh -h github.com --scopes delete_repo' aus (Browser-Flow), danach Loeschung + lokale Remotes umziehen (origin -> upstream, Remote 'privat' entfernen; Doktrin in AGENTS.md/CLAUDE.md nachziehen).
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: GitHub mfaupel95/*, Agenten/Werkzeuge/repos-updaten.py
+- [ ] **T-404 - 17 leere Repos-Huellen unter Werkstatt/Repos nach Reboot raeumen**
+      Kontext: Umzug 14.10.2026 (Werkstatt/Repos/* -> Werkstatt/*): die 17 von unsichtbaren CWD-Haltern gesperrten Top-Ordner wurden per Inhaltsverschiebung geleert; die leeren Huellen (agent-trade-kit, awesome-systematic-trading, basic-memory, caveman, claude-code, claudian, deepseek-harness, EasyCLIProxyAPI, everything-claude-code, fomo-robinhood-radar, gbrain, Harvard-Algorithmic-Trading-with-AI, moon-dev-ai-agents, obsidian-skills, one-skill-to-rule-them-all, openmontage, OpenTerminal) verweigern das Loeschen bis der Halter (vermutlich Dienst/Neustart) weg ist. Inhalt ist vollstaendig am Ziel (59 gueltige Repos direkt in Werkstatt).
+      Naechster Schritt: nach dem naechsten Reboot 'Get-ChildItem Werkstatt/Repos' pruefen und leere Ordner entfernen.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Werkstatt/Repos/*
+- [ ] **T-405 - AGENTS.md/CLAUDE.md: Fremd-Repos-Abschnitt auf neuen Stand bringen**
+      Kontext: Umzug 14.10.2026 zieht die Doktrin nach (Klone direkt in Werkstatt, origin=upstream statt Fork-Mirror), die Wurzel-AGENTS.md/CLAUDE.md sind aber geschuetzte Agent-Dateien - der Patch wurde von der Freigabe abgelehnt (Timeout). Textvorschlag liegt bereit.
+      Naechster Schritt: Max genehmigt die Aenderung (Freigabe-Dialog), dann beide Dateien identisch patchen; Paar-Regel beachten (AGENTS.md == CLAUDE.md).
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: AGENTS.md, CLAUDE.md
+- [ ] **T-406 - repos-zentrale: 2 Tests rot wegen 15 'ausgemustert'-Manifesteintraegen ohne Ordner**
+      Kontext: Vorbestehend seit 11.10.2026 (Manifest-Commit 2b07dbe2), NICHT durch den Umzug verursacht: 15 Eintraege (graphify, Kronos, superpowers, skills, winget-cli, santiment u.a.) tragen gruppe 'ausgemustert', ihre Ordner liegen seit 07.10. in Werkstatt/Ausgemustert/*-20261007. test_jeder_eintrag_liegt_in_seiner_wurzel_auf_der_platte und test_alle_repos_klone_sind_fremd kennen die Gruppe nicht -> rot.
+      Naechster Schritt: Entscheidung - Manifest regenerieren (fuellen --anwenden + Pruning) oder Tests auf die 'ausgemustert'-Regel umstellen.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, tests/test_manifest.py, tests/test_fremd_grenze.py
+- [ ] **T-407 - Werkstatt/rule_repo-bots.md: versionieren oder loeschen?**
+      Kontext: Beim Umzug der 6 losen Dateien aus Werkstatt/Repos nach Werkstatt/ landet rule_repo-bots.md im whitelisteten Bereich (!Werkstatt/*.md) und ist sichtbar untracked. Die .bak-Varianten bleiben ignoriert. Kein Code liest die Datei (nur Cache-/Lern-Bestaende).
+      Naechster Schritt: Entscheidung Max - mitversionieren oder nach Werkstatt/Ausgemustert schieben.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Werkstatt/rule_repo-bots.md
+- [x] **T-401 - scanner-papier: "Python oder Ordner fehlt" (Task=1)**
+      **Erledigt 2026-10-14.** Ursache war die Werkstatt-Junction-Zerstörung
+      vom 13.10. (T-400): Werkstatt/scanner-varianten war über den BrainFiles-Pfad
+      unsichtbar. Junction repariert, Task neu gestartet: LastTaskResult=0, 'ENDE Code 0'.
+      Kontext: MaxHirn-Scanner-Papier Task LastTaskResult=1, Log 13.10. 08:10
+      'ENDE FEHLER: Python oder Ordner fehlt'. Wrapper prueft Test-Path auf
+      Agenten\Handel\.venv\Scripts\python.exe und Werkstatt\scanner-varianten.
+      Naechster Schritt: pruefen, welcher der beiden Pfade fehlt (venv oder
+      Ordner), Ursache beheben, Task neu starten.
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Routinen/scanner-papier.ps1
+
+- [x] **T-402 - Session-Bestand ueber alle Speicher aufraeumen**
+      **Erledigt 2026-10-14.** Hermes: 87 beendete Sitzungen archiviert
+      (--older-than 1d; beendet+unarchiviert 132 -> 45, nur noch <1 d).
+      Codex/Claude bleiben unberuehrt (fremd, nur lesen).
+      Kontext: Bestandsaufnahme 14.10.: Hermes 884 (167 offen, 102 beendet
+      unarchiviert), Claude CLI ~/.claude/projects (groesste: caveman 208,
+      BrainFiles 87), Claude Desktop MSIX 168 local_*.json, Codex 300 Sessions
+      in sessions/2026 + archived_sessions. Cursor nur config.
+      Naechster Schritt: Hermes beendete Sitzungen archivieren (--older-than
+      aus Alters-Buckets waehlen), Codex/Claude nur lesen (fremd).
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Hermes/state.db, ~/.claude, ~/.codex
+
+
 
 - [ ] **T-392 - Squeeze: 716-Tage-Backtest negativ, kein Live**
       Kontext: Vergleich Haus-Backtest vs. Freqtrade (541 Runden, -4,45%) ueber
@@ -65,6 +138,16 @@
 Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[?]`/`[!]`).
 
 ## Offen
+- [ ] **T-408 — Sicherungs-Warnung: secrets-archivieren.ps1 fehlt**
+      Kontext: Sicherung 14.10. 20:00 meldet WARNUNG, secrets-archivieren.ps1 fehlt - Klartextdateien (Wissen/Zugaenge.md, OKX_API.env) sind ausgeschlossen und NICHT in dieser Sicherung. (sicherung-letzter-lauf.log)
+      Naechster Schritt: pruefen, ob secrets-archivieren.ps1 existiert/geplant ist; wenn nicht, Ersatz anlegen.
+      Angelegt: 2026-10-14 · Zuletzt: 2026-10-14
+      Betrifft: Agenten/Routinen/sicherung.ps1, Agenten/Routinen/logs/sicherung-letzter-lauf.log
+- [ ] **T-409 — Fremdarbeit-Push-Reject: 4e5ff0e non-fast-forward**
+      Kontext: Fremdarbeit-Lauf 20:20 committete 321 Dateien (4e5ff0e) und meldete Push-Rueckweisung gegen GitHub (non-fast-forward), lokaler master haengt hinter remote. (fremdarbeit-letzter-lauf.log)
+      Naechster Schritt: git pull/push-Abgleich auf master, dann Push der 321 Dateien nachholen.
+      Angelegt: 2026-10-14 · Zuletzt: 2026-10-14
+      Betrifft: master-Zweig vs. origin/master
 - [x] **T-397 — Karten-Worker: kausale Gegenprobe fuer den Token-Fix (Commit 2389eeba) fehlt**
       **Erledigt 2026-10-11.** Die verlangte Gegenprobe liegt vor - an DERSELBEN
       Karte, nicht nur am selben Profil (staerker als verlangt):
@@ -125,51 +208,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
       Betrifft: Agenten/Hermes/profiles/*/config.yaml, Agenten/Hermes/config.yaml
 
-- [ ] **T-396 — xperp-Vorschlag vom 11.10. ist blockiert: er will Max' eigene Auftraege zuruecknehmen**
-      Kontext: Der Verbesserer hat um **04:38** einen Vorschlag erzeugt
-      (`Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/`, Marker `ANGEFRAGT`
-      seit 04:45). Drei Parameter, alle innerhalb ihrer Baender, die Zahlen sind
-      gut: OOS netto je Runde **-0.2187 -> 1.2429**, Holdout **-1.2744 -> 0.1011**
-      bei n=28, Siebregeln a-e bestanden.
-        - `stop_atr_faktor`        1.5 -> 1.25  (Band 1.0..2.5)
-        - `trailing_stop_prozent`  1.5 -> 1.0   (Band 0.75..3.0)
-        - `trailing_trigger_r`     1.0 -> 1.25  (Band 0.5..2.0)
-      BLOCKER: der Vorschlag traegt zwei weitere geaenderte Schluessel, die
-      nicht auf der Whitelist stehen - `_ev_entfaellt` und
-      `handpositionen_automatisch_schliessen`. `anwenden.py:311` bricht bei
-      JEDEM solchen Schluessel ab (`{"ok": False, "grund": "nicht auf der
-      Whitelist: _ev_entfaellt"}`), es wird also NICHTS angewendet - auch die
-      drei guten Parameter nicht. Live nachgerechnet, nicht gelesen.
-      URSACHE (Zeitfolge): der Vorschlag ist vom **04:38**, Max' Auftraege sind
-      vom **04:39** (`handpositionen_automatisch_schliessen` auf true) und
-      **04:43** (`_ev_entfaellt`). Der Verbesserer hat die `wachen.json` VOR
-      beiden gelesen und den Stand von damals eingefroren; beim Anwenden wuerde
-      er beide Auftraege zuruecknehmen wollen. Dass das nicht passiert, ist
-      die Whitelist bei der Arbeit - der Schaden ist verhindert, der Vorschlag
-      ist blockiert, nicht kaputt.
-      **ERLEDIGT 11.10.2026 - der Vorschlag ist neu gefahren und ANGEWENDET.** Der
-      blockierte Stand war der Lauf vom **04:38**; er ist unter `berichte/erledigt/
-      2026-10-11-spur2/` abgelegt und zu Recht abgewiesen (zwei Waechter: Whitelist
-      anwenden.py:311 fuer `_ev_entfaellt`, Basis-Pruefsumme anwenden.py:340-348).
-      Danach lief ein ZWEITER Lauf, der den Stand NACH Max' Auftraegen gelesen hat:
-        - `anwendungslog.json`: `"anwendung_ts": "2026-10-11T09:01:19Z"`,
-          `"entscheidung": "angewendet"` (09:01 UTC = 11:01 CEST).
-        - Commit **8967e4ec** (11.10. 11:01:19 +0200) aendert `xperp/wachen.json`,
-          3 insertions / 3 deletions - genau die drei Parameter.
-      Live nachgeprueft in `xperp/wachen.json`: `stop_atr_faktor=1.25`,
-      `trailing_stop_prozent=1.0`, `trailing_trigger_r=1.25` - identisch mit dem
-      Kandidaten. Die zwei umstrittenen Schluessel stehen dort jetzt so, wie Max sie
-      gesetzt hat (`_ev_entfaellt` = Max-Vermerk, `handpositionen_automatisch_
-      schliessen` = true) und sind im eingefrorenen Kandidaten BYTEGLEICH - der
-      neue Lauf hat den spaeteren Stand gelesen, das Problem ist damit weg.
-      Keine Entscheidung mehr offen; Ticket kann zu.
-      Naechster Schritt (Entscheidung Max): Vorschlag NEU fahren lassen (liest
-      den aktuellen Stand und traegt nur die drei Parameter ein), oder die zwei
-      Schluessel bewusst freigeben - Letzteres hiesse, der Verbesserer darf
-      kuenftig Max' Schalter umdrehen, vermutlich nicht gewollt.
-      Betrifft: Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/,
-      Agenten/Handel/verbesserer/spuren.json, Agenten/Handel/xperp/wachen.json
-      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
 - [x] **T-393 — omniquant hat kein Pflichtband: der Stop kommt ungeprueft aus dem Bericht**
       **WEG (a) GESETZT 11.10.2026 (Auftrag Max: a wie xperp).**
       `omniquant/wachen.json` traegt jetzt `stop_atr_faktor: 1.5` und
@@ -356,7 +394,54 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       (Fingerabdruck aendert sich) - auch das waere ein Test-, kein Code-Fehler.
       Betrifft: Agenten/Handel/tests/, Agenten/Handel/testlauf.py,
       Agenten/Handel/testlauf_basis.json
-      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-13
+      STAND 13.10.2026 (gemessen): die Schritte (1)+(2) sind getan - Zeitlimit
+      in testlauf_basis.json 2100 s, tests-Suite als 16 Fehler statt -1
+      (Commits 94a47d85, c0eccd3d, 69e4edaa); der volle Lauf braucht nach
+      Messung 1444-1522 s und endet mit Zusammenfassung, -1 kommt nicht mehr vor.
+      NEUER BEFUND: der Cron `syntax-tor-wache` (Id 3139b9d19ea9) lag NIE in
+      der Haus-jobs.json, sondern im Store des Bot-Profils fomo-radar
+      (profiles/fomo-radar/cron/jobs.json, deliver telegram auf den
+      Gruppen-Ursprung, created 11.10. 06:42 aus einer Telegram-Sitzung) - die
+      Doku "Cron 6 h" behauptete eine Haus-Wache, die es nicht gab; ein Ausfall
+      des Bot-Gateways haette die Pruefung stumm gemacht. UMGESETZT 13.10.:
+      Job im Haus-Store neu angelegt (Agenten/Hermes/cron/jobs.json, id
+      cd4e1a7a921a, every 360m, deliver telegram:-1004430752246) und aus
+      fomo-radar entfernt (hermes -p fomo-radar cron remove 3139b9d19ea9).
+      Erster Haus-Lauf 14.10. 00:33; der Merker cache/syntax-tor-wache.json
+      meldet heute echte Regressions-Befunde (tests 16 -> 22, scanner 0 -> 1,
+      omniquant 0 -> 3, verbesserer 0 -> 1, orb 5 -> 6, orbk 7 -> 8) - die
+      Wache prueft also. Routine-Tor verifiziert 13.10.: --nur-syntax (Syntax +
+      Argumentzahl) laeuft VOR git commit-tree, VOR jeder Testsuite, Exit 0.
+      ABGESCHLOSSEN 13.10.2026 - die vom Tor gemeldeten Regressionen sind
+      bearbeitet, die Basislinie ist auf den gemessenen Stand gezogen:
+        - omniquant 0 -> 3: ECHTER Code-Bug (T-393-ATR-Zweig ueberschrieb die
+          Verfallen-Band und erweckte Signale mit negativem Stop). Fix: verfallen
+          prueft jetzt gegen die Bericht-Band VOR dem ATR-Zweig; _atr_stop_ziel
+          verwirft Stop/Ziel bei/below 0. Commit 6f44863a, 124 omniquant-Tests
+          gruen.
+        - verbesserer 0 -> 1: STALER Test (kopierte die echte xperp/wachen.json,
+          die seit T-396 die angewendeten Werte traegt). Fix: setUp setzt die
+          Suchschluessel auf die BASIS_W-Fixture zurueck. Commit 6f44863a,
+          358 Tests gruen.
+        - test_omniquant_atr: Zeitbombe (hartes Bericht-Datum 11.10.). Fix:
+          relativ (jetzt-1h). Commit 75f2ad03, 5/5 gruen.
+        - orb/orbk 5/7 -> 0: Import-Problem (backtest nicht im tests-Ordner).
+          Fix: aufrufort in testlauf_basis.json auf "spur" (der testlauf-Docstring
+          verlangt es). Commit 75f2ad03, orb 60/0, orbk 76/0.
+        - tests-Suite: Basis von 16 auf 27 Fehler (2440 Tests) nachgezogen -
+          die 27 sind KEINE neuen Code-Regressionen, sondern vorbestehende
+          Test-Infrastruktur: test_omniquant_atr 5x Test-Pollution (import
+          handeln kollidiert in der vollen Suite mit einem anderen Spur-Modul,
+          einzeln gruen), test_dashboard 5x fastapi fehlt im venv, test_moondev_
+          dauerlauf 3x Umgebung, dazu stale Tests (test_befehle erwartet squeeze,
+          das seit 10.10. aus ist) und Umgebungs-/Netz-Flaekes. Der Sweep hat
+          damit genau das getan, wofuer er gebaut ist: den echten Code-Bug
+          (omniquant) gefunden, die Test-Infrastruktur-Fehler als solche
+          ausgewiesen.
+      OFFEN (Folgeaufgabe, nicht Teil dieses Tickets): die Test-Pollution der
+      top-level tests-Suite (mehrere Spuren haben handeln.py, import kollidiert
+      ueber sys.modules) - sauber loesen, dann sinkt die Basis um ~5.
 - [ ] **T-391 — Drei Kennungen rotieren (Anthropic, Telegram-Bot, OpenAI)**
       Kontext: T-070 geschlossen 2026-10-11 - die .env.example ist belegt sauber
       (alle Secrets leer, nie versioniert, origin/privat gepusht ohne Wert).
@@ -365,8 +450,23 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       werden. Kein nachgewiesener Leak, Rotation ist die saubere Antwort.
       Naechster Schritt (Entscheidung Max): Anthropic-Key neu ausstellen,
       Telegram-Bot-Token bei BotFather neu holen, OpenAI-Key neu ausstellen.
-      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
-      Betrifft: Agenten/Hermes/.env, Werkstatt/Repos/fomo-robinhood-radar/.env
+      STAND 13.10.2026 (gemessen, nur Namen/Laengen/Hashes, keine Werte):
+      Rotation weiter offen (Entscheidung Max). Bestand heute - Haus-.env:
+      TELEGRAM_BOT_TOKEN (46), OPENAI_API_KEY (164), GITHUB_TOKEN (93);
+      ANTHROPIC_API_KEY ist weder in der .env noch als Windows-Benutzervariable
+      mehr vorhanden. fomo-robinhood-radar/.env: ANTHROPIC_API_KEY leer, aber
+      TELEGRAM_BOT_TOKEN (46) gefuellt - per sha256 identisch mit dem Token
+      des Profils fomo-radar (4d6e508202), NICHT identisch mit dem Haus-Token
+      (3ecf504f2f): der Bot-Token liegt also weiter im ungeschuetzten Klon.
+      moon-dev-ai-agents/.env: ANTHROPIC_KEY (108) und OPENAI_KEY (92)
+      gefuellt (Namensform ohne _API_); skillspector: kein .env mehr.
+      .env.example (hermes-agent) sauber (nur Nicht-Secret-Defaults gefuellt,
+      T-070 bestaetigt). Rotation muss ALLE Ablageorte ersetzen (Haus-.env,
+      profiles/fomo-radar/.env, Klon-.env), sonst laeuft der Bot nach dem
+      Token-Tausch mit dem alten weiter.
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-13
+      Betrifft: Agenten/Hermes/.env, Werkstatt/Repos/fomo-robinhood-radar/.env,
+      Werkstatt/Repos/moon-dev-ai-agents/.env
 
 - [ ] **T-366 - mosaic-Trailing wartet auf einen Weg, der den Stop aendern kann**
   - Kontext: Trailing-Rechnung liegt in `Agenten/Handel/trailing.py` (19 Tests),
@@ -532,21 +632,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Bereichsabfrage in die Hauswerkzeuge-Aufnahme (`Agenten/Werkzeuge/`) aufnehmen,
       damit ein neues Werkzeug die Regel von Anfang an hat.
       Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/bereiche.py.
-- [ ]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
-      Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
-      Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
-      `merge-base --is-ancestor` = Kopf, `rev-list --count` = Zahlen). Gemessen:
-      6 wegwerfbar (2 lokale claude/*, 3 auf origin, Worktree C:/tmp/head_wt),
-      1 mit ECHTEM Vorlauf: `claude/wizardly-brown-69qfnp` (5bff1231, 1 Commit,
-      "handel: UTC-Zeiten umrechnen statt abschneiden" - steht in KEINER anderen
-      Zweiglinie und in keinem Worktree), 1 Grenzfall: `claude/trading-stack-
-      setup-40ef0d` (aeeac180, inhaltlich schon in master als 6ccb94e4, aber
-      andere sha - `branch -d` verweigert dort, `-D` waere blind).
-      Naechster Schritt: Max entscheidet fuer 5bff1231 (Master einziehen mit
-      `git branch -f master claude/wizardly-brown-69qfnp`, oder als eigenen
-      Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
-      --push` fuer die belegten Faelle.
-      Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
 
 
 
@@ -1934,6 +2019,77 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
+      Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
+      Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
+      `merge-base --is-ancestor` = Kopf, `rev-list --count` = Zahlen). Gemessen:
+      6 wegwerfbar (2 lokale claude/*, 3 auf origin, Worktree C:/tmp/head_wt),
+      1 mit ECHTEM Vorlauf: `claude/wizardly-brown-69qfnp` (5bff1231, 1 Commit,
+      "handel: UTC-Zeiten umrechnen statt abschneiden" - steht in KEINER anderen
+      Zweiglinie und in keinem Worktree), 1 Grenzfall: `claude/trading-stack-
+      setup-40ef0d` (aeeac180, inhaltlich schon in master als 6ccb94e4, aber
+      andere sha - `branch -d` verweigert dort, `-D` waere blind).
+      Naechster Schritt: Max entscheidet fuer 5bff1231 (Master einziehen mit
+      `git branch -f master claude/wizardly-brown-69qfnp`, oder als eigenen
+      Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
+      --push` fuer die belegten Faelle.
+      Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
+      **Erledigt 2026-10-18.** Entscheidung obsolet, gemessen: 5bff1231 ist Vorfahre von master, aeeac180 ebenfalls; Zweige claude/wizardly-brown-69qfnp und claude/trading-stack-setup-40ef0d existieren weder lokal noch auf origin - die Option 'Master einziehen' wurde bereits vollzogen.
+- [x] **T-400 - Werkstatt-Junction-Verlust: Wache existiert (KORREKTUR)**
+      KORREKTUR meines Eintrags vom 14.10.: junction-wache.py existiert seit
+      11.10.2026 (T-390, Commit 924ed9d3) und hat den Verlust am 13.10. 22:12
+      um 23:38 gemeldet (Merkdatei cache/junction-wache.json). Mein Satz
+      "es gibt KEINE Wache" war falsch. Einziger Rest: der Cron-Takt stand auf
+      60 m, die Doku nennt 10 m - am 14.10.2026 auf 10 m korrigiert (jobs.json).
+      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Betrifft: Agenten/Routinen, Werkstatt
+      
+- [x] **T-396 — xperp-Vorschlag vom 11.10. ist blockiert: er will Max' eigene Auftraege zuruecknehmen**
+      Kontext: Der Verbesserer hat um **04:38** einen Vorschlag erzeugt
+      (`Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/`, Marker `ANGEFRAGT`
+      seit 04:45). Drei Parameter, alle innerhalb ihrer Baender, die Zahlen sind
+      gut: OOS netto je Runde **-0.2187 -> 1.2429**, Holdout **-1.2744 -> 0.1011**
+      bei n=28, Siebregeln a-e bestanden.
+        - `stop_atr_faktor`        1.5 -> 1.25  (Band 1.0..2.5)
+        - `trailing_stop_prozent`  1.5 -> 1.0   (Band 0.75..3.0)
+        - `trailing_trigger_r`     1.0 -> 1.25  (Band 0.5..2.0)
+      BLOCKER: der Vorschlag traegt zwei weitere geaenderte Schluessel, die
+      nicht auf der Whitelist stehen - `_ev_entfaellt` und
+      `handpositionen_automatisch_schliessen`. `anwenden.py:311` bricht bei
+      JEDEM solchen Schluessel ab (`{"ok": False, "grund": "nicht auf der
+      Whitelist: _ev_entfaellt"}`), es wird also NICHTS angewendet - auch die
+      drei guten Parameter nicht. Live nachgerechnet, nicht gelesen.
+      URSACHE (Zeitfolge): der Vorschlag ist vom **04:38**, Max' Auftraege sind
+      vom **04:39** (`handpositionen_automatisch_schliessen` auf true) und
+      **04:43** (`_ev_entfaellt`). Der Verbesserer hat die `wachen.json` VOR
+      beiden gelesen und den Stand von damals eingefroren; beim Anwenden wuerde
+      er beide Auftraege zuruecknehmen wollen. Dass das nicht passiert, ist
+      die Whitelist bei der Arbeit - der Schaden ist verhindert, der Vorschlag
+      ist blockiert, nicht kaputt.
+      **ERLEDIGT 11.10.2026 - der Vorschlag ist neu gefahren und ANGEWENDET.** Der
+      blockierte Stand war der Lauf vom **04:38**; er ist unter `berichte/erledigt/
+      2026-10-11-spur2/` abgelegt und zu Recht abgewiesen (zwei Waechter: Whitelist
+      anwenden.py:311 fuer `_ev_entfaellt`, Basis-Pruefsumme anwenden.py:340-348).
+      Danach lief ein ZWEITER Lauf, der den Stand NACH Max' Auftraegen gelesen hat:
+        - `anwendungslog.json`: `"anwendung_ts": "2026-10-11T09:01:19Z"`,
+          `"entscheidung": "angewendet"` (09:01 UTC = 11:01 CEST).
+        - Commit **8967e4ec** (11.10. 11:01:19 +0200) aendert `xperp/wachen.json`,
+          3 insertions / 3 deletions - genau die drei Parameter.
+      Live nachgeprueft in `xperp/wachen.json`: `stop_atr_faktor=1.25`,
+      `trailing_stop_prozent=1.0`, `trailing_trigger_r=1.25` - identisch mit dem
+      Kandidaten. Die zwei umstrittenen Schluessel stehen dort jetzt so, wie Max sie
+      gesetzt hat (`_ev_entfaellt` = Max-Vermerk, `handpositionen_automatisch_
+      schliessen` = true) und sind im eingefrorenen Kandidaten BYTEGLEICH - der
+      neue Lauf hat den spaeteren Stand gelesen, das Problem ist damit weg.
+      Keine Entscheidung mehr offen; Ticket kann zu.
+      Naechster Schritt (Entscheidung Max): Vorschlag NEU fahren lassen (liest
+      den aktuellen Stand und traegt nur die drei Parameter ein), oder die zwei
+      Schluessel bewusst freigeben - Letzteres hiesse, der Verbesserer darf
+      kuenftig Max' Schalter umdrehen, vermutlich nicht gewollt.
+      Betrifft: Agenten/Handel/verbesserer/berichte/2026-10-11-spur2/,
+      Agenten/Handel/verbesserer/spuren.json, Agenten/Handel/xperp/wachen.json
+      Angelegt: 2026-10-11 · Zuletzt: 2026-10-11
+      Verifiziert 13.10.: Commit 8967e4ec angewendet (3 Parameter 1.25/1.0/1.25 in xperp/wachen.json), blockierter Stand archiviert in berichte/erledigt/2026-10-11-spur2, Max-Auftraege (_ev_entfaellt, handpositionen_automatisch_schliessen=true) unangetastet
 - [x] **T-377 - carry.py Wache fertig gestellt**
       Kontext: 07.10.2026. carry.py fertig: Cross-Venue-Carry-Scanner, rein lesend,
       OKX+Kraken, 5 Basen negativ (netto bp -34,1…-37,0), 16/16 Tests gruen.
@@ -7126,3 +7282,14 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
   - Naechster Schritt: nach Stufe-1.5-Merge als eigener Commit
   - Angelegt: 2026-10-07
   - Betrifft: Agenten/Handel/verbesserer/anwenden.py
+- [ ] **T-399 — Hermes-Skills: Zweig claude/messung-configs-klassik gegen master klaeren**
+      Stand 13.10.2026: Die Korrektur der Hermes-Notiz (Commit ac946d05 auf master) ist
+      uebernommen. Auf dem Zweig liegen noch 22 Commits, davon 20 fremde (Handel, Telegram,
+      Wiki). Entscheidung Max: Zweig per PR nach master, oder verwerfen/liegen lassen.
+      Nicht ohne Freigabe mergen. Dazu: `MaxHirn/Wissen/KB/data/spur-metriken.json` steht
+      im Arbeitsbaum als 'needs merge' (fremde Sitzung, nicht meine Datei).
+      Nachweis-Ordner `Agenten/Hermes/.sicherung/skills-import-20261013/` nach Entscheidung loeschen.
+      Entscheidung Max 13.10.2026: Zweig liegen lassen, kein PR, kein Merge, kein Push.
+      Grund: Konflikte in Hermes.md und spur-metriken.json; 13 fremde Commits (Handel, rule_repo-bots.md).
+  - Angelegt: 2026-10-13
+  - Betrifft: Git-Zweige BrainFiles, MaxHirn/Wissen/Hermes.md

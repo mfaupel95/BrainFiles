@@ -16,9 +16,9 @@ Einzelprogramm, Apache/MIT, v0.4.1 am 22.09.2026). Sie ist nicht nur ein
 Lesewerkzeug: sie kann handeln, Papier handeln, aufzeichnen und einen eigenen
 **MCP-Server** starten.
 
-- Klon: `Werkstatt/Repos/kraken-cli` (Fork `mfaupel95/kraken-cli`,
+- Klon: `Werkstatt/kraken-cli` (Fork `mfaupel95/kraken-cli`,
   `upstream` = `krakenfx/kraken-cli`)
-- Programm: `Werkstatt/Repos/kraken-cli/target/release/kraken.exe`
+- Programm: `Werkstatt/kraken-cli/target/release/kraken.exe`
 - Aufruf bei uns: `Agenten/Werkzeuge/kraken.ps1 <Befehl> -o json`
 
 ## Windows: selbst gebaut, kein WSL
@@ -28,7 +28,7 @@ sagt „Windows: use WSL"). Auf diesem Rechner war Rust 1.97.1 vorhanden, der
 Bau lief durch:
 
 ```powershell
-cd Werkstatt\Repos\kraken-cli
+cd Werkstatt\kraken-cli
 cargo build --release --bin kraken      # ~15 min beim ersten Mal, dann inkrementell
 ```
 

@@ -50,8 +50,11 @@ def rahmen(n=700):
         "volume": [z[5] for z in k]})
 
 
-def strategie(name="klassik_ema", pfad=None, runmode="backtest", df=None):
-    s = HausSpur({"hausspur": {"name": name, "pfad": str(pfad or HANDEL)},
+def strategie(name="klassik_ema", pfad=None, runmode="backtest", df=None, rechnung=None):
+    hs = {"name": name, "pfad": str(pfad or HANDEL)}
+    if rechnung:
+        hs["rechnung"] = rechnung
+    s = HausSpur({"hausspur": hs,
                   "timeframe": "1h", "stake_currency": "USDT", "dry_run": True})
     s.dp = SimpleNamespace(runmode=SimpleNamespace(value=runmode),
                            get_analyzed_dataframe=lambda pair, tf: (df, None))
@@ -168,9 +171,21 @@ class StopUndZiel(unittest.TestCase):
         """Review I3: ROI fuellt der Backtest zum Zielpreis, custom_exit erst zum Schluss."""
         self.assertTrue(HausSpur.use_custom_roi)
 
+    def test_ohne_festes_ziel_kein_roi(self):
+        """klassik_ema hat festes_ziel false: kein ROI, auch nicht auf Schluss."""
+        k, df = rahmen()
+        s = strategie(df=None)
+        df = s.populate_indicators(df, {"pair": PAAR})
+        s.dp.get_analyzed_dataframe = lambda pair, tf: (df, None)
+        t = Handel(df["date"].iloc[-2] + timedelta(minutes=1))
+        self.assertIsNone(s.custom_roi(PAAR, t, df["date"].iloc[-1], 60, "klassik_ema", "long"))
+        s.config["hausspur"]["ausloesung"] = "schluss"
+        self.assertIsNone(s.custom_exit(PAAR, t, df["date"].iloc[-1], 200.0, 5.0))
+
     def test_custom_roi_ist_ziel_der_signalkerze(self):
         k, df = rahmen()
         s = strategie(df=None)
+        s.hs_wachen = dict(s.hs_wachen, festes_ziel=True)
         df = s.populate_indicators(df, {"pair": PAAR})
         s.dp.get_analyzed_dataframe = lambda pair, tf: (df, None)
         i = len(df) - 2
@@ -224,6 +239,38 @@ class StopUndZiel(unittest.TestCase):
         self.assertEqual(s._signalwerte(PAAR, t), (hr.STOP_VORGABE, 2 * hr.STOP_VORGABE))
         wert = s.custom_stoploss(PAAR, t, df["date"].iloc[-1], 100.0, 0.0, False)
         self.assertLess(wert, 0.99)                # nicht der Platzhalter -0.99
+
+
+class Vektor(unittest.TestCase):
+    """Phase 2 (Ansatz B): `hausspur.rechnung: "vektor"` - gleiche Spalten wie A."""
+    NAME = "klassik_donchian_trend"
+    SPALTEN = ["hs_ein", "hs_aus_long", "hs_aus_short", "hs_stop", "hs_ziel"]
+
+    def _beide(self, runmode="backtest"):
+        k = reihe(1500)
+        _, df = rahmen(1500)
+        a = strategie(name=self.NAME, runmode=runmode).populate_indicators(
+            df.copy(), {"pair": PAAR})
+        b = strategie(name=self.NAME, runmode=runmode, rechnung="vektor").populate_indicators(
+            df.copy(), {"pair": PAAR})
+        return a, b
+
+    def test_backtest_spalten_gleich(self):
+        a, b = self._beide()
+        for sp in self.SPALTEN:
+            self.assertEqual([None if v != v else v for v in a[sp]],
+                             [None if v != v else v for v in b[sp]], sp)
+
+    def test_dry_run_letzte_kerzen_gleich(self):
+        a, b = self._beide("dry_run")
+        for sp in self.SPALTEN:
+            self.assertEqual([None if v != v else v for v in a[sp].iloc[-3:]],
+                             [None if v != v else v for v in b[sp].iloc[-3:]], sp)
+
+    def test_spur_ohne_vektor_verweigert(self):
+        with self.assertRaises(OperationalException) as cm:
+            strategie(name="klassik_ema", rechnung="vektor")
+        self.assertIn("klassik_ema", str(cm.exception))
 
 
 if __name__ == "__main__":

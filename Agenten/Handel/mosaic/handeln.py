@@ -57,6 +57,7 @@ from signal_wechsel import ERLAEUT, zugelassen  # noqa: E402  # noqa: E402
 import wachen_pruefung as wp  # noqa: E402
 import ereignis  # noqa: E402
 import okx_spot  # noqa: E402
+import kill_gemeinsam as kg  # noqa: E402  # Kill-Frist/Reset/Opt-out
 
 # ratschen.py ueber den PFAD laden, nicht ueber sys.path: die Datei liegt
 # eine Ebene hoeher und heisst wie kein Paket. Ein Import ueber sys.path
@@ -663,9 +664,55 @@ def nur_papier_verwerfen(z):
     Boerse bliebe sie offen und im Buch waere sie verschwunden (genau das ist
     am 23.09.2026 mit der BTC-Position passiert). Eigene Funktion, damit die
     Regel pruefbar ist statt als Zeile in lauf() zu stehen.
+    Seit 15.10.2026 NICHT mehr im Kill-Pfad (dort `papier_zwangsschluss`, mit
+    Buchung); bleibt als stille Fassung fuer Aufrufer, die bewusst nichts buchen.
     """
     z["positionen"] = [p for p in z.get("positionen", [])
                        if p.get("modus") == "live"]
+
+
+def _kurs_papier(inst):
+    """Letzter Kurs der Boerse, auf deren Kerzen der Papierzweig rechnet."""
+    import okx
+    return okx.letzter_kurs(inst)
+
+
+def papier_zwangsschluss(z, grund=kg.KILL_GRUND):
+    """Alle PAPIER-Positionen zum Marktkurs schliessen UND buchen.
+
+    Bis 15.10.2026 warf `nur_papier_verwerfen` sie im Kill ohne Buchung aus dem
+    Buch: Verlust und Gewinn fehlten in der Kapitalkurve. Ohne Kurs bleibt die
+    Position stehen, der naechste Zyklus der Sperre versucht es erneut.
+    Live-Positionen bleiben unangetastet (sie gehoeren der Boerse).
+    Rueckgabe: Zahl der noch offenen Papier-Positionen.
+    """
+    behalten = []
+    offen = 0
+    for p in z.get("positionen", []):
+        if p.get("modus") == "live":
+            behalten.append(p)
+            continue
+        try:
+            kurs = _kurs_papier(p["inst"])
+        except Exception as e:                                 # noqa: BLE001
+            print("  Kill: %s ohne Kurs (%s) - Position bleibt"
+                  % (p.get("inst"), str(e)[:80]), file=sys.stderr)
+            kurs = None
+        if not kurs:
+            behalten.append(p)
+            offen += 1
+            continue
+        vz = 1 if p["seite"] == "long" else -1
+        gv = p["nominal"] * (kurs - p["einstieg"]) / p["einstieg"] * vz
+        print("  KILL-ZWANGSSCHLUSS (Papier): %s @ %.6g  G/V %+.2f USD"
+              % (p["inst"], kurs, gv))
+        journal(zeit=_jetzt(), modus="papier", aktion="verkauf", inst=p["inst"],
+                pos_id=p.get("pos_id", ""), seite=p["seite"],
+                preis="%.6f" % kurs, einsatz_usd="%.2f" % (p["nominal"] + gv),
+                stop="%.6f" % p["stop"], ziel="%.6f" % p["ziel"],
+                stop_pct="%.2f" % p["stop_pct"], grund=grund, **mae.felder(p))
+    z["positionen"] = behalten
+    return offen
 
 
 def bueche_papier_altlasten_aus(z, w=None):
@@ -1357,17 +1404,23 @@ def lauf(modus):
             live = True
 
     if s.get("kill"):
-        print("- Kill-Schwelle erreicht (%.2f USD Ruecklauf). Alles flach." % ruecklauf)
-        if live:
-            flach_stellen_live(z, w, "kill_switch")
+        # Live-Positionen: die Frist darf die Spur nicht von selbst wieder
+        # scharf stellen, solange `kill_wiederaufnahme` nicht ausdruecklich
+        # gesetzt ist (wie bei den Live-Wachen in xperp).
+        wk = dict(w)
+        if live or any(p.get("modus") == "live" for p in z.get("positionen", [])):
+            wk.setdefault("kill_wiederaufnahme", False)
+        status, ruecklauf = kg.phase(z, wk, ruecklauf, s.get("runden_gesamt", 0), _jetzt)
+        if status == "frei":
+            faktor = groessenfaktor(ruecklauf, w)
         else:
-            # Nur PAPIER-Positionen verwerfen: eine Live-Position gehoert der
-            # Boerse, ein Papierlauf darf sie nicht aus dem Buch werfen (siehe
-            # pruefe_ausstiege).
-            nur_papier_verwerfen(z)
-        schreibe_zustand(z)
-        spiegeln(z, w)
-        return
+            if live:
+                flach_stellen_live(z, w, "kill_switch")
+            # Papier: zum Marktkurs schliessen und buchen (Live bleibt stehen).
+            papier_zwangsschluss(z)
+            schreibe_zustand(z)
+            spiegeln(z, w)
+            return
 
     # Bedingung 3 - Herzschlag alt: Live-Positionen glatt stellen, dieser Lauf
     # handelt nicht mehr. (Papier wird von wachen_pruefung ueber den

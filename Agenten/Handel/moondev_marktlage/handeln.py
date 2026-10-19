@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `coingecko_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` macht genau das:
+Der Agent `coingecko_agent` aus `Werkstatt/moon-dev-ai-agents` macht genau das:
 er beschreibt die Lage des Gesamtmarkts und leitet daraus eine Richtung ab. Sein Urteil faellt aber in einem Sprachmodell, und seine
 Daten kommen ueber die CoinGecko-Pro-API (Schluessel noetig). Beides laesst sich
 hier nicht sauber nachbilden, deshalb:

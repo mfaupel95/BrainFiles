@@ -279,7 +279,7 @@ K=configs/config-hermes-walk-forward.json     # oder config-hermes-in-sample.jso
 Der ganze Stand steht danach in einer Zeile: `.venv/Scripts/python.exe itb_pruefstand.py`
 (braucht kein Netz, aendert nichts) — dieselbe Zeile ist der Startbefehl im Startfenster
 `Agenten/Werkzeuge/repos-zentrale`. Der Klon haengt dort als Verknuepfung
-`Werkstatt/Repos/intelligent-trading-bot` -> `Werkstatt/intelligent-trading-bot`, damit die
+`Werkstatt/intelligent-trading-bot` -> `Werkstatt/intelligent-trading-bot`, damit die
 absoluten Pfade im venv gueltig bleiben.
 
 **Zwei Fallen beim Nachrechnen.** (1) `predictions.txt` und `signal_models.txt` werden
@@ -1108,3 +1108,27 @@ steht in der Skill-Referenz `handel-spuren/references/verlust-spur-diagnose.md`.
 
 Merksatz: `modus=live` im Journal ist ein BUCHVERMERK, kein Orderbeleg. Ein
 Kill, der Gewinner schliesst, ist ein Messfehler der Kurve, kein Markturteil.
+
+## Literatur-Abgleich: Krypto-Momentum (13.10.2026)
+
+Neue Literatur im Repo `Werkstatt/Moon-Dev-Code/strategy_pdfs/`:
+`gbadebo-2026-momentum-crypto.pdf` (Gbadebo 2026, „Momentum Trading in
+Cryptocurrencies: A Comparative Study of Time-Series and Cross-Sectional
+Strategies", Buhalterinės apskaitos teorija ir praktika, DOI
+10.15388/batp.2026.1, CC BY 4.0, https://www.zurnalai.vu.lt/BATP/en/article/view/44540).
+
+Das Paper behauptet, Trendpersistenz und Volatilität seien die Haupttreiber der
+Momentum-Rendite in Krypto, mit einem EMA-Rahmen über mehrere Horizonte. Das
+ist eine Hypothese aus der Literatur, kein Befund. Unsere Messungen liegen
+dagegen:
+
+- **EMA-Kreuzung, Walk-forward** (`Agenten/Handel/fremd_signale/werkzeuge/ema_walkforward.py`; der Plan vom
+  09.10.2026 nennt noch den alten Pfad): Out-of-sample negativ in beiden Läufen, Kriterium nicht erfüllt.
+  Die live laufende Einstellung 5m 10/20 verliert OOS -74,69 % (1 von 12
+  Fenstern positiv). Gebühren und Fehlsignale fressen den Vorteil.
+- **TSMOM auf eigenen 1D-Kerzen** (BTC/ETH/SOL, 2021-2026): BTC brutto +12,3 % p.a.,
+  bei 0,1 % Gebühr je Seite noch +9,5 %, ETH kaum noch positiv. Ein Kandidat für
+  BTC, nicht für den Korb.
+
+Merksatz: Ein Paper mit positivem Momentum-Ergebnis ist eine Vorlage für eine
+Messung, kein Nachweis. Gebühr und Walk-forward entscheiden, nicht die Abstract-Zahl.

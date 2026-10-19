@@ -86,7 +86,7 @@ eindeutig.
 
 | Slug | Zweck | Zuerst zustaendig |
 |---|---|---|
-| `repos` | Klone in `Werkstatt/Repos`, Bots/Profile, Rueckstand, Sicherung | `default`, `hermes-wartung` |
+| `repos` | Klone in `Werkstatt`, Bots/Profile, Rueckstand, Sicherung | `default`, `hermes-wartung` |
 | `wartung` | Hermes selbst: Gateway, Dashboard, MCP-Spawn-Kette, Updates, Leistung | `hermes-wartung` |
 | `handel` | Spuren bauen/rechnen/pruefen, Backtest, Befunde | `default`, `markt-recherche` |
 | `wissen` | Wiki, Skills, Fundus, Vault-Doku | `obsidian-skills`, `basic-memory` |
@@ -268,6 +268,31 @@ Datenbankstand.
   `context` geprueft werden, bevor die Scratch-Datei geloescht wird.
   Eine falsche `--body-file`-Uebergabe (relativer Pfad, falscher Pfad)
   zeigt sich nur dort.
+
+## Artefakte einsammeln (nach Planungs-/Kartendurchgang)
+
+Worker geben Abschlussberichte als Karten-Artefakte ab
+(`Agenten/Hermes/kanban/attachments/<id>/` und `kanban/workspaces/<id>/`).
+Diese laufen unbegrenzt auf und verrauchen, bis jemand sie durchgeht. Erst
+Messen: beide Ordner listen, Task-IDs ueber `kanban --board <slug> list --json`
+zu Titeln mappen, Inhalte per Hash gegenrechnen — dieselbe Datei liegt oft in
+BEIDEN Ordnern, nach Dateinamen gezaehlt wird daraus eine Doppelung.
+
+Dann je Datei die Klasse entscheiden:
+
+| Klasse | Merkmal | Weg |
+|---|---|---|
+| Plan/Konzept | Einzigartig im Baum — nirgends sonst versioniert | Nach `Werkstatt/Projekte/` kopieren (AGENTS.md-Regel: Plaene gehoeren dort hin) |
+| Code | Duplikat eines Moduls, das schon im Baum lebt | Nichts kopieren — Artefakt-Fassungen sind oft AELTER als der Live-Code; Hash gegen das Live-Modul, nie blind ueberschreiben |
+| Bericht/Rohdaten | Situations-Snapshot eines Laufs (groessen, block-review, requeue-report) | Wegwerf — bleibt als Karten-Beleg stehen, NICHT nach Werkstatt |
+
+Bei mehreren Fassungen EINES Dokuments (z. B. `name.md` neben `name_1.md`)
+vor dem Kopieren gegenlesen: die kurze ist oft ein abgeschnittener Entwurf,
+die lange die Endfassung. Nach dem Einsammeln das Wissen verteilen: eine
+Wiki-Seite (Skill `wiki-pflege`) mit dem Bestand und der Regel + INDEX-Eintrag.
+Regel dahinter: ein Plan darf nie NUR als Karten-Artefakt existieren —
+`kanban/attachments/` ist Durchgangsware und geht bei einem Aufraeumen mit
+verloren.
 
 ## Einzelkarten-Werkzeuge
 

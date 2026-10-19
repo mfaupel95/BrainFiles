@@ -57,7 +57,7 @@ def _wurzel_finden() -> str:
         return aus_umgebung
     d = HIER
     for _ in range(8):
-        if os.path.isdir(os.path.join(d, "Werkstatt", "Repos", REPO_NAME)):
+        if os.path.isdir(os.path.join(d, "Werkstatt", REPO_NAME)):
             return d
         eltern = os.path.dirname(d)
         if eltern == d:
@@ -67,7 +67,7 @@ def _wurzel_finden() -> str:
 
 
 WURZEL = _wurzel_finden()
-REPO = os.path.join(WURZEL, "Werkstatt", "Repos", REPO_NAME)
+REPO = os.path.join(WURZEL, "Werkstatt", REPO_NAME)
 PYTHON = os.path.join(REPO, ".venv", "Scripts", "python.exe")
 DB = os.path.join(REPO, "fomo_agent.db")
 MERK = os.path.join(WURZEL, "Agenten", "Hermes", "cache",

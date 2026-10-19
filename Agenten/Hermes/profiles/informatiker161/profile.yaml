@@ -1,2 +1,10 @@
 name: informatiker161
-description: "Coding-Agent: Code-Generierung, Refactoring, Debugging, Test-Writing und Code-Review im BrainFiles-Baum."
+description: 'Coding-Agent: Code-Generierung, Refactoring, Debugging, Test-Writing
+  und Code-Review im BrainFiles-Baum.'
+ui_meta:
+  hermes-bots:
+    groups:
+      - Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+    group: Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+_ui_meta_revisions:
+  hermes-bots: 1

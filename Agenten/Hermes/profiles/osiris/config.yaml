@@ -25,7 +25,7 @@ providers:
 _config_version: 50
 terminal:
   backend: local
-  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\osiris
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\osiris
 web:
   backend: nous
 browser:

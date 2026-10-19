@@ -3,7 +3,7 @@ id: 20260830-index
 title: 'Wissen — Index'
 tags: [betrieb]
 created: 2026-08-30
-updated: 2026-10-08
+updated: 2026-10-13
 related: []
 summary: 'Einstiegspunkt für Agenten: vollständiges Verzeichnis aller Notizen in Wissen/ mit Zweck und Pfad.'
 ---
@@ -64,9 +64,13 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260910-optimierungen-umgesetzt` — **Optimierungen — Umgesetzt (2026-09-10)** — `Wissen/Optimierungen-2026-09-10.md` — Drei umgesetzte Verbesserungen für Datensicherheit und Wartbarkeit, allen voran die monatliche Off-Site-Kopie auf USB-SSD.
 - `20260911-off-site-backup` — **Off-Site Backup Setup — Monatliche Sicherung auf USB** — `Wissen/Off-Site-Backup.md` — Anleitung für die kalte Monatskopie auf eine externe USB-SSD gegen gleichzeitigen Ausfall von C:, G: und O:.
 - `20260910-brainfiles-bus` — **BrainFiles Bus** — `Wissen/BrainFiles-Bus.md` — Zentraler Meldedienst für alle geplanten Aufgaben: Start, Prüfung, Betrieb; ein toter Bus bricht nie einen Lauf ab.
-- `20260916-repo-bots` — **Repo-Bots: Flottenstand und Telegram-Zugang** — `Wissen/Repo-Bots.md` — Ein Hermes-Profil je Fremd-Repo in Werkstatt/Repos, erreichbar per Telegram über /bots und /bot NAME.
+- `20260916-repo-bots` — **Repo-Bots: Flottenstand und Telegram-Zugang** — `Wissen/Repo-Bots.md` — Ein Hermes-Profil je Fremd-Repo in Werkstatt, erreichbar per Telegram über /bots und /bot NAME.
 - `20260916-agent-reach` — **Agent Reach: Internet-Zugang für Agenten** — `Wissen/Agent-Reach.md` — Lesender Internet-Zugang (Twitter/X, Reddit, YouTube, GitHub, RSS, Web) ohne API-Schlüssel: Ablageort, Aufruf, Hermes-Profil.
 - `20260917-openmontage` — **OpenMontage: Agentisches Videoproduktions-Framework** — `Wissen/OpenMontage.md` — Fork von calesthio/OpenMontage: 12 Produktionspipelines für KI-Videos, 41 von 121 Werkzeugen laufen ohne API-Schlüssel.
+
+### Handel-Agenten (Betrieb)
+
+- `20261013-handel-agenten-befund` — **Handel-Agenten: Befund 13.10.2026** — `Wissen/Handel-Agenten-Befund-20261013.md` — Dauerlauf-Überwachung wieder vollständig (alle vier Wächter-Aufgaben Ready, drei Stufen laufen auf Papier); Backtest-Varianten mit Hausfunktionen verglichen und bewusst stehen gelassen; 5,4 GB redundante state.db-Kopien entfernt.
 
 ### System und Hardware
 
@@ -107,7 +111,7 @@ Format: `` `id` — **Titel** — `Pfad` — wofür.``
 - `20260908-volumen-drift-signal` — **Volumen-Drift-Momentum im XPERP-Signal** — `Wissen/Volumen-Drift-Signal.md` — Eigener Nachbau des Prinzips von Swift Algo X (TradingView, Invite-Only) — volumengewichtete Preisdrift mit Mehrfach-Zeitebenen-Bestätigung, hoch gewichtet ins Signal, mit Vorrang vor der Saisonalität.
 - `20260913-buildix-santiment` — **Orderflow- und Verhaltensdaten: Buildix & Santiment** — `Wissen/Buildix-Santiment-Handelswissen.md` — Zwei neue externe Handelswissen-Quellen: Buildix (Hyperliquid-Orderflow, CVD/VPIN/OBI/OFI-Logik, Learn-Academy) und Santiment (1100+ On-Chain-/Social-/Dev-Metriken, MVRV/DAA/Age-Consumed-Methodik); Ernte mit Scrapling am 13.09.2026.
 - `20260913-cvd-divergenz-signal` — **CVD-4h-Divergenz im XPERP/SWAP-Signal** — `Wissen/CVD-4h-Divergenz-Signal.md` — Dritter hoch gewichteter Baustein im Signal: CVD (kumulierte Differenz aggressiver Käufe und Verkäufe) aus dem OKX-Taker-Volumen je Kontrakt in 4h-Eimern, als Divergenz gegen den Preis (Buildix-Prinzip) — mit Herkunft der Zahlen, Rangfolge der drei hoch gewichteten Bausteine, Schwellen-Kalibrierung an 1287 Fenstern und der Host-Falle unter `/rubik/`.
-- `20260919-moon-dev-code-studien` — **Moon-Dev-Code: die drei Strategie-PDFs** — `Wissen/Moon-Dev-Code-Studien.md` — Gelesene Zusammenfassung der drei Paper in `Werkstatt/Repos/Moon-Dev-Code/strategy_pdfs/`: Psychologie des Krypto-Handels (Delfabbro 2021, Risikofaktoren FOMO/Kontroll-Illusion), Deep Reinforcement Learning für Handelspunkte (Appl. Sci. 2020, Backtest-Renditen ohne Kostenmodell), EMH-Survey über 38 Studien (JRFM 2019, Langzeit-Gedächtnis verblasst mit Marktreife). Kein Code/Parameter übernommen.
+- `20260919-moon-dev-code-studien` — **Moon-Dev-Code: die drei Strategie-PDFs** — `Wissen/Moon-Dev-Code-Studien.md` — Gelesene Zusammenfassung der drei Paper in `Werkstatt/Moon-Dev-Code/strategy_pdfs/`: Psychologie des Krypto-Handels (Delfabbro 2021, Risikofaktoren FOMO/Kontroll-Illusion), Deep Reinforcement Learning für Handelspunkte (Appl. Sci. 2020, Backtest-Renditen ohne Kostenmodell), EMH-Survey über 38 Studien (JRFM 2019, Langzeit-Gedächtnis verblasst mit Marktreife). Kein Code/Parameter übernommen.
 - `20260921-archiv-trading-skills` — **Archiv-Trading-Skills und Fremdstrategien im Lauf** — `Wissen/Archiv-Trading-Skills.md` — Was von den ausgemusterten Handels-Skills lauffähig ist (nur `geld`; `marktbriefing` hängt am fehlenden `traderhub`, `financial-services` bleibt bewusst im Archiv) und was eine gefahrene Fremdstrategie messbar liefert: TTM-Squeeze+ADX auf neun Jahren BTC-Stundenkerzen ergibt einen Kosten-Wendepunkt von ≈ 0,10 % je Runde — rund 100-mal schlechter als der Haus-Scanner. Dazu der eigentliche Fund: neun Jahre lokale Kursdaten und vier Backtest-Umgebungen mit venv unter `Werkstatt/`.
 - `20260921-prognose-backtest` — **Prognose-Spuren-Backtest** — `Wissen/Prognose-Spuren-Backtest.md` — Erster langer Backtest der vier Prognose-Spuren (7000 Stundenkerzen, 0,10 % Gebuehr je Seite): tragen tut nur die LONG-Seite von macd_mtf (+2,28 % je Runde, 48 % Treffer) und squeeze (+1,57 %); short ist bei allen vier negativ, wavetrend und supertrend sind auf beiden Seiten negativ. Das Kurzfenster war ein Aufwaertsmarkt und ist die freundlichere Zahl — der Langlauf ist der Massstab. Werkzeug: `Agenten/Handel/backtest_prognose.py` + `bt_lang.py`.
 - `20260918-handel-stack-repo` — **Handel-Stack als eigenes Repo** — `Wissen/Handel-Stack-Repo.md` — Agenten/Handel als privates GitHub-Repo mfaupel95/handel-stack gespiegelt: Umfang, Ausschlüsse, fehlende CI-Workflows, Schnappschuss-Charakter.

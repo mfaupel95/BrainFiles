@@ -59,9 +59,9 @@ Neu 'Freqtrade-Bots.lnk' `
 # 4) MoonDev-GUI: die vorhandene Verknuepfung zeigte richtig, trug aber einen
 #    unbrauchbaren Namen; neu angelegt und die alte per Muster entfernt.
 Neu 'MoonDev-GUI.lnk' `
-    "$bf\Werkstatt\Repos\moon-dev-ai-agents\.venv\Scripts\pythonw.exe" `
-    "`"$bf\Werkstatt\Repos\moon-dev-ai-agents\moongui.py`"" `
-    "$bf\Werkstatt\Repos\moon-dev-ai-agents" $icon
+    "$bf\Werkstatt\moon-dev-ai-agents\.venv\Scripts\pythonw.exe" `
+    "`"$bf\Werkstatt\moon-dev-ai-agents\moongui.py`"" `
+    "$bf\Werkstatt\moon-dev-ai-agents" $icon
 
 # 5) Aufraeumen: Verknuepfungen auf DEAKTIVIERTE Ziele und Reste
 #    fehlgeschlagener Verknuepfungen (Dateiname = der ganze Befehl).

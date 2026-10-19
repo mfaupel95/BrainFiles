@@ -1,7 +1,7 @@
 # moondev_sniper
 
 Papierbuch-Spur auf den **neuen Solana-Token-Launches** von Pump.fun. Der
-Vorbild-Agent `sniper_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` scannt
+Vorbild-Agent `sniper_agent` aus `Werkstatt/moon-dev-ai-agents` scannt
 neue Launches und zeigt sie an - er faellt **kein eigenes Urteil**
 (Anzeige-Scanner mit Animation und Sound). Seine Datenquelle ist der tote
 Eigen-Server des Autors (`api.moondev.com`), deshalb holt diese Spur denselben

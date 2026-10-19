@@ -7,7 +7,7 @@ description: 'Use when Webseiten ernten. StealthyFetcher + Chrome.'
 # Scrapling-Ernte (Handelswissen)
 
 Fertige Implementierung unter `Werkstatt/scrapling-wissen/` (venv + `holen.py`,
-Rohdaten in `roh/<site>/`). Der Fork-Klon `Werkstatt/Repos/scrapling` ist
+Rohdaten in `roh/<site>/`). Der Fork-Klon `Werkstatt/scrapling` ist
 Version 0.4.15, origin zeigt direkt auf D4Vinci/Scrapling.
 
 ## Setup (einmalig je Maschine)
@@ -15,7 +15,7 @@ Version 0.4.15, origin zeigt direkt auf D4Vinci/Scrapling.
 ```bash
 cd Werkstatt/scrapling-wissen
 uv venv --python 3.12 .venv
-uv pip install --python .venv/Scripts/python.exe -e 'C:/Users/faupe/Documents/BrainFiles/Werkstatt/Repos/scrapling[fetchers]'
+uv pip install --python .venv/Scripts/python.exe -e 'C:/Users/faupe/Documents/BrainFiles/Werkstatt/scrapling[fetchers]'
 uv pip install --python .venv/Scripts/python.exe markdownify
 ```
 

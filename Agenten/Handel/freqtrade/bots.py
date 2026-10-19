@@ -241,6 +241,8 @@ def config_fuer(bot: dict) -> dict:
         cfg["margin_mode"] = "isolated"
         cfg["hausspur"] = {"name": bot["hausspur"],
                            "pfad": f"{HAUS_IM_CONTAINER}/Handel"}
+        if bot.get("hausspur_rechnung"):
+            cfg["hausspur"]["rechnung"] = bot["hausspur_rechnung"]
     return cfg
 
 
@@ -572,4 +574,8 @@ def haupt(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    # Windows-Konsole (cp1252) kann ✓ nicht ausgeben; ohne das bricht start/stop mittendrin ab.
+    for strom in (sys.stdout, sys.stderr):
+        if hasattr(strom, "reconfigure"):
+            strom.reconfigure(encoding="utf-8", errors="replace")
     raise SystemExit(haupt(sys.argv[1:]))

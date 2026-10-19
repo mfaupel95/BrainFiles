@@ -10,7 +10,7 @@ metadata:
 
 # Fremd-Repo-Python-Agenten lokal starten
 
-Geklonte Fremd-Repos (Werkstatt/Repos/) bringen Python-Agenten mit: eigenes
+Geklonte Fremd-Repos (Werkstatt/) bringen Python-Agenten mit: eigenes
 venv, .env, LLM-Aufrufe, Dauerlaeufe. Dieses Skill ist der Weg, so einen
 Agenten LAUFFAEHIG zu bekommen, ohne echte Schluessel einzutragen — die
 lokale Ollama-Ersetzung ist der Hausstandard (Max, 16.09.2026).

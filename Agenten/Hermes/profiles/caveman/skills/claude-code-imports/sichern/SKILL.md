@@ -91,7 +91,7 @@ beim Sichern daraus folgt:
 - **Fremdarbeit aus einem anderen Zweig-Arbeitsbaum** (Zweig `wt/…`, `t_…`)
   wird nicht still nach `master` geschoben: erst melden, was drinliegt, dann
   per PR oder auf ausdrückliche Freigabe mergen. Liegenlassen ist erlaubt.
-- **Fremd-Repos** in `Werkstatt/Repos/` haben ihre eigenen Zweignamen (meist
+- **Fremd-Repos** in `Werkstatt/` haben ihre eigenen Zweignamen (meist
   `main`). Die Regel „alles auf master" gilt nur fürs BrainFiles-Repo; ein
   Push in einen Fork braucht Rückfrage, und Workflow-Dateien
   (`.github/workflows/`) lehnt GitHub ohne Token-Scope `workflow` ab — der Push

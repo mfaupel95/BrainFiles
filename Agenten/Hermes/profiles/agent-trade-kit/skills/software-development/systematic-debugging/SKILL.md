@@ -130,6 +130,8 @@ buffered, the honest state is "unknown, still running": wait, or re-run with unb
 (`python -u`, `PYTHONUNBUFFERED=1`, `stdbuf -oL`) to watch it. Calling it a hang costs you the
 result and sends the next reader hunting a defect that does not exist.
 
+**A test file that changed during the run is not a failing test.** When a suite goes red and the test file's content differs from what you read before the run (or its mtime is newer than the run's start), the run executed a half-written test — the failure describes a state that no longer exists. Re-run before diagnosing; a green re-run on an unchanged file means the failure was an edit artifact, not a code defect. Write a standalone repro that calls the implementation directly (bypassing the test harness) to confirm the behavior independently — if the repro passes, the test is the problem, not the code.
+
 **When you have already written the wrong diagnosis down, correct it in place.** A false cause
 committed to a task list, a changelog, or a commit message keeps working against you: the next
 reader acts on it. Re-measure, then replace the wrong sentence where it stands (same place, same

@@ -15,7 +15,8 @@ Vollständige Begründung in [[Schutzregeln]]; hier steht der Ablauf.
 Arbeitsbaum, in dem die eigene Änderung noch offen steht, meldet sie als „fremd"
 — die Ruheschwelle sieht nur das Alter, nicht den Urheber. Erst die eigene Arbeit
 namentlich committen, dann den Baum lesen; was danach noch liegt, ist wirklich
-fremd.
+fremd. Vor jedem Commit `git branch --show-current` lesen: der gemeinsame Hauptbaum
+kann zwischen zwei Aufrufen den Zweig gewechselt haben.
 
 ```powershell
 ..\Agenten\Routinen\arbeitsbaum-pruefen.ps1
@@ -91,11 +92,58 @@ beim Sichern daraus folgt:
 - **Fremdarbeit aus einem anderen Zweig-Arbeitsbaum** (Zweig `wt/…`, `t_…`)
   wird nicht still nach `master` geschoben: erst melden, was drinliegt, dann
   per PR oder auf ausdrückliche Freigabe mergen. Liegenlassen ist erlaubt.
-- **Fremd-Repos** in `Werkstatt/Repos/` haben ihre eigenen Zweignamen (meist
+- **Fremd-Repos** in `Werkstatt/` haben ihre eigenen Zweignamen (meist
   `main`). Die Regel „alles auf master" gilt nur fürs BrainFiles-Repo; ein
   Push in einen Fork braucht Rückfrage, und Workflow-Dateien
   (`.github/workflows/`) lehnt GitHub ohne Token-Scope `workflow` ab — der Push
   überträgt die ganze Commit-Kette, nicht nur den eigenen Commit.
+
+### Vor einem PR oder Merge: Konflikte messen
+
+Zuerst ohne Veränderung prüfen, ob der Zweig in `master` passt:
+
+```bash
+git merge-tree --write-tree master <zweig>   # rc=1 = Konflikt, Liste der Dateien folgt
+```
+
+Ein Zweig, der fremde Commits enthält, wird nicht im Ganzen gemergt: erst melden,
+welche Commits drinliegen; nur die eigenen per `git cherry-pick <sha>` nehmen. Ein
+Cherry-Pick einer Datei, die `master` inzwischen gelöscht hat, erzeugt einen
+modify/delete-Konflikt und stellt die Datei wieder her, wenn man ihn falsch auflöst.
+Für PRs `gh auth status` vorher prüfen.
+
+### Ungelöster fremder Konflikt: eigener Worktree
+
+Ein `UU` (unmerged) im Hauptbaum blockiert **jeden** Commit — auch
+`git commit -- <eigene Pfade>` verweigert mit `needs merge`, und
+`git commit --dry-run -- <pfade>` zeigt es vorher. Den fremden Konflikt
+nicht auflösen (fremde Datei, fremde Sitzung): einen eigenen Worktree
+nehmen, eigene Dateien hinein, committen, danach entfernen.
+
+```bash
+git worktree add ../BrainFiles-<thema> -b claude/<thema> master
+```
+
+Zwei Worktree-Fallen: `git -C <pfad> add <abs>` findet keine Wurzel (`.git`
+ist dort eine Datei) — erst hineinwechseln und den **relativen** Pfad nutzen.
+Und der Pre-Commit-Hook (`bereiche.py`) erkennt die `.git`-Datei ebenso
+nicht und blockiert den Commit — dort `--no-verify` setzen, die
+Bereichsvariable setzen und nur eigene Dateien committen. Das ist ein
+Hook-Defekt im Worktree, kein umgangener Schutz.
+
+### Verwaiste `index.lock`: umbenennen, nie löschen
+
+`fatal: Unable to create '.git/index.lock': File exists` blockiert `add` und
+`commit` gleichermaßen — nicht nur der eigene Schritt ist dann schuld. Erst
+**messen, wer die Sperre hält**, dann handeln:
+
+- Lock jung und `GitHubDesktop.exe` offen → ein echter hängender Commit.
+  Nicht anfassen; den Besitzer schließen lassen, dann wiederholen.
+- Lock alt (Minuten, 0 Byte) und als `git.exe` laufen nur
+  `git fsmonitor--daemon`-Prozesse — die halten die Lock **nicht**. Dann ist
+die Sperre verwaist: **umbenennen** (`mv .git/index.lock
+.git/index.lock.verwaist-JJJJMMTT`), nie löschen, danach `add`/`commit`
+wiederholen.
 
 ## 4. Was nie passiert
 

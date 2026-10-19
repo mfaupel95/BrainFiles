@@ -33,7 +33,7 @@ und Betrieb).
 
 ## 3. Betriebsregeln (gemeinsam)
 
-- Arbeite in DEINEM Repo (`Werkstatt\Repos\<repo>`, Junction auf O:): `origin` = eigener
+- Arbeite in DEINEM Repo (`Werkstatt\<repo>`, Junction auf O:): `origin` = eigener
   Fork, `upstream` = Original (nur lesen, nie pushen). Shallow-Klon: ein Push scheitert
   mit "did not receive expected object" - vorher `git fetch --unshallow upstream`.
 - Vor jedem Commit nur die eigenen Pfade stagen (`git add <pfad>`), nie `git add -A`:

@@ -5,7 +5,7 @@ AUFTRAG Max 22.09.2026: "Radar -papierspur und -bot".
 
 WAS HIER GEMESSEN WIRD
 ----------------------
-Der FOMO-Robinhood-Radar (`Werkstatt/Repos/fomo-robinhood-radar`) liest die
+Der FOMO-Robinhood-Radar (`Werkstatt/fomo-robinhood-radar`) liest die
 On-Chain-Aktivitaet von Tradern auf Robinhood Chain (Chain-ID 4663) und
 BEWERTET die Wallets mit einem Sprachmodell (0-100). Diese Spur kopiert nicht
 die Rangliste (das waere Zuchtauswahl nach dem Ergebnis), sondern das

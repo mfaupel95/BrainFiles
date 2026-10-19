@@ -32,7 +32,7 @@ class PflegereiterTest(unittest.TestCase):
     def setUp(self):
         self.t = tempfile.TemporaryDirectory()
         self.bf = Path(self.t.name)
-        repos = self.bf / "Werkstatt" / "Repos"
+        repos = self.bf / "Werkstatt"
         self.node = repos / "node-projekt"
         self.leer = repos / "leeres-projekt"
         self.python = repos / "python-projekt"

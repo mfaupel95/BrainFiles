@@ -285,10 +285,11 @@ def _atr_stop_ziel(w, inst, richtung, kurs, bericht_stop, bericht_ziel):
     stop = kurs - vz * float(faktor) * atr
     ziel = kurs + vz * float(ziel_faktor) * atr
     # Konsistenz-Grenze: ein ATR-Stop muss zwischen Kurs und Ziel liegen und
-    # das Ziel ueber (long) bzw. unter (short) dem Kurs.
-    if richtung == "long" and not (stop < kurs < ziel):
+    # das Ziel ueber (long) bzw. unter (short) dem Kurs. Ein Stop oder Ziel
+    # bei/below 0 ist sinnlos (unter der Liquidationsmarke) - verwerfen.
+    if richtung == "long" and not (0 < stop < kurs < ziel):
         return None, None
-    if richtung == "short" and not (ziel < kurs < stop):
+    if richtung == "short" and not (0 < ziel < kurs < stop):
         return None, None
     return stop, ziel
 
@@ -357,6 +358,17 @@ def kandidaten(z, w, statistik=None):
             print("  %-14s Kurs nicht abrufbar (%s) - Kandidat uebersprungen"
                   % (inst, e))
             continue
+        # Verfallen prueft gegen die SIGNAL-Band (Bericht-Stop/Ziel): ist der
+        # Kurs schon ueber das Ziel gelaufen, ist das Signal verfallen - egal
+        # wie breit der ATR-Ausfuehrungs-Stop danach waere. (T-395: der
+        # ATR-Zweig von T-393 hatte die Band ueberschrieben und erweckte
+        # verfallene Signale mit einem unsinnig breiten Stop wieder.)
+        if richtung == "long" and not (stop < kurs < ziel):
+            st["verfallen"] += 1
+            continue
+        if richtung == "short" and not (ziel < kurs < stop):
+            st["verfallen"] += 1
+            continue
         # ATR-Zweig (T-393 a): bei gesetztem stop_atr_faktor rechnet die Spur
         # Stop/Ziel selbst aus dem 4H-ATR statt der Bericht-Klammer (5..12 %).
         # (None, None) heisst "nicht tragbar" - Kandidat uebersprungen.
@@ -366,12 +378,6 @@ def kandidaten(z, w, statistik=None):
             if not stop or not ziel:
                 st["atr_untragbar"] = st.get("atr_untragbar", 0) + 1
                 continue
-        if richtung == "long" and not (stop < kurs < ziel):
-            st["verfallen"] += 1
-            continue
-        if richtung == "short" and not (ziel < kurs < stop):
-            st["verfallen"] += 1
-            continue
         offen = any(p.get("inst") == inst and p.get("seite") == richtung
                     for p in z.get("positionen", []))
         if offen:

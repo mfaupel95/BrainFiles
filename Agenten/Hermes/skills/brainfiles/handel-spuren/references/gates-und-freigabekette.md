@@ -196,6 +196,41 @@ Bei jeder Freigabe-Erhoehung gilt dieselbe Grenze wie bei einer Grenz-Erhoehung
 und Platzzahl kommen aus der Wache. Wer beides in einem Auftrag meint, macht
 zwei Schritte und sagt, welcher welcher war.
 
+## 1c. Eine Live-Spur zurueck auf Papier: drei Stellen, erst pruefen, dann schalten
+
+Die Ruecknahme einer Live-Freigabe ist der Spiegel der Freigabe und beruehrt
+dieselben drei Stellen, die sie scharf geschaltet haben:
+
+1. **`wachen.json`**: `handel_erlaubt=false`, `freigabe.erfuellt=false`,
+   `herzschlag_max_minuten` zurueck auf 180 (Papier-Regel). Die Vermerke
+   **ergaenzen** mit Datum und Auftrag, nie ersetzen - der alte Vermerk ist
+   die Begruendung, warum die Freigabe eine Entscheidung war.
+2. **`dauerlauf.AUTO_FREIGABE`**: die Spur entfernen. Eine deaktivierte Spur,
+   die weiter in der Auto-Freigabe steht, oeffnet weiter Fenster und sieht
+   live aus, obwohl sie es nicht ist.
+3. **Der Test, der den Live-Zustand eingefroren hat** (z. B.
+   `test_start_live_aktiv` mit `assertIs(handel_erlaubt, True)`). Er wurde
+   beim Scharfschalten auf den Live-Stand gedreht und muss beim
+   Deaktivieren zurueckgedreht werden - sonst ist die Suite rot, obwohl der
+   Code stimmt.
+
+**Reihenfolge: erst pruefen, dann schalten.** Vor dem Umlegen der Schalter
+zwei Dinge gegen die Boerse und das Journal belegen, sonst ist die
+Ruecknahme ein Eingriff in eine laufende Position:
+
+- **keine offene Position** (`zustand.json` ohne `position`-Dict, `modus`
+  nicht `live`)
+- **keine `,live,`-Zeile im Journal** - eine Spur, die live geschaltet war,
+  aber nie eine Live-Order ausgefuehrt hat, ist gefahrlos zurueckzunehmen;
+  eine mit offener Live-Position braucht eine eigene Entscheidung.
+
+Der haeufigste Grund fuer die Ruecknahme ist ein **Punktebuch ohne Einsatz**:
+die Spur fuehrt Runden in Punkten, die Gebuehr ist dort nicht abziehbar, und
+die Live-Freigabe basierte auf einer Zahl, die die Kosten nie sah. Dann ist
+die Rechnung `f_max` (Kosten-Wendepunkt) gegen die gesetzte Gebuehr je Runde
+der Beleg - liegt die Gebuehr um Groessenordnungen darueber, ist die
+Ruecknahme die ehrliche Antwort, nicht eine Formalie.
+
 ## 2. Wo ein Tor gehoert: VOR der Order, nicht in die Signallogik
 
 Jedes Tor gehoert an die Stelle, an der die Order wirklich entsteht:

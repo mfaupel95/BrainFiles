@@ -111,6 +111,14 @@ gbrain stats | gbrain health                Umfang, Zustand
 - **`search`/`query` finden keine Fakten** (sie gehen ueber Seiten) und laufen ohne
   Embedding-Anbieter nur als Stichwortsuche.
 - **Ein Fakt ohne `--entity`** ist fuer die entitaetsbezogene Erinnerung unsichtbar.
+- **Ein gespeicherter Fakt ist eine Momentaufnahme, kein Dauerzustand.** Bevor du
+  auf einen Fakt HANDELST ("klaere diese Faelle", "was ist mit X"), miss den
+  Live-Zustand neu (Prozess, Aufgabe, Datei) - ein Befund vom selben Tag kann schon
+  ueberholt sein (gemessen 13.10.2026: 3 von 5 Fakten waren abends falsch, weil
+  Waechter reaktiviert und die Mittel-Stufe neu gestartet worden war). Ist der Fakt
+  ueberholt, korrigiere ihn (forget + neues remember mit dem IST-Zustand) statt den
+  alten stehen zu lassen - ein veralteter Fakt wird sonst zur Grundlage einer falschen
+  Aktion.
 - **`The local persistence owner is unavailable.`** (01.10.2026): ein zweiter Aufruf
   Sekunden spaeter ging durch. Nicht an Locks drehen, keinen Dienst starten.
 - Details, Wortlaute und Belege: `references/speichern.md` (Schreiben),

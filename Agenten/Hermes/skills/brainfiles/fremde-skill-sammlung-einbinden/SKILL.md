@@ -32,7 +32,7 @@ wird dreistufig:
 
 | Stufe | Ort | Zweck |
 |---|---|---|
-| halten | `Werkstatt/Repos/<name>` (gitignored) | Klon, bleibt aktualisierbar |
+| halten | `Werkstatt/<name>` (gitignored) | Klon, bleibt aktualisierbar |
 | finden | `MaxHirn/Wissen/<name>-Index.md` + `fundus-suche.ps1` | null Ladepreis |
 | benutzen | eigenes Bot-Profil (`/bot <name> ...`) | zahlt nur im eigenen Kontext |
 
@@ -71,6 +71,30 @@ Kind-Skills), ist das eine **API-Beschreibung, kein Hausverfahren**:
    `Archiv/TASKS.md` eintragen und Max entscheiden lassen, statt sie stillschweigend zu
    lassen. Dazu die Wiki-Seite unter `Werkzeuge/` mit Endpunkten, Ablage der Kennung und
    dem, was NICHT angeschlossen ist (`wiki-pflege`).
+
+## Einzelnen Skill per Link: erst pruefen, ob er schon im Haus ist
+
+Schickt Max einen blanken Link auf eine einzelne fremde `SKILL.md`
+(`github.com/<user>/<repo>/blob/.../SKILL.md`), ist das erst ein ZEIGER, kein
+Importauftrag. Vor jedem Klonen den Ist-Zustand beweisen:
+
+```bash
+# 1) Adoption: liegt der Skill schon in der Bibliothek?
+git log --oneline -3 -- Agenten/Hermes/skills/<kategorie>/<name>/SKILL.md
+./bin/hermes.exe skills list | grep -i "<name>"          # enabled?
+# 2) Upstream: hat sich seit der Adoption etwas getan?
+curl -s "https://api.github.com/repos/<user>/<repo>" | grep -E '"(pushed_at|description)"'
+curl -s "https://api.github.com/repos/<user>/<repo>/commits?per_page=3" | grep '"message"'
+# 3) Diff: weicht die Hausfassung von der Fremdfassung ab?
+```
+
+- **Adoptiert + unveraendert = melden, nicht klonen.** Die Hausfassung traegt
+  die noetigen Anpassungen (Haus-Werkzeug statt Fremd-Werkzeug, Quellenzeile,
+  Beschreibung unter der 60-Zeichen-Grenze) - ein Re-Import wuerde die
+  Anpassungen jedes Mal zurueckwerfen.
+- **Ein blanker Link ohne Auftrag heisst: pruefen und melden** (schon drin /
+  upstream veraltet / neuer Stand), NICHT „einbinden". Max' Zeiger sind
+  Aufgaben zum Nachsehen, keine Bestellungen.
 
 ## Mehrere Skills aus einem Klon in die Hauptbibliothek
 
@@ -150,7 +174,7 @@ bekannte Baeume und Klassifikationstabelle: `references/fremde-skills-finden.md`
 
 1. **Bekannte Baeume zuerst hashen** (Fundus `%USERPROFILE%/Documents/GitHub`
    — ausserhalb BrainFiles, der alte Ordner `MaxHirn/skills` existiert nicht
-   mehr; aktueller Pfad in `fundus-suche.ps1` — plus Werkstatt/Repos,
+   mehr; aktueller Pfad in `fundus-suche.ps1` — plus Werkstatt,
    Hausbibliothek, MaxHirn/.claude/skills + .agents/skills): byte-identisch
    = bereits uebernommen, nur Hash-Neue sind Kandidaten. Ohne diesen Abgleich
    zaehlt jede Install-Kopie eines bekannten Repos als "neu".
@@ -168,7 +192,7 @@ bekannte Baeume und Klassifikationstabelle: `references/fremde-skills-finden.md`
 
 ## Vorgehen
 
-1. **Klon voll** nach `Werkstatt/Repos/<name>` (kein `--depth 1`): ein shallow
+1. **Klon voll** nach `Werkstatt/<name>` (kein `--depth 1`): ein shallow
    Klon laesst sich spaeter nicht in den eigenen Fork pushen. `origin` = eigener
    Fork, `upstream` = Original - wie bei allen Repo-Klonen hier.
 2. **Format pruefen, bevor konvertiert wird:** YAML-Frontmatter vorhanden?
@@ -184,7 +208,7 @@ bekannte Baeume und Klassifikationstabelle: `references/fremde-skills-finden.md`
    Ziel `<klon>/hermes-skills/<kategorie>/<skill>/SKILL.md`. Nie von Hand
    nachbessern, was der Konverter erzeugen soll.
 5. **Index schreiben:** je Skill Name, Kategorie, Groesse, Einzeiler, Pfad -
-   damit "finden" ohne Ladepreis geht (Fundus-Skript deckt `Werkstatt/Repos`
+   damit "finden" ohne Ladepreis geht (Fundus-Skript deckt `Werkstatt`
    schon ab).
 6. **Bot-Profil anlegen** und die konvertierten Skills in dessen
    `skills/`-Baum legen. `hermes profile create <name>` OHNE `--clone` erzeugt
