@@ -79,7 +79,7 @@
     "groesster_ruecklauf_papierlauf_usd": null,
     "geprueft_am": "2026-10-14",
     "backtest_urteil": "kein Instrument bestanden (6 geprueft; ueberwiegend zu wenig Daten)",
-    "backtest_geprueft_am": "2026-10-11",
+    "backtest_geprueft_am": "2026-10-19",
     "_freigabe_anmerkung": "erfuellt=false auf Befund 14.10.2026: Punktebuch fuehrt keinen Einsatz, netto_positiv ist dort nicht kostenbereinigt. Live verliert die Spur 1,14 % je Runde (f_max 0,06 % gegen 1,2 % Gebuehr). Zurueck auf Papier."
   },
   "_freigabe": "Sperre 4 aus SPEC.md. handel_erlaubt erst true, wenn backtest_bestanden UND (>= 6 Wochen Papier) UND (>= 50 Sessions) UND netto_positiv.",
