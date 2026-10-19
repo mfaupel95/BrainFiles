@@ -1,4 +1,16 @@
 ## Offen
+- [ ] **T-414 — jev_trader-Spur verdrahten (Worktree arbeit/jev-trader):**
+    - Kontext: Parallele Claude-Sitzung baute Papier-Spur Agenten/Handel/jev_trader (liest Block-Event-Log des jev-trader-Bots, bucht Roundtrips). Liegt nur auf Zweig arbeit/jev-trader, NICHT in dauerlauf/lage/befehl/auswertung verdrahtet. handel_erlaubt=false, kein Live-Pfad.
+    - Naechster Schritt: Zweig pruefen (Tests laufen lassen), dann in master uebernehmen und verdrahten (dauerlauf.SPUREN, lage.HOLER, befehle.FAMILIE, auswertung_alle, pruefe_ratschen, .gitignore, Spiegel).
+    - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/jev_trader
+- [ ] **T-415 — scanner_llm-Spur verdrahten (Worktree arbeit/scanner-llm):**
+    - Kontext: Parallele Claude-Sitzung baute Papier-Spur Agenten/Handel/scanner_llm (leichter Marktscanner + LLM-Qualitaetsfilter). Liegt nur auf Zweig arbeit/scanner-llm, NICHT verdrahtet. handel_erlaubt=false.
+    - Naechster Schritt: Zweig pruefen (Tests laufen lassen), dann in master uebernehmen und verdrahten.
+    - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/scanner_llm
+- [ ] **T-416 — Worktree-Umbauten pruefen: orb-multi, orbk-okx, moondev-live, phi-nvda:**
+    - Kontext: 4 Zweige mit ungemergten Commits (orb Mehr-Instrument, orbk Kraken->OKX, moondev OKX-Perp-Live-Pfad, phi-nvda LLM-Filter). orb handel_erlaubt=true (Auftrag Max 12.10), orbk false (Befund 14.10).
+    - Naechster Schritt: je Zweig Tests gruen pruefen, dann entscheiden ob merge-wuerdig und ob Max die Live-Pfade will.
+    - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/{orb,orbk,moondev_*,xperp}
 - [ ] **T-413 — Bedingung 4 llm_stunde: 6 Arme spiegeln nicht nach Q:**
     - Kontext: spiegelstand.py meldet 'llm_stunde kein Ziel (journal_zweitziel leer)'. Die Spur faehrt 6 Arme (laeufe/ema1h-{L,R}, rsi1h-{L,R}, st1h-{L,R}) ueber spur_buch, aber keine wachen.json der Arme traegt journal_zweitziel; Q:\Handel_Journal\llm_stunde wurde am 18.10.2026 angelegt, ist aber leer. Die Spur lief (letzter Arm-Lauf 18.10. 18:23), nur der Spiegel fehlt. Dazu: Haupt-wachen.json hatte kein herzschlag_max_minutes-Feld (Pruefer meldete 0 statt 180) - am 18.10.2026 ergaenzt (180, _herzschlag_regel-Vermerk).
     - Naechster Schritt: journal_zweitziel=Q:\Handel_Journal\llm_stunde in die 6 Arm-wachen.json eintragen (oder die Arme ueber die Haupt-wachen erben lassen), dann spiegelstand.py muss 45/45 melden.
