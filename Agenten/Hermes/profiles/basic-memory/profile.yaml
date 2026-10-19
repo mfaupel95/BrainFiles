@@ -1,3 +1,10 @@
 description: 'Arbeitet mit basic-memory: Wissensspeicher fuer Agents, Repo warten
   und integrieren.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
+    group: Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
+_ui_meta_revisions:
+  hermes-bots: 1

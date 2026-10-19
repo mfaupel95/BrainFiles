@@ -1001,14 +1001,14 @@ die Regel im Haus entscheiden lassen, ein Haus-Buch fuehren.**
 
 **Erste Spur: `moondev_funding`** (`Agenten/Handel/moondev_funding/`) - ein
 Papierbuch auf den Funding-Extremen von Hyperliquid. Die Zahlen liefert
-`src/nice_funcs_hl.get_funding_rates()` aus `Werkstatt/Repos/moon-dev-ai-agents`,
+`src/nice_funcs_hl.get_funding_rates()` aus `Werkstatt/moon-dev-ai-agents`,
 gerufen in DESSEN venv (dort liegen pandas und requests); die Regel stammt aus
 `fundingarb_agent.py` (ab +-100 %/Jahr) und ist hier deterministisch. Kein
 Sprachmodell, kein Orderpfad, ein `--live` verweigert. Sie laeuft als
 `moondev_funding` in `dauerlauf.SPUREN` und spiegelt nach
 `Q:\Handel_Journal\moondev_funding`.
 
-**Die vier Repos** liegen als Klone unter `Werkstatt/Repos/` (origin = Fork
+**Die vier Repos** liegen als Klone unter `Werkstatt/` (origin = Fork
 unter `mfaupel95`, upstream = Original):
 
 | Repo | Inhalt | venv / Zustand |
@@ -1096,7 +1096,7 @@ Live-Zweig.
 
 **Auftrag Max:** "Risk_agent als Vorfilter einbauen."
 
-**Was der Fremd-Agent tut.** `Werkstatt/Repos/moon-dev-ai-agents/src/agents/
+**Was der Fremd-Agent tut.** `Werkstatt/moon-dev-ai-agents/src/agents/
 risk_agent.py` ueberwacht dort jede offene Position und stoppt den Handel, wenn
 ueber die letzten **12 Stunden** ein Limit gerissen wird: `MAX_LOSS_USD = 25`,
 `MAX_GAIN_USD = 25`, `MAX_LOSS_PERCENT = 5`, `MAX_GAIN_PERCENT = 5`. Ob das

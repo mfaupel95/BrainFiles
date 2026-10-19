@@ -7,7 +7,7 @@ Fremde Repos werden lokal auf Max zugeschnitten, nicht zurückgespielt. Jedes Re
 
 ## Bereits erledigt (09.10.)
 - `auto-prediction-modest-birch-bridge`: `origin` (TraderAlice) entfernt, Zweig `research/prediction` bleibt lokal. Keine PR.
-- 13 Klone in `Werkstatt/Repos/` auf eigenen Fork `mfaupel95/<name>` gesetzt; `origin` heißt jetzt `upstream`, **kein `origin`** mehr, also kein versehentlicher Push: Scrapling, EasyCLIProxyAPI, basic-memory, caveman, claude-code, claudian, codex, deepseek-harness, everything-claude-code, gbrain, intelligent-trading-bot, obsidian-skills, one-skill-to-rule-them-all.
+- 13 Klone in `Werkstatt/` auf eigenen Fork `mfaupel95/<name>` gesetzt; `origin` heißt jetzt `upstream`, **kein `origin`** mehr, also kein versehentlicher Push: Scrapling, EasyCLIProxyAPI, basic-memory, caveman, claude-code, claudian, codex, deepseek-harness, everything-claude-code, gbrain, intelligent-trading-bot, obsidian-skills, one-skill-to-rule-them-all.
 - Bewusst NICHT angefasst: die 20 bestehenden Forks (Hausregel: `origin`=Fork, `upstream`=Original), Hermes-verwaltete Klone (`hermes-agent`, `plugins/*`, `skills/.archive/*`; `hermes update` braucht `origin`), TraderAlice-Mirror/Workspaces (du wolltest dort nicht forken), `CLIProxyAPI` in `MaxHirn/`.
 
 ## Offene Entscheidungen (Max)
@@ -26,7 +26,7 @@ Fremde Repos werden lokal auf Max zugeschnitten, nicht zurückgespielt. Jedes Re
 ## Phasen
 **Phase 0 – Inventur (je Repo ~15 min, lesend).** Start-Befehl, Abhängigkeiten, Börsen-/API-Anbindung, Testmodus, Lizenz. Ergebnis: Tabelle in `MaxHirn/Wissen/` (Bereich `wissen`, Befund melden) oder Werkstatt-Notiz.
 **Phase 1 – Handels-Adapter.** Ein gemeinsamer Auftrags-/Signalvertrag in `Agenten/Handel/` (Bereich `handel`, Sitzung mit Besitz abstimmen, Befund melden). Fremde Repos liefern nur Signale oder Papier-Aufträge; ausgeführt wird ausschließlich über bestehende Wachen (`wachen.json`, Herzschlag 180 min, Stop-Pflicht). Börsen: OKX-DEMO, Kraken nur lesend, Revolut-X lesend.
-**Phase 2 – Hermes-Agent je Repo.** Profil unter `Agenten/Hermes/profiles/<bot>/` (Muster wie `moon-dev-agents`, `jev-trader`), Start-Verzeichnis `Werkstatt/Repos/<repo>`, Skill unter `Agenten/Hermes/skills/brainfiles/` (Hausformat, Skill `skill`). Pro Rolle ein Topic für die Delegierung (Handel, Recherche, Gedächtnis, UI); Zuordnung in der Hermes-Konfiguration, Kanban-Board `handel` für Aufträge.
+**Phase 2 – Hermes-Agent je Repo.** Profil unter `Agenten/Hermes/profiles/<bot>/` (Muster wie `moon-dev-agents`, `jev-trader`), Start-Verzeichnis `Werkstatt/<repo>`, Skill unter `Agenten/Hermes/skills/brainfiles/` (Hausformat, Skill `skill`). Pro Rolle ein Topic für die Delegierung (Handel, Recherche, Gedächtnis, UI); Zuordnung in der Hermes-Konfiguration, Kanban-Board `handel` für Aufträge.
 **Phase 3 – UI-Start.** Pro Repo ein `start`-Skript (Muster `omnitrade.cmd ui`), Eintrag in Desktop-Verknüpfungen (`Agenten/Werkzeuge/desktop-verknuepfungen.ps1`). Für Repos ohne UI: OpenTerminalUI als gemeinsame Oberfläche vor `Handel/`.
 **Phase 4 – Test und Betrieb.** Je Repo: Papierlauf, Eintrag in die Systemprüfung/Wachen, Tests wie `handel-tests.ps1`. Live erst nach Freigabe durch Max, nie automatisch.
 

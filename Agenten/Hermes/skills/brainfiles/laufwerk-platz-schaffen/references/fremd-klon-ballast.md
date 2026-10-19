@@ -93,7 +93,7 @@ Ebenso wichtig: pruefen, ob eine **Routine diesen Baum vorwaerts spult**
 (`grep -rIn --include=*.py --include=*.ps1 -e "<pfad>" Routinen/ Werkzeuge/`).
 Ein Baum, den ein Update-Lauf per `git pull` pflegt, braucht sein `.git` — die
 Skill-Baeume unter `Agenten/Hermes/skills/` werden von keinem Lauf erfasst
-(`repos-updaten` deckt `Werkstatt/Repos`, der Fundus `MaxHirn/skills`).
+(`repos-updaten` deckt `Werkstatt`, der Fundus `MaxHirn/skills`).
 
 **b) Rumpf nur nach Verweis-Pruefung.** Die Skills eines Klons zeigen oft in den
 Rumpf hinein (Beispiel: drei Skills verwiesen auf `docs/openapi.yaml`,

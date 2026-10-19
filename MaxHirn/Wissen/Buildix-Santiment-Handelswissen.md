@@ -178,7 +178,7 @@ MCP-Weg ist **nicht** der einzige.
 
 | | |
 |---|---|
-| Repo | `Werkstatt/Repos/santiment` — Fork `mfaupel95/santiment` von `api-evangelist/santiment`; **keine Software**, nur Dokumentation + das vollständige GraphQL-Schema (83 KB, 179 Query-Felder) |
+| Repo | `Werkstatt/santiment` — Fork `mfaupel95/santiment` von `api-evangelist/santiment`; **keine Software**, nur Dokumentation + das vollständige GraphQL-Schema (83 KB, 179 Query-Felder) |
 | Zugang | `https://api.santiment.net/graphql`, POST, **anonym nutzbar** (Stufe `SANAPI FREE`) |
 | Werkzeug | `Agenten/Handel/santiment_daten.py` (nur Standardbibliothek, nur lesend) |
 | Tests | `Agenten/Handel/tests/test_santiment_daten.py` (10, ohne Netz) |

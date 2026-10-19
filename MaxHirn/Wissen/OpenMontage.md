@@ -32,7 +32,7 @@ Podcast-Repurposing, Screen-Demo, Talking-Head.
 
 - Fork `mfaupel95/openmontage` ← `calesthio/OpenMontage` (Original: 59.574
   Sterne, AGPL-3.0, zuletzt gepusht 06.09.2026).
-- Klon `Werkstatt/Repos/openmontage`, `origin`=Fork, `upstream`=Original,
+- Klon `Werkstatt/openmontage`, `origin`=Fork, `upstream`=Original,
   shallow (`git fetch --unshallow` vor einem Push in eigene Arbeit — siehe
   `repo-flotte`-Falle).
 - Hermes-Bot `openmontage` (`--clone`, `terminal.backend local`,
@@ -97,7 +97,7 @@ Schluessel gehoeren nach [[Zugaenge]], niemals in eine `.env` im Fremd-Repo-Baum
 ## Aufruf
 
 ```powershell
-cd Werkstatt\Repos\openmontage
+cd Werkstatt\openmontage
 .venv\Scripts\python.exe -c "from tools.tool_registry import registry; import json; registry.discover(); print(json.dumps(registry.support_envelope(), indent=2))"
 ```
 

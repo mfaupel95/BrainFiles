@@ -76,7 +76,7 @@ function Schreib($text) {
 
 function Test-EingebettetesGitRepo([string]$Pfad, [string]$Wurzel) {
     # In einem eingebetteten Repo fuehrt ein anderes .git die Versionierung
-    # (Werkstatt/Repos, Agenten/Handel/nautilus, Fremd-Klone in skills/).
+    # (Werkstatt, Agenten/Handel/nautilus, Fremd-Klone in skills/).
     if (Test-Path -LiteralPath $Pfad -PathType Container) {
         $ordner = $Pfad
     } else {

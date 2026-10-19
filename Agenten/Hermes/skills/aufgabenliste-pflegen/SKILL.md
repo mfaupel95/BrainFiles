@@ -319,6 +319,7 @@ assert lf(neu) == lf(text)          # 18 -> 18
   dem Block) hat die korrigierte Fassung stillschweigend wieder verworfen, und
   der Fix tut nichts. Nach zwei Zuweisungen auf dieselbe Variable im selben
   Skript: `grep -n "<name> =" <datei>` und zaehlen, welche uebrig bleiben soll.
+- **Bevor ein Eintrag eine LUECKE behauptet ("X fehlt", "keine Wache", "nicht vorhanden"), die Luecke im Baum pruefen** - `scripts/`, `cron/jobs.json`, `git log -- <pfad>`. Eine parallele Sitzung oder fruehere Arbeit kann sie schon geschlossen haben; ein falscher "fehlt"-Eintrag wird zur Aufgabe, die eine zweite Sitzung dann "loest" und dabei die vorhandene Loesung ueberschreibt oder dupliziert. Belegt: ein Eintrag "es gibt KEINE Junction-Wache" stand, waehrend `junction-wache.py` seit Tagen committet war und den Verlust schon gemeldet hatte - die Korrektur kostete einen Folge-Commit und einen falschen T-400. Wer eine Luecke eintragen will, sucht zuerst nach dem Artefakt (Datei, Cron-Eintrag, Commit), nicht nach dem Gefuehl.
 - **Die hoechste Nummer NIE aus dem Gedaechtnis nehmen.** Die eigene
   Memory-Notiz nennt einen Stand von gestern ("hoechste am 24.09.: T-056");
   gemessen am 29.09.2026 stand die Datei bei T-159, und die aus dem Kopf

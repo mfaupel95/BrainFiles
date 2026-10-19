@@ -31,12 +31,12 @@ Daraus folgen drei Regeln:
 
 **Nicht** fremd sind: eigene Spuren und Werkzeuge, Laufzeitstaende (unser Betrieb,
 nur nicht versioniert) und `Werkstatt` als Ganzes (das traegt eigene Projekte;
-nur die Klonsammlung `Werkstatt/Repos` steht in der Liste).
+nur die Klonsammlung `Werkstatt` steht in der Liste).
 
 ## Die Liste
 
 | Pfad | Art | Herkunft | Regel |
-|---|---|---|---|
+| `Agenten/Werkzeuge/jevgrep/node_modules` | Fremd-Paket | npm-Paket @dzhng/jevgrep 0.7.0 samt Abhaengigkeiten (typescript, web-tree-sitter) | nur benutzen, nie aendern |
 | `Agenten/Handel/OpenAlice` | Fremdprojekt | Klon eines fremden Quant-Frameworks (eigene workspaces/, runs/, .claude/) | nur lesen |
 | `Agenten/MCP-Server/ant.dir.ant.anthropic.filesystem` | Fremd-Klon | ueber ant installierter MCP-Server | nur lesen |
 | `Agenten/MCP-Server/ant.dir.cursortouch.windows-mcp` | Fremd-Klon | ueber ant installierter MCP-Server (Windows-Zugriff vom Host) | nur lesen |
@@ -57,7 +57,7 @@ nur die Klonsammlung `Werkstatt/Repos` steht in der Liste).
 | `Agenten/Hermes/skills/onchainos-skills` | Fremd-Klon | Klon; traegt die vier geladenen okx-*-Skills | nur lesen |
 | `Agenten/Hermes/skills/one-skill-to-rule-them-all` | Fremd-Klon | Klon; traegt den geladenen Skill task-observer | nur lesen |
 | `Agenten/Hermes/skills/one-skill-to-rule-them-all-main` | Fremd-Klon | Klon (Zweitfassung) | nur lesen |
-| `Werkstatt/Repos` | Klonsammlung | 47 Klone fremder Projekte, je mit origin=Fork und upstream=Original | nur lesen; Pflege ausschliesslich ueber Agenten/Werkzeuge/repos-updaten.py |
+| `Werkstatt` | Klonsammlung | 53+ Klone fremder Projekte direkt in Werkstatt (seit 14.10.2026; vorher Werkstatt/Repos), nur Git-Ordner zaehlen | nur lesen; Pflege ausschliesslich ueber Agenten/Werkzeuge/repos-updaten.py |
 | `Werkstatt/Ausgemustert` | Stillgelegt | stillgelegte Anlagen (u.a. die alte Hermes-Installation samt eigener Python-Laufzeit) | nur lesen |
 | `Werkstatt/repos-verschoben-aus-skills` | Fremd-Klone | am 21.09.2026 aus Agenten/Hermes/skills ausgelagerte Fremd-Klone (unsloth, nautilus_trader, EasyCLIProxyAPI, chromaprint, public-apis, acoustid-index) | nur lesen |
 | `Werkstatt/Worktrees` | Klonsammlung | Arbeitskopien (worktrees) der eigenen Forks, u.a. copilot-worktrees | nur lesen |
@@ -68,13 +68,9 @@ nur die Klonsammlung `Werkstatt/Repos` steht in der Liste).
 | `Werkstatt/FinRL` | Fremd-Klon | geklontes Fremd-Repo (Financial Reinforcement Learning) | nur lesen |
 | `Werkstatt/RLTrader` | Fremd-Klon (unsere Arbeit) | notadamking/RLTrader (github), Vorgaenger von TensorTrade - upstream seit 2019 ruhend; Klon mit eigenem .git, Fernsicherung als privates Repo mfaupel95/rltrader (01.10.2026) | nur lesen; Betrieb ueber rltrader.cmd (Docker, CPU) |
 | `Werkstatt/intelligent-trading-bot` | Fremd-Klon | geklontes Fremd-Repo (Handelsbot) | nur lesen |
-| `Werkstatt/skillspector` | Fremd-Klon | geklontes Fremd-Repo (Sicherheitsscanner fuer Agent-Skills) | nur lesen |
-| `Werkstatt/trailofbits-skills` | Fremd-Klon | geklontes Fremd-Repo (Skill-Marktplatz von Trail of Bits) | nur lesen |
-| `Werkstatt/security-skills-claude-code` | Fremd-Klon | geklontes Fremd-Repo (Security-Skills) | nur lesen |
-| `Werkstatt/freqtrade` | Fremd-Klon | Klon des freqtrade-Frameworks | nur lesen |
+| `Werkstatt/freqtrade` | Fremd-Klon | Klon des fre freqtrade-Frameworks | nur lesen |
 | `Werkstatt/OmniRoute` | Fremd-Klon (in Betrieb) | Quell-Klon von OmniRoute - laeuft als Router auf Port 20128 | nur lesen; Start ueber Agenten/Routinen/omniroute-start.ps1 |
 | `Werkstatt/omnitrade` | Fremd-Klon (unsere Arbeit) | Rust-Workspace omnitrade (Fork mfaupel95/omnitrade, upstream jackby03) | nur lesen; Arbeit ueber das eigene Repo |
-| `Agenten/Werkzeuge/jevgrep/node_modules` | Fremd-Paket | npm-Paket @dzhng/jevgrep 0.7.0 samt Abhaengigkeiten (typescript, web-tree-sitter) | nur benutzen, nie aendern |
 
 ## Wie man sie aendert
 

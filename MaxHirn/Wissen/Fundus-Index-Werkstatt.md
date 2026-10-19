@@ -1,4 +1,4 @@
-# Fundus-Index - Werkstatt/Repos
+# Fundus-Index - Werkstatt
 
 Erzeugt von `Agenten/Werkzeuge/fundus-suche.ps1 -Index`. Nicht von Hand pflegen.
 

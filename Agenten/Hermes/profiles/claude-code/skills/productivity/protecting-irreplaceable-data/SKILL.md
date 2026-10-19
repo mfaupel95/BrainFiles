@@ -277,10 +277,20 @@ their own coverage are worse than none.
   line endings** (e.g. a PowerShell regex split across lines with `\r?`
   escapes — rendered lossy, so a patch built from the read copy corrupts the
   file while `diff` still looks plausible). Before the FIRST read of a Tier-1
-  file, `cp` it to `.bak-YYYYMMDD`; build the edit against the backup copy
-  (byte-exact: Python on raw bytes, or line-splice from the backup), never
-  against the tool's rendered view; verify the untouched head is byte-identical
-  to the backup and the diff shows only the intended change.
+  file, `cp` it to `.bak-YYYYMMDD`; build the edit against a byte-exact copy
+  (Python on raw bytes, or line-splice), never against the tool's rendered view;
+  verify the untouched head is byte-identical to that copy and the diff shows
+  only the intended change.
+  **That backup is a baseline for the FIRST write only — never the source for a
+  later one.** Once it is one edit round old it no longer holds the current
+  content, so rebuilding the file from it silently reverts your own earlier
+  addition — while the diff against that same stale backup still shows a clean
+  "only additions" result, so the check passes on a file that just lost content.
+  Before every further write, take a fresh copy of the CURRENT file as the
+  pre-write baseline (or hold the intended final content in one place and write
+  it whole each time), and confirm the result by counting the blocks/lines that
+  must be present — a diff against the original backup cannot reveal a dropped
+  edit.
 - **Cloned repos with their own `.git` inside a whitelisted vault become gitlink submodules and break `git add -A`.** A clone under `MaxHirn/skills/`, `MaxHirn/CLIProxyAPI/` or `Agenten/Handel/OpenAlice/` is taken as an embedded git repository — the Zwischenstand (`git add -A` → `git commit-tree`) then fails with `warning: adding embedded git repository` and a silent Exit 1 / empty log. The whitelist's `!*/` traversability re-exposes ignored dirs, so `**` alone does not hide them. Keep Fremd-Repos outside the versioned tree when possible; if they must live inside it, add an explicit ignore for the root (`MaxHirn/skills/`, `MaxHirn/CLIProxyAPI/`, `Agenten/Handel/OpenAlice/`) in the `.gitignore` Rückausnahmen so `git status` stays silent.
 
 ## Reference

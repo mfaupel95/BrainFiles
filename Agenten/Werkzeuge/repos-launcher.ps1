@@ -1,4 +1,4 @@
-# Oeffnet Git-Repositories aus Werkstatt\Repos in Windows Terminal oder GUI.
+# Oeffnet Git-Repositories aus Werkstatt in Windows Terminal oder GUI.
 #
 # UMGEZOGEN am 18.09.2026: lag vorher unter Agenten\Routinen\ - dort gilt jede
 # .ps1 als Bus-Routine, und dieses Skript ist keine (es ist ein Werkzeug).
@@ -39,7 +39,7 @@ $ErrorActionPreference = 'Stop'
 
 $agenten = Split-Path -Parent $PSScriptRoot
 $brainFiles = Split-Path -Parent $agenten
-$reposRoot = Join-Path $brainFiles 'Werkstatt\Repos'
+$reposRoot = Join-Path $brainFiles 'Werkstatt'
 
 $uebersprungen = New-Object System.Collections.Generic.List[string]
 

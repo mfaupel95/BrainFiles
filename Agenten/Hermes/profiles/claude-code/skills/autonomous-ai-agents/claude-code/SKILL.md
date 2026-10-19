@@ -15,6 +15,17 @@ metadata:
 
 Delegate coding tasks to [Claude Code](https://code.claude.com/docs/en/cli-reference) (Anthropic's autonomous coding agent CLI) via the Hermes terminal. Claude Code v2.x can read files, write code, run shell commands, spawn subagents, and manage git workflows autonomously.
 
+## When to Use
+
+Use this skill when:
+- Delegating a coding task to Claude Code (fix, refactor, review, test, document)
+- Working with Claude Code CLI features — subcommands, flags, settings, hooks, MCP, subagents
+- Maintaining the Claude Code CLI installation — channel switch, update verification, mod-test diagnosis
+
+Do NOT use this skill for:
+- Non-Claude-Code CLI work (use the appropriate tool skill)
+- Tasks that do not involve Claude Code at all
+
 ## Prerequisites
 
 - **Install:** `npm install -g @anthropic-ai/claude-code`
@@ -149,6 +160,9 @@ To accept: `tmux send-keys -t <session> Down && sleep 0.3 && tmux send-keys -t <
 | `claude plugin` / `claude plugins` | Manage Claude Code plugins (enable, disable, configure, `details`, `eval`) |
 | `claude plugin test <dir>` | Run a plugin's/mod's `*.test.ts` in an engine-like child process. Requires `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` |
 | `claude auto-mode` | Inspect auto mode classifier configuration |
+
+See `references/cli-maintenance.md` for the CLI channel-switch procedure, update verification
+(checksum + commit vs manifest), and mod-test failure diagnosis.
 
 ## Print Mode Deep Dive
 
@@ -741,6 +755,7 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 11. **`--bare` skips OAuth** — requires `ANTHROPIC_API_KEY` env var or an `apiKeyHelper` in settings.
 12. **Context degradation is real** — AI output quality measurably degrades above 70% context window usage. Monitor with `/context` and proactively `/compact`.
 13. **`claude plugin test` refuses without `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`** — function hooks (the module format plugins are written in) are early access, so the command prints a message that reads like a broken build and exits. Set the variable in the same shell: `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude plugin test <dir>`. Each test file imports its kit from `claude-code/testing`.
+14. **Mod-test failures need classification, not fixing** — a red suite is not automatically a code bug. See `references/cli-maintenance.md` for the diagnosis decision tree (timeout → host slowness, `no implementation for X` → engine-version gap, auth/platform mismatch → mock-environment specificity) and the CLI channel-switch/update-verification procedure.
 
 ## Rules for Hermes Agents
 

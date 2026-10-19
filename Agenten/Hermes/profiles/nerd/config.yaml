@@ -9,7 +9,7 @@ _config_version: 50
 agent: {}
 terminal:
   backend: local
-  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\claude-red
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\claude-red
 providers:
   llamacpp:
     default_model: gemma-4-E4B-it-OBLITERATED-Q8_0

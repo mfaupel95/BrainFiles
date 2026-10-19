@@ -166,7 +166,7 @@ die Hermes-Config im Einzelnen in `hermes-config-ops`.
   (`git check-ignore -v --no-index <pfad>` je Datei) und einzeln freigeben — eine
   Freigabezeile mit dem Grund daneben, nicht ein pauschales `!*.vbs`.
   **Dieselbe Falle im Fremd-Klon, eine Ebene tiefer:** eine Hausdatei, die im
-  Repo-Ordner unter `Werkstatt/Repos/<repo>` entsteht (eigenes Werkzeug, eigene
+  Repo-Ordner unter `Werkstatt/<repo>` entsteht (eigenes Werkzeug, eigene
   To-do-Notiz), ist dort `??` - der Klon hat ein EIGENES Repo, also schuetzt die
   BrainFiles-`.gitignore` sie nicht und die Sicherung nimmt sie nicht mit. Vor dem
   Melden „fertig" je selbstgebauter Datei `git -C <klon> status --porcelain --

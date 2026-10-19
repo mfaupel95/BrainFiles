@@ -197,6 +197,50 @@ Note: The iron-proxy is required only for outbound connections; local file reads
   egress disabled with no iron-proxy binary (correct on Windows), 11 MCP servers,
   most enabled, config v50.
 
+## Legacy custom_providers (doctor warning, all profiles)
+
+`hermes doctor` warns per profile when a `custom_providers:` list entry has no `providers:` twin:
+"Legacy custom_providers entry 'smart' has no providers: twin (still read from the retired list store)".
+The check (`hermes_cli/doctor_config.py::_drift_legacy_custom_providers`) compares endpoint URLs
+AS TEXT (`str(url).strip().rstrip("/").lower()`), so the same server spelled
+`http://localhost:20128/v1` and `http://127.0.0.1:20128/v1` reads as TWO endpoints → warning.
+
+Fix per doctor: move the entry into `providers:` and delete it from the list. The key comes from the
+display name (`config_migrations._migrate_to_12`: name lowercased, spaces→dashes, parens stripped).
+Entry shape is produced by `_custom_provider_entry_to_provider_config` (hermes_cli/config_providers.py):
+`api` = base_url, plus name/key_env/models and `default_model` from `model`. Run it profile by profile:
+
+    cp config.yaml config.yaml.bak-<date>            # once per profile
+    hermes -p <profile> config set providers.<key>.api <base_url>
+    hermes -p <profile> config set providers.<key>.name <name>
+    hermes -p <profile> config set providers.<key>.key_env <env var>
+    hermes -p <profile> config set providers.<key>.default_model <model>
+    hermes -p <profile> config set 'providers.<key>.models.<model>' '{}'   # empty model map
+    hermes -p <profile> config unset custom_providers
+
+Notes: `hermes config set` takes ONE key/value (~10-12 s per call on a loaded host — 17 profiles
+≈ 20 min, run as a background script, not a foreground loop). `--args`/dot-paths with a slash
+(`models.auto/smart`) work. Never DELETE a legacy entry as "just a duplicate of an existing provider" —
+compare the KEY VARS first (names only, never the values): a twin can carry a different credential.
+Verify per profile (file: `providers.<key>` present, `custom_providers:` gone; `hermes -p <profile> doctor`:
+the warning is gone; the remaining doctor issues are npm vulns, which `hermes doctor --fix` does not clear
+because they need an upstream lockfile bump).
+
+## Filesystem checkpoints above the cap (disk, not corruption)
+
+`hermes doctor` warns when `/rollback` snapshots exceed the size cap (seen: 2.4 GB
+across 5 projects against a 500 MB cap). The store is a shadow git repo per project,
+so most of the weight is usually unreachable objects, not snapshots.
+
+    hermes checkpoints status     # per-project breakdown: COMMITS / LAST TOUCH / STATE
+    hermes checkpoints prune      # orphan + stale, GC the store; keeps one snapshot per project
+
+`prune` is the conservative fix — it deleted 0 named snapshots and reclaimed 2.4 GB
+(2.4 GB -> 2.6 MB) with all 5 projects intact; the doctor warning cleared on the next
+run. `hermes checkpoints clear` wipes all rollback history, so reach for `prune` first.
+If /rollback is not used at all, `hermes config set checkpoints.enabled false` is the
+permanent answer.
+
 ## Other update warnings (mostly benign)
 
 - "Checkout is current, but the venv is unhealthy: venv python missing" —

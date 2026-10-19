@@ -47,7 +47,7 @@ class Pfadbau(unittest.TestCase):
         self.assertEqual(quellen.pfad_in_wurzel("projekte", "Checkpoints"),
                          "Werkstatt/Projekte/Checkpoints")
         self.assertEqual(quellen.pfad_in_wurzel("repos", "Kronos"),
-                         "Werkstatt/Repos/Kronos")
+                         "Werkstatt/Kronos")
 
     def test_unbekannte_kennung_faellt_auf_projekte_zurueck(self):
         self.assertEqual(quellen.pfad_in_wurzel("gibtsnicht", "x"),
@@ -97,7 +97,7 @@ class ZeilenSindBenannt(unittest.TestCase):
                 self.assertNotIn(name, fremde)
 
     def test_alle_repos_klone_sind_fremd(self):
-        """Die Klonsammlung ist der zweite grosse Block - Werkstatt/Repos."""
+        """Die Klonsammlung ist der zweite grosse Block - Werkstatt."""
         repos = [z for z in self.zeilen if z.bereich == "REPOS"]
         self.assertGreater(len(repos), 20)
         self.assertEqual(len(fenster.fremde_zeilen(repos)), len(repos))

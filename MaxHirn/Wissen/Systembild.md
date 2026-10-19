@@ -39,12 +39,12 @@ Documents: BrainFiles 38 (ohne Junctions), Windows11 16, GitHub 16.
 
 ## Kandidaten (Hypothesen, Stand der Messung)
 
-Zweitkopie 41 GB, Ollama-Blobs gegen GGUF, Docker-Datenträger 54 GB, Klone doppelt in Documents\GitHub und Werkstatt\Repos, zwei pnpm-Speicher, 25 .bak-Dateien und `nul` in der Wurzel, "(Kopie)"-Ordner in Windows11.
+Zweitkopie 41 GB, Ollama-Blobs gegen GGUF, Docker-Datenträger 54 GB, Klone doppelt in Documents\GitHub und Werkstatt, zwei pnpm-Speicher, 25 .bak-Dateien und `nul` in der Wurzel, "(Kopie)"-Ordner in Windows11.
 
 ## Pruefergebnisse 30.09.2026 (Task 2 und 3, nur gemessen)
 
 - **Widerlegt:** `O:\MaxHirn-Zweitkopie` (41 GB) ist kein Doppelgaenger, sondern die taegliche Zweitkopie (`Routinen/zweitkopie.ps1`, 21:00, siehe [[Routinen]]). Bleibt.
-- **Klone Documents\GitHub gegen Werkstatt\Repos:** nur `obsidian-skills` steht auf demselben Commit (Werkstatt-Klon veraendert). Alle anderen sieben Paare stehen auf verschiedenen Staenden, teils mit lokalen Aenderungen (`Dirty`). Keine sichere Loeschung ohne Einzelentscheidung. `intelligent-trading-bot` liegt in `Werkstatt` und `Werkstatt\Repos` auf demselben Stand, beide veraendert.
+- **Klone Documents\GitHub gegen Werkstatt:** nur `obsidian-skills` steht auf demselben Commit (Werkstatt-Klon veraendert). Alle anderen sieben Paare stehen auf verschiedenen Staenden, teils mit lokalen Aenderungen (`Dirty`). Keine sichere Loeschung ohne Einzelentscheidung. `intelligent-trading-bot` liegt in `Werkstatt` und `Werkstatt` auf demselben Stand, beide veraendert.
 - **`Windows11\* (Kopie)`:** keine echten Kopien, meist Teilmengen (z. B. Maximilian 6,3 GB gegen 1,4 GB, Native Instruments 6,7 gegen 1,3 GB). Nicht als Duplikat loeschbar ohne Hash-Vergleich.
 - **C:-Kandidaten, gemessen:** `.cache\huggingface` 15,1 GB (53 Dateien), `.docker\models` 6,5 GB, `Hermes.alt-20260916` 3,6 GB, `Packages\Cinebench` 4,4 GB, `Packages\PictureGuide` 2,1 GB, `Roaming\npm\node_modules` 5,3 GB, `pnpm` 4,3 GB, `Roaming\Claude\vm_bundles` 8,3 GB (von der App verwaltet, nicht anfassen).
 - Docker, Hermes, Ollama und llama-server laufen; Eingriffe an deren Ordnern erst nach Beenden.

@@ -279,7 +279,7 @@ K=configs/config-hermes-walk-forward.json     # oder config-hermes-in-sample.jso
 Der ganze Stand steht danach in einer Zeile: `.venv/Scripts/python.exe itb_pruefstand.py`
 (braucht kein Netz, aendert nichts) — dieselbe Zeile ist der Startbefehl im Startfenster
 `Agenten/Werkzeuge/repos-zentrale`. Der Klon haengt dort als Verknuepfung
-`Werkstatt/Repos/intelligent-trading-bot` -> `Werkstatt/intelligent-trading-bot`, damit die
+`Werkstatt/intelligent-trading-bot` -> `Werkstatt/intelligent-trading-bot`, damit die
 absoluten Pfade im venv gueltig bleiben.
 
 **Zwei Fallen beim Nachrechnen.** (1) `predictions.txt` und `signal_models.txt` werden
@@ -1111,7 +1111,7 @@ Kill, der Gewinner schliesst, ist ein Messfehler der Kurve, kein Markturteil.
 
 ## Literatur-Abgleich: Krypto-Momentum (13.10.2026)
 
-Neue Literatur im Repo `Werkstatt/Repos/Moon-Dev-Code/strategy_pdfs/`:
+Neue Literatur im Repo `Werkstatt/Moon-Dev-Code/strategy_pdfs/`:
 `gbadebo-2026-momentum-crypto.pdf` (Gbadebo 2026, „Momentum Trading in
 Cryptocurrencies: A Comparative Study of Time-Series and Cross-Sectional
 Strategies", Buhalterinės apskaitos teorija ir praktika, DOI

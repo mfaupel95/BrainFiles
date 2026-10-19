@@ -118,7 +118,7 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
 Fallen:
 
 - **Mehrere Skills aus einem Klon: parallele Delegation mit Adoptionsauftrag.**
-  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt/Repos) ins Spiel, ist je
+  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt) ins Spiel, ist je
   Skill dieselbe Adaption faellig: Kern behalten, fremde Werkzeugnamen auf
   Hermes-Werkzeuge umsetzen, auf ~6.000 Zeichen kuerzen, Beschreibung kurz und
   selbsttragend. Harte Grenze fuer die Beschreibung: **60 Zeichen gesamt**, ein

@@ -1,6 +1,6 @@
 ---
 name: repos-zentrale
-description: "Use when ein Repo aus Werkstatt/Repos gestartet wird."
+description: "Use when ein Repo aus Werkstatt gestartet wird."
 license: MIT
 metadata:
   hermes:
@@ -8,10 +8,10 @@ metadata:
     related_skills: [repo-flotte, fremd-agenten-betrieb, fremdrepo-agent-start]
 ---
 
-# Repos-Zentrale: Projekte unter Werkstatt/Repos erreichen
+# Repos-Zentrale: Projekte unter Werkstatt erreichen
 
 `Agenten/Werkzeuge/repos-zentrale` ist das Startfenster fuer alle Projekte unter
-`Werkstatt/Repos` (28 Repos, ein Hermes-Bot je Repo). Es ersetzt das Suchen nach
+`Werkstatt` (28 Repos, ein Hermes-Bot je Repo). Es ersetzt das Suchen nach
 dem "richtigen" Startweg je Repo: die Befehle stehen im Manifest, die Gruppen
 sagen, ob etwas fehlt.
 

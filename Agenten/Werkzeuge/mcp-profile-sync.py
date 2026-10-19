@@ -112,7 +112,7 @@ def soll_block(profil, abw, haupt):
     repo = mein.get("projectatlas_repo")
     if repo:
         ersetze.setdefault("projectatlas", []).append(
-            ["Werkstatt\\omnitrade\\", "Werkstatt\\Repos\\%s\\" % repo])
+            ["Werkstatt\\omnitrade\\", "Werkstatt\\%s\\" % repo])
     namen = {n for n, _ in haupt}
     unbekannt = (set(ersetze) | set(mein.get("einschluss") or [])) - namen
     if unbekannt:

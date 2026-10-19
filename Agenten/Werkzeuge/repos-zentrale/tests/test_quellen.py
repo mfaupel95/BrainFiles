@@ -40,10 +40,15 @@ class WurzelnTest(unittest.TestCase):
         for kennung in ("werkstatt", "projekte", "handel"):
             self.assertFalse(quellen.wurzel_von(kennung).nur_git, kennung)
 
-    def test_repos_und_projekte_haengen_an_verschiedenen_pfaden(self):
-        self.assertNotEqual(
+    def test_repos_und_werkstatt_teilen_wurzel_trennen_ueber_git(self):
+        # Seit 14.10.2026 liegen die Klone direkt in Werkstatt: REPOS und
+        # WERKSTATT lesen dieselbe Wurzel und trennen sich ueber die Git-Regel
+        # (REPOS zeigt nur Klone, WERKSTATT laesst Klone aus).
+        self.assertEqual(
             quellen.wurzel_von("repos").pfad_rel, quellen.wurzel_von("werkstatt").pfad_rel
         )
+        self.assertTrue(quellen.wurzel_von("repos").nur_git)
+        self.assertTrue(quellen.wurzel_von("werkstatt").ohne_git)
         self.assertEqual(
             quellen.wurzel_von("projekte").pfad_rel, "Werkstatt/Projekte"
         )
@@ -70,10 +75,16 @@ class WurzelnTest(unittest.TestCase):
         for name in (".venv", "node_modules", "__pycache__", ".git", "cache"):
             self.assertIn(name, quellen.UEBERALL_OHNE)
 
-    def test_werkstatt_sperrt_repos_und_projekte_aus(self):
-        ohne = quellen.wurzel_von("werkstatt").ohne
-        self.assertIn("Repos", ohne)
-        self.assertIn("Projekte", ohne)
+    def test_werkstatt_ohne_git_repos_aus(self):
+        # Seit 14.10.2026 liegen die Klone direkt unter Werkstatt - der Bereich
+        # REPOS zeigt sie (nur_git), WERKSTATT muss sie auslassen (ohne_git),
+        # sonst stuenden dort Doppelzeilen.
+        repos = quellen.wurzel_von("repos")
+        self.assertTrue(repos.nur_git)
+        werkstatt = quellen.wurzel_von("werkstatt")
+        self.assertTrue(werkstatt.ohne_git)
+        self.assertNotIn("Repos", werkstatt.ohne)  # Repos-Ebene gibt es nicht mehr
+        self.assertIn("Projekte", werkstatt.ohne)
 
 
 if __name__ == "__main__":

@@ -320,6 +320,12 @@ sie werden nur gelesen oder per `hermes sessions import` einseitig übernommen.
   `tail`) zeigt nur den Rest. Am 29.09.2026 standen so 7 sichtbare Zeilen fuer
   144 wirkliche Sitzungen — der Ernstlauf versteckte 144 statt der erwarteten 7.
   Vorher `| wc -l` nehmen und die Zahl nennen, sonst ist die Wirkung ungewollt.
+  Die Zahl ist eine GROESSE, kein Versprechen: laeuft eine parallele Sitzung,
+  kann der Ernstlauf um wenige Sitzungen abweichen (gemessen 89 dry-run / 87
+  archived) — Sitzungen werden zwischen den beiden Laeufen beendet oder neu
+  angelegt. Abweichung im einstelligen Bereich ist Bewegung, kein Fehler;
+  Beleg ist der Zaehler aus `beendete_sitzungen.py` vorher/nachher, nicht die
+  Trockenlauf-Zahl.
 - **`archive` hat kein Gegenstueck im CLI.** Es gibt `archive`, aber kein
   `unarchive` (`hermes sessions --help`); umkehrbar heisst hier: in `state.db`
   `UPDATE sessions SET archived=0` (Spalte existiert, Tabelle `sessions`).

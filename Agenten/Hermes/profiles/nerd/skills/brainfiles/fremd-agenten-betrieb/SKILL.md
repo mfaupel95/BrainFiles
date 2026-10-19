@@ -85,7 +85,7 @@ Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufruf
    die neuesten Solana-Launches (kein Schluessel). Die Spalten auf das vom
    Rest des Codes erwartete Schema abbilden (hier: Token Address / Epoch
    Time / Time Found / Birdeye Link), damit nur die eine Funktion angefasst
-   wird. Werkstatt/Repos ist gitignored - Aenderung per Staging-Kopie in der
+   wird. Werkstatt ist gitignored - Aenderung per Staging-Kopie in der
    BrainFiles-Wurzel patchen, py_compile + Kurzlauf, dann `cp` zurueck und im
    Fork committen/pushen (voller Klon, origin=Fork).
 7. **Two-key trading agents: run them paper with the live path gated.** Ein
@@ -266,7 +266,7 @@ Erst zaehlen, dann eine Installation zusagen — die Pruefung kostet zwei Aufruf
 
 ## Werkstatt-Schreibzugriff
 
-Repos unter `Werkstatt/Repos/` sind Junctions nach O: — `patch`/`write_file`
+Repos unter `Werkstatt/` sind Junctions nach O: — `patch`/`write_file`
 verweigern dort mit „outside HERMES_WRITE_SAFE_ROOT". Zwei Muster, je nach
 Aufgabe:
 
@@ -290,7 +290,7 @@ Aufgabe:
   Wurzel) anlegen/aendern, nach jeder Aenderung per
   `terminal("cp <staging-pfad> <Werkstatt-Zielpfad>")` synchronisieren und
   dort mit `py_compile` sowie einem echten Kurzlauf pruefen. Staging-Datei
-  am Ende loeschen. Werkstatt/Repos ist ohnehin komplett `.gitignore`t —
+  am Ende loeschen. Werkstatt ist ohnehin komplett `.gitignore`t —
   die CRLF/git-diff-Sorge des ersten Musters entfaellt hier.
 
 ## Weiterfuehrend

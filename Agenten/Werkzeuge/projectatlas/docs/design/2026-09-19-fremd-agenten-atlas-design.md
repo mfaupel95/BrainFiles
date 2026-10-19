@@ -9,7 +9,7 @@
 
 ## Zweck
 
-Die neun unter `Werkstatt/Repos/` liegenden Fremd-Agenten-Repos haben
+Die neun unter `Werkstatt/` liegenden Fremd-Agenten-Repos haben
 keine ProjectAtlas-Karte: ein Agent (Bot oder Haus-Sitzung) findet die
 richtige Datei dort nur durch breites Lesen. Ziel von A: **jedes dieser
 Repos kartieren und jeden vorhandenen Repo-Bot an seine Karte haengen** —
@@ -21,7 +21,7 @@ zu wiederholen.
 - Laufzeit: `Agenten/Werkzeuge/projectatlas/bin/projectatlas.exe` v0.4.5,
   `runtime-info` meldet `capabilities: [cli, mcp, sqlite, toon, symbol-index,
   text-search, watch, token-telemetry]`, 43 `atlas_*`-MCP-Werkzeuge. ✓
-- Kartiert: 20 von 30 Repos unter `Werkstatt/Repos/` (`.projectatlas/`
+- Kartiert: 20 von 30 Repos unter `Werkstatt/` (`.projectatlas/`
   vorhanden), groesste Karten `codex` 1,9 GB, `odysseus` 0,5 GB.
 - **Nicht kartiert (9):** Agent-Reach, agent-trade-kit,
   awesome-systematic-trading, Harvard-Algorithmic-Trading-with-AI,

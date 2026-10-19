@@ -35,6 +35,15 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:9900/' -Method Post -ContentType 'appli
 - Verwende unter Windows keine PID-Lebendprobe via os.kill(pid, 0): das kann Prozesse beenden. SkillsBot verwendet eine lebenslang gehaltene OS-Dateisperre (msvcrt.locking / fcntl.flock); die Lockdatei bleibt bestehen, eine stale PID ist keine Sperre. Regressionen in Agenten/Bus/tests/test_skillsbot_sicherheit.py.
 - Fuehre den Task mit pythonw.exe statt Konsolen-Python aus. skillsbot.ps1 registriert Anmeldung plus Wiederholung alle zwei Minuten mit IgnoreNew und StartWhenAvailable. Nach UAC-Registrierung Taskdefinition zuruecklesen und Prozess pruefen. Task-Code 0xC000013A belegt Abbruch, nicht Git-Loeschung. Ein Commit allein beendet keine Prozesse.
 - Telegram-Ausgaben als Klartext nach UTF-16-Laenge teilen; HTML-Escaping vor dem Split zerreisst Entities. --probe muss bei fehlenden Voraussetzungen oder Telegram-Fehler einen Nichtnull-Exit liefern, auch wenn A2A antwortet. Identischen SKILLSBOT_TOKEN/TELEGRAM_TOKEN vor dem Polling ablehnen.
+
+## Token-Minimierung in Multi-Agent-Profile
+
+Wenn mehrere Agenten (Claude, Hermes, SkillsBot) auf derselben Skill-Schicht laufen, entstehen Token-Kosten durch Redundanz. Verfahren:
+
+1. **Redundanz erkennen**: Skills mit gleicher/ähnlicher Beschreibung identifizieren (z.B. mehrere Skills mit gemeinsamem Präfix — prüfen, ob ein Hub-Skill die anderen konsolidieren kann).
+2. **Größe messen**: `du -sh` je Skill, Top-20 auflisten — große Skills (>100 KB) sind Kandidaten für Splitting oder Komprimierung.
+3. **Konsolidierung vorschlagen, nicht durchführen**: Vorschlag mit Begründung machen, dann auf Freigabe warten.
+4. **Modell-Evaluation**: Kostenlose/lokale Modelle für nicht-kritische Profile evaluieren — kritische Profile (Handel, Sicherheit) bleiben auf hochwertigen Modellen.
 - Antworten koennen Emojis enthalten: stdout vor dem Drucken auf utf-8/replace stellen (`sys.stdout.reconfigure`), sonst UnicodeEncodeError in cp1252-Konsolen.
 
 ## Hermes-CLI richtig aufrufen (Windows, Stand 11.09.2026)

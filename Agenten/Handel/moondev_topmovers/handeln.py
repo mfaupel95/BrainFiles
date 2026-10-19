@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `new_or_top_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` macht genau das:
+Der Agent `new_or_top_agent` aus `Werkstatt/moon-dev-ai-agents` macht genau das:
 er sieht sich die neuen und die staerksten Coins der letzten 24 Stunden an. Sein Urteil faellt aber in einem Sprachmodell, und seine
 Daten kommen ueber die CoinGecko-Pro-API (Schluessel noetig). Beides laesst sich
 hier nicht sauber nachbilden, deshalb:

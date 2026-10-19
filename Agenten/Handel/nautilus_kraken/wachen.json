@@ -31,8 +31,8 @@
   "signalquelle": "kopier",
   "_einfall_herzschlag": "Faellt der Kraken-Quote-Feed aus, haelt die Spur ihren Herzschlag ueber die Kopier-Daten am Leben (sie braucht Kraken nicht), statt still totzugehen. Nur Frist-Ausstiege werden im Fallback gerechnet - ohne Kurse ruhen Stop und Trailing.",
   "einfall_herzschlag_kopier": true,
-  "herzschlag_max_minuten": 180,
-  "_herzschlag_regel": "REGEL 19.09.2026 (T-004): 180 Minuten, auch LIVE. Die alte 45-Minuten-Grenze fuer Live-Spuren ist aufgehoben - nach einem Rechner-Ausfall wuerde sie die Position OHNE Handelsentscheidung flachstellen und eine Runde buchen, die keine war. Der Waechter startet den Dauerlauf neu, eine Stoerung heilt in rund 32 Minuten von selbst. systempruefung.ps1 Block 11b prueft 180 fuer alle Spuren.",
+  "herzschlag_max_minuten": 45,
+  "_herzschlag_regel": "REGEL 19.09.2026 (T-004): 180 Minuten, auch LIVE. Die alte 45-Minuten-Grenze fuer Live-Spuren ist aufgehoben - nach einem Rechner-Ausfall wuerde sie die Position OHNE Handelsentscheidung flachstellen und eine Runde buchen, die keine war. Der Waechter startet den Dauerlauf neu, eine Stoerung heilt in rund 32 Minuten von selbst. systempruefung.ps1 Block 11b prueft 180 fuer alle Spuren.; Regel 13.10.2026 (Option 2): 45 min fuer Live (handel_erlaubt).",
   "freigabe": {
     "erfuellt": true,
     "_vermerk": "Haken gesetzt auf Auftrag Max 24.09.2026 (Freigabe einrichten) - die von Hand gesetzte Endabnahme, der Code rechnet nichts nach. ECHTER STAND zur Endabnahme: 4 Einstiege, 0 geschlossene Runden (Fristen 26./27.09.2026) - weit unter papierlauf_min_runden 50, kein netto-positiv-Nachweis. Die Kriterien bleiben als Massstab stehen. Der Schadensdeckel ist fuer den Test auf live_max_risiko_gesamt_eur 20 EUR gezogen.",

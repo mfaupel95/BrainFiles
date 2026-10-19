@@ -98,7 +98,7 @@ das `.git` der drei grossen (570M + 32M + 23M = **625 MB**, je 0 eigene Commits;
 **Offen:** `Werkstatt/repos-verschoben-aus-skills/` traegt noch 451 MB reine Parkware
 (unsloth 426M, chromaprint 9M, public-apis 8,8M, acoustid-index 6,7M, mfaupel95 61K) — verifiziert:
 0 eigene Commits, kein SKILL.md, kein Zwilling, keine Routine liest sie. `EasyCLIProxyAPI` ist dort
-geloescht (der lebende Klon steht in `Werkstatt/Repos`, 136M, Stand 21.09.).
+geloescht (der lebende Klon steht in `Werkstatt`, 136M, Stand 21.09.).
 Verfahren: `laufwerk-platz-schaffen/references/fremd-klon-ballast.md`.
 
 ## 6. Profile in `.deleted/`

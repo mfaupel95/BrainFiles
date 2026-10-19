@@ -5,7 +5,7 @@
 
 QUELLE
 ------
-`Werkstatt/Repos/moon-dev-ai-agents/src/agents/new_or_top_agent.py` holt bei
+`Werkstatt/moon-dev-ai-agents/src/agents/new_or_top_agent.py` holt bei
 CoinGecko die Top-Gewinner der letzten 24 Stunden (250 nach Marktkapital) und
 die zuletzt gelisteten Coins und legt beides einem Sprachmodell vor
 (`RECOMMENDATION: BUY/SELL/DO NOTHING`). Die Haus-Fassung derselben Regel steht

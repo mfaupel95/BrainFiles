@@ -47,7 +47,7 @@ def verweise(wurzel: Path, start: list[Path] | None = None,
     r"""Alle Reparse-Punkte (Junctions/Symlinks) unter der Wurzel.
 
     Wichtig: `os.walk` folgt Verweisen NICHT. Wer nur die Wurzel absucht, findet
-    deshalb `Werkstatt\Repos\intelligent-trading-bot` nicht, wenn `Werkstatt`
+    deshalb `Werkstatt\intelligent-trading-bot` nicht, wenn `Werkstatt`
     selbst ein Verweis ist - genau die Falle, die einen Doppel-Scan zum Luegen
     bringt. Deshalb wird jeder Startordner EINZELN abgesucht und ueber den Pfad
     entdoppelt.
@@ -111,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
     wurzel = Path(argv[0]).resolve() if argv else wurzel_finden()
 
     print(f"Wurzel: {wurzel}")
-    start = [w for w in (wurzel / "Werkstatt", wurzel / "Werkstatt" / "Repos",
+    start = [w for w in (wurzel / "Werkstatt",
                          wurzel / "Werkstatt" / "Ausgemustert", wurzel / "Agenten",
                          wurzel / "MaxHirn" / "skills", wurzel / "MaxHirn")
              if w.is_dir()]

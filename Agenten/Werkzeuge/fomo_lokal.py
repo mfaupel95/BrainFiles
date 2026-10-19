@@ -2,7 +2,7 @@
 
 WARUM DIESE DATEI EXISTIERT
 ---------------------------
-Das Fremd-Repo `Werkstatt/Repos/fomo-robinhood-radar` bewertet Trader-Wallets mit
+Das Fremd-Repo `Werkstatt/fomo-robinhood-radar` bewertet Trader-Wallets mit
 Claude. Der Weg ueber `ANTHROPIC_API_KEY` ist auf diesem Rechner tot (Console-
 Schluessel ohne Guthaben) - und der Haus-Regel nach faellt das Urteil lokal.
 Das Repo verlangt ausdruecklich, dass die Bewertung AUCH OHNE Schluessel
@@ -33,7 +33,7 @@ REGELN, DIE AUS FEHLERN STAMMEN
 
 Aufruf (aus dem Repo-Ordner ODER von ueberall, Pfade werden aus __file__ gebaut):
 
-    Frontend/Agenten/Werkzeuge> ..\\..\\Werkstatt\\Repos\\fomo-robinhood-radar\\.venv\\Scripts\\python.exe fomo_lokal.py --anzahl 3
+    Frontend/Agenten/Werkzeuge> ..\\..\\Werkstatt\\fomo-robinhood-radar\\.venv\\Scripts\\python.exe fomo_lokal.py --anzahl 3
     ... fomo_lokal.py --trocken            # nur rechnen, nichts importieren
     ... fomo_lokal.py --adresse 0xabc...   # genau eine Wallet
     ... fomo_lokal.py --modell qwen36-35b-a3b:8k
@@ -53,7 +53,7 @@ from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
 WURZEL = HIER.parent.parent                      # BrainFiles
-REPO = WURZEL / "Werkstatt" / "Repos" / "fomo-robinhood-radar"
+REPO = WURZEL / "Werkstatt" / "fomo-robinhood-radar"
 PY = REPO / ".venv" / "Scripts" / "python.exe"
 
 OLLAMA = "http://127.0.0.1:11434/api/chat"
@@ -260,7 +260,7 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
 
     if not PY.exists():
-        raise SystemExit("Repo-venv fehlt: %s (Klon unter Werkstatt/Repos/fomo-robinhood-radar?)" % PY)
+        raise SystemExit("Repo-venv fehlt: %s (Klon unter Werkstatt/fomo-robinhood-radar?)" % PY)
     if not modell_da(a.modell):
         raise SystemExit("Modell %s liegt nicht in Ollama. Vorhanden: %s"
                          % (a.modell, ", ".join(modelle() or []) or "keins erreichbar"))

@@ -2,7 +2,7 @@
 # ProjectAtlas: alle Arbeits-Repos indexieren (idempotent, mehrfach ausfuehrbar).
 # Laeuft ueber die Host-Shell (git-bash); Logs unter Agenten/Werkzeuge/projectatlas/logs/.
 # Mit Argumenten (bash indexieren.sh <name>...) nur die genannten Repos unter
-# Werkstatt/Repos/ (Name = Ordnername); ohne Argumente alle Repos.
+# Werkstatt/ (Name = Ordnername); ohne Argumente alle Repos.
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PA="$HERE/bin/projectatlas.exe"
@@ -12,12 +12,12 @@ mkdir -p "$LOG"
 
 repos=()
 if [ "$#" -gt 0 ]; then
-  # Repo-Filter: nur die genannten Repos unter Werkstatt/Repos/ (Name = Ordnername).
+  # Repo-Filter: nur die genannten Repos unter Werkstatt/ (Name = Ordnername).
   for name in "$@"; do
-    [ -d "$ROOT/Werkstatt/Repos/$name/.git" ] && repos+=("$ROOT/Werkstatt/Repos/$name")
+    [ -d "$ROOT/Werkstatt/$name/.git" ] && repos+=("$ROOT/Werkstatt/$name")
   done
 else
-  for d in "$ROOT"/Werkstatt/Repos/*/; do [ -d "$d/.git" ] && repos+=("${d%/}"); done
+  for d in "$ROOT"/Werkstatt/*/; do [ -d "$d/.git" ] && repos+=("${d%/}"); done
   for n in CryptoPredictions CryptoTrade FinRL freqtrade intelligent-trading-bot OmniRoute omnitrade RLTrader security-skills-claude-code skillspector trailofbits-skills; do
     [ -d "$ROOT/Werkstatt/$n/.git" ] && repos+=("$ROOT/Werkstatt/$n")
   done

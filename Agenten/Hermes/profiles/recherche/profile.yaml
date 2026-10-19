@@ -1,3 +1,10 @@
 description: 'Recherche: findet Dinge heraus und fasst zusammen - reine Recherche-
   und Zusammenfassungs-Agent, keine Aenderungen am System.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+    group: Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+_ui_meta_revisions:
+  hermes-bots: 1

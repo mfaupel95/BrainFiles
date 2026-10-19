@@ -89,14 +89,14 @@ KURATIERT: dict[tuple[str, str], dict] = {
     ("werkstatt", "intelligent-trading-bot"): {
         "rolle": "Projekt",
         # KEIN Duplikat: die Wurzel `repos` erreicht DIESEN Ordner ueber eine
-        # Junction (`Werkstatt\Repos\intelligent-trading-bot` -> hierher). Eine
+        # Junction (`Werkstatt\intelligent-trading-bot` -> hierher). Eine
         # physische Ablage, zwei Zeilen im Fenster. Die alte Notiz ("Zweite
         # Ablage") war falsch und hat am 30.09.2026 fast dazu gefuehrt, den
         # Ordner als Duplikat wegzuraeumen - ein Doppel-Scan ueber Junctions
         # findet sonst denselben Inhalt zweimal.
-        "notiz": "ML-Backtest-Pruefstand (dieselbe Ablage wie Werkstatt/Repos/intelligent-trading-bot: "
+        "notiz": "ML-Backtest-Pruefstand (dieselbe Ablage wie Werkstatt/intelligent-trading-bot: "
                  "die Wurzel Repos erreicht diesen Ordner ueber eine Junction)",
-        "warnungen": ["Junction-Ziel von Werkstatt/Repos/intelligent-trading-bot - eine physische "
+        "warnungen": ["Junction-Ziel von Werkstatt/intelligent-trading-bot - eine physische "
                       "Ablage, kein zweites Exemplar"],
     },
     ("repos", "intelligent-trading-bot"): {
@@ -1158,7 +1158,7 @@ def _projekt_ordner(brainfiles: Path, eintrag: dict) -> Path | None:
     """Der Ordner eines Manifest-Eintrags auf der Platte (None, wenn unbekannt).
 
     Der Schluessel ist das PAAR (wurzel, pfad) - ein Eintrag ohne `wurzel` liegt
-    in `Werkstatt/Repos`, einer ohne `pfad` in seinem Ordner.
+    in `Werkstatt`, einer ohne `pfad` in seinem Ordner.
     """
     for w, basis in quellen.alle(brainfiles):
         if w.kennung == eintrag.get("wurzel", "repos"):

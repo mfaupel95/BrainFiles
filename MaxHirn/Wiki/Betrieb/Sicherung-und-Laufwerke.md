@@ -45,7 +45,7 @@ Mediendatei ist um 20:01 auch auf `G:` kaputt. Bei robocopy immer `$LASTEXITCODE
 Beide Sicherungen klammern `Werkstatt` per `/XD` aus — damit liegt **jede**
 `.env` in einem geklonten Fremd-Repo ausserhalb der Sicherung, und die
 Klartext-Pruefung in `sichern.ps1` sieht sie ebenfalls nicht (dieselbe
-Ausschlussliste). Gemessen am 30.09.2026: von 47 Klonen unter `Werkstatt/Repos`
+Ausschlussliste). Gemessen am 30.09.2026: von 47 Klonen unter `Werkstatt`
 tragen 7 eine `.env`, vier davon mit echten Zugangswerten
 (`moon-dev-ai-agents` samt `src/`, `openmontage`, `OpenTerminalUI`).
 

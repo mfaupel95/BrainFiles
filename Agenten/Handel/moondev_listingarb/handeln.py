@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `listingarb_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` macht genau das:
+Der Agent `listingarb_agent` aus `Werkstatt/moon-dev-ai-agents` macht genau das:
 er sucht Coins, die gross sind, aber an einer grossen Boerse noch fehlen, und kauft sie vor dem Listing. Sein Urteil faellt aber in einem Sprachmodell, und seine
 Daten kommen ueber die CoinGecko-Pro-API (Schluessel noetig). Beides laesst sich
 hier nicht sauber nachbilden, deshalb:

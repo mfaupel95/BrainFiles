@@ -14,12 +14,12 @@ metadata:
 
 ## When to Use
 
-Max will Ziplime (Fork `mfaupel95/ziplime`, Backtesting-Engine auf Polars mit Zipline-API) fuer seine Handelsoptimierung nutzen: Aktien/ETF als neue Asset-Klasse, Krypto ueber CSV, oder Backtests ueber den MCP-Server. Repo liegt in `Werkstatt/Repos/ziplime` (origin + upstream + privat-Remotes), eigenes `.venv` im Repo.
+Max will Ziplime (Fork `mfaupel95/ziplime`, Backtesting-Engine auf Polars mit Zipline-API) fuer seine Handelsoptimierung nutzen: Aktien/ETF als neue Asset-Klasse, Krypto ueber CSV, oder Backtests ueber den MCP-Server. Repo liegt in `Werkstatt/ziplime` (origin + upstream + privat-Remotes), eigenes `.venv` im Repo.
 
 ## Installieren und verifizieren
 
 ```
-cd Werkstatt/Repos/ziplime
+cd Werkstatt/ziplime
 .venv/Scripts/python.exe -c "import structlog, polars, ziplime; print(pl.__version__)"
 ziplime ingest-assets          # einmalig: Instrumentenliste (Yahoo, kein Key)
 ziplime ingest -b demo -s AAPL,MSFT --start-date 2019-01-01 --end-date 2025-12-31
@@ -35,9 +35,9 @@ Der Server laeuft ueber das Repo-venv (`-m ziplime.mcp`). Registrieren in drei S
 
 1. **Hermes-Haupt-Config** (`Agenten/Hermes/config.yaml`, default-Profil, NICHT das bots-Profil):
    ```
-   hermes -p default mcp add ziplime --command "C:\...\Werkstatt\Repos\ziplime\.venv\Scripts\python.exe" --args -m ziplime.mcp
+   hermes -p default mcp add ziplime --command "C:\...\Werkstatt\ziplime\.venv\Scripts\python.exe" --args -m ziplime.mcp
    echo "y" | hermes -p default mcp add ...   # beantwortet die interaktive Tool-Freigabe-Prompt
-   hermes -p default config set mcp_servers.ziplime.cwd "C:\...\Werkstatt\Repos\ziplime"
+   hermes -p default config set mcp_servers.ziplime.cwd "C:\...\Werkstatt\ziplime"
    ```
    `hermes mcp add` fragt interaktiv "Enable all 14 tools?" — ohne `echo "y" |` haengt es. `cwd` muss auf das Repo gesetzt werden, sonst findet der Server seine Daten nicht.
 2. **MCP-Manifest** (`Agenten/MCP-Manifest.json`, Single Source of Truth): Eintrag mit `agent: "beide"`, `command`/`args`/`cwd` relativ zur Wurzel. Der `mcp-sync-check.ps1` prueft die Synchronisation.

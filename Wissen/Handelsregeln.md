@@ -1,6 +1,6 @@
 # Handelsregeln — Moon Dev AI Agents
 
-> Überführt aus den README-Dateien des Repos Werkstatt/Repos/moon-dev-ai-agents (moon-dev-gui verknüpft). Stand: 2026-10-13.
+> Überführt aus den README-Dateien des Repos Werkstatt/moon-dev-ai-agents (moon-dev-gui verknüpft). Stand: 2026-10-13.
 
 ## 1. Projektübersicht
 
@@ -147,6 +147,6 @@ Einheitliche Schnittstelle für mehrere KI-Modell-Anbieter:
 
 ## 8. Quelle & Lizenz
 
-- Repo: `Werkstatt/Repos/moon-dev-ai-agents`
+- Repo: `Werkstatt/moon-dev-ai-agents`
 - Fork von: yolojewjitsu/moon-dev-ai-agents
 - Upstream gepflegt über `Agenten/Werkzeuge/repos-updaten.py`

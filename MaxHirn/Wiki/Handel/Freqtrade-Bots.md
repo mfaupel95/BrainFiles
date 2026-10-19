@@ -10,7 +10,7 @@ summary: 'Wie die drei Moon-Dev-Agenten als Freqtrade-Bots laufen, was die Backt
 
 # Freqtrade-Bots aus den Moon-Dev-Agenten
 
-Die alte Aufgabe: die Agenten aus `Werkstatt/Repos/moon-dev-ai-agents` nach
+Die alte Aufgabe: die Agenten aus `Werkstatt/moon-dev-ai-agents` nach
 Freqtrade uebertragen. Die Uebertragungsliste liegt in
 `Agenten/Handel/freqtrade/bots.json` — **3 portiert, 11 nicht portierbar**,
 dazu die Eintraege unter `als_schutzschicht_portiert` (das

@@ -3,7 +3,7 @@
 Aufruf (der Repo-venv, weil das Werkzeug `fomo_agent` fuer Schema und Regeln liest):
 
     cd Agenten/Werkzeuge/tests
-    ../../../Werkstatt/Repos/fomo-robinhood-radar/.venv/Scripts/python.exe -m unittest test_fomo_lokal -v
+    ../../../Werkstatt/fomo-robinhood-radar/.venv/Scripts/python.exe -m unittest test_fomo_lokal -v
 
 Zwei Nahten werden gehalten: `ANFRAGE` (Ollama) und `LAUF` (Repo-CLI). Kein Test
 darf das echte Repo-CLI starten, Ollama fragen oder in `fomo_agent.db` schreiben.
@@ -208,7 +208,7 @@ class UmgebungTest(unittest.TestCase):
         self.assertIn('"think": False', quelle)
 
     def test_repo_pfad_ist_relativ_gebaut(self):
-        self.assertTrue(str(fl.REPO).endswith(os.path.join("Werkstatt", "Repos", "fomo-robinhood-radar")))
+        self.assertTrue(str(fl.REPO).endswith(os.path.join("Werkstatt", "fomo-robinhood-radar")))
         self.assertNotIn("C:\\Users", WERKZEUG.read_text(encoding="utf-8"))
 
 
