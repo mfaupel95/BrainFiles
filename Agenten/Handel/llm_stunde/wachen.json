@@ -48,5 +48,6 @@
   "_stand": "Angelegt 12.10.2026. Keine Runde gemessen; der Haken wird von Hand gesetzt (Handelsregeln Punkt 3)."
  },
  "herzschlag_max_minutes": 180,
- "_herzschlag_regel": "Regel 13.10.2026: 180 min fuer Papier-Spuren. Feld ergaenzt 18.10.2026 (fehlte, Spur nie gelaufen)."
-}
+ "_herzschlag_regel": "Regel 13.10.2026: 180 min fuer Papier-Spuren. Feld ergaenzt 18.10.2026 (fehlte, Spur nie gelaufen).",
+ "journal_zweitziel": "Q:\\\\Handel_Journal\\\\llm_stunde"
+ }
