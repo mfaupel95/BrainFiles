@@ -3,7 +3,7 @@ id: 20260916-repo-bots
 title: 'Repo-Bots: Flottenstand und Telegram-Zugang'
 tags: [ki-agenten, betrieb]
 created: 2026-09-16
-updated: 2026-09-21
+updated: 2026-10-14
 related: [20260830-hermes, 20260830-routinen]
 summary: 'Ein Hermes-Profil je Fremd-Repo in Werkstatt, erreichbar per Telegram ueber /bots und /bot NAME im SkillsBot.'
 ---
@@ -65,6 +65,7 @@ Tabelle); die Platte bleibt die Wahrheit.
 | Moon-Dev-Code | moon-dev-code | nur PDFs, nichts zu installieren |
 | obsidian-skills | obsidian-skills | neu 16.09.2026, Skills fuer Obsidian |
 | odysseus | odysseus | neu 16.09.2026 |
+| omnitrade2 | omnitrade2 | Rust-Trading-Terminal (mfaupel95/omnitrade2), neu 14.10.2026, kein Live-Handel |
 | one-skill-to-rule-them-all | one-skill-to-rule-them-all | Skill-Stack |
 | OpenTerminal | openterminal | Trading-Dashboard |
 | ProjectAtlas | projectatlas | Rust-Repository-Intelligenz |

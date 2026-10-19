@@ -1,0 +1,6 @@
+{
+  "name": "leitstand",
+  "version": "0.1.0",
+  "description": "Leitstand: rein lesende Zentrale fuer Handel (Omnitrade) und die Fremd-Repos in Werkstatt/Repos",
+  "author": { "name": "Maximilian Faupel" }
+}

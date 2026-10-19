@@ -555,13 +555,33 @@ def einstieg(z, inst, seite, kurs, w, faktor, grund, stop_pct=None,
 
     # Risiko-VORFILTER (Regeln des Moon-Dev risk_agent, ohne Sprachmodell):
     # greift VOR dem Buchen und nur, wenn die Wache ihn einschaltet
-    # (`risikovorfilter: true`). Geprueft wird das Risiko dieses Einstiegs -
-    # das ist der Betrag, der bei einem Stop verloren ginge.
+    # (`risikovorfilter: true`).
+    #
+    # `risiko` ist der Betrag, der bei einem Stop verloren ginge. Er wird auch
+    # von der Stufen-Grenze unten gebraucht, deshalb steht er hier - und nicht
+    # erst im Vorfilter.
+    risiko = nominel * pct / 100.0
     if journal_pfad and w.get("risikovorfilter"):
-        risiko = nominel * pct / 100.0
         ok, warum = risikovorfilter.pruefe(w, journal_pfad, z, risiko)
         if not ok:
             print("VORFILTER: %s" % warum)
+            return None
+
+    # STUFEN-GRENZE (PLAN §4.2, Einstiegsseite): dieselbe Zahl wie die
+    # Bestandskontrolle in `pruefe_stufen()` - sonst schliesst der Stufen-Kill
+    # ein Buch, das der naechste Zyklus sofort wieder aufbaut (Pendeln im
+    # Journal). Ohne ausdrueckliche Grenze ist sie das Buchrisiko der Spur
+    # (Risiko je Position x Plaetze) und damit genau die Platzzahl - die
+    # Pruefung aendert dann NICHTS. Sie greift, sobald eine Wache
+    # `max_offenes_risiko_usd` (oder `risiko_buchdeckel_usd`) UNTER das
+    # Buchrisiko setzt; das ist der einzige Fall, in dem ein Deckel binden
+    # kann, und es ist eine Konfigurationsentscheidung, keine Reparatur.
+    grenze, grenze_quelle = stufen_schwelle(w)
+    if grenze is not None:
+        offen = ratschen.offenes_risiko(z)
+        if offen + risiko > grenze:
+            print("STUFEN-GRENZE: offenes Buchrisiko %.2f + %.2f > %.2f (%s) "
+                  "- kein Einstieg" % (offen, risiko, grenze, grenze_quelle))
             return None
 
     p = {"inst": inst, "seite": seite, "einstieg": kurs, "stop": stop,
@@ -822,18 +842,96 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
               # Instrument nicht mehr zuzuordnen.
               pos_id=p.get("pos_id", ""),
               einsatz_usd="%.2f" % (p["nominal"] + gv),
-              stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
-              stop_pct="%.2f" % p["stop_pct"], grund=grund,
-              **mae.felder(p))
+              # `stop_pct` ist NICHT bei jeder Position gesetzt: am 19.10.2026
+              # fehlte es bei 14 von 139 offenen Positionen (gitter, kraken,
+              # omniquant, scanner). Hier stand `"%.2f" % p["stop_pct"]` - ein
+              # fehlendes Feld riss damit den ganzen Zyklus ab, und die Position
+              # blieb offen (TypeError statt Buchung). Jetzt wird der Abstand
+              # ueber `ratschen.stop_prozent` aus der STOP-LINIE geholt, wenn
+              # das Feld fehlt - dieselbe Herleitung wie in der Bestandsgrenze.
+              stop=pformat(p.get("stop") or 0.0),
+              ziel=pformat(p.get("ziel") or 0.0),
+              stop_pct="%.2f" % ratschen.stop_prozent(p),
+              grund=grund, **mae.felder(p))
 
 
 # --- Kill: Zwangsschluss mit Buchung -----------------------------------------
 
 KILL_GRUND = kg.KILL_GRUND
 
+# --- Stufen-Kontrolle: der BESTAND gegen die Grenze der Stufe (PLAN §4.2) ----
+
+# Eigener Grund mit "zwangsschluss" im Wort: `stoerungen.ist_stoerung` erkennt
+# die Zeile damit als Stoerung - sie zaehlt in der Kapitalkurve (gebucht) und
+# NICHT als Handelsrunde. Der Praefix nennt die Ursache, weil die Fehlersuche
+# sonst nicht unterscheiden kann, ob der Drawdown-Kill oder die Stufe geschlossen
+# hat. (Dieselbe Ueberlegung wie bei `buchbereinigung` in stoerungen.py.)
+STUFEN_GRUND = "stufenueberschreitung_zwangsschluss"
+
+# Schluessel, die eine Wache fuer das OFFENE Buchrisiko nennen darf. Beide
+# meinen dieselbe Groesse - den Betrag, der bei gleichzeitigem Stop aller
+# Positionen verloren ginge. `risiko_buchdeckel_usd` ist derselbe Deckel, den
+# `risikovorfilter.pruefe` schon auf der EINSTIEGSSEITE liest: eine Zahl, zwei
+# Seiten. `max_gesamt_usd` steht hier absichtlich NICHT - das ist ein
+# Kapitaldeckel, kein Risikodeckel (er liegt in 45 von 56 Wachen 2x bis 65x
+# ueber dem Buchrisiko und kann deshalb nie binden).
+STUFEN_SCHLUESSEL = ("max_offenes_risiko_usd", "risiko_buchdeckel_usd")
+
+
+def stufen_schwelle(w):
+    """(Betrag, Quelle) der Bestandsgrenze - oder (None, None).
+
+    Reihenfolge: ausdrueckliche Grenze, sonst das BUCHRISIKO der Spur
+    (Risiko je Position x Hoechstzahl Positionen).
+
+    Bewusst NICHT die `drawdown_halbierungsschwelle`: die ist ein RUECKLAUF
+    (realisierte Gewinnkurve), die Grenze hier ist ein OFFENES RISIKO - zwei
+    verschiedene Groessen, die nur zufaellig denselben Betrag tragen. Waere die
+    Ratsche hier angehaengt, verschoebe ein geaenderter Ratschen-Betrag lautlos
+    den Notaus.
+    """
+    for schluessel in STUFEN_SCHLUESSEL:
+        wert = w.get(schluessel)
+        if wert is None:
+            continue
+        try:
+            betrag = float(wert)
+        except (TypeError, ValueError):
+            continue
+        if betrag > 0:
+            return betrag, schluessel
+    buch = ratschen.buch_risiko(w)
+    if buch and buch > 0:
+        return buch, "buchrisiko"
+    return None, None
+
+
+def pruefe_stufen(z, w):
+    """Bestandskontrolle: traegt das offene Buch mehr Risiko, als die Stufe erlaubt?
+
+    Rueckgabe `(offen, erlaubt, quelle)`. `erlaubt is None` heisst: die Spur
+    nennt weder eine Grenze noch die beiden Zahlen des Buchrisikos - dann wird
+    NICHTS geschlossen. Eine geratene Grenze waere schlimmer als keine: sie
+    sieht aus wie Schutz (dieselbe Regel wie in ratschen.py).
+
+    WAS DIESE PRUEFUNG LEISTET - und was nicht (gemessen am 19.10.2026):
+    `einstieg()` setzt die Nominale auf `risiko_je_position_usd / (stop_pct/100)`,
+    gedeckelt auf `max_pro_trade_usd`. Das Risiko EINER Position ist damit
+    hoechstens `risiko_je_position_usd`, das offene Buch also hoechstens
+    `risiko x Plaetze` = Buchrisiko. Ein Deckel AUF dem Buchrisiko kann deshalb
+    nie reissen - er ist eine DRIFT-BREMSE: er feuert, wenn das Buch nicht mehr
+    zur Konfiguration passt (Risiko je Position oder Platzzahl nach dem
+    Eroeffnen gesenkt, Position aus einem aelteren Stand, Stufe gewechselt).
+    Damit der Kill wirklich bindet, muss die Grenze UNTER das Buchrisiko - und
+    das ist eine Entscheidung des Betreibers, keine Code-Frage.
+    """
+    offen = ratschen.offenes_risiko(z)
+    erlaubt, quelle = stufen_schwelle(w)
+    return offen, erlaubt, quelle
+
 
 def kill_schliessen(z, w, quelle, preis_fuer, journal_pfad, zustand_pfad,
-                    live=False, weg=None):
+                    live=False, weg=None, grund=KILL_GRUND, kurse=None):
     """Offene Positionen zum Marktkurs schliessen UND buchen (Grund `kill_zwangsschluss`).
 
     Vorher (bis 09.10.2026) leerte der Kill nur `z["positionen"]`: keine
@@ -844,19 +942,32 @@ def kill_schliessen(z, w, quelle, preis_fuer, journal_pfad, zustand_pfad,
     zaehlt damit in der Kapitalkurve (Ruecklauf, Kill), aber nicht in den
     Kennzahlen (stoerungen.ist_stoerung).
 
+    `grund` ist austauschbar, weil zwei verschiedene Waechter denselben Weg
+    benutzen: der Drawdown-Kill (KILL_GRUND) und die Stufen-Kontrolle
+    (STUFEN_GRUND). Der Grund steht im Journal und ist die einzige Stelle, an
+    der die Ursache fuer die Fehlersuche noch zu sehen ist.
+
+    `kurse` uebergeht den Abruf: ein Zyklus, der die Kurse schon geholt hat,
+    darf sie nicht ein zweites Mal holen (der zweite Abruf kann scheitern und
+    den Zwangsschluss dann grundlos aufschieben).
+
     Fehlt der Kurs einer Position oder schlaegt der Verkauf fehl, bleibt sie im
     Buch; der naechste Zyklus der Sperre versucht es erneut. Rueckgabe: Zahl der
     Positionen, die noch offen sind.
     """
     if not z.get("positionen"):
         return 0
-    try:
-        _daten, kurse, _fehler = quelle(w)
-    except Exception as e:                                         # noqa: BLE001
-        print("  Kill: Kurse nicht abrufbar (%s) - %d Position(en) bleiben, "
-              "naechster Zyklus versucht es erneut"
-              % (str(e)[:80], len(z["positionen"])), file=sys.stderr)
-        return len(z["positionen"])
+    if kurse is None:
+        try:
+            _daten, kurse, _fehler = quelle(w)
+        except Exception as e:                                     # noqa: BLE001
+            print("  Kill: Kurse nicht abrufbar (%s) - %d Position(en) bleiben, "
+                  "naechster Zyklus versucht es erneut"
+                  % (str(e)[:80], len(z["positionen"])), file=sys.stderr)
+            return len(z["positionen"])
+    # Eigene Kopie: der Aufrufer braucht sein Kursbild unveraendert weiter
+    # (der Zyklus rechnet danach die Einstiege damit).
+    kurse = dict(kurse)
     if preis_fuer:
         for p in z["positionen"]:
             inst = p.get("inst")
@@ -886,7 +997,7 @@ def kill_schliessen(z, w, quelle, preis_fuer, journal_pfad, zustand_pfad,
                   % (len(zurueck), ", ".join(str(p.get("inst")) for p in zurueck)),
                   file=sys.stderr)
     pruefe_ausstiege(z, kurse, w, journal_pfad, zustand_pfad=zustand_pfad,
-                     live=live, weg=weg, zusatz=lambda p, w_: KILL_GRUND)
+                     live=live, weg=weg, zusatz=lambda p, w_: grund)
     z["positionen"] = z["positionen"] + zurueck
     return len(z["positionen"])
 
@@ -906,11 +1017,12 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
     Kurs mehr hat (T-160: Symbolwechsel im Feed). Die Spur liefert die
     Preisquelle (CoinGecko, OKX, Pump, Robinhood-DB).
 
-    Reihenfolge: erst die Ratsche (Buch-Ruecklauf), dann Ausstiege, dann
-    Einstiege. Bei `--vorschau` wird gerechnet und nichts geschrieben. `--live`
-    laeuft ueber `sperren_live()` und `orderweg()` (Boerse aus der wachen);
-    jede Sperre, die noch steht, laesst den Zyklus Papier handeln und nennt den
-    Grund.
+    Reihenfolge: erst die Ratsche (Buch-Ruecklauf), dann Ausstiege, dann die
+    Stufen-Kontrolle auf den BESTAND (§4.2: das offene Buchrisiko gegen die
+    Grenze der Stufe - `pruefe_stufen`), dann Einstiege. Bei `--vorschau` wird
+    gerechnet und nichts geschrieben. `--live` laeuft ueber `sperren_live()`
+    und `orderweg()` (Boerse aus der wachen); jede Sperre, die noch steht,
+    laesst den Zyklus Papier handeln und nennt den Grund.
     """
     import ereignis
 
@@ -987,8 +1099,21 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
             if status == "frei":
                 faktor = groessenfaktor(ruecklauf, w)
             else:
+                # Notausstieg ohne Freigabekette (Auftrag Max 14.10.2026,
+                # Entscheidung 2): `kill_verkauf_ohne_freigabekette` erlaubt dem
+                # Kill, echte Live-Positionen reduceOnly zu verkaufen, auch wenn
+                # die Kette (Freigabefenster, EV, Herzschlag ...) zu ist. Es
+                # bleiben: nur die Basisstufe, ein Orderweg mit gesetztem
+                # Schluessel, und verkauft wird nur, was modus=live ist
+                # (pruefe_ausstiege) - Papierpositionen nur im Buch.
+                kill_live, kill_weg = live, weg
+                if (not live and w.get("kill_verkauf_ohne_freigabekette")
+                        and risikostufe.live_erlaubt()):
+                    nw = orderweg(w)
+                    if nw is not None and nw.schluessel_vorhanden():
+                        kill_live, kill_weg = True, nw
                 offen = kill_schliessen(z, w, quelle, preis_fuer, journal_pfad,
-                                        zustand_pfad, live=live, weg=weg)
+                                        zustand_pfad, live=kill_live, weg=kill_weg)
                 if offen:
                     print("  %d Position(en) noch offen (kein Kurs oder Verkauf "
                           "fehlgeschlagen) - naechster Zyklus versucht es erneut." % offen)
@@ -1062,6 +1187,31 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         pruefe_ausstiege(z, kurse, w, journal_pfad, zustand_pfad=zustand_pfad,
                          live=live, weg=weg, zusatz=zusatz_ausstieg)
 
+        # STUFEN-KONTROLLE (PLAN §4.2), HINTER den Ausstiegen: Stop und Ziel
+        # sind die teurere Wahrheit (ZUSATZ-AUSSTIEG in pruefe_ausstiege) -
+        # erst wenn sie gerissen sind, darf die Stufe den Rest schliessen.
+        # Stuende sie davor, stuende "stufenueberschreitung" im Journal, wo die
+        # ehrliche Ursache "stop" heisst; genau diese Verzerrung soll §4.1
+        # abbauen (gepinnt durch tests/test_kill_nach_frist.py::
+        # test_stop_hat_vorrang_vor_zwangsschluss).
+        stufen_kill = False
+        offen_risiko, stufen_grenze, stufen_quelle = pruefe_stufen(z, w)
+        if stufen_grenze is not None and offen_risiko > stufen_grenze:
+            print("STUFEN-KILL: offenes Buchrisiko %.2f > %.2f (%s) - "
+                  "%d Position(en) werden zum Marktkurs geschlossen."
+                  % (offen_risiko, stufen_grenze, stufen_quelle,
+                     len(z["positionen"])))
+            kill_schliessen(z, w, quelle, preis_fuer, journal_pfad, zustand_pfad,
+                            live=live, weg=weg, grund=STUFEN_GRUND, kurse=kurse)
+            stufen_kill = True
+            # Der Nachweis fuer die Nachsicht: der Zustand traegt, WANN mit
+            # welcher Zahl geschlossen wurde - sonst ist ein leeres Buch nach
+            # dem naechsten Zyklus nicht mehr zu deuten.
+            z["stufen_kill"] = {"zeit": jetzt(),
+                                "offenes_risiko_usd": round(offen_risiko, 2),
+                                "grenze_usd": round(stufen_grenze, 2),
+                                "quelle": stufen_quelle}
+
         # TRIGGER_MODUS (seit 03.10.2026, Auftrag Max "weniger handeln"):
         # Im Signal-Modus wird nur dann gehandelt, wenn sich die Richtung des
         # Indikators GEAENDERT hat. Das verhindert, dass ein erfuelltes Signal
@@ -1072,6 +1222,12 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         # NUR IM LIVE-BETRIEB (T-347, Regel in `signal_gatter_gilt`).
         signal_gatter = signal_gatter_gilt(w, live)
         for inst in sorted(daten):
+            # Nach einem Stufen-Kill wird in DIESEM Zyklus nicht neu eroeffnet.
+            # Das Buch war gerade ueber der Grenze; sofort wieder aufzubauen
+            # waere ein auf-zu-auf im Journal, und der Zwangsschluss ist eine
+            # Meldung, keine Einladung.
+            if stufen_kill:
+                break
             seite = signal(daten[inst], w)
             if not seite:
                 continue

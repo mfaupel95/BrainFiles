@@ -1,5 +1,5 @@
 model:
-  default: inclusionai/ling-3.0-flash-fin:free
+  default: stepfun/step-5-preview:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -538,6 +538,7 @@ agent:
   personalities: {}
   reasoning_effort: high
   verbose: false
+  cron_drain_timeout: 120
 terminal:
   backend: local
   cwd: C:\Users\faupe\documents\BrainFiles\Agenten\Hermes
@@ -973,6 +974,10 @@ code_execution:
   timeout: 300
 gateway:
   multiplex_profiles: true
+  loop_watchdog: true
+  loop_watchdog_probe_interval_s: 15.0
+  loop_watchdog_probe_timeout_s: 30.0
+  loop_watchdog_max_strikes: 2
   profile_routes:
     - name: telegram-max
       platform: telegram
@@ -1253,6 +1258,27 @@ mcp_servers:
       - C:\Users\faupe\Documents\BrainFiles\Werkstatt\omnitrade\.projectatlas\config.toml
       - mcp
     enabled: true
+    tools:
+      include:
+        - atlas_scan
+        - atlas_watch_once
+        - atlas_watch_status
+        - atlas_health
+        - atlas_health_resolve
+        - atlas_files
+        - atlas_file_summary
+        - atlas_search
+        - atlas_overview
+        - atlas_map
+        - atlas_outline
+        - atlas_symbols
+        - atlas_slice
+        - atlas_next
+        - atlas_task_status
+        - atlas_purpose_queue
+        - atlas_purpose_review
+        - atlas_purpose_set
+        - atlas_root
   gitlab:
     url: https://gitlab.com/api/v4/mcp
     auth: oauth

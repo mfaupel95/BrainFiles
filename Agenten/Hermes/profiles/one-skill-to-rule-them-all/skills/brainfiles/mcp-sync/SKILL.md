@@ -28,5 +28,6 @@ Exit 0 = in Sync, 1 = Fehler. Fehler: Server im Manifest aktiv, aber bei einem A
 - Hermes config.yaml nicht manuell editieren — Hermes-Kommandos/Framework-Konventionen nutzen.
 - Reparatur an Stufe-1-Dateien (Agenten/*.ps1): erst `.bak-JJJJMMTT` kopieren, dann aendern, dann echten Lauf zeigen.
 - Windows PowerShell 5.1 parst UTF-8 ohne BOM falsch (Parserfehler bei Umlauten/Sonderzeichen). Nach dem Schreiben BOM setzen: `[IO.File]::WriteAllText($p, [IO.File]::ReadAllText($p), (New-Object Text.UTF8Encoding($true)))`
+- PowerShell-Skripte nie inline mit `-Command` über `terminal` (bash/MSYS) ausführen — MSYS-Pfad-Konvertierung zerstört `$_` und `{}` in Where-Object/ForEach-Object. Stattdessen: Skript in `.ps1`-Datei schreiben, dann `powershell -ExecutionPolicy Bypass -File <pfad>` aufrufen.
 - Serververzeichnisse: `Agenten\MCP-Server\<name>`; Python-Server laufen mit `.venv\Scripts\python.exe <name>_mcp.py` — das Skript liegt in der Wurzel des Serverordners, NICHT in `.venv\Scripts` (dort liegt nur `mcp.exe`).
 - Hermes-Sandbox-Terminal (Docker) kann bei `proxy.enabled` + fehlendem iron-proxy tot sein: dann alles ueber windows-mcp (`mcp__windows_mcp__PowerShell`/`FileSystem`) auf dem Host machen.

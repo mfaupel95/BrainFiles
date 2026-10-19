@@ -36,6 +36,24 @@ import csv
 import json
 import os
 from datetime import datetime, timedelta, timezone
+from importlib.util import module_from_spec, spec_from_file_location
+
+_HANDEL = os.path.dirname(os.path.abspath(__file__))
+
+
+def _ratschen():
+    """`ratschen.py` ueber den PFAD laden - dasselbe Muster wie in spur_buch.py.
+
+    Ueber den Pfad und nicht per `import`, weil jede Spur ihren eigenen Ordner
+    als sys.path[0] hat; ein gleichnamiges Modul dort wuerde sonst gewinnen.
+    """
+    _s = spec_from_file_location("ratschen", os.path.join(_HANDEL, "ratschen.py"))
+    _m = module_from_spec(_s)
+    _s.loader.exec_module(_m)
+    return _m
+
+
+RATSCHEN = _ratschen()
 
 # Felder, die eine Wache setzen kann. Ohne sie ist der Vorfilter AUS - eine
 # stillschweigend drosselnde Neuerung waere schlimmer als keine.
@@ -156,8 +174,7 @@ def pruefe(w, journal_pfad, z, neues_risiko_usd, jetzt=None):
 
     deckel = _zahl(w.get("risiko_buchdeckel_usd")) \
         or _zahl(w.get("max_gesamt_usd"))
-    offen = sum((p.get("nominal") or 0.0) * (p.get("stop_pct") or 0.0) / 100.0
-                for p in (z.get("positionen") or []))
+    offen = RATSCHEN.offenes_risiko(z)
     if deckel and offen + (neues_risiko_usd or 0.0) > deckel:
         return False, ("Buchrisiko %.2f + %.2f > Deckel %.2f - kein neuer "
                        "Einstieg" % (offen, neues_risiko_usd or 0.0, deckel))
@@ -177,6 +194,4 @@ def lage(w, journal_pfad, z, jetzt=None):
             "verlust_max_usd": g["risiko_verlust_max_usd"],
             "gewinn_ziel_usd": g["risiko_gewinn_ziel_usd"],
             "buchdeckel_usd": g["risiko_buchdeckel_usd"],
-            "offenes_risiko_usd": round(
-                sum((p.get("nominal") or 0.0) * (p.get("stop_pct") or 0.0) / 100.0
-                    for p in (z.get("positionen") or [])), 2)}
+            "offenes_risiko_usd": round(RATSCHEN.offenes_risiko(z), 2)}

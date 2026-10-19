@@ -319,6 +319,13 @@ nur, wo man nachfasst: nicht an der Datei, sondern am Anker.
   doppelt-quotierten Inline-String schreiben: `.ps1` per `-File` starten
   (immer die verlaessliche Form), oder mindestens einfach quotieren, damit `$`
   literal ankommt.
+- **Windows-Pfade nie per bash-`printf` schreiben** — `printf` interpretiert
+  `\U` als Unicode-Escape und frisst den Backslash: aus `C:\Users\faupe` wird
+  `C:\Users\faupe` (der `\U`-Teil verschwindet), und die Zeile in der `.env`
+  ist still kaputt, waehrend `printf` nur eine Warnung druckt. Einen Pfad mit
+  Backslashes per `echo`/`printf` an eine Datei anhaengen ist also keine
+  Option; die Zeile per Python-Skriptdatei schreiben (siehe unten) oder den
+  Pfad mit Vorwaerts-Slashes angeben.
 - **`cmd //c <wrapper>.cmd` aus bash kann nur den cmd-Banner drucken und die
   Batch-Datei NICHT ausfuehren** (gemessen: Log enthielt nur die
   Versionszeile und den Prompt, kein Skript-Output). Der Aufruf meldet

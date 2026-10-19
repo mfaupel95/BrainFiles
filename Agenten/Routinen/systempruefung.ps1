@@ -310,17 +310,24 @@ try {
   #                      Hermes\cache\. Am 30.09.2026 meldete der Block zwei
   #                      Probenskripte aus profiles\agent-trade-kit\cache\scratch.
   $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\', '\\Hermes\\tmp\\', '\\Hermes\\.sicherung\\', '\\profiles\\[^\\]+\\cache\\')
-  $musterAbs = [regex]('C' + ':\\Users\\faupe')
-  $musterAlt = [regex]('BrainFiles\\MaxHirn\\(MCP-Server|' + 'Claude)|\\' + 'Claude\\Worktrees')
+  # Seit 18.10.2026: statt Select-String je Datei (34 min bei 55.830 Code-Dateien,
+  # der Baum war auf 203k Dateien gewachsen) EIN rg-Aufruf ueber den Agenten-Baum
+  # mit denselben Ausschluessen. rg liegt in Hermes/tools. Gemessen: 39-81 s.
+  $rg = Join-Path $wurzel 'Agenten\Hermes\tools\ripgrep-15.2.0-win32-x64\rg.exe'
+  $rgGlob = @('-g','*.ps1','-g','*.py','-g','*.psd1','-g','!*.bak*','-g','!**/.venv/**','-g','!**/node_modules/**','-g','!**/hermes-agent/**','-g','!**/.git/**','-g','!**/__pycache__/**','-g','!**/umzug/**','-g','!**/Hermes/cache/**','-g','!**/Hermes/tmp/**','-g','!**/Hermes/.sicherung/**','-g','!**/profiles/*/cache/**')
+  $musterAbs = 'C' + ':\Users\faupe'
+  $claudeWt = '\' + 'Claude\' + 'Worktrees'
+  $claudeMh = 'BrainFiles\MaxHirn\' + 'Claude'
+  $mcpServer = 'BrainFiles\MaxHirn\' + 'MCP-Server'
+  $musterAlt = @('-e',$mcpServer,'-e',$claudeMh,'-e',$claudeWt)
   $absTreffer = @(); $altTreffer = @()
-  foreach ($d in $codeDateien) {
-    if (@($ausgenommen | Where-Object { $d -match $_ }).Count -gt 0) { continue }
-    foreach ($m in (Select-String -LiteralPath $d -Pattern $musterAbs -EA SilentlyContinue)) {
-      $absTreffer += "$($d.Replace("$wurzel\", '')):$($m.LineNumber)"
-    }
-    foreach ($m in (Select-String -LiteralPath $d -Pattern $musterAlt -EA SilentlyContinue)) {
-      $altTreffer += "$($d.Replace("$wurzel\", '')):$($m.LineNumber)"
-    }
+  foreach ($zeile in (& $rg -F -n --no-heading @rgGlob $musterAbs $agenten 2>$null)) {
+    $m = [regex]::Match($zeile, '^(.+?):(\d+):')
+    if ($m.Success) { $rel = $m.Groups[1].Value; if ($rel.StartsWith($wurzel)) { $rel = $rel.Substring($wurzel.Length + 1) }; $absTreffer += "$($rel):$($m.Groups[2].Value)" }
+  }
+  foreach ($zeile in (& $rg -F -n --no-heading @rgGlob @musterAlt $agenten 2>$null)) {
+    $m = [regex]::Match($zeile, '^(.+?):(\d+):')
+    if ($m.Success) { $rel = $m.Groups[1].Value; if ($rel.StartsWith($wurzel)) { $rel = $rel.Substring($wurzel.Length + 1) }; $altTreffer += "$($rel):$($m.Groups[2].Value)" }
   }
   if ($absTreffer.Count -gt 0) { Entscheiden "Absoluter Benutzerpfad in $($absTreffer.Count) Codezeile(n) (Portabilitaet): $($absTreffer -join '; ')" }
   if ($altTreffer.Count -gt 0) { Entscheiden "Veralteter Pfad (vor dem Umzug) in $($altTreffer.Count) Zeile(n): $($altTreffer -join '; ')" }

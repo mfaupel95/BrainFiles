@@ -18,7 +18,7 @@
     "_ruecknahme_20261005": "05.10.2026, Auftrag Max 'zurueck auf papier'. Erst am selben Tag true gesetzt, dann zurueck - das Gebuehren-Tor ist die entscheidende Sperre, nicht der Haken. Wartebedingung: Excess > Gebuehr (0,20 %)."
   },
   "_handel_erlaubt_vermerk": "true auf Auftrag Max 21.09.2026 ('alle weiteren spuren live offen und handel erlaubt'). Diese Spur hat KEINEN Orderaufruf im Code (geprueft mit Agenten/Handel/spuren_stand.py) - der Schalter hat heute keine Wirkung. Wer hier einen Live-Zweig anschliesst, prueft ZUERST Wachen, Grenzen, Herzschlag 180 und das Freigabefenster.",
-  "herzschlag_max_minuten": 180,
+  "herzschlag_max_minuten": 45,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 3 = 15.0 USD.",
   "risiko_je_position_usd": 5.0,
   "max_offene_positionen": 3,
@@ -30,6 +30,8 @@
   "kill_switch_gesamt_usd": 45.0,
   "_kill_wiederaufnahme": "Live-faehige Spur: nach dem Kill KEIN Selbstanlauf (Max 09.10.2026). Die Frist laeuft ab, hebt aber nichts auf; Freigabe nur von Hand (kill_seit aus dem Zustand entfernen).",
   "kill_wiederaufnahme": false,
+  "_kill_verkauf": "Auftrag Max 14.10.2026: der KILL verkauft echte Live-Positionen (modus=live, reduceOnly) auch bei geschlossener Freigabekette. Nur Basisstufe, Orderweg mit gesetztem Schluessel. false/fehlt = nur der Live-Lauf verkauft.",
+  "kill_verkauf_ohne_freigabekette": true,
   "stop_prozent": 8.0,
   "pflicht_stop_prozent_min": 5.0,
   "pflicht_stop_prozent_max": 12.0,

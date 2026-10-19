@@ -72,6 +72,30 @@ Kind-Skills), ist das eine **API-Beschreibung, kein Hausverfahren**:
    lassen. Dazu die Wiki-Seite unter `Werkzeuge/` mit Endpunkten, Ablage der Kennung und
    dem, was NICHT angeschlossen ist (`wiki-pflege`).
 
+## Einzelnen Skill per Link: erst pruefen, ob er schon im Haus ist
+
+Schickt Max einen blanken Link auf eine einzelne fremde `SKILL.md`
+(`github.com/<user>/<repo>/blob/.../SKILL.md`), ist das erst ein ZEIGER, kein
+Importauftrag. Vor jedem Klonen den Ist-Zustand beweisen:
+
+```bash
+# 1) Adoption: liegt der Skill schon in der Bibliothek?
+git log --oneline -3 -- Agenten/Hermes/skills/<kategorie>/<name>/SKILL.md
+./bin/hermes.exe skills list | grep -i "<name>"          # enabled?
+# 2) Upstream: hat sich seit der Adoption etwas getan?
+curl -s "https://api.github.com/repos/<user>/<repo>" | grep -E '"(pushed_at|description)"'
+curl -s "https://api.github.com/repos/<user>/<repo>/commits?per_page=3" | grep '"message"'
+# 3) Diff: weicht die Hausfassung von der Fremdfassung ab?
+```
+
+- **Adoptiert + unveraendert = melden, nicht klonen.** Die Hausfassung traegt
+  die noetigen Anpassungen (Haus-Werkzeug statt Fremd-Werkzeug, Quellenzeile,
+  Beschreibung unter der 60-Zeichen-Grenze) - ein Re-Import wuerde die
+  Anpassungen jedes Mal zurueckwerfen.
+- **Ein blanker Link ohne Auftrag heisst: pruefen und melden** (schon drin /
+  upstream veraltet / neuer Stand), NICHT „einbinden". Max' Zeiger sind
+  Aufgaben zum Nachsehen, keine Bestellungen.
+
 ## Mehrere Skills aus einem Klon in die Hauptbibliothek
 
 Die Regel oben (ein ganzer Baum kommt **nie** in die geladene Bibliothek) gilt

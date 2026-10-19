@@ -2,3 +2,10 @@ description: 'Red-Team-Nerd: Nachschlagewerk fuer Offensive Security (Repo claud
   79 SKILL.md in 23 Kategorien). Beratend, autorisierte Tests/CTF/Methodik - keine
   Angriffe auf fremde Systeme.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
+    group: Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
+_ui_meta_revisions:
+  hermes-bots: 1

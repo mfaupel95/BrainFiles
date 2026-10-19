@@ -367,12 +367,16 @@ def main() -> int:
     if not gemeldet:
         return 0   # leere Ausgabe = nichts senden
 
+    # --alle listet auch die Verworfenen; die Schwelle zaehlt nur, was sie
+    # wirklich passiert (sonst behauptet der Kopf, alles sei druber).
+    treffer = [m for m in gemeldet if m["punkte"] >= args.grenze]
     if bis is not None:
         anker = f"seit {bis.astimezone().strftime('%d.%m. %H:%M')}"
     else:
         anker = f"ab UID {zuletzt_uid}+"
     zeilen = [f"**Post {anker}: "
-              f"{len(gemeldet)} von {len(kandidaten)} neuen Mails ueber der Schwelle**", ""]
+              f"{len(treffer)} von {len(kandidaten)} neuen Mails ueber der Schwelle"
+              f"{'' if args.alle else f' ({len(gemeldet)} gelistet)'}**", ""]
     for m in gemeldet[:12]:
         zeilen.append(f"- **{m['betreff'][:90]}**")
         zeilen.append(f"  {m['von']} | {m['datum']} | Score {m['punkte']} "
