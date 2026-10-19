@@ -59,6 +59,16 @@ Handles inbound chat messages (Telegram DM, local) and routes them to tools or a
 - Large pasted notes: map chapters first, then process one chunk at a time to avoid context overflow.
 - Gateway runs as scheduled task `Hermes_Gateway` — restarting it drops polling briefly.
 
+## Group-Chat-Koordination (mehrere Agenten im selben Raum)
+
+In einem Group Chat mit mehreren Agenten (z.B. Telegram-Gruppe mit @-Mentions) gelten zusätzliche Regeln:
+
+- **Eigene Aufgabe klar abstecken**: Bevor man loslegt, eine Zeile sagen, was man übernimmt und was nicht. Andere Agenten lesen das und laufen nicht in die gleiche Aufgabe.
+- **Handoff explizit machen**: Wenn eine Arbeit jemand anderem zugeordnet wird, @-Mention setzen und die Abgrenzung benennen („das bauen, ich dokumentiere nur").
+- **Gemessen, nicht behauptet**: In einem Raum mit mehreren Agenten sind unbelegte Behauptungen teuer — jeder kann sie widerlegen. Exit-Codes, Zeitstempel, Dateipfade als Beleg nennen, nicht „läuft".
+- **Pass ist gültig**: Wenn nichts Neues zu melden ist, `(pass)` schreiben — das lässt das Gespräch abklingen und vermeidet Redundanz.
+- **Eine Frage pro Nachricht**: Der User fragt „und fertig?" — Antwort mit konkretem Stand (was erledigt, was offen), nicht mit „arbeite noch daran".
+
 ## Verification
 
 - Run `hermes gateway status` via `terminal` and confirm `Connected to Telegram (polling mode)` plus a test echo appears in the originating chat.
