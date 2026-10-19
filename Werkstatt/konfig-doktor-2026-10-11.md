@@ -24,7 +24,7 @@ Wurzel: `C:\Users\faupe\Documents\BrainFiles`. Rein lesender Lauf; Reparaturen n
 
 | # | Befund | Belegt durch | Status | Vorschlag |
 |---|---|---|---|---|
-| 5 | 1 Server starten Programme ausserhalb der Wurzel | kraken-papier -> O:\Werkstatt\Repos\kraken-cli\target\release\kraken.exe | gesichert | Nur zur Kenntnis: Pfade ausserhalb der Wurzel ueberleben einen Umzug auf die SSD nicht |
+| 5 | 1 Server starten Programme ausserhalb der Wurzel | kraken-papier -> O:\Werkstatt\kraken-cli\target\release\kraken.exe | gesichert | Nur zur Kenntnis: Pfade ausserhalb der Wurzel ueberleben einen Umzug auf die SSD nicht |
 | 6 | 2 Profil(e) ohne eigene config.yaml | .deleted, .sicherung | gesichert | Pruefen, ob das Profil die Hauptconfig erbt (empirisch, nicht annehmen) |
 | 7 | 20 Fehlerzeilen in den letzten 200 Zeilen von errors.log | Letzte: 2026-10-11 03:07:45,783 ERROR tools.checkpoint_manager: Git command failed: C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\tools\git-2.53.0+3-win32-x64\cmd\ | gesichert | Log lesen, bevor spekuliert wird |
 | 8 | 1 .corrupt-Reste im Hermes-Ordner | spawn-ledger.json.corrupt (2026-10-10) | gesichert | Ursache der Beschaedigung klaeren, danach aufraeumen (Teilprojekt B) |

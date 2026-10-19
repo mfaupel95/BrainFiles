@@ -27,7 +27,7 @@ from pathlib import Path
 HIER = Path(__file__).resolve().parent
 JG = HIER / "jg.cmd"
 BRUECKE = HIER / "jev_bruecke.py"
-REPO = HIER.parents[2] / "Werkstatt" / "Repos" / "jevgrep"
+REPO = HIER.parents[2] / "Werkstatt" / "jevgrep"
 SUCHWURZEL = REPO / "apps"
 
 modus = {"art": "json"}

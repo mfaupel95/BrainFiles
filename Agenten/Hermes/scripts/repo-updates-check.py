@@ -1,4 +1,4 @@
-"""Repo-Updates-Check: sind die Werkstatt/Repos-Klone hinter ihrem upstream?
+"""Repo-Updates-Check: sind die Werkstatt-Klone hinter ihrem upstream?
 
 Laeuft als Hermes-Cron OHNE Modell (`no_agent`): **leere Ausgabe heisst alles
 aktuell** und es wird nichts gesendet (Watchdog-Muster). Ausgabe gibt es nur,
@@ -7,7 +7,7 @@ der Rueckstand in der Nachricht.
 
 WARUM
 -----
-Die Fremd-Repos unter Werkstatt/Repos (je Repo ein Hermes-Bot-Profil) sind
+Die Fremd-Repos unter Werkstatt (je Repo ein Hermes-Bot-Profil) sind
 die Quelle fuer den Skill-Fundus und die Repo-Flotte. Ein Klon, der Monate
 hinter upstream liegt (gemessen 16.09.2026: superpowers zwei Monate), haelt
 alte Skills, alte Bugs und alte Doku vor. Der woechentliche Check holt die
@@ -15,7 +15,7 @@ upstream-Refs und meldet nur die Repos MIT Rueckstand - nichts weiter.
 
 WAS ES TUT (nur lesend fuer den Arbeitsbaum)
 --------------------------------------------
-1. Fuer jedes Repo mit .git unter Werkstatt/Repos:
+1. Fuer jedes Repo mit .git unter Werkstatt:
    `git fetch upstream --quiet` (holt nur Refs, veraendert den Arbeitsbaum nicht).
 2. Vorsprung zaehlen: `git rev-list --count HEAD..<upstream-Standardzweig>`.
    Bei SHALLOW-Klonen kann die Zahl kleiner als die Wahrheit sein - die
@@ -37,7 +37,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 HIER = Path(__file__).resolve()
 WURZEL = HIER.parents[3]                    # Agenten/Hermes/scripts/ -> BrainFiles
-REPOS = WURZEL / "Werkstatt" / "Repos"
+REPOS = WURZEL / "Werkstatt"
 
 
 def git(repo: Path, *args: str, zeit: int = 90):
@@ -58,7 +58,7 @@ def main():
     args = ap.parse_args()
 
     if not REPOS.is_dir():
-        print("Werkstatt/Repos nicht gefunden: %s" % REPOS)
+        print("Werkstatt nicht gefunden: %s" % REPOS)
         return 0
 
     meldungen = []
@@ -112,7 +112,7 @@ def main():
     print("Repo-Updates (%d Repos geprueft):" % geprueft)
     for m in meldungen:
         print("- " + m)
-    print("Auffrischen:  git -C Werkstatt/Repos/<repo> pull upstream <zweig>")
+    print("Auffrischen:  git -C Werkstatt/<repo> pull upstream <zweig>")
     print("Danach:       Agenten/Werkzeuge/fundus-suche.ps1 -Index")
     return 0
 

@@ -8,14 +8,17 @@ class TestWachenJson(unittest.TestCase):
     def setUp(self):
         self.w = json.loads(WACHEN.read_text(encoding="utf-8"))
 
-    def test_start_live_aktiv(self):
-        # handel_erlaubt=True und freigabe.erfuellt=True seit 12.10.2026
-        # (Auftrag Max: 'Live pfad anbinden. Backtest außer acht lassen,
-        # daten zählen'). Der Backtest ist negativ / zu wenig Daten und wird
-        # bewusst ignoriert; die Papierdaten zaehlen. Der Test stellt sicher,
-        # dass niemand die Freigabe still zurueckdreht.
-        self.assertIs(self.w["handel_erlaubt"], True)
-        self.assertIs(self.w["freigabe"]["erfuellt"], True)
+    def test_start_papier_nach_befund(self):
+            # handel_erlaubt=False und freigabe.erfuellt=False seit 14.10.2026
+            # (Auftrag Max 'letzte Aufgabe der Handelsauswertung fertig machen',
+            # Befund 13.10.2026): Punktebuch ohne Einsatz, Kosten 1,2 %/Runde
+            # (Kraken 0,6 %/Seite) gegen f_max +0,06 % je Runde = 20x darueber.
+            # Die Live-Freigabe vom 12.10. (Auftrag Max: 'Live pfad anbinden.
+            # Backtest außer acht lassen, daten zählen') ist zurueckgenommen.
+            # Der Test stellt sicher, dass niemand die Spur still wieder live
+            # schaltet, solange das Punktebuch keinen Einsatz fuehrt.
+            self.assertIs(self.w["handel_erlaubt"], False)
+            self.assertIs(self.w["freig["freigabe"]["erfuellt"], False)
 
     def test_journal_zweitziel_gesetzt(self):
         # Bedingung 4. Bis 13.09.2026 stand hier assertIsNone - das Ziel ist

@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo Leitstand bereit: /leitstand:status fuer den Handelsstand, /leitstand:repos fuer die Repos"
+          }
+        ]
+      }
+    ]
+  }
+}

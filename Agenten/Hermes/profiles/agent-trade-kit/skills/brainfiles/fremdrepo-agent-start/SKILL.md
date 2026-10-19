@@ -10,7 +10,7 @@ metadata:
 
 # Fremd-Repo-Agenten/-Tools lokal starten
 
-Geklonte Fremd-Repos (Werkstatt/Repos/) bringen Agenten und Tools mit: Python-
+Geklonte Fremd-Repos (Werkstatt/) bringen Agenten und Tools mit: Python-
 Agenten mit eigenem venv, .env, LLM-Aufrufen, Dauerlaeufen — oder
 Node/TypeScript-MCP/CLI-Tools. Dieses Skill ist der Weg, so etwas LAUFFAEHIG
 zu bekommen, ohne echte Schluessel einzutragen — die lokale

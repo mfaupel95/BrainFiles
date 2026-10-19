@@ -81,7 +81,7 @@ Aufgabe. Hier: der Weg vom ersten Startfehler zum laufenden Dauerlaeufer.
 
 ## Werkstatt-Schreibzugriff
 
-Repos unter `Werkstatt/Repos/` sind Junctions nach O: — `patch`/`write_file`
+Repos unter `Werkstatt/` sind Junctions nach O: — `patch`/`write_file`
 verweigern dort mit „outside HERMES_WRITE_SAFE_ROOT". Zwei Muster, je nach
 Aufgabe:
 
@@ -98,7 +98,7 @@ Aufgabe:
   Wurzel) anlegen/aendern, nach jeder Aenderung per
   `terminal("cp <staging-pfad> <Werkstatt-Zielpfad>")` synchronisieren und
   dort mit `py_compile` sowie einem echten Kurzlauf pruefen. Staging-Datei
-  am Ende loeschen. Werkstatt/Repos ist ohnehin komplett `.gitignore`t —
+  am Ende loeschen. Werkstatt ist ohnehin komplett `.gitignore`t —
   die CRLF/git-diff-Sorge des ersten Musters entfaellt hier.
 
 ## Weiterfuehrend

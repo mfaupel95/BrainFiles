@@ -21,6 +21,7 @@ Git-Index und die leeren Kanban-Boards — beides ist erwartet, kein Befund.
 ## When to Use
 
 - "durchsuche das arbeitsverzeichnis, merke dir alles wichtige"
+- "suche in allen Ordnern ab C:/Users/faupe nach chats und sessions"
 - "uebertrage den inhalt und die ergebnisse nach Hermes"
 - "offene Aufgaben mit kanban angehen"
 - Bestandsaufnahme zu Beginn einer neuen Session / nach einer Pause
@@ -48,6 +49,10 @@ python <skill>/scripts/konflikt_aufloesen.py <unmerged-datei>
 kanban_list   # je Board; Duplikat-Ausgabe = wiederholen
 kanban_create # gruppiert, mit assignee + priority, T-Nummern im body
 ```
+
+Alle Session-/Chat-Speicher (Hermes state.db, Claude CLI, Claude Desktop MSIX,
+Codex, Cursor, BrainFiles intern) und ihre Formate: `references/session-orte.md`
+(laden mit `skill_view`).
 
 ## Procedure
 
@@ -89,12 +94,22 @@ kanban_create # gruppiert, mit assignee + priority, T-Nummern im body
 git-Prozesse zaehlen (alle `git.exe` sind `git fsmonitor--daemon` und beweisen
 nichts — nach 'fsmonitor' in der CommandLine filtern). 0 Byte + 0 echte
 Prozesse = Wrack: UMBENENNEN (`mv .git/index.lock .git/index.lock.verwaist-JJJJMMTT`),
-nie loeschen. Bei >0 echten Prozessen warten.
+nie loeschen. Bei >0 echten Prozessen warten. NACH dem Umbenennen `git diff
+--cached --name-only` pruefen: ein paralleler Commit, der die Sperre hinterliess
+oder der waehrend des Wartens lief, hat den Index neu aufgebaut und eigene
+gerade gestagte Pfade entstagt — sie sind dann weg und der Commit endet mit
+"no changes added to commit". Eigene Pfade vor dem Commit erneut stagen.
 - **kanban_list liefert `[Duplicate tool output]`:** wiederholen, bis echte
 Ergebnisse kommen (in dieser Session brauchte es 4 Anlaeufe).
 - **CRLF-Dateien:** Konflikte/JSON per `read_bytes()`/`write_bytes()` mit
-`b"\r\n"`-Erhalt loesen. Danach `git diff --numstat` pruefen — eine gewollte
-Zeile muss 1/1 zeigen, nie die ganze Datei.
+`b"\r\n"`-Erhalt loesen. Neue Zeilen IMMER direkt mit dem Ziel-Zeilenende
+bauen (`L = "\r\n" if b"\r\n" in raw else "\n"`, dann `L.join([...])`) —
+NIE ein globales `out.replace(b"\n", b"\r\n")` auf eine bereits CRLF-Datei
+anwenden: es verdoppelt jedes CR zu `\r\r\n` und schreibt die ganze Datei
+neu (diff zeigt 7000+/7000+ statt der gewollten Zeilen). Danach `git diff
+--numstat` pruefen — eine gewollte Zeile muss 1/1 zeigen, nie die ganze
+Datei; bei Ganzdatei-Diff `git checkout HEAD -- <datei>` und mit korrektem
+Zeilenende neu einfuegen.
 - **Fremdarbeit im Index ist kein Fehler:** Skills/config.yaml einer
 parallelen Sitzung liegen gelassen, nur eigene Pfade committen.
 - **Komprimiertes Wissen nicht erfinden:** Titel/Befunde offener TASKS, die

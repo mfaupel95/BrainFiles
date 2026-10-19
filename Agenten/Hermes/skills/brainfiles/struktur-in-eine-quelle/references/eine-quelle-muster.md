@@ -92,7 +92,7 @@ widerspricht.
 `pruefen(eigene_wurzeln=quellen.WURZELN)`. So gibt es keine zweite Liste, und der
 Aufrufer entscheidet, was fuer ihn "eigen" ist.
 
-Ausnahme, ausdruecklich: `Werkstatt/Repos` ist eine eigene Wurzel der Zentrale
+Ausnahme, ausdruecklich: `Werkstatt` ist eine eigene Wurzel der Zentrale
 und trotzdem zu 100 % fremd (eine Klonsammlung). Solche Faelle gehoeren in den
 Aufruf kommentiert, nicht in eine Sonderregel im Leser.
 

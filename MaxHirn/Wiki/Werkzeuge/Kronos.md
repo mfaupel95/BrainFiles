@@ -2,7 +2,7 @@
 
 `shiyu-coder/Kronos` — erstes offenes Foundation-Modell fuer **K-Linien
 (Kerzen)**, trainiert ueber 45 Boersen, **MIT**, angenommen bei der AAAI 2026.
-Klon liegt in `Werkstatt/Repos/Kronos` (kein Fork, direkt vom Original),
+Klon liegt in `Werkstatt/Kronos` (kein Fork, direkt vom Original),
 eigenes `.venv`.
 
 Groessen und Gewichte (HuggingFace `NeoQuasar`): Mini 4,1 M · Small 24,7 M ·

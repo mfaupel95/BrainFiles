@@ -9,7 +9,7 @@ category: brainfiles
 ProjectAtlas (Rust, MIT) legt je Repository eine SQLite-Karte an und beantwortet
 "welche Datei ist fuer X zustaendig?" in einem Aufruf. Laufzeit und Hintergrund:
 `Wissen/Projektatlas.md` im Vault, Fork `mfaupel95/ProjectAtlas`, Klon
-`Werkstatt/Repos/ProjectAtlas`.
+`Werkstatt/ProjectAtlas`.
 
 ## Wann
 

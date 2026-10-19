@@ -8,7 +8,7 @@
   "waehrung": "USD",
   "handel_erlaubt": true,
   "_handel_erlaubt_vermerk": "03.10.2026 scharf auf Auftrag Max (\"Signalwelle scharf\", dann \"Andere Spuren weiter untersuchen und freigeben und Anbindung verifizieren\"). Belege, auf die sich das stuetzt: (1) Gebuehren-Tor offen - Excess +1,25 % minus 0,10 % Gebuehr je Runde = +1,15 %, bei 16 Runden mit Basislinie, Audit ohne Befund; (2) Anbindung an der Boerse belegt - OKX-Spot, Schluessel vorhanden, Demo aus, 152,55 USDC frei, Kurs abrufbar; (3) Orderweg vorhanden und geprueft (weg.py mit 5 Tests). EINSCHRAENKUNG, die nicht weglaeuft: die 16 Runden stammen aus der Zeit VOR dem Signal-Gatter. Die Freigabe stuetzt sich damit auf Zahlen, die unter den Bedingungen entstanden sind, die ich heute abgeschafft habe. Das ist Max's Entscheidung und steht hier datiert.",
-  "herzschlag_max_minuten": 180,
+  "herzschlag_max_minuten": 45,
   "_risiko_erklaerung": "risiko_je_position_usd * max_offene_positionen = buch_risiko (alle Stopps gleichzeitig). 5.0 * 3 = 15.0 USD.",
   "risiko_je_position_usd": 5.0,
   "max_offene_positionen": 3,
@@ -18,8 +18,14 @@
   "max_gesamt_usd": 300.0,
   "_kill_switch": "kill_switch_gesamt_usd = 3 * buch_risiko. Papier: die Ratsche greift vorher.",
   "kill_switch_gesamt_usd": 45.0,
+
+    "live_max_pro_trade_usd": 30.0,
+    "live_max_offene_positionen": 1,
+    "live_max_gesamt_usd": 30.0,
   "_kill_wiederaufnahme": "Live-faehige Spur: nach dem Kill KEIN Selbstanlauf (Max 09.10.2026). Die Frist laeuft ab, hebt aber nichts auf; Freigabe nur von Hand (kill_seit aus dem Zustand entfernen).",
   "kill_wiederaufnahme": false,
+  "_kill_verkauf": "Auftrag Max 14.10.2026: der KILL verkauft echte Live-Positionen (modus=live, reduceOnly) auch bei geschlossener Freigabekette. Nur Basisstufe, Orderweg mit gesetztem Schluessel. false/fehlt = nur der Live-Lauf verkauft.",
+  "kill_verkauf_ohne_freigabekette": true,
   "stop_prozent": 7.0,
   "pflicht_stop_prozent_min": 6.0,
   "pflicht_stop_prozent_max": 12.0,
@@ -50,5 +56,6 @@
     "erfuellt": true,
     "_erfuellt_vermerk": "03.10.2026 scharf auf Auftrag Max (\"Signalwelle scharf\", dann \"Andere Spuren weiter untersuchen und freigeben und Anbindung verifizieren\"). Belege, auf die sich das stuetzt: (1) Gebuehren-Tor offen - Excess +1,25 % minus 0,10 % Gebuehr je Runde = +1,15 %, bei 16 Runden mit Basislinie, Audit ohne Befund; (2) Anbindung an der Boerse belegt - OKX-Spot, Schluessel vorhanden, Demo aus, 152,55 USDC frei, Kurs abrufbar; (3) Orderweg vorhanden und geprueft (weg.py mit 5 Tests). EINSCHRAENKUNG, die nicht weglaeuft: die 16 Runden stammen aus der Zeit VOR dem Signal-Gatter. Die Freigabe stuetzt sich damit auf Zahlen, die unter den Bedingungen entstanden sind, die ich heute abgeschafft habe. Das ist Max's Entscheidung und steht hier datiert.",
     "gesetzt_am": "20261004-000140"
-  }
+  },
+  "_live_grenzen_vermerk": "EIGENE Live-Grenzen NEU 15.10.2026 auf Auftrag Max: vorher fehlten sie, die Spur handelte live mit den PAPIERwerten 100/300. Jetzt 30/1/30 - ein Platz, ein Drittel der Papiergroesse. Grund: OKX Spot kostet 0,20 %/Runde, der Excess ist nicht belegt (1 frische Runde). Papierwerte (100/300) unveraendert."
 }

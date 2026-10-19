@@ -125,7 +125,7 @@ INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic",
                    "squeeze_eth")
 
 # Bot-Spuren (16.09.2026): Papierbuecher auf den Signalen geklonter Fremd-Bots
-# (Werkstatt/Repos/moon-dev-ai-agents). Ihr Journal hat dieselbe Form wie das
+# (Werkstatt/moon-dev-ai-agents). Ihr Journal hat dieselbe Form wie das
 # der Indikator-Spuren (kauf/verkauf mit einsatz_usd), deshalb derselbe
 # Rechenweg - nur der NAME der Gruppe ist ein anderer.
 BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",

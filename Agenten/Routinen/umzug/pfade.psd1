@@ -44,7 +44,7 @@
 
     # Phase 4 -- Werkstatt.
     Werkstatt = @(
-        @{ Von = 'MaxHirn\GitHub'          ; Nach = 'Werkstatt\Repos' }
+        @{ Von = 'MaxHirn\GitHub'          ; Nach = 'Werkstatt' }
         @{ Von = 'MaxHirn\Coworking-Space' ; Nach = 'Werkstatt\Sitzungen' }
         @{ Von = 'MaxHirn\Codex'           ; Nach = 'Werkstatt\Protokolle\Codex' }
         @{ Von = 'MaxHirn\Claude\Worktrees'; Nach = 'Werkstatt\Worktrees' }

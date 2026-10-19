@@ -71,7 +71,7 @@ THEMEN = {
     "Wachen/Cron/Routinen":    r"cron|Cron|Wache|Waechter|Routine|kanban|Kanban|no_agent",
     "Modelle/lokal":           r"ollama|Ollama|llama|Bonsai|VRAM|GGUF|gemma|qwen|Kronos|Modell",
     "Sandbox/Docker":          r"docker|Docker|Sandbox|Container|windows-mcp",
-    "Fremd-Repos/Klone":       r"Werkstatt/Repos|Klon|clone|upstream|repos-updaten|Fundus|Bot",
+    "Fremd-Repos/Klone":       r"Werkstatt|Klon|clone|upstream|repos-updaten|Fundus|Bot",
     "Tests/Nachweis":          r"unittest|pytest|test_|Tests|Gegenprobe|Nachweis|assert",
     "Backtest/Historie":       r"Backtest|historie|replay|optimier|freqtrade|dry_run|Kosten",
     "Zugangsdaten":            r"Zugaenge|\.env|API_KEY|Schluessel|Token|Passphrase|Key",

@@ -12,7 +12,7 @@ tags: [werkzeug, repos, handel, oberflaeche]
 > ausfuehrt, einem, der sie in die Zwischenablage legt, und einem, der den
 > Repo-Bot damit beauftragt.
 >
-> **Seit 30.09.2026** ist das Fenster nicht mehr auf `Werkstatt/Repos` begrenzt:
+> **Seit 30.09.2026** ist das Fenster nicht mehr auf `Werkstatt` begrenzt:
 > es zeigt drei **Bereiche** — REPOS (46 Klone), WERKSTATT (eigene Projekte,
 > Datenfelder, Ablagen) und HANDEL (45 Ordner und 40 Werkzeugdateien unter
 > `Agenten/Handel`). Aufbau, Rollen und Layoutfehler: eigener Abschnitt unten.
@@ -90,7 +90,7 @@ Regeln (der Code setzt sie durch):
 
 ### Nachtrag 29.09.2026 — neun Repos aus `O:\Werkstatt 2\` aufgenommen
 
-Bestand war schon unter `Werkstatt/Repos/` vorhanden, nur im Manifest gefehlt.
+Bestand war schon unter `Werkstatt/` vorhanden, nur im Manifest gefehlt.
 Jeder Startbefehl wurde **einmal echt gestartet** (Beleg in `logs/`).
 
 | Repo | Art | Start | Beleg im Log |
@@ -132,16 +132,16 @@ Speicher zurueck), Kite meldet fehlende Zugangsdaten.
 
 **Die Junction-Falle — und warum sie den Start NICHT trifft:**
 
-`scan.repos_scannen()` liefert `O:\Werkstatt\Repos\...`, nicht den C:-Pfad der
+`scan.repos_scannen()` liefert `O:\Werkstatt\...`, nicht den C:-Pfad der
 Junction. Die Zentrale startet also aus dem **echten** O:-Pfad. Wer dagegen von
-Hand aus `C:\...\Werkstatt\Repos\OpenTerminalUI\frontend` heraus baut, bekommt
+Hand aus `C:\...\Werkstatt\OpenTerminalUI\frontend` heraus baut, bekommt
 von vite `fileName darf nicht absolut sein, received O:/Werkstatt/...` — der
 Junction wird aufgeloest und der absolute Eingabepfad abgelehnt. Schlimmer als
 der Fehler: **ein gescheiterter Lauf leert `frontend/dist`** (279 Dateien waren
 danach weg). Deshalb steht im Manifest die Bau-Form ueber den echten Pfad:
 
 ```
-cmd /c cd /d O:\Werkstatt\Repos\OpenTerminalUI\frontend && npm run build   (exit 0, 58,9 s)
+cmd /c cd /d O:\Werkstatt\OpenTerminalUI\frontend && npm run build   (exit 0, 58,9 s)
 ```
 
 Merksatz: bei einem Repo unter einer Junction entscheidet das
@@ -167,7 +167,7 @@ weil „Erfolg" beim Starten nichts ueber das Ueberleben sagt.
 
 ### Nachtrag 30.09.2026 — Flotte gegen upstream gezogen (gemessen)
 
-`Werkstatt/Repos` traegt **46 Klone** (`copilot-worktrees` ist keine: Worktree-
+`Werkstatt` traegt **46 Klone** (`copilot-worktrees` ist keine: Worktree-
 Sammlung ohne `.git`, wird vom Werkzeug richtig uebergangen). Drei Laeufe von
 `Agenten/Werkzeuge/repos-updaten.py`:
 
@@ -218,7 +218,7 @@ eine Zeile bekommt:
 
 | Bereich | Wurzel | Regel |
 |---|---|---|
-| REPOS | `Werkstatt/Repos` | nur Ordner mit `.git` (wie vorher) |
+| REPOS | `Werkstatt` | nur Ordner mit `.git` (wie vorher) |
 | WERKSTATT | `Werkstatt` + `Werkstatt/Projekte` | jeder Ordner |
 | HANDEL | `Agenten/Handel` | jeder Ordner **und** jede Werkzeugdatei mit Einstieg |
 
@@ -309,7 +309,7 @@ Auswertung, Journal und Zustand)"*. Inhalt nachgezaehlt: **22 Spuren mit
 - **Stoert es den Betrieb?** Nein. Eine Suche ueber `Agenten/` findet den Pfad
   nur in der Zentrale selbst (`fuellen.py`, `repos-zentrale.json`); keine Spur,
   kein Skript, keine Routine liest ihn. `repos-updaten.py` fasst ihn nicht an
-  (das Werkzeug liest nur `Werkstatt/Repos`).
+  (das Werkzeug liest nur `Werkstatt`).
 - **Geheimnisse?** Keine. Keine `.env`, keine Bearer-Token; die zwei
   Schluessel-artigen Zeilen in `nautilus/set-okx-env.ps1` sind Platzhalter
   („HIER…", byte-gleich auch im lebenden Baum). Das Repo ist privat.
@@ -606,7 +606,7 @@ zentrale"*.
 `BrainFiles\Werkstatt` **ist** `O:\Werkstatt` — eine Junction, kein zweiter
 Ordner. Beide Listen sind Zeile fuer Zeile identisch, beide zeigen dieselben
 Zeitstempel und dieselbe Groesse. „Beide voll" hiess also: **ein** Ort, 66 GB.
-Zweiter Befund derselben Art: `Werkstatt\Repos\intelligent-trading-bot` ist eine
+Zweiter Befund derselben Art: `Werkstatt\intelligent-trading-bot` ist eine
 Junction auf `Werkstatt\intelligent-trading-bot` (siehe unten).
 
 ### Jede Spur ist jetzt aus dem Fenster startbar
@@ -673,10 +673,10 @@ Ein Scan ueber alle `.git`-Ordner fand **87 Klone** und sieben „gleiche Herkun
 an mehreren Orten". Fast alle sind gewollt oder schon weggeraeumt
 (`Ausgemustert\klon-doppel-20260930`). **Eine** war echt: der zweite
 `kraken-cli`-Klon an der BrainFiles-Wurzel (5,5 MB, **ohne** Bau) neben dem
-gebauten in `Werkstatt/Repos` (2,7 GB, `target/release/kraken.exe` — den
+gebauten in `Werkstatt` (2,7 GB, `target/release/kraken.exe` — den
 `Agenten/Werkzeuge/kraken.ps1` benutzt).
 
-Und **eine** war keine: `Werkstatt\Repos\intelligent-trading-bot` ist eine
+Und **eine** war keine: `Werkstatt\intelligent-trading-bot` ist eine
 **Junction** auf `Werkstatt\intelligent-trading-bot`. Ein Inhalts-Fingerabdruck
 ueber beide Pfade liefert denselben Hash — das sieht wie eine Dublette aus und
 ist dieselbe Ablage. Die alte Manifest-Notiz („Zweite Ablage des
@@ -704,7 +704,7 @@ die bekannten sieben `okx-*`.
   gewollt, im Manifest als Rolle „Spiegel (18.09.)" benannt.
 - `Werkstatt\Ausgemustert` 4,86 GB (`c-entlasten` 3,62 = alte Hermes-Anlage,
   `installer` 0,73, `klon-doppel` 0,51).
-- In `Werkstatt\Repos` sind **19,42 GB** der 26,26 GB venv/node_modules/target/
+- In `Werkstatt` sind **19,42 GB** der 26,26 GB venv/node_modules/target/
   `.git` — wieder herstellbar, aber genau das, was die STARTBAR-Zeilen tragen.
 
 ### Zahlen

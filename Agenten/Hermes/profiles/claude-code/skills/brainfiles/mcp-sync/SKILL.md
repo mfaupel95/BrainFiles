@@ -22,7 +22,26 @@ powershell -ExecutionPolicy Bypass -File Agenten\mcp-sync-check.ps1
 ```
 Exit 0 = in Sync, 1 = Fehler. Fehler: Server im Manifest aktiv, aber bei einem Agenten fehlend; Programm/Verzeichnis fehlt. Warnung: Konfiguration neuer als Manifest (= stille App-Ueberschreibung), Server in Agenten-Config aber nicht im Manifest.
 
+## Verifikation nach der Reparatur
+
+- Der Pruefer belegt nur, dass das **Serverprogramm existiert** — nicht, dass ein Agent
+  es starten kann. Nach jeder Reparatur den echten Start belegen:
+  `hermes -p <profil> mcp test <name>` (rc 0 + Werkzeugliste).
+- Claude-Seite: der Eintrag muss das Schreiben **ueberleben**. Nach dem Schreiben die
+  mtime der Claude-Config gegen die eigene Schreibzeit halten — bleibt sie stehen, hat
+  die App nicht aus ihrem Speicher zurueckgeschrieben. Endgueltig belegt es erst ein
+  Neustart der App (der Server steht dann unter den Connectors).
+- Eintrag byte-genau einsetzen: Anker auf das Blockende (`    }` + `  },` + naechster
+  Top-Level-Schluessel), das Komma am Vorgaenger nicht vergessen, in eine Temp-Datei
+  schreiben, `json.load` validieren, dann `os.replace`; Diff gegen die Sicherung zeigen.
+  Nur `command`/`args` noetig — die uebrigen Eintraege der Datei fuehren kein `cwd`.
+
 ## Fallstricke (belegt 10./11.09.2026)
+- ZWEI Claude-Config-Pfade: der Pruefer liest seit 14.10.2026 den MSIX-Container ZUERST und faellt nur auf den klassischen Pfad `%APPDATA%\Claude\claude_desktop_config.json` durch; liegt eine zweite Datei daneben, warnt er. Vorher war die Reihenfolge umgekehrt: eine verwaiste klassische Datei blendete den Pruefer aus und erzeugte falsche "fehlt bei Claude"-Fehler fuer alle Server, die nur im Container stehen (14.10.2026: 7 falsche Fehler, echte Container-Config hatte alle). Bei unerwarteten Claude-Fehlern also immer pruefen, WELCHE Datei der Pruefer laut seiner Ausgabe liest, und die mtimes beider Dateien vergleichen; die aktive ist die im Container (wird bei App-Nutzung staendig neu geschrieben).
+- `hermes mcp add` ist discovery-first und fragt interaktiv `Enable all N tools? [Y/n/select]:`. In einer nicht-interaktiven Shell bricht das mit "Cancelled" ab, obwohl der Server erreichbar ist — `echo y | hermes -p <profil> mcp add ...` voranstellen. `--args` muss die letzte Option sein.
+- Profil-Ziel: `hermes -p default` schreibt in die WURZEL-Config `Agenten\Hermes\config.yaml` (Profil `default` = Agenten\Hermes). Ohne `-p` schreibt der Befehl in das eigene Profil. Der Pruefer bewertet nur die Wurzel-Config.
+- Manifest-Stempel: der Pruefer vergleicht die mtime der Configs mit der mtime des Manifests. Nach jeder verifizierten Reparatur das Manifest ZULETZT anfassen (`touch`), sonst warnt er dauerhaft "Konfiguration neuer als Manifest".
+- cwd ist bei `hermes mcp add` nicht setzbar (kein `--cwd`). Fuer Server, die ihr Arbeitsverzeichnis aus einer eigenen Variablen oder `~` ziehen (z. B. ziplime: `ZIPLIME_MCP_HOME` bzw. `~/.ziplime/mcp`), ist das ohne Wirkung — vorher in der Serverquelle pruefen.
 - BEIDE Apps (Claude Desktop UND Hermes) ueberschreiben ihre Konfiguration aus eigenem Speicher. Server-Eintraege koennen still verschwinden (mcp-memory geschah so in beiden Configs). Deshalb regelmaessig pruefen; Config-Zeitstempel > Manifest-Zeitstempel = Alarm.
 - Claude-Config nur bei geschlossener App aendern, sonst ueberschreibt die laufende App sie aus ihrem Speicher.
 - Hermes config.yaml nicht manuell editieren — Hermes-Kommandos/Framework-Konventionen nutzen.

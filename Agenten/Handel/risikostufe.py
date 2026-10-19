@@ -74,6 +74,11 @@ SKALIEREN = (
     # Die beiden Ratschen - siehe Modulkopf.
     "drawdown_halbierung_usd", "kill_switch_gesamt_usd",
     "kill_switch_gesamt_eur", "kill_switch_gesamt_usd_papier",
+    # Die Bestandsgrenze (PLAN §4.2, 19.10.2026). Sie ist - wie die beiden
+    # Ratschen - IN BUCHRISIKO ausgedrueckt und muss mit: die Stufe verdoppelt
+    # das Buchrisiko (Faktor 2), eine stehengebliebene Grenze wuerde also im
+    # Mittel-Lauf bei JEDEM Zyklus den Stufen-Kill ausloesen.
+    "max_offenes_risiko_usd", "risiko_buchdeckel_usd",
 )
 
 # Sicherheitsnetz: selbst wenn ein Feld oben faelschlich stehen sollte, wird es

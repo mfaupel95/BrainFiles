@@ -25,11 +25,11 @@ MIT, Rust, Fassung **v0.4.5** (20.08.2026).
 | Was | Wo |
 |---|---|
 | Fork (außer Haus) | `mfaupel95/ProjectAtlas`, öffentlich, Fork von `styler-ai/ProjectAtlas` (13.09.2026) |
-| Arbeitsklon | `Werkstatt/Repos/ProjectAtlas` — `origin` = Fork, `upstream` = Original, volle Historie |
+| Arbeitsklon | `Werkstatt/ProjectAtlas` — `origin` = Fork, `upstream` = Original, volle Historie |
 | Laufzeit | `Agenten/Werkzeuge/projectatlas/v0.4.5/projectatlas.exe` samt Kopie in `bin/` |
 | Atlas je Repo | `<repo>/.projectatlas/` — Laufzeitzustand, nicht im Git |
 | Indexier-Lauf | `Agenten/Werkzeuge/projectatlas/indexieren.sh` (idempotent, Logs daneben) |
-| Bot | `hermes -p projectatlas chat`, Arbeitsverzeichnis `Werkstatt/Repos/ProjectAtlas` |
+| Bot | `hermes -p projectatlas chat`, Arbeitsverzeichnis `Werkstatt/ProjectAtlas` |
 
 Die Laufzeit stammt aus dem Release-Archiv `projectatlas-v0.4.5-x86_64-pc-windows-msvc.zip`,
 geprüft gegen `SHA256SUMS` des Release
@@ -101,7 +101,7 @@ stehen — die Folge waren Bots, die auf den falschen Atlas zeigten). Korrekt is
 ## Grenzen und Fallen (gemessen 13.09.2026)
 
 1. **Projektgrenze ist die Git-Wurzel.** Ordner ohne eigenes `.git` unterhalb
-   von `BrainFiles/` — `Agenten/Bus`, `Agenten/Handel`, `Werkstatt/Repos`
+   von `BrainFiles/` — `Agenten/Bus`, `Agenten/Handel`, `Werkstatt`
    selbst — lassen sich **nicht** einzeln kartieren: `init` und `root set .`
    binden die nächstgelegene Wurzel, hier `BrainFiles`. Zusätzlich würde dort die
    Whitelist-`.gitignore` (`*`, dann Einzelfreigaben) bis auf die freigegebenen
@@ -181,7 +181,7 @@ Repo bedingt ergänzt; `.venv`/`node_modules`/`__pycache__`/`build`/`dist`/
 Acht Repos neu kartiert (alle `scan.status: verified`, IDs der Karten aus den
 Logs): Agent-Reach, agent-trade-kit, awesome-systematic-trading,
 Harvard-Algorithmic-Trading-with-AI, moon-dev-ai-agents, openmontage,
-santiment, Trading-View-MCP-for-AI-by-Moon-Dev. **29 Karten in Werkstatt/Repos
+santiment, Trading-View-MCP-for-AI-by-Moon-Dev. **29 Karten in Werkstatt
 (21 Bestand + 8 neue), Atlanten gesamt 42 (inkl. Werkstatt-Extra-Repos,
 nautilus, hermes-agent); 7 Bots an ihre Karte gehängt**
 (bot-verdrahten.sh, je `mcp test` „Connected", `--db` auf das jeweilige Repo):

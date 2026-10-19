@@ -12,7 +12,7 @@ tags: [werkzeug, moondev, backtest, llm]
 > des Repos sind Prosa des Modells; nachgemessen verliert jede getestete
 > Strategie 95–97 % gegen +128 % Buy & Hold.
 
-Ort: `Werkstatt/Repos/moon-dev-ai-agents`. Start: `.venv\Scripts\pythonw.exe moongui.py`.
+Ort: `Werkstatt/moon-dev-ai-agents`. Start: `.venv\Scripts\pythonw.exe moongui.py`.
 
 ## Was das Fenster ist
 
@@ -150,7 +150,7 @@ immer neue dazu.
 - **Optik:** Doppelte Agentenliste (zweite Treeview-Spalte) und unlesbare
   Dropdowns im clam-Theme behoben (Commit `f53fab6`).
 - **Strategie-PDFs:** `moondevonyt/Moon-Dev-Code` nach `mfaupel95/Moon-Dev-Code`
-  geforkt, nach `O:\Werkstatt\Repos\Moon-Dev-Code` geklont (`upstream` = Original,
+  geforkt, nach `O:\Werkstatt\Moon-Dev-Code` geklont (`upstream` = Original,
   flacher Klon). Der PDF-Tab zeigt die drei Dateien im Ordner `strategy_pdfs`.
   Mehr liefert das Original nicht, auch nicht in der Historie. Die drei
   Dateien sind die Paper aus [[Moon-Dev-Code-Studien]].

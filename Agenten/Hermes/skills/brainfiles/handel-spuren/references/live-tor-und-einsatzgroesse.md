@@ -487,6 +487,88 @@ Drei Regeln daraus:
 Merksatz: **der eigene Erfolg ist die Verkaufssumme, nicht die Wirkung.** Die
 Wirkung steht am Konto und im Journal der Spur, die zugriff.
 
+## 11. Grenzen HERABSETZEN: halbieren, fehlende Live-Grenzen, latente Deckel
+
+Ein Auftrag „Einsatz runter" beruehrt je Spur andere Felder. Bevor geschrieben
+wird, wird der IST-Zustand je Spur als Feldliste gemessen und der Altwert gegen
+den erwarteten geprueft — ein Anker, der nicht trifft, ist ein stilles Nichts.
+`spuren_stand.py` zeigt Schalter und Fenster, aber NICHT, woher eine Live-Grenze
+kommt; dafuer die Felder selbst lesen.
+
+- **Halbieren mit Vermerk, Papier unveraendert.** Live-Grenzen
+  (`live_max_*`, `live_einsatz_*`) werden halbiert, die Papierwerte bleiben.
+  Jede Aenderung traegt ein datiertes `_vermerk`-Feld mit Auftrag und Grund
+  (Gebuehrenstruktur, fehlender Excess) — die naechste Sitzung liest daraus,
+  WARUM die Zahl kleiner ist als bei der Nachbarspur.
+- **Eine Spur OHNE `live_max_*` handelt live mit den PAPIERwerten.** Ein
+  fehlendes Feld ist nicht „keine Grenze konfiguriert", sondern Papier-Sizing
+  in echtem Geld. Vor jedem Live-Status die EXISTENZ der Felder pruefen, nicht
+  ihren Wert.
+- **Ein Deckel weit ueber seinem eigenen Vermerk ist eine Falle.** Ein Wert, der
+  nie bindet (90000 dort, wo der `_max_pro_trade`-Vermerk 130 sagt), ist
+  unsichtbar, bis ein kuenftiger Aufrufer die Sizing aus dem Deckel ableitet.
+  Beim Anfassen der Grenzen den Vermerk gegen den Wert lesen.
+- **Die Kette konsistent halten: je Trade → Plaetze → Gesamtdeckel → Guthaben**
+  (Abschnitt 3). Ein halbiertes Je-Trade-Limit laesst die Plaetze binden — das
+  ist die beabsichtigte Bremse und gehoert in den Vermerk, nicht in eine Zahl,
+  die „nicht passt".
+- **Abgeleitete Risikofelder nicht mitziehen.** `risiko_je_position_eur`
+  beschreibt das HOECHSTRISIKO der ALTNORM (50 x 12 %); die Ratsche leitet
+  daraus die Halbierungsschwelle. Wird das Je-Trade-Limit halbiert und das
+  Risikofeld mitgezogen, verschiebt sich die Schwelle selbst — und die alte
+  Positionsklasse verliert ihren Schutz. Bewusst stehen lassen und im Vermerk
+  begruenden.
+- **Nach dem Setzen nachrechnen:** `pruefe_ratschen.py` (Schwellen herleitbar,
+  1.0x?) und je scharfer Spur `MAXHIRN_ROUTINE=1 <spur>/handeln.py --vorschau`
+  fuer die Sperrzeile. Die Vorschau braucht Netz und laeuft in Timeouts — je
+  Spur einzeln, nicht ueber die Flotte in einem Aufruf.
+
+## 12. Die Kapitalkurve STICHTEN, wenn ein Alt-Peak den Kill bindet
+
+Der Kill misst `ruecklauf = Hoechststand der kumulierten Kurve − aktueller
+Stand` ueber ALLE Journalrunden. Ein aufgeblaehter Alt-Peak —
+Handpositions-Buchungen mit margin=NOMINAL statt echter Margin, Phantomzeilen —
+haelt den Kill ueber Wochen gebunden, obwohl das heutige Buch sauber ist.
+Gemessen: Peak 690 USD aus Handpositions-Buchungen, der Kill feuerte und
+schloss drei live GEWINNER.
+
+Zwei Wurzelmassnahmen, keine eine:
+
+1. **Die Zeilen korrigieren** (Werkzeug `journal_korrektur_xperp.py`,
+   Trockenlauf zuerst). Faellt es auf „0 Zeilen betroffen", sind die
+   Phantomzeilen schon weg — dann bleibt nur (2).
+2. **Der Kurve einen Stichtag geben.** EIN Feld in der `wachen.json`
+   (`kapitalkurve_ab`, ISO-Datum), gelesen in `lage()`: Runden VOR dem Stichtag
+   zaehlen weiter fuer Statistik und Erwartungswert, die Kurve
+   (Hoechststand/Ruecklauf/Kill) beginnt am Stichtag. So bleibt die Statistik
+   ehrlich und der Kill misst das heutige Buch.
+
+Den Deckel anzuheben (`kill_switch_gesamt_usd`) daempft nur — der Peak bleibt,
+der naechste Ruecklauf feuerte erneut. **Ein Kurven-Reset ist eine Entscheidung
+von Max, keine Hygiene:** die gemessenen Zahlen (Peak alt, Ruecklauf alt,
+Deckel, Stand nach dem Stichtag) benennen, dann schalten.
+
+Stehen inzwischen ZWEI Filter an derselben Stelle (z. B. ein Hand-Ergebnis-
+Filter aus einer frueheren Session und der Stichtag), werden sie VERKETTET,
+nicht gegeneinander ersetzt: fremden Filter behalten, den Stichtag als eigenen
+Schritt DANACH setzen. Ein Filter, der den anderen verdraengt, verliert die
+Wirkung des alten — und genau das faellt erst auf, wenn jemand den Kill wieder
+ohne Handschutz braucht. Reihenfolge im Test festhalten: je Filter eine Zeile,
+damit ein Ausfall benennt, WELCHER Schritt fehlt.
+
+Testfalle: ein Test, der die echte `wachen.json` kopiert, **erbt den echten
+Stichtag** und faelscht den Fall „kein Feld". Jeden Fall das Feld AUSDRUECKLICH
+setzen (`None` = alle Runden) — eine Konfiguration, um die es geht, wird vom
+Fall gesetzt, nicht geerbt. **Dieselbe Falle gilt fuer JEDES neue Feld der
+Wachen:** ein Test, der die echte Datei als Vorlage nimmt, erbt jede spaetere
+Erweiterung mit und prueft dann die Konfiguration, nicht die Regel. Gegenprobe:
+neues Feld in den Wachen setzen und den Alt-Test rot werden sehen.
+
+Nachweis: `lage()` vor/nach (Hoechststand, Ruecklauf, Kill-Flag) messen und die
+Gegenprobe fahren — wird der Code-Pfad zurueckgenommen, muessen die
+Stichtag-Tests rot werden. Die Rundenzahl der Statistik bleibt in ALLEN Faellen
+gleich.
+
 Verwandt: `references/tor-kalibrierung.md` (Schwellen und Kosten),
 `references/freigabefenster-und-abbruchzeit.md` (Fenster gegen Abbruchzeit),
 `references/live-schalten.md` (der erste echte Geldpfad).

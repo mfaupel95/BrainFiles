@@ -1,9 +1,9 @@
 ---
 name: fundus-zugriff
-description: "Use when eine Faehigkeit fehlt: Skill-Fundus (Documents/GitHub + Werkstatt/Repos) durchsuchen."
+description: "Use when eine Faehigkeit fehlt: Skill-Fundus (Documents/GitHub + Werkstatt) durchsuchen."
 ---
 
-# Skill-Fundus (MaxHirn/skills + Werkstatt/Repos) nutzen
+# Skill-Fundus (MaxHirn/skills + Werkstatt) nutzen
 
 `%USERPROFILE%\Documents\GitHub` ist der Skill-Fundus (**geklonte
 Fremd-Repos**; seit 18.09.2026 dort). Achtung: der Ordner liegt AUSSERHALB
@@ -12,7 +12,7 @@ eindeutige SKILL.md** in 15 Repos (568 Dateien, 170 byte-identische Kopien),
 groesste: gbrain 223, financial-services 120, OmniRoute 75, kraken-cli 59
 (offizielles Kraken-Skillpack), claude-plugins-official 31; ohne Skills:
 data-mcp (reiner Daten-MCP) u.a.
-**`Werkstatt/Repos/`** (die Bot-Klone): **505 eindeutige** in 22 Repos
+**`Werkstatt/`** (die Bot-Klone): **505 eindeutige** in 22 Repos
 (705 Dateien), davon 216 byte-identisch auch im Fundus (geprueft 22.09.2026).
 
 Sie sind **absichtlich nicht** in die Hermes-Bibliothek importiert: ihre Namen
@@ -46,7 +46,7 @@ die Fremdinhalte erst, wenn wirklich gebraucht.
 
 3. **Uebersicht fuer Menschen und fuer Agenten ohne Terminal:**
    `MaxHirn/Wissen/Fundus-Index.md` (Fundus, 398 Skills, je Repo
-   gruppiert) und `MaxHirn/Wissen/Fundus-Index-Werkstatt.md` (Werkstatt/Repos,
+   gruppiert) und `MaxHirn/Wissen/Fundus-Index-Werkstatt.md` (Werkstatt,
    505 Skills, mit `*(auch im Fundus)*`-Markern). Beide neu bauen: `-Index` am
    selben Skript - auch nach `git pull` in einem Klon. Die Pfade im Index sind
    relativ zur jeweiligen Wurzel (Fundus-Pfade ab dem Repo-Namen).
@@ -58,7 +58,7 @@ die Fremdinhalte erst, wenn wirklich gebraucht.
    anwenden und nichts speichern.
 
 5. **Klone aktuell halten:** der Hermes-Cron `repo-updates-check` (montags
-   09:15, `no_agent`) meldet, welche Werkstatt/Repos hinter upstream
+   09:15, `no_agent`) meldet, welche Werkstatt hinter upstream
    zurueckliegen; nach einem `git pull` den `-Index` neu bauen lassen.
 
 ## Fallen

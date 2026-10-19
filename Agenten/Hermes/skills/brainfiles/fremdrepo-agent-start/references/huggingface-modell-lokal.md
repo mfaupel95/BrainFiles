@@ -7,7 +7,7 @@ eigenen Zahlen, Gewichte liegen nicht auf C:.
 
 ## Einrichten (5 Schritte)
 
-1. Klon wie ueblich nach `Werkstatt/Repos/<name>` (origin = Fork, upstream =
+1. Klon wie ueblich nach `Werkstatt/<name>` (origin = Fork, upstream =
    Original). 54 Commits sind klein genug fuer einen VOLLEN Klon — shallow
    nur bei grossen Baeumen, und dann `git fetch --unshallow upstream` vor
    jedem Push.

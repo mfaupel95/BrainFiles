@@ -6,7 +6,7 @@ import csv, json, os, sys, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 import statistics as st
 
-QUELLE = r"O:\Werkstatt\Repos\moon-dev-ai-agents\src\data\ai_analysis_buys.csv"
+QUELLE = r"O:\Werkstatt\moon-dev-ai-agents\src\data\ai_analysis_buys.csv"
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "moondev_preise.json")
 HORIZONTE = (1, 3, 7)
 KOSTEN = 0.01

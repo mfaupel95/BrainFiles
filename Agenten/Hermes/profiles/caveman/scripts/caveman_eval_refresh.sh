@@ -3,7 +3,7 @@
 # print the measured token savings. Run after 00:00 Europe/Berlin so the
 # claude session limit has reset.
 set -u
-REPO="C:/Users/faupe/Documents/BrainFiles/Werkstatt/Repos/caveman"
+REPO="C:/Users/faupe/Documents/BrainFiles/Werkstatt/caveman"
 cd "$REPO" || { echo "FAIL: cannot cd $REPO"; exit 1; }
 
 export CAVEMAN_EVAL_MODEL=claude-haiku-4-5

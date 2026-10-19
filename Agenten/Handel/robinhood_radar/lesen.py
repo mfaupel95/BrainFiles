@@ -1,6 +1,6 @@
 """Nur lesender Zugang zur Datenbank des FOMO-Robinhood-Radars.
 
-Der Radar (`Werkstatt/Repos/fomo-robinhood-radar`, Fremd-Repo) SAMMELT; diese
+Der Radar (`Werkstatt/fomo-robinhood-radar`, Fremd-Repo) SAMMELT; diese
 Spur LIEST. Es gibt genau einen Zugang, und der kann nicht schreiben:
 
   * Die Datenbank wird mit `mode=ro` geoeffnet (SQLite verweigert dann jedes
@@ -28,7 +28,7 @@ import sqlite3
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 WURZEL = os.path.dirname(os.path.dirname(os.path.dirname(HIER)))   # BrainFiles
-RADAR_DB = os.path.join(WURZEL, "Werkstatt", "Repos", "fomo-robinhood-radar",
+RADAR_DB = os.path.join(WURZEL, "Werkstatt", "fomo-robinhood-radar",
                         "fomo_agent.db")
 
 ERLAUBTE_ANFAENGE = ("select", "with", "pragma")

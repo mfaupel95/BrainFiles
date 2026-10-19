@@ -574,4 +574,8 @@ def haupt(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    # Windows-Konsole (cp1252) kann ✓ nicht ausgeben; ohne das bricht start/stop mittendrin ab.
+    for strom in (sys.stdout, sys.stderr):
+        if hasattr(strom, "reconfigure"):
+            strom.reconfigure(encoding="utf-8", errors="replace")
     raise SystemExit(haupt(sys.argv[1:]))

@@ -375,8 +375,8 @@ ungetrackten Dateien. Reihenfolge:
   wie bei einem normalen Zweig der Fehler. Nachher `git worktree list` + `git branch -a`:
   es soll nur noch `master` (plus `zwischenstand` = Nachtsicherung) stehen.
 - **Nested `copilot-worktrees/*` in Klon-Repos sind KEIN Aufraeumkandidat.** `git worktree
-  list` in einem Klon unter `Werkstatt/Repos/<repo>` zeigt neben dem Hauptbaum oft
-  `Werkstatt/Repos/copilot-worktrees/<repo>/<name>` auf einem Branch mit automatischem
+  list` in einem Klon unter `Werkstatt/<repo>` zeigt neben dem Hauptbaum oft
+  `Werkstatt/copilot-worktrees/<repo>/<name>` auf einem Branch mit automatischem
   Copilot-Namen. Das ist die eigene Feature-Sammlung von Copilot (jeder auf dem Helden-
   Commit), nicht ein verwaister BrainFiles-Worktree. Nie mit `git worktree remove` anfassen
   — nur Worktrees im BrainFiles-eigenen Baum (`BrainFiles/.worktrees/*`) aufraeumen, die
@@ -396,7 +396,7 @@ ungetrackten Dateien. Reihenfolge:
   (`git check-ignore -v --no-index <pfad>` je Datei) und einzeln freigeben — eine
   Freigabezeile mit dem Grund daneben, nicht ein pauschales `!*.vbs`.
   **Dieselbe Falle im Fremd-Klon, eine Ebene tiefer:** eine Hausdatei, die im
-  Repo-Ordner unter `Werkstatt/Repos/<repo>` entsteht (eigenes Werkzeug, eigene
+  Repo-Ordner unter `Werkstatt/<repo>` entsteht (eigenes Werkzeug, eigene
   To-do-Notiz), ist dort `??` - der Klon hat ein EIGENES Repo, also schuetzt die
   BrainFiles-`.gitignore` sie nicht und die Sicherung nimmt sie nicht mit. Vor dem
   Melden „fertig" je selbstgebauter Datei `git -C <klon> status --porcelain --

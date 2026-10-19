@@ -39,7 +39,7 @@ um 20:00).
 
 - Schwelle 30 Minuten ohne Aenderung (dieselbe wie `arbeitsbaum-pruefen.ps1` und die
   Schutzregeln). Was juenger ist, gehoert einer Sitzung, die gerade schreibt.
-- Ein Pfad in einem eingebetteten Repo (`Werkstatt/Repos/*`, `Agenten/Handel/nautilus`)
+- Ein Pfad in einem eingebetteten Repo (`Werkstatt/*`, `Agenten/Handel/nautilus`)
   wird uebersprungen - dort fuehrt ein anderes `.git` die Versionierung.
 - Eine GELOESCHTE Datei hat keine mtime: Ersatzwahrheit ist `LastWriteTime` ihres
   Elternordners (Windows schreibt sie beim Loeschen fort).

@@ -438,6 +438,9 @@ Ausloeser → Referenz:
   (`auswertung_alle.STUFE` ist eine Modulvariable; ohne sie stehen in einer Zeile
   die Positionen der Variante und die Zahlen der Basis). Im `finally`
   zurueckstellen - ein Bericht darf den aufrufenden Prozess nicht umstellen.
+- **Stand-Check „Freigabe und Herzschlag" aller Spuren** (Tabelle, Regel-Glob,
+  Fenster-Zustand, Kill/Buchhaltung-Falle):
+  `references/laufzeit-audit-und-live-berechtigung.md`, Abschnitt „Stand-Check".
 - **„welche Spur handelt real", „nur die live und handel erlaubt Staende",
   `/live`: Orderfaehigkeit am CODE pruefen statt am Schalter (Haus-Funktionsnamen!),
   Buch je `modus` trennen, neuen Lese-Befehl in beide Bots verdrahten:
@@ -478,8 +481,9 @@ Ausloeser → Referenz:
    Werkzeug startet die Spur mit dem FALSCHEN Interpreter, sie stuerzt ab, und ein
    abgestuerzter Lauf liefert keine Zeile (dann je Spur den eigenen venv waehlen);
    die Sperre nennt ein Guthaben ohne BOERSE und
-  Waehrung, oder es ist schlicht kein Geld frei) oder **eine Grenze soll erhoeht werden**
-  („X auf 100"): `references/live-tor-und-einsatzgroesse.md` — ein Tor muss den
+  Waehrung, oder es ist schlicht kein Geld frei) oder **eine Grenze soll erhoeht
+  werden** („X auf 100") oder HERABGESETZT („Risiko zuerst"):
+  `references/live-tor-und-einsatzgroesse.md` — ein Tor muss den
   Zustand des Zweigs lesen, der SCHREIBT (sonst sperrt sich die Spur selbst),
   der Einsatz wird auf das freie Guthaben gedeckelt BEVOR das Freigabefenster
   ihn zeigt, und nach jeder Erhoehung wird nachgerechnet, welches Limit dann
@@ -634,6 +638,12 @@ Ausloeser → Referenz:
    BENANNT: was schon erledigt war, was anders geloest wird und warum, mit Test.
 2. **Sichern** (Stufe 1): `.bak-JJJJMMTT` für jede Datei, die angefasst wird —
    auch `wachen.json` und `zustand.json`, wenn ein Testlauf sie berühren kann.
+   **Wachen-Aenderungen belegt man mit `<spur>/handeln.py --vorschau`, nicht mit
+   `import`: nicht jede Spur hat ein `wachen_pruefung`-Modul (macd_mtf und die
+   Indikator-Spuren laden ihre Wachen selbst) - `import <spur>.wachen_pruefung`
+   bricht mit ModuleNotFoundError, obwohl die Spur gesund laeuft. Der Aufruf
+   aus dem Spurenordner ist genau der, den der Dauerlauf je Zyklus startet,
+   und `--vorschau` schreibt nichts ("Vorschau: keine Dateien geschrieben").
 3. **Ändern:** Sperren gehören in `sperren_live()` bzw. die gleichnamige Funktion
    der Spur, nicht verstreut in den Rumpf von `lauf()`.
 4. **Ohne Broker testen - mit dem Aufruf, der im TESTKOPF der Spur steht.**
@@ -840,7 +850,9 @@ Nebenbedingung. Geltende Regel: eine **Betriebsstoerung** (Herzschlag-
 Zwangsschluss, Notaus) ist keine Handelsentscheidung und darf eine
 Erwartungswert-Sperre nicht auslösen. Die **Kapitalkurve** (Drawdown, Ratsche,
 Halbierung, Kill-Switch) rechnet weiter auf ALLEN Buchungen — eine Stoerung ist
-eingetragen und hat Geld bewegt.
+eingetragen und hat Geld bewegt. Ausnahme Buchhaltung: `buchbereinigung` bewegt
+kein Geld und kann den Hoechststand allein treiben - vor einem Kill-Befund die
+Kurve ohne sie nachrechnen: `references/verlust-spur-diagnose.md`.
 
 - **Genau EIN Feld trägt die Zahl, auf der die Sperre beruht.** Heißt es
   `rollierender_ev`, dann ist das die Zahl der Bedingung; die Zahl über alle

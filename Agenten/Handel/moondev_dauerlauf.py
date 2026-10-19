@@ -3,7 +3,7 @@ MoonDev-Agenten an den Haus-Dauerlauf anbinden (17.09.2026, Max).
 
 Was das ist
 -----------
-Die geklonten Moon-Dev-Agenten (Werkstatt/Repos/moon-dev-ai-agents/src/agents)
+Die geklonten Moon-Dev-Agenten (Werkstatt/moon-dev-ai-agents/src/agents)
 sind eigenstaendige Endlos-Loops mit eigener main() - KEINE Haus-Spuren mit
 Buch. Dieses Modul faehrt sie als Kindprozesse weiter, damit sie ueberleben:
 
@@ -43,7 +43,7 @@ from datetime import datetime
 from pathlib import Path
 
 HIER = Path(__file__).resolve().parent                      # Agenten/Handel
-REPO = (HIER / ".." / ".." / "Werkstatt" / "Repos" / "moon-dev-ai-agents").resolve()
+REPO = (HIER / ".." / ".." / "Werkstatt" / "moon-dev-ai-agents").resolve()
 
 # WICHTIG: Die Agenten brauchen Pakete aus dem REPO-EIGENEN venv (requests,
 # pandas, openai ...) - sys.executable ist hier der AUFRUFER-Interpreter

@@ -115,7 +115,7 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
    Sicherheitsscan mit Verdikt (`SAFE` / `BLOCKED`), dann
    `Installed: <kategorie>/<name>`. `--force` nur bei blockiertem Verdikt und nur
    nach dem Lesen der Scanbegründung. Fehlt ein `name:` im Frontmatter, `--name` setzen.
-   Fuer einen Kandidaten aus einem Klon (Fundus, `Werkstatt/Repos`) gibt es **keinen**
+   Fuer einen Kandidaten aus einem Klon (Fundus, `Werkstatt`) gibt es **keinen**
    Hub-Scan — den vor dem Uebernehmen selbst scannen: Ablauf, Regelbedeutungen und
    die zwei Fallen des Scanners in `references/sicherheitsscan.md`. Die fertige
    Schleife (alle Skill-Ordner einer oder mehrerer Wurzeln, Hash-Dedupe,
@@ -126,9 +126,16 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
    Oft existiert schon eine gepflegte Fassung, dann ist der Fremd-Klon unnötig.
 4. **Belegen:** `hermes skills list` zeigt den Eintrag mit Quelle `url` und
    Herkunft `community` als `enabled` — und den Slash-Namen des Skills.
-5. **Claude-Seite:** denselben Text nach `MaxHirn/.claude/skills/<name>/SKILL.md`
-   legen. Der Pfad ist in `.gitignore` freigegeben (`!MaxHirn/.claude/skills/**`),
-   `git check-ignore -v <pfad>` bestätigt das vor dem Commit.
+5. **Claude-Seite: das ORIGINAL** nach `MaxHirn/.claude/skills/<name>/SKILL.md`
+   legen — nicht die adaptierte Hermes-Fassung. Die Werkzeugnamen-Umsetzung ist
+   EINSEITIG: nennt der fremde Skill ein Claude-natives Werkzeug (z. B.
+   `AskUserQuestion`), hat Claude Code das selbst, und die Vault-Kopie behaelt den
+   Original-Namen; nur die Hermes-Kopie uebersetzt ihn (auf das `clarify`-Tool mit
+   Auswahloptionen, Empfehlung zuerst). Eine auf Hermes uebersetzte Claude-Kopie
+   wuerde dort ins Leere zeigen. Die Vault-Kopie bleibt unangepasst, nur die
+   Hermes-Kopie traegt eine Provenienz-Zeile (Quell-Repo). Der Pfad ist in
+   `.gitignore` freigegeben (`!MaxHirn/.claude/skills/**`),
+   `git check-ignore -v <pfad>` bestaetigt das vor dem Commit.
 6. **Immer-an-Wirkung gehört woanders hin.** Ein Skill wird nachgeladen, nie
    dauerhaft in den Prompt geschrieben — soll der Fremd-Skill das Verhalten
    *jeder* Antwort ändern, landet sein Kern in `SOUL.md` (`hermes-config-ops`,
@@ -137,7 +144,7 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
 Fallen:
 
 - **Mehrere Skills aus einem Klon: parallele Delegation mit Adoptionsauftrag.**
-  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt/Repos) ins Spiel, ist je
+  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt) ins Spiel, ist je
   Skill dieselbe Adaption faellig: Kern behalten, fremde Werkzeugnamen auf
   Hermes-Werkzeuge umsetzen, auf ~6.000 Zeichen kuerzen, Beschreibung kurz und
   selbsttragend. Harte Grenze fuer die Beschreibung: **60 Zeichen gesamt**, ein

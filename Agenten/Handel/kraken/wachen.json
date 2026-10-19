@@ -44,10 +44,10 @@
     "ALGOUSDC",
     "BCHUSDC"
   ],
-  "max_pro_trade_eur": 50,
+  "max_pro_trade_eur": 25,
   "risiko_je_position_eur": 6.0,
   "_risiko_je_position_eur": "HOECHSTRISIKO je Position, hergeleitet - nicht geschaetzt: die Spur ist NICHT risikonormiert wie scanner, sondern kauft fix max_pro_trade_eur 50 (handeln.py:149) und deckelt den Stop auf pflicht_stop_prozent_max 12 % (handeln.py:111-112). Ihr Verlust im schlechtesten Fall ist also 50 x 0.12 = 6.00 EUR; der tatsaechliche Wert liegt je nach Stop zwischen 2.50 (Stop 5 %) und 6.00 EUR. Fuer ein Buchrisiko, das eine Schutzschwelle tragen soll, ist der HOECHSTE Fall der richtige - ein Mittelwert wuerde die Ratsche zu spaet ausloesen lassen. Gelesen wird der Schluessel nur von ratschen.buch_risiko() (4 x 6.00 = 24.00 EUR); die Handelslogik rechnet weiter mit max_pro_trade_eur und dem Stop.",
-  "max_gesamt_eur": 200,
+  "max_gesamt_eur": 100,
   "max_offene_positionen": 4,
   "_gebuehren": "Gemessen an der Kraken-Staffel am 02.09.2026 fuer Volumen unter 10.000 EUR: Taker 0,40 %, Maker 0,25 %. Das ist das Achtfache von OKX (0,05 %). Eine Runde aus Markt-Kauf und Markt-Verkauf kostet 0,80 % - bei 50 EUR Einsatz 0,40 EUR. Diese Zahl traegt drei der Grenzen unten: hoehere Mindest-Stopweite, hoeheres Chance-Risiko-Verhaeltnis, hoeherer Mindest-Score. Wer sie senkt, muss sie neu messen.",
   "gebuehr_taker": 0.006,
@@ -94,8 +94,8 @@
   "drawdown_halbierung_usd": 24.0,
   "kill_switch_gesamt_eur": 40,
   "_herzschlag": "Bedingung 3. Liegt der letzte gesunde Lauf laenger als herzschlag_max_minuten zurueck, schliesst der naechste Start alle offenen Positionen und faellt auf Papier zurueck. 180 Minuten = drei Stunden: die Spur laeuft seit dem 14.09.2026 alle 15 Minuten, zwoelf ausgefallene Zyklen werden also gefangen. Bewusst nicht 45 - das ist der Wert fuer eine Spur mit Handelserlaubnis (siehe _herzschlag_regel). Bewusst auch nicht mehr 2880 (48 h): das passte zur Tagesroutine, deckt im Viertelstundentakt aber nichts ab.",
-  "herzschlag_max_minuten": 180,
-  "_herzschlag_regel": "REGEL 19.09.2026 (ersetzt die 45-Minuten-Regel vom 14.09.): 180 Minuten fuer ALLE Spuren, Papier wie Live. Grund: die 45er-Grenze stellt bei jeder ungeklaerten Abschaltung flach und bucht eine Runde, die keine Handelsentscheidung war (11./12.09.2026 in xperp/swap passiert), und ein Live-Wert darunter schliesst eine offene Position bei einem PC-Ausfall am Markt. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert 1-2 min - eine Stoerung heilt nach ~32 min von selbst. Nachgemessen von Routinen/systempruefung.ps1 Block 11b (soll 180). Hier stand 45, obwohl handel_erlaubt=true ist - das war der alte Wert (Befund 21.09.2026).",
+  "herzschlag_max_minuten": 45,
+  "_herzschlag_regel": "REGEL 19.09.2026 (ersetzt die 45-Minuten-Regel vom 14.09.): 180 Minuten fuer ALLE Spuren, Papier wie Live. Grund: die 45er-Grenze stellt bei jeder ungeklaerten Abschaltung flach und bucht eine Runde, die keine Handelsentscheidung war (11./12.09.2026 in xperp/swap passiert), und ein Live-Wert darunter schliesst eine offene Position bei einem PC-Ausfall am Markt. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert 1-2 min - eine Stoerung heilt nach ~32 min von selbst. Nachgemessen von Routinen/systempruefung.ps1 Block 11b (soll 180). Hier stand 45, obwohl handel_erlaubt=true ist - das war der alte Wert (Befund 21.09.2026).; Regel 13.10.2026 (Option 2): 45 min fuer Live (handel_erlaubt).",
   "_journal_zweitziel": "Bedingung 4. Pfad fuer die Journal-Spiegelung nach jedem Zyklus. Nicht G: (gleiches Gehaeuse). null = noch kein Ziel gesetzt, dann bleibt Live gesperrt.",
   "journal_zweitziel": "Q:\\Handel_Journal\\kraken",
   "handel_erlaubt": true,
@@ -113,5 +113,6 @@
     "grund": "Bedingung 5 (Wochenlauf): rollierender EV -0.028 EUR < 0"
   },
   "trigger_modus": "signal",
-  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": Signal-Wechsel-Gatter auch fuer Spuren mit EIGENEM Buch. Ein Einstieg wird nur zugelassen, wenn sich die Signalrichtung fuer das Instrument geaendert hat - sonst kein erneuter Einstieg im 15-Minuten-Takt. Gatter: Handel/signal_wechsel.py, verdrahtet VOR dem Orderaufruf. xperp traegt das Gatter auch im Papierbetrieb: es bleibt auf Papier (Entscheidung Max), aber das Papierbuch soll dieselbe Regel messen wie die Live-Buecher - sonst waere die Zahl, an der wir messen, genau die, die nicht mehr gilt."
+  "_trigger_vermerk": "03.10.2026, Auftrag Max \"Erweitern\": Signal-Wechsel-Gatter auch fuer Spuren mit EIGENEM Buch. Ein Einstieg wird nur zugelassen, wenn sich die Signalrichtung fuer das Instrument geaendert hat - sonst kein erneuter Einstieg im 15-Minuten-Takt. Gatter: Handel/signal_wechsel.py, verdrahtet VOR dem Orderaufruf. xperp traegt das Gatter auch im Papierbetrieb: es bleibt auf Papier (Entscheidung Max), aber das Papierbuch soll dieselbe Regel messen wie die Live-Buecher - sonst waere die Zahl, an der wir messen, genau die, die nicht mehr gilt.",
+  "_live_grenzen_halbiert": "HALBIERT 15.10.2026 auf Auftrag Max ('Risiko zuerst'): max_pro_trade_eur 50 -> 25, max_gesamt_eur 200 -> 100. Die Spur zahlt 1,20 % je Runde (Kraken Spot 0,60 %/Seite) und verdient laut spur_audit 0,85 % Excess - die Struktur ist negativ, die Groesse ist die einzige Bremse. risiko_je_position_eur bleibt 6.00: das Feld beschreibt das HOECHSTRISIKO der ALTNORM (50 x 12 %), die Ratsche liest es zur Buchrisiko-Ableitung - bei 25 x 12 % = 3.00 waere die Schwelle 12.00 statt 24.00. Bewusst NICHT mitgezogen: die Halbierungsschwelle soll die ALTE Positionsklasse weiter schuetzen, bis frische Runden die neue belegen."
 }

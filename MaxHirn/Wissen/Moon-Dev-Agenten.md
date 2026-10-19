@@ -19,10 +19,10 @@ Halbwissen im Kopf bleiben.
 
 | Ort | Was |
 |---|---|
-| `Werkstatt/Repos/moon-dev-ai-agents` | 46 Agenten, `.venv` mit allen requirements (numpy, pandas, ta-lib, torch, whisper, anthropic, openai, groq) |
-| `Werkstatt/Repos/Trading-View-MCP-for-AI-by-Moon-Dev` | MCP-Server fuer TradingView, `.venv` fertig |
-| `Werkstatt/Repos/Harvard-Algorithmic-Trading-with-AI` | Research-/Backtest-Material, kein `requirements.txt` |
-| `Werkstatt/Repos/Moon-Dev-Code` | Sammlung (PDFs/Strategien), kein Code |
+| `Werkstatt/moon-dev-ai-agents` | 46 Agenten, `.venv` mit allen requirements (numpy, pandas, ta-lib, torch, whisper, anthropic, openai, groq) |
+| `Werkstatt/Trading-View-MCP-for-AI-by-Moon-Dev` | MCP-Server fuer TradingView, `.venv` fertig |
+| `Werkstatt/Harvard-Algorithmic-Trading-with-AI` | Research-/Backtest-Material, kein `requirements.txt` |
+| `Werkstatt/Moon-Dev-Code` | Sammlung (PDFs/Strategien), kein Code |
 | `Agenten/Handel/moondev_*` | die vier Haus-Spuren (siehe unten) |
 | Hermes-Profile | `moon-dev-agents`, `moon-dev-code`, `harvard-trading`, `tradingview-mcp` (je mit `terminal.cwd` im Repo) |
 
@@ -90,7 +90,7 @@ Diese Agenten machen Inhalte, keine Signale.
 ## Lokales Ollama als LLM (16.09.2026)
 
 Auftrag von Max: „Moondev local ollama als llm". Drei Aenderungen im Repo
-`Werkstatt/Repos/moon-dev-ai-agents` (Commit `9541cb8`, auf den Fork gepusht):
+`Werkstatt/moon-dev-ai-agents` (Commit `9541cb8`, auf den Fork gepusht):
 
 | Datei | Aenderung |
 |---|---|
@@ -131,7 +131,7 @@ Jede dieser Spuren folgt derselben Vorlage: `moondev_daten.py` (Abruf),
 
 ## Die 47 Agenten im Ueberblick (Repo-README, 13.10.2026)
 
-Vollstaendige Liste aus `Werkstatt/Repos/moon-dev-ai-agents/README.md` — die
+Vollstaendige Liste aus `Werkstatt/moon-dev-ai-agents/README.md` — die
 Original-Beschreibung jedes Agenten, wie sie im Repo steht:
 
 | Agent | Beschreibung |

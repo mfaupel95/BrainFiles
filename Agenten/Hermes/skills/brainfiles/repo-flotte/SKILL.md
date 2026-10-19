@@ -40,7 +40,7 @@ dort angemeldet.
    | .full_name] | sort'` zaehlt **alle** Forks des Kontos, also auch die schon
    vorhandenen. Die Zahl gegen Erwartung **plus** Altbestand halten.
 4. **Lokal arbeitsfaehig machen.** Ein Verzeichnis je Repo unter
-   `Werkstatt/Repos/` (Fremd-Repos sind Durchgangsware, nie im Vault):
+   `Werkstatt/` (Fremd-Repos sind Durchgangsware, nie im Vault):
    `git clone --quiet --depth 1 https://github.com/<konto>/<name>.git <dir>`,
    danach `git -C <dir> remote add upstream https://github.com/<upstream>.git`.
    Shallow genuegt fuer Bot-Arbeitsplaetze; `git fetch --unshallow` holt die volle
@@ -70,7 +70,7 @@ dort angemeldet.
    hochstufen. Dazu die Flotten-Doku `MaxHirn/Wissen/Repo-Bots.md` (Zahl +
    Tabelle) aktualisieren. `/bots` liest Profile von der Platte - kein
    SkillsBot-Neustart noetig (der ist nur fuer NEUE Befehle).
-6. **Zaehlen, welche Bots fehlen, gegen die Platte:** `ls Werkstatt/Repos/` gegen
+6. **Zaehlen, welche Bots fehlen, gegen die Platte:** `ls Werkstatt/` gegen
    `ls Agenten/Hermes/profiles/` halten — ein Ordner in profiles/ mit config.yaml
    ist ein Bot. Ein Verzeichnis unter Repos/ OHNE `.git` (z. B. eine
    Worktree-Sammlung) ist keine Repo und bekommt keinen Bot. Die Zaehlung als
@@ -229,7 +229,7 @@ dort angemeldet.
   dem Klon. Vor jedem Push in ein eigenes Repo erst
   `git fetch --unshallow <upstream>` und die Tiefe gegenpruefen
   (`git rev-list --count HEAD`), dann laeuft der Push durch. Betrifft die ganze
-  Flotte: die Klone unter `Werkstatt/Repos/` sind shallow angelegt.
+  Flotte: die Klone unter `Werkstatt/` sind shallow angelegt.
 - **Ein Klon, dessen `origin` aufs ORIGINAL zeigt, ist KEIN Flotten-Klon.**
   Kommt ein Repo als Direkt-Klon des Upstreams an, nachtraeglich auf die
   Flotten-Form bringen: `gh api -X POST "repos/<upstream>/forks"`, in einer
@@ -314,7 +314,7 @@ dort angemeldet.
   `auth.json` des Profils. Ein frisch aus `profiles/.deleted/` zurueckgeholtes
   Profil hat noch keine Sitzung und faellt sofort durch.
 - **`profiles/.deleted/` sind keine Bots.** Weggelegte Profile zaehlen bei keiner
-  Flottenzaehlung mit (sonst stimmt `ls profiles/` gegen `ls Werkstatt/Repos/`
+  Flottenzaehlung mit (sonst stimmt `ls profiles/` gegen `ls Werkstatt/`
   nicht) und sind per `/bot` nicht erreichbar. Bei "Bot fehlt" zuerst hier
   nachsehen, bevor ein Profil neu angelegt wird.
 - **`hermes config set` schneidet den Kommentar-Schluss der `config.yaml` ab.**
@@ -324,6 +324,8 @@ dort angemeldet.
   ersetzen - beim Schreiben `newline=""` setzen, sonst wandelt `read_text()` die
   CRLF-Datei still nach LF um und der Diff zeigt plotzlich die ganze Datei.
   `bot-modell-auf-router.py` macht das von selbst.
+- **Skill in ein Profil legen: erst auf Namenskollision pruefen.** Ein Skill-Name, der schon als offizieller/bundled Skill existiert (z. B. `grill-me` unter `software-development/`), shadowed die eigene Kopie — sie wird weder gelistet noch geladen, obwohl sie auf der Platte liegt. Vor dem Anlegen `hermes skills list | grep <name>` und `hermes skills inspect <name>`; existiert der Name schon, entweder einen eindeutigen Namen verwenden oder das Duplikat entfernen und die vorhandene Fassung nutzen. `hermes skills inspect <name>` loest auch aus dem offiziellen Katalog auf — ein Treffer dort heisst nicht, dass der Skill installiert ist. Der Auftrag „Skill auch ins Default-Profil" ist oft schon erfuellt, weil die Adaption dort bereits liegt — erst pruefen, dann duplizieren.
+- **repos-zentrale.json nie mit json.dumps neu schreiben.** Ein `json.dumps(indent=1)` formatiert die ganze ~3400-Zeilen-Datei um (6764-Zeilen-Diff statt 8) und erzeugt Rauschen im Commit. Einen Eintrag byte-exakt einfuegen: Original per `git checkout <vorheriger-commit> -- <datei>` zurueckholen, dann per Python `s.replace(anchor, anchor_mit_eintrag)` mit `assert s.count(anchor) == 1` und `newline=''` schreiben — der Anker ist der Block des Nachbarn (z. B. `    },\n    {\n      "ordner": "Harvard-..."`). Danach `git diff --stat` muss die Zahl der eigenen Zeilen zeigen.
 - **`terminal.backend: docker` macht Repo-Bots lahm (17.09.2026).** Mit
   `docker_mount_cwd_to_workspace: false` (Default) sieht der Bot das Repo
   NICHT: TERMINAL_CWD wird ignoriert, er arbeitet in /root eines Linux-

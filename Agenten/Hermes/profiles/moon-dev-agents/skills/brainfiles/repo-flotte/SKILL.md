@@ -40,7 +40,7 @@ dort angemeldet.
    | .full_name] | sort'` zaehlt **alle** Forks des Kontos, also auch die schon
    vorhandenen. Die Zahl gegen Erwartung **plus** Altbestand halten.
 4. **Lokal arbeitsfaehig machen.** Ein Verzeichnis je Repo unter
-   `Werkstatt/Repos/` (Fremd-Repos sind Durchgangsware, nie im Vault):
+   `Werkstatt/` (Fremd-Repos sind Durchgangsware, nie im Vault):
    `git clone --quiet --depth 1 https://github.com/<konto>/<name>.git <dir>`,
    danach `git -C <dir> remote add upstream https://github.com/<upstream>.git`.
    Shallow genuegt fuer Bot-Arbeitsplaetze; `git fetch --unshallow` holt die volle
@@ -87,7 +87,7 @@ dort angemeldet.
   dem Klon. Vor jedem Push in ein eigenes Repo erst
   `git fetch --unshallow <upstream>` und die Tiefe gegenpruefen
   (`git rev-list --count HEAD`), dann laeuft der Push durch. Betrifft die ganze
-  Flotte: die Klone unter `Werkstatt/Repos/` sind shallow angelegt.
+  Flotte: die Klone unter `Werkstatt/` sind shallow angelegt.
 - **Sichern ohne Veroeffentlichen: eigenes privates Repo statt Fork.** Soll ein
   Repo ausser Haus liegen, ohne dass eigene Arbeit oeffentlich wird, **keinen**
   Fork des oeffentlichen Upstreams anlegen (der waere zwingend oeffentlich),

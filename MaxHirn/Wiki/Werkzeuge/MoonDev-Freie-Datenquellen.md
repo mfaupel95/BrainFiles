@@ -52,7 +52,7 @@ bewusst `None` zurueck (nicht einen leeren DataFrame): die Agenten pruefen auf
 „datenlosen" Agenten war er falsch mitgezaehlt.
 ## Stand 13.10.2026: Strategie-PDFs für den Ordner `strategy_pdfs`
 
-Die GUI erwartet die PDFs unter `O:\Werkstatt\Repos\Moon-Dev-Code\strategy_pdfs`.
+Die GUI erwartet die PDFs unter `O:\Werkstatt\Moon-Dev-Code\strategy_pdfs`.
 Geprüft am 13.10.2026: Das Original enthält nur drei Dateien; im Web finden sich
 keine weiteren Moon-Dev-Strategie-PDFs. Kandidaten, die passen würden:
 

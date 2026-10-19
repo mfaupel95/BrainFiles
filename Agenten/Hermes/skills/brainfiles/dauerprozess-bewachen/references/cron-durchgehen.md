@@ -106,6 +106,16 @@ die Signatur, dass beide Seiten dieselbe Quelle lesen.** Derselbe Fehler in
 angepasster Form: ein Nachkommastellen- oder Einheitenformat ist ein echter
 Datenfehler, wenn es sich systematisch um eine feste Groesse handelt.
 
+### Der registrierte Takt ist die Wahrheit, nicht die Doku
+
+Eine Wache, deren Docstring/Commit "alle 10 Minuten" sagt, aber in
+`jobs.json` mit 60 m registriert ist, laesst Verluste bis zu einer Stunde
+unerkannt — der Takt-Widerspruch ist ein Registrierungsfehler, kein
+Doku-Detail. Beim Anlegen UND beim Auditieren den `schedule`-Block gegen die
+Absicht pruefen (Doku, Commit-Meldung), nicht die Zahl glauben. `jobs.json`
+ist ein Laufzeitzustand (gitignored): eine Takt-Aenderung dort wird nicht
+committet, und der Scheduler erkennt sie per mtime — kein Neustart noetig.
+
 ## Reihenfolge der Reparatur
 
 **Die Runde endet mit Fixes, nicht mit einer Frage.** „geh die Cronjobs durch

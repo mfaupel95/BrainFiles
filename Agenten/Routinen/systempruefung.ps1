@@ -310,17 +310,24 @@ try {
   #                      Hermes\cache\. Am 30.09.2026 meldete der Block zwei
   #                      Probenskripte aus profiles\agent-trade-kit\cache\scratch.
   $ausgenommen = @('\\umzug\\', '\\Hermes\\cache\\', '\\Hermes\\tmp\\', '\\Hermes\\.sicherung\\', '\\profiles\\[^\\]+\\cache\\')
-  $musterAbs = [regex]('C' + ':\\Users\\faupe')
-  $musterAlt = [regex]('BrainFiles\\MaxHirn\\(MCP-Server|' + 'Claude)|\\' + 'Claude\\Worktrees')
+  # Seit 18.10.2026: statt Select-String je Datei (34 min bei 55.830 Code-Dateien,
+  # der Baum war auf 203k Dateien gewachsen) EIN rg-Aufruf ueber den Agenten-Baum
+  # mit denselben Ausschluessen. rg liegt in Hermes/tools. Gemessen: 39-81 s.
+  $rg = Join-Path $wurzel 'Agenten\Hermes\tools\ripgrep-15.2.0-win32-x64\rg.exe'
+  $rgGlob = @('-g','*.ps1','-g','*.py','-g','*.psd1','-g','!*.bak*','-g','!**/.venv/**','-g','!**/node_modules/**','-g','!**/hermes-agent/**','-g','!**/.git/**','-g','!**/__pycache__/**','-g','!**/umzug/**','-g','!**/Hermes/cache/**','-g','!**/Hermes/tmp/**','-g','!**/Hermes/.sicherung/**','-g','!**/profiles/*/cache/**')
+  $musterAbs = 'C' + ':\Users\faupe'
+  $claudeWt = '\' + 'Claude\' + 'Worktrees'
+  $claudeMh = 'BrainFiles\MaxHirn\' + 'Claude'
+  $mcpServer = 'BrainFiles\MaxHirn\' + 'MCP-Server'
+  $musterAlt = @('-e',$mcpServer,'-e',$claudeMh,'-e',$claudeWt)
   $absTreffer = @(); $altTreffer = @()
-  foreach ($d in $codeDateien) {
-    if (@($ausgenommen | Where-Object { $d -match $_ }).Count -gt 0) { continue }
-    foreach ($m in (Select-String -LiteralPath $d -Pattern $musterAbs -EA SilentlyContinue)) {
-      $absTreffer += "$($d.Replace("$wurzel\", '')):$($m.LineNumber)"
-    }
-    foreach ($m in (Select-String -LiteralPath $d -Pattern $musterAlt -EA SilentlyContinue)) {
-      $altTreffer += "$($d.Replace("$wurzel\", '')):$($m.LineNumber)"
-    }
+  foreach ($zeile in (& $rg -F -n --no-heading @rgGlob $musterAbs $agenten 2>$null)) {
+    $m = [regex]::Match($zeile, '^(.+?):(\d+):')
+    if ($m.Success) { $rel = $m.Groups[1].Value; if ($rel.StartsWith($wurzel)) { $rel = $rel.Substring($wurzel.Length + 1) }; $absTreffer += "$($rel):$($m.Groups[2].Value)" }
+  }
+  foreach ($zeile in (& $rg -F -n --no-heading @rgGlob @musterAlt $agenten 2>$null)) {
+    $m = [regex]::Match($zeile, '^(.+?):(\d+):')
+    if ($m.Success) { $rel = $m.Groups[1].Value; if ($rel.StartsWith($wurzel)) { $rel = $rel.Substring($wurzel.Length + 1) }; $altTreffer += "$($rel):$($m.Groups[2].Value)" }
   }
   if ($absTreffer.Count -gt 0) { Entscheiden "Absoluter Benutzerpfad in $($absTreffer.Count) Codezeile(n) (Portabilitaet): $($absTreffer -join '; ')" }
   if ($altTreffer.Count -gt 0) { Entscheiden "Veralteter Pfad (vor dem Umzug) in $($altTreffer.Count) Zeile(n): $($altTreffer -join '; ')" }
@@ -429,12 +436,43 @@ try {
   $gewolltDeaktiviert = @{
     'MaxHirn-MoonDev-Agent' = 'ersetzt durch MaxHirn-MoonDev-Dauerlauf'
   }
+  # Waechter-Aufgaben, die NIE deaktiviert sein duerfen: ein deaktivierter
+  # Waechter ist schutzloser Betrieb. Am 12.10.2026 war der Gateway-Waechter
+  # deaktiviert worden; der Gateway-Ausfall am 13.10. (18:13-23:06, Code 75,
+  # Liveness-Watchdog) blieb deshalb 5 h unbemerkt. Diese Aufgaben aktiviert
+  # die Pruefung selbst wieder (schtasks /Change /ENABLE, keine Admin-Rechte)
+  # und meldet es als erledigt.
+  $kritischeWaechter = @(
+    'MaxHirn-Gateway-Waechter',
+    # Live-Spuren brauchen ein Netz: am 12./13.10.2026 waren Basis-Dauerlauf und
+    # sein Waechter deaktiviert, die Live-Positionen liefen ohne Ueberwachung.
+    # Ein Neustart des Dauerlaufs umgeht KEINE Handels-Gates (handel_erlaubt,
+    # Freigabefenster, Kill) - er stellt nur die Ueberwachung wieder her.
+    # Mittel-Waechter bewusst NICHT hier: Mittel-Stufe ist dokumentiert abgeschaltet.
+    'MaxHirn-Handel-Dauerlauf',
+    'MaxHirn-Handel-Dauerlauf-Waechter'
+  )
   $schlecht = 0
   foreach ($t in $tasks) {
     $i = Get-ScheduledTaskInfo -TaskName $t.TaskName -TaskPath $t.TaskPath -EA SilentlyContinue
     if ($t.State -eq 'Disabled') {
       if ($gewolltDeaktiviert.ContainsKey($t.TaskName)) {
         Info "Aufgabe $($t.TaskName) ist deaktiviert (gewollt: $($gewolltDeaktiviert[$t.TaskName]))."
+      } elseif ($t.TaskName -in $kritischeWaechter) {
+        # Deaktivieren stoppt die Neustart-Serie - aber dann laeuft der
+        # Gateway ohne Netz. Aktivieren ist immer richtig: ein Waechter wird
+        # nicht fuer spaeter deaktiviert, die Ursache gehoert behoben.
+        $altEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        try {
+          $r = & schtasks /Change /TN $t.TaskName /ENABLE 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Getan "Kritischer Waechter $($t.TaskName) war deaktiviert - wieder aktiviert (schtasks /Change /ENABLE)."
+          } else {
+            $schlecht++; Entscheiden "Kritischer Waechter $($t.TaskName) ist deaktiviert und liess sich nicht aktivieren: $($r -join ' ')"
+          }
+        } catch {
+          $schlecht++; Entscheiden "Kritischer Waechter $($t.TaskName) ist deaktiviert, Aktivierung fehlgeschlagen: $_"
+        } finally { $ErrorActionPreference = $altEAP }
       } else {
         $schlecht++; Entscheiden "Aufgabe $($t.TaskName) ist deaktiviert."
       }
@@ -626,12 +664,12 @@ try {
 # Bedingung 3 schliesst alle offenen Positionen, wenn der letzte gesunde Lauf
 # aelter ist als herzschlag_max_minuten. Der Waechter startet einen toten
 # Dauerlauf alle 30 Minuten neu, ein Zyklus dauert 1-2 Minuten - eine Stoerung
-# heilt also nach hoechstens rund 32 Minuten von selbst. Jede Grenze darunter
-# stellt bei JEDER solchen Stoerung flach und verbucht eine Runde, die keine
-# Handelsentscheidung war (am 11./12.09.2026 mit 30 Minuten in xperp und swap
-# geschehen). Regel vom 19.09.2026: 180 Minuten fuer ALLE Spuren - auch fuer
-# Spuren mit Handelserlaubnis (Live); die 45-Live-Grenze vom 14.09. ist aufgehoben. Diese Pruefung haelt sie fest - ohne sie
-# verfaellt die Regel wie die gewachsenen Zahlen davor (30/45/90/180/2880).
+# heilt also nach hoechstens rund 32 Minuten von selbst. Regel (14.09., am
+# 13.10.2026 wiedereingesetzt nach Ruecknahme der 19.09.-"180 fuer alle"-Regel):
+# 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis
+# (Live) - Live haelt keine offene Marktposition laenger als 45 Minuten
+# ungesichert. Diese Pruefung haelt sie fest - ohne sie verfaellt die Regel wie
+# die gewachsenen Zahlen davor (30/45/90/180/2880).
 try {
   Notiz "`n--- 11b) Handel: Herzschlag-Regel ---"
   $handelsSpuren = @(Get-ChildItem (Join-Path $wurzel 'Agenten\Handel') -Directory |
@@ -654,9 +692,11 @@ try {
     $wj = Get-Content (Join-Path $hs.FullName 'wachen.json') -Raw | ConvertFrom-Json
     $hm = [int]$wj.herzschlag_max_minuten
     $erlaubt = ($wj.handel_erlaubt -eq $true)
-    $soll = 180   # eine Grenze fuer alle Spuren (Papier UND Live) seit 19.09.2026
+    # Regel 13.10.2026: 45 fuer Spuren mit Handelserlaubnis (Live), 180 fuer Papier.
+    $soll = if ($erlaubt) { 45 } else { 180 }
     if ($hm -ne $soll) {
-      Entscheiden "Handel/$($hs.Name): Herzschlag $hm min statt $soll - seit 19.09.2026 gilt 180 fuer alle Spuren (Papier UND Live); ein Live-Wert darunter schliesst eine offene Position bei einem PC-Ausfall am Markt. Ableitung und Folge stehen im Feld _herzschlag_regel dieser wachen.json."
+      $art = if ($erlaubt) { 'Spuren mit Handelserlaubnis (Live)' } else { 'Papier-Spuren' }
+      Entscheiden "Handel/$($hs.Name): Herzschlag $hm min statt $soll - Regel 13.10.2026: $soll min fuer $art. Ableitung und Folge stehen im Feld _herzschlag_regel dieser wachen.json."
     } else {
       $regelkonform++
     }

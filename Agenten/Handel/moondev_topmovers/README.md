@@ -4,7 +4,7 @@ Momentum der letzten 24 Stunden - aber nur unterhalb der Ueberhitzungsgrenze.
 
 ## Woher die Idee kommt
 
-Der Agent `new_or_top_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` macht genau das:
+Der Agent `new_or_top_agent` aus `Werkstatt/moon-dev-ai-agents` macht genau das:
 er sieht sich die neuen und die staerksten Coins der letzten 24 Stunden an und empfiehlt daraus. Sein Urteil faellt in einem Sprachmodell, seine Daten kommen ueber die
 CoinGecko-**Pro**-API (Schluessel noetig). Beides laesst sich hier nicht sauber
 nachbilden, deshalb:

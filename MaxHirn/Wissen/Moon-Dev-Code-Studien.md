@@ -5,12 +5,12 @@ tags: [handel]
 created: 2026-09-19
 updated: 2026-09-19
 related: [20260916-moon-dev-agenten, 20260921-prognose-backtest]
-summary: 'Gelesene Zusammenfassung der drei Paper in Werkstatt/Repos/Moon-Dev-Code/strategy_pdfs/ (Psychologie, Deep RL, EMH-Survey); kein Code oder Parameter übernommen.'
+summary: 'Gelesene Zusammenfassung der drei Paper in Werkstatt/Moon-Dev-Code/strategy_pdfs/ (Psychologie, Deep RL, EMH-Survey); kein Code oder Parameter übernommen.'
 ---
 
 # Moon-Dev-Code: die drei Strategie-PDFs (gelesen 19.09.2026)
 
-Stand 19.09.2026. `Werkstatt/Repos/Moon-Dev-Code/strategy_pdfs/` haelt drei
+Stand 19.09.2026. `Werkstatt/Moon-Dev-Code/strategy_pdfs/` haelt drei
 wissenschaftliche Paper. Diese Notiz fasst den Inhalt zusammen und zieht die
 Verbindung zum eigenen Handelsbetrieb. Die Volltexte liegen als
 `*.txt`-Extrakte neben den PDFs (pdftotext -layout). Alle drei sind

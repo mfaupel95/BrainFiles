@@ -7,7 +7,7 @@ falsche ist) und viel kuerrzer als der Notfallweg Schritt 1-8:
 1. `hermes profile create <name> --no-alias` — legt Config, `SOUL.md` und `.env` an.
 2. Aus einem bestehenden Bot-Profil `config.yaml` uebernehmen und **nur den Repo-Pfad
    umschreiben** (`Repos\<vorbild>` -> `Repos\<neu>`); `terminal.cwd` ist in der
-   Flotte ABSOLUT (`C:\...\Werkstatt\Repos\<name>`) — den Hausstil uebernehmen, nicht
+   Flotte ABSOLUT (`C:\...\Werkstatt\<name>`) — den Hausstil uebernehmen, nicht
    einen relativen Pfad erfinden. Die Vorlagen-Config als `.bak-vorlage` daneben legen.
 3. `profile.yaml` mitkopieren und **die Beschreibung sofort setzen**
    (`hermes profile describe <name> --text "..."`): die Kopie traegt den Text des

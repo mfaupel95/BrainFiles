@@ -17,7 +17,7 @@
 $ErrorActionPreference = 'Stop'
 $wurzel     = Split-Path $PSScriptRoot -Parent            # Agenten
 $brainfiles = Split-Path $wurzel -Parent                  # BrainFiles
-$repo       = Join-Path $brainfiles 'Werkstatt\Repos\moon-dev-ai-agents'
+$repo       = Join-Path $brainfiles 'Werkstatt\moon-dev-ai-agents'
 $logs       = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 

@@ -63,8 +63,8 @@ Pflichtfelder: `instrument`, `venue`, `direction`, `source`, `ts_utc`, `expiry_s
 
 | Profil | Repo | MCP-Services | Modus |
 |---|---|---|---|
-| `agent-trade-kit` | Werkstatt/Repos/agent-trade-kit | okx-trade-mcp (Demo) | demo |
-| `kraken-cli` | Werkstatt/Repos/kraken-cli | market, paper, workspace | paper |
+| `agent-trade-kit` | Werkstatt/agent-trade-kit | okx-trade-mcp (Demo) | demo |
+| `kraken-cli` | Werkstatt/kraken-cli | market, paper, workspace | paper |
 
 ## Grenzen
 

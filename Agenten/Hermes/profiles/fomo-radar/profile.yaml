@@ -1,4 +1,10 @@
 description: 'FOMO Robinhood Radar: On-Chain-Beobachtung der Robinhood Chain (Chain
   4663), bewertete Wallets, Signale fuer die Papierspur robinhood_radar. Startordner
-  ist der Klon Werkstatt/Repos/fomo-robinhood-radar.'
+  ist der Klon Werkstatt/fomo-robinhood-radar.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    sectionId: sec-mu6udlsc-3xlc8
+    sectionName: Trades
+_ui_meta_revisions:
+  hermes-bots: 1

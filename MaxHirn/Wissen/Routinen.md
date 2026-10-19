@@ -27,7 +27,7 @@ vorhandener Skill plus ein Zeitplan.
 | bei Anmeldung + alle 30 Min | Stufen-Wächter mittel und hoch (Start **und** Neustart in einem) | `handel-dauerlauf.ps1 -Risiko mittel` bzw. `hoch` | **nachgetragen** 29.09.2026 — `MaxHirn-Handel-Dauerlauf-Mittel-Waechter`, `MaxHirn-Handel-Dauerlauf-Hoch-Waechter`. Seit 16.09.2026 in Betrieb, aber hier nie vermerkt. Zeitauslöser am 29.09.2026 ergänzt, siehe unten. |
 | alle 15 Min | Bus-Wächter (Neustart nach Ausfall, Meldung nur bei Befund) | `Agenten/Hermes/scripts/bus-waechter.py` | **eingeplant** 15.09.2026 — Hermes-Cron `bus-waechter`, **kein Windows-Task**: läuft absichtlich am Bus vorbei (`no_agent`, Ausgabe = Meldung), weil eine Wache, die über den Bus meldet, bei totem Bus schweigt. Anlass: der Bus war vom 11.09. 21:13 bis 15.09. 21:02 aus, vier Tage ohne Meldung. |
 | alle 15 Min | Atlas-Wächter (startet den ProjectAtlas-Watcher neu, still bei Befundfreiheit) | `Agenten/Hermes/scripts/atlas-watcher.py` | **eingeplant** 15.09.2026 — Hermes-Cron `atlas-watcher`, ebenfalls **kein Windows-Task** (`no_agent`, leere Ausgabe = nichts senden). Prüft die PID aus `Agenten/Werkzeuge/projectatlas/logs/watch-omnitrade.pid`; der Watcher ist ein Dauerprozess auf `Werkstatt/omnitrade` und zieht den Atlas nach, wenn sich Dateien ändern. Anlass: ohne ihn veraltet die Karte still. |
-| montags 09:15 | Repo-Klone unter `Werkstatt/Repos/` gegen upstream prüfen (Skill-Quellen aktuell halten) | `Agenten/Hermes/scripts/repo-updates-check.py` | **eingeplant** 16.09.2026 — Hermes-Cron `repo-updates-check`, **kein Windows-Task** (`no_agent`, Meldung nur bei Rückstand). Anlass: superpowers-Klon war zwei Monate hinter upstream; ohne Prüfung altern die Skill-Quellen still.
+| montags 09:15 | Repo-Klone unter `Werkstatt/` gegen upstream prüfen (Skill-Quellen aktuell halten) | `Agenten/Hermes/scripts/repo-updates-check.py` | **eingeplant** 16.09.2026 — Hermes-Cron `repo-updates-check`, **kein Windows-Task** (`no_agent`, Meldung nur bei Rückstand). Anlass: superpowers-Klon war zwei Monate hinter upstream; ohne Prüfung altern die Skill-Quellen still.
 | montags 09:30 | Skill-Nutzung auswerten (Bibliothek schlank halten) | `Agenten/Hermes/scripts/skill-usage-report.py` | **eingeplant** 16.09.2026 — Hermes-Cron `skill-usage-report`, **kein Windows-Task** (`no_agent`, Top-10 nach Aufrufen + ungenutzte Skills). Anlass: jede geladene SKILL.md kostet bei jeder Anfrage Tokens; das Ausmisten am 11.09.2026 sparte ~3.000 Tokens je Anfrage.
 | sonntags 08:00 | Wachen-Abgleich Spur 1 **und** 3 (Bedingung 5) | `scanner/handeln.py --wachen` + `kraken/handeln.py --wachen` | **eingeplant** 02.09.2026 — `MaxHirn-Handel-Wachen` |
 | alle 4 Std | Automatik-Wächter: feuern die Cron-Aufträge noch, und kommen die Meldungen an? | `Agenten/Hermes/scripts/automatik-waechter.py` | **eingeplant** 18.09.2026 — Hermes-Cron `automatik-waechter`, **kein Windows-Task** (`no_agent`, leere Ausgabe = nichts senden). Prüft gegen `Agenten/Hermes/cron/jobs.json`: `last_run_at` gegen die Zeitplan-Lücke, `last_status`, `last_delivery_error` und einen hängenden `next_run_at`. Anlass: keine der vorhandenen Wachen bewacht die Wachen selbst — der Bus war vier Tage stumm, ohne dass es jemandem auffiel. Zweiter Zutritt: dieselbe Prüffunktion läuft in `MaxHirn-Optimierungen-Finden` (Windows-Aufgabe) mit, damit ein Ausfall des Schedulers nicht unbemerkt bleibt. |
@@ -84,6 +84,23 @@ Aufgabenplanung heraus gelaufen (Ergebniscode 0):
 | `MaxHirn-Handelszentrale` | `Routinen/handelszentrale.ps1` (angelegt über `Routinen/handelszentrale-aufgabe.ps1`) | `Routinen/logs/handelszentrale-letzter-lauf.log` |
 | `MaxHirn-Optimierungen-Finden` | `Routinen/optimierungen-finden.ps1` (angelegt über `Routinen/optimierungen-finden-aufgabe.ps1`) | `Routinen/logs/optimierungen-finden-letzter-lauf.log` |
 | `MaxHirn-Fremdarbeit-Einziehen` | `Routinen/fremdarbeit-einziehen.ps1` (angelegt über `Routinen/fremdarbeit-einziehen-aufgabe.ps1`) | `Routinen/logs/fremdarbeit-letzter-lauf.log` |
+
+**Seit 18.10.2026 laufen die eingeplanten Aufgaben ohne Anmeldung (S4U).**
+Hintergrund: Ein Windows-Update-Neustart am 16.10.2026 01:07 liess den Rechner
+ohne interaktive Sitzung laufen — alle faupe/InteractiveToken-Aufgaben
+(Handel, Sicherung, Systemprüfung, Posteingang …) wurden an ihren Zeitpunkten
+übersprungen, der Handels-Dauerlauf stand 2,5 Tage still, und es fiel niemandem
+auf, weil die SYSTEM-Aufgaben (Datensortierung) weiterliefen. Am 18.10.2026
+wurden 29 Aufgaben per Wegwerf-Task-Vorprobe (S4U sieht HKCU-Umgebungsvariablen
+und G:/O:/Q: nachgewiesen) auf `LogonType S4U` umgestellt — sie laufen jetzt
+auch ohne Anmeldung, ohne Passwort. Beleg + Umstellungslog:
+`Routinen/logs/aufgaben-s4u-umstellung-20261018.log`. Der Telegram-Bus
+(`BrainFiles-Bus`) wurde nachgezogen (gleiche Umstellung, 18.10.2026).
+**NICHT umgestellt**
+(brauchen eine Sitzung oder sind bewusst interaktiv): `MaxHirn-Handelszentrale`
+(Fenster), `MaxHirn-MoonDev-GUI` (Fenster), `Hermes_Gateway_2ef9d0b7` (der
+Gateway selbst; sein Wächter startet ihn ohne Anmeldung neu),
+`MaxHirn-Datensortierung` lief schon als SYSTEM.
 
 **Warum es zwei Sicherungen gibt:** `G:`, `H:` und `I:` sind dieselbe physische
 Platte (Disk 2, siehe [[Hardware]]). Eine zweite Kopie dort hätte nichts
