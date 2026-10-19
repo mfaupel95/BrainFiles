@@ -323,13 +323,69 @@ dieser Anbieter ueberhaupt, und mit welchem Befehl".
    "Connected" vertrauen.
 4. **Der Anmeldeschritt gehoert dem Nutzer.** OAuth laeuft im Browser gegen
    SEIN Konto und laesst sich von einem Agenten nicht abschliessen — als
-   offenen Schritt melden („Kandidat, ein Klick fehlt"), nie als erledigt.
+   offenen Schritt melden ("Kandidat, ein Klick fehlt"), nie als erledigt.
 5. **Im Ergebnis trennen, was live geprueft ist und was aus der Doku stammt.**
    Handschlag und Werkzeugliste sind pruefbar; Metriknamen, Feldlisten und
    Tarifgrenzen stehen oft nur in der Anbieter-Doku. Beides ausdruecklich
-   benennen — ein „funktioniert" ohne diese Trennung ist eine Behauptung.
+   benennen — ein "funktioniert" ohne diese Trennung ist eine Behauptung.
 6. **Erst danach der Manifest-Eintrag**, und als Kandidat mit Begruendung:
    `mcp-sync`.
+
+## Topic-Delegierung (Hermes ↔ Telegram-DM)
+
+**Wann:** Hermes soll per Telegram-DM-Thema (Topic) Nachrichten an ein bestimmtes
+Bot-Profil weiterleiten — z. B. Handel-Topic → Agent-Profil für OKX- oder Kraken-Signale.
+
+**Das Problem hat zwei Schritte, die nicht durch ein config.yaml-Edit alleine gelöst
+werden:**
+
+### Schritt 1 — Topics-Modus in Telegram aktivieren (Nutzer, einmalig)
+
+`config.yaml` kann `platforms.telegram.extra.dm_topics` mit beliebig vielen Topics
+fuellen (Name, icon_color, thread_id, skill). Das allein bewirkt nichts, solange
+der Topics-Modus in Telegram nicht aktiviert ist.
+
+- Der Topics-Modus wird per `/topic` im Telegram-DM an den betroffenen Chat
+  aktiviert — einmalig, nutzerseitig, nicht durch einen Agenten.
+- Ohne diesen Schritt landen Nachrichten im DM trotz konfigurierter Topics beim
+  Default-Profil und der Skill wird nie geladen.
+- **Nachweis, dass Schritt 1 done ist:** Eine Nachricht im DM erscheint in einem
+  Topic (der Telegram-Client zeigt das Topic als Label). `hermes gateway status`
+  zeigt die konfigurierten Topics.
+
+### Schritt 2 — Topic→Profil-Routing bauen (Agent, nach Schritt 1)
+
+Hermes' `profile_routes` unterstützt **kein** `thread_id`-Matching — ein Topic
+kann nativ nicht direkt an ein bestimmtes Bot-Profil routes werden. Das ist keine
+Konfigurationspanne, sondern eine architektonische Grenze.
+
+Der Plan für das Routing (aus dem Fremd-Repo-Ausbau) schreibt vor:
+- Ein Skill, der im Topic läuft, delegiert per `hermes kanban` an das richtige
+  Bot-Profil.
+- Das konkrete Setup (Kanban-Board, Topic→Profil-Zuordnung, Signal-Flow, Gate)
+  muss als eigenständiges Artefakt gebaut werden — ein SKILL.md mit Signal-Schema
+  und Next-Steps ist **nicht** dasselbe wie das laufende Delegierungs-Setup.
+
+**Vor dem Bau der Delegierung:**
+
+1. Schritt 1 belegt (Topics-Modus aktiv).
+2. Die beteiligten Bot-Profiles prüfen: existieren sie, haben sie die richtigen
+   MCP-Services, ist der cwd auf das Repo gerichtet?
+3. Das beteiligte Skill-File lesen — beschreibt es den Flow oder nur das Schema?
+   Letzteres ist nicht ausreichend.
+4. Den Bot-Bereichs-Besitz klären (`Agenten/Werkzeuge/bereiche.py --register`):
+   Bot-Profiles gehören zum Bereich `bot`; Schreibzugriffe auf sie sind
+  bereichsangehoerig.
+
+**Fehlendes Setup erkennen:**
+
+- `dm_topics` steht in der Config, aber Nachrichten im DM landen beim Default-Profil
+  → Topics-Modus (Schritt 1) nicht aktiv.
+- Skill existiert, beschreibt Signal-Schema und Next-Steps, aber es gibt kein
+  Kanban-Board oder Topic→Profil-Zuordnungsskript → Schritt 2 noch nicht gebaut.
+- Ein existierendes Bot-Profil hat eine `gateway:`-Block (von clone kopiert) und
+  `multiplex_profiles: true` → Absturzkreislauf (siehe Abschnitt
+  "Gegenrichtung: multiplex + Profil-gateway-Bloecke").
 
 ## Fallback-Kette und lokale Provider
 
@@ -675,6 +731,31 @@ kostenloser Gesundheitsindikator fuer den Gateway.
   mehr Vertrauen als die Pruefung Zeit. Bei jeder Meldung die Fundstelle je
   Datei einzeln nachsehen: ein leerer Treffer kann auch heissen, dass der Block
   fehlt (das Profil `nous` hat gar kein `a2a_agents`).
+- **Ein Skill, der in `dm_topics` referenziert ist, aber in einer `disabled`-Kategorie
+  steht, wird nie geladen.** `config.yaml` kann `platforms.telegram.extra.dm_topics`
+  mit einem `skill: brainfiles/fremdrepos-signal`-Eintrag fuellen — wenn der
+  Namespace `brainfiles` in der `skills.disabled`-Liste steht, wird der Skill
+  trotzdem nicht geladen. Der Eintrag im Topic ist dann wirkungslos. Vor der
+  Annahme, ein Topic-Skill funktioniere, zuerst den Namespace gegen die
+  `disabled`-Liste pruefen (`grep -A15 "^skills:" config.yaml | grep disabled:`),
+  und falls der Namespace da steht: entweder die Kategorie reaktivieren (alle Skills
+  in ihr werden geladen — Token-Kosten berechnen: Anzahl SKILL.md × ~57 Zeichen
+  `description` je Skill), oder den Skill in einen aktiven Namespace verschieben
+  (SKILL.md `name:` und Pfad aendern). Dies gilt auch fuer MCP-Referenzen in
+  `mcp_servers`, falls der Server-Code in einer deaktivierten Skill-Kategorie liegt.
+
+  **Diagnose-Prozedur (Topic-Skill ladt nicht):**
+  1. `grep -n "skill:" config.yaml` — alle Skill-Referenzen in der Config auflisten.
+  2. Fur jeden Eintrag: Namespace (erster Teil vor `/`) gegen die `disabled`-Liste
+     checken. Beispiel: `skill: brainfiles/fremdrepos-signal` → Namespace `brainfiles`
+     gegen `skills.disabled` prüfen.
+  3. Wenn der Namespace in `disabled` steht: Kategorie reaktivieren ODER Skill
+     verschieben (s.o.). **Nicht** nur den `dm_topics`-Eintrag asumen und erneut
+     testen — das bringt nichts.
+  4. Token-Kosten bei Reaktivierung berechnen: `find skills/<kategorie> -name SKILL.md`
+     zaehlen × ~57 Zeichen `description` je Skill = ca. Token je Turn. Bei
+     `brainfiles` (67 Skills) sind das ~3.800 Zeichen ≈ ~1.000 Token/Turn dauerhaft.
+     Die Entscheidung hat ein Token-Gewicht, nicht nur eine technische.]
 - `hermes config get <pfad>` kennt nur Schlüssel aus `DEFAULT_CONFIG`; eigene Blöcke
   (z. B. `a2a_agents`) melden fälschlich „Config key not set". Kein Fehler — über
   `load_config()` prüfen.

@@ -135,3 +135,38 @@ Eine Antwort auf eine Lead-in-Aufgabenanfrage enthält:
 Keine Inventur-Liste der 53 Repos, es sei denn, die Frage zielt danach.
 Die FREMD-Listen sind lang; eine aggregierte Antwort (Rollen, Anzahl je
 Status) ist der erste Satz, dann nur die Items, die handlungsfähig sind.
+
+## Nach der Bestandsabfrage: Plan schreiben, dann delegieren
+
+Wenn die Anfrage nach dem Bestand zeigt, dass mehrere unabhängige Arbeiten
+anstehen (mehr als eine), ist der nächste Schritt vor der Delegierung ein
+Pläne-Dokument. Das Dokument kategorisiert die Arbeit nach Wer entscheidet
+und enthält keine ausgeführte Arbeit.
+
+**Wann dieser Schritt spurts:** Die Bestandsabfrage ergibt ≥ 2 offene Arbeiten
+ohne dass eine davon sofort allein durch einen Agenten erledigt werden kann
+(z. B. mehrere Bereiche, ein Nutzer-Entscheid vor Agentenarbeit, mehrere
+Repos in derselben Phase).
+
+**Das Pläne-Dokument:**
+
+- **Datei:** `Agenten/offene-arbeiten-plan-YYYY-MM-DD.md` — jedes Mal ein neues
+  Datum, nie überschreiben.
+- **Struktur:** Kategorien nach Wer entscheidet:
+  - Blockierer (Nutzer muss liefern)
+  - Entscheidungen (Nutzer)
+  - Agent-Arbeit (nach Freigabe), ggf. nach Bereich getrennt
+  - Was bereits läuft (ohne Aufforderung)
+- **Inhalt pro Eintrag:** Status, was fehlt, nächster Schritt — nicht Begründung
+  oder Narration. Ein Eintrag ohne nächsten Schritt ist unvollständig.
+- **Kein README-Format:** Das Dokument ist ein Arbeitsplan, kein Projektbeschreibung.
+  Keine Kapitel wie "Einleitung", "Ziel", "Hintergrund". Direkt mit den Kategorien.
+
+**Danach:** Pro Handlung (Agent-Arbeit, nicht Entscheidung/ Blocker) eine
+separate Delegation starten. Jede Delegation ist ein eigenständiger Task mit
+eigener Goal, eigenem output_schema, eigenem Ziel-Pfad. Keine Super-Delegation
+die alles auf einmal machen soll.
+
+**Abgrenzung:** Wenn nur eine Arbeit ansteht (z. B. eine Inventur, ein Adapter),
+direkt die Arbeit — kein Plan-Dokument als Zwischenschritt. Das Plan-Dokument
+ist nur da, wenn es Mehrdeutigkeit gibt, was als Nächstes kommt.

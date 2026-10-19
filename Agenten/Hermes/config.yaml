@@ -913,7 +913,6 @@ moa:
 skills:
   creation_nudge_interval: 15
   disabled:
-    - brainfiles
     - note-taking
     - software-development
     - web
