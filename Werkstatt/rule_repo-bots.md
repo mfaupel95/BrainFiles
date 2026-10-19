@@ -235,3 +235,32 @@ Auftrag (Schutzregeln, Stufe 1).
   raus), Pruefer sagt weiter "ALLES IN ORDNUNG". Pruefer gehaertet
   (`mcp-sync-check.ps1.bak-20261014`): er liest jetzt den MSIX-Container zuerst und
   warnt, wenn eine zweite Claude-Config daneben liegt - mit Testdatei geprueft.
+
+## Repo: one-skill-to-rule-them-all (task-observer, Fremd-Repo rebelytics)
+
+- Root `O:\Werkstatt\one-skill-to-rule-them-all` (Fremd-Repo rebelytics, Stand
+  18.10.2026 nach `git pull --ff-only` auf **3.7.0**, 68 Commits). Davor lag es
+  zwei Tage hinterher, weil der Gateway tot war (siehe unten) - die Routine
+  meldete trotzdem "Upstream: keine neuen Commits". Eine solche Zeile ist nur
+  gueltig, wenn sie gemessen wurde: `git fetch upstream` und danach
+  `git rev-list --count HEAD..upstream/main` ausgeben, nicht aus dem Gedaechtnis.
+  3.7.0 bringt `references/ceilings.txt` (Zeilen-Deckel je Referenzdatei, geprueft
+  von `scripts/validate-skill-bundle.py`) - dasselbe Problem wie unser
+  Groessenlimit bei Ergaenzungen, hier als Datei statt aus dem Kopf.
+- Der Bot-Chat-Engpass ist der eigene Cron-Lauf `24aaa3aedd15` (30 9 * * *):
+  seine Auslieferung ist ein kompletter Agenten-Turn im Bot-Chat, begrenzt durch
+  `cron.bot_chat_delivery_timeout_seconds` (Default 600). Bei >600 s bricht sie ab,
+  die Kurzmeldung landet in `cron/bot_chat_pending/`, der volle Bericht bleibt in
+  `cron/output/<job>/` - `hermes cron runs` zeigt nur den Versuch, nicht das
+  Ergebnis. Profil-Config auf 1200 gesetzt; `load_config()` cached pro
+  Dateisignatur, ein Gateway-Neustart ist nicht noetig.
+- Ursache 18.10.2026 (gefunden, nicht geraten): das Gateway lief vom 15.10. 15:09
+  bis 18.10. 17:11 nicht (`logs/gateway-exit-diag.log`: exit_nonzero, danach kein
+  Autostart). Die Aufgabe `\Hermes_Gateway_2ef9d0b7` hat nur einen
+  Logon-Trigger. Der Rechner bootete 16.10. 01:07; ohne interaktiven Login blieben
+  alle Cron-Jobs zwei Tage aus (catch_up, 201001 s spaet). Beim Nachfeuern liefen
+  viele Jobs gleichzeitig an -> 429-Sturm bei stepfun/step-5-preview:free und
+  Kontexte von 160-256k Tokens -> Bot-Chat-Turn ueber 600 s.
+- Folgerung: nach einem Reboot ohne Login sind alle Cron-Jobs tot, bis der Gateway
+  von Hand startet. Boot-Autostart ist der eigentliche Fix, das Timeout nur das
+  Symptom.

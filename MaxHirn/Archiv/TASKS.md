@@ -1,4 +1,26 @@
 ## Offen
+- [ ] **T-413 — Bedingung 4 llm_stunde: 6 Arme spiegeln nicht nach Q:**
+    - Kontext: spiegelstand.py meldet 'llm_stunde kein Ziel (journal_zweitziel leer)'. Die Spur faehrt 6 Arme (laeufe/ema1h-{L,R}, rsi1h-{L,R}, st1h-{L,R}) ueber spur_buch, aber keine wachen.json der Arme traegt journal_zweitziel; Q:\Handel_Journal\llm_stunde wurde am 18.10.2026 angelegt, ist aber leer. Die Spur lief (letzter Arm-Lauf 18.10. 18:23), nur der Spiegel fehlt. Dazu: Haupt-wachen.json hatte kein herzschlag_max_minutes-Feld (Pruefer meldete 0 statt 180) - am 18.10.2026 ergaenzt (180, _herzschlag_regel-Vermerk).
+    - Naechster Schritt: journal_zweitziel=Q:\Handel_Journal\llm_stunde in die 6 Arm-wachen.json eintragen (oder die Arme ueber die Haupt-wachen erben lassen), dann spiegelstand.py muss 45/45 melden.
+    - Angelegt 18.10.2026 · Zuletzt 18.10.2026
+    - Betrifft: Agenten/Handel/llm_stunde/
+- [ ] **T-412 — Hyperliquid Market-Making als neues Projekt**
+    - Kontext: Kuru (Monad) hat zu wenig Taker-Flow fuer post-only Market-Making (0 Fills in 6h bei 4550 Orders, MON UND WETH-USDC). Jev-Kern (model.ts, decision-pipeline.ts, trader.ts) ist marktunabhaengig und bleibt. Hyperliquid = Perps-L1 mit echtem Orderbook-Volumen, offizielles Python-SDK.
+    - Naechster Schritt: Hyperliquid-API erkunden (REST placeOrder, WebSocket book/trades/userFills, Info-Endpoint), dann TS-Client vs. Python-Neubau entscheiden. ERLEDIGT 15.10.: Testnet erreichbar (allMids/l2Book/meta), Orderweg REST+ed25519, TIF Alo=post-only. Entscheidung: TS-Client (Jev-Kern bleibt, nur market.ts ersetzt).
+    - Naechster Schritt: Orderweg-Client bauen (TS, REST /exchange, ed25519-Signatur), dann Perps-Anpassung (Hebel/Funding/Stop). ERLEDIGT 15.10.: market-hl.ts gebaut (Drop-in, @nktkas/hyperliquid), ENGINE=hyperliquid, Dry-Run liest echtes BTC-PERP-Buch + postet sim-Orders, Jev aktiv. Commit ad951b0.
+    - Naechster Schritt: Perps-Anpassung (Hebel, Funding-Kosten, Liquidation-Stop, Position-Cap in USD), dann Testnet-Live-Test.
+    - Angelegt 15.10.2026 · Zuletzt 15.10.2026
+    - Betrifft: Werkstatt/Projekte/Hyperliquid-Market-Making.md, Werkstatt/jev-trader (Kern-Quelle)
+- [ ] **T-410 - Gateway-Absturz 15.10. 00:08: Exit 75 (Liveness-Watchdog) - Ursache MemoryError**
+      Kontext: In derselben Nacht, in der der Launcher-Fix (Commit 02598be6) den Gateway wieder hochbrachte, zeigte der Thread-Dump des abgestuerzten Vorgaengers (PID 43492, Exit 75 um 03:16:50) ein 'MemoryError' - das Event-Loop blieb stehen, weil das System unter Commit-Druck stand (CommitFrei 6,9 GB bei 48 python-Prozessen, darunter Waisen aus der Waechter-Neustart-Schleife). Der Watchdog hat korrekt gehandelt (Exit 75 = Supervisor-Neustart). Die Gefahr bleibt: bei naechster Speicherknappheit fehlt dem Gateway die Luft.
+      Naechster Schritt: Waechter messen FreeVirtualMemory und bei < 8 GB einmal melden (Muster: mcp-zombie-wache); Python-Prozess-Leichen (Waisen aus abgebrochenen Completion-Tails) aufraeumen; Quelle der 48 Prozesse pruefen (Handels-Dauerlauf, MoonDev, MCP-Zombies).
+      Angelegt 15.10.2026 · Zuletzt 15.10.2026
+      Betrifft: Agenten/Hermes/gateway-service/, Agenten/Routinen/gateway-waechter.ps1
+- [ ] **T-411 - SkillsBot weist alle Gruppennachrichten als '(fremd)' ab**
+      Kontext: skillsbot.py:1142 vergleicht chat != chat_id(); TELEGRAM_CHAT_ID (User-Store) ist 7648512088 (Max' DM), die Telegram-Gruppe 'MaximilianundClaude-Code' ist -1003980261765. Jede Nachricht aus der Gruppe laeuft in _log(chat,'(fremd)',...,'abgewiesen') - seit 23:32 am 14.10. durchgehend (48 der letzten 50 Zeilen). Der SkillsBot bedient ABSICHTLICH nur die DM; fuer Gruppenauftraege ist der bots-Verteiler (@Maximilian420_bot, /bot NAME) zustaendig - der laeuft. Nichts kaputt, aber die Protokollflut suggeriert einen Ausfall.
+      Naechster Schritt: Entscheidung Max - entweder Gruppen-ID als zweite erlaubte Chat in skillsbot.py freigeben, oder die Abweisung still protokollieren (nur 1. je Chat/Stunde statt je Nachricht). Kein Eingriff ohne Max.
+      Angelegt 15.10.2026 · Zuletzt 15.10.2026
+      Betrifft: Agenten/Bus/skillsbot.py
 - [ ] **T-403 - GitHub-Privates loeschen: gh-Token braucht delete_repo-Scope**
       Kontext: Auftrag Max 14.10.2026 'alle auf github als privat laufenden repos entfernen, nur lokal betreiben'. 90 private Repos identifiziert (mfaupel95/*, davon ~85 *-privat-Mirrors + Werks-Repos nautilus/omnitrade/rltrader/alice/handel-stack/OmniQuant u.a.), aber gh repo delete gibt fuer ALLE HTTP 403 'Must have admin rights' - der Token traegt nur Scope 'repo', GitHub verlangt Scope 'delete_repo'. NICHTS wurde geloescht (0/90). Ausgenommen: mfaupel95/BrainFiles (Workspace-Remote, Push-Routinen haengen dran - Entscheidung Max offen).
       Naechster Schritt: Max fuehrt in seiner PowerShell 'gh auth refresh -h github.com --scopes delete_repo' aus (Browser-Flow), danach Loeschung + lokale Remotes umziehen (origin -> upstream, Remote 'privat' entfernen; Doktrin in AGENTS.md/CLAUDE.md nachziehen).
@@ -610,21 +632,6 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
       Bereichsabfrage in die Hauswerkzeuge-Aufnahme (`Agenten/Werkzeuge/`) aufnehmen,
       damit ein neues Werkzeug die Regel von Anfang an hat.
       Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/bereiche.py.
-- [ ]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
-      Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
-      Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
-      `merge-base --is-ancestor` = Kopf, `rev-list --count` = Zahlen). Gemessen:
-      6 wegwerfbar (2 lokale claude/*, 3 auf origin, Worktree C:/tmp/head_wt),
-      1 mit ECHTEM Vorlauf: `claude/wizardly-brown-69qfnp` (5bff1231, 1 Commit,
-      "handel: UTC-Zeiten umrechnen statt abschneiden" - steht in KEINER anderen
-      Zweiglinie und in keinem Worktree), 1 Grenzfall: `claude/trading-stack-
-      setup-40ef0d` (aeeac180, inhaltlich schon in master als 6ccb94e4, aber
-      andere sha - `branch -d` verweigert dort, `-D` waere blind).
-      Naechster Schritt: Max entscheidet fuer 5bff1231 (Master einziehen mit
-      `git branch -f master claude/wizardly-brown-69qfnp`, oder als eigenen
-      Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
-      --push` fuer die belegten Faelle.
-      Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
 
 
 
@@ -2012,6 +2019,22 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 ## Erledigt
+- [x]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
+      Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
+      Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
+      `merge-base --is-ancestor` = Kopf, `rev-list --count` = Zahlen). Gemessen:
+      6 wegwerfbar (2 lokale claude/*, 3 auf origin, Worktree C:/tmp/head_wt),
+      1 mit ECHTEM Vorlauf: `claude/wizardly-brown-69qfnp` (5bff1231, 1 Commit,
+      "handel: UTC-Zeiten umrechnen statt abschneiden" - steht in KEINER anderen
+      Zweiglinie und in keinem Worktree), 1 Grenzfall: `claude/trading-stack-
+      setup-40ef0d` (aeeac180, inhaltlich schon in master als 6ccb94e4, aber
+      andere sha - `branch -d` verweigert dort, `-D` waere blind).
+      Naechster Schritt: Max entscheidet fuer 5bff1231 (Master einziehen mit
+      `git branch -f master claude/wizardly-brown-69qfnp`, oder als eigenen
+      Zweig behalten), danach `python Agenten/Werkzeuge/zweige.py --entfernen
+      --push` fuer die belegten Faelle.
+      Angelegt 2026-10-04. Betrifft: Agenten/Werkzeuge/zweige.py.
+      **Erledigt 2026-10-18.** Entscheidung obsolet, gemessen: 5bff1231 ist Vorfahre von master, aeeac180 ebenfalls; Zweige claude/wizardly-brown-69qfnp und claude/trading-stack-setup-40ef0d existieren weder lokal noch auf origin - die Option 'Master einziehen' wurde bereits vollzogen.
 - [x] **T-400 - Werkstatt-Junction-Verlust: Wache existiert (KORREKTUR)**
       KORREKTUR meines Eintrags vom 14.10.: junction-wache.py existiert seit
       11.10.2026 (T-390, Commit 924ed9d3) und hat den Verlust am 13.10. 22:12

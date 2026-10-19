@@ -21,8 +21,10 @@ terminal:
   timeout: 180
   home_mode: auto
 model:
-  default: meituan/longcat-2.5-preview:free
+  default: upstage/solar-pro4
   provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+  api_mode: chat_completions
 fallback_providers:
   - provider: llamacpp
     model: gemma-4-E4B-it-OBLITERATED-Q8_0

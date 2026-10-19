@@ -161,6 +161,16 @@ Fallen:
 - Ablauf: `score --export` -> Verdicts beurteilen (ok/skip, per LLM-Workflow des
   Bots oder im Chat) -> `score --import <results>`. Ein `--import` ohne neue
   Verdicts ergibt NICHTS.
+- **Parallele fomo-radar-Sitzungen koennen dieselbe Queue abarbeiten — vor einem
+  Score-Job den IST-Stand in der DB pruefen, nicht dem letzten Bericht glauben.**
+  Mehrere delegierte Auftraege (Cron + Chat) koennen dieselben Wallets schon
+  gescort haben; ein neuer `score --export` findet dann `exported: 0` und ein
+  Re-Score wuerde heutige Kontexte ueberschreiben und die Rescore-Fenster
+  (72 h watch / 14 d dropped) verletzen. Vor dem Start die Verteilung in der DB
+  lesen (`SELECT status, COUNT(*) FROM traders GROUP BY status`,
+  `SELECT COUNT(*) FROM score_history WHERE date(ts,'unixepoch')=date('now')`)
+  und `docs/STATUS.md`-Session-Eintraege; ist die Queue leer, KEINEN Score-Job
+  starten und das als erledigt melden.
 - `pending_scores.json` liegt im Repo-Root. Struktur: dict mit
   `wallets` (52+), je Wallet: address, chain, source, fomo, indexer_stats
   (fills, buys, sells, closed_trades, wins, win_rate, realized/unrealized/net
@@ -171,7 +181,8 @@ Fallen:
   koennen schon gescort sein.
 - GPU-Engpass: fremder llama-server kann die GPU halten; Scoring-Modell faellt
   von qwen3.5 auf gemma-e4b-8k-64k zurueck, wenn cudaMalloc failed (OOM).
-- Repo-Pfad seit 2026-10-12: `O:\Werkstatt\fomo-robinhood-radar`. Der C:-Junction-Unterpfad `C:\Users\faupe\Documents\BrainFiles\Werkstatt\fomo-robinhood-radar` existierte zeitweise nicht (leeren Check nicht als "Repo weg" deuten, erst O: pruefen). Bots mit explizitem O:-Pfad im Auftrag abrufen.
+- Repo-Pfad ist UNSTABIL und wechselt zwischen `O:\Werkstatt\Repos\fomo-robinhood-radar` und `C:\Users\faupe\Documents\BrainFiles\Werkstatt\fomo-robinhood-radar` (beide wurden 2026-10 beobachtet; der C:-Junction-Unterpfad existierte zeitweise nicht). Einen leeren Check nicht als "Repo weg" deuten — erst beide Pfade pruefen. Im Auftrag an den Bot beide Kandidaten nennen und ihn das Repo selbst lokalisieren lassen, statt einen Pfad hart zu verdrahten.
+- **Das fomo-radar-Profil hat einen EIGENEN Pipeline-Cron** (`profiles/fomo-radar/cron/jobs.json`, Job `0708b8f2725d`, alle 6 h `run --once` gegen das Repo). Vor dem Anlegen eines "fomo-radar Loop"-Crons im bots-Profil erst pruefen, ob das fomo-radar-Profil selbst schon einen laufenden Loop hat — ein zweiter ist Doppelarbeit und wird pausiert. Der fomo-radar-eigene Cron ist der echte Pipeline-Loop; ein bots-Cron dafuer ist redundant.
 - Keys nie ausgeben. Echte Zugaenge nur in `MaxHirn/Wissen/Zugaenge.md`.
 
 ## fomo-radar fomo-family-Discovery
@@ -202,6 +213,25 @@ Fallen:
 - **Die Ein-Profil-pro-Topic-Grenze ist Kern-Gateway-Logik, kein Plugin-Schalter.** `match_profile_route` (installierter Quelltext `hermes-agent/gateway/profile_routing.py` + Tests) hat pro Inbound-Event GENAU ein Ergebnis; es gibt keinen Plugin-Mechanismus, der daraus mehrere Empfaenger pro Topic macht. Behauptet Max ein "Plugin", das das koennte, nicht glauben: den Plugin-Katalog tatsaechlich listen (`hermes plugins`, `grep -i bots`) — fehlt der Name dort, ist es ein Fehlname (meist ist das `bots`-Profil gemeint). Verloren gegangene Suchschleife: mehrere identische `search_files`-Queries, die dasselbe Ergebnis liefern, sind ein degenerativer Modell-Loop, kein Fortschritt — sobald ein Query-Zyklus kein neues Ergebnis bringt, auf eine gezielte Lesequelle (config.yaml, Quelltext) wechseln und dem Nutzer die Antwort geben statt weiterzusuchen.
 - **Vor einem Routing-Vorschlag erst die BESTEHENDE Wahrheit lesen.** `Agenten/Hermes/config.yaml` → `gateway.profile_routes` kann schon verdrahtet sein (Dispatch→bots, Handel→jev-trader, Auswertung→recherche, Wissen→obsidian-skills, Bots→gbrain, Wartung→hermes-wartung fuer -1003980261765). Keine Zuordnung von Grund auf entwerfen und als "neu" anbieten, bevor man die aktive Route gelesen hat; haeufig deckt sie den Entwurf bereits ab. Die Zuordnungs-Doku fuer die Gruppe: `profiles/bots/Telegram-Themen-Bot-Zuordnung.md`.
 - Eine SOUL-/Profilregel-Aenderung beweist nicht, dass bereits laufende Topic-Sitzungen sie geladen haben: erst in einer neuen Sitzung pruefen; keinen Gateway-Neustart ausloesen, wenn er alle laufenden Profile beeintraechtigen kann.
+
+## "Weiter" ohne Kontext: erst rekonstruieren, dann pruefen, ob schon erledigt
+
+Sagt Max nur "Weiter" (oder "weiter wo aufgehoert wurde") ohne Auftrag, ist der
+letzte echte Auftrag NICHT im aktuellen Kontext — er liegt in einer frueheren
+Sitzung. Vor jeder Aktion:
+
+1. **Den letzten echten Auftrag aus der Sitzungshistorie rekonstruieren**
+   (`session_search` mit `sort=newest`, dann in die gefundene Sitzung scrollen
+   bis zur letzten User-Nachricht). Nicht raten, was gemeint sein koennte.
+2. **Pruefen, ob die Arbeit schon erledigt und committet ist, BEVOR man sie
+   wiederholt.** Eine parallele Sitzung kann den Auftrag laengst ausgefuehrt
+   und committet haben. `git diff HEAD -- <pfad>` leer UND `git log -1 --
+   <pfad>` zeigt einen passenden Commit = die Arbeit ist getan; das als
+   erledigt melden statt sie neu zu machen. Das gilt besonders fuer
+   Stilllegungen/SPUREN-Aenderungen, die eine andere Sitzung schon committet
+   haben kann.
+3. Erst wenn weder Historie noch HEAD die Arbeit belegen, den Auftrag
+   ausfuehren oder delegieren.
 
 ## Systempruefung (systempruefung.ps1)
 

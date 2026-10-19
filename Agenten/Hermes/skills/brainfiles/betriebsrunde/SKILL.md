@@ -115,13 +115,28 @@ hermes.exe curator usage                     # (PYTHONHOME/PYTHONPATH leeren)
 
 - **PowerShell 5.1, vier stille Fehler** (gemessen, alle schon in Produktion
   getroffen): (1) `.Count` auf einem Einzelobjekt aus der Pipeline ist **leer** —
-  Gruppen mit `@(...)` erzwingen, sonst stehen 1-Element-Gruppen als „()“ da;
+  Gruppen mit `@()` erzwingen, sonst stehen 1-Element-Gruppen als „()“ da;
   (2) im Array-Literal gewinnt das Komma gegen das Plus — `@("# " + $t, ...)`
   macht den ganzen Kopf zu EINEM String, die Titelzeile vorher in eine Variable
   legen; (3) `Get-Content -Raw` ohne `-Encoding UTF8` liest UTF-8 als ANSI
   (Mojibake, sichtbar erst bei fremden Schriften); (4) `Get-FileHash` existiert
   nicht — `DateiHash()` ueber `System.Security.Cryptography` nutzen, sonst wird
   eine leere Hash-Gruppe zu einer FALSCHEN Zahl statt zu einem Fehler.
+- **Eine per `write_file` geschriebene `.ps1` bricht in PowerShell 5.1 beim
+  Parsen.** `write_file` schreibt UTF-8 OHNE BOM; PS 5.1 liest eine `.ps1` ohne
+  BOM als ANSI — ein einziges Nicht-ASCII-Zeichen (—, ·, Umlaut) in einer
+  doppelten Zeichenfolge endet als abgeschnittene Sequenz und meldet „Die
+  Zeichenfolge hat kein Abschlusszeichen". Haus-Skripte daher ASCII-only
+  schreiben (ue/oe/ae statt Umlaute) und vor dem ersten Lauf mit
+  `[System.Management.Automation.Language.Parser]::ParseFile($pfad, [ref]$null,
+  [ref]$errs)` pruefen; ein Patch, der ein — in einen String setzt, genuegt als
+  Ausloeser.
+- **`schtasks` aus git-bash braucht den einfachen Bindestrich.**
+  `schtasks //query //fo list` endet in „Ungueltige(s) Option/Argument"; ein
+  daruebergelegtes `grep` liefert dann LEER — das liest sich wie „Aufgabe
+  existiert nicht", ist aber ein Aufruffehler. Richtig: `schtasks -query -fo list`.
+  Vor jeder „Aufgabe fehlt"-Meldung einmal `schtasks -query -fo csv | head -3`
+  als Gegenprobe fahren.
 - **`Werkstatt/` ist eine Junction.** `write_file` prueft den aufgeloesten Pfad
   gegen `HERMES_WRITE_SAFE_ROOT` und lehnt ab, obwohl der Pfad im Baum liegt.
   Erst eine Datei ausserhalb der Junction schreiben, dann per `terminal` mit `cp`

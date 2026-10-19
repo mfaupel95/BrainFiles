@@ -181,6 +181,22 @@ fehlgedeutet.
   weiter, weil das Ersetzen den Text verkuerzt, die Laenge aber noch vom
   Original stammt. Erst in eine Variable legen, dann ersetzen, dann messen:
   `$t = $m -replace ...; $t.Substring(0, [Math]::Min(N, $t.Length))`.
+- **Alle taeglichen Aufgaben stehen seit demselben Zeitpunkt still, waehrend
+  die kurzen Takte laufen: KEINE interaktive Sitzung seit dem letzten Boot.**
+  InteractiveToken-Aufgaben (faupe) werden an ihren Zeitpunkten
+  stillschweigend UEBERSPRUNGEN, wenn niemand angemeldet ist; SYSTEM-Aufgaben
+  laufen weiter und lassen den Betrieb gesund aussehen. Gemessen 18.10.2026:
+  Windows-Update-Reboot 01:07, Anmeldung erst 2,5 Tage spaeter; Systempruefung
+  (07:00), Sicherung (20:00), Posteingang, DCA und der Handels-Dauerlauf
+  standen alle an demselben Tag still, Datensortierung (SYSTEM) lief. Vor
+  jedem "Trigger oder Aufgabenplanung pruefen" bei MEHREREN gleichzeitig
+  gestoppten Aufgaben die zwei Zeiten vergleichen:
+  `(Get-CimInstance Win32_OperatingSystem).LastBootUpTime` gegen die
+  `explorer`-Startzeit (`Get-Process explorer | Select StartTime`) — liegt der
+  Boot VOR der Anmeldung, ist die Luecke erklaert und heilt mit der naechsten
+  Anmeldung von selbst, kein Scheduler-Defekt. Seit 18.10.2026 sind die
+  MaxHirn-Aufgaben auf S4U umgestellt (laufen ohne Anmeldung), das Muster
+  gilt aber fuer jede fremde InteractiveToken-Aufgabe weiter.
 - **Zwei Prozesse mit gleichem Namen sind nicht automatisch ein Doppelstart.**
   Vor der Alarmmeldung `ParentProcessId` pruefen: laeuft der zweite als Kind
   des ersten, ist es ein gewolltes Gespann (Fall: der Dauerlauf startet einen

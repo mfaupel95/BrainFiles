@@ -482,6 +482,9 @@ MaxHirn/Archiv/.claude/scheduled_tasks.lock
 # Unterordner selbst werden ignoriert: Sonst zeigt Git eingebettete Fremd-Repos
 # als "?? Werkstatt/<repo>/" und das gefaehrliche Status-Rauschen bleibt.
 Werkstatt/*/
+!Werkstatt/Projekte/
+!Werkstatt/Projekte/leitstand/
+!Werkstatt/Projekte/leitstand/**
 Agenten/Hermes/hermes-agent/**
 Modelle/**
 
@@ -874,6 +877,16 @@ Agenten/Handel/trendwende_btc/handelsjournal.csv
 !Agenten/Handel/omnitrade/wachen.json
 !Agenten/Handel/omnitrade/tests/*.py
 !Agenten/Handel/omnitrade/strategien/*.omni
+# OMNI2-Spur (14.10.2026, Auftrag Interpool): Fork von omnitrade auf
+# Werkstatt/omnitrade2. Dasselbe Muster: Code, Wachen, README und Tests frei;
+# Zustand und Journal gesperrt (schreibt jeder Zyklus). Spur ist deaktiviert
+# im Dauerlauf (omnitrade2 schreibt noch keine Statusdatei).
+!Agenten/Handel/omnitrade2/*.py
+!Agenten/Handel/omnitrade2/*.md
+!Agenten/Handel/omnitrade2/wachen.json
+!Agenten/Handel/omnitrade2/tests/*.py
+Agenten/Handel/omnitrade2/zustand.json
+Agenten/Handel/omnitrade2/handelsjournal.csv
 !Agenten/Handel/omnitrade_futures/*.py
 !Agenten/Handel/omnitrade_futures/*.md
 !Agenten/Handel/omnitrade_futures/wachen.json
@@ -1104,6 +1117,14 @@ Agenten/Handel/klassik_pmax/handelsjournal.csv
 !Agenten/Handel/klassik_supertrend/wachen.json
 Agenten/Handel/klassik_supertrend/zustand.json
 Agenten/Handel/klassik_supertrend/handelsjournal.csv
+
+# LLM-Stunde (12.10.2026, Papierspur auf 1H mit LLM-Arm)
+!Agenten/Handel/llm_stunde/*.py
+!Agenten/Handel/llm_stunde/*.md
+!Agenten/Handel/llm_stunde/wachen.json
+!Agenten/Handel/llm_stunde/tests/*.py
+Agenten/Handel/llm_stunde/zustand*.json
+Agenten/Handel/llm_stunde/handelsjournal*.csv
 
 # Prophet-Signal-Spur (02.10.2026, CryptoPredictions-Papier)
 !Agenten/Handel/prophet_signal/*.py

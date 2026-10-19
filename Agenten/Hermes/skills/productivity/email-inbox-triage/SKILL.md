@@ -23,8 +23,9 @@ Agenten/MCP-Server/mail/.venv/Scripts/python.exe ^
 ```
 
 Zugang: IMAP 993 mit dem App-Passwort aus dem Windows-Anmeldeinformationsspeicher
-(`mailversand.zugang_lesen()`, Dienst 'MaxMailVersand'). Anmeldung vorher pruefen:
-MCP-Werkzeug `mail_zugang_pruefen` oder `python mail_cli.py` (ohne Versand).
+(`mailversand.zugang_lesen()` -> Tupel `(adresse, app_passwort)`, Dienst
+'MaxMailVersand'). Anmeldung vorher pruefen: MCP-Werkzeug `mail_zugang_pruefen`
+oder `python mail_cli.py` (ohne Versand).
 Ohne Zugang: genau das sagen und hier aufhoeren, nichts bauen.
 
 Die Abholung ist **lesend**: `BODY.PEEK[]`, der Ordner wird nicht auf
@@ -70,8 +71,13 @@ harter Massstab `--grenze 2.0` setzen.
    Nachrichten - **aber erst nach `SELECT`**. `SEARCH` im Zustand `AUTH` wirft
    `imaplib.IMAP4.error: command SEARCH illegal in state AUTH, only allowed in
    states SELECTED` (Reihenfolge in der Sonde: LOGIN -> LIST -> SELECT -> SEARCH).
-   Steht im Log `zuletzt_gelesen_bis` auf dem Datum der juengsten Mail, war
-   wirklich nichts neu.
+   Standort-Anker der Merkdatei: der Betrieb haengt seit T-375 (07.10.2026) an
+   `zuletzt_uid`, NICHT an `zuletzt_gelesen_bis` - letzteres ist nur der
+   Rueckfallpfad fuer den ersten Lauf. `zuletzt_lauf` in UTC gegen das
+   Datum der juengsten Mail halten; erst daraus folgt 'wirklich nichts neu'.
+   `SEARCH ALL` liefert SEQUENZnummern, `UID SEARCH` UIDs - die beiden
+   Nummernfolgen nicht verwechseln (hoechste Sequenz 1943, UID 13391 sind
+   im selben Postfach beides normal).
 
 7. **Die Antwort-Muster sind deutsch; englische Fragen fallen durch** (gemessen
    12.10.2026): "A quick question from Denis at DEBYKO" scorte 0,0 und blieb

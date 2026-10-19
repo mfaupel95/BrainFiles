@@ -215,6 +215,7 @@ onboarding:
   seen:
     busy_input_prompt: true
     tool_progress_prompt: true
+    profile_build_offered: true
 telemetry:
   shared_metrics:
     enabled: false
