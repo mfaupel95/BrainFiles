@@ -312,6 +312,20 @@ sie werden nur gelesen oder per `hermes sessions import` einseitig übernommen.
   `git log --oneline origin/master..master`: die geplante Aufgabe committet
   lokal, ihr Push kann aber scheitern (403), waehrend derselbe Push von Hand
   funktioniert. Unpushed Commits sind eine Sicherung, die es nicht gibt.
+- **Divergierter Baum + fremde uncommittete Dateien: weder `pull --rebase` noch
+  `git pull` fahren.** `pull --rebase` bricht mit „cannot pull with rebase: You
+  have unstaged changes" ab (fremde Arbeit im geteilten Arbeitsbaum bleibt ja
+  uncommittet liegen); `git pull` im Merge-Modus stasht zunaechst automatisch
+  und scheitert dann an einem verwaisten `.git/index.lock`. Der saubere Weg
+  (gemessen): (1) den Lock messen (Alter, Groesse 0, echte git-Prozesse ohne
+  `fsmonitor` zaehlen — sind alle nur fsmonitor-Daemons, ist er ein Wrack) und
+  UMBENENNEN, nie loeschen; (2) direkt `git merge --no-ff origin/master`
+  fahren — ein Merge ohne Stash fasst die uncommitteten Dateien NICHT an,
+  solange der eingehende Commit andere Pfade beruehrt (vorher `git diff
+  origin/master --stat` gegen die uncommitteten Pfade gegenchecken); (3) pushen
+  und die Divergenz nachmessen: `git rev-list --left-right --count
+  origin/master...master` muss `0  0` liefern. So bleibt fremde Arbeit im Baum
+  unangetastet und der eigene Push kommt durch.
 
 ## Pitfalls
 
