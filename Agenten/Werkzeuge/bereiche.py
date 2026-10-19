@@ -107,12 +107,17 @@ def _pfad_nach_root(p):
 
 def repo_wurzel():
     """Die Repo-Wurzel: `.git` von hier aus aufwaerts. Kein Pfad geraten, kein
-    absoluter Pfad im Code - das Werkzeug laeuft aus jeder Lage."""
+    absoluter Pfad im Code - das Werkzeug laeuft aus jeder Lage.
+
+    `.git` ist im Hauptrepo ein ORDNER, in einem Worktree eine DATEI
+    (gitdir: <pfad>). Beides zaehlt als Wurzel - sonst bricht der
+    pre-commit-Hook in jedem Kanban-Worktree ab (gemessen 19.10.2026)."""
     hier = os.path.dirname(os.path.abspath(__file__))
     for start in (hier, os.getcwd()):
         cur = os.path.abspath(start)
         for _ in range(6):
-            if os.path.isdir(os.path.join(cur, ".git")):
+            if os.path.isdir(os.path.join(cur, ".git")) or \
+               os.path.isfile(os.path.join(cur, ".git")):
                 return cur
             parent = os.path.dirname(cur)
             if parent == cur:
