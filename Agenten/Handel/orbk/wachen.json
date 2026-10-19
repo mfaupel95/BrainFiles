@@ -36,23 +36,20 @@
   "ziel_modus": "r_vielfaches",
   "ziel_k": 1.5,
   "ziel_punkte": {
-    "ETH_USD": 30,
-    "HYPE_USD": 12,
-    "HYPE_EUR": 10
+    "ETH_USDT": 30,
+    "BTC_USDT": 30
   },
   "_ziel": "ziel_modus=r_vielfaches -> TP = ziel_k * Range-Hoehe. ziel_modus=punkte -> TP = ziel_punkte[instrument] Preispunkte. Startwerte aus dem Backtest.",
   "hebel_deckel": 3,
   "_hebel_deckel": "Obergrenze fuer Spot (kein echter Hebel bei Kraken-Spot, aber die Rechnung deckelt trotzdem).",
   "letzter_einstieg_min_vor_schluss": 60,
   "mindest_range_punkte": {
-    "ETH_USD": 1.0,
-    "HYPE_USD": 0.6,
-    "HYPE_EUR": 0.5
+    "ETH_USDT": 1.0,
+    "BTC_USDT": 1.0
   },
   "max_range_punkte": {
-    "ETH_USD": 40.0,
-    "HYPE_USD": 6.0,
-    "HYPE_EUR": 5.0
+    "ETH_USDT": 40.0,
+    "BTC_USDT": 40.0
   },
   "_range_filter": "Range unter mindest -> Session aussetzen (Rauschen). Range ueber max -> aussetzen (Stop zu weit). HYPE bewegt sich in 30 min oft 0.5-5 Punkte.",
   "mindest_marge_frei_usd": 50,
@@ -74,6 +71,5 @@
     "backtest_geprueft_am": "2026-10-11",
     "_freigabe_anmerkung": "erfuellt=false auf Befund 14.10.2026: Punktebuch fuehrt keinen Einsatz, netto_positiv ist dort nicht kostenbereinigt. Live verliert die Spur 1,14 % je Runde (f_max 0,06 % gegen 1,2 % Gebuehr). Zurueck auf Papier."
   },
-  "_freigabe": "Sperre 4 aus SPEC.md. handel_erlaubt erst true, wenn backtest_bestanden UND (>= 6 Wochen Papier) UND (>= 50 Sessions) UND netto_positiv.",
-  "kraken_host": "https://api.kraken.com"
+  "_freigabe": "Sperre 4 aus SPEC.md. handel_erlaubt erst true, wenn backtest_bestanden UND (>= 6 Wochen Papier) UND (>= 50 Sessions) UND netto_positiv."
 }

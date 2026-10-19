@@ -472,12 +472,12 @@ def _abgleich_runde(z, w):
     if offen:
         print("  Buch-vs-Boerse: Buch und Boerse stimmen ueberein")
         return {"ausgebucht": False}
-    _schliesse(zus, zus.get("letzter_kurs") or zus.get("ziel"),
-               "ziel (boerse)")
+    grund = "ziel (boerse)"
+    _schliesse(zus, zus.get("letzter_kurs") or zus.get("ziel"), grund)
     z.pop("position", None)
     print("  Buch-vs-Boerse: %s WEG an der Boerse (%s) - Boersenschluss "
-          "gebucht, keine Marketorder" % (paar, fach))
-    return {"ausgebucht": True, "grund": fach}
+          "gebucht, keine Marketorder" % (paar, grund))
+    return {"ausgebucht": True, "grund": grund}
 
 def lauf(modus="papier"):
     w = _wachen()
