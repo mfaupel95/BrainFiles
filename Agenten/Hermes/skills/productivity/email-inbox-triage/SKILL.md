@@ -78,6 +78,11 @@ harter Massstab `--grenze 2.0` setzen.
    `SEARCH ALL` liefert SEQUENZnummern, `UID SEARCH` UIDs - die beiden
    Nummernfolgen nicht verwechseln (hoechste Sequenz 1943, UID 13391 sind
    im selben Postfach beides normal).
+   **Ein unveraendertes `zuletzt_lauf` ist KEIN Fehlschlag** (gemessen
+   19.10.2026): der Schreibblock steht unter `... and kandidaten:` - ohne
+   Treffer bleibt die Merkdatei absichtlich stehen, inklusive `zuletzt_lauf`.
+   Der Beweis fuer 'nichts neu' ist deshalb die Gleichheit von `zuletzt_uid`
+   und der hoechsten UID aus `UID SEARCH ALL`, nicht der Zeitstempel.
 
 7. **Die Antwort-Muster sind deutsch; englische Fragen fallen durch** (gemessen
    12.10.2026): "A quick question from Denis at DEBYKO" scorte 0,0 und blieb
