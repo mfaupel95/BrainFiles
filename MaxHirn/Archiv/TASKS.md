@@ -1,6 +1,21 @@
 ## Offen
 
 
+- [ ] **T-425 - Hermes-Wartung 20.10.: Stable-Kanal aktuell, Kanal-Entscheidung offen**
+      Kontext: Wartungslauf 20.10.2026: hermes update (Stable) meldete
+      "up to date" bei v0.22.2 (d923a5eb); origin/main steht 2646 Commits
+      voraus (497 fix(gateway), 133 fix(cli), 128 fix(desktop) ...), die der
+      Stable-Kanal nicht zieht. Gateway-Restart sauber (PID 15000->14064),
+      hermes doctor "All checks passed", Dashboard HTTP 200. Nebenbefund
+      repariert: checkpoints/store/refs/ fehlte (git erkannte das bare
+      Hilfsrepo nicht; rev-parse --is-bare-repository false) - refs/heads +
+      refs/tags angelegt, Refs lagen unversehrt in packed-refs.
+      Naechster Schritt: Entscheidung Max, ob der Update-Kanal stable bleibt
+      (Status quo, nur Releases) oder auf dev wechselt (zieht origin/main,
+      mehr Fixes, mehr Risiko).
+      Angelegt 20.10.2026 · Zuletzt 20.10.2026
+      Betrifft: Agenten/Hermes (Update-Kanal)
+
 - [ ] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
       Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
       OKX-Perpetuals-Adapter (SWAP) in mfaupel95/omnitrade2 gebaut (swap.rs,
