@@ -53,6 +53,22 @@
       meldet nur Statuswechsel PR #1 / Staleness).
 PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       der SWAP-Stand, erst nach Demo-Verifikation ready for review.
+      DEMO-VERIFIKATION 20.10.2026 (Hermes, Uebergabe ausgefuehrt, Worktree
+      omnitrade-pr1): Spot auf EEA-Demo FUNKTIONIERT (Balance, Limit+Storno,
+      Market-Buy/Sell BTC-USDC, ordId 4027436872012525569). SWAP
+      (BTC-USDT-SWAP) -> 50124 'no trading permission for the market'.
+      XPERP (BTC-USD_UM_XPERP-310404) -> set-leverage 51001 'Instrument
+      doesn't exist', Order 'All operations failed'. account/config:
+      posMode net_mode, perm read_only,trade, settleCcy USDC.
+      BEFUND: Das EEA-Demo-Konto 'Demo MAX' hat KEINE Perpetual-
+      Berechtigung (weder SWAP noch XPERP), nur Spot. Der SWAP-Adapter
+      kann auf diesem Konto nicht demo-verifiziert werden. ZUSAETZLICH:
+      Adapter zielt auf -SWAP (instType=SWAP), EEA-tradable Perpetuals
+      sind aber XPERP (instType=FUTURES) - InstType-Enum hat kein Futures.
+      Beides muss vor der Demo-Verifikation geklaert werden (Entscheidung
+      Max: Demo-Konto mit Perpetual-Berechtigung einrichten ODER Adapter
+      auf XPERP umstellen). Probe-Erweiterungen (okx_demo_probe EEA+Symbol,
+      okx_swap_demo_probe) liegen uncommitted im Worktree omnitrade-pr1.
       Angelegt 20.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
 
