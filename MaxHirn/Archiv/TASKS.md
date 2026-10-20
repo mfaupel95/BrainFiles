@@ -76,10 +76,11 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Angelegt 20.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/omnitrade
 
-- [ ] **T-417 — llm_stunde im Dauerlauf ohne Auswertung (vorbestehend):**
+- [x] **T-417 — llm_stunde im Dauerlauf ohne Auswertung (vorbestehend):**
+    - **Erledigt 20.10.2026.** llm_stunde ist in auswertung_alle.py verdrahtet: alle 6 Arme (llm_stunde_ema1h-{R,L}, st1h-{R,L}, rsi1h-{R,L}) in der Pfad-Zuordnung (Z.60-65) und in der Auswertungsliste (Z.155-158). Journal-Format geprueft (zeit,modus,aktion,inst,seite,preis,einsatz_usd,stop,ziel,stop_pct,grund,pos_id,mfe_pct,mae_pct,haltetage) - kompatibel. Die TASK war veraltet (Verdrahtung existierte schon).
     - Kontext: test_verdrahtung meldet 'llm_stunde im Dauerlauf, aber in keiner Auswertung gelistet'. Keine eigene auswertung.py, nicht in auswertung_alle. Vorbestehend (nicht durch die Sammelauftrag-Verdrahtung eingefuehrt).
     - Naechster Schritt: Journal-Format von llm_stunde pruefen, dann in auswertung_alle (oder EIGENE_AUSWERTUNG) eintragen.
-    - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/llm_stunde
+    - Angelegt 2026-10-19 · Zuletzt 2026-10-20 / Betrifft: Agenten/Handel/llm_stunde
 - [x] **T-414 — jev_trader-Spur verdrahten (Worktree arbeit/jev-trader):**
     - **Erledigt 20.10.2026.** Sammelauftrag hat den Branch in master uebernommen; Verdrahtung verifiziert: dauerlauf.SPUREN (Z.416), lage.spur_jev_trader (Z.676), befehle.FAMILIE (Z.85), auswertung_alle, journal_zweitziel gesetzt. pruefe_ratschen nicht noetig: Feed-Kopie-Spur ohne Risiko-Buch (kein drawdown_halbierung_usd), gleiches Muster wie kopier/kopier1zu1 (stehen dort auch nicht). handel_erlaubt=false.
     - Kontext: Parallele Claude-Sitzung baute Papier-Spur Agenten/Handel/jev_trader (liest Block-Event-Log des jev-trader-Bots, bucht Roundtrips). Liegt nur auf Zweig arbeit/jev-trader, NICHT in dauerlauf/lage/befehl/auswertung verdrahtet. handel_erlaubt=false, kein Live-Pfad.
