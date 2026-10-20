@@ -427,6 +427,10 @@ die **ueber** den Einzelfall hinausgehenden Regeln — Aggregation, Gegenlauf-Pf
 Schleife-als-Aktivitaet, Belegpflicht fuer Erklaerungen — stehen in
 `messwerkzeug-gegenprobe` und `trugschluesse`.
 
+## Claude Code Telegram-Kanal (nicht die Hermes-Bruecke)
+
+Der Claude Code Telegram-Kanal (`claude --channels plugin:telegram@claude-plugins-official`, Token in `~/.claude/channels/telegram/.env`) ist ein ANDERER Prozess als die Hermes-Bruecke — ein Neustart des einen heilt den anderen nicht. Token-Rotation, CRLF-Falle und Neustart-Rezept: `references/claude-code-telegram-kanal.md`.
+
 ## Mention-Pflicht je Profil-Bot: `TELEGRAM_REQUIRE_MENTION` (Stand 11.10.2026)
 
 In der Gruppe `-1003980261765` teilen sich mehrere Bot-Profile einen Chat. Der

@@ -45,6 +45,14 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   Auftrag gehoert; keinen fremden/aktiven Worker beenden und nie doppelt starten.
 
 ## Bot-Wahl: ein Modell, das in Schleifen laeuft, ist ein Wechsel-Grund
+- **Nous-Credits koennen mitten im Betrieb erschoepfen (HTTP 402 "Insufficient
+  available credits") — dann faellt JEDE Bot-Delegation aus, weil alle Profile
+  ueber provider nous laufen.** llamacpp ist nur Fallback, und die `:free`-
+  Modelle (longcat) antworten dann auch nicht brauchbar (haengen ohne Antwort).
+  Erkennbar am Bot-Lauf, der nach ~30 s mit 402 endet. Vor einer Delegation bei
+  unklarer Lage einen Trivial-Prompt als Credit-Probe schicken (z. B. "Antworte
+  nur mit BEREIT"); schlaegt der fehl, erst Credits aufladen oder den Teil ohne
+  LLM (Prozess-Checks, Watcher, Commits) direkt selbst machen statt zu warten.
 - Kollabiert ein delegierter Bot mit exit 1 / "Repetition Detected" (Modell-Loop),
   NICHT denselben Bot blind erneut starten — das Modell kollabiert wieder. Erst im
   Repo pruefen, was wirklich passiert ist (Commit da? Fenster offen? Position
@@ -78,6 +86,18 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   Die Delegationsregel "nicht selbst ausfuehren" gilt fuer den Repo-Baum und
   fremde Fachbots; einen toten, benannten Klein-Bug im eigenen Build zu patchen
   ist Abschlussarbeit, kein Fremdeingriff.
+- **Ein Bot, der mit `finish_reason='length'` / "No visible answer produced"
+  endet, hat trotzdem echte Arbeit auf der Platte hinterlassen — oft UNCOMMITTET.**
+  Das Ausgabe-Token-Limit ist ein anderer Abbruchmodus als der Iterationsbudget-
+  Kollaps: der Bot macht 60+ Tool-Calls (editiert Dateien, laesst Tests laufen),
+  aber seine Antwort wird nie sichtbar, weil das Reasoning das gesamte
+  Ausgabe-Budget verbraucht. Vor dem Neustart IMMER `git status`/`git diff` im
+  Ziel-Worktree pruefen und die uncommittete Arbeit sofort mit
+  `--author="Hermes <hermes@local>"` committen (Regel 1: Sichern ist Pflicht) —
+  sonst ist sie beim naechsten Schritt das Verlustrisiko. Gegenmittel im
+  Folgeauftrag: explizit "eine Datei nach der anderen, bei vollem Kontext SOFORT
+  committen und Zwischenstand melden statt weiterzumachen" — das zerlegt den
+  Auftrag in committbare Haeppchen und rettet den Fortschritt vor dem Limit.
 - **Ein Analyse-/Bestandsaufnahme-Auftrag muss benennen, WELCHE Dateien zu
   lesen sind (README, Einstiegsdateien, ggf. eine wachen.json) und darf
   teure Sondierungs-Kommandos ausdruecklich VERBIETEN.** Ohne das
@@ -307,7 +327,9 @@ aller Bots auf einen Blick.
 - **Nach dem Bot-Bericht den IST-Wert aus der frischen Quelle melden, nicht aus der naheliegenden Datei.** Bei parallelen Stufen-Buechern (`zustand.json` Basis vs. `zustand.mittel/hoch.json`) kann die Basis-Datei stale sein; melde offene Positionen/Status nur aus der Datei mit dem juengsten `letzter_lauf`. Eine verstaendliche, aber falsche Masse ("3 offene Live-Positionen") aus einer toten Datei ist schlimmer als ein ehrliches "welche Stufe?" — der Nutzer korrigiert die Zahl, und das Vertrauen in jede weitere Zahl sinkt.
 - **PR-Body mit Backticks/Code nicht in eine doppelt-gequotete Shell-Commandline packen.** In `gh pr create --body "...`<code>`..."` wertet die Shell die Backticks als Command-Substitution aus und frisst die Stellen aus dem Body. Als Here-Doc mit einfachen Quotes (`--body-file - <<'EOF'`) uebergeben und danach den Body per `gh pr view <n> --json body --jq .body` zuruecklesen und auf die Code-Stellen pruefen, statt nach dem Erstellen zu vertrauen.
 - **"Tests gruen" erst in den PR-Body schreiben, NACHDEM man sie selbst gelaufen hat — nie aus einem Handoff/Erinnerungsstand uebernehmen.** Ein Handoff kann "fertig, verifiziert" behaupten, aber die Tests schlagen im Worktree fehl (falsches Arbeitsverzeichnis, Pfad-Guard, nicht umgestellte Alt-Venue-Tests). Vor dem `gh pr create` die Tests des Branches mit dem Hauptbaum-Interpreter SELBST ausfuehren und das Ergebnis (OK/FAILED + Anzahl) abwarten; erst dann "Tests gruen" in den Body schreiben. Ein PR-Body, der gruene Tests behauptet, die rot sind, ist eine falsche Zusicherung an den Reviewer.
+- **Handel-Spuren-Tests laufen NUR aus dem Spur-Ordner, nie als `-m unittest tests.test_x`.** Der Pfad-Guard `assert h.__file__.startswith(SPUR)` in den Testdateien schlaegt bei `-m unittest tests.test_x` fehl, weil `scanner/handeln.py` den Import gewinnt (der Test fuegt scanner vor SPUR in den Pfad ein). Korrekt: `cd Agenten/Handel/<spur> && <hauptbaum-python> -m unittest discover -s tests -p "test_*.py"` (oder die Testdatei direkt als Skript `python tests/test_x.py`). Ein `-m unittest`-Fehler "falsches handeln.py: ...scanner\handeln.py" ist also ein Aufruf-Problem, kein Code-Fehler — und tritt auf master genauso auf wie auf dem Branch.
 - **Merge-fertige Worktree-Branches pushen + PR eroeffnen ist ein eigener Schritt, der die Tests voraussetzt.** `git push -u origin <branch>` aus dem jeweiligen Worktree, dann `gh pr create --base master --head <branch>`. Vor dem Push pruefen, dass der Branch nicht schon auf dem Remote liegt (`git ls-remote --heads origin <branch>` leer) und dass er wirklich Commits vor master hat (`git rev-list --count master..<branch>` > 0) — sonst eroeffnet man eine leere PR.
+- **Mehrzeilige Code-Bloecke mit dem `patch`-Tool umschreiben ist unzuverlaessig — bei Einrueckungs-/Tippfehler-Korruption auf ein Python-Heredoc wechseln.** Das fuzzy `patch`-Tool verschiebt bei mehrzeiligen Ersetzungen gern die Einrueckung und verdoppelt/verstuemmelt Zeilen (`if w    if w is None:`, `wurzel_vwurzel_von`). Sobald ein Patch-Block zweimal kaputt zurueckkommt, nicht weiter mit dem Tool fummeln, sondern die exakte Zeilenspanne per `python - <<'EOF'` neu schreiben: Datei lesen, Start-/Endzeile der Methode per `startswith("    def ")` finden, den Block durch die sauberen Zeilen ersetzen, zurueckschreiben, `py_compile` zur Syntaxpruefung. Das ist deterministisch und laesst die Einrueckung intakt.
 - **Worktree-Commit, der mit "keine .git-Wurzel gefunden" abbricht, aber `git rev-parse --show-toplevel`/`status` gruen sind, haengt am pre-commit-Hook:** der `.githooks/pre-commit` ruft das Bereichs-Skript (`bereiche.py --staged`) und kann im Worktree-Kontext scheitern. Worktree-Commits mit `git -c core.hooksPath=/dev/null commit -m ...` durchfuehren (einmalig, area-Hook wirkt nur mit gesetzter `BRAINFILES_BEREICH`).
 - **Nach dem Bot-Bericht den ZIEL-ZWEIG pruefen, nicht nur die
   Dateien.** Ein Bot committet auf dem Zweig, den der geteilte Arbeitsbaum
