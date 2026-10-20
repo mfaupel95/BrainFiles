@@ -21,7 +21,20 @@
       offenen PRs mehr (nur main); C.4/C.5 remote nicht vorhanden, Branches
       waren Container-lokal (worktree-live-loop-fix, integration/main-into-pr11),
       dort nicht loeschbar, in der Container-Session zu loeschen oder erledigt.
-      PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
+      DEMO-VERIFIKATIONS-KETTE (naechste Aktion, geprueft 20.10.2026):
+      1. Demo-Keys im Container setzen (OKX_API_KEY/SECRET/PASSPHRASE,
+         OKX_REGION=eea, OKX_LEVERAGE=1) - fehlen dort noch.
+      2. GitHub-Verbindung fuer mfaupel95/omnitrade unter
+         claude.ai/connect-github erneuern (Session live-testnet-verify
+         blockiert).
+      3. Verifikation: Positionsantwort (pos/upl/liqPx/markPx), set-
+         leverage, account/config, kleine Order 0.0001 BTC (= 0.01
+         Kontrakte), Schliessen per Verkauf.
+      4. Netzwerkpolicy: Port 8443 fuer wseea/wseeapap freigeben.
+      5. Danach PR #1 von Draft auf ready for review stellen.
+      Wache: Hermes-Cron omnitrade2-demo-wache (taeglich, no_agent,
+      meldet nur Statuswechsel PR #1 / Staleness).
+PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       der SWAP-Stand, erst nach Demo-Verifikation ready for review.
       Angelegt 20.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
