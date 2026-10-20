@@ -1,10 +1,5 @@
 ## Offen
 
-- [ ] **T-424 — mcp-zombie-wache filtert nur python/pythonw, nicht node**
-      Kontext: Die Wache (Cron e303a86247c6, 15 min) haelt die MCP-Gruppen bei 3 Prozessen, filtert aber nur python/pythonw - die 84 ant.dir-NODE-Knoten vom 05.10. (pdf-server/desktopcommander/canva.affinity/revolut-x-api, je 18-24 Generationen, Eltern = Gateway-PID) blieben ungesehen. T-152 (Spawn-Kette) ist ERLEDIGT (die Wache bricht den Kreis per T-200-Abbruch-Idempotenz); der node-Filter ist der verbleibende Rest.
-      Naechster Schritt: mcp-zombie-wache.py um node.exe/npm erweitern (je Server die 3 juengsten behalten), Test, dann Cron-Laeufe beobachten.
-      Angelegt: 2026-10-20
-      Betrifft: Agenten/Hermes/scripts/mcp-zombie-wache.py
 
 - [ ] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
       Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
@@ -2106,6 +2101,12 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
     - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
     - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 ## Erledigt
+- [x] **T-424 — mcp-zombie-wache filtert nur python/pythonw, nicht node**
+      Kontext: Die Wache (Cron e303a86247c6, 15 min) haelt die MCP-Gruppen bei 3 Prozessen, filtert aber nur python/pythonw - die 84 ant.dir-NODE-Knoten vom 05.10. (pdf-server/desktopcommander/canva.affinity/revolut-x-api, je 18-24 Generationen, Eltern = Gateway-PID) blieben ungesehen. T-152 (Spawn-Kette) ist ERLEDIGT (die Wache bricht den Kreis per T-200-Abbruch-Idempotenz); der node-Filter ist der verbleibende Rest.
+      Naechster Schritt: mcp-zombie-wache.py um node.exe/npm erweitern (je Server die 3 juengsten behalten), Test, dann Cron-Laeufe beobachten.
+      Angelegt: 2026-10-20
+      Betrifft: Agenten/Hermes/scripts/mcp-zombie-wache.py
+      
 - [x]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
       Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
       Zweige und Worktrees mit drei Zeugen (`cherry` = Patch-ID-Inhalt,
