@@ -55,6 +55,12 @@ import ereignis
 import okxf
 import session as sess
 import wachen_orb as wp
+from importlib.util import module_from_spec as _kg_mod, \
+    spec_from_file_location as _kg_spec
+_kg_obj = _kg_spec("kill_gemeinsam", os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), os.pardir, "kill_gemeinsam.py"))
+kg = _kg_mod(_kg_obj)                  # Kill-Frist/Reset/Opt-out, eine Stelle
+_kg_obj.loader.exec_module(kg)
 
 
 # Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
@@ -479,6 +485,51 @@ def _abgleich_runde(z, w):
           "gebucht, keine Marketorder" % (paar, grund))
     return {"ausgebucht": True, "grund": grund}
 
+def kill_verkauf_ohne_freigabe(w):
+    """Notausstieg fuer die echte Position bei geschlossener Freigabekette: nur
+    mit ausdruecklichem Schalter, Basisstufe und gesetztem Schluessel."""
+    return bool(w.get("kill_verkauf_ohne_freigabekette")
+                and risikostufe.live_erlaubt() and okxf.schluessel_vorhanden())
+
+
+def kill_schliessen(z, w, live, notaus_live=False):
+    """Kill: die offene Position zum Marktkurs schliessen UND buchen.
+
+    Papier wird rein im Buch geschlossen. Eine echte Position (modus=live)
+    schliesst nur `_exit_live` (gegen die Boerse verifiziert, reduceOnly) und
+    nur im Live-Lauf oder mit Notausstieg; sonst bleibt sie stehen, die Boerse
+    schuetzt per Stop/Ziel. Ohne Kurs bleibt die Position stehen.
+    Rueckgabe: True, wenn die Position geschlossen wurde.
+    """
+    p = z.get("position")
+    if not p:
+        return False
+    echt = p.get("modus") == "live"
+    if echt and not (live or notaus_live):
+        print("  KILL: %s ist eine echte Position - bleibt (kein Live-Lauf, "
+              "kein Notausstieg)" % p["inst"])
+        return False
+    try:
+        kurs = _letzter_kurs(w, p["inst"])
+    except Exception:                                       # noqa: BLE001
+        kurs = p.get("letzter_kurs")
+    if not kurs:
+        print("  KILL: %s ohne Kurs - Position bleibt" % p["inst"], file=sys.stderr)
+        return False
+    grund = kg.KILL_GRUND
+    if echt:
+        ok, grund = _exit_live(z, w, p, w["instrumente"][p["inst"]]["okx"], kurs,
+                               kg.KILL_GRUND)
+        if not ok:
+            p["exit_ungeklaert"] = True
+            return False
+    print("  KILL-ZWANGSSCHLUSS (%s): %s @ %.4f"
+          % ("LIVE" if echt else "Papier", p["inst"], kurs))
+    _schliesse(p, kurs, grund)
+    z.pop("position", None)
+    return True
+
+
 def lauf(modus="papier"):
     w = _wachen()
     z = lade_zustand()
@@ -505,10 +556,30 @@ def lauf(modus="papier"):
         meldungen.append("AUSSTIEG (%s, %s): %s %s, Einstieg %.4f" % (
             art, grund, p["richtung"], p["inst"], p["einstieg"]))
 
+    # Bedingung 2: Halbierung und Kill (bisher nur berechnet, nie angewendet).
+    s = wp.lage(w, JOURNAL, z)
+    if s["kill"]:
+        wk = dict(w)
+        if live or (z.get("position") or {}).get("modus") == "live":
+            wk.setdefault("kill_wiederaufnahme", False)   # Live: nie von selbst
+        status, _rueck = kg.phase(z, wk, s["ruecklauf_usd"],
+                                  s.get("runden_gesamt", 0),
+                                  lambda: jetzt.isoformat(timespec="seconds"))
+        if status == "frei":
+            s = wp.lage(w, JOURNAL, z)            # Ruecklauf beginnt bei 0
+        else:
+            kill_schliessen(z, w, live, notaus_live=kill_verkauf_ohne_freigabe(w))
+            meldungen.append("KILL-SWITCH: Ruecklauf %.2f USD - kein Einstieg"
+                             % s["ruecklauf_usd"])
+            schreibe_zustand(z)
+            return meldungen
+    faktor = s["groessenfaktor"]
+
     # 3. Einstieg
     if not z.get("position"):
         einstieg, meldung = pruefe_einstieg(z, w, jetzt)
         if einstieg:
+            z["position"]["risiko_usd"] = z["position"].get("risiko_usd", 10.0) * faktor
             if live:
                 platz = platziere_einstieg(z, w, z["position"], echt=True)
                 if platz:
