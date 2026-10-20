@@ -194,7 +194,8 @@ class OptOutTest(Basis):
 
     def test_wachen_der_live_faehigen_spuren_haben_den_opt_out(self):
         for sp in ("moondev_listingarb", "moondev_marktlage", "moondev_signalwelle",
-                   "moondev_topmovers", "omnitrade_futures"):
+                   "moondev_topmovers", "omnitrade_futures", "moondev_liquidation",
+                   "moondev_sentiment", "moondev_whale"):
             with open(os.path.join(HANDEL, sp, "wachen.json"), encoding="utf-8") as f:
                 self.assertIs(json.load(f).get("kill_wiederaufnahme"), False, sp)
 
@@ -394,7 +395,8 @@ class NotausstiegTest(Basis):
 
     def test_wachen_der_live_spuren_schalten_ein(self):
         for sp in ("moondev_listingarb", "moondev_marktlage", "moondev_signalwelle",
-                   "moondev_topmovers", "omnitrade_futures"):
+                   "moondev_topmovers", "omnitrade_futures", "moondev_liquidation",
+                   "moondev_sentiment", "moondev_whale"):
             with open(os.path.join(HANDEL, sp, "wachen.json"), encoding="utf-8") as f:
                 self.assertIs(json.load(f).get("kill_verkauf_ohne_freigabekette"), True, sp)
 
