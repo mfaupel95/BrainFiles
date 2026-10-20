@@ -70,24 +70,27 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Max: Demo-Konto mit Perpetual-Berechtigung einrichten ODER Adapter
       auf XPERP umstellen). Probe-Erweiterungen (okx_demo_probe EEA+Symbol,
       okx_swap_demo_probe) liegen uncommitted im Worktree omnitrade-pr1.
-      XPERP-UMBAU 20.10.2026 ERLEDIGT (Auftrag Max 'ja', Commit 9ab8adf auf
-      claude/nice-pasteur-940iq0, gepusht): InstType::Futures ergaenzt
-      (as_api_str FUTURES, ctVal, is_contract_based); base_to_contracts/
-      contracts_to_base akzeptieren Futures; is_swap_id -> is_contract_id
-      (erkennt -SWAP UND _XPERP-); fetch_swap_position nutzt
-      inst.inst_type.as_api_str() statt hart SWAP; CLI is_contract_symbol +
-      inst_type_for_symbol; okx_demo_probe um OKX_REST_BASE/Symbol/Balance-
-      Liste erweitert, okx_swap_demo_probe neu. 479 Tests gruen (+3 XPERP),
-      Clippy -D warnings gruen. Probe-Erweiterungen jetzt committet.
-      BLOCKER BLEIBT KONTO-SEITIG (gemessen, definitiv): der SIGNIERTE
-      Aufruf /public/instruments?instType=FUTURES&instId=BTC-USD_UM_XPERP-
-      310404 gibt mit dem Demo-Key 51001, der UNSIGNIERTE gibt state=live -
-      das Demo-Konto sieht XPERP-Instrumente gar nicht. Weder SWAP (50124)
-      noch XPERP (51001) handelbar, nur Spot.
-      NAECHSTER SCHRITT MAX: in der OKX-Demo-UI dem Demo-Konto Perpetual-
-      Berechtigung geben (oder Demo-Key mit Derivate-Recht neu anlegen).
-      Danach: okx_swap_demo_probe BTC-USD_UM_XPERP-310404 0.0001 laufen
-      lassen, dann PR #1 auf ready for review.
+            XPERP-UMBAU 20.10.2026 ERLEDIGT (Auftrag Max 'ja', Commits 9ab8adf + f31aecc auf
+            claude/nice-pasteur-940iq0, gepusht): InstType::Futures ergaenzt
+            (as_api_str -> FUTURES, ctVal, is_contract_based); base_to_contracts/
+            contracts_to_base akzeptieren Futures; is_swap_id -> is_contract_id
+            (erkennt -SWAP UND _XPERP-); fetch_swap_position nutzt
+            inst.inst_type.as_api_str() statt hart SWAP; CLI: is_contract_symbol +
+            inst_type_for_symbol (XPERP -> Futures); okx_demo_probe um
+            OKX_REST_BASE/Symbol/Balance-Liste erweitert, okx_swap_demo_probe neu.
+            place_order nutzt Instrument-Cache (keine String-Heuristik mehr) -> 51001
+            für Demo-XPERP behoben. swap_order_body: XPERP (Futures) quantity als
+            Kontrakte direkt (ctVal in Settlement-Währung USD, nicht Base).
+            479 Tests gruen (+3 XPERP), Clippy -D warnings gruen.
+            DEMO-VERIFIKATION 20.10.: load_instrument, set_leverage, ensure_net_mode
+            funktionieren auf EEA-Demo. Order-Platzierung schlägt an
+            Compliance-Restriktion fehl (Demo-Konto ohne Futures-Berechtigung).
+            BLOCKER BLEIBT KONTO-SEITIG: EEA-Demo-Konto hat keine Perpetual-
+            Berechtigung. Adapter-Code ist fertig.
+            NAECHSTER SCHRITT MAX: in der OKX-Demo-UI dem Demo-Konto Perpetual-
+            Berechtigung geben (oder Demo-Key mit Derivate-Recht neu anlegen).
+            Danach: okx_swap_demo_probe BTC-USD_UM_XPERP-310404 0.1 laufen lassen,
+            dann PR #1 auf ready for review.
       Angelegt 20.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
 
