@@ -291,6 +291,16 @@ def chat_id():
         return None
 
 
+def chat_erlaubt(chat):
+    """Ob eine Chat-ID bedient wird: die DM (TELEGRAM_CHAT_ID) und seit
+    20.10.2026 die Telegram-Gruppe 'MaximilianundClaude-Code'
+    (-1003980261765, Entscheidung Max zu T-411). Der SkillsBot bedient
+    damit auch Gruppenauftraege; der bots-Verteiler bleibt fuer /bot-Dispatch."""
+    if chat == chat_id():
+        return True
+    return chat == -1003980261765
+
+
 def _a2a_token():
     """Erstes name:token-Paar aus A2A_PEER_TOKENS der Hermes-.env."""
     try:
@@ -1139,7 +1149,7 @@ def schleife():
                     if not _bilder(nachricht):
                         continue
                     text = "(Bild ohne Unterschrift)"
-                if chat != chat_id():
+                if not chat_erlaubt(chat):
                     _log(chat, "(fremd)", 0, "abgewiesen", len(text))
                     offset = uid + 1
                     continue
