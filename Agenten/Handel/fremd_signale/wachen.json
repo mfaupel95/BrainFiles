@@ -55,6 +55,7 @@
     "JUP-USDC",
     "CFX-USDC",
     "ZRO-USDC",
+    "BTC-USDT",
     "BTC/USD",
     "ETH/USD",
     "SOL/USD",
@@ -81,7 +82,7 @@
     "ZEC/USD",
     "STRK/USD"
   ],
-  "size_pct_max": 0.25,
+  "size_pct_max": 0.5,
   "_papier": "Werte fuer fremd_papier.py (Papierbuch). Stop ist Pflicht; Rahmen wie die Klassik-Spuren: 5 USD Risiko je Position, 3 Positionen.",
   "stop_prozent": 4.0,
   "pflicht_stop_prozent_min": 2.4,
