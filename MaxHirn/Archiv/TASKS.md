@@ -1,21 +1,6 @@
 ## Offen
 
 
-- [ ] **T-425 - Hermes-Wartung 20.10.: Stable-Kanal aktuell, Kanal-Entscheidung offen**
-      **Analyse 20.10.2026 (was canary konkret bringt):** origin/main steht 2646 Commits vor stable v0.22.2. Typen: 1441 fix, 284 test, 255 chore, 156 refactor, 113 feat, 95 plugin, 74 docs, 56 catalog, 17 perf. Top-Bereiche: 497 fix(gateway), 133 fix(cli), 128 fix(desktop), 63 fix(tui), 56 fix(plugins), 36 fix(acp), 27 fix(state), 23 fix(sessions), 23 fix(memory), 22 fix(agent), 20 fix(browser), 16 fix(update). Die 497 fix(gateway) betreffen genau Max' Gateway-Probleme (T-410 MemoryError, Multiplex-Switch, Credentials). Kanaele heissen 'stable' und 'canary' (nicht dev). Empfehlung: canary wuerde die Gateway-Fixes ziehen, aber mit mehr Risiko (2646 Commits, davon 284 test/255 chore - nicht alles stabil). Entscheidung bleibt bei Max.
-      Kontext: Wartungslauf 20.10.2026: hermes update (Stable) meldete
-      "up to date" bei v0.22.2 (d923a5eb); origin/main steht 2646 Commits
-      voraus (497 fix(gateway), 133 fix(cli), 128 fix(desktop) ...), die der
-      Stable-Kanal nicht zieht. Gateway-Restart sauber (PID 15000->14064),
-      hermes doctor "All checks passed", Dashboard HTTP 200. Nebenbefund
-      repariert: checkpoints/store/refs/ fehlte (git erkannte das bare
-      Hilfsrepo nicht; rev-parse --is-bare-repository false) - refs/heads +
-      refs/tags angelegt, Refs lagen unversehrt in packed-refs.
-      Naechster Schritt: Entscheidung Max, ob der Update-Kanal stable bleibt
-      (Status quo, nur Releases) oder auf dev wechselt (zieht origin/main,
-      mehr Fixes, mehr Risiko).
-      Angelegt 20.10.2026 · Zuletzt 20.10.2026
-      Betrifft: Agenten/Hermes (Update-Kanal)
 
 - [ ] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
       Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
@@ -91,7 +76,28 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
             Berechtigung geben (oder Demo-Key mit Derivate-Recht neu anlegen).
             Danach: okx_swap_demo_probe BTC-USD_UM_XPERP-310404 0.1 laufen lassen,
             dann PR #1 auf ready for review.
-      Angelegt 20.10.2026 · Zuletzt 20.10.2026
+      DEMO-PROBE 21.10.2026 (Hermes, okx_swap_demo_probe gegen ZEC-USDC-SWAP
+      mit OKX_DEMO_API_KEY/SECRET aus HKCU, eea.okx.com, x-simulated-trading):
+      ZUSTAND GEWANDELT seit 20.10. - SWAP-Instrumente sind jetzt im
+      Demo-Umfeld GELISTET (152 USDT- + 5 USDC-SWAP, state=live; XPERP
+      fehlt weiterhin, 51001 auch unsigniert). set_leverage(1) UND
+      ensure_net_mode laufen durch. Die Market-Order (0.01 ZEC = 1
+      Kontrakt) scheitert mit 50124 'This API Key does not have trading
+      permission for the market' = genau Max' Meldung 'keine perpetual
+      funktion' in der UI. Demo-Balance: USD 100k, USDG 100k, USDC 86.4k,
+      BTC 1.15, XRP 50k, ETH 10.4, ETC 5, SOL 0.004 - KEIN USDT, also waere
+      BTC-USDT-SWAP auch ohne Berechtigung nicht finanzierbar (USDC-Perps
+      existieren nur fuer 5 Paare, kein BTC). BEFUND: Blocker ist
+      KONTOSTRENG die Perpetual-/Derivate-Berechtigung des Demo-Kontos,
+      kein Codeproblem (Instrument/ctVal/Hebel/Modus/Pfad laufen alle
+      durch). ENTSCHEIDUNG MAX NOETIG: (a) Demo-Konto/Key mit Derivate-
+      Berechtigung neu anlegen (Dann: okx_swap_demo_probe auf
+      BTC-USDT-SWAP oder USDC-Paar, danach PR #1 ready for review), ODER
+      (b) PR #1 mit Teilverifizierung (479 Tests + Clippy + Spot-Demo +
+      SWAP-Pfad bis Order belegt, Order selbst an Kontorecht blockiert)
+      auf ready for review stellen. Empfehlung: (b) - der Rest ist
+      Kontokonfiguration, kein Code-Risiko.
+      Angelegt 20.10.2026 · Zuletzt 21.10.2026
       Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
 
 - [x] **T-420 - Werkstatt/omnitrade-Klon: origin fehlt, upstream auf fremdes Repo umgebaut**
@@ -2167,6 +2173,51 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
     - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
     - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 ## Erledigt
+- [x] **T-425 - Hermes-Wartung 20.10.: Stable-Kanal aktuell, Kanal-Entscheidung offen**
+      **Erledigt 21.10.2026 (Auftrag Max 'canary').** Befund: 'canary' als
+      Release-Kanal existiert NICHT (hermes-assets.nousresearch.com/
+      releases/channels/: canary.json 404, stable.json 200; dev/preview 404) -
+      der Main-Kanal ist die Source-Installation der Canary-Fassung.
+      Umgesetzt: (1) `hermes update --set-channel main` persistiert den
+      Kanal (upstream c233b565, `update --check` loest 'main' auf), (2) Update
+      detaches ausgefuehrt (Log logs/update-20261021-main.log, 2897 Commits,
+      EXIT=0), Stand v0.22.2+2899.gc233b56. GATEWAY-NACHAL (der eigentliche
+      Aufwand): nach dem Update war der Gateway auf ein grill-me-Standalone
+      zurueckgefallen (Host-Lock), der Default-Multiplexer startete nicht
+      ('Cannot reserve gateway profiles: Gateway runtime already owns profile
+      grill-me'), 36 Profile blieben ohne Bot; Waechter-Neustarts alle 2 min
+      (Churn). Ursachenhinweis des neuen Codes: Duplicate-Credential-Verdacht
+      default/grill-me (TELEGRAM_BOT_TOKEN) - nachweislich FALSCH (Pruefung
+      ueber _credential_claims: 8 eindeutige Fingerabdruecke, grill-me ohne
+      Claim; grill-me/.env hat gar keinen Token, dafuer einen kaputten
+      HERMES_WRITE_SAFE_ROOT mit Form-Feed-Byte, 14.10. parallel geschrieben,
+      noch offen). Fix = der designte Weg: `hermes gateway migrate
+      --multiplex` (dry-run vorher, 0 Blocker): grill-me-Gateway (PID 32700)
+      gestoppt, multiplex_profiles: true (stand schon), Default-Gateway neu
+      (PID 15008) serving 38 Profile, alle Plattformen connected, Ports
+      9900/8644 up, Dashboard (Task Hermes_Dashboard) auf neuem Code, HTTP
+      200. Waechter ohne weitere Neustarts (Log-Ende 01:17:56, Churn vorbei).
+      Wochentakt: Aufgabe MaxHirn-Hermes-Update-Main (Sonntag 05:00, von
+      paralleler Sitzung angelegt) laeuft hermes-update-main.ps1 (Backup +
+      update --set-channel main --branch main --force + Rollback bei nicht
+      Gruen) - passt zur Canary-Entscheidung, unveraendert gelassen. main
+      laeuft inzwischen weiter (bei Abschluss 48 Commits hinter - normal,
+      naechster Pull 05:00).
+      **Analyse 20.10.2026 (was canary konkret bringt):** origin/main steht 2646 Commits vor stable v0.22.2. Typen: 1441 fix, 284 test, 255 chore, 156 refactor, 113 feat, 95 plugin, 74 docs, 56 catalog, 17 perf. Top-Bereiche: 497 fix(gateway), 133 fix(cli), 128 fix(desktop), 63 fix(tui), 56 fix(plugins), 36 fix(acp), 27 fix(state), 23 fix(sessions), 23 fix(memory), 22 fix(agent), 20 fix(browser), 16 fix(update). Die 497 fix(gateway) betreffen genau Max' Gateway-Probleme (T-410 MemoryError, Multiplex-Switch, Credentials). Kanaele heissen 'stable' und 'canary' (nicht dev). Empfehlung: canary wuerde die Gateway-Fixes ziehen, aber mit mehr Risiko (2646 Commits, davon 284 test/255 chore - nicht alles stabil). Entscheidung bleibt bei Max.
+      Kontext: Wartungslauf 20.10.2026: hermes update (Stable) meldete
+      "up to date" bei v0.22.2 (d923a5eb); origin/main steht 2646 Commits
+      voraus (497 fix(gateway), 133 fix(cli), 128 fix(desktop) ...), die der
+      Stable-Kanal nicht zieht. Gateway-Restart sauber (PID 15000->14064),
+      hermes doctor "All checks passed", Dashboard HTTP 200. Nebenbefund
+      repariert: checkpoints/store/refs/ fehlte (git erkannte das bare
+      Hilfsrepo nicht; rev-parse --is-bare-repository false) - refs/heads +
+      refs/tags angelegt, Refs lagen unversehrt in packed-refs.
+      Naechster Schritt: Entscheidung Max, ob der Update-Kanal stable bleibt
+      (Status quo, nur Releases) oder auf dev wechselt (zieht origin/main,
+      mehr Fixes, mehr Risiko).
+      Angelegt 20.10.2026 · Zuletzt 20.10.2026
+      Betrifft: Agenten/Hermes (Update-Kanal)
+      Kanal main persistiert (canary existiert als Release-Kanal nicht); 2897 Commits gezogen, Stand v0.22.2+2899.gc233b56; Gateway-Nachal per hermes gateway migrate --multiplex konvergiert (38 Profile, alle Plattformen connected, Ports 9900/8644/9119 up); Wochentakt MaxHirn-Hermes-Update-Main (Sonntag 05:00) uebernimmt naechste Pulls.
 - [x] **T-424 — mcp-zombie-wache filtert nur python/pythonw, nicht node**
       Kontext: Die Wache (Cron e303a86247c6, 15 min) haelt die MCP-Gruppen bei 3 Prozessen, filtert aber nur python/pythonw - die 84 ant.dir-NODE-Knoten vom 05.10. (pdf-server/desktopcommander/canva.affinity/revolut-x-api, je 18-24 Generationen, Eltern = Gateway-PID) blieben ungesehen. T-152 (Spawn-Kette) ist ERLEDIGT (die Wache bricht den Kreis per T-200-Abbruch-Idempotenz); der node-Filter ist der verbleibende Rest.
       Naechster Schritt: mcp-zombie-wache.py um node.exe/npm erweitern (je Server die 3 juengsten behalten), Test, dann Cron-Laeufe beobachten.

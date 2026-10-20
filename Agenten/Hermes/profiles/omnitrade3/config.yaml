@@ -433,7 +433,7 @@ providers:
       anthropic/claude-sonnet-5.5:batch: {}
       anthropic/claude-sonnet-5:batch: {}
       ~anthropic/claude-sonnet-latest: {}
-_config_version: 50
+_config_version: 51
 terminal:
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\OmniTrade3
   backend: local

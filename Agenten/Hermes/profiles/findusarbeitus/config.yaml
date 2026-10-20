@@ -28,7 +28,7 @@ fallback_providers:
     model: gemma-4-E4B-it-OBLITERATED-Q8_0
 plugins:
   enabled: []
-_config_version: 50
+_config_version: 51
 agent: {}
 onboarding:
   seen:
