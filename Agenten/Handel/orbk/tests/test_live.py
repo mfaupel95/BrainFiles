@@ -1,18 +1,21 @@
-"""ORBK auf Kraken (Spur orbk): Live-Pfad - Sperrgruende, Orderplatzierung,
+"""ORBK auf OKX-Perp (Spur orbk): Live-Pfad - Sperrgruende, Orderplatzierung,
 Fallsafe.
 
-Der Live-Pfad platziert Einstieg + Boersen-Stop nur, wenn ALLE Sperren offen
-sind (handel_erlaubt, freigabe.erfuellt, journal_zweitziel, API-Schluessel,
-Freigabefenster). Bei geschlossenen Sperren faellt ein --live-Aufruf auf Papier
-zurueck (wie kraken). Keine Testrunde beruehrt eine echte Order: alle
-Boersenfunktionen werden ersetzt (Patch), und die Dry-Run-Funktion
-platziere_einstieg(..., echt=False) darf die Boerse gar nicht erst ansprechen.
+Der Live-Pfad platziert Einstieg + Boersen-Stop/Ziel nur, wenn ALLE Sperren
+offen sind (handel_erlaubt, freigabe.erfuellt, journal_zweitziel,
+API-Schluessel, Freigabefenster). Bei geschlossenen Sperren faellt ein
+--live-Aufruf auf Papier zurueck (wie xperp). Keine Testrunde beruehrt eine
+echte Order: alle Boersenfunktionen werden ersetzt (Patch), und die
+Dry-Run-Funktion platziere_einstieg(..., echt=False) darf die Boerse gar
+nicht erst ansprechen.
 
-Der Live-Pfad legt seit dem Take-Profit-Ausbau zusaetzlich das ZIEL als
-take-profit-market-Order an die Boerse (kraken.take_profit_setzen). Ein
-Short-Signal wird live verweigert (Kraken-Spot kann kein Short halten). Der
-Live-Ausstieg schliesst die echte Position nur nach Buch-vs-Boerse-Pruefung
-(_exit_live/_abgleich_runde) - bei Ungewissheit keine Marktorder.
+Seit der OKX-Umstellung (15.10.2026) legt der Live-Pfad Einstieg
+(okxf.order_limit) und Stop+Ziel zusammen als Schutz (okxf.schutz_stop_setzen)
+an die Boerse; die Position traegt ord_id und kontrakte statt kraken-TXIDs.
+Auf OKX-Perp sind Shorts moeglich: ein Short-Signal ordert sell und wird
+NICHT verweigert. Der Live-Ausstieg schliesst die echte Position nur nach
+Buch-vs-Boerse-Pruefung (_exit_live/_abgleich_runde) - bei Ungewissheit
+keine Marktorder.
 """
 import io
 import json
@@ -25,15 +28,15 @@ from unittest.mock import patch
 
 import handeln
 
-INST = {"kraken": "ETHUSD", "zone": "UTC", "eroeffnung": "00:00",
-        "session_ende": "24:00", "spread_punkte": 0.1, "punkt_wert_usd": 1.0}
+INST = {"okx": "ETH-USDT-SWAP", "zone": "UTC", "eroeffnung": "00:00",
+        "session_ende": "24:00", "spread_punkte": 0.1, "punkt_wert_usdt": 1.0}
 W = {"letzter_einstieg_min_vor_schluss": 60,
-     "mindest_range_punkte": {"ETH_USD": 1.0},
-     "max_range_punkte":     {"ETH_USD": 40.0},
+     "mindest_range_punkte": {"ETH_USDT": 1.0},
+     "max_range_punkte":     {"ETH_USDT": 40.0},
      "ziel_modus": "r_vielfaches", "ziel_k": 1.5,
-     "ziel_punkte": {"ETH_USD": 30},
-     "instrument_aktiv": "ETH_USD",
-     "instrumente": {"ETH_USD": INST}}
+     "ziel_punkte": {"ETH_USDT": 30},
+     "instrument_aktiv": "ETH_USDT",
+     "instrumente": {"ETH_USDT": INST}}
 
 
 def _k(hh, mm, o, h, l, c):
@@ -62,20 +65,20 @@ class TestLiveSperren(unittest.TestCase):
         w = dict(W, handel_erlaubt=False, freigabe={"erfuellt": False},
                  journal_zweitziel=None)
         with patch.object(handeln, "zeitfenster_offen", lambda: False), \
-                patch.object(handeln.kraken, "schluessel_vorhanden",
+                patch.object(handeln.okxf, "schluessel_vorhanden",
                              lambda: False):
             gruende = handeln.live_sperren(w)
         text = "; ".join(gruende)
         self.assertIn("handel_erlaubt=false", text)
         self.assertIn("freigabe.erfuellt=false", text)
         self.assertIn("journal_zweitziel", text)
-        self.assertIn("KRAKEN_SPOT_API_KEY", text)
+        self.assertIn("OKX_API_KEY/SECRET/PASSPHRASE", text)
         self.assertIn("Freigabefenster", text)
 
     def test_nur_fenster_fehlt_genau_ein_grund(self):
         w = _w_offen()
         with patch.object(handeln, "zeitfenster_offen", lambda: False), \
-                patch.object(handeln.kraken, "schluessel_vorhanden",
+                patch.object(handeln.okxf, "schluessel_vorhanden",
                              lambda: True):
             gruende = handeln.live_sperren(w)
         self.assertEqual(len(gruende), 1, gruende)
@@ -84,83 +87,72 @@ class TestLiveSperren(unittest.TestCase):
     def test_alles_offen_leer(self):
         w = _w_offen()
         with patch.object(handeln, "zeitfenster_offen", lambda: True), \
-                patch.object(handeln.kraken, "schluessel_vorhanden",
+                patch.object(handeln.okxf, "schluessel_vorhanden",
                              lambda: True):
             self.assertEqual(handeln.live_sperren(w), [])
 
 
 class TestPlatzierung(unittest.TestCase):
     def setUp(self):
-        self.z = {"position": {"inst": "ETH_USD", "richtung": "long",
+        self.z = {"position": {"inst": "ETH_USDT", "richtung": "long",
                                "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                                "tag": "2026-09-13", "range_hoehe": 2.0,
-                               "punkt_wert_usd": 1.0, "risiko_usd": 10.0}}
-        # paar_info ist eine oeffentliche (Netz-)Abfrage; fuer echte Runden
-        # wird sie hier ersetzt, damit der Test nicht ans Netz geht.
-        self.paar_info = patch.object(handeln.kraken, "paar_info",
-                                      lambda paar: {"mengen_stellen": 8,
-                                                    "preis_stellen": 4})
+                               "punkt_wert_usdt": 1.0, "risiko_usd": 10.0}}
 
     def test_echt_false_ruft_keine_boerse(self):
         def _verboten(*a, **k):
             raise AssertionError("Dry-Run darf die Boerse nicht anrufen")
-        with patch.object(handeln.kraken, "markt_kauf", _verboten), \
-                patch.object(handeln.kraken, "stop_setzen", _verboten):
+        with patch.object(handeln.okxf, "order_limit", _verboten), \
+                patch.object(handeln.okxf, "schutz_stop_setzen", _verboten):
             p = handeln.platziere_einstieg(self.z, _w_offen(),
                                            self.z["position"], echt=False)
         self.assertIsNone(p)
-        self.assertNotIn("kauf_txid", self.z["position"])
+        self.assertNotIn("ord_id", self.z["position"])
 
-    def test_echt_true_ordert_kauf_stop_und_take_profit_long(self):
+    def test_echt_true_ordert_einstieg_und_schutz_long(self):
+        """Einstieg (order_limit, buy) + Schutz mit Stop UND Ziel an OKX."""
         aufrufe = []
-        def _markt_kauf(paar, menge, echt=False):
-            aufrufe.append(("kauf", paar, menge, echt))
-            return "TX-KAUF"
-        def _stop(paar, menge, stop, echt=False, **k):
-            aufrufe.append(("stop", paar, menge, stop, echt))
-            return "TX-STOP"
-        def _tp(paar, menge, preis, echt=False, **k):
-            aufrufe.append(("tp", paar, menge, preis, echt))
-            return "TX-TP"
-        with self.paar_info, \
-                patch.object(handeln.kraken, "markt_kauf", _markt_kauf), \
-                patch.object(handeln.kraken, "stop_setzen", _stop), \
-                patch.object(handeln.kraken, "take_profit_setzen", _tp):
+        def _order_limit(inst, seite, kontrakte, preis, **k):
+            aufrufe.append(("order_limit", inst, seite, kontrakte, preis))
+            return "ORD-E"
+        def _schutz(inst, seite, kontrakte, stop, ziel=None, **k):
+            aufrufe.append(("schutz", inst, seite, kontrakte, stop, ziel))
+            return {}
+        with patch.object(handeln.okxf, "order_limit", _order_limit), \
+                patch.object(handeln.okxf, "schutz_stop_setzen", _schutz):
             p = handeln.platziere_einstieg(self.z, _w_offen(),
                                            self.z["position"], echt=True)
-        self.assertEqual(aufrufe[0][:4], ("kauf", "ETHUSD", 5.0, True))
-        self.assertEqual(aufrufe[1][:5], ("stop", "ETHUSD", 5.0, 98.0, True))
-        # Das ZIEL liegt jetzt als eigenstaendige Boersenorder.
-        self.assertEqual(aufrufe[2][:5], ("tp", "ETHUSD", 5.0, 103.4, True))
-        self.assertEqual(p["kauf_txid"], "TX-KAUF")
-        self.assertEqual(p["stop_txid"], "TX-STOP")
-        self.assertEqual(p["tp_txid"], "TX-TP")
-        self.assertFalse(p["tp_fehlt"])
-        self.assertEqual(p["menge"], 5.0)
+        self.assertEqual(aufrufe[0],
+                         ("order_limit", "ETH-USDT-SWAP", "buy", 5, 100.4))
+        # Stop UND Ziel liegen jetzt in EINEM Schutz-Auftrag an OKX.
+        self.assertEqual(aufrufe[1],
+                         ("schutz", "ETH-USDT-SWAP", "long", 5, 98.0, 103.4))
+        self.assertEqual(p["ord_id"], "ORD-E")
+        self.assertEqual(p["kontrakte"], 5)
         self.assertEqual(p["modus"], "live")
 
-    def test_echt_true_short_wird_verweigert(self):
-        """Kraken-Spot kann kein Short halten: ein Short-Signal darf im
-        Live-Pfad KEINE Order legen und nennt einen klaren Sperrgrund."""
-        def _verboten(*a, **k):
-            raise AssertionError("Short darf keine Order an die Boerse legen")
-        z = {"position": {"inst": "ETH_USD", "richtung": "short",
+    def test_echt_true_short_ordert_verkauf_an_okx(self):
+        """Auf OKX-Perp sind Shorts moeglich: ein Short-Signal ordert sell
+        und wird nicht mehr verweigert (Kraken-Spot existiert nicht mehr)."""
+        aufrufe = []
+        def _order_limit(inst, seite, kontrakte, preis, **k):
+            aufrufe.append(("order_limit", seite))
+            return "ORD-S"
+        def _schutz(inst, seite, kontrakte, stop, ziel=None, **k):
+            aufrufe.append(("schutz", seite))
+            return {}
+        z = {"position": {"inst": "ETH_USDT", "richtung": "short",
                           "einstieg": 97.6, "stop": 100.0, "ziel": 94.6,
                           "tag": "2026-09-13", "range_hoehe": 2.0,
-                          "punkt_wert_usd": 1.0, "risiko_usd": 10.0}}
-        with self.paar_info, \
-                patch.object(handeln.kraken, "markt_verkauf", _verboten), \
-                patch.object(handeln.kraken, "markt_kauf", _verboten), \
-                patch.object(handeln.kraken, "stop_setzen", _verboten), \
-                patch.object(handeln.kraken, "take_profit_setzen", _verboten), \
-                patch("builtins.print") as pr:
+                          "punkt_wert_usdt": 1.0, "risiko_usd": 10.0}}
+        with patch.object(handeln.okxf, "order_limit", _order_limit), \
+                patch.object(handeln.okxf, "schutz_stop_setzen", _schutz):
             p = handeln.platziere_einstieg(z, _w_offen(), z["position"],
                                            echt=True)
-        self.assertIsNone(p)
-        gedruckt = " ".join(str(a[0]) for a in pr.call_args_list)
-        self.assertIn("Short", gedruckt)
-        self.assertIn("nicht moeglich", gedruckt)
-
+        self.assertEqual(aufrufe[0], ("order_limit", "sell"))
+        self.assertEqual(aufrufe[1], ("schutz", "short"))
+        self.assertEqual(p["modus"], "live")
+        self.assertEqual(p["ord_id"], "ORD-S")
 
 
 class TestVorschauUndFallsafe(unittest.TestCase):
@@ -170,7 +162,7 @@ class TestVorschauUndFallsafe(unittest.TestCase):
                           lambda: dict(W, handel_erlaubt=False)), \
                 patch.object(handeln, "lauf", lambda *a, **k: []), \
                 patch.object(handeln, "zeitfenster_offen", lambda: False), \
-                patch.object(handeln.kraken, "schluessel_vorhanden",
+                patch.object(handeln.okxf, "schluessel_vorhanden",
                              lambda: True):
             with redirect_stdout(puffer):
                 code = handeln._main(["--vorschau"])
@@ -189,9 +181,9 @@ class TestVorschauUndFallsafe(unittest.TestCase):
                           lambda: dict(W, handel_erlaubt=False)), \
                 patch.object(handeln, "lauf", _lauf), \
                 patch.object(handeln, "zeitfenster_offen", lambda: False), \
-                patch.object(handeln.kraken, "schluessel_vorhanden",
+                patch.object(handeln.okxf, "schluessel_vorhanden",
                              lambda: True), \
-                patch.object(handeln.kraken, "markt_kauf",
+                patch.object(handeln.okxf, "order_limit",
                              lambda *a, **k: (_ for _ in ()).throw(
                                  AssertionError("keine Order bei Sperren"))):
             code = handeln._main(["--live"])
@@ -202,15 +194,12 @@ class TestVorschauUndFallsafe(unittest.TestCase):
 class TestLaufLivePlatziert(unittest.TestCase):
     def test_offene_sperren_platzieren(self):
         aufrufe = []
-        def _markt_kauf(paar, menge, echt=False):
-            aufrufe.append(("kauf", paar, menge, echt))
-            return "TX-KAUF"
-        def _stop(paar, menge, stop, echt=False, **k):
-            aufrufe.append(("stop", paar, menge, stop, echt))
-            return "TX-STOP"
-        def _tp(paar, menge, preis, echt=False, **k):
-            aufrufe.append(("tp", paar, menge, preis, echt))
-            return "TX-TP"
+        def _order_limit(inst, seite, kontrakte, preis, **k):
+            aufrufe.append(("order_limit", seite, kontrakte))
+            return "ORD-E"
+        def _schutz(inst, seite, kontrakte, stop, ziel=None, **k):
+            aufrufe.append(("schutz", seite, kontrakte))
+            return {}
         with tempfile.TemporaryDirectory() as w:
             zpfad = Path(w) / "zustand.json"
             jpfad = Path(w) / "handelsjournal.csv"
@@ -223,14 +212,12 @@ class TestLaufLivePlatziert(unittest.TestCase):
                         patch.object(handeln, "JOURNAL", jpfad), \
                         patch.object(handeln, "zeitfenster_offen",
                                      lambda: True), \
-                        patch.object(handeln.kraken, "schluessel_vorhanden",
+                        patch.object(handeln.okxf, "schluessel_vorhanden",
                                      lambda: True), \
-                        patch.object(handeln.kraken, "paar_info",
-                                     lambda paar: {"mengen_stellen": 8,
-                                                   "preis_stellen": 4}), \
-                        patch.object(handeln.kraken, "markt_kauf", _markt_kauf), \
-                        patch.object(handeln.kraken, "stop_setzen", _stop), \
-                        patch.object(handeln.kraken, "take_profit_setzen", _tp), \
+                        patch.object(handeln.okxf, "order_limit",
+                                     _order_limit), \
+                        patch.object(handeln.okxf, "schutz_stop_setzen",
+                                     _schutz), \
                         patch.object(handeln, "_jetzt", lambda: datetime(
                             2026, 9, 13, 0, 45, tzinfo=timezone.utc)), \
                         patch.object(handeln, "_letzter_kurs",
@@ -240,12 +227,11 @@ class TestLaufLivePlatziert(unittest.TestCase):
                 handeln.kerzen_quelle = None
             self.assertTrue(any("EINSTIEG (LIVE)" in m for m in meldungen),
                             meldungen)
-            self.assertEqual(aufrufe[0][0], "kauf")
-            self.assertEqual(aufrufe[1][0], "stop")
+            self.assertEqual(aufrufe[0][0], "order_limit")
+            self.assertEqual(aufrufe[1][0], "schutz")
             nachher = json.loads(zpfad.read_text(encoding="utf-8"))
             self.assertEqual(nachher["position"]["modus"], "live")
-            self.assertEqual(nachher["position"]["kauf_txid"], "TX-KAUF")
-            self.assertEqual(nachher["position"]["tp_txid"], "TX-TP")
+            self.assertEqual(nachher["position"]["ord_id"], "ORD-E")
 
 
 class TestKeinLiveEintragInPapier(unittest.TestCase):
@@ -273,7 +259,7 @@ class TestKeinLiveEintragInPapier(unittest.TestCase):
             self.assertTrue(any("EINSTIEG (Papier)" in m for m in meldungen),
                             meldungen)
             self.assertNotIn("modus", nachher["position"])
-            self.assertNotIn("kauf_txid", nachher["position"])
+            self.assertNotIn("ord_id", nachher["position"])
 
 
 if __name__ == "__main__":
