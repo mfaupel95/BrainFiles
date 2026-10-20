@@ -1,3 +1,9 @@
 description: 'OpenMontage-Repo-Bot: agentisches Videoproduktions-Framework (12 Pipelines)
   in Werkstatt/openmontage'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    sectionId: sec-mvgqd5je-jr10c
+    sectionName: VIDEO
+_ui_meta_revisions:
+  hermes-bots: 1

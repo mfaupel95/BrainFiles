@@ -6,5 +6,7 @@ ui_meta:
     groups:
       - Grill Me, Awesome Systematic Trading, Agent Trade Kit, Harvard T
     group: Grill Me, Awesome Systematic Trading, Agent Trade Kit, Harvard T
+    sectionId: sec-mvgqdzcf-eh2ae
+    sectionName: Backtesting
 _ui_meta_revisions:
-  hermes-bots: 1
+  hermes-bots: 2
