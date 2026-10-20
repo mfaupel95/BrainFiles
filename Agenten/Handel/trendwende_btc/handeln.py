@@ -143,6 +143,13 @@ def rueckdreh(p, w):
 
 
 
+def lade_wachen():
+    """Wachen laden (fuer optimieren.py / replay). Suchschluessel
+    supertrend_n, supertrend_faktor, ema_filter_n stehen in wachen.json."""
+    import json
+    return json.loads((HIER / "wachen.json").read_text(encoding="utf-8"))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     g = p.add_mutually_exclusive_group()
