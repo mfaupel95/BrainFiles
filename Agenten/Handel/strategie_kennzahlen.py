@@ -99,8 +99,19 @@ def mae_der_gewinner(spur):
     return raus
 
 
-def bericht(spur):
+def bericht(spur, nur_gueltige=True):
     runden = a.runden_fuer(spur)
+    # Runden aus der Fehlerzeit (Scanner-Einstieg = Vortagesberichtspreis, bis
+    # 02.10.2026 22:23 UTC) zaehlen nicht - gleicher Stichtag und gleiche Regel
+    # wie auswertung_alle.kennzahlen_fuer. Die MAE-Werte der Gewinner kommen
+    # weiter aus allen Ausstiegszeilen (sie hängen an keiner Runde); der
+    # Bericht nennt die Zahl der ausgeschlossenen Runden in n_vor_fix.
+    n_vor_fix = 0
+    if nur_gueltige and spur in a.GUELTIG_AB:
+        grenze = a.zeitfenster.parse(a.GUELTIG_AB[spur])
+        gueltig = [r for r in runden if not a._vor_fix(r, grenze)]
+        n_vor_fix = len(runden) - len(gueltig)
+        runden = gueltig
     if not runden:
         return None
     import stoerungen                                            # noqa: PLC0415
@@ -121,7 +132,7 @@ def bericht(spur):
     return {"spur": spur, "e": e, "stop_vorschlag": stop_daten,
             "stop_heute": _stop_aus_wachen(spur),
             "n_gewinner_mae": len(gewinner_mae),
-            "n_stoerung": len(stoer),
+            "n_stoerung": len(stoer), "n_vor_fix": n_vor_fix,
             "mae_gefuellt": gefuellt, "mae_gesamt": gesamt,
             "einheit": a.einheit_fuer(spur)}
 
@@ -160,6 +171,11 @@ def main(argv):
             if b["mae_gefuellt"] < 5:
                 print("  %-20s %d von %d Zeilen mit echtem Wert" % (spur, b["mae_gefuellt"], b["mae_gesamt"]))
         print("  -> der Stop-Vorschlag aus der MAE ist deshalb nicht rechenbar.")
+    for spur, b in zeilen_:
+        if b["n_vor_fix"]:
+            print("\n%s: %d Runden vor dem Preisfix (02.10.2026 22:23 UTC) nicht"
+                  " mitgerechnet (Einstieg war der Vortagesberichtspreis)."
+                  % (spur, b["n_vor_fix"]))
     print("\nSt. = Zwangsschluesse, aus den KENNZAHLEN herausgenommen (gebucht")
     print("bleiben sie: Drawdown und Kill-Switch sehen sie weiter).")
     print("Erwartung = Ø Ergebnis je Runde in USD/EUR (brutto, wie im Journal).")
