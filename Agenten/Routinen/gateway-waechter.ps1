@@ -132,6 +132,32 @@ if ($alter -lt 120) {
 }
 
 # ---------------------------------------------------------------------------
+# 1b. Speicherknappheit melden (T-410, 20.10.2026): der Gateway-Absturz am
+# 15.10. 00:08 (Exit 75, Liveness-Watchdog) hatte einen MemoryError als
+# Ursache - das Event-Loop blieb stehen, weil das System unter Commit-Druck
+# stand (CommitFrei 6,9 GB bei 48 python-Prozessen). Der Watchdog hat korrekt
+# gehandelt, aber bei naechster Speicherknappheit fehlt dem Gateway die Luft.
+# Muster: mcp-zombie-wache - einmal melden, nicht jede 2 Minuten spammen.
+# ---------------------------------------------------------------------------
+$mem_merker = Join-Path $PSScriptRoot 'logs\gateway-waechter.mem'
+$os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+if ($os) {
+    $frei_gb = [math]::Round($os.FreeVirtualMemory / 1MB, 1)
+    if ($frei_gb -lt 8) {
+        $mem_letzter = 0
+        if (Test-Path $mem_merker) {
+            $roh = (Get-Content $mem_merker -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 1)
+            if ($roh -match '^\d+$') { $mem_letzter = [int]$roh }
+        }
+        $jetzt_s = [int]((Get-Date) - (Get-Date '1970-01-01')).TotalSeconds
+        if (($jetzt_s - $mem_letzter) -gt 3600) {
+            "$zeit  WARNUNG: nur $frei_gb GB freier virtueller Speicher (< 8 GB) - Gateway-Risiko (MemoryError 15.10.)" | Add-Content $log -Encoding UTF8
+            $jetzt_s | Set-Content $mem_merker -Encoding UTF8
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # 2. Antwortet er? Control-Pipe (neue Bauart) oder Port (alte Bauart).
 # ---------------------------------------------------------------------------
 # KORREKTUR (20.10.2026): Port 9900 ist seit dem Update vom 29.09. nicht mehr der
