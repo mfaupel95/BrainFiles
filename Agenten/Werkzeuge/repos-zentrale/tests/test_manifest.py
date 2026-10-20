@@ -181,6 +181,10 @@ class EchtesManifestTest(unittest.TestCase):
             self.skipTest(f"kein Bestand unter {brainfiles / 'Werkstatt'}")
         fehlend = []
         for e in manifest.manifest_laden(hier / "repos-zentrale.json"):
+            if e.gruppe == "ausgemustert":
+                # Ausgemusterte liegen bewusst in Werkstatt/Ausgemustert/*-20261007,
+                # nicht am Originalpfad - kein toter Eintrag, sondern Archiv.
+                continue
             w = quellen.wurzel_von(e.wurzel)
             if w is None:
                 fehlend.append(f"{e.ordner}: unbekannte Wurzel {e.wurzel}")
