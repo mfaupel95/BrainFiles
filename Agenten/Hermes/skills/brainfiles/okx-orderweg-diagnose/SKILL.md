@@ -199,6 +199,33 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   GEHANDELTEN Kontrakts) und eine Reihe ohne Zwilling aus der Liste fallen lassen
   statt in einen Fehler laufen. Codes und Sonden:
   `references/okx-fehler-und-nachweis.md`.
+  **Und ein DEMO-Konto kann gar keine Perpetual-Berechtigung haben.** Beim
+  Verifizieren eines Adapters gegen ein OKX-Demo-Konto zuerst pruefen, welche
+  Instrumentklasse das Konto UEBERHAUPT handeln darf: ein EEA-Demo-Konto kann
+  nur Spot handeln — `-SWAP` gibt `50124`, der XPERP-Zwilling
+  (`BASE-USD_UM_XPERP-<expiry>`, `instType=FUTURES`) gibt `51001` auf
+  `set-leverage` und `All operations failed` auf die Order. Das ist eine
+  KONTO-Konfiguration, kein Codefehler: der Adapter kann auf diesem Konto nicht
+  demo-verifiziert werden, egal wie korrekt er ist. Vor dem Bau/der Verifikation
+  eines Perpetual-Adapters die handelbare Klasse des Zielkontos belegen
+  (`/account/config` `perm`/`settleCcy` + eine kleine Spot-Order als Positivprobe),
+  und das `InstType`-Enum des Adapters gegen die EEA-tradable Klasse pruefen
+  (EEA-Perpetuals sind `FUTURES`/XPERP, nicht `SWAP`).
+  **Der Beweis dafuer ist die DIFFERENZPROBE signiert gegen unsigniert.**
+  `/api/v5/public/instruments` ist ein OEFFENTLICHER Endpunkt, wird aber mit
+  Anmeldekopf auf den Kontoumfang eingeschraenkt. Denselben Pfad also zweimal
+  rufen — einmal mit Signatur, einmal ohne, gleicher Host, gleiche Instrument-ID:
+  **unsigniert `state: live` und signiert `51001 Instrument doesn't exist` heisst,
+  dass es den Markt gibt und das KONTO ihn nicht sehen darf.** Das ist eine
+  Berechtigungsgrenze, kein Namensfehler und kein Tippfehler in der ID — und sie
+  ist mit keiner Codeaenderung zu beheben. Ohne diese Probe liest sich `51001` wie
+  eine falsche Instrument-ID, und man baut die ID endlos um (Kurzform, volle Form,
+  anderer Verfall), waehrend jede Variante am gleichen Wall endet.
+  **Reihenfolge daraus: bei JEDEM `51001` auf eine ID, die man oeffentlich
+  gelistet gesehen hat, zuerst unsigniert gegenpruefen** — erst danach ueber
+  Namensraum oder Adapter nachdenken. Positivprobe nicht vergessen: eine kleine
+  Spot-Order auf demselben Konto belegt, dass Schluessel, Signatur, Host und
+  Passphrase in Ordnung sind, und grenzt den Befund auf die Instrumentklasse ein.
 - **Ein fehlgeschlagener Ausstieg hinterlaesst einen halben Zustand.** Der Verkauf
   bestellt ZUERST den Notausstieg ab (sonst blockiert er den Bestand). Scheitert der
   Verkauf DANACH, steht die Position ohne Stop an der Boerse, bis der naechste Zyklus
@@ -268,6 +295,13 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   abschalten — sonst bleiben Positionen stehen, die die Boerse schon verkauft
   hat, und die Spur kauft beim naechsten Signal in eine Position, die es nicht
   gibt. Details und die gebaute Bruecke: `references/handverkauf-geist.md`.
+- **OKX blockt urllib ohne Browser-User-Agent mit `403 error code: 1010`.**
+  `urllib.request` sendet einen Standard-UA, den OKXs Cloudflare-Schutz
+  ablehnt — die signierte Anfrage kommt nie an, und der Fehler sieht wie ein
+  Schluessel-/Signaturproblem aus. Jeder rohe OKX-Aufruf (Probe, Diagnose)
+  braucht einen Browser-UA-Header (`Mozilla/5.0 … Chrome/…`); der Rust-
+  `reqwest`-Client sendet von sich aus einen gueltigen UA und ist davon
+  unberuehrt.
 - **Antwortform an Max.** Zuerst die Ursache in einem Satz, dann die Belege
   (Zahlen, nicht Adjektive), dann was jetzt anders ist und was absichtlich NICHT
   angefasst wurde (Fremdarbeit im Arbeitsbaum, laufende Prozesse), am Ende genau

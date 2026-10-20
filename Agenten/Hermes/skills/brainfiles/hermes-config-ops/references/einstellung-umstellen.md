@@ -255,6 +255,16 @@ kaputte Datei.
 - **Ein doppelt eingefuegtes Feld ist wirkungslos.** Im JSON/YAML gewinnt der LETZTE
   Schluessel; nach dem Einfuegen `json.loads`/`yaml.safe_load` gegenpruefen, sonst steht
   die gewollte Aenderung im Diff und gilt trotzdem nicht.
+- **`hermes config set` akzeptiert einen Key, den der Laufzeit-Leser nicht liest.**
+  `agent.max_tokens` wird gespeichert (mit Warnung "not a recognized config key"), aber
+  der Haupt-Agent bekommt es nie — der Runtime-Resolver baut kein `max_tokens` ins
+  Agent-Dict. Der funktionierende Weg fuer eine Antwortlaengen-Grenze ist
+  `model.request_overrides.max_tokens`: `request_overrides` wird direkt in die
+  API-Kwargs eingebaut (`agent/chat_completion_helpers.py:626`
+  `api_kwargs.update(params["request_overrides"])`). Vor dem Setzen pruefen, ob der
+  Key ein Runtime-Leser hat (`rg -n '"<key>"' hermes_cli/config_defaults.py` UND
+  `rg -n '<key>' --glob '!tests' .`), nicht nur ob `config set` ihn annimmt. Ein
+  gespeicherter, ungelernter Key ist eine tote Einstellung, die wie Absicht aussieht.
 
 ## Belegmuster (29.09.2026)
 

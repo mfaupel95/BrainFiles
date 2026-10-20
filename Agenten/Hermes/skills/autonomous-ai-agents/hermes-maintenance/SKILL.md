@@ -21,8 +21,9 @@ finish cleanly on its own.
 ## When to Use
 
 - `hermes update` exits non-zero, or the install sits N commits behind `origin/main` — NUR auf dem
-  **dev**-Kanal ist origin/main das Update-Ziel. Auf dem **stable**-Kanal ist origin/main
-  unveroeffentlichte Entwicklung und der Rueckstand kein Update-Auftrag (siehe Procedure Schritt 2/3).
+  **main**-Kanal ist origin/main das Update-Ziel. Auf dem **stable**-Kanal ist origin/main
+  unveroeffentlichte Entwicklung und der Rueckstand kein Update-Auftrag (siehe Procedure Schritt 2/3
+  und den Abschnitt "Update-Kanal waehlen" unten).
 - "Der update laeuft endlos und der Gateway antwortet nicht" / every `hermes` call burns
   minutes in "finishing an interrupted source update": the armed pending marker —
   `references/update-schwanz-endlosschleife.md`.
@@ -40,6 +41,33 @@ finish cleanly on its own.
   a repeating 500 in the UI), gateway healthy: the desktop-backend connection is dropping —
   `references/desktop-verbindungsfehler.md` (ECONNRESET is a symptom of a 500-flood on a
   polling endpoint; known 500 source: dead GGUF symlinks in `models/`).
+
+## Update-Kanal waehlen (stable / main / canary)
+
+Der Kanal ist eine PERSISTENTE Entscheidung je Install, nicht ein Lauf-Flag. Es gibt genau drei
+Namen — `stable`, `main`, `canary` — und der Mechanismus ist `hermes update --set-channel <name>`
+(schreibt `update.installs.<install_id>.channel` in `config.yaml`; `--channel <name>` ist nur die
+transiente Einmal-Uebersteuerung fuer den Lauf). Es gibt KEINEN "dev"-Kanal — wer "dev" sagt,
+meint `main`. Ein Source-Checkout des offiziellen Repos folgt per Vorgabe `stable` (nur Releases);
+`main` zieht `origin/main` (taegliche Fixes, mehr Churn); `canary` schreibt vorwaertskompatible
+State und ist fuer Produktion ungeeignet.
+
+Entscheidung anhand der ZUSAMMENSETZUNG des Rueckstands, nicht der Zahl: `git log --oneline
+HEAD..origin/main | grep -oE '^[a-z]+\([a-z-]+\)' | sort | uniq -c | sort -rn`. Ueberwiegen
+`fix(gateway)`/`fix(desktop)`/`fix(update)` — genau die Stellen, an denen dieses Haus haengt
+(Multiplex, Kanban, Telegram, Update-Pipeline) — lohnt `main`; sind es nur Doku-/Relay-Fixes,
+bleibt `stable` billiger. Vor dem Wechsel `git log` auf `_config_version`-Bumps und
+`BREAKING`-Marker pruefen (kein Treffer = kein Migrations-Bruch zu erwarten).
+
+**Ein Worktree kann einen anderen Kanal NICHT testen.** `hermes doctor`/Gateway/Desktop laufen
+aus dem INSTALLIERTEN Pfad (`<HERMES_HOME>/hermes-agent/.hermes/bin/hermes.cmd` — der Launcher
+hat den Checkout-Pfad mehrfach fest eingebettet), nicht aus einem beliebigen Worktree. Ein
+Worktree auf `main` ist ein reiner Code-Checkout ohne eigenes venv/installs/tools; ein dort
+gestarteter `hermes` laedt den ECHTEN Checkout-Code. Der echte Testlauf ist `hermes update
+--backup` selbst: der Update-Weg ist transaktional (plan → snapshot → apply → restart → verify →
+report) mit `--backup` als Rollback, und ein sauberer Baum (0 lokale Commits) ist der ideale
+Ausgangszustand. "Erst in einem Worktree testen" ist bei diesem Setup eine Sackgasse — dem
+Nutzer die transaktionale Natur des Updates als den vorhandenen Testweg nennen.
 
 ## Prerequisites
 

@@ -35,18 +35,38 @@ Claude-Code-Bot nicht und umgekehrt.
 
     # Kanalprozess + Plugin-Prozesse beenden
     Stop-Process -Id <claude.exe-PID>,<bun-PIDs> -Force
-    # Kanal neu starten (detached, braucht stdin — nicht im Vordergrund)
-    Start-Process -FilePath 'C:\Users\faupe\.local\bin\claude.exe' \
-      -ArgumentList '--channels','plugin:telegram@claude-plugins-official' \
+    # Kanal ueber eine PowerShell MIT stdin starten (nicht direkt auf claude.exe)
+    Start-Process -FilePath 'powershell.exe' \
+      -ArgumentList '-NoExit','-Command','claude --channels plugin:telegram@claude-plugins-official' \
       -WindowStyle Hidden
 
 - Prozesse finden: `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine
   -match 'channels plugin:telegram' -or ($_.Name -eq 'bun.exe' -and $_.CommandLine
   -match 'telegram/0.0.7') }`.
+- **Der Kanal MUSS ueber eine PowerShell mit stdin gestartet werden, nicht
+  direkt per `Start-Process` auf `claude.exe`.** Ein direkter Start erzeugt
+  einen Kanalprozess OHNE Plugin-Kind (nur conhost/npx/docker als Kinder) —
+  der Bot antwortet nicht, obwohl der Kanalprozess laeuft. Der Weg ueber
+  `powershell -NoExit -Command claude --channels ...` startet das Plugin als
+  Kind (bun-Prozess unter dem Kanal).
+- **Das Plugin nutzt KEINEN Port** — es ist ein MCP-Server ueber
+  StdioServerTransport (stdin/stdout), kein HTTP-Server. `bot.pid` und der
+  bun-Prozess als Kind des Kanalprozesses sind die Lebenszeichen, nicht ein
+  Port. **Port 3010 ist der JEV-Trader (Kuru/Monad-Bot), nicht das
+  Telegram-Plugin** — einen Prozess nie nach Port-Aufschrift beenden, erst
+  pruefen, was der Port wirklich haelt (HTTP-Test auf 127.0.0.1:3010 zeigt
+  `{"model":"jev-latest",...}`).
+- **Verwaiste `.in_use`-Markierungen blockieren das Plugin.** Nach mehreren
+  Kanal-Neustarts sammeln sich unter
+  `~/.claude/plugins/cache/claude-plugins-official/telegram/0.0.7/.in_use/`
+  Dateien mit toten PIDs; das Plugin startet dann nicht als Kind. Vor dem
+  Neustart die Markierungen toter Prozesse entfernen (PID-Existenz pruefen,
+  nur tote loeschen).
 - Das Plugin startet asynchron — nach dem Start einige Sekunden warten, dann
-  `bot.pid` und den bun-Prozess auf Port 3010 pruefen.
+  `bot.pid` und den bun-Prozess als Kind des Kanalprozesses pruefen.
 - Der Kanal braucht stdin: `claude --channels ...` im Vordergrund bricht mit
   "Input must be provided either through stdin or as a prompt argument" ab.
-  Immer detached starten.
 - Beleg des Neustarts: `getUpdates` mit dem neuen Token liefert `ok: true` und
   wartende Updates — nicht nur `getMe` (das beweist den Token, nicht den Kanal).
+  Ein `409 Conflict` von `getUpdates` ist der Beweis, dass der Bot bereits
+  pollt (der eigene Aufruf kollidiert mit dem laufenden Poller) — kein Fehler.

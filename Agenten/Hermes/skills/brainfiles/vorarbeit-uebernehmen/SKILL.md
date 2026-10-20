@@ -21,6 +21,16 @@ arbeiten mehrere Sitzungen gleichzeitig am selben Baum — ein sauberes
    genannten Dateien, Module, Funktionen, Re-Exports? Ein Backlog sagt „Phasen
    2–5 pending“, waehrend der Code fertig ist — Doku altert in beide Richtungen.
    Den Ticketstatus erst dann umsetzen, wenn der Code ihn belegt.
+   **Bei einer Uebergabedatei (HANDOVER/Next-Steps-Liste) die Liste
+   NEU SORTIEREN, statt sie von oben abzuarbeiten.** Sie ist aus der
+   URSPRUNGS-Umgebung geschrieben: Punkte wie „Zugang erneuern“, „Keys im
+   Container setzen“, „Port freigeben“ sind dort Blocker und hier oft keine,
+   weil derselbe Schluessel lokal als Benutzervariable liegt oder der Weg
+   ueber ein anderes Werkzeug offen ist. Zuerst den IST-Stand messen
+   (Branch, HEAD, Tests, vorhandene Zugaenge), dann die Punkte in
+   „hier ausfuehrbar“ / „braucht eine Entscheidung des Nutzers“ /
+   „braucht eine Handlung am Fremdsystem“ trennen und den ausfuehrbaren
+   KERN zuerst fahren — der ist meistens nicht Punkt 1.
 2. **Bauen, bevor geurteilt wird.** Ein „es ist fertig“ ohne Build ist eine
    Behauptung. Bei Rust: `cargo check --workspace`; der Fehler steht im
    Traceback, nicht in der Vermutung.
@@ -30,6 +40,14 @@ arbeiten mehrere Sitzungen gleichzeitig am selben Baum — ein sauberes
    ein `assert!(x.len() >= 0)` auf einem `usize` ist immer wahr und faellt nur so
    auf. Clippy-Vorschlaege automatisch anwenden lassen:
    `cargo clippy --fix --allow-dirty --workspace --all-targets`.
+   **Einen Build- oder Testlauf NIE durch `tail`/`head` leiten, um ihn zu
+   kuerzen:** der Rueckgabewert ist dann der von `tail`, also 0, und ein
+   gescheiterter Build liest sich als gruen. Entweder unverkuerzt laufen
+   lassen (die Ausgabe wird ohnehin automatisch gekappt und vollstaendig in
+   eine Datei gelegt) oder gezielt filtern
+   (`cargo test --workspace 2>&1 | grep -E "test result|error\["`) und die
+   Trefferzeilen lesen — eine fehlende `error[`-Zeile ist der Beleg, nicht
+   das Ausbleiben einer Meldung.
 4. **Den Fehler an der Ursache loesen, nicht am Symptom.** `no method named
    clone` auf einem Client heisst meist: die Rollen brauchen verschiedene
    Borrows — Stream `&mut self` (connect), Trading `&self`. Dann **eine Instanz
@@ -108,6 +126,22 @@ arbeiten mehrere Sitzungen gleichzeitig am selben Baum — ein sauberes
   Datei auf LF um. Nach jeder Massenaenderung `git diff --stat` pruefen:
   eine gewollte Zeile muss 1 insertion/1 deletion zeigen, nie ein
   Ganzdatei-Diff.
+  **In einem FREMDEN Repo ist dabei gar kein Lint-Netz gespannt:** der
+  Formatierer wird dort als nicht vertrauenswuerdiger Arbeitsbaum
+  uebersprungen („rustfmt skipped: untrusted workspace“), die Ersetzung
+  landet unbesehen auf der Platte und der Fuzzy-Abgleich erfindet dabei
+  Bezeichner, indem er Anker-Reste mit dem Ersatztext verschmilzt
+  (gemessen: `with_base_url` -> `with_basebase_url`, `client` ->
+  `clientient`, ein Feldzugriff -> `pos.liq.liq_price`). Drei Versuche
+  hintereinander haben die Datei weiter verschlechtert. **Ab dem ersten
+  verhunzten Bezeichner das Patch-Werkzeug fuer diese Datei nicht mehr
+  benutzen,** sondern exakt ersetzen und das Scheitern erzwingen:
+  `s = open(p, encoding="utf-8").read()`, `assert old in s`, `s =
+  s.replace(old, new)`, `open(p, "w", encoding="utf-8", newline="").write(s)`.
+  Das `assert` ist der Kern — es bricht ab, wenn der Anker nicht
+  buchstabengleich steht, statt irgendwo in der Naehe zuzuschlagen.
+  Danach compilieren (`cargo check`/`py_compile`), nicht nur `git diff`
+  lesen: ein erfundener Bezeichner ist syntaktisch unauffaellig.
 
 - **Ein `git status` ist ein Schnappschuss, kein Zustand.** In einem Baum, an dem
   mehrere Sitzungen arbeiten, kann die „unfertige Vorarbeit" zwischen dem Lesen und

@@ -1,7 +1,14 @@
 ---
 name: bot-interpool-steuerung
 category: autonomous-ai-agents
-description: Use when routing repo-bot work. Delegate serially, then verify the result.
+description: Use when routing repo-bot work. Verify every bot claim.
+version: 1.1.0
+author: Hermes Interpool
+license: MIT
+metadata:
+  hermes:
+    tags: [delegation, repo-bots, telegram, verification, worktree, git]
+    related_skills: [brainfiles-git-hygiene, hermes-agent]
 ---
 
 # Interpool-Bot-Steuerung
@@ -31,7 +38,9 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
 - **Foreground-Timeout ist nicht der Tod des Ergebnisses.** Laueft der Start
   versehentlich im Foreground (`terminal(...)` ohne background) in den ~420 s-
   Timeout, HAENGT der Bot weiter und arbeitet den Auftrag zu Ende — nur die
-  Rueckgabe ist verloren. Den Prozess per `ps aux | grep hermes` aufspueren, und
+  Rueckgabe ist verloren. Den Prozess per `tasklist | grep -i python` bzw.
+  `Get-CimInstance Win32_Process` aufspueren (NICHT `ps` aus git-bash, siehe
+  Abschnitt Prozessdiagnose), und
   waehrend er laeuft (oder nach seinem Ende) `profiles/<bot>/logs/agent.log`
   lesen: der Log listet jede Tool-Execution mit Dauer/Zeichen und schreibt am
   Turn-Ende `reason=...` (z. B. `max_iterations_reached(5/5)`). Daraus den
@@ -40,9 +49,11 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
 - Fremdarbeit im gemeinsamen Repo-Baum nicht ueberschreiben oder mitcommitten:
   vor Weiterarbeit `git status` und Aenderungszeit pruefen, und nur den Bot
   starten, der den betreffenden Bereich verantwortet.
-- Vor dem Start `ps aux | grep -i 'fomo-radar|hermes'` pruefen: haengt noch ein
-  Prozess vom abgelaufenen Lauf, erst feststellen, ob er wirklich zum eigenen
-  Auftrag gehoert; keinen fremden/aktiven Worker beenden und nie doppelt starten.
+- Vor dem Start pruefen, ob noch ein Prozess vom abgelaufenen Lauf haengt —
+  mit `powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match '<bot>' -and $_.CommandLine -match 'chat' } | Select-Object ProcessId,CreationDate"`,
+  nicht mit `ps` (siehe Abschnitt Prozessdiagnose). Erst feststellen, ob er
+  wirklich zum eigenen Auftrag gehoert; keinen fremden/aktiven Worker beenden
+  und nie doppelt starten.
 
 ## Bot-Wahl: ein Modell, das in Schleifen laeuft, ist ein Wechsel-Grund
 - **Nous-Credits koennen mitten im Betrieb erschoepfen (HTTP 402 "Insufficient
@@ -141,10 +152,15 @@ Fallen:
   Standard-Text) anlegt. Erst `read_file` auf die vorhandene SOUL.md, dann
   ueberschreiben.
 - **Verwaister `.git/index.lock`:** `git commit` bricht mit "index.lock
-  exists" ab, obwohl kein Git-Prozess laeuft (`ps aux | grep git` leer).
-  Lock-Datei aelter als ~2 min ohne laufenden Prozess ist tot — `rm -f
-  .git/index.lock` und erneut committen. Nicht blind loeschen, wenn ein
-  echter Prozess laeuft.
+  exists" ab. Der Lock allein sagt nichts — **verwaist heisst: kein
+  Git-Prozess lebt, nicht "der Lock ist alt".** Zwei Zeugen pruefen:
+  `stat -c '%y' .git/index.lock` (Alter) UND `tasklist | grep -iE '^git.exe'`
+  bzw. `ps aux | grep git`. Entscheidend ist der Verlauf ueber ZWEI Messungen:
+  wechseln die git.exe-PIDs zwischen den Checks, committen gerade fremde
+  Sitzungen — warten, nicht eingreifen. Ist in einer Messung KEIN git.exe da
+  und der Lock aelter als ein paar Minuten, ist er tot: `rm -f
+  .git/index.lock` und sofort committen. Ein 30 min alter Lock mit lebenden
+  Prozessen ist NICHT verwaist; ein 2 min alter ohne Prozess schon.
 - **Kein automatischer Live-Betrieb.** Ein neuer Repo-Bot baut/testet/bewertet
   Strategien, oeffnet aber keine Positionen und bekommt keine Spur im
   `dauerlauf`. Eine echte Handelsspur (Statusdateien lesen → ins Buch buchen)
@@ -265,7 +281,59 @@ Sitzung. Vor jeder Aktion:
 - **Bericht:** `Agenten/Routinen/logs/systempruefung-letzter-lauf.md` (strukturiert: Seit gestern neu / Selbst erledigt / Zu entscheiden / Zur Kenntnis). Vollprotokoll: `logs/systempruefung-<datum>.log`.
 - **Kann in der Git-Pruefung haengen** (git-Prozesse bleiben stehen, kein Bericht). Haengt ein eigener Lauf >10 min ohne Bericht, den eigenen Lauf beenden und den letzten Bericht lesen statt weiter zu warten.
 
+## Prozessdiagnose auf Windows (und warum Bot-Diagnosen nachzumessen sind)
+
+Details und fertige Kommandos: `references/windows-prozessdiagnose.md`.
+
+- **`ps` / `ps -ef` aus git-bash ist auf diesem Host UNBRAUCHBAR fuer
+  Prozessdiagnose — es sieht nur einen Bruchteil der nativen Prozesse** (hier:
+  4 von 45 python-Prozessen, waehrend `tasklist` und `Get-CimInstance
+  Win32_Process` beide 45 sahen). Jede Aussage der Form "Prozesse, die in `ps`
+  stehen, aber nicht in `tasklist`" ist daher ein Werkzeug-Artefakt und kein
+  Befund. Immer `tasklist` oder `Get-CimInstance Win32_Process` als Quelle
+  nehmen.
+- **Ein Daemon mit totem Elternprozess ist KEINE Waise, sondern Absicht.** Das
+  Gateway wird von einem VBS-Launcher gestartet, der sofort endet; die
+  Elternkette zeigt dann "Eltern tot". Dasselbe gilt fuer die Wurzel jedes
+  Prozessbaums. Vor einem Waisen-/Kill-Verdacht die Lebenszeichen pruefen:
+  CPU-Zeit (`Get-Process -Id <pid>` → `TotalProcessorTime`), Kinderzahl
+  (`Win32_Process -Filter "ParentProcessId=<pid>"`) und `ThreadCount`. Ein
+  Prozess mit tausenden CPU-Sekunden, 26 Kindern und 200 Threads ist der
+  laufende Dienst, kein Leichnam.
+- **Die ZAHLEN eines Bot-Diagnoseberichts selbst nachmessen, bevor sie in
+  TASKS/Notizen wandern — ein Diagnosebefund kann detailliert, plausibel und
+  komplett falsch sein.** Ein Bot meldete "11 Phantom-Prozesse" plus drei
+  verdaechtige PIDs; nachgemessen waren die Phantome das `ps`-Artefakt und die
+  drei PIDs das Gateway selbst und zwei aktive Sitzungen. Gegenprobe-Pflicht
+  fuer jede Zahl, die eine Aufraeum-/Kill-Empfehlung begruendet: Quelle
+  (tasklist/CIM), Elternkette, CPU/Kinder/Threads. Erst danach dem Nutzer
+  melden — und wenn der Bot falsch lag, das beim Namen nennen statt den
+  Befund weiterzutragen.
+- **Bei Speicherdruck-Fragen die Verteilung messen, nicht die Prozesszahl
+  zaehlen.** Summe und Top-Verbraucher per `WorkingSetSize` gruppiert nach
+  Dienst, dazu `FreeVirtualMemory`/`TotalVirtualMemorySize` aus
+  `Win32_OperatingSystem`. Eine hohe Prozesszahl bei kleiner Summe ist kein
+  Druck; der Treiber ist fast immer ein einzelner grosser Dienst oder eine
+  Neustart-Schleife, die Duplikate erzeugt.
+
 ## Sonstiges
+- **Eine clarify-Freigabe autorisiert KEINEN Schreibzugriff auf geschuetzte
+  Agent-Anweisungsdateien (AGENTS.md/CLAUDE.md).** Sagt Max in einer
+  clarify-Frage "ja, freigeben", loest der anschliessende `patch` auf die
+  Datei trotzdem einen EIGENEN Freigabe-Dialog aus; laeuft der in einen
+  Timeout, wird der Write BLOCKIERT ("Silence is not consent") und darf NICHT
+  ueber einen anderen Weg (terminal/execute_code) wiederholt werden. Die
+  clarify-Antwort ist eine Absicht, kein Vorab-OK fuer den Datei-Write. Den
+  neuen Text in der TASK dokumentieren und Max bitten, den Write im
+  Freigabe-Dialog zu bestaetigen, wenn er bereit ist.
+- **Batch offener TASKS: die entscheidungsbeduerftigen interaktiv aufbereiten
+  (clarify), die machbaren parallel im Hintergrund an einen Bot delegieren.**
+  Max' bevorzugter Ablauf fuer einen Stapel offener Punkte: die
+  Max-Entscheidungen als clarify-Fragen gruppieren (eine Frage je TASK, mit
+  Empfehlung zuerst), waehrenddessen die ohne Entscheidung machbaren Teile
+  (z. B. spiegelstand-Fix, Prozess-Diagnose) als `terminal(background=true,
+  notify=true)` an passende Bots starten. So laeuft die Arbeit, waehrend Max
+  antwortet; die Antworten werden danach abgearbeitet.
 - Cron-Jobs, die ich erstellt habe (z. B. `fomo-radar Loop`), koennen mit dem
   cronjob-Tool gepauajt/weiterverwaltet werden - der fomo-radar Bot selbst kann
   das nicht (anderes Profil). `/loop` ist reiner Chat-Befehl, kein CLI-Weg.
@@ -306,6 +374,33 @@ aller Bots auf einen Blick.
   `git status --short <pfad>`. Ist nichts da, den Auftrag an einen BOT
   NEU VERGEBEN, der (a) ein stabiles Modell hat UND (b) tatsaechlich
   schreiben darf — nicht automatisch an `recherche`.
+- **Ein Bot-Ergebnis kann schon von einer PARALLELEN Sitzung committet sein —
+  das ist kein Verlust und kein Grund, neu zu committen.** Liefert der Bot
+  (wie oft) uncommittete Arbeit und "das ueberlasse ich dir", kann die
+  Fremdarbeit-Routine oder eine parallele Sitzung sie in der Zwischenzeit
+  eingezogen haben. Symptom: `git status` leer UND `git diff HEAD -- <pfad>`
+  leer, der neue Code steht aber in der Datei. Vor dem eigenen Commit immer
+  `git log --oneline -3 -- <pfad>` lesen: ein Commit mit Autor `Andere Sitzung`
+  / Betreff "fremde Arbeit gesichert" ist die Antwort. Dann NICHT erneut
+  committen und nicht "die Arbeit ist weg" melden, sondern den fremden Commit
+  als Beleg nennen und den FUNKTIONS-Nachweis selbst fuehren (Probelauf +
+  Tests) — der Commit beweist nur die Ablage, nicht die Wirkung.
+- **Ein delegierter Bot kann Arbeit AUSSERHALB seines Auftrags tun und
+  committen — nach dem Lauf pruefen, was er sonst angefasst hat.** Ein Bot mit
+  Diagnose-Auftrag kann nebenbei eine andere offene TASK bearbeiten und dafuer
+  eigene Commits setzen. Nach dem Bot-Ende `git log --oneline -5` lesen und die
+  Commits benennen, die nicht zum Auftrag gehoeren: sie sind oft nuetzlich,
+  aber unerwartet, und erklaeren, warum der Bot laenger lief. Ungefragte
+  Betriebskonfig-Aenderungen daraus dem Nutzer melden, nicht stillschweigend
+  uebernehmen.
+- **Laufen ZWEI Bots parallel und schreiben beide in dieselbe Registerdatei
+  (`TASKS.md`), vor jedem eigenen Patch neu einlesen.** Das Patch-Tool warnt
+  dann ("modified by sibling subagent but this agent never read it") — die
+  Warnung ernst nehmen: die Datei frisch lesen, patchen, und danach
+  verifizieren, dass die Bloecke des anderen Bots noch da sind
+  (`grep -c "T-<nummer>"` auf dessen TASK). Zwei Bots auf dieselbe Datei
+  anzusetzen ist vermeidbar: beim Parallel-Dispatch jedem Bot eine eigene
+  Datei/einen eigenen TASK-Block zuweisen.
 - **Der stabile Bot kann der False mit LESEN sein.** `recherche`
   (deepseek-v4-flash, stabil) verweigert schreibende Arbeit aus eigenen
   Regeln ("als Recherche-Agent committest du nichts") und der
