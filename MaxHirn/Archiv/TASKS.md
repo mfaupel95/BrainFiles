@@ -2,6 +2,7 @@
 
 
 - [ ] **T-425 - Hermes-Wartung 20.10.: Stable-Kanal aktuell, Kanal-Entscheidung offen**
+      **Analyse 20.10.2026 (was canary konkret bringt):** origin/main steht 2646 Commits vor stable v0.22.2. Typen: 1441 fix, 284 test, 255 chore, 156 refactor, 113 feat, 95 plugin, 74 docs, 56 catalog, 17 perf. Top-Bereiche: 497 fix(gateway), 133 fix(cli), 128 fix(desktop), 63 fix(tui), 56 fix(plugins), 36 fix(acp), 27 fix(state), 23 fix(sessions), 23 fix(memory), 22 fix(agent), 20 fix(browser), 16 fix(update). Die 497 fix(gateway) betreffen genau Max' Gateway-Probleme (T-410 MemoryError, Multiplex-Switch, Credentials). Kanaele heissen 'stable' und 'canary' (nicht dev). Empfehlung: canary wuerde die Gateway-Fixes ziehen, aber mit mehr Risiko (2646 Commits, davon 284 test/255 chore - nicht alles stabil). Entscheidung bleibt bei Max.
       Kontext: Wartungslauf 20.10.2026: hermes update (Stable) meldete
       "up to date" bei v0.22.2 (d923a5eb); origin/main steht 2646 Commits
       voraus (497 fix(gateway), 133 fix(cli), 128 fix(desktop) ...), die der
@@ -132,15 +133,17 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Naechster Schritt: Waechter messen FreeVirtualMemory und bei < 8 GB einmal melden (Muster: mcp-zombie-wache); Python-Prozess-Leichen (Waisen aus abgebrochenen Completion-Tails) aufraeumen; Quelle der 48 Prozesse pruefen (Handels-Dauerlauf, MoonDev, MCP-Zombies).
       Angelegt 15.10.2026 · Zuletzt 20.10.2026
       Betrifft: Agenten/Hermes/gateway-service/, Agenten/Routinen/gateway-waechter.ps1
-- [ ] **T-411 - SkillsBot weist alle Gruppennachrichten als '(fremd)' ab**
+- [x] **T-411 - SkillsBot weist alle Gruppennachrichten als '(fremd)' ab**
+      **Erledigt 20.10.2026 (Entscheidung Max: Gruppen-ID freigeben).** skillsbot.py: neue Funktion chat_erlaubt(chat) akzeptiert die DM (TELEGRAM_CHAT_ID) UND die Telegram-Gruppe -1003980261765; der Check in der Schleife nutzt jetzt chat_erlaubt statt chat != chat_id(). Committet. Der bots-Verteiler bleibt fuer /bot-Dispatch zustaendig.
       Kontext: skillsbot.py:1142 vergleicht chat != chat_id(); TELEGRAM_CHAT_ID (User-Store) ist 7648512088 (Max' DM), die Telegram-Gruppe 'MaximilianundClaude-Code' ist -1003980261765. Jede Nachricht aus der Gruppe laeuft in _log(chat,'(fremd)',...,'abgewiesen') - seit 23:32 am 14.10. durchgehend (48 der letzten 50 Zeilen). Der SkillsBot bedient ABSICHTLICH nur die DM; fuer Gruppenauftraege ist der bots-Verteiler (@Maximilian420_bot, /bot NAME) zustaendig - der laeuft. Nichts kaputt, aber die Protokollflut suggeriert einen Ausfall.
       Naechster Schritt: Entscheidung Max - entweder Gruppen-ID als zweite erlaubte Chat in skillsbot.py freigeben, oder die Abweisung still protokollieren (nur 1. je Chat/Stunde statt je Nachricht). Kein Eingriff ohne Max.
-      Angelegt 15.10.2026 · Zuletzt 15.10.2026
+      Angelegt 15.10.2026 · Zuletzt 20.10.2026
       Betrifft: Agenten/Bus/skillsbot.py
 - [ ] **T-403 - GitHub-Privates loeschen: gh-Token braucht delete_repo-Scope**
+      **Entscheidung Max 20.10.2026: NUR die Werks-Repos loeschen, BrainFiles behalten.** Max fuehrt 'gh auth refresh -h github.com --scopes delete_repo' in seiner PowerShell aus (Browser-Flow), danach Loeschung der Werks-Repos (nautilus/omnitrade/rltrader/alice/handel-stack/OmniQuant u.a.) + lokale Remotes umziehen. BrainFiles bleibt als Workspace-Remote.
       Kontext: Auftrag Max 14.10.2026 'alle auf github als privat laufenden repos entfernen, nur lokal betreiben'. 90 private Repos identifiziert (mfaupel95/*, davon ~85 *-privat-Mirrors + Werks-Repos nautilus/omnitrade/rltrader/alice/handel-stack/OmniQuant u.a.), aber gh repo delete gibt fuer ALLE HTTP 403 'Must have admin rights' - der Token traegt nur Scope 'repo', GitHub verlangt Scope 'delete_repo'. NICHTS wurde geloescht (0/90). Ausgenommen: mfaupel95/BrainFiles (Workspace-Remote, Push-Routinen haengen dran - Entscheidung Max offen).
       Naechster Schritt: Max fuehrt in seiner PowerShell 'gh auth refresh -h github.com --scopes delete_repo' aus (Browser-Flow), danach Loeschung + lokale Remotes umziehen (origin -> upstream, Remote 'privat' entfernen; Doktrin in AGENTS.md/CLAUDE.md nachziehen).
-      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Angelegt 14.10.2026 · Zuletzt 20.10.2026
       Betrifft: GitHub mfaupel95/*, Agenten/Werkzeuge/repos-updaten.py
 - [ ] **T-404 - 17 leere Repos-Huellen unter Werkstatt/Repos nach Reboot raeumen**
       **Befund 20.10.2026:** 16 der 17 Huellen sind nach dem Reboot verschwunden (leer, entfernt). Es bleibt NUR `puter` (162 MB) - und das ist KEINE leere Huelle, sondern ein AKTIVER Docker-Container-Stapel: puter, puter-mariadb, puter-s3, puter-dynamo, puter-valkey (mariadb/valkey/dynamo Up, puter/s3 im Restart-Loop). Enthaelt echte Daten (data/mariadb/mysql, data/valkey). NICHT loeschen - das waere Datenverlust eines laufenden Dienstes. TASK bleibt offen bis geklaert ist, ob der puter-Stapel gewollt ist (dann gehoert er nicht unter Werkstatt/Repos, sondern an einen eigenen Ort) oder ob er abgeschaltet werden soll.
@@ -149,9 +152,10 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Angelegt 14.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/Repos/*
 - [ ] **T-405 - AGENTS.md/CLAUDE.md: Fremd-Repos-Abschnitt auf neuen Stand bringen**
+      **Entscheidung Max 20.10.2026: freigeben.** Patch-Versuch wurde vom Freigabe-Dialog blockiert (Timeout) - Max muss die Aenderung im Freigabe-Dialog bestaetigen, wenn er bereit ist. Neuer Text (beide Dateien identisch): "Fremd-Repos (Klone): Werkstatt/ haelt einen Klon je Repo direkt im Ordner (seit 14.10.2026, nicht mehr unter Werkstatt/Repos/) - origin = upstream (das Original), kein Fork-Mirror mehr; shallow, git fetch --unshallow fuer volle Historie. Eigene Werks-Repos (omnitrade, handel-stack, ...) liegen ebenfalls direkt in Werkstatt/."
       Kontext: Umzug 14.10.2026 zieht die Doktrin nach (Klone direkt in Werkstatt, origin=upstream statt Fork-Mirror), die Wurzel-AGENTS.md/CLAUDE.md sind aber geschuetzte Agent-Dateien - der Patch wurde von der Freigabe abgelehnt (Timeout). Textvorschlag liegt bereit.
       Naechster Schritt: Max genehmigt die Aenderung (Freigabe-Dialog), dann beide Dateien identisch patchen; Paar-Regel beachten (AGENTS.md == CLAUDE.md).
-      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Angelegt 14.10.2026 · Zuletzt 20.10.2026
       Betrifft: AGENTS.md, CLAUDE.md
 - [x] **T-406 - repos-zentrale: 2 Tests rot wegen 15 'ausgemustert'-Manifesteintraegen ohne Ordner**
       **Erledigt 20.10.2026.** Tests auf die 'ausgemustert'-Regel umgestellt (Entscheidung: Tests anpassen statt Manifest regenerieren, da die Eintraege bewusst archiviert sind). test_manifest.py: test_jeder_eintrag_liegt_in_seiner_wurzel ueberspringt Eintraege mit gruppe=ausgemustert (liegen in Werkstatt/Ausgemustert/*-20261007). test_fremd_grenze.py: test_alle_repos_klone_sind_fremd schliesst ausgemusterte UND eigene Werks-Repos (Rolle Projekt/Spur/Spiegel/Werkzeug oder ohne Manifest-Eintrag) aus - die sind keine fremden Klone. Beide Tests gruen (19 OK, 11 OK). Nebenbefund: test_handelstand (moondev_sniper fehlt im Laufplan) ist separat rot - vorbestehend, nicht von diesem Fix.
@@ -159,10 +163,11 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Naechster Schritt: Entscheidung - Manifest regenerieren (fuellen --anwenden + Pruning) oder Tests auf die 'ausgemustert'-Regel umstellen.
       Angelegt 14.10.2026 · Zuletzt 20.10.2026
       Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, tests/test_manifest.py, tests/test_fremd_grenze.py
-- [ ] **T-407 - Werkstatt/rule_repo-bots.md: versionieren oder loeschen?**
+- [x] **T-407 - Werkstatt/rule_repo-bots.md: versionieren oder loeschen?**
+      **Erledigt 20.10.2026 (Entscheidung Max: mitversionieren).** rule_repo-bots.md in Git aufgenommen (Commit e4e9a077).
       Kontext: Beim Umzug der 6 losen Dateien aus Werkstatt/Repos nach Werkstatt/ landet rule_repo-bots.md im whitelisteten Bereich (!Werkstatt/*.md) und ist sichtbar untracked. Die .bak-Varianten bleiben ignoriert. Kein Code liest die Datei (nur Cache-/Lern-Bestaende).
       Naechster Schritt: Entscheidung Max - mitversionieren oder nach Werkstatt/Ausgemustert schieben.
-      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Angelegt 14.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/rule_repo-bots.md
 - [x] **T-401 - scanner-papier: "Python oder Ordner fehlt" (Task=1)**
       **Erledigt 2026-10-14.** Ursache war die Werkstatt-Junction-Zerstörung
