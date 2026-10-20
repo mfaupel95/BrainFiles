@@ -1,4 +1,8 @@
 ## Offen
+- [ ] **T-417 — llm_stunde im Dauerlauf ohne Auswertung (vorbestehend):**
+    - Kontext: test_verdrahtung meldet 'llm_stunde im Dauerlauf, aber in keiner Auswertung gelistet'. Keine eigene auswertung.py, nicht in auswertung_alle. Vorbestehend (nicht durch die Sammelauftrag-Verdrahtung eingefuehrt).
+    - Naechster Schritt: Journal-Format von llm_stunde pruefen, dann in auswertung_alle (oder EIGENE_AUSWERTUNG) eintragen.
+    - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/llm_stunde
 - [ ] **T-414 — jev_trader-Spur verdrahten (Worktree arbeit/jev-trader):**
     - Kontext: Parallele Claude-Sitzung baute Papier-Spur Agenten/Handel/jev_trader (liest Block-Event-Log des jev-trader-Bots, bucht Roundtrips). Liegt nur auf Zweig arbeit/jev-trader, NICHT in dauerlauf/lage/befehl/auswertung verdrahtet. handel_erlaubt=false, kein Live-Pfad.
     - Naechster Schritt: Zweig pruefen (Tests laufen lassen), dann in master uebernehmen und verdrahten (dauerlauf.SPUREN, lage.HOLER, befehle.FAMILIE, auswertung_alle, pruefe_ratschen, .gitignore, Spiegel).
