@@ -123,6 +123,14 @@ Agenten/Handel/stand/
 !Agenten/Handel/scanner_quant/*.json
 !Agenten/Handel/scanner_quant/tests/
 !Agenten/Handel/scanner_quant/tests/*.py
+# scanner_llm (13.10.2026): leichter Marktscanner + LLM-Qualitaetsfilter.
+# Nur Text und Tests; berichte/ bleibt ausserhalb (Laufzeitstand).
+!Agenten/Handel/scanner_llm/
+!Agenten/Handel/scanner_llm/*.py
+!Agenten/Handel/scanner_llm/*.md
+!Agenten/Handel/scanner_llm/*.json
+!Agenten/Handel/scanner_llm/tests/
+!Agenten/Handel/scanner_llm/tests/*.py
 !Agenten/Handel/xperp/*.py
 !Agenten/Handel/xperp/*.md
 !Agenten/Handel/xperp/*.json
@@ -375,6 +383,11 @@ Agenten/Handel/check.log
 Agenten/Handel/scanner/zustand.json
 Agenten/Handel/scanner/handelsjournal.csv
 Agenten/Handel/scanner/berichte/**
+# scanner_llm: dieselbe Aufteilung. wachen.json ist oben freigegeben
+# (Grenzen von Hand), diese drei schreibt jeder Lauf.
+Agenten/Handel/scanner_llm/zustand.json
+Agenten/Handel/scanner_llm/handelsjournal.csv
+Agenten/Handel/scanner_llm/berichte/**
 
 # Spur 3 (Kraken): dieselbe Aufteilung. wachen.json ist Konfiguration von
 # Hand und oben freigegeben, diese drei schreibt jeder Lauf.
