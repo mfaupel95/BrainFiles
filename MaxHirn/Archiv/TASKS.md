@@ -1,4 +1,37 @@
 ## Offen
+- [ ] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
+      Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
+      OKX-Perpetuals-Adapter (SWAP) in mfaupel95/omnitrade2 gebaut (swap.rs,
+      swap_client.rs, instrument.rs: ctVal/lotSz/minSz, EEA wseea, isolated/
+      one-way/MAX_LEVERAGE 10, Liquidationsabstand MIN_LIQUIDATION_DISTANCE
+      0.05). origin/main gemergt, 479 Tests + Clippy -D warnings gruen.
+      Demo-Verifikation NICHT gelaufen (Demo-Keys im Container fehlen).
+      Handover gesichert in Werkstatt/Austausch/HANDOVER-2026-10-20-1414.md.
+      Offene Entscheidungen Max: C.1 Liquidationsschwelle 5% (10x isolated)
+      als Start?; C.2 Shorts gesperrt bis Long im Demo belegt?; C.3 PR #10/#11
+      auf omnitrade schliessen?; C.4 Branch worktree-live-loop-fix loeschen?
+      (dirty Worktree glistening-panda vorher pruefen); C.5 lokalen Branch
+      integration/main-into-pr11 loeschen (identisch mit nice-pasteur)?
+      Naechster Schritt: Entscheidungen C.1-C.5 von Max, dann Demo-Keys setzen
+      (OKX_REGION=eea, OKX_LEVERAGE=1), Positionsantwort gegen echte Demo
+      verifizieren, kleine Order 0.0001 BTC, Mainnet bleibt gesperrt.
+      Angelegt 20.10.2026 · Zuletzt 20.10.2026
+      Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
+
+- [ ] **T-420 - Werkstatt/omnitrade-Klon: origin fehlt, upstream auf fremdes Repo umgebaut**
+      Kontext: Befund 20.10.: git -C Werkstatt/omnitrade remote -v zeigt NUR
+      upstream=LLMQuant/awesome-trading-agents (fremde Codebasis), KEIN origin.
+      Historie sind Sicherungs-Commits einer parallelen Sitzung (e961d976
+      "gude", "Bot-Status gesichert"). Rust-Workspace-Dateien liegen da, aber
+      die Git-Anbindung an die Sicherung mfaupel95/omnitrade (vorher origin,
+      upstream jackby03/omnitrade) ist weg. Das Repo mfaupel95/omnitrade
+      existiert auf GitHub weiter (public, main) - nur der Klon ist entkoppelt.
+      Naechster Schritt: mit Max klaeren, ob der Klon auf den Stand von
+      omnitrade2 (SWAP) oder mfaupel95/omnitrade zurueck soll; origin/upstream
+      neu setzen, fetch, Stand pruefen. Nichts eigenmaechtig umbauen.
+      Angelegt 20.10.2026 · Zuletzt 20.10.2026
+      Betrifft: Werkstatt/omnitrade
+
 - [ ] **T-417 — llm_stunde im Dauerlauf ohne Auswertung (vorbestehend):**
     - Kontext: test_verdrahtung meldet 'llm_stunde im Dauerlauf, aber in keiner Auswertung gelistet'. Keine eigene auswertung.py, nicht in auswertung_alle. Vorbestehend (nicht durch die Sammelauftrag-Verdrahtung eingefuehrt).
     - Naechster Schritt: Journal-Format von llm_stunde pruefen, dann in auswertung_alle (oder EIGENE_AUSWERTUNG) eintragen.
