@@ -11,7 +11,7 @@ providers:
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
 terminal:
   backend: local
-  cwd: C:\Usersaupe\Documents\BrainFiles\Werkstatt\jev-trader
+  cwd: C:\Usersaupe\Documents\BrainFiles\Werkstatt\jev-trader
   font_family: ''
   timeout: 180
   home_mode: auto
