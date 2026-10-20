@@ -100,7 +100,9 @@ def groessenfaktor(ruecklauf_usd, w):
 
 
 def kill_ausgeloest(ruecklauf_usd, w):
-    ks = w.get("kill_switch_gesamt_usd")
+    # orb nennt den Wert in der Wache kill_switch_gesamt_usdt (USDT); ohne den
+    # Rueckfall las diese Funktion None und der Kill loeste nie aus.
+    ks = w.get("kill_switch_gesamt_usd", w.get("kill_switch_gesamt_usdt"))
     return ks is not None and ruecklauf_usd >= ks
 
 
@@ -141,7 +143,13 @@ def lage(w, journal_pfad, zustand):
     runden = runden_aus_journal(journal_pfad)
     papier = [r for r in runden if r["modus"] == "papier"]
     echt, stoer = teile_runden(runden)
-    hoch, rueck = drawdown(runden)
+    # Kill-Reset: nach Ablauf der Kill-Frist setzt kill_gemeinsam `kill_ab_runde`;
+    # der Ruecklauf beginnt dann bei 0 (wie scanner/wachen_pruefung.lage).
+    try:
+        ab = max(0, int((zustand or {}).get("kill_ab_runde") or 0))
+    except (TypeError, ValueError):
+        ab = 0
+    hoch, rueck = drawdown(runden[ab:])
     frisch, alter = herzschlag_frisch(zustand, w.get("herzschlag_max_minuten", 45))
     # Bedingung 5 rechnet auf HANDELSRUNDEN: ein Herzschlag-Zwangsschluss
     # ist keine Handelsentscheidung und darf den Erwartungswert nicht ins
