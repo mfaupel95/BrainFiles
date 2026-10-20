@@ -151,5 +151,6 @@ Verworfen (nicht uebernommen, Gruende):
 
 MEMORY.md 394.018 -> 397.405 Zeichen (72 % des Budgets): 2 neue Eintraege, 10 geaendert,
 1 Korrektur. Queue ist leer, probe-memory-pinning.py belegt weiterhin beide alten Formen als
-verweigert (MEMORY.md bleibt byte-gleich). Offen als TASKS T-424: mcp-zombie-wache filtert nur
-python/pythonw, nicht node.
+verweigert (MEMORY.md bleibt byte-gleich). T-424 (mcp-zombie-wache filtert nur python/pythonw,
+nicht node) wurde am 20.10.2026 umgesetzt: die Wache liest jetzt auch node.exe und erkennt die
+ant.dir-NODE-MCP-Server je Gruppe (20/20 Tests gruen, Commit 9f98915b).
