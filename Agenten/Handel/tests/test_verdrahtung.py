@@ -35,7 +35,7 @@ import pruefe_ratschen      # noqa: E402
 # falscher Paarung (Einsteig PATE, Ausstieg leeres Symbol).
 EIGENE_AUSWERTUNG = ("spiegel", "spiegel_knapp", "spiegel_weit", "kopier",
                      "omniquant", "omniquant_weit", "gitter",
-                     "jev_trader")
+                     "jev_trader", "llm_stunde")
 
 RUHT = tuple(pruefe_ratschen.RUHT)
 

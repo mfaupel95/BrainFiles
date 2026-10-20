@@ -84,6 +84,12 @@ FAMILIE = {
     "robinhood_radar": "Feed-Kopie",
     "jev_trader": "Feed-Kopie",
     "scanner_llm": "Feed-Kopie",
+    "llm_stunde_ema1h-R": "LLM-Stunde",
+    "llm_stunde_ema1h-L": "LLM-Stunde",
+    "llm_stunde_st1h-R": "LLM-Stunde",
+    "llm_stunde_st1h-L": "LLM-Stunde",
+    "llm_stunde_rsi1h-R": "LLM-Stunde",
+    "llm_stunde_rsi1h-L": "LLM-Stunde",
     # omnitrade (30.09.2026): spiegelt die Position eines fremden LAUFS
     # (Rust, Werkstatt/omnitrade) - dieselbe Familie, aber der Fremdlauf
     # entscheidet, nicht ein Wallet-Feed.

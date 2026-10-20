@@ -57,6 +57,12 @@ MIN_RUNDEN = 8
 FREMDES_BUCH = {
     "nautilus_kraken_futures": ("nautilus_kraken", "handelsjournal.futures.csv"),
     "squeeze_eth": ("squeeze", "handelsjournal.eth.csv"),
+    "llm_stunde_ema1h-R": ("llm_stunde/laeufe/ema1h-R", "handelsjournal.csv"),
+    "llm_stunde_ema1h-L": ("llm_stunde/laeufe/ema1h-L", "handelsjournal.csv"),
+    "llm_stunde_st1h-R": ("llm_stunde/laeufe/st1h-R", "handelsjournal.csv"),
+    "llm_stunde_st1h-L": ("llm_stunde/laeufe/st1h-L", "handelsjournal.csv"),
+    "llm_stunde_rsi1h-R": ("llm_stunde/laeufe/rsi1h-R", "handelsjournal.csv"),
+    "llm_stunde_rsi1h-L": ("llm_stunde/laeufe/rsi1h-L", "handelsjournal.csv"),
 }
 
 # Dasselbe fuer die WACHEN: der Futures-Arm faehrt aus demselben Ordner, seine
@@ -146,6 +152,12 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               "robinhood_radar",
                 # SCANNER_LLM (13.10.2026): kauf/verkauf mit usd - derselbe Weg.
                 "scanner_llm",
+                "llm_stunde_ema1h-R",
+                "llm_stunde_ema1h-L",
+                "llm_stunde_st1h-R",
+                "llm_stunde_st1h-L",
+                "llm_stunde_rsi1h-R",
+                "llm_stunde_rsi1h-L",
               # OMNITRADE (30.09.2026): Buch ueber Handel/spur_buch.py,
               # Journalform kauf/verkauf mit einsatz_usd - derselbe Rechenweg.
               "omnitrade",
