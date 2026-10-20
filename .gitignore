@@ -1229,3 +1229,10 @@ Agenten/Werkzeuge/routing-plan/werkstatt/
 # Wurzel-Aufrufer fuer die Modelllisten der Bot-Profile (CRLF, kein LF):
 # liegt NACH allen Sperrregeln, weil die spaetere Regel gewinnt.
 !/profil-listen.cmd
+
+# CI-Workflows der XPERP-Spur. Nur diese Datei ist gemeint - die Whitelist
+# oben (Zeile 20: *) packt .github/ sonst ein, und ohne diese Zeile ist der
+# Ordner fuer git unsichtbar.
+!/.github/
+!/.github/workflows/
+!/.github/workflows/*.yml
