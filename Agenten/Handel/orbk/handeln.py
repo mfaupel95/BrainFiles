@@ -8,7 +8,7 @@ mit ALLEN Sperren offen legt echte Orders an die Boerse (unten im Docstring).
 wenn ihr Zeitfenster offen ist (freigabefenster.py). Ist ALLES sperrenfrei
 (handel_erlaubt, freigabe.erfuellt, journal_zweitziel, API-Schluessel,
 Freigabefenster), legt dieser Pfad an die Boerse: Einstieg + Boersen-STOP +
-Boersen-TAKE-PROFIT (kraken.take_profit_setzen). Das ZIEL hat seit dem
+Boersen-STOP + Boersen-ZIEL (okxf.schutz_stop_setzen). Das ZIEL hat seit dem
 Take-Profit-Ausbau (12.10.2026) eine eigene Boersenorder - es bleibt kein
 echter Bestand ohne Exit an Kraken. Fehlt eine Sperre, laeuft der Lauf als
 Papier weiter und nennt die Gruende - derselbe Fallsafe wie kraken/handeln.py.
@@ -48,11 +48,11 @@ BUS = HIER.parent.parent / "Bus"
 sys.path.insert(0, str(HIER))
 sys.path.insert(0, str(HIER.parent))      # mae
 import mae
-sys.path.insert(0, str(HIER.parent / "kraken"))
+sys.path.insert(0, str(HIER.parent / "xperp"))
 sys.path.insert(0, str(BUS))
 
 import ereignis
-import kraken
+import okxf
 import session as sess
 import wachen_orb as wp
 
@@ -195,7 +195,7 @@ def pruefe_ausstiege(z, w, jetzt=None, live=False):
               "schliesst sie (Boerse schuetzt per Stop/Ziel)" % key)
         return False, None
     if p.get("modus") == "live":
-        ok, effgrund = _exit_live(z, w, p, konf["kraken"], kurs, grund)
+        ok, effgrund = _exit_live(z, w, p, konf["okx"], kurs, grund)
         if not ok:
             p["exit_ungeklaert"] = True
             print("  AUSSTIEG %s UNGEKLAERT - keine Marktorder, Position bleibt"
@@ -225,10 +225,10 @@ def _schliesse(p, kurs, grund):
 
 
 def _kerzen_heute(w, key):
-    """Die heutigen M15-Kerzen des Instruments (Kraken-oeffentlich)."""
+    """Die heutigen M15-Kerzen des Instruments (OKX-oeffentlich)."""
     konf = w["instrumente"][key]
-    paar = konf["kraken"]
-    roh = kraken.kerzen(paar, intervall=15, anzahl=720)
+    okx_inst = konf["okx"]
+    roh = okxf.kerzen(okx_inst, bar="15m", anzahl=720)
     heute = _jetzt().date()
     return [{"zeit": datetime.fromtimestamp(r[0] / 1000, timezone.utc),
              "o": r[1], "h": r[2], "l": r[3], "c": r[4]}
@@ -294,7 +294,7 @@ def pruefe_einstieg(z, w, jetzt=None):
                      "letzter_kurs": kurs,
                      # Positionsgroesse fuer den Live-Pfad (Buchrisiko teilen).
                      "range_hoehe": hoch - tief,
-                     "punkt_wert_usd": konf.get("punkt_wert_usd", 1.0),
+                     "punkt_wert_usdt": konf.get("punkt_wert_usdt", 1.0),
                      "risiko_usd": w.get("risiko_pro_trade_usd", 10.0)}
     # Merkzeichen fuer "heute schon gehandelt": muss den Ausstieg
     # ueberleben, sonst steigt derselbe Breakout im selben Zyklus wieder
@@ -349,8 +349,8 @@ def live_sperren(w):
         gruende.append("freigabe.erfuellt=false")
     if not w.get("journal_zweitziel"):
         gruende.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
-    if not kraken.schluessel_vorhanden():
-        gruende.append("KRAKEN_SPOT_API_KEY/SECRET nicht gesetzt")
+    if not okxf.schluessel_vorhanden():
+        gruende.append("OKX_API_KEY/SECRET/PASSPHRASE nicht gesetzt")
     if not zeitfenster_offen():
         gruende.append("Freigabefenster nicht offen")
     return gruende
@@ -363,11 +363,11 @@ def positionsgroesse(w, p):
     Order (platziere_einstieg, echt=True). 0 heisst: nicht handelbar.
     """
     range_hoehe = p.get("range_hoehe") or 0.0
-    punkt_wert = p.get("punkt_wert_usd", 1.0)
+    punkt_wert = p.get("punkt_wert_usdt", 1.0)
     risiko = p.get("risiko_usd") or w.get("risiko_pro_trade_usd", 0.0) or 0.0
     if range_hoehe <= 0 or punkt_wert <= 0 or risiko <= 0:
-        return 0.0
-    return risiko / (range_hoehe * punkt_wert)
+        return 0
+    return int(risiko / (range_hoehe * punkt_wert))
 
 
 def platziere_einstieg(z, w, p, echt=True):
@@ -381,58 +381,32 @@ def platziere_einstieg(z, w, p, echt=True):
 
     Seit dem Take-Profit-Ausbau (12.10.2026) wird bei einer LONG-Live-Position
     zusaetzlich zum Stop auch das ZIEL als take-profit-market-Order an die
-    Boerse gelegt (kraken.take_profit_setzen): ein ausgeloestes Ziel raeumt
+    Boerse gelegt (okxf.schutz_stop_setzen): ein ausgeloestes Ziel raeumt
     die Position an der Boerse selbst ab. Nur Long - ein Short-Signal wird
     verweigert: Kraken-Spot kann kein Short halten, ein Verkauf ohne Bestand
     waere dort ein Fehler.
     """
     key = p["inst"]
     konf = w["instrumente"][key]
-    paar = konf["kraken"]
-    if p["richtung"] == "short":
-        print("  %s: Short auf kraken Spot nicht moeglich - kein Einstieg "
-              "(nur Long)" % paar)
-        return None
-    menge = positionsgroesse(w, p)
-    if menge <= 0:
-        print("  %s: Positionsgroesse <= 0 - kein Einstieg" % paar)
+    inst = konf["okx"]
+    seite = "buy" if p["richtung"] == "long" else "sell"
+    kontrakte = positionsgroesse(w, p)
+    if kontrakte < 1:
+        print("  %s: Positionsgroesse < 1 Kontrakt - kein Einstieg" % inst)
         return None
     if not echt:
-        print("  DRY-RUN %s long %.8f %s @ %.4f (Stop %.4f, Ziel %.4f)"
-              % (paar, menge, p["inst"], p["einstieg"], p["stop"], p["ziel"]))
+        print("  DRY-RUN %s %s %d Kontrakte @ %.4f (Stop %.4f, Ziel %.4f)"
+              % (seite, inst, kontrakte, p["einstieg"], p["stop"], p["ziel"]))
         return None
-    # Nur fuer die echte Order: auf Paar-Genauigkeit runden (lot_decimals).
-    try:
-        stellen = int(kraken.paar_info(paar).get("mengen_stellen", 8))
-    except Exception:                                     # noqa: BLE001
-        stellen = 8
-    menge = int(menge * 10 ** stellen) / 10 ** stellen
-    if menge <= 0:
-        print("  %s: Positionsgroesse nach Rundung <= 0 - kein Einstieg" % paar)
-        return None
-    kauf_txid = kraken.markt_kauf(paar, menge, echt=True)
-    print("  EINSTIEG LONG %s %.8f %s @ %.4f (Order %s)"
-          % (paar, menge, p["inst"], p["einstieg"], kauf_txid))
-    stop_txid = kraken.stop_setzen(paar, menge, p["stop"], echt=True)
-    print("  Schutz-Stop (%.4f) gesetzt" % p["stop"])
-    # Take-Profit an die Boerse. Schlaegt es fehl, bleibt der Stop als
-    # Notausstieg (und der Live-Ausstiegspfad kann das Ziel trotzdem per
-    # Marketorder schliessen) - die Position wird nur markiert, nicht
-    # verworfen.
-    try:
-        tp_txid = kraken.take_profit_setzen(paar, menge, p["ziel"], echt=True)
-    except Exception as e:                                # noqa: BLE001
-        print("  Take-Profit fuer %s fehlgeschlagen (%s) - Stop bleibt, "
-              "Ausstieg laeuft ueber den Live-Pfad" % (paar, e),
-              file=sys.stderr)
-        tp_txid = None
-    if tp_txid:
-        print("  Take-Profit (%.4f) gesetzt" % p["ziel"])
-    p["kauf_txid"] = kauf_txid
-    p["stop_txid"] = stop_txid
-    p["tp_txid"] = tp_txid
-    p["tp_fehlt"] = not tp_txid
-    p["menge"] = menge
+    ord_id = okxf.order_limit(inst, seite, kontrakte, p["einstieg"])
+    print("  EINSTIEG %s %s %d Kontrakte @ %.4f (Order %s)"
+          % (seite, inst, kontrakte, p["einstieg"], ord_id))
+    # Stop UND Ziel als bedingte Orders (okxf.schutz_stop_setzen setzt beides).
+    okxf.schutz_stop_setzen(inst, p["richtung"], kontrakte, p["stop"],
+                            p["ziel"])
+    print("  Schutz-Stop (Stop %.4f, Ziel %.4f) gesetzt" % (p["stop"], p["ziel"]))
+    p["ord_id"] = ord_id
+    p["kontrakte"] = kontrakte
     p["modus"] = "live"
     return p
 
@@ -450,34 +424,28 @@ def _exit_live(z, w, p, paar, kurs, grund):
     zuerst gefragt (stop_gefuellt auf Stop und Take-Profit), bevor geschlossen
     wird.
     """
+    # Ueberverkaufs-Schutz: zuerst pruefen, ob die Position an der Boerse
+    # noch offen ist. Ist sie weg (Stop/Ziel hat schon geschlossen), wird
+    # KEINE zweite Marketorder gestellt (die wuerde einen Short eroeffnen).
     try:
-        stop_weg = bool(p.get("stop_txid")) and kraken.stop_gefuellt(p["stop_txid"])
-        tp_weg = bool(p.get("tp_txid")) and kraken.stop_gefuellt(p["tp_txid"])
+        offen = any(pos.get("instId") == paar
+                    for pos in okxf.positionen())
     except Exception as e:                                # noqa: BLE001
         print("  Live-Ausstieg %s nicht verifizierbar (%s) - KEINE Order, "
               "Position bleibt" % (paar, e), file=sys.stderr)
         return False, None
-    if stop_weg or tp_weg:
-        fach = "stop" if stop_weg else "ziel"
-        print("  Boerse hat %s bereits geschlossen (%s) - keine Marketorder"
-              % (paar, fach))
-        return True, "%s (boerse)" % fach
-    # Noch gehalten: Schutzauftraege abraeumen, dann Markt-Close.
-    for txid in (p.get("stop_txid"), p.get("tp_txid")):
-        if not txid:
-            continue
-        try:
-            kraken.order_stornieren(txid)
-        except Exception as e:                            # noqa: BLE001
-            print("  Schutzauftrag %s nicht stornierbar (%s)" % (txid, e),
-                  file=sys.stderr)
+    if not offen:
+        print("  Boerse hat %s bereits geschlossen - keine Marketorder" % paar)
+        return True, "%s (boerse)" % grund
+    # Noch gehalten: Markt-Close in der Gegenrichtung (reduceOnly).
     try:
-        kraken.markt_verkauf(paar, p["menge"], echt=True)
+        okxf.markt_schliessen(paar, p.get("kontrakte") or p.get("menge"),
+                              p["richtung"])
     except Exception as e:                                # noqa: BLE001
         print("  Markt-Close %s fehlgeschlagen (%s) - Position bleibt, "
               "UNGEKLAERT" % (paar, e), file=sys.stderr)
         return False, None
-    print("  MARKT-CLOSE %s %.8f (Grund %s)" % (paar, p["menge"], grund))
+    print("  MARKT-CLOSE %s %d (Grund %s)" % (paar, p.get("kontrakte") or 0, grund))
     return True, grund
 
 
@@ -493,24 +461,23 @@ def _abgleich_runde(z, w):
     zus = z.get("position")
     if not zus or zus.get("modus") != "live":
         return None
-    paar = w["instrumente"][zus["inst"]]["kraken"]
+    paar = w["instrumente"][zus["inst"]]["okx"]
     try:
-        stop_weg = bool(zus.get("stop_txid")) and kraken.stop_gefuellt(zus["stop_txid"])
-        tp_weg = bool(zus.get("tp_txid")) and kraken.stop_gefuellt(zus["tp_txid"])
+        offen = any(pos.get("instId") == paar
+                    for pos in okxf.positionen())
     except Exception as e:                                # noqa: BLE001
         print("  Buch-vs-Boerse %s nicht verifizierbar (%s) - keine Aussage"
               % (paar, e), file=sys.stderr)
         return None
-    if not (stop_weg or tp_weg):
+    if offen:
         print("  Buch-vs-Boerse: Buch und Boerse stimmen ueberein")
         return {"ausgebucht": False}
-    fach = "stop" if stop_weg else "ziel"
-    trig = zus["stop"] if stop_weg else zus["ziel"]
-    _schliesse(zus, zus.get("letzter_kurs") or trig, "%s (boerse)" % fach)
+    grund = "ziel (boerse)"
+    _schliesse(zus, zus.get("letzter_kurs") or zus.get("ziel"), grund)
     z.pop("position", None)
     print("  Buch-vs-Boerse: %s WEG an der Boerse (%s) - Boersenschluss "
-          "gebucht, keine Marketorder" % (paar, fach))
-    return {"ausgebucht": True, "grund": fach}
+          "gebucht, keine Marketorder" % (paar, grund))
+    return {"ausgebucht": True, "grund": grund}
 
 def lauf(modus="papier"):
     w = _wachen()
@@ -567,7 +534,7 @@ def lauf(modus="papier"):
 
 def _letzter_kurs(w, key):
     konf = w["instrumente"][key]
-    return kraken.letzter_kurs(konf["kraken"])
+    return okxf.letzter_kurs(konf["okx"])
 
 
 def zeige_wachen(w):
@@ -581,7 +548,7 @@ def zeige_wachen(w):
         return "kein instrument_aktiv - Spur gesperrt (Backtest fehlt)"
     f = w.get("freigabe") or {}
     return ("%s (%s): handel_erlaubt=%s, aktiv=%s, freigabe=%s, backtest=%s%s"
-            % (key, konf["kraken"], w["handel_erlaubt"], key,
+            % (key, konf["okx"], w["handel_erlaubt"], key,
                f.get("erfuellt"), f.get("backtest_bestanden"), kopie))
 
 
