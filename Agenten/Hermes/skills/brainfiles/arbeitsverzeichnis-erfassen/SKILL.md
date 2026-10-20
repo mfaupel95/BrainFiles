@@ -110,6 +110,16 @@ neu (diff zeigt 7000+/7000+ statt der gewollten Zeilen). Danach `git diff
 --numstat` pruefen — eine gewollte Zeile muss 1/1 zeigen, nie die ganze
 Datei; bei Ganzdatei-Diff `git checkout HEAD -- <datei>` und mit korrektem
 Zeilenende neu einfuegen.
+- **Das fuzzy patch-Werkzeug zerschiest EINRUECKUNG in Python-Dict-Blocks.**
+  Bei einem Block mit signifikanter Einrueckung (z. B. ein Eintrag in
+  `dauerlauf.SPUREN`) verschiebt der context_aware-Match die Grenzen und
+  schreibt 8 statt 4 Spaces oder verdoppelt Woerter („kra kraken“) — der
+  Diff zeigt dann eine kaputte Stelle, die wie eine gewollte Aenderung
+  aussieht. Nach JEDEM patch auf einen eingerueckten Block `git diff
+  --numstat` UND die Stelle selbst lesen; ist die Einrueckung falsch, den
+  Block per Python byte-genau ersetzen (Zeilenliste bauen, `lines[i:j] =
+  neu`, CRLF/LF aus dem rohen Inhalt ableiten) statt ein zweites Mal zu
+  patchen — ein zweiter fuzzy-Match verschiebt die Grenzen erneut.
 - **Fremdarbeit im Index ist kein Fehler:** Skills/config.yaml einer
 parallelen Sitzung liegen gelassen, nur eigene Pfade committen.
 - **Komprimiertes Wissen nicht erfinden:** Titel/Befunde offener TASKS, die

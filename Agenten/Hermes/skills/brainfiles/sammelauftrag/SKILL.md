@@ -141,6 +141,19 @@ gibt die Zahl der echten Commits. Neue Spuren auf einem Zweig sind erst dann
 auswertung_alle auftauchen — ein Zweig mit 0 Treffern dort ist eine unfertige
 Papier-Spur, kein Live-Kandidat.
 
+**Der Merge der Zweige nach master:** `git merge --no-ff <zweig>` scheitert
+mit „fatal: stash failed / could not write index“, wenn im Arbeitsbaum fremde
+uncommittete Dateien liegen UND ein verwaister `.git/index.lock` existiert —
+der Merge versucht zu stashen und laeuft in die Sperre. Erst den Lock messen
+(0 Byte, alt, keine echten git-Prozesse ausser fsmonitor) und UMBENENNEN,
+dann merge. Ein Merge, der andere Pfade beruehrt als die fremden Dateien,
+braucht keinen Stash — er laeuft ohne Autostash sauber durch. Und: meldet der
+Merge „Already up to date“, ist die Arbeit des Zweigs BEREITS in master (eine
+parallele Sitzung hat sie direkt committet) — kein Fehler, kein offener Punkt;
+`git cherry master <zweig>` zeigt dann 0 echte Commits. Vor dem Push den
+Remote holen (`git fetch origin`); ist er divergiert (Routine-Commit), direkt
+`git merge --no-ff origin/master` statt `pull --rebase` (siehe Schritt 8).
+
 ### 2. Lebende von toten Ständen trennen
 
 - **Vor dem Schreiben erneut messen** (`sitzungs-rekonstruktion`): eine „tote“

@@ -143,6 +143,7 @@ Nachsehen, sondern durch Laufen. Diese Tabelle ist die vollstaendige Fassung:
 | `lage.HOLER` | `spur_<name>()` ueber `_spur_indikator(...)`; `live_faehig=True`, wenn die Spur einen Live-Zweig HAT | `Handel/tests/test_lage.py::FormTest.test_holer_sind_vollzaehlig` |
 | `Handel/befehle.py` → `FAMILIE` | Familienname (z. B. `"Feed-Kopie"`) — ohne ihn gruppiert der Bericht die Spur unter `"?"` | `Handel/tests/test_befehle.py::SpurenTest.test_jede_spur_hat_familie_und_leser` |
 | `auswertung_alle` | `INDIKATOR_SPUREN` oder `BOT_SPUREN` — je nachdem, welche Journalform die Spur schreibt (Buch ueber `spur_buch` → `BOT_SPUREN`) | die Spur fehlt in der Auswertung |
+| `tests/test_verdrahtung.py` → `EIGENE_AUSWERTUNG` | eine Spur mit EIGENER Journalform + eigener `auswertung.py` gehoert HIERHER, NICHT in `auswertung_alle` — ein Weg dort waere eine zweite Wahrheit | `test_verdrahtung` („im Dauerlauf, aber in keiner Auswertung gelistet“) |
 | `pruefe_ratschen.py` | `("<spur>", "<ordner>", "scanner", "wachen_pruefung")`; der Betrag muss 1.0x Buchrisiko sein | `pruefe_ratschen.py` selbst (Zeile `1.0x?`) |
 | `.gitignore` | Vier `!`-Zeilen (`*.py`, `*.md`, `wachen.json`, `tests/*.py`), dazu `zustand.json` und `handelsjournal.csv` als SPERRE | `git check-ignore -v` UND `git add --dry-run` |
 | Spiegelung | `journal_zweitziel: Q:\\Handel_Journal\\<spur>` in der `wachen.json` | `spiegelstand.py` meldet byte-gleich |
@@ -165,6 +166,14 @@ Nachsehen, sondern durch Laufen. Diese Tabelle ist die vollstaendige Fassung:
   Spurname gleich heissen. Spuren, die ihr Buch ueber `spur_buch` fuehren,
   oeffnen ihn dort; die Pruefung akzeptiert eine Kern-Bindung nur, wenn die
   gestartete Datei ihren EIGENEN Namen uebergibt.
+- **Der Bus-Pfad braucht DREI Ebenen hoch, nicht zwei.** Von
+  `Agenten/Handel/<spur>/handeln.py` ist `dirname(dirname(abspath(__file__)))`
+  `Agenten/Handel` — der Bus liegt in `Agenten/Bus`, also eine Ebene weiter
+  (`dirname(dirname(dirname(...)))`). Ein zu kurzer Pfad endet beim Import mit
+  `FileNotFoundError: .../Agenten/Handel/Bus/ereignis.py` und der Spur-Test
+  faellt mit `errors=1` — der Fehlertext nennt den falschen Pfad, nicht die
+  Ursache. Vorbild fuer den korrekten Weg: `scanner_llm/handeln.py`
+  (`_BUS = _HANDEL.parent / "Bus"`).
 - Nach dem SPUREN-Eintrag pruefen, dass `zyklus_spur` UND `nur_fenster_fehlt`
   das `python`-Feld respektieren (`d.get("python", PYTHON)`) - vergisst man
   die zweite Stelle, laeuft der Zyklus zwar, aber die Vorschau-Frage startet
