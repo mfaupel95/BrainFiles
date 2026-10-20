@@ -53,6 +53,7 @@ for _ordner in (HIER, HANDEL / "xperp", HANDEL / "scanner"):
 okx = _lade(HANDEL / "scanner" / "okx.py", "okx_trendwende")
 xi = _lade(HANDEL / "xperp" / "indikatoren.py", "indikatoren_trendwende")
 spur_buch = _lade(HANDEL / "spur_buch.py", "spur_buch_trendwende")
+pos = _lade(HANDEL / "okx_positionierung.py", "okx_positionierung_trendwende")
 
 
 def quelle(w):
@@ -96,6 +97,25 @@ def signal(d, w):
     # Der Filter: nur gegen einen NICHT mehr steigenden grossen Trend.
     if schluesse[-1] >= float(ema[-1]):
         return None
+    # ZWEITER FILTER (20.10.2026, Auftrag Max "zuverlaessige Trendwende-Spur"):
+    # Die Positionierung muss die Wende stuetzen. Quelle sind die oeffentlichen
+    # OKX-Rubik-Reihen (Long/Short-Konten, Open Interest, Taker-Fluss) ueber
+    # okx_positionierung.py - kein Schluessel, fail-soft. Standard AUS, damit
+    # die Spur ihr Verhalten nicht still aendert; einschalten mit
+    # "positionierung_filter": true in wachen.json.
+    if w.get("positionierung_filter"):
+        ccy = str(w.get("positionierung_ccy", "BTC"))
+        u = pos.kipp_abwaerts(
+            ccy, str(w.get("kerzen_zeitrahmen", "1H")),
+            ls_abfall_min=float(w.get("positionierung_ls_abfall_min", 0.02)),
+            oi_abbau_min=float(w.get("positionierung_oi_abbau_min", 0.0)),
+            takervolumen_min=float(w.get("positionierung_taker_min", 1.0)))
+        # Keine Quelle erreichbar (quellen == 0) = kein Urteil:
+        # der Filter darf die Spur dann NICHT blockieren.
+        if u.get("quellen", 0) > 0 and not u.get("stuetzt"):
+            print("  Trendwende: Positionierung stuetzt die Wende nicht (%s)"
+                  % u, file=sys.stderr)
+            return None
     return "short"
 
 
