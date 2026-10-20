@@ -1,8 +1,4 @@
 ## Offen
-- [ ] **T-418 — fib_retrace im Dauerlauf ohne Holer (vorbestehend):**
-    - Kontext: test_lage meldet 'fib_retrace ohne Holer im Bericht'. fib_retrace ist im Dauerlauf, hat aber in lage.py keinen spur_-Eintrag. Vorbestehend (nicht durch die llm_stunde-Verdrahtung eingefuehrt).
-    - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
-    - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 - [ ] **T-417 — llm_stunde im Dauerlauf ohne Auswertung (vorbestehend):**
     - Kontext: test_verdrahtung meldet 'llm_stunde im Dauerlauf, aber in keiner Auswertung gelistet'. Keine eigene auswertung.py, nicht in auswertung_alle. Vorbestehend (nicht durch die Sammelauftrag-Verdrahtung eingefuehrt).
     - Naechster Schritt: Journal-Format von llm_stunde pruefen, dann in auswertung_alle (oder EIGENE_AUSWERTUNG) eintragen.
@@ -2038,6 +2034,10 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
 
 
 
+- [x] **T-418 — fib_retrace im Dauerlauf ohne Holer (vorbestehend):**
+    - Kontext: test_lage meldet 'fib_retrace ohne Holer im Bericht'. fib_retrace ist im Dauerlauf, hat aber in lage.py keinen spur_-Eintrag. Vorbestehend (nicht durch die llm_stunde-Verdrahtung eingefuehrt).
+    - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
+    - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 ## Erledigt
 - [x]   **T-333 - Zweigbestand aufgeraeumt, ein Grenzfall braucht eine Entscheidung**
       Kontext: `python Agenten/Werkzeuge/zweige.py` (neu, 04.10.2026) misst alle
