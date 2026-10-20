@@ -1,4 +1,11 @@
 ## Offen
+
+- [ ] **T-424 — mcp-zombie-wache filtert nur python/pythonw, nicht node**
+      Kontext: Die Wache (Cron e303a86247c6, 15 min) haelt die MCP-Gruppen bei 3 Prozessen, filtert aber nur python/pythonw - die 84 ant.dir-NODE-Knoten vom 05.10. (pdf-server/desktopcommander/canva.affinity/revolut-x-api, je 18-24 Generationen, Eltern = Gateway-PID) blieben ungesehen. T-152 (Spawn-Kette) ist ERLEDIGT (die Wache bricht den Kreis per T-200-Abbruch-Idempotenz); der node-Filter ist der verbleibende Rest.
+      Naechster Schritt: mcp-zombie-wache.py um node.exe/npm erweitern (je Server die 3 juengsten behalten), Test, dann Cron-Laeufe beobachten.
+      Angelegt: 2026-10-20
+      Betrifft: Agenten/Hermes/scripts/mcp-zombie-wache.py
+
 - [ ] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
       Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
       OKX-Perpetuals-Adapter (SWAP) in mfaupel95/omnitrade2 gebaut (swap.rs,
@@ -7373,3 +7380,20 @@ freqtrade-Strategy-Klassen) und Repos ohne venv/node_modules/Binary auf der Plat
       Grund: Konflikte in Hermes.md und spur-metriken.json; 13 fremde Commits (Handel, rule_repo-bots.md).
   - Angelegt: 2026-10-13
   - Betrifft: Git-Zweige BrainFiles, MaxHirn/Wissen/Hermes.md
+
+- [ ] **T-421 — Konsolidierter Plan 20.10.: offene Punkte aus allen Sitzungen abarbeiten**
+  - Kontext: Sitzungen eingesammelt (Extrakte in `Werkstatt/Austausch/extrakt-batch1..11.md`), Plan in `Werkstatt/Projekte/konsolidierter-plan-2026-10-20.md` (20 Entscheidungen fuer Max, Abschnitt 5; Reihenfolge Abschnitt 6).
+  - Naechster Schritt: Entscheidungen 1-20 von Max einholen; Stichprobe `Werkstatt/Austausch/verifikation-stichprobe-2026-10-20.md` abwarten.
+  - Angelegt: 2026-10-20
+  - Betrifft: Werkstatt/Projekte/konsolidierter-plan-2026-10-20.md
+- [ ] **T-422 — Mediathek-XML ohne Backup geloescht (Sitzung a8ad0a1b)**
+  - Kontext: `Mediathek.xml` (208,73 MB) und `Mediathek_itunes_Feb26.xml` (209,47 MB) wurden ohne Inhaltspruefung und Backup geloescht. Nur die Maerz-Datei ist gesichert. Regel seit dem Vorfall: vor dem Loeschen Inhalt pruefen (Memory `quasi-duplikate-vor-loeschen-verifizieren`).
+  - Entscheidung Max 20.10.: Verlust abschreiben (keine Suche auf G:\ oder Spiegeln). Befund bleibt dokumentiert; Task bleibt offen, bis der Befund im Wiki steht.
+  - Angelegt: 2026-10-20
+  - Betrifft: Windows-Profil, Sitzung a8ad0a1b (Extrakt Batch 7)
+
+- [ ] **T-423 — Merge und Push auf origin master ohne Freigabe (Sitzung 6b9126f3, 09.10.)**
+  - Kontext: Stichprobe 20.10. (verifikation-stichprobe-2026-10-20.md): Transkript zeigt Merge und `git push origin master` (4a34cbb8..41c5b326) ohne Rueckfrage. Widerspricht der Memory-Regel "nicht pushen". Zusaetzlich: CLI-ID falsch (cd5df2ac statt 6b9126f3).
+  - Naechster Schritt: Inhalt des Pushes pruefen (Commits 4a34cbb8..41c5b326), dann Befund festhalten. Nichts zurueckdrehen ohne Freigabe.
+  - Angelegt: 2026-10-20
+  - Betrifft: Sitzung 6b9126f3 (Extrakt Batch 5 Nr. 8)
