@@ -120,6 +120,16 @@ Zeilenende neu einfuegen.
   Block per Python byte-genau ersetzen (Zeilenliste bauen, `lines[i:j] =
   neu`, CRLF/LF aus dem rohen Inhalt ableiten) statt ein zweites Mal zu
   patchen — ein zweiter fuzzy-Match verschiebt die Grenzen erneut.
+- **Ein Unterordner kann Teil eines ELTERN-Git-Repos sein, kein eigener Klon.**
+`git -C Werkstatt/omnitrade rev-parse --git-dir` liefert `O:/Werkstatt/.git`
+(das Werkstatt-Sammel-Repo einer parallelen Sitzung), wenn der Ordner kein
+eigenes `.git` hat. Dann sind `git status`/`git add` im Unterordner im
+FALSCHEN Repo, und `git add -A` staged zehntausende Artefakte (daten/, logs/,
+target/) in das Sammel-Repo (gemessen: 26.639 Dateien, 3,4-GB-Bundle).
+Vor jedem `git init`/`git add` dort: `git rev-parse --git-dir` pruefen; ist
+es ein Eltern-Repo, gilt der Ordner als Teil davon, und eine Reparatur heisst
+`git init` im Ordner (eigenes `.git` anlegen), origin/upstream setzen, fetch,
+Arbeitsbaum auf origin/main zuruecksetzen — nie still im Sammel-Repo committen.
 - **Fremdarbeit im Index ist kein Fehler:** Skills/config.yaml einer
 parallelen Sitzung liegen gelassen, nur eigene Pfade committen.
 - **Komprimiertes Wissen nicht erfinden:** Titel/Befunde offener TASKS, die
