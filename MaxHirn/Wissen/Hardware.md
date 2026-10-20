@@ -1211,3 +1211,10 @@ importieren **beide** Wege `pydantic_core 2.46.4` - das `tools`-Python und
 - Q: ist das Original der Musikbibliothek (1,63 TB) und hat KEINE Kopie: `robocopy /L` gegen H: ergab 568.358 von 568.360 Dateien als fehlend. H: ist eine andere Ablage.
 - Platz fuer eine Vollkopie fehlt: G: 504 GB, H: 488 GB, J: 185 GB frei. G:, H: und I: liegen alle auf der einen Seagate (Disk 2) - Sicherung und Zweitablage haengen an derselben Platte.
 - Offen: Q: braucht eine zweite Platte (ab 2 TB) oder eine Teilsicherung. Dirty-Bit loest sich beim naechsten sauberen Auswerfen/Anmelden; sonst `chkdsk Q: /f` - jetzt gefahrlos, weil nichts zu reparieren ist.
+
+### Nachtrag 20.10.2026 - WSL-Speicherdeckel 16 GB
+
+
+### Nachtrag 20.10.2026 - WSL-Speicherdeckel 16 GB
+
+- `C:\Users\faupe\.wslconfig`: `memory=16GB` (vorher 24GB). Wirksam nach `wsl --shutdown`, am 20.10.2026 ausgefuehrt; laufende Docker-Container wurden dabei beendet.

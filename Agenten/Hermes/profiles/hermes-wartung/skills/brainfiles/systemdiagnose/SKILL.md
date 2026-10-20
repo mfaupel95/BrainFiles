@@ -182,9 +182,30 @@ Treiber zaehlen und benennen (`docker ps`, `docker system df` inkl.
 - **Grosse PowerShell-Bloecke ganz neu schreiben statt in kleinen Patches
   iterieren.** Der Patch-Mechanismus verzieht bei mehrzeiligen Bloecken gern
   die Einrueckung und schleust Tippfehler ein (`Select-ObjectObject`,
-  `nautilusutilus`, `\}:` im Regex) — und ein `continue`, das aus dem `if`
+  `nautilusutilus`, `\\}:` im Regex) — und ein `continue`, das aus dem `if`
   herausgezogen wird, bricht die Schleife nach dem ersten Element ab. Nach
   jedem Patch den Block exakt lesen und den isolierten Test laufen lassen.
+- **Ternaerer Operator `? :` nicht im Rahmen eines `[PSCustomObject]@{}`-Literals
+  oder einer `ForEach-Object`-Lambda definieren.** Die PowerShell-Parser-Version
+  auf diesem Rechner (Windows PowerShell 5.1) akzeptiert den ternaeren Operator
+  **nicht** an diesen Stellen — der Fehler meldet „Unerwartetes Token" oder
+  „Das Hashliteral war unvollstaendig" und bricht den Block ab, ohne dass die
+  betroffene Zeile im Editor auffaellig ist. Stattdessen den Regex-Ergebnis mit
+  `[regex]::Match($line, '<pattern>')` holen und im Nachgang mit `if
+  ($m.Success) { ... }` verzweigen — und **vor dem Einbetten das Skript einmal
+  mit `powershell -NoProfile -File <datei>` durchlaufen**, nicht nur auf
+  Syntax mit einem Linter vertrauen.
+- **PowerShell-Skripte schreiben, bevor sie ausgefuehrt werden — nie aus dem
+  Patch- oder Write-Workflow heraus direkt in einen `terminal`-Aufruf
+  uebergehen, ohne das Skript erst als eigenstaendige Datei vorzulegen und zu
+  pruefen.** Der `write_file`-Mechanismus kann bei Skripten, die zuvor mit
+  `read_file` (insbesondere `offset`/`limit`-Paginierung) gelesen wurden,
+  mit „stale_write_blocked" oder „Refusing to overwrite … last read with
+  offset/limit pagination" verweigern — die Datei ist auf der Platte in Ordnung,
+  das Tool blockiert den Schreibzugriff aber dennoch. Vor jedem Schreiben die
+  Datei vollstaendig mit `read_file` (ohne Pagination-Parameter) lesen.
+  Fehler dieser Art sind am ehesten durch **Neuschreiben ganzer Bloecke** zu
+  umgehen, nicht durch wiederholtes Patchversuchen dasselbe Fragment.
 
 ## Pitfalls
 
@@ -312,6 +333,45 @@ Treiber zaehlen und benennen (`docker ps`, `docker system df` inkl.
   Zeitfenster des betroffenen Laufs (`Get-WinEvent` liefert nichts) ist meist
   ein spaeterer Reboot/Shutdown (Event 1074), der den Prozess von aussen
   beendet hat — kein Fehler im Skript selbst.
+
+## App-spezifische Policy-Diagnose
+
+Wenn eine Anwendung einen Ordner/Pfad ablehnt, der auf den ersten Blick
+zugänglich ist (volle ACL, kein Schreibschutz, kein versteckter Ordner), liegt
+die Ursache oft in der **Policy der Anwendung selbst** oder in einer
+**administrativen Richtlinie (GPO/Intune/MDM)** — nicht im Windows-Dateisystem.
+
+Für Claude Desktop Workspace-Probleme (Ordner kann nicht als Workspace
+hinzugefügt werden, `WorkspaceTrustError`, `trust approval required`) →
+detailliert in `references/claude-desktop-workspace.md`.
+
+Allgemeines Muster für App-spezifische Policy-Diagnose:
+
+1. **App-eigene Logs scannen** — das Entscheidende steht in der App, nicht in
+   Windows-Ereignissen. Stichworte: `denied`, `restricted`, `policy`,
+   `trust`, `blocked`, `whitelist`.
+2. **Fehlertyp identifizieren** — eine Tabelle wie in der Referenz unterscheidet
+   App-interne Trust-Policy von administrativen Richtlinien.
+3. **Administrative Richtlinien prüfen** — `gpresult /h` (HTML-Bericht) und
+   Registry-Scans auf Policies- und App-Einträge.
+4. **Test mit Kontrollordner** — ein Ordner ohne auffällige Merkmale (`.`-Prefix,
+   schräge ACL, simuliertes Systemverzeichnis) hilft, die Ursache einzugrenzen.
+5. **ACL und Owner dokumentieren** — falls relevant, zeigt das, ob ein Dritter
+   (System, Admins, Sandbox-Identität) Einschränkungen verursacht.
+
+**Laufendes Diagnose-Skript:** `scripts/claude-workspace-diagnose.ps1` führt
+alle Schritte 1–5 automatisch aus und schreibt einen Report nach
+`./diagnose-report/`. Aufruf:
+`powershell -ExecutionPolicy Bypass -File scripts/claude-workspace-diagnose.ps1`.
+
+### PowerShell-Client-Notiz
+
+`$HOME` (und `$PID`, `$HOST`) sind in PowerShell schreibgeschützte
+Umgebungs-Token. Ein Skript, das `$HOME` als Laufzeitvariable belegen will,
+bricht mit „Die Variable … kann nicht überschrieben werden, da sie konstant
+oder schreibgeschützt ist" ab — oft mitten in einer Schleife. Für den eigenen
+Zielpfad einen anderen Namen verwenden (`$userProfile`, `$ziel`,
+`$hermesHome`). Siehe Pitfall weiter oben.
 
 ## Ereignis-IDs
 Welche ID was bedeutet (Kernel-Power 41, Volsnap 36, disk 11/153, Service

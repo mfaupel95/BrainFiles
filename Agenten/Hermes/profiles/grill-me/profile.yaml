@@ -7,6 +7,7 @@ ui_meta:
     groups:
       - Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
       - Grill Me, Awesome Systematic Trading, Agent Trade Kit, Harvard T
+      - System 2
     group: Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
 _ui_meta_revisions:
-  hermes-bots: 2
+  hermes-bots: 3

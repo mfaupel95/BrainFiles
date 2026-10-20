@@ -123,6 +123,17 @@ arbeiten mehrere Sitzungen gleichzeitig am selben Baum — ein sauberes
   der Ausloeser dieses Skills kann veraltet sein, und die richtige Antwort ist dann
   der Befund, der beim Nachmessen auffaellt (z. B. eine Sicherung, die still
   unvollstaendig ist), nicht das Nachbauen der schon erledigten Arbeit.
+- **Ein TASKS-Eintrag „fehlt" ist ein Schnappschuss, kein Auftrag.** Ein
+  Notiz-/Aufgabenpunkt, der sagt, eine Wache oder ein Werkzeug existiere nicht,
+  kann von einer parallelen Sitzung laengst umgesetzt sein — der Eintrag altert,
+  waehrend er wartet. Vor dem BAUEN den IST-Stand pruefen: registrierte
+  Hermes-Crons (`Agenten/Hermes/cron/jobs.json`) nach dem Namen durchsuchen,
+  `Agenten/Hermes/scripts/` und `Agenten/Routinen/` nach der Datei, bei
+  Aufgabenplanung `Get-ScheduledTask -TaskName 'MaxHirn-*'`. Ein T-400-artiger
+  Eintrag „Wache fehlt" fuehrte fast zum Neubau einer seit Tagen existierenden
+  und laufenden junction-wache (alle 10 min) — erst messen, dann bauen; die
+  richtige Korrektur ist dann den Eintrag schliessen/aktualisieren, nicht die
+  Arbeit duplizieren.
 
 ## Abgrenzung
 

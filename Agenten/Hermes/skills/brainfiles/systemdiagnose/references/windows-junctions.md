@@ -67,7 +67,13 @@ PowerShell `Remove-Item -LiteralPath` oder `cmd /c rmdir` nehmen.
 ## Sicherung und Wache
 Laeuft eine Kopie, deren Quelle die Junction kreuzt, waehrend sie zerstoert ist,
 sichert robocopy die Teilkopie ohne jede Meldung — die LinkType-Pruefung gehoert
-VOR jeden Backup-Start. Eine automatisierte Junction-Wache existiert nicht
-(`konfig-doktor.ps1` kennt LAUFZEIT-JUNCTION-* als KRITISCH, laeuft aber nur auf
-Ansage); Kandidat: Hermes-Cron, taeglich `LinkType` von Werkstatt/Modelle, leere
-Ausgabe = gesund.
+VOR jeden Backup-Start. Die automatisierten Junction-Wachen existieren seit
+11.10.2026: Hermes-Cron `junction-wache` (alle 10 min, no_agent, leere Ausgabe =
+gesund) prueft Werkstatt und Modelle auf Reparse-Punkt, Ziel und Erreichbarkeit
+(`Agenten/Hermes/scripts/junction-wache.py`, T-390) und hat den Verlust am
+13.10.22:12 selbst gemeldet. Bevor man eine vermeintlich fehlende Wache baut:
+`python -c "import json; [print(j['name']) for j in json.load(open('Agenten/Hermes/cron/jobs.json',encoding='utf-8'))['jobs'] if 'junction' in j['name']]"`
+der registrierten Crons pruefen — eine parallele Sitzung kann sie laengst
+angelegt haben, ein TASKS-Eintrag „Wache fehlt" ist dann veraltet. Zusaetzlich
+kennt `konfig-doktor.ps1` LAUFZEIT-JUNCTION-* als KRITISCH (laeuft nur auf
+Ansage). Meldung ist Kein Ersatz fuer Reparatur: die Wache repariert NICHT.

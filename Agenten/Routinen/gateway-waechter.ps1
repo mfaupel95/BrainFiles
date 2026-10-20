@@ -134,19 +134,26 @@ if ($alter -lt 120) {
 # ---------------------------------------------------------------------------
 # 2. Antwortet er? Control-Pipe (neue Bauart) oder Port (alte Bauart).
 # ---------------------------------------------------------------------------
+# KORREKTUR (20.10.2026): Port 9900 ist seit dem Update vom 29.09. nicht mehr der
+# Gradmesser, und die Pipe-Auflistung scheitert zeitweise. Massgeblich ist jetzt der
+# eigene Herzschlag des Gateways: gateway_state.json frisch UND ein lebender Prozess
+# dazu. Die Pipe bleibt nur als zweites Zeichen, der Port faellt weg.
 $pipe_da = $false
 try {
     $pipe_da = @([System.IO.Directory]::GetFiles('\\.\pipe\') |
                  Where-Object { $_ -match 'hermes-gateway' }).Count -gt 0
 } catch {
-    $pipe_da = $false          # Pipe-Namensraum nicht lesbar: der Port entscheidet
+    $pipe_da = $false
 }
-$port_offen = Test-NetConnection -ComputerName 127.0.0.1 -Port 9900 `
-    -WarningAction SilentlyContinue -InformationLevel Quiet
 
-if ($pipe_da -or $port_offen) {
+if ($state_frisch -and $gw.Count -gt 0) {
+    Write-Host "Gateway laeuft (Zustandsdatei frisch, Pipe: $pipe_da), kein Start"
     Melde-Ende -Marke $marke -Code 0 `
-        -Text ("Gateway laeuft (Pipe: $pipe_da, Port 9900: $port_offen), kein Start")
+        -Text "Gateway laeuft (Zustandsdatei frisch, Pipe: $pipe_da), kein Start"
+    exit 0
+}
+if ($pipe_da) {
+    Melde-Ende -Marke $marke -Code 0 -Text "Gateway laeuft (Pipe da), kein Start"
     exit 0
 }
 

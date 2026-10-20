@@ -690,7 +690,7 @@ auxiliary:
     model: inception/mercury-2.5
 display:
   compact: false
-  personality: helpful
+  personality: hype
   busy_input_mode: steer
   bell_on_complete: true
   show_reasoning: true
