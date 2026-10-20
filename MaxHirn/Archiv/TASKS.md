@@ -136,10 +136,11 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Naechster Schritt: Max genehmigt die Aenderung (Freigabe-Dialog), dann beide Dateien identisch patchen; Paar-Regel beachten (AGENTS.md == CLAUDE.md).
       Angelegt 14.10.2026 · Zuletzt 14.10.2026
       Betrifft: AGENTS.md, CLAUDE.md
-- [ ] **T-406 - repos-zentrale: 2 Tests rot wegen 15 'ausgemustert'-Manifesteintraegen ohne Ordner**
+- [x] **T-406 - repos-zentrale: 2 Tests rot wegen 15 'ausgemustert'-Manifesteintraegen ohne Ordner**
+      **Erledigt 20.10.2026.** Tests auf die 'ausgemustert'-Regel umgestellt (Entscheidung: Tests anpassen statt Manifest regenerieren, da die Eintraege bewusst archiviert sind). test_manifest.py: test_jeder_eintrag_liegt_in_seiner_wurzel ueberspringt Eintraege mit gruppe=ausgemustert (liegen in Werkstatt/Ausgemustert/*-20261007). test_fremd_grenze.py: test_alle_repos_klone_sind_fremd schliesst ausgemusterte UND eigene Werks-Repos (Rolle Projekt/Spur/Spiegel/Werkzeug oder ohne Manifest-Eintrag) aus - die sind keine fremden Klone. Beide Tests gruen (19 OK, 11 OK). Nebenbefund: test_handelstand (moondev_sniper fehlt im Laufplan) ist separat rot - vorbestehend, nicht von diesem Fix.
       Kontext: Vorbestehend seit 11.10.2026 (Manifest-Commit 2b07dbe2), NICHT durch den Umzug verursacht: 15 Eintraege (graphify, Kronos, superpowers, skills, winget-cli, santiment u.a.) tragen gruppe 'ausgemustert', ihre Ordner liegen seit 07.10. in Werkstatt/Ausgemustert/*-20261007. test_jeder_eintrag_liegt_in_seiner_wurzel_auf_der_platte und test_alle_repos_klone_sind_fremd kennen die Gruppe nicht -> rot.
       Naechster Schritt: Entscheidung - Manifest regenerieren (fuellen --anwenden + Pruning) oder Tests auf die 'ausgemustert'-Regel umstellen.
-      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Angelegt 14.10.2026 · Zuletzt 20.10.2026
       Betrifft: Agenten/Werkzeuge/repos-zentrale/repos-zentrale.json, tests/test_manifest.py, tests/test_fremd_grenze.py
 - [ ] **T-407 - Werkstatt/rule_repo-bots.md: versionieren oder loeschen?**
       Kontext: Beim Umzug der 6 losen Dateien aus Werkstatt/Repos nach Werkstatt/ landet rule_repo-bots.md im whitelisteten Bereich (!Werkstatt/*.md) und ist sichtbar untracked. Die .bak-Varianten bleiben ignoriert. Kein Code liest die Datei (nur Cache-/Lern-Bestaende).
