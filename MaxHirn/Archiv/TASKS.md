@@ -70,6 +70,24 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Max: Demo-Konto mit Perpetual-Berechtigung einrichten ODER Adapter
       auf XPERP umstellen). Probe-Erweiterungen (okx_demo_probe EEA+Symbol,
       okx_swap_demo_probe) liegen uncommitted im Worktree omnitrade-pr1.
+      XPERP-UMBAU 20.10.2026 ERLEDIGT (Auftrag Max 'ja', Commit 9ab8adf auf
+      claude/nice-pasteur-940iq0, gepusht): InstType::Futures ergaenzt
+      (as_api_str FUTURES, ctVal, is_contract_based); base_to_contracts/
+      contracts_to_base akzeptieren Futures; is_swap_id -> is_contract_id
+      (erkennt -SWAP UND _XPERP-); fetch_swap_position nutzt
+      inst.inst_type.as_api_str() statt hart SWAP; CLI is_contract_symbol +
+      inst_type_for_symbol; okx_demo_probe um OKX_REST_BASE/Symbol/Balance-
+      Liste erweitert, okx_swap_demo_probe neu. 479 Tests gruen (+3 XPERP),
+      Clippy -D warnings gruen. Probe-Erweiterungen jetzt committet.
+      BLOCKER BLEIBT KONTO-SEITIG (gemessen, definitiv): der SIGNIERTE
+      Aufruf /public/instruments?instType=FUTURES&instId=BTC-USD_UM_XPERP-
+      310404 gibt mit dem Demo-Key 51001, der UNSIGNIERTE gibt state=live -
+      das Demo-Konto sieht XPERP-Instrumente gar nicht. Weder SWAP (50124)
+      noch XPERP (51001) handelbar, nur Spot.
+      NAECHSTER SCHRITT MAX: in der OKX-Demo-UI dem Demo-Konto Perpetual-
+      Berechtigung geben (oder Demo-Key mit Derivate-Recht neu anlegen).
+      Danach: okx_swap_demo_probe BTC-USD_UM_XPERP-310404 0.0001 laufen
+      lassen, dann PR #1 auf ready for review.
       Angelegt 20.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
 
@@ -113,13 +131,12 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
     - Kontext: 4 Zweige mit ungemergten Commits (orb Mehr-Instrument, orbk Kraken->OKX, moondev OKX-Perp-Live-Pfad, phi-nvda LLM-Filter). orb handel_erlaubt=true (Auftrag Max 12.10), orbk false (Befund 14.10).
     - Naechster Schritt: je Zweig Tests gruen pruefen, dann entscheiden ob merge-wuerdig und ob Max die Live-Pfade will.
     - Angelegt 2026-10-19 · Zuletzt 2026-10-20 / Betrifft: Agenten/Handel/{orb,orbk,moondev_*,xperp}
-- [ ] **T-413 — Bedingung 4 llm_stunde: 6 Arme spiegeln nicht nach Q:**
-    - **Befund 20.10.2026 (praezisiert):** Die Spiegelung FUNKTIONIERT - die 6 Arm-wachen.json (laeufe/ema1h-{L,R}, rsi1h-{L,R}, st1h-{L,R}) tragen journal_zweitziel=Q:\Handel_Journal\llm_stunde, und ema1h-L/handelsjournal.csv ist byte-gleich mit Q: (cmp GLEICH). Das Problem ist spiegelstand.py: es listet Spuren als Verzeichnisse mit wachen.json im Handel-Ordner; die llm_stunde-Arme sind UNTERORDNER von llm_stunde/ und werden nicht als eigene Spuren erkannt. spiegelstand prueft den Haupt-Ordner llm_stunde/ (dort liegen keine Quelldateien) und meldet deshalb 'ABWEICHUNG [handelsjournal.csv, zustand.json]' - ein Fehlalarm, kein Spiegelungsfehler.
-    - Naechster Schritt: spiegelstand.py so erweitern, dass es die llm_stunde-Arme (laeufe/<variante>-<arm>/) als eigene Spuren erkennt und gegen Q:\Handel_Journal\llm_stunde prueft (alle 6 Arme spiegeln in denselben Zielordner). Betriebs-Werkzeug (Stufe 1): .bak anlegen, Aenderung testen, dann committen. Alternativ pruefen, ob die Arme in dauerlauf.SPUREN als eigene Eintraege gehoeren.
+- [x] **T-413 — Bedingung 4 llm_stunde: 6 Arme spiegeln nicht nach Q:**
+    - **Erledigt 20.10.2026.** Ursache war ein spiegelstand-Fehlalarm, nicht die Spiegelung: die Arme spiegelten immer korrekt (byte-gleich verifiziert), aber spiegelstand.py erkannte sie nicht als eigene Spuren und prueefte den leeren Haupt-Ordner. Fix (Bot jev-trader, committet als 9acaff68): neue Funktion laeufe_arme(handel, ordner) findet Unterordner <ordner>/laeufe/<arm>/ mit eigener wachen.json; stand() ersetzt die Haupt-Spur durch ihre Arme; spur_zeile() bekommt _wachen_vorgabe (unterbindet die Schatten-Suffix-Heuristik, da 'ema1h-L' keinen Unterstrich zum Kuerzen hat); Anzeige-Spalte auf 20 Zeichen verbreitert. VERIFIZIERT: alle 6 Arme erscheinen als llm_stunde/ema1h-L ... st1h-R und melden 'gleich' gegen Q:\Handel_Journal\llm_stunde; 24 Tests gruen (3 neue fuer die Arm-Erkennung). Sicherung spiegelstand.py.bak-20261020 liegt daneben. Verbleibende Abweichungen (orb, scanner, scanner_llm) sind echte, separate Divergenzen.
+    - Befund 20.10.2026 (praezisiert): Die Spiegelung FUNKTIONIERT - die 6 Arm-wachen.json (laeufe/ema1h-{L,R}, rsi1h-{L,R}, st1h-{L,R}) tragen journal_zweitziel=Q:\Handel_Journal\llm_stunde, und ema1h-L/handelsjournal.csv ist byte-gleich mit Q: (cmp GLEICH). Das Problem ist spiegelstand.py: es listet Spuren als Verzeichnisse mit wachen.json im Handel-Ordner; die llm_stunde-Arme sind UNTERORDNER von llm_stunde/ und werden nicht als eigene Spuren erkannt. spiegelstand prueft den Haupt-Ordner llm_stunde/ (dort liegen keine Quelldateien) und meldet deshalb 'ABWEICHUNG [handelsjournal.csv, zustand.json]' - ein Fehlalarm, kein Spiegelungsfehler.
     - Kontext: spiegelstand.py meldet 'llm_stunde kein Ziel (journal_zweitziel leer)'. Die Spur faehrt 6 Arme (laeufe/ema1h-{L,R}, rsi1h-{L,R}, st1h-{L,R}) ueber spur_buch, aber keine wachen.json der Arme traegt journal_zweitziel; Q:\Handel_Journal\llm_stunde wurde am 18.10.2026 angelegt, ist aber leer. Die Spur lief (letzter Arm-Lauf 18.10. 18:23), nur der Spiegel fehlt. Dazu: Haupt-wachen.json hatte kein herzschlag_max_minutes-Feld (Pruefer meldete 0 statt 180) - am 18.10.2026 ergaenzt (180, _herzschlag_regel-Vermerk).
-    - Naechster Schritt: journal_zweitziel=Q:\Handel_Journal\llm_stunde in die 6 Arm-wachen.json eintragen (oder die Arme ueber die Haupt-wachen erben lassen), dann spiegelstand.py muss 45/45 melden.
-    - Angelegt 18.10.2026 · Zuletzt 18.10.2026
-    - Betrifft: Agenten/Handel/llm_stunde/
+    - Angelegt 18.10.2026 · Zuletzt 20.10.2026
+    - Betrifft: Agenten/Handel/llm_stunde/, Agenten/Handel/spiegelstand.py
 - [ ] **T-412 — Hyperliquid Market-Making als neues Projekt**
     - Kontext: Kuru (Monad) hat zu wenig Taker-Flow fuer post-only Market-Making (0 Fills in 6h bei 4550 Orders, MON UND WETH-USDC). Jev-Kern (model.ts, decision-pipeline.ts, trader.ts) ist marktunabhaengig und bleibt. Hyperliquid = Perps-L1 mit echtem Orderbook-Volumen, offizielles Python-SDK.
     - Naechster Schritt: Hyperliquid-API erkunden (REST placeOrder, WebSocket book/trades/userFills, Info-Endpoint), dann TS-Client vs. Python-Neubau entscheiden. ERLEDIGT 15.10.: Testnet erreichbar (allMids/l2Book/meta), Orderweg REST+ed25519, TIF Alo=post-only. Entscheidung: TS-Client (Jev-Kern bleibt, nur market.ts ersetzt).
