@@ -147,11 +147,17 @@ def ziel_kurs(w, key, richtung, einstieg, range_hoehe):
             else einstieg - k * range_hoehe)
 
 
-def pruefe_ausstiege(z, w, jetzt=None):
+def pruefe_ausstiege(z, w, jetzt=None, live=False):
     """Alle offenen Positionen gegen Stop/Ziel/Zwangsschluss.
 
     Rueckgabe: Liste (position, grund) der GESCHLOSSENEN Positionen. Die
     offenen bleiben in z['positionen'], die geschlossenen werden entfernt.
+
+    Eine ECHTE Position (modus=live) gehoert der Boerse: im Papierlauf bleibt sie
+    stehen (Boersen-Stop/Ziel schuetzen sie), im Live-Lauf schliesst sie nur
+    `_exit_live` (gegen die Boerse verifiziert, reduceOnly) - bis 20.10.2026 buchte
+    der Zwangsschluss zum Sessionende sie ohne Order aus dem Buch aus, und an der
+    Boerse blieb sie ungeschuetzt offen (Muster mosaic 23.09.2026).
     """
     jetzt = jetzt or _jetzt()
     offen, geschlossen = [], []
@@ -167,18 +173,60 @@ def pruefe_ausstiege(z, w, jetzt=None):
             stop_verletzt = p["letzter_kurs"] >= p["stop"]
             ziel_verletzt = p["letzter_kurs"] <= p["ziel"]
         if jetzt >= sess.zwangsschluss(konf, tag):
-            _schliesse(p, p["letzter_kurs"], "zwangsschluss")
-            geschlossen.append((p, "zwangsschluss"))
+            grund, kurs = "zwangsschluss", p["letzter_kurs"]
         elif stop_verletzt:
-            _schliesse(p, p["stop"], "stop")
-            geschlossen.append((p, "stop"))
+            grund, kurs = "stop", p["stop"]
         elif ziel_verletzt:
-            _schliesse(p, p["ziel"], "ziel")
-            geschlossen.append((p, "ziel"))
+            grund, kurs = "ziel", p["ziel"]
         else:
             offen.append(p)
+            continue
+        if p.get("modus") == "live":
+            if not live:
+                print("  AUSSTIEG %s verschoben: echte Position - nur der Live-Lauf "
+                      "schliesst sie (Boerse schuetzt per Stop/Ziel)" % p["inst"])
+                offen.append(p)
+                continue
+            ok, grund = _exit_live(p, konf["okx"], grund)
+            if not ok:
+                p["exit_ungeklaert"] = True
+                print("  AUSSTIEG %s UNGEKLAERT - keine Marktorder, Position bleibt"
+                      % p["inst"], file=sys.stderr)
+                offen.append(p)
+                continue
+        _schliesse(p, kurs, grund)
+        geschlossen.append((p, grund))
     z["positionen"] = offen
     return geschlossen
+
+
+def _exit_live(p, paar, grund):
+    """Der ECHTE Ausstieg einer LIVE-Position an der Boerse (Muster orbk).
+
+    Rueckgabe (ok, effektiver_grund). ok=True: die Position ist an der Boerse
+    schluss - durch eine hier gestellte Marketorder (reduceOnly) oder weil
+    Stop/Ziel sie schon geschlossen hatte -, der Aufrufer darf buchen. ok=False:
+    UNGEKLAERT, nichts geschlossen. Die Boerse wird IMMER zuerst gefragt: eine
+    zweite Marketorder auf eine geschlossene Position eroeffnete einen Short.
+    """
+    try:
+        offen = any(pos.get("instId") == paar for pos in okxf.positionen())
+    except Exception as e:                                # noqa: BLE001
+        print("  Live-Ausstieg %s nicht verifizierbar (%s) - KEINE Order, "
+              "Position bleibt" % (paar, e), file=sys.stderr)
+        return False, None
+    if not offen:
+        print("  Boerse hat %s bereits geschlossen - keine Marketorder" % paar)
+        return True, "%s (boerse)" % grund
+    try:
+        okxf.markt_schliessen(paar, p.get("kontrakte") or p.get("menge"),
+                              p["richtung"])
+    except Exception as e:                                # noqa: BLE001
+        print("  Markt-Close %s fehlgeschlagen (%s) - Position bleibt, "
+              "UNGEKLAERT" % (paar, e), file=sys.stderr)
+        return False, None
+    print("  MARKT-CLOSE %s %s (Grund %s)" % (paar, p.get("kontrakte") or 0, grund))
+    return True, grund
 
 
 def _schliesse(p, kurs, grund):
@@ -443,7 +491,7 @@ def lauf(modus="papier"):
     # echt orden, wenn keine Sperre zu ist - doppelter Boden.
     live = (modus == "live") and not live_sperren(w)
 
-    for p, grund in pruefe_ausstiege(z, w, jetzt):
+    for p, grund in pruefe_ausstiege(z, w, jetzt, live=live):
         art = "LIVE" if p.get("modus") == "live" else "Papier"
         meldungen.append("AUSSTIEG (%s, %s): %s %s, Einstieg %.4f" % (
             art, grund, p["richtung"], p["inst"], p["einstieg"]))
