@@ -15,6 +15,14 @@
       Naechster Schritt: Entscheidungen C.1-C.5 von Max, dann Demo-Keys setzen
       (OKX_REGION=eea, OKX_LEVERAGE=1), Positionsantwort gegen echte Demo
       verifizieren, kleine Order 0.0001 BTC, Mainnet bleibt gesperrt.
+      ENTSCHEIDUNGEN MAX 20.10.2026 (C.1-C.5 gemaess Empfehlung): C.1
+      Liquidationsschwelle 5% als Start, mit Demo kalibrieren; C.2 Shorts
+      gesperrt bis Long im Demo belegt; C.3 erledigt - auf omnitrade keine
+      offenen PRs mehr (nur main); C.4/C.5 remote nicht vorhanden, Branches
+      waren Container-lokal (worktree-live-loop-fix, integration/main-into-pr11),
+      dort nicht loeschbar, in der Container-Session zu loeschen oder erledigt.
+      PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
+      der SWAP-Stand, erst nach Demo-Verifikation ready for review.
       Angelegt 20.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
 
