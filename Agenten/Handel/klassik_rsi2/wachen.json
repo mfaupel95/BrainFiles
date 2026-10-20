@@ -33,7 +33,7 @@
   "max_offene_positionen": 3,
   "max_pro_trade_usd": 250.0,
   "max_gesamt_usd": 750.0,
-  "stop_prozent": 4.0,
+  "stop_prozent": 2.4,
   "pflicht_stop_prozent_min": 2.4,
   "pflicht_stop_prozent_max": 8.0,
   "ziel_r_vielfaches": 1.5,
