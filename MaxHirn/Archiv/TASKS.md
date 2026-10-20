@@ -126,9 +126,10 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Angelegt 14.10.2026 · Zuletzt 14.10.2026
       Betrifft: GitHub mfaupel95/*, Agenten/Werkzeuge/repos-updaten.py
 - [ ] **T-404 - 17 leere Repos-Huellen unter Werkstatt/Repos nach Reboot raeumen**
+      **Befund 20.10.2026:** 16 der 17 Huellen sind nach dem Reboot verschwunden (leer, entfernt). Es bleibt NUR `puter` (162 MB) - und das ist KEINE leere Huelle, sondern ein AKTIVER Docker-Container-Stapel: puter, puter-mariadb, puter-s3, puter-dynamo, puter-valkey (mariadb/valkey/dynamo Up, puter/s3 im Restart-Loop). Enthaelt echte Daten (data/mariadb/mysql, data/valkey). NICHT loeschen - das waere Datenverlust eines laufenden Dienstes. TASK bleibt offen bis geklaert ist, ob der puter-Stapel gewollt ist (dann gehoert er nicht unter Werkstatt/Repos, sondern an einen eigenen Ort) oder ob er abgeschaltet werden soll.
       Kontext: Umzug 14.10.2026 (Werkstatt/Repos/* -> Werkstatt/*): die 17 von unsichtbaren CWD-Haltern gesperrten Top-Ordner wurden per Inhaltsverschiebung geleert; die leeren Huellen (agent-trade-kit, awesome-systematic-trading, basic-memory, caveman, claude-code, claudian, deepseek-harness, EasyCLIProxyAPI, everything-claude-code, fomo-robinhood-radar, gbrain, Harvard-Algorithmic-Trading-with-AI, moon-dev-ai-agents, obsidian-skills, one-skill-to-rule-them-all, openmontage, OpenTerminal) verweigern das Loeschen bis der Halter (vermutlich Dienst/Neustart) weg ist. Inhalt ist vollstaendig am Ziel (59 gueltige Repos direkt in Werkstatt).
       Naechster Schritt: nach dem naechsten Reboot 'Get-ChildItem Werkstatt/Repos' pruefen und leere Ordner entfernen.
-      Angelegt 14.10.2026 · Zuletzt 14.10.2026
+      Angelegt 14.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/Repos/*
 - [ ] **T-405 - AGENTS.md/CLAUDE.md: Fremd-Repos-Abschnitt auf neuen Stand bringen**
       Kontext: Umzug 14.10.2026 zieht die Doktrin nach (Klone direkt in Werkstatt, origin=upstream statt Fork-Mirror), die Wurzel-AGENTS.md/CLAUDE.md sind aber geschuetzte Agent-Dateien - der Patch wurde von der Freigabe abgelehnt (Timeout). Textvorschlag liegt bereit.
