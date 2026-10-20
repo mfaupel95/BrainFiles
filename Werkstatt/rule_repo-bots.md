@@ -160,6 +160,7 @@ Auftrag (Schutzregeln, Stufe 1).
 - Mods sind im Binary (nicht im Marketplace); mods/types/claude-code.d.ts ist
   generiert, nie von Hand editieren (Mod-Typen in <mod>/types/index.d.ts).
   Workflow-Sicherheit: .github/scripts/check_workflow_hardening.py (vom Root aus).
+
 ## Nachtrag 14.10.2026 (Prueflauf, CLI 2.1.287)
 
 - Kanaele: `stable` = 2.1.287 (= installiert), `latest` = 2.1.296.
@@ -238,15 +239,28 @@ Auftrag (Schutzregeln, Stufe 1).
 
 ## Repo: one-skill-to-rule-them-all (task-observer, Fremd-Repo rebelytics)
 
-- Root `O:\Werkstatt\one-skill-to-rule-them-all` (Fremd-Repo rebelytics, Stand
-  18.10.2026 nach `git pull --ff-only` auf **3.7.0**, 68 Commits). Davor lag es
-  zwei Tage hinterher, weil der Gateway tot war (siehe unten) - die Routine
-  meldete trotzdem "Upstream: keine neuen Commits". Eine solche Zeile ist nur
-  gueltig, wenn sie gemessen wurde: `git fetch upstream` und danach
-  `git rev-list --count HEAD..upstream/main` ausgeben, nicht aus dem Gedaechtnis.
-  3.7.0 bringt `references/ceilings.txt` (Zeilen-Deckel je Referenzdatei, geprueft
-  von `scripts/validate-skill-bundle.py`) - dasselbe Problem wie unser
-  Groessenlimit bei Ergaenzungen, hier als Datei statt aus dem Kopf.
+- Root `O:\Werkstatt\one-skill-to-rule-them-all` (Meta-Skill, CC BY 4.0). Remote
+  heisst `upstream`, NICHT `origin` - `git fetch origin` scheitert mit "does not
+  appear to be a git repository". Bot-Zweck: Beobachtungsverfahren (session-start-scan,
+  skill-load, weekly-review, validator) lesen und gegen unsere Skill-Pflege vergleichen,
+  Luecken benennen. Keine fremden Dateien hierher kopieren, nur Konzepte uebernehmen.
+  README-Eintraege ("Recommended by", "Listed in") pflegt der Upstream-Autor - nichts nachziehen.
+- Stand 18.10.2026 nach `git pull --ff-only` auf **3.7.0**, 68 Commits (HEAD `3463c7c`,
+  ahead 0 / behind 0, Working Tree sauber). Davor lag es zwei Tage hinterher, weil der
+  Gateway tot war (siehe unten) - die Routine meldete trotzdem "Upstream: keine neuen
+  Commits". Eine solche Zeile ist nur gueltig, wenn sie gemessen wurde: `git fetch
+  upstream` und danach `git rev-list --count HEAD..upstream/main` ausgeben, nicht aus
+  dem Gedaechtnis.
+- **Ceilings (seit 3.7.0) - das Konzept fuer unser Groessenlimit:**
+  `references/ceilings.txt`, eine Zeile je Datei
+  (`<file.md> <ceiling> [<JJJJ-MM-TT> <Grund der letzten Anhebung>]`), geprueft von
+  `scripts/validate-skill-bundle.py`. Regeln: ueber dem Ceiling wird eine Datei mit
+  >12 Load-Triggern nach Episode aufgeteilt, eine mit <=12 gekuerzt oder das Ceiling
+  mit datiertem Grund angehoben; liegt ein Ceiling >3 Zeilen ueber der Dateizahl, wird
+  es auf die Zahl gesenkt. **Das ist die Antwort auf "bei Ergaenzungen immer das
+  Groesenlimit beachten": begruendete, datierte Anhebung statt stiller Kuerzung.**
+- Guards in 3.6.0: "files present, 0 parsed = broken command" - der Scan schweigt
+  nicht still, wenn er kaputt ist.
 - Der Bot-Chat-Engpass ist der eigene Cron-Lauf `24aaa3aedd15` (30 9 * * *):
   seine Auslieferung ist ein kompletter Agenten-Turn im Bot-Chat, begrenzt durch
   `cron.bot_chat_delivery_timeout_seconds` (Default 600). Bei >600 s bricht sie ab,
