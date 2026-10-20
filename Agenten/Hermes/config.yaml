@@ -1042,6 +1042,7 @@ telemetry:
   shared_metrics:
     enabled: true
     send: false
+    offer_version: 2
 updates:
   pre_update_backup: quick
   backup_keep: 5
