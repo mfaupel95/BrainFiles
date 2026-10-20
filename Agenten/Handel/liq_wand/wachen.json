@@ -18,7 +18,7 @@
   "max_pro_trade_usd": 120.0,
   "max_gesamt_usd": 240.0,
   "pflicht_stop_prozent_min": 0.5,
-  "stop_prozent": 1.0,
+  "stop_prozent": 0.65,
   "pflicht_stop_prozent_max": 4.0,
   "ziel_r_vielfaches": 2.0,
   "_ziel": "Das Ziel ist die WAND selbst (ziel() liefert sie als Marktpunkt); das R-Vielfache greift nur, wenn keine Wand uebergeben wird.",
