@@ -55,12 +55,25 @@ SPOT_MODELL = {
 }
 
 
+def _echt_ab(kerzen):
+    """Index der ersten echten Kerze. Vorlauf-Kerzen aus ausrichten_ungleich
+    tragen Volumen None; bei gleich langen Reihen ist das Ergebnis 0."""
+    for i, k in enumerate(kerzen):
+        if k[5] is not None:
+            return i
+    return len(kerzen)
+
+
 def merkmals_matrix(kerzen_je_inst):
+    """Merkmale je (Instrument, Tag-Index). Ein junges Listing, das mit
+    ausrichten_ungleich vorn aufgefuellt wurde, rechnet nur auf seinen echten
+    Kerzen und beginnt erst MINDEST_KERZEN Tage nach seinem ersten Handelstag."""
     aus = {}
     for inst, kerzen in kerzen_je_inst.items():
         reihe = {}
-        for t in range(MINDEST_KERZEN, len(kerzen)):
-            reihe[t] = bewertung.roh_komponenten(kerzen[: t + 1])
+        ab = _echt_ab(kerzen)
+        for t in range(ab + MINDEST_KERZEN, len(kerzen)):
+            reihe[t] = bewertung.roh_komponenten(kerzen[ab: t + 1])
         aus[inst] = reihe
     return aus
 
@@ -107,6 +120,65 @@ def ausrichten(kerzen_je_inst, min_anteil=0.9):
             if tag in schnitt:
                 je_tag[tag] = k  # Doppeltag: die spaetere Kerze gewinnt
         aus[inst] = [je_tag[t] for t in sorted(je_tag)]
+    return aus, hinweise
+
+
+def ausrichten_ungleich(kerzen_je_inst, min_tage=MINDEST_KERZEN + 60):
+    """Wie ausrichten(), aber ohne die jungen Listings wegzuwerfen.
+
+    Kalender = Vereinigung aller Kalendertage der Instrumente mit mindestens
+    min_tage Tagen (kuerzere fallen mit Hinweis heraus: sie koennten nie
+    handeln). Jede Reihe wird auf diesen Kalender gebracht:
+
+    - Tage VOR dem ersten Handelstag: Vorlauf-Kerze mit Volumen None. Die
+      Merkmalsmatrix ueberspringt sie, simuliere() eroeffnet dort nie etwas.
+    - Luecken NACH dem ersten Handelstag: flache Kerze auf dem letzten Kurs,
+      Volumen 0.0 (wie ein Tag ohne Umsatz).
+
+    Alle Reihen sind danach gleich lang und tagesgleich; ausrichten() laesst
+    sie unveraendert durch. Der Backtest sieht so auch junge Listings, sobald
+    sie MINDEST_KERZEN eigene Tage haben - statt sie komplett zu verwerfen.
+
+    -> (ausgerichtet: dict inst->kerzen, hinweise: list[str])
+    """
+    if not kerzen_je_inst:
+        return {}, []
+    hinweise = []
+    je_tag = {}
+    for inst, kerzen in kerzen_je_inst.items():
+        tage = {}
+        for k in sorted(kerzen, key=lambda k: k[0]):
+            tage[k[0] // 86400000] = k  # Doppeltag: die spaetere gewinnt
+        if len(tage) < min_tage:
+            hinweise.append("%s verworfen: nur %d Tage (< %d)"
+                            % (inst, len(tage), min_tage))
+            continue
+        je_tag[inst] = tage
+    if not je_tag:
+        return {}, hinweise
+    kalender = sorted(set().union(*(t.keys() for t in je_tag.values())))
+    aus = {}
+    for inst, tage in je_tag.items():
+        erster = min(tage)
+        reihe, letzter = [], None
+        vorlauf = fuell = 0
+        for tag in kalender:
+            if tag in tage:
+                letzter = tage[tag]
+                reihe.append(letzter)
+            elif tag < erster:
+                reihe.append([tag * 86400000, 0.0, 0.0, 0.0, 0.0, None])
+                vorlauf += 1
+            else:
+                c = letzter[4]
+                reihe.append([tag * 86400000, c, c, c, c, 0.0])
+                fuell += 1
+        if vorlauf:
+            hinweise.append("%s: %d Tage Vorlauf (Listing jung)"
+                            % (inst, vorlauf))
+        if fuell:
+            hinweise.append("%s: %d Luecken flach aufgefuellt" % (inst, fuell))
+        aus[inst] = reihe
     return aus, hinweise
 
 
