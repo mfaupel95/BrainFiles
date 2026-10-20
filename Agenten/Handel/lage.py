@@ -668,6 +668,16 @@ def spur_robinhood_radar():
                            "Robinhood-Radar (Wallet-Kohorte)")
 
 
+def spur_jev_trader():
+    return _spur_indikator("jev_trader",
+                           "Jev-Trader (Block-Event-Log)")
+
+
+def spur_scanner_llm():
+    return _spur_indikator("scanner_llm",
+                           "Scanner-LLM (Marktscanner+LLM)")
+
+
 def spur_omnitrade():
     # live_faehig: die Spur HAT einen Live-Zweig (Kraken-Spot ueber den
     # gemeinsamen Kern, boerse=kraken in der wachen.json) - ohne dieses Flag
@@ -1305,6 +1315,7 @@ HOLER = (spur_xperp_positionen, spur_scanner, spur_kraken, spur_swap,
     spur_gitter, spur_kopier_familie,
     spur_macd_mtf, spur_squeeze, spur_squeeze_eth, spur_supertrend, spur_wavetrend,
     spur_trendwende_btc, spur_liq_wand, spur_robinhood_radar,
+    spur_jev_trader, spur_scanner_llm,
     spur_omnitrade, spur_omnitrade_futures,
     spur_nautilus_kraken, spur_nautilus_kraken_futures,
     spur_nautilus_emacross,

@@ -144,6 +144,8 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               # Handel/spur_buch.py, Journalform kauf/verkauf mit
               # einsatz_usd - derselbe Rechenweg.
               "robinhood_radar",
+                # SCANNER_LLM (13.10.2026): kauf/verkauf mit usd - derselbe Weg.
+                "scanner_llm",
               # OMNITRADE (30.09.2026): Buch ueber Handel/spur_buch.py,
               # Journalform kauf/verkauf mit einsatz_usd - derselbe Rechenweg.
               "omnitrade",

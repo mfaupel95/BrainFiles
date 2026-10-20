@@ -2,7 +2,7 @@
   "_zweck": "Papier-Spur jev_trader: liest das Block-Event-Log des jev-trader-Bots (Monad/Kuru), rekonstruiert die geschlossenen Roundtrips und bucht sie als handelsjournal.csv. PAPIER-FEST: kein Live-Pfad, kein Boersen-Call, handel_erlaubt bleibt false.",
   "handel_erlaubt": false,
   "_handel_erlaubt": "false = nur Papierhandel, egal welcher Schalter. Diese Spur hat KEINEN Live-Pfad im Code (handeln.py liest nur eine Datei) - sie kann gar nicht echt handeln.",
-  "quelle": "C:/Users/faupe/Documents/BrainFiles/Werkstatt/Repos/jev-trader/data/events.jsonl",
+  "quelle": "C:/Users/faupe/Documents/BrainFiles/Werkstatt/jev-trader/data/events.jsonl",
   "_quelle": "Die JSONL-Datei mit den Block-Events des jev-trader-Bots (63.255 Zeilen, ~50 MB). Jede Zeile ein Block-Event mit position/totals. Gelesen von handeln.py, nie geschrieben.",
   "herzschlag_max_minuten": 180,
   "_herzschlag": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 fuer Spuren mit Handelserlaubnis. Diese Spur ist papierfest, deshalb 180.",

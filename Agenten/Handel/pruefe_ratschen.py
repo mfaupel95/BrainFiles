@@ -67,6 +67,7 @@ SPUREN = [
     ("trendwende_btc", "trendwende_btc", "scanner", "wachen_pruefung"),
     ("liq_wand", "liq_wand", "scanner", "wachen_pruefung"),
     ("robinhood_radar", "robinhood_radar", "scanner", "wachen_pruefung"),
+    ("scanner_llm", "scanner_llm", "scanner", "wachen_pruefung"),
     # OMNITRADE (30.09.2026): spur_buch-Spur, Betrag ausdruecklich (15.00 =
     # 1.0x Buchrisiko aus 5 USD x 3 Plaetzen).
     ("omnitrade", "omnitrade", "scanner", "wachen_pruefung"),

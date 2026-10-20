@@ -410,6 +410,15 @@ SPUREN = {
     # Orderweg (Robinhood Chain hat in diesem Haus keinen).
     "robinhood_radar": {"ordner": "robinhood_radar", "waehrung": "USD",
                         "skript": "handeln.py"},
+    # JEV_TRADER (13.10.2026, parallele Sitzung): Papier-Spur ueber das
+    # Block-Event-Log des jev-trader-Bots (Monad/Kuru). Liest die Datei,
+    # bucht geschlossene Roundtrips als Journal. PAPIER-FEST, kein Live-Pfad.
+    "jev_trader": {"ordner": "jev_trader", "waehrung": "USD",
+                   "skript": "handeln.py"},
+    # SCANNER_LLM (13.10.2026, parallele Sitzung): leichter Marktscanner +
+    # LLM-Qualitaetsfilter (llm_lokal). Papier, handel_erlaubt=false.
+    "scanner_llm": {"ordner": "scanner_llm", "waehrung": "USD",
+                    "skript": "handeln.py"},
     # OMNITRADE (30.09.2026, Auftrag Max "nur noch omnitrade auf kraken handel
     # erlaubt"): spiegelt die POSITION der Rust-Laeufe in Werkstatt/omnitrade
     # (Statusdatei, gelesen ueber omnitrade_bridge.py) in ein eigenes Buch. Der

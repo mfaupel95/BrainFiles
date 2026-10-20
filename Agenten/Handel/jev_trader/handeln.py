@@ -59,6 +59,15 @@ _wp_spec_obj = _rs_spec("wachen_pruefung", _wp_datei)
 wp = _rs_mod(_wp_spec_obj)
 _wp_spec_obj.loader.exec_module(wp)
 
+_BUS = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__)))), "Bus")
+# ereignis importiert "bus" aus dem Bus-Ordner - der muss auf sys.path
+# liegen, sonst scheitert der PFAD-Ladevorgang (Hausmuster scanner).
+sys.path.insert(0, _BUS)
+_ev_spec = _rs_spec("ereignis", os.path.join(_BUS, "ereignis.py"))
+ereignis = _rs_mod(_ev_spec)
+_ev_spec.loader.exec_module(ereignis)
+
 import einlesen  # noqa: E402   (gleicher Ordner)
 
 ZUSTAND = risikostufe.datei(HIER / "zustand.json")
@@ -187,7 +196,7 @@ def _journal_stats():
     return k
 
 
-def main(argv=None):
+def _main(argv=None):
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("modus", nargs="?", default="papier",
@@ -232,6 +241,11 @@ def main(argv=None):
         wp.spiegele_journal([ZUSTAND], ziel)
     print("Journal ausser Haus: %s (%s)" % ("ok" if ok else "--", info))
     return 0
+
+
+def main(argv=None):
+    with ereignis.lauf("handel/jev_trader"):
+        return _main(argv)
 
 
 if __name__ == "__main__":
