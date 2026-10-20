@@ -39,7 +39,13 @@ PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
       Angelegt 20.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
 
-- [ ] **T-420 - Werkstatt/omnitrade-Klon: origin fehlt, upstream auf fremdes Repo umgebaut**
+- [x] **T-420 - Werkstatt/omnitrade-Klon: origin fehlt, upstream auf fremdes Repo umgebaut**
+      **Erledigt 20.10.2026.** Reparatur durchgefuehrt: git init als eigenes
+      Repo, origin=mfaupel95/omnitrade2, upstream=jackby03/omnitrade,
+      fetch, Arbeitsbaum auf origin/main (cc946be) zurueckgesetzt (78 Quell-
+      dateien, untracked daten/logs/target bleiben). Lokale Sammel-Historie
+      als Bundle gesichert (omnitrade-sammel-20261020.bundle, 3,4 GB) + 12
+      abweichende Quelldateien in scratch/omnitrade-lokal-abweichend-20261020.
       Kontext: Befund 20.10.: git -C Werkstatt/omnitrade remote -v zeigt NUR
       upstream=LLMQuant/awesome-trading-agents (fremde Codebasis), KEIN origin.
       Historie sind Sicherungs-Commits einer parallelen Sitzung (e961d976
