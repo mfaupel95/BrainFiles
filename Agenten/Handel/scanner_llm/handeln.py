@@ -68,6 +68,7 @@ risikostufe = _lade("risikostufe", _HANDEL / "risikostufe.py")
 # eigenem HIER) - fuer DIESE Spur gibt es deshalb ein eigenes sperre_zu().
 wp = _lade("scanner_wachen_pruefung", _SCANNER / "wachen_pruefung.py")
 atomar = _lade("atomar", _HANDEL / "atomar.py")
+kg = _lade("kill_gemeinsam", _HANDEL / "kill_gemeinsam.py")   # Kill-Frist/Reset/Opt-out
 pos_kennung = _lade("pos_kennung", _HANDEL / "pos_kennung.py")
 llm = _lade("llm_lokal", _HANDEL / "llm_lokal.py")
 okx = _lade("scanner_okx", _SCANNER / "okx.py")
@@ -415,17 +416,40 @@ def pruefe_einstiege(z, vs, w, live, faktor=1.0):
                 "", "", "", _pos["pos_id"])
 
 
-def flach_stellen(z, live, grund):
+def kill_verkauf_ohne_freigabe(w):
+    """Darf der KILL echte Live-Positionen auch bei geschlossener Freigabekette
+    verkaufen? Nur mit ausdruecklichem Schalter, Basisstufe und gesetztem
+    Schluessel (Muster xperp/spur_buch, Auftrag Max 14.10.2026)."""
+    return bool(w.get("kill_verkauf_ohne_freigabekette")
+                and risikostufe.live_erlaubt() and okx.schluessel_vorhanden())
+
+
+def flach_stellen(z, live, grund, notaus_live=False):
+    """Alle Positionen zum Marktkurs schliessen und buchen.
+
+    Eine Live-Position (kauf_ord_id) gehoert der Boerse: sie wird nur echt
+    verkauft, wenn `live` oder `notaus_live` gilt. Sonst bleibt sie im Buch -
+    ein Papierlauf darf sie nicht mit einer Papier-Zeile ausbuchen, an der
+    Boerse bliebe sie offen (Fall mosaic 23.09.2026). Papier-Positionen werden
+    immer gebucht; ohne Kurs bleibt jede Position stehen.
+    Rueckgabe: Zahl der im Buch verbliebenen Positionen.
+    """
     behalten = []
     z["positionen"] = z.get("positionen") or []
     for p in z["positionen"]:
+        echt = bool(p.get("kauf_ord_id"))
+        if echt and not (live or notaus_live):
+            print("  %s: Live-Position bleibt (kein Live-Lauf, kein Notausstieg)"
+                  % p["inst"])
+            behalten.append(p)
+            continue
         kurs = marktkurs(p["inst"])
         if kurs is None:
             behalten.append(p)
             continue
         _merke_extrem(p, kurs)
         erloes = p["usd"] * kurs / p["einstieg"] * (1 - GEBUEHR_PCT)
-        if live and p.get("kauf_ord_id"):
+        if echt:
             try:
                 okx.markt_verkauf(p["inst"], p["usd"] / p["einstieg"])
             except Exception as e:  # noqa: BLE001
@@ -435,11 +459,12 @@ def flach_stellen(z, live, grund):
                 continue
         print("  AUSSTIEG (%s): %s @ %.6f  G/V %+.2f USD"
               % (grund, p["inst"], kurs, erloes - p["usd"]))
-        journal(_jetzt(), "live" if live else "papier", "verkauf", p["inst"],
+        journal(_jetzt(), "live" if echt else "papier", "verkauf", p["inst"],
                 "%.6f" % kurs, "%.2f" % erloes, "", "", grund,
                 "%.4f" % p.get("mfe_pct", 0.0), "%.4f" % p.get("mae_pct", 0.0),
                 _haltetage(p), p.get("pos_id", ""))
     z["positionen"] = behalten
+    return len(behalten)
 
 
 # --- Freigabe von Hand (Handelsregeln Punkt 3) -----------------------------
@@ -613,15 +638,19 @@ def lauf(modus):
         return
 
     if s["kill"]:
-        print("- KILL-SWITCH: Ruecklauf %.2f USD >= %g -> Notausstieg + Sperre -"
-              % (s["ruecklauf_usd"], w["kill_switch_gesamt_usd"]))
-        flach_stellen(z, live, "kill_switch")
-        if sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
-            print("  wachen.json handel_erlaubt -> false")
-        schreibe_zustand(z)
-        if w.get("journal_zweitziel"):
-            _spiegeln(w)
-        return
+        status, _rueck = kg.phase(z, w, s["ruecklauf_usd"],
+                                  s.get("runden_gesamt", 0), _jetzt)
+        if status == "frei":
+            s = wp.lage(w, JOURNAL, z)          # Ruecklauf beginnt bei 0
+        else:
+            flach_stellen(z, live, kg.KILL_GRUND,
+                          notaus_live=kill_verkauf_ohne_freigabe(w))
+            if sperre_zu("kill_switch: Ruecklauf %.2f USD" % s["ruecklauf_usd"]):
+                print("  wachen.json handel_erlaubt -> false")
+            schreibe_zustand(z)
+            if w.get("journal_zweitziel"):
+                _spiegeln(w)
+            return
 
     if not s["herzschlag_frisch"]:
         print("- Herzschlag alt (%s min > %d) -> Notausstieg, kein Handel "
