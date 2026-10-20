@@ -8,15 +8,15 @@ from unittest.mock import patch
 import handeln
 import wachen_orb as wp
 
-INST = {"kraken": "ETHUSD", "zone": "UTC", "eroeffnung": "00:00",
-        "session_ende": "24:00", "spread_punkte": 0.1, "punkt_wert_usd": 1.0}
+INST = {"okx": "ETH-USDT-SWAP", "zone": "UTC", "eroeffnung": "00:00",
+        "session_ende": "24:00", "spread_punkte": 0.1, "punkt_wert_usdt": 1.0}
 W = {"letzter_einstieg_min_vor_schluss": 60,
-     "mindest_range_punkte": {"ETH_USD": 1.0},
-     "max_range_punkte":     {"ETH_USD": 40.0},
+     "mindest_range_punkte": {"ETH_USDT": 1.0},
+     "max_range_punkte":     {"ETH_USDT": 40.0},
      "ziel_modus": "r_vielfaches", "ziel_k": 1.5,
-     "ziel_punkte": {"ETH_USD": 30},
-     "instrument_aktiv": "ETH_USD",
-     "instrumente": {"ETH_USD": INST}}
+     "ziel_punkte": {"ETH_USDT": 30},
+     "instrument_aktiv": "ETH_USDT",
+     "instrumente": {"ETH_USDT": INST}}
 
 
 def _k(hh, mm, o, h, l, c):
@@ -32,12 +32,12 @@ def _range_kerzen():
 
 class TestOpeningRange(unittest.TestCase):
     def test_hoch_tief_aus_ersten_zwei(self):
-        hr = handeln.opening_range(_range_kerzen(), W, "ETH_USD", date(2026, 9, 13))
+        hr = handeln.opening_range(_range_kerzen(), W, "ETH_USDT", date(2026, 9, 13))
         self.assertEqual(hr, (100.0, 98.0))
 
     def test_none_bei_einer_kerze(self):
         self.assertIsNone(handeln.opening_range(
-            [_k(0, 0, 99, 100, 98, 99.5)], W, "ETH_USD", date(2026, 9, 13)))
+            [_k(0, 0, 99, 100, 98, 99.5)], W, "ETH_USDT", date(2026, 9, 13)))
 
 
 class TestBreakout(unittest.TestCase):
@@ -113,7 +113,7 @@ class TestAusstiege(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_stop_long(self):
-        z = {"position": {"inst": "ETH_USD", "richtung": "long",
+        z = {"position": {"inst": "ETH_USDT", "richtung": "long",
                           "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                           "tag": date(2026, 9, 13), "letzter_kurs": 97.5}}
         veraendert, grund = handeln.pruefe_ausstiege(z, W, self.JETZT)
@@ -122,14 +122,14 @@ class TestAusstiege(unittest.TestCase):
         self.assertEqual(z["position"]["ausgang"], "stop")
 
     def test_ziel_long(self):
-        z = {"position": {"inst": "ETH_USD", "richtung": "long",
+        z = {"position": {"inst": "ETH_USDT", "richtung": "long",
                           "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                           "tag": date(2026, 9, 13), "letzter_kurs": 103.5}}
         veraendert, grund = handeln.pruefe_ausstiege(z, W, self.JETZT)
         self.assertEqual(grund, "ziel")
 
     def test_offen_bleibt(self):
-        z = {"position": {"inst": "ETH_USD", "richtung": "long",
+        z = {"position": {"inst": "ETH_USDT", "richtung": "long",
                           "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                           "tag": date(2026, 9, 13), "letzter_kurs": 101.0}}
         veraendert, grund = handeln.pruefe_ausstiege(z, W, self.JETZT)
@@ -139,7 +139,7 @@ class TestAusstiege(unittest.TestCase):
     def test_tag_als_iso_string_aus_zustand(self):
         # zustand.json speichert tag als ISO-String - pruefe_ausstiege muss
         # das parsen (der Fehler vom 13.09.2026: TypeError im Dauerlauf).
-        z = {"position": {"inst": "ETH_USD", "richtung": "long",
+        z = {"position": {"inst": "ETH_USDT", "richtung": "long",
                           "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
                           "tag": "2026-09-13", "letzter_kurs": 101.0}}
         veraendert, grund = handeln.pruefe_ausstiege(z, W, self.JETZT)
@@ -165,7 +165,7 @@ class TestWiedereinstiegHemmt(unittest.TestCase):
         with tempfile.TemporaryDirectory() as w:
             zpfad = Path(w) / "zustand.json"
             jpfad = Path(w) / "handelsjournal.csv"
-            zustand = {"position": {"inst": "ETH_USD", "richtung": "long",
+            zustand = {"position": {"inst": "ETH_USDT", "richtung": "long",
                                     "einstieg": 100.4, "stop": 98.0,
                                     "ziel": 103.4, "tag": "2026-09-13",
                                     "letzter_kurs": 103.5},
