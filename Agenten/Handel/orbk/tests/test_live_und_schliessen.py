@@ -32,7 +32,7 @@ W = {"letzter_einstieg_min_vor_schluss": 60,
      "ziel_modus": "r_vielfaches", "ziel_k": 1.5,
      "instrument_aktiv": "ETH_USD",
      "handel_erlaubt": False,
-     "instrumente": {"ETH_USD": {"kraken": "ETHUSD", "punkt_wert_usd": 1.0}}}
+     "instrumente": {"ETH_USD": {"okx": "ETH-USDT-SWAP", "punkt_wert_usdt": 1.0}}}
 
 
 def _ausgabe(argv):
@@ -41,7 +41,7 @@ def _ausgabe(argv):
     with patch.object(handeln, "_wachen", lambda: W), \
             patch.object(handeln, "lauf", lambda modus="papier": []), \
             patch.object(handeln, "zeitfenster_offen", lambda: False), \
-            patch.object(handeln.kraken, "schluessel_vorhanden",
+            patch.object(handeln.okxf, "schluessel_vorhanden",
                          lambda: True):
         with redirect_stdout(puffer):
             code = handeln._main(argv)
