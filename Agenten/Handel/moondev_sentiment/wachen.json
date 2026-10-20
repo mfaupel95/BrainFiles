@@ -6,6 +6,8 @@
   "_kein_live": "Kein Live-Zweig: der Fremd-Agent handelt mit echten Schluesseln, diese Spur bucht Papier. Ein --live verweigert.",
   "_was_sie_nicht_ist": "Bewertet werden Ueberschriften, nicht Artikel. Die Ueberschrift ist das, was der Markt zuerst sieht - mehr behauptet die Spur nicht.",
   "waehrung": "USD",
+  "boerse": "okx_perp",
+  "_boerse": "OKX-Perpetuals (BTC-USDT-SWAP) ueber mosaic/okx_perp.py (spur_buch.orderweg). Live-Pfad gebaut 14.10.2026; handel_erlaubt bleibt false bis Max live schaltet.",
   "handel_erlaubt": false,
   "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "herzschlag_max_minuten": 180,

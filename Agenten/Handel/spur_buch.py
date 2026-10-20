@@ -339,6 +339,10 @@ def orderweg(w):
     # relative Name mit Unterordner, kein absoluter Pfad.
     pfad = {"okx": "mosaic/okx_spot", "kraken": "mosaic/kraken_spot",
             "kraken_futures": "omnitrade_futures/weg",
+            # OKX-Perpetuals (moondev_whale/-liquidation/-sentiment): die
+            # Buch-Spuren handeln BTC-USDT-SWAP, kein Spot. Adapter in
+            # mosaic/okx_perp.py ueber xperp/okxf.py.
+            "okx_perp": "mosaic/okx_perp",
             # signalwelle waehlt ihre Instrumente laufend aus den
             # CoinGecko-Top-Movern; 7 von 16 haben keinen OKX-Markt, und
             # dieser Weg verweigert statt auf ein anderes Paar

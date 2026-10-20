@@ -6,6 +6,8 @@
   "_llm": "Lokales Modell ueber Handel/llm_lokal.py. Seit 25.09.2026 Bonsai 2 27B (27B statt 4,3B) ueber den OpenAI-Weg 127.0.0.1:8080/v1 - llm_weg \"bonsai\", denn der PrismML-Fork bietet Ollamas /api/chat nicht. Laeuft der Dienst nicht, faellt das Urteil aus (kein Handel) - es gibt absichtlich keinen stillen Rueckfall auf ein kleineres Modell. Vertrag wortgleich zum Bot: genau drei Zeilen, Zeile 1 BUY/SELL/NOTHING, Zeile 3 Confidence: X%. Unter llm_mindest_confidence faellt das Urteil aus, eine Antwort ausserhalb des Vertrags ebenfalls.",
   "_kein_live": "Kein Live-Zweig: der Fremd-Agent handelt mit echten Schluesseln, diese Spur bucht Papier. Ein --live verweigert.",
   "waehrung": "USD",
+  "boerse": "okx_perp",
+  "_boerse": "OKX-Perpetuals (BTC-USDT-SWAP) ueber mosaic/okx_perp.py (spur_buch.orderweg). Live-Pfad gebaut 14.10.2026; handel_erlaubt bleibt false bis Max live schaltet.",
   "handel_erlaubt": false,
   "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
   "herzschlag_max_minuten": 180,
