@@ -30,7 +30,8 @@ W = {"letzter_einstieg_min_vor_schluss": 60,
      "max_range_punkte":     {"ETH_USDT": 40.0},
      "ziel_modus": "r_vielfaches", "ziel_k": 1.5,
      "ziel_punkte": {"ETH_USDT": 30},
-     "instrument_aktiv": "ETH_USDT",
+     "instrumente_aktiv": ["ETH_USDT"],
+     "max_offene_positionen": 2,
      "instrumente": {"ETH_USDT": INST}}
 
 
@@ -93,10 +94,11 @@ class TestPlatzierung(unittest.TestCase):
     Boersenfunktionen in Tests ersetzt sind."""
 
     def setUp(self):
-        self.z = {"position": {"inst": "ETH_USDT", "richtung": "long",
-                               "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
-                               "tag": "2026-09-13", "range_hoehe": 2.0,
-                               "punkt_wert_usdt": 1.0, "risiko_usdt": 10.0}}
+        self.z = {"positionen": [{"inst": "ETH_USDT", "richtung": "long",
+                                  "einstieg": 100.4, "stop": 98.0, "ziel": 103.4,
+                                  "tag": "2026-09-13", "range_hoehe": 2.0,
+                                  "punkt_wert_usdt": 1.0, "risiko_usdt": 10.0}],
+                  "letzter_lauf": None}
 
     def test_echt_false_ruft_keine_boerse(self):
         """Dry-Run: die geplante Order wird gezeigt, aber kein Exchange-Call."""
@@ -105,9 +107,9 @@ class TestPlatzierung(unittest.TestCase):
         with patch.object(handeln.okxf, "order_limit", _verboten), \
                 patch.object(handeln.okxf, "schutz_stop_setzen", _verboten):
             p = handeln.platziere_einstieg(self.z, _w_offen(),
-                                           self.z["position"], echt=False)
+                                           self.z["positionen"][0], echt=False)
         self.assertIsNone(p)
-        self.assertNotIn("ord_id", self.z["position"])
+        self.assertNotIn("ord_id", self.z["positionen"][0])
 
     def test_echt_true_ordert_einstieg_stop_ziel(self):
         aufrufe = []
@@ -120,7 +122,7 @@ class TestPlatzierung(unittest.TestCase):
         with patch.object(handeln.okxf, "order_limit", _order_limit), \
                 patch.object(handeln.okxf, "schutz_stop_setzen", _schutz):
             p = handeln.platziere_einstieg(self.z, _w_offen(),
-                                           self.z["position"], echt=True)
+                                           self.z["positionen"][0], echt=True)
         self.assertIsNotNone(p)
         self.assertEqual(aufrufe[0][:5], ("order_limit", "ETH-USDT-SWAP",
                                           "buy", 5, 100.4))
@@ -183,7 +185,7 @@ class TestLaufLivePlatziert(unittest.TestCase):
         with tempfile.TemporaryDirectory() as w:
             zpfad = Path(w) / "zustand.json"
             jpfad = Path(w) / "handelsjournal.csv"
-            zpfad.write_text(json.dumps({"position": None, "letzter_lauf": None}),
+            zpfad.write_text(json.dumps({"positionen": [], "letzter_lauf": None}),
                              encoding="utf-8")
             handeln.kerzen_quelle = lambda w_, key: _breakout_kerzen()
             try:
@@ -210,8 +212,9 @@ class TestLaufLivePlatziert(unittest.TestCase):
             self.assertEqual(aufrufe[0][0], "order_limit")
             self.assertEqual(aufrufe[1][0], "schutz")
             nachher = json.loads(zpfad.read_text(encoding="utf-8"))
-            self.assertEqual(nachher["position"]["modus"], "live")
-            self.assertEqual(nachher["position"]["ord_id"], "ORD-9")
+            self.assertEqual(len(nachher["positionen"]), 1)
+            self.assertEqual(nachher["positionen"][0]["modus"], "live")
+            self.assertEqual(nachher["positionen"][0]["ord_id"], "ORD-9")
 
 
 class TestKeinLiveEintragInPapier(unittest.TestCase):
@@ -221,7 +224,7 @@ class TestKeinLiveEintragInPapier(unittest.TestCase):
         with tempfile.TemporaryDirectory() as w:
             zpfad = Path(w) / "zustand.json"
             jpfad = Path(w) / "handelsjournal.csv"
-            zpfad.write_text(json.dumps({"position": None, "letzter_lauf": None}),
+            zpfad.write_text(json.dumps({"positionen": [], "letzter_lauf": None}),
                              encoding="utf-8")
             handeln.kerzen_quelle = lambda w_, key: _breakout_kerzen()
             try:
@@ -240,8 +243,9 @@ class TestKeinLiveEintragInPapier(unittest.TestCase):
             nachher = json.loads(zpfad.read_text(encoding="utf-8"))
             self.assertTrue(any("EINSTIEG (Papier)" in m for m in meldungen),
                             meldungen)
-            self.assertNotIn("modus", nachher["position"])
-            self.assertNotIn("ord_id", nachher["position"])
+            self.assertEqual(len(nachher["positionen"]), 1)
+            self.assertNotIn("modus", nachher["positionen"][0])
+            self.assertNotIn("ord_id", nachher["positionen"][0])
 
 
 if __name__ == "__main__":
