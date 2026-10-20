@@ -20,7 +20,9 @@ finish cleanly on its own.
 
 ## When to Use
 
-- `hermes update` exits non-zero, or the install sits N commits behind `origin/main`.
+- `hermes update` exits non-zero, or the install sits N commits behind `origin/main` — NUR auf dem
+  **dev**-Kanal ist origin/main das Update-Ziel. Auf dem **stable**-Kanal ist origin/main
+  unveroeffentlichte Entwicklung und der Rueckstand kein Update-Auftrag (siehe Procedure Schritt 2/3).
 - "Der update laeuft endlos und der Gateway antwortet nicht" / every `hermes` call burns
   minutes in "finishing an interrupted source update": the armed pending marker —
   `references/update-schwanz-endlosschleife.md`.
@@ -90,6 +92,11 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
    Lauf plus ein bis zwei Stunden zaeher Werkzeuge.
 3. **`hermes update --plan` and show the restart list** to the user before the real run. Note the
    dashboard entry: the plan promises a restart the run does not always deliver (see step 8).
+   Der Plan ist zugleich der KANAL-CHECK: druckt er `Install: git (vX.Y.Z @ <dein aktueller
+   HEAD>)`, ist der Kanal bereits aktuell und der Lauf ein No-Op — es kommt kein Code, EXIT=0
+   mit `AFTER_HEAD == BEFORE_HEAD`. Der Lauf ist trotzdem wertvoll (verifiziert Deps, raeumt
+   `__pycache__`, startet den Gateway neu), wird aber als "bereits aktuell" gemeldet, nicht als
+   "N Commits gezogen". Messgroesse ist `hermes update --plan`, nicht `rev-list --count`.
 4. **Handle holders.** Exit 2 is a holder, not a failure; the dashboard's PID pair and the TUI
    backends hold the venv. Count them with the canonical functions in
    `hermes_cli/update_cmd_windows.py`, never with a command-line substring.
@@ -103,7 +110,11 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
    `git -C <checkout> log -1 --oneline`. Exit code alone proves nothing.
 8. **Triage the exit code:** `1` = one service (usually the dashboard) was not brought back —
    `Start-ScheduledTask -TaskName 'Hermes_Dashboard'`, then HTTP 200 on port 9119.
-   `2` = holder. `0` = done.
+   `2` = holder. `0` = done. `0` mit `AFTER_HEAD == BEFORE_HEAD` = "bereits aktuell", kein Fehler.
+   Die Logzeile `Update follow-up 'gateway_restart' did not finish` ist dabei oft VERALTET:
+   der Lauf hat den Gateway selbst neu gestartet. Vor einem `hermes gateway restart` die
+   `gateway_state.json` messen — neue PID, `state=running`, Plattformen connected heisst:
+   kein Neustart noetig (Messregel "wenn noch noetig").
 9. **`hermes doctor` triage:** fix a `WAL-reset bug` line (SQLite repair section); npm advisories
    have their own fix; the photon duplicate lines are a false alarm of the shared credential
    store — measure before deleting anything.
@@ -116,6 +127,14 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
 12. **Write it down:** Wiki page (`Wiki/Betrieb/Hermes.md`, lessons under `Wiki/Lektionen/`),
     every untouched point as a task in `Archiv/TASKS.md`, then commit only your own paths and
     push. A maintenance run without that record repeats itself next month.
+    Schlaegt der Push mit `Updates were rejected` fehl (parallele Sitzung hat gepusht), NICHT
+    `git pull --rebase` nehmen — der verweigert mit ungestagten Fremdaenderungen im Baum
+    (`cannot pull with rebase: You have unstaged changes`), und der Stash ist in diesem
+    geteilten Arbeitsbaum verboten. Stattdessen `git fetch origin && git merge origin/master
+    --no-edit` (integriert die fremden Commits, fasst die uncommitteten Arbeitsbaum-Dateien
+    nicht an), dann erneut pushen. Eigenes Commit zuerst mit eigenem Index bauen
+    (`GIT_INDEX_FILE` + `read-tree HEAD` + `add <eigene Pfade>`), danach die eigenen Pfade im
+    echten Index nachziehen.
     **Und die WIRKUNG beim Nutzer abfragen.** Ein Lauf wird selten "einfach so" gefahren — er
     hatte einen Grund (hier: das Fenster-Flackern). Nach dem Lauf fragen, ob genau das weg ist,
     und die Antwort mit Datum festhalten; "momentan nicht da" ist eine Momentaufnahme, kein
