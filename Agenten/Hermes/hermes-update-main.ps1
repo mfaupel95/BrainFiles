@@ -6,10 +6,10 @@ $Log = "logs/hermes-update-main-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 $BackupZip = "$env:HERMES_HOME\backups\hermes-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss').zip"
 
 function Write-Log { param($msg); $ts = Get-Date -Format 'o'; "$ts $msg" | Out-File $Log -Append }
-function Run { param($cmd, $args); Write-Log "$cmd $args"; & $cmd $args 2>&1 | Tee-Object -Append $Log; $LASTEXITCODE }
+function Run { param($cmd, $args); Write-Log "$cmd $args"; & $cmd $args 2>&1 | Tee-Object -Append $Log }
 
 Write-Log "=== HERMES UPDATE MAIN WRAPPER ==="
-Write-Log "Backup: $BackupZip"
+Write-Log "Channel: main, Backup: $BackupZip"
 
 # 1. Pausing (stoppt neue Cron/Kanban/Gateway-Ver)
 Run "hermes" "pause --reason 'main-update-rolling-backup'"
@@ -24,14 +24,13 @@ Run "hermes" "dashboard --stop"
 # 4. Backup (FULL: Snapshot + ZIP)
 Run "hermes" "backup --force --zip-path $BackupZip"
 
-# 5. Update (Auto-Rollback bei Syntaxfehler)
-$preSha = Run "git" "-C $env:HERMES_HOME\hermes-agent rev-parse HEAD"
+# 5. Update auf main mit Auto-Rollback (Git-Rollback bei Syntaxfehler)
+$preSha = Run "git" "-C $env:HERMES_HOME\hermes-agent rev-parse HEAD" | Select-Object -Last 1
+Write-Log "Pre-update SHA: $preSha"
 Run "hermes" "update --yes --backup --set-channel main --branch main --force"
 
-# 6. Rollback (wenn Update erfolgreich war aber Zustand nicht gruend ist)
-# (Rollback-Bedingung: Doctor/Gateway/Dashboard-Pruefung hier, nicht implementiert)
-Run "hermes" "import --force $BackupZip"
-Run "git" "-C $env:HERMES_HOME\hermes-agent reset --hard $preSha"
+# 6. Post-Update Pruefung (hier nicht implementiert — Rollback erfolgt nur bei Syntaxfehler)
+Write-Log "Post-update check: manual (not implemented in this wrapper)"
 
 # 7. Restart
 Run "hermes" "gateway run"
