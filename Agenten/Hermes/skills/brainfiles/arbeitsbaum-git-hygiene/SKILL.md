@@ -583,6 +583,20 @@ Ruecknahme einer mitgefahrenen LOESCHUNG: `references/fremde-loeschung-zurueckho
 
 ## Fallen
 
+- **Ein eigener Commit kann von einer Parallelsitzung aus der Linie fallen, ohne
+  dass irgendwo `reset` steht.** Ein Commit mit eigenem Index (`GIT_INDEX_FILE` +
+  `git read-tree HEAD`) nimmt den Elternstand im Augenblick des Lesens; committet
+  eine parallele Sitzung ihre Dateien mit derselben Methode auf einem aelteren
+  Stand, kann `master` danach auf einer Linie stehen, die den eigenen Commit NICHT
+  enthaelt - `git log` zeigt beide, aber `git status` fuehrt die eigenen Dateien
+  wieder als ` M` (Arbeitsbaum gegen Index). Gemessen 21.10.2026: der eigene
+  Commit 135a4a03 fehlte nach zwei Fremd-Commits in der Linie, sein Inhalt lag
+  unversehrt im Arbeitsbaum.
+  **Pruefung nach JEDEM Commit mit eigenem Index:** `git status --porcelain --
+  <eigene pfade>` muss LEER sein (leer = der Inhalt steckt im HEAD). Ist er nicht
+  leer, denselben Inhalt einfach noch einmal committen - nicht nach dem sha suchen,
+  nicht `git log --all` befragen.
+
 - **Ein Fremd-Klon IM versionierten Baum kann eine ganze Routine stilllegen.** Ein
   verschachteltes Repo versioniert Git nie (es merkt nur einen Zeiger an); hat es
   zusaetzlich keinen Commit ausgecheckt, bricht `git add -A` mit Exitcode 128 ab
