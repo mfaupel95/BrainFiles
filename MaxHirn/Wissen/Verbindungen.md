@@ -110,6 +110,8 @@ Bestätigung im Chat ([[Handelsregeln]]). Wer auf Kraken handeln will, nimmt
 seit 02.09.2026 die dritte Spur unter `../Agenten/Handel/kraken/` — dasselbe
 Konto, aber mit `wachen.json`, Journal, Herzschlag und Freigabefenster.
 
+**Lange Kursreihen nicht über `kraken_candles` holen.** Der MCP-Server liefert nur die jüngsten N Kerzen, und ab etwa 120 bis 150 Kerzen landet die Ausgabe in einer Datei, die sich nicht öffnen lässt. Stattdessen die öffentliche API direkt per curl abrufen: `https://api.kraken.com/0/public/OHLC?pair=XBTEUR&interval=5` liefert 720 Kerzen (knapp 60 Stunden) in einem Aufruf und braucht keine Zugangsdaten. Gemessen am 21.10.2026 (Beispiel: [[Signature-Plot]]).
+
 Zugangsdaten liegen **ausschließlich** in den Windows-Benutzervariablen
 `KRAKEN_API_KEY` und `KRAKEN_API_SECRET` — nicht im Vault, nicht in der
 Claude-Konfiguration. Sie sind gesetzt (56 bzw. 88 Zeichen, geprüft 19.08.2026);
