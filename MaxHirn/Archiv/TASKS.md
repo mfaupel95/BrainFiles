@@ -122,8 +122,8 @@
       Naechster Schritt: nach dem naechsten Reboot 'Get-ChildItem Werkstatt/Repos' pruefen und leere Ordner entfernen.
       Angelegt 14.10.2026 · Zuletzt 20.10.2026
       Betrifft: Werkstatt/Repos/*
-- [ ] **T-405 - AGENTS.md/CLAUDE.md: Fremd-Repos-Abschnitt auf neuen Stand bringen**
-      **Entscheidung Max 20.10.2026: freigeben.** Patch-Versuch wurde vom Freigabe-Dialog blockiert (Timeout) - Max muss die Aenderung im Freigabe-Dialog bestaetigen, wenn er bereit ist. Neuer Text (beide Dateien identisch): "Fremd-Repos (Klone): Werkstatt/ haelt einen Klon je Repo direkt im Ordner (seit 14.10.2026, nicht mehr unter Werkstatt/Repos/) - origin = upstream (das Original), kein Fork-Mirror mehr; shallow, git fetch --unshallow fuer volle Historie. Eigene Werks-Repos (omnitrade, handel-stack, ...) liegen ebenfalls direkt in Werkstatt/."
+- [x] **T-405 - AGENTS.md/CLAUDE.md: Fremd-Repos-Abschnitt auf neuen Stand bringen**
+      **Erledigt 21.10.2026.** Beide Wurzel-Dateien identisch gepatcht (Commit b2d4f4e0), Paar-Regel verifiziert (diff leer). Neuer Text: "Fremd-Repos (Klone): Werkstatt/ haelt einen Klon je Repo direkt im Ordner (seit 14.10.2026, nicht mehr unter Werkstatt/Repos/) - origin = upstream (das Original), kein Fork-Mirror mehr; shallow, git fetch --unshallow fuer volle Historie. Eigene Werks-Repos (omnitrade, handel-stack, ...) liegen ebenfalls direkt in Werkstatt/."
       Kontext: Umzug 14.10.2026 zieht die Doktrin nach (Klone direkt in Werkstatt, origin=upstream statt Fork-Mirror), die Wurzel-AGENTS.md/CLAUDE.md sind aber geschuetzte Agent-Dateien - der Patch wurde von der Freigabe abgelehnt (Timeout). Textvorschlag liegt bereit.
       Naechster Schritt: Max genehmigt die Aenderung (Freigabe-Dialog), dann beide Dateien identisch patchen; Paar-Regel beachten (AGENTS.md == CLAUDE.md).
       Angelegt 14.10.2026 · Zuletzt 20.10.2026
