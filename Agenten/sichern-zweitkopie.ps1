@@ -90,7 +90,10 @@ $ausserhalb = @(
 # Code 11 - bei 0 fehlenden Dateien. Wildcards sind in /XD verboten
 # ('Ungueltiger Parameter #11', Code 16, ohne Kopieren), darum aufgeloest.
 $waisen = @()
-foreach ($muster in @('Agenten\Hermes\state-snapshots\.*.partial')) {
+# 21.10.2026: zusaetzlich `profiles\*\cache\terminal` - die hermes-snap-*.sh(.tmp.*) entstehen und
+# verschwinden im Betrieb (E2, Code 11 am 21.10. 21:00). Gleiche Loesung wie in sichern-ausser-haus.ps1.
+foreach ($muster in @('Agenten\Hermes\state-snapshots\.*.partial',
+                      'Agenten\Hermes\profiles\*\cache\terminal')) {
   $waisen += @(Get-ChildItem -Path (Join-Path $quelle $muster) -Directory `
                  -Force -ErrorAction SilentlyContinue |
                ForEach-Object { $_.FullName })

@@ -67,6 +67,8 @@ $fluechtig = @(
   # 21.10.2026: Chrome-Profil, `Network\Cookies` haelt ein LAUFENDER Prozess (E32, Code 11 am 19./20.10.)
   (Join-Path $quelle 'Agenten\Hermes\browser-profile')
 )
+# 21.10.2026: `.leases`-Marker laufender Hermes-Prozesse (E2, Code 11 am 21.10. 21:59) - nach NAMEN
+# ausgeschlossen wie in sichern.ps1/sichern-zweitkopie.ps1, darum unten in /XD ergaenzt.
 
 # Derselbe gesperrte Waisen-Rest wie in sichern.ps1 (03.10.2026):
 # state-snapshots\.20260930-204617-pre-update.48588.partial ist leer und
@@ -88,7 +90,7 @@ if ($waisen.Count -gt 0) {
 }
 
 robocopy $quelle $ziel /E /XJ /FFT /R:1 /W:1 /MT:16 /NP /NFL /NDL $modus `
-  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics $fluechtig $waisen /XF *.pid *.db-shm *.db-wal 'Zugaenge.md' *.env auth.json OKX_API.env nous_auth.json   # 08.10.2026: Klartext-Zugangsdaten raus - sie liegen verschluesselt in Agenten\Hermes\secrets\secrets-<datum>.7z (secrets-archivieren.ps1, AES-256). Zugaenge.md war hier als EINZIGES Skript noch nicht ausgeschlossen. *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); *.db-shm/*.db-wal sind die Begleitdateien einer LAUFENDEN SQLite-Datenbank (Agenten\Hermes\shared-state.db) - sie entstehen und verschwinden im Betrieb und eine Rohkopie waere ohnehin kein gueltiger Datenbankstand. robocopy meldete fuer beide Klassen Code 11; dasselbe gilt fuer die zwei Pfade in $fluechtig. $waisen = gesperrte Update-Reste als aufgeloeste Vollpfade
+  /XD Modelle Werkstatt .venv __pycache__ node_modules .projectatlas .git logs pending_messages terminal-output shared_metrics .leases $fluechtig $waisen /XF *.pid *.db-shm *.db-wal 'Zugaenge.md' *.env auth.json OKX_API.env nous_auth.json   # 08.10.2026: Klartext-Zugangsdaten raus - sie liegen verschluesselt in Agenten\Hermes\secrets\secrets-<datum>.7z (secrets-archivieren.ps1, AES-256). Zugaenge.md war hier als EINZIGES Skript noch nicht ausgeschlossen. *.pid sind fluechtige Sperrdateien (skillsbot.pid haelt der Bus); *.db-shm/*.db-wal sind die Begleitdateien einer LAUFENDEN SQLite-Datenbank (Agenten\Hermes\shared-state.db) - sie entstehen und verschwinden im Betrieb und eine Rohkopie waere ohnehin kein gueltiger Datenbankstand. robocopy meldete fuer beide Klassen Code 11; dasselbe gilt fuer die zwei Pfade in $fluechtig. $waisen = gesperrte Update-Reste als aufgeloeste Vollpfade
 $code = $LASTEXITCODE
 
 # Die Archivdaten liegen seit dem 07.09.2026 auf O:\Archiv, nicht mehr unter
