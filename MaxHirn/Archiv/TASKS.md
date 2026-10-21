@@ -2,45 +2,22 @@
 
 
 
-- [ ] **T-441 — omnitrade2-Live-Loop haengt still bei OKX-WS-Reset (kein Reconnect)**
-      Kontext: Am 21.10.2026 06:09 Ortszeit brach die OKX-WebSocket-Lesetask ab
-          ("Connection reset without closing handshake"). `omnitrade-exchange/src/okx/
-          client.rs:216` bricht bei `Some(Err)` hart ab, ohne Reconnect;
-          `omnitrade-cli/src/live_loop.rs:195` wartet danach in `candle_rx.recv()` — der
-          Kanal bleibt offen (ein Sender lebt weiter), `None => break` greift nie.
-          Folge: Prozess lebt (PID 29196, 3,2 s CPU, +0,015 s je 20 s), Statusdatei sagt
-          `state=running`, wird aber nur je Kerze geschrieben (status.rs:194) — seit 06:09
-          still, 5,5 h blind, 0 Orders, 0 Rejects, net_quantity 0. Gebucht war nichts:
-          Boerse ohne SOL-XPERP-Position, max-size isolated 43 Kontrakte, 46,43 USDC
-          frei — der Versuch ist finanzierbar, er kam nur nie zum Zug (4 Minuten
-          Entscheidungszeit, dann Stillstand).
-      Stand 21.10.2026 16:20: (1) ERLEDIGT — Reconnect im Rust-Client gebaut
-          (okx/client.rs: verbinde + lesen_mit_neuaufbau, Backoff 1-30 s bis zum Erfolg),
-          Trait-Rueckfallweg recent_candles (OKX ueber klines::fetch_klines) und
-          Funkstille-Waechter im Live-Loop (Puffer nach 3 Intervallen / min. 60 s einmalig
-          aus REST). 506 Tests gruen, clippy -D warnings sauber; Gegenprobe: ohne Reconnect
-          faellt der neue Verbindungstest ("nach dem Abbruch kam keine zweite Kerze").
-          Commits 22b85c3 + 1d9bb01 auf hermes/okx-reconnect-20261021, PR #4 offen,
-          Release 16:18 gebaut, Lauf PID 60584 seit 16:18 (Status frisch, 0 Orders).
-      Naechster Schritt: offen bleiben (2) soll die Wache omnitrade2-sol-wache einen
-          haengenden Loop selbst neu starten (heute meldet sie nur, FRESH_MS 10 min,
-          Zeile 411-421) und (3) das T-439-Fenster neu beginnen statt am 23.10.
-          abzurechnen — beide Entscheidungen von Max.
-      Nebenbefund: start.ps1 leitet stdout per -RedirectStandardOutput um (truncate) —
-          jeder Neustart loescht die Log-Evidenz des vorigen Laufs; es existiert genau EIN
-          WS-Fehler in EINEM Log, die Historie ist verloren.
-      Angelegt 21.10.2026 · Zuletzt 21.10.2026
-      Betrifft: Werkstatt/omnitrade-pr (okx/client.rs, live_loop.rs),
-          Agenten/Hermes/scripts/omnitrade2-sol-wache.py, Agenten/Handel/omnitrade2/
-      Nachtrag 21.10.2026 18:20 (eigene Arbeit, nach dem Reconnect): Der Lauf konnte
-          danach NICHT handeln - jeder Auftrag wurde mit 'drawdown violation: current
-          4.688.672 %' abgelehnt, weil pair_equity mit der Quote des Symbols rechnete
-          (XPERP sagt USD) und das Konto in USDC fuehrt. Fixes 669484f + abf54a6:
-          Equity in der Abrechnungswaehrung des KONTOS (/account/config settleCcy,
-          die Instrument-Angabe fuehrt in die Irre) und Buch liest die Position je
-          Kerze von der Boerse. 18:15 neu gestartet (PID 15136): Log 'Equity-Bewertung
-          in USDC', net_quantity 0.1 = Boerse, 0 Rejects, 3 neue Tests + 2 Gegenproben.
 
+
+- [ ] **T-442 — start.ps1 schneidet das Log bei jedem Start ab (Evidenzverlust)**
+      Kontext: `Start-Process -RedirectStandardOutput` legt die Logdatei bei jedem
+          Start NEU an. Am 21.10.2026 hat das die Spur des WebSocket-Resets geloescht -
+          es existierte danach genau EIN Fehlersatz in EINEM Log, und ob der Reset
+          taeglich oder alle 3,5 h auftritt, war nicht mehr feststellbar. Dieselbe
+          Stelle verschluckt auch die Zeilen eines Absturzes, wenn der Waechter neu
+          startet.
+      Naechster Schritt: Start umstellen (Zeitstempel im Dateinamen, z. B.
+          sol-xperp-20261021-1815.log, oder Anhang per `cmd /c "... >> log 2>&1"`),
+          Wache und Nachzieher lesen das JUENGSTE Log; alte Staende nach 7 Tagen
+          aufraeumen. Pruefen: zwei Starts hintereinander, danach muessen beide
+          Laeufe im Log stehen.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Handel/omnitrade2/start.ps1, Agenten/Hermes/cache/omnitrade2/
 
 - [x] **T-440 — Schutzregeln.md Z.181: veralteter `Repos/`-Verweis (T-405-Follow-up)**
       **Erledigt 21.10.2026.** Z. 181-182 auf „direkt in `Werkstatt/`, nicht mehr unter `Werkstatt/Repos/`" umgestellt (wortgleich zu T-405), Commit 8daeda4c (Fremdarbeit uebernommen). Kein aktiver `Repos/`-Verweis mehr in Schutzregeln.md.
@@ -2408,6 +2385,45 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
     - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
     - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 ## Erledigt
+- [x] **T-441 — omnitrade2-Live-Loop haengt still bei OKX-WS-Reset (kein Reconnect)**
+      Kontext: Am 21.10.2026 06:09 Ortszeit brach die OKX-WebSocket-Lesetask ab
+          ("Connection reset without closing handshake"). `omnitrade-exchange/src/okx/
+          client.rs:216` bricht bei `Some(Err)` hart ab, ohne Reconnect;
+          `omnitrade-cli/src/live_loop.rs:195` wartet danach in `candle_rx.recv()` — der
+          Kanal bleibt offen (ein Sender lebt weiter), `None => break` greift nie.
+          Folge: Prozess lebt (PID 29196, 3,2 s CPU, +0,015 s je 20 s), Statusdatei sagt
+          `state=running`, wird aber nur je Kerze geschrieben (status.rs:194) — seit 06:09
+          still, 5,5 h blind, 0 Orders, 0 Rejects, net_quantity 0. Gebucht war nichts:
+          Boerse ohne SOL-XPERP-Position, max-size isolated 43 Kontrakte, 46,43 USDC
+          frei — der Versuch ist finanzierbar, er kam nur nie zum Zug (4 Minuten
+          Entscheidungszeit, dann Stillstand).
+      Stand 21.10.2026 16:20: (1) ERLEDIGT — Reconnect im Rust-Client gebaut
+          (okx/client.rs: verbinde + lesen_mit_neuaufbau, Backoff 1-30 s bis zum Erfolg),
+          Trait-Rueckfallweg recent_candles (OKX ueber klines::fetch_klines) und
+          Funkstille-Waechter im Live-Loop (Puffer nach 3 Intervallen / min. 60 s einmalig
+          aus REST). 506 Tests gruen, clippy -D warnings sauber; Gegenprobe: ohne Reconnect
+          faellt der neue Verbindungstest ("nach dem Abbruch kam keine zweite Kerze").
+          Commits 22b85c3 + 1d9bb01 auf hermes/okx-reconnect-20261021, PR #4 offen,
+          Release 16:18 gebaut, Lauf PID 60584 seit 16:18 (Status frisch, 0 Orders).
+      Naechster Schritt: offen bleiben (2) soll die Wache omnitrade2-sol-wache einen
+          haengenden Loop selbst neu starten (heute meldet sie nur, FRESH_MS 10 min,
+          Zeile 411-421) und (3) das T-439-Fenster neu beginnen statt am 23.10.
+          abzurechnen — beide Entscheidungen von Max.
+      Nebenbefund: start.ps1 leitet stdout per -RedirectStandardOutput um (truncate) —
+          jeder Neustart loescht die Log-Evidenz des vorigen Laufs; es existiert genau EIN
+          WS-Fehler in EINEM Log, die Historie ist verloren.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Werkstatt/omnitrade-pr (okx/client.rs, live_loop.rs),
+          Agenten/Hermes/scripts/omnitrade2-sol-wache.py, Agenten/Handel/omnitrade2/
+      Nachtrag 21.10.2026 18:20 (eigene Arbeit, nach dem Reconnect): Der Lauf konnte
+          danach NICHT handeln - jeder Auftrag wurde mit 'drawdown violation: current
+          4.688.672 %' abgelehnt, weil pair_equity mit der Quote des Symbols rechnete
+          (XPERP sagt USD) und das Konto in USDC fuehrt. Fixes 669484f + abf54a6:
+          Equity in der Abrechnungswaehrung des KONTOS (/account/config settleCcy,
+          die Instrument-Angabe fuehrt in die Irre) und Buch liest die Position je
+          Kerze von der Boerse. 18:15 neu gestartet (PID 15136): Log 'Equity-Bewertung
+          in USDC', net_quantity 0.1 = Boerse, 0 Rejects, 3 neue Tests + 2 Gegenproben.
+      **Erledigt 2026-10-21.** Reconnect im OKX-Client (fremde Sitzung, 22b85c3/1d9bb01) geprueft; Equity in der Abrechnungswaehrung des Kontos + Buch folgt der Boerse (669484f/abf54a6); Wache startet einen stehenden Lauf selbst neu, 13 Tests + Gegenprobe (552335eb). Lauf PID 15136 seit 18:15, Log 'Equity-Bewertung in USDC', 0 Rejects.
 - [x] **T-434 — Sieben entfernte MCP-Server in der Hermes-Config, nicht im Manifest**
       Kontext: gitlab, airtable, deepwiki, buildkite, circleci, algolia und
           postman stehen in Agenten/Hermes/config.yaml als url+oauth-Server,
