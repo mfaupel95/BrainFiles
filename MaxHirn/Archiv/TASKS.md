@@ -2,6 +2,34 @@
 
 
 
+- [ ] **T-427 — omnitrade2 SOL-XPERP-Live-Lauf läuft (Auftrag Max 21.10.2026: „starte den loop")**
+      Kontext: PID 18108, gestartet 21.10.2026 02:49 (CEST), Binary
+      Werkstatt/omnitrade-pr (Zweig claude/xperp-base-semantik @ 895d1e7, PR #2
+      offen). Symbol SOL-USD_UM_XPERP-310404, EEA-Mainnet, Strategie
+      momentum_ema_rsi.omni (Buy: ema20>ema50 && rsi14<45; Schluss:
+      ema20<ema50 && rsi14>55), 1m-Kerzen, Menge 0.19 SOL = 19 Kontrakte ≈
+      20.3 USDC, Deckel --max-notional-usd 25 (nur eine Position moeglich),
+      1x isolated, long-only (Engine strukturell ohne Short). Freigaben als
+      Prozess-Env: OMNITRADE_MAINNET_APPROVED + OMNITRADE_PERP_MAINNET_APPROVED
+      + --confirm-real-money; Startskript Agenten/Hermes/cache/omnitrade2/
+      start-sol-xperp.ps1 (Doppelstart-Sperre).
+      Wache: Cron omnitrade2-sol-wache (754a3cef66b4, 15 min, no_agent,
+      Haus-Kanal) meldet neue Orders, abgelehnte Orders, Tot/Hang, Position
+      -25 % und Fehler; leere Ausgabe = nichts. Status:
+      Agenten/Hermes/cache/omnitrade2/sol-xperp-status.json (state,
+      candles_seen, orders_placed, net_quantity, last_error), Log
+      sol-xperp.log.
+      ACHTUNG: stop_loss() im Strategie-Skript greift im Live-Loop nicht
+      (nur Backtest-Engine) - der Exit laeuft ueber das Sell-Signal;
+      worst case = die eine ~20-USDC-Position, 1x ohne Liquidationsrisiko.
+      Naechster Schritt: Stoppen per taskkill /F /PID 18108 oder Not-Aus
+      (echo $null > $env:TEMP\omnitrade.kill; Reset: omnitrade-cli kill
+      --reset), danach Cron 754a3cef66b4 loeschen; PR #2 (Base-Semantik +
+      WS-Validator) nach Review mergen - der Loop laeuft mit genau diesem
+      Stand.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: mfaupel95/omnitrade2 (PR #2), OKX EEA Mainnet
+
 - [ ] **T-426 - OKX-Demo (EEA) gemessen: SWAP und XPERP gesperrt, nur datierte Futures handelbar**
       Kontext: 21.10.2026 gemessen. Demo-Keys funktionieren NUR mit dem
       Header x-simulated-trading: 1 gegen eea.okx.com - ohne ihn antwortet
