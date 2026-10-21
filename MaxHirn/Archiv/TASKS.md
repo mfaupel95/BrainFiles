@@ -27,6 +27,15 @@
       --reset), danach Cron 754a3cef66b4 loeschen; PR #2 (Base-Semantik +
       WS-Validator) nach Review mergen - der Loop laeuft mit genau diesem
       Stand.
+      PR #2 GEMERGT 21.10.2026 01:30 UTC (280261b, squash) - der in dieser
+      Aufgabe geforderte naechste Schritt. Der laufende Loop (PID 18108)
+      nutzt aber noch das ALTE Binary (omnitrade-pr @ 495137f/895d1e7) und
+      kann den Fix NICHT anwenden: 0 Orders, 12 abgelehnt, letzter Fehler
+      'Symbol SOL-USD_UM_XPERP-310404 laesst sich nicht in Basis/Quote
+      zerlegen' - genau der von PR #2 behobene Einheitsmismatch. Net
+      quantity 0, kein Geld in Gefahr. Damit der Fix wirkt, muss der Loop
+      mit dem neuen Stand neu gebaut+gestartet werden (Entscheidung Max,
+      Live-Prozess).
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: mfaupel95/omnitrade2 (PR #2), OKX EEA Mainnet
 
