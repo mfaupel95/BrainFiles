@@ -241,6 +241,10 @@ and read the `info: stats:` line to see the counts before picking a number.
 - **Using `[unverified]` as an escape hatch.** It marks the rare claim that
   genuinely cannot be sourced; if most sentences carry it, the task needed more
   retrieval, not more markers.
+- **Citing a source outside the tree you can read.** A report or notes path in a
+  sibling repository is not evidence for a claim about this one. Search the
+  path before citing it; when it is absent, say which repository the claim
+  belongs to — that re-frames the discussion instead of adding a citation.
 - **Hand-editing the Sources block.** Use `render --replace-in <draft>`; slicing
   the file yourself risks a stale or duplicated block that `verify` then flags.
 

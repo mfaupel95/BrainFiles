@@ -48,6 +48,10 @@ Supporting assets: `scripts/gh-env.sh` + `scripts/git-credential-token.py`
   `gh pr view --comments` — decisions live in threads, not titles.
 - Sweep for duplicates before creating anything:
   `gh pr list --search` / `gh issue list --search`.
+- For Max's private repositories, do not merge a PR that adds or triggers
+  GitHub Actions while Actions billing is unresolved or unacceptable to him.
+  Leave it open and report the actual billing/check gate; never change repo
+  visibility or billing settings as a workaround without his explicit request.
 
 ## Verification
 

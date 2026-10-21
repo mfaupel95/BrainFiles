@@ -26,6 +26,7 @@ Aufruf (aus Agenten/Handel, venv mit numpy/pandas, also `.venv`):
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 
@@ -37,6 +38,60 @@ import strategie_metrics as sm       # noqa: E402
 
 # Weniger Runden sind ein Befund, keine Messung (Hausregel, wie MIN_RUNDEN).
 MIN_RUNDEN = 8
+
+# Kelly-Anzeige (Wiki/Handel, Notiz Wissen/Kelly-Positionsgroesse.md). Reine
+# Anzeige: kein Wert aus diesem Teil fliesst in Einsatz, Hebel, Stop oder Freigabe.
+KELLY_Z = 1.96   # 95 % nach Wald fuer die untere Grenze von p
+KELLY_HALB = 0.5  # Halb-Kelly nur als Vergleichsgroesse, nie als Einsatz
+
+
+def kelly_zeile(spur):
+    """Kelly-Anteil f* = p - q/b einer Spur, mit b aus dem Profit-Faktor.
+
+    PF = p*W / (q*L) gibt b = W/L = PF*q/p. Das ist eine Naeherung, kein
+    gemessenes Verhaeltnis. Die untere Grenze nimmt p - 1,96*Standardfehler
+    und rechnet dieselbe Formel. Unter MIN_RUNDEN nur Befund.
+    """
+    b = bericht(spur)
+    if not b:
+        return None
+    e = b["e"]
+    n, p, pf = e["trades"], e["winrate"], e["profit_factor"]
+    if n < MIN_RUNDEN or not (0 < p < 1) or not math.isfinite(pf) or pf <= 0:
+        return {"spur": spur, "n": n, "befund": True}
+    q = 1 - p
+    wl = pf * q / p                     # b = W/L aus dem Profit-Faktor
+    lo = max(0.0, p - KELLY_Z * math.sqrt(p * q / n))
+    return {"spur": spur, "n": n, "befund": False, "p": p, "b": wl,
+            "breakeven": 1 / (1 + wl),
+            "voll": p - q / wl,
+            "halb": KELLY_HALB * (p - q / wl),
+            "grenze": lo - (1 - lo) / wl}
+
+
+def kelly_main(spuren):
+    print("Kelly-Anzeige (NUR Befund, wirkt auf keinen Einsatz). Quelle: Runden,"
+          " wie oben.\n")
+    print("%-22s %4s %7s %6s %9s %8s %8s %9s" % (
+        "Spur", "n", "p", "b(PF)", "Break-ev", "f* voll", "f* halb",
+        "f* Grenze"))
+    for spur in spuren:
+        k = kelly_zeile(spur)
+        if k is None:
+            continue
+        if k["befund"]:
+            print("%-22s %4d  Befund, keine Messung (unter %d Runden oder ohne Verlust)"
+                  % (spur, k["n"], MIN_RUNDEN))
+            continue
+        print("%-22s %4d %6.1f%% %6.2f %8.1f%% %8.3f %8.3f %9.3f" % (
+            spur, k["n"], 100 * k["p"], k["b"], 100 * k["breakeven"],
+            k["voll"], k["halb"], k["grenze"]))
+    print("\nf* = Anteil des Kapitals, den Kelly je Runde setzte. Ein Wert ueber")
+    print("dem festen Risiko je Position (Stop 5-12 %) ist ein Hinweis auf")
+    print("Schaetzfehler, kein Auftrag. f* Grenze <= 0 heisst: der Vorteil ist")
+    print("an der Konfidenzgrenze nicht belegt. Nichts davon aendert Einsatz,")
+    print("Hebel, Stop oder handel_erlaubt.")
+    return 0
 
 
 def _stop_aus_wachen(spur):
@@ -138,6 +193,9 @@ def bericht(spur, nur_gueltige=True):
 
 
 def main(argv):
+    if "--kelly" in argv:
+        rest = [s for s in argv if s != "--kelly"]
+        return kelly_main(rest or [s for s in a.SPUREN if a.runden_fuer(s)])
     spuren = argv or [s for s in a.SPUREN if a.runden_fuer(s)]
     print("Kennzahlen aus den Runden (Quelle: auswertung_alle.runden_fuer)\n")
     print("%-22s %4s %4s %7s %9s %6s %7s %9s  %s"

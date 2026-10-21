@@ -80,6 +80,13 @@ cd C:/Users/faupe/Documents/BrainFiles/Werkstatt/omnitrade-pr \
   Scheitert der Build, zeigt die Pipeline trotzdem `exit 0`. Entweder ohne Pipe
   fahren (die Ausgabe wird ohnehin gekuerzt gespeichert) oder `PIPESTATUS[0]` lesen;
   sonst wird ein roter Build als gruen gemeldet.
+- **Ein `can't find crate …` / `crate <x> required to be available in rlib format`
+  direkt nach einem abgebrochenen oder ZWEITEN cargo-Lauf im selben Aufruf ist ein
+  Artefakt-Zustand**, kein fehlendes Paket: denselben Befehl EINMAL allein
+  wiederholen, bevor Abhaengigkeiten untersucht werden (belegt: nach dem
+  Wiederholen gruen). Zwei cargo-Aufrufe hintereinander in einer Kommandozeile
+  (etwa einmal zum Greppen und einmal zum Zaehlen) sind die haeufigste Ursache —
+  einer reicht, Ausgabe in eine Datei, dann mehrfach daraus lesen.
 - Ein voller `cargo test --workspace` laeuft **laenger als 600 s** (Vorderrunden-Grenze
   des `terminal`-Werkzeugs) — als Hintergrundprozess mit `notify_on_complete` starten
   und auf das Ergebnis warten, nicht in der Vorderrunde.
@@ -124,7 +131,27 @@ powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name
 `Werkstatt/omnitrade/target-live/release/`, die den Build in
 `Werkstatt/omnitrade-pr/target/release/` **nicht** sperren — nur der aus dem
 Arbeitsklon tut es. Den sperrenden Prozess zuerst beenden (nach Freigabe durch Max:
-`taskkill /F /PID <pid>`, einfacher Slash) und danach mit `Get-CimInstance` nachzaehlen.
+`Stop-Process -Id <pid> -Force` bzw. `taskkill /F /PID <pid>`, einfacher Slash) und
+danach mit `Get-CimInstance` nachzaehlen.
+
+**Besser als beenden: die laufende `.exe` WEGBENENNEN, dann bauen.** Windows erlaubt
+das Umbenennen einer laufenden Datei — der Prozess haelt weiter sein Handle, der
+Zielpfad ist frei:
+
+```bash
+ALT="target/release/omnitrade-cli.exe.alt-$(date +%Y%m%d-%H%M%S)"
+mv target/release/omnitrade-cli.exe "$ALT"
+cargo build --release || { mv "$ALT" target/release/omnitrade-cli.exe; exit 1; }
+ls -la target/release/omnitrade-cli.exe      # liegt die neue Bin da?
+target/release/omnitrade-cli.exe --version   # laeuft sie?
+```
+
+Damit bleibt ein Live-Lauf unangetastet (keine Position wird ihrem Prozess
+entzogen), und der Neustart ist eine eigene, bewusste Entscheidung: der alte
+Prozess laeuft weiter aus der umbenannten Datei, die neue Bin wird erst beim
+naechsten Start wirksam. Scheitert der Bau, die alte Datei ZURUECKbenennen — sonst
+fehlt dem Startskript sein Ziel. Das Beenden des Prozesses ist erst noetig, wenn
+der Lauf auf den neuen Stand muss.
 
 **Vor dem Beenden die KOMMANDOZEILE lesen, nicht nur den Pfad.** Denselben Loophaken
 kann eine PARALLELE Sitzung gestartet haben — mit anderen Parametern (Menge, Deckel,
@@ -153,6 +180,25 @@ derselbe Test gruen und die Debug-Ausgabe leer.
 
 Fuer die Diagnose kurzzeitig `eprintln!("DEBUG …")` in den Test setzen und mit
 `--nocapture` laufen; die Zeile danach wieder entfernen.
+
+## 6b. `cargo fmt` nur auf den EIGENEN Dateien
+
+- **`cargo fmt --all -- --check` meldet in diesem Baum auch fremde Dateien.**
+  Parallele Sitzungen committen Test-Helfer ohne Formatierung; wer daraufhin
+  `cargo fmt --all` faehrt, formatiert fremde Arbeit um und erzeugt einen Diff,
+  den niemand bestellt hat (gemessen: `args.rs`, `live_loop/risk_tests.rs` - Dateien,
+  die man nur zufaellig liest).
+- Richtig: nur die selbst geaenderten Dateien formatieren und pruefen -
+  `rustfmt --edition 2021 <datei>` bzw. `rustfmt --edition 2021 --check <datei>`.
+  Vor dem Commit `git diff --numstat`: nur die eigenen Dateien, Zeilenzahl
+  ungefaehr die eigene Aenderung. Eine Datei, die fmt nur wegen ihres Alters
+  umgestellt hat, zuruecknehmen (`git checkout -- <fremde datei>`).
+- **rustfmt schreibt LF in eine CRLF-Datei.** Danach warnt `git add` "LF will be
+  replaced by CRLF", und ein byte-genauer Patch-Anker mit `\r\n` trifft nicht mehr -
+  das Zeilenende nach dem Formatieren neu bestimmen (`b.count(b'\r\n')`), nicht aus
+  der Erinnerung annehmen.
+- Pfade unter dem Junction `Werkstatt/` erscheinen in fmt-Ausgaben als
+  `\\?\O:\...`; der Dateiname steht hinter dem letzten Backslash.
 
 ## Verification
 

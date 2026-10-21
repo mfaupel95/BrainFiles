@@ -2,7 +2,7 @@ description: 'Moon-Dev-Repo-Bot: betreut Werkstatt/<repo>'
 description_auto: false
 ui_meta:
   hermes-bots:
-    sectionId: sec-mvgqbvqt-tnilh
-    sectionName: AI TRADING
+    sectionId: sec-mvgqdzcf-eh2ae
+    sectionName: Backtesting
 _ui_meta_revisions:
-  hermes-bots: 1
+  hermes-bots: 2

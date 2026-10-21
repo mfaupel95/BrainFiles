@@ -594,11 +594,30 @@ def lauf(modus):
                  w.get("handel_erlaubt")))
         return
 
+    # Der Scan gehoert zu DIESEM Lauf. Die scanner-Spur hat dafuer eine eigene
+    # geplante Aufgabe (MaxHirn-Marktscanner, 07:30); diese Spur hatte keine,
+    # und ohne Bericht stieg sie still aus: JEDER Zyklus endete mit "Kein
+    # Bericht" und Rueckgabe 0, im Leitstand sah sie wie eine laufende Spur aus,
+    # hatte aber nie ein Buch (Befund 21.10.2026). Deshalb: fehlt der Bericht
+    # oder ist er von einem frueheren Tag, wird er hier erzeugt. Der Scan ist
+    # oeffentlich (kein Schluessel) und laeuft nur einmal je Tag.
     bpfad = scan.BERICHTE / "neuester.json"
-    if not bpfad.exists():
-        print("Kein Bericht. Erst scan.py laufen lassen.")
-        return
-    bericht = json.loads(bpfad.read_text("utf-8"))
+    heute = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    bericht = None
+    if bpfad.exists():
+        try:
+            bericht = json.loads(bpfad.read_text("utf-8"))
+        except ValueError as e:                             # halbe/kaputte Datei
+            print("Bericht unlesbar (%s) - scan laeuft neu." % e)
+            bericht = None
+    if not isinstance(bericht, dict) or bericht.get("datum") != heute:
+        alt = (bericht or {}).get("datum") or "keiner"
+        print("Bericht %s, heute ist %s - scan laeuft jetzt." % (alt, heute))
+        bericht = scan.lauf()
+        if not isinstance(bericht, dict) or bericht.get("datum") != heute:
+            # Ein Bericht von gestern darf nicht als frisch durchgehen: dann
+            # wuerde mit alten Kursen gehandelt, ohne dass es auffaellt.
+            raise RuntimeError("scan lieferte keinen Bericht fuer %s" % heute)
 
     s = wp.lage(w, JOURNAL, z)
 

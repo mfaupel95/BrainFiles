@@ -1132,3 +1132,21 @@ dagegen:
 
 Merksatz: Ein Paper mit positivem Momentum-Ergebnis ist eine Vorlage für eine
 Messung, kein Nachweis. Gebühr und Walk-forward entscheiden, nicht die Abstract-Zahl.
+
+## Stichprobe vor dem Preisfix ist ungültig (2026-10-21)
+
+Der Scanner zeigte am 29.09. 125 Runden mit 84,8 % Trefferquote. Diese Runden stammen
+aus der Zeit vor dem Preisfix am 02.10.2026 22:23 UTC: Der Einstieg war der
+Vortagesberichtspreis. `strategie_kennzahlen.py` schließt sie seither aus, danach bleiben
+für den Scanner 5 gültige Runden.
+
+**Warum:** Eine Kennzahl, die vor einer Korrektur gemessen wurde, kann eine Größenregel
+begründen, die nach dem Fix nicht mehr trägt. Die Kelly-Rechnung in
+[[Kelly-Positionsgroesse]] hat das zunächst übersehen.
+
+**Regel:** Vor jeder Größen- oder Freigabe-Entscheidung die Runden aus
+`auswertung_alle.runden_fuer()` nehmen, nicht alte Auswertungen. Die Kelly-Anzeige
+läuft seit 2026-10-21 in der Wochen-Routine (`handel-wachen.ps1`) und ändert nichts an
+Einsatz oder Freigabe.
+
+**Stand:** 2026-10-21

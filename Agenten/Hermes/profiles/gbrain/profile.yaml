@@ -5,5 +5,7 @@ ui_meta:
     groups:
       - Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
     group: Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
+    sectionId: sec-mvical33-vm6qx
+    sectionName: DATA
 _ui_meta_revisions:
-  hermes-bots: 1
+  hermes-bots: 3

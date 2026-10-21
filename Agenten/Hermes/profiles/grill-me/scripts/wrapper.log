@@ -1,0 +1,14 @@
+[Mi, 21. Okt 2026 23:16:55] Using python: /c/Users/faupe/Documents/BrainFiles/Agenten/Hermes/installs/bf59c98340a908a8/environments/b84713cbd02542089090760cbc7696ae/venv/Scripts/python
+DEBUG: API_KEY set: True, length: 36
+DEBUG: SECRET_KEY set: True, length: 32
+DEBUG: PASSPHRASE set: True, length: 8
+[2026-10-21 23:16:56] Ticker IOST-USDT-SWAP: last=0.0014817
+DEBUG: ts=2026-10-21T21:16:56.220Z
+DEBUG: message='2026-10-21T21:16:56.220ZGET/api/v5/account/positions'
+DEBUG: signature=p474l/9e1LjpLpQNfuKJ0DzgJWm9GoL9d+GWamiI6jw=
+[2026-10-21 23:16:56] No open position for IOST-USDT-SWAP
+[Mi, 21. Okt 2026 23:17:12] Using python: /c/Users/faupe/Documents/BrainFiles/Agenten/Hermes/tools/python-3.14.7+20260901-win32-x64/python
+Traceback (most recent call last):
+  File "C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\profiles\grill-me\scripts/okx_monitor.py", line 6, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'

@@ -63,6 +63,12 @@ try {
   Push-Location (Join-Path $wurzel 'Handel')
   & $py 'backtest_urteile.py' *>&1 | Add-Content $log -Encoding UTF8
   Pop-Location
+  # Kelly-Anzeige (Notiz Wissen/Kelly-Positionsgroesse.md): nur Befund ins Log.
+  # Wirkt auf keinen Einsatz, keine Freigabe und keine Sperre.
+  "" | Add-Content $log -Encoding UTF8
+  Push-Location (Join-Path $wurzel 'Handel')
+  & $py 'strategie_kennzahlen.py' '--kelly' *>&1 | Add-Content $log -Encoding UTF8
+  Pop-Location
   "ENDE ok nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
   Melde-Ende -Marke $marke -Code 0                                      # neu
 } catch {

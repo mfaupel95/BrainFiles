@@ -200,9 +200,59 @@ nichts, erzeugt von einem Programm. Nach jedem Austausch
 `count("def <name>(") == 1` pruefen und `compile()` **vor** dem Schreiben
 laufen lassen.
 
+## Die Abrechnungswaehrung steht im KONTO, nicht im Instrument
+
+Drei Stellen fuehren eine Waehrung, und nur eine davon gilt fuer Geldbetraege:
+
+| Quelle | Beispiel | gilt fuer |
+|---|---|---|
+| Symbol | `SOL-USD_UM_XPERP-310404` → `USD` | Namensgebung |
+| Instrument `/public/instruments` → `settleCcy` | `USD` | NICHT die Equity-Waehrung |
+| Konto `/account/config` → `settleCcy` | `USDC` | Kontostand, Margin, Equity |
+
+Wer die Equity (oder das Guthaben-Tor) aus der Symbol-Quote rechnet, sucht im
+Kontostand eine Waehrung, die es dort nicht gibt: der Bestand ist 0, die Equity
+faellt auf den unrealisierten PnL zusammen, und ein Drawdown-Limit
+`(peak - equity) / peak` schiesst in Millionenprozent, sobald der PnL einmal
+positiv und danach negativ war. Folge: **jeder** Auftrag wird vom eigenen Guard
+abgelehnt, waehrend der Status gesund aussieht (`state: running`,
+`orders_placed` > 0).
+
+Diagnose in drei Zeilen:
+
+1. Die Ablehnung nennt den GUARD, nicht die Boerse → die Zahl stammt aus eigenem Code.
+2. Die Prozentzahl aendert sich mit dem PnL, aber nicht mit dem Kontostand → falsche Bezugsgroesse.
+3. `/account/config` lesen: `settleCcy` ist die Waehrung, in der abgerechnet wird.
+
+**Regel: jede Equity-/Margin-Rechnung nimmt die Kontowaehrung.** Reihenfolge:
+Quote des Symbols → Kontowaehrung → Instrument-Waehrung, und die erste Waehrung
+MIT BESTAND gewinnt; sonst bleibt es bei der Quote (fail open zur alten Regel,
+nie fail closed auf eine Null).
+
+**Testfalle dazu:** ein Drawdown-Guard steigt bei `peak <= 0` frueh aus. Ein Test,
+der nur prueft "Auftrag wird nicht abgelehnt", ist deshalb auch mit falscher
+Waehrung gruen (Equity 0 → Guard steigt aus, bevor er rechnet). Der Fall braucht
+einen POSITIVEN Peak VOR dem Verlust (erst +0,05 uPnL, dann -0,50) — erst dann
+wird der Test rot, wenn die Waehrung fehlt.
+
+## `liqPx: "0"` ist ein Preis, kein fehlender Wert
+
+OKX meldet bei einer Position ohne Liquidationsmarke (1x isolated) `liqPx: "0"`
+— "es kann keine Liquidation geben", nicht "unbekannt". Ein Parser, der jeden
+Wert `<= 0` in `None` uebersetzt, macht daraus "nicht lesbar", und eine
+fail-closed-Regel (`Liquidationspreis oder Markpreis fehlt bei offener Position`)
+verweigert dann **jedes Nachlegen** — die zweite Stufe eines Plans ist
+unerreichbar, obwohl der Markpreis vorliegt.
+
+**Regel: bei Preisfeldern LEER (`""`, unbekannt, fail closed) von `0` (Aussage
+der Boerse) unterscheiden.** Die Distanz zu 0 ist 100 %, die Sperre greift also
+nicht — das ist die richtige Aussage fuer eine Position, die nicht liquidiert
+werden kann. Gegenprobe: eine echte Liquidationsmarke 2 % unter dem Mark muss
+weiter gesperrt bleiben.
+
 ## Merksatz
 
-> Ein Befund ueber null ist nie ein Befund ueber „nichts“. Er ist fast immer
+> Ein Befund ueber null ist nie ein Befund ueber "nichts".
 > „an der falschen Stelle gelesen“ — und das sieht aus wie eine Tatsache ueber
 > die Welt, nicht wie ein Fehler im Programm.
 >

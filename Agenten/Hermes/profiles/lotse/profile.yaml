@@ -1,2 +1,9 @@
 name: lotse
-description: "Verteil-Bot: versteht Max' Auftrag, sucht den passenden Bot oder Skill und delegiert die Aufgabe."
+description: "Verteil-Bot: versteht Max' Auftrag, sucht den passenden Bot oder Skill
+  und delegiert die Aufgabe."
+ui_meta:
+  hermes-bots:
+    sectionId: sec-mvgqeww2-28l2v
+    sectionName: System
+_ui_meta_revisions:
+  hermes-bots: 1

@@ -1,0 +1,195 @@
+import os
+import time
+import hmac
+import base64
+import json
+import requests
+from datetime import datetime, timezone
+
+def load_env():
+    env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    if k not in os.environ:
+                        os.environ[k] = v
+
+load_env()
+
+
+# OKX API credentials from environment
+API_KEY = os.getenv('OKX_API_KEY')
+SECRET_KEY = os.getenv('OKX_SECRET_KEY')
+PASSPHRASE = os.getenv('OKX_PASSPHRASE')
+if not all([API_KEY, SECRET_KEY, PASSPHRASE]):
+    raise EnvironmentError('OKX API credentials not set in environment variables')
+
+BASE_URL = os.getenv('OKX_REST_BASE', 'https://www.okx.com')
+RECV_WINDOW = '5000'
+print(f"DEBUG: API_KEY set: {bool(API_KEY)}, length: {len(API_KEY) if API_KEY else 0}")
+print(f"DEBUG: SECRET_KEY set: {bool(SECRET_KEY)}, length: {len(SECRET_KEY) if SECRET_KEY else 0}")
+print(f"DEBUG: PASSPHRASE set: {bool(PASSPHRASE)}, length: {len(PASSPHRASE) if PASSPHRASE else 0}")
+
+def timestamp():
+    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+
+def sign_request(method, request_path, body=''):
+    ts = timestamp()
+    message = ts + method.upper() + request_path + body
+    mac = hmac.new(SECRET_KEY.encode('utf-8'), message.encode('utf-8'), digestmod='sha256')
+    d = mac.digest()
+    signature = base64.b64encode(d).decode()
+    print(f"DEBUG: ts={ts}")
+    print(f"DEBUG: message='{message}'")
+    print(f"DEBUG: signature={signature}")
+    headers = {
+        'OK-ACCESS-KEY': API_KEY,
+        'OK-ACCESS-SIGN': signature,
+        'OK-ACCESS-TIMESTAMP': ts,
+        'OK-ACCESS-PASSPHRASE': PASSPHRASE,
+        'Content-Type': 'application/json',
+        'x-simulated-trading': '0'  # set to '1' for demo trading
+    }
+    return headers, ts
+def get_ticker(inst_id):
+    endpoint = '/api/v5/market/ticker'
+    params = {'instId': inst_id}
+    resp = requests.get(BASE_URL + endpoint, params=params)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get('code') != '0':
+        raise Exception(f'OKX error: {data}')
+    return data['data'][0]
+
+def get_positions():
+    endpoint = '/api/v5/account/positions'
+    headers, _ = sign_request('GET', endpoint)
+    resp = requests.get(BASE_URL + endpoint, headers=headers)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get('code') != '0':
+        raise Exception(f'OKX error: {data}')
+    return data["data"]
+def get_algo_orders(inst_id, ord_type='conditional'):
+    endpoint = '/api/v5/trade/order-algo-conditional'
+    params = {'instId': inst_id}
+    headers, _ = sign_request('GET', endpoint)
+    resp = requests.get(BASE_URL + endpoint, headers=headers, params=params)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get('code') != '0':
+        raise Exception(f'OKX error: {data}')
+    return data["data"]
+def place_algo_order(inst_id, td_mode, side, sz, trigger_price, order_price=None):
+    """
+    Place a conditional (stop loss) order.
+    side: 'buy' or 'sell' (opposite to position)
+    trigger_price: price that triggers the order
+    order_price: if None, market order; else limit price
+    """
+    endpoint = '/api/v5/trade/order-algo-conditional'
+    body = {
+        'instId': inst_id,
+        'tdMode': td_mode,
+        'side': side,
+        'ordType': 'conditional',
+        'sz': str(sz),
+        'triggerPrice': str(trigger_price),
+        'triggerPriceType': 'last',
+    }
+    if order_price is not None:
+        body['orderPrice'] = str(order_price)
+    body_json = json.dumps(body)
+    headers, _ = sign_request('POST', endpoint, body_json)
+    resp = requests.post(BASE_URL + endpoint, headers=headers, data=body_json)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get('code') != '0':
+        raise Exception(f'OKX error placing algo: {data}')
+    return data['data']
+
+def cancel_algo_order(inst_id, ord_id):
+    endpoint = '/api/v5/trade/cancel-algo-order'
+    body = {
+        'instId': inst_id,
+        'ordId': ord_id
+    }
+    body_json = json.dumps(body)
+    headers, _ = sign_request('POST', endpoint, body_json)
+    resp = requests.post(BASE_URL + endpoint, headers=headers, data=body_json)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get('code') != '0':
+        raise Exception(f'OKX error canceling algo: {data}')
+    return data['data']
+
+def main():
+    inst_id = 'IOST-USDT-SWAP'  # perpetual swap; adjust if needed
+    log_file = os.path.join(os.getenv('HOME', ''), 'BrainFiles', 'Agenten', 'Hermes', 'profiles', 'grill-me', 'cron', 'output', 'okx_monitor.log')
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    
+    def log(msg):
+        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        line = f'[{ts}] {msg}'
+        print(line)
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(line + '\n')
+    
+    try:
+        # Get ticker
+        ticker = get_ticker(inst_id)
+        last_price = float(ticker['last'])
+        log(f'Ticker {inst_id}: last={last_price}')
+        
+        # Get positions
+        positions = get_positions()
+        position = None
+        for pos in positions:
+            if pos['instId'] == inst_id and float(pos['pos']) != 0:
+                position = pos
+                break
+        
+        if not position:
+            log(f'No open position for {inst_id}')
+            return
+        
+        pos_size = float(position['pos'])  # positive for long, negative for short
+        entry_price = float(position['avgPx'])
+        unrealized_pnl = float(position['uplRatio'])  # ratio, e.g., 0.02 for 2%
+        log(f'Position: size={pos_size}, entry={entry_price}, unrealized PnL ratio={unrealized_pnl:.4%}')
+        
+        # If profit >= 2%, adjust stop loss to break-even (or trail)
+        if unrealized_pnl >= 0.02:
+            log('Profit >= 2%, adjusting stop loss to break-even')
+            # Determine side for stop loss order (opposite of position)
+            sl_side = 'sell' if pos_size > 0 else 'buy'
+            sl_size = abs(pos_size)
+            # Trigger price = entry price (break-even)
+            trigger_price = entry_price
+            # Cancel existing algo orders for this instrument
+            try:
+                algo_orders = get_algo_orders(inst_id)
+                for algo in algo_orders:
+                    # optionally filter only those attached to this position
+                    cancel_algo_order(inst_id, algo['ordId'])
+                    log(f"Canceled existing algo order {algo['ordId']}")
+            except Exception as e:
+                log(f'Error fetching/canceling algo orders: {e}')
+            # Place new stop loss order (market when triggered)
+            try:
+                result = place_algo_order(inst_id, 'cross', sl_side, sl_size, trigger_price)
+                log(f'Placed stop loss order: {result}')
+            except Exception as e:
+                log(f'Error placing stop loss order: {e}')
+        else:
+            log('Profit below threshold, no action')
+    except Exception as e:
+        log(f'Error: {e}')
+
+if __name__ == '__main__':
+    main()

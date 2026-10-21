@@ -1,0 +1,11 @@
+--- scripts/okx_monitor.py
++++ scripts/okx_monitor.py
+@@ -110,7 +110,7 @@
+     except Exception as e:
+-        log(f'Error: {e}')
++        log(f'Error: {repr(e)}')
+ 
+ if __name__ == '__main__':
+     main()
+ 
+ 

@@ -157,7 +157,7 @@ Confirm:
 
 Before calling a GUI change green, search adjacent tests for contracts it can shift: tab order/count, shortcut indices, rendered labels, and fake constructors/factories matching changed signatures. Run the whole feature test prefix, not just the new tests; stale integration expectations often fail only in neighboring test modules.
 
-**Test fails?** Fix the code, not the test.
+**Test fails?** Compare the assertion with the intended contract before editing either side. If implementation regressed against unchanged behavior, fix the code. If behavior or configuration intentionally changed, update only the stale expectation to assert the new contract; prefer observable behavior and configuration invariants over private helper names, source-text fragments, or hard-coded model labels. Never weaken or remove a test just to get green.
 
 **Other tests fail?** Fix regressions now.
 
@@ -353,6 +353,11 @@ Never fix bugs without a test.
 - **Testing mock behavior instead of real behavior** — mocks should verify interactions, not replace the system under test
 - **Testing implementation details** — test behavior/results, not internal method calls
 - **Happy path only** — always test edge cases, errors, and boundaries
+- **Main-tree-only test fixtures** — rerun the suite from a clean worktree or
+  checkout. If tests rely on untracked executables or runtime state available
+  only in the main tree, inject temporary fixtures and mock the process/network
+  boundary instead of copying local artifacts; this keeps CI reproducible and
+  separates harness gaps from production regressions.
 - **Brittle tests** — tests should verify behavior, not structure; refactoring shouldn't break them
 
 ## Final Rule

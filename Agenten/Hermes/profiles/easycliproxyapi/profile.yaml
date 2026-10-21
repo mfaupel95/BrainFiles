@@ -7,5 +7,7 @@ ui_meta:
     groups:
       - System
     group: System
+    sectionId: sec-mvi9d2ej-7typq
+    sectionName: APPS
 _ui_meta_revisions:
-  hermes-bots: 1
+  hermes-bots: 2

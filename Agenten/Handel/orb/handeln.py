@@ -113,6 +113,11 @@ def lade_zustand():
     if z is not None:
         z.setdefault("modus", "papier")
         z.setdefault("positionen", [])
+        # Altstand: ein Tag als Zeichenkette statt {Instrument: Tag}. Der
+        # Schreiber (`setdefault(...)[key] = ...`) wuerde darauf mit TypeError
+        # enden, das Merkzeichen je Instrument ist hier die richtige Form.
+        if not isinstance(z.get("zuletzt_gehandelt_tag", {}), dict):
+            z["zuletzt_gehandelt_tag"] = {}
         return z
     return {"positionen": [], "letzter_lauf": None, "modus": "papier"}
 
@@ -291,6 +296,15 @@ def _schon_gehandelt_heute(z, inst, tag):
         if p.get("inst") == inst and p.get("tag") == heute:
             return True
     ztl = z.get("zuletzt_gehandelt_tag") or {}
+    if not isinstance(ztl, dict):
+        # ALTSTAND: bis zum Umbau auf "ein Trade je Instrument" stand hier EINE
+        # Zeichenkette (der Tag). Ein `ztl.get()` darauf wirft AttributeError,
+        # und weil dieser Aufruf im Einstiegsweg liegt, endete JEDER Zyklus
+        # mit Rueckgabe 1 - orb schrieb 37 h keinen Zustand mehr, waehrend das
+        # Freigabefenster offen war (gemessen 21.10.2026). Ein Tag, der nicht
+        # mehr heute ist, ist ohnehin verfallen; ist er heute, gilt der Handel
+        # als getan - beides ist in der Zeichenkette enthalten.
+        return ztl == heute
     return ztl.get(inst) == heute
 
 

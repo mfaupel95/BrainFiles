@@ -1,3 +1,9 @@
 description: 'tradememory-protocol-Repo-Bot: Handelsgedaechtnis als MCP-Server mit
   REST-API und Dashboard (Port 8000) in Werkstatt/tradememory-protocol'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    sectionId: sec-mvgqdzcf-eh2ae
+    sectionName: Backtesting
+_ui_meta_revisions:
+  hermes-bots: 1

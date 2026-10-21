@@ -25,6 +25,12 @@ eine `.cmd`, Zustand ueber eine PID-Datei, Wache als Hermes-Cron `no_agent`.
   zuerst pruefen, ob der Lauf in der vom Waechter durchlaufenen
   REGISTRIERUNG steht (nur dort wird wiederbelebt); die Regeln dazu in
   `references/waechter-registrierung-und-pfade.md`
+- **Der Prozess lebt, aber seine Verbindung ist tot** (WebSocket/Socket/Pipe
+  brach ab, keine neuen Ereignisse, Statusdatei steht auf `running`) — Rezept
+  fuer Fix, Beweis und Ausrollen in
+  `references/verbindungsabbruch-ueberleben.md`
+- **Die Wache meldet, aber niemand handelt** — dann muss sie selbst neu starten:
+  `references/wache-startet-selbst-neu.md`
 - **„geh die Cronjobs durch und repariere sie“ / „welche Wache laeuft noch“** —
   Triagerunde ueber `cron/jobs.json`, `cron/executions.db` und
   `cron_incidents`. Vollstaendige Runde mit den Fehlerklassen (roter Job,

@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [Coding-Agent, Codex, OpenAI, Code-Review, Refactoring]
-    related_skills: [claude-code, hermes-agent]
+    related_skills: ["claude-code", "hermes-agent", "local-ai-provider-routing"]
 ---
 
 # Codex CLI
@@ -37,6 +37,11 @@ OAuth from `~/.hermes/auth.json` after `hermes auth add openai-codex`. For the
 standalone Codex CLI, a valid CLI OAuth session may live under
 `~/.codex/auth.json`; do not treat a missing `OPENAI_API_KEY` alone as proof
 that Codex auth is missing.
+
+To point the Codex CLI (or the ChatGPT desktop app sharing its config.toml) at a
+different provider or proxy, and to check whether a proxy can serve this client at
+all: skill `local-ai-provider-routing` — wire format first, config change with a
+backup, and a real `codex exec` run as the proof.
 
 ## One-Shot Tasks
 

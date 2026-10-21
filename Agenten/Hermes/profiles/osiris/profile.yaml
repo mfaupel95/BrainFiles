@@ -1,3 +1,9 @@
 description: 'OSINT-Lagedashboard (Next.js): Luftfahrt, Seefahrt, Satelliten, Braende,
   Erdbeben, News, CVEs - laeuft ohne Schluessel'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    sectionId: sec-mvi9d2ej-7typq
+    sectionName: APPS
+_ui_meta_revisions:
+  hermes-bots: 1

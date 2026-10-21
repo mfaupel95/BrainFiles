@@ -1,5 +1,5 @@
 {
-  "stand": "2026-10-11",
+  "stand": "2026-10-21",
   "repos": [
     {
       "ordner": "acoustid-index",
@@ -112,6 +112,12 @@
       "notiz": "🔥 Firecrawl CLI"
     },
     {
+      "ordner": "CLIProxyAPI",
+      "rolle": "Projekt",
+      "art": "container",
+      "notiz": "CLI Proxy API"
+    },
+    {
       "ordner": "codex",
       "rolle": "Werkzeug",
       "art": "node",
@@ -124,6 +130,16 @@
       "ordner": "context7",
       "art": "node",
       "notiz": "Context7 Platform - Up-to-date Code Docs For Any Prompt"
+    },
+    {
+      "ordner": "CryptoPredictions",
+      "art": "python",
+      "notiz": "CryptoPredictions"
+    },
+    {
+      "ordner": "CryptoTrade",
+      "art": "python",
+      "notiz": "CryptoTrade: A Reflective LLM-based Agent to Guide Zero-shot Cryptocurrency Trading"
     },
     {
       "ordner": "data-mcp",
@@ -189,10 +205,21 @@
       "anleitung": "Kein eigenstaendiges Programm: das Repo ist npm-Paket (src/) UND Claude-Code-Plugin (hooks/, .claude-plugin/). Einbau in Claude Code: 'claude plugin marketplace add tamaratran/fast-jev-compaction' und 'claude plugin install fast-jev-compaction@fast-jev-compaction'. Die Demo braucht einen Schluessel (TYPESAFE_API_KEY)."
     },
     {
+      "ordner": "financial-graphical-models",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "live report*"
+    },
+    {
       "ordner": "financial-services",
       "rolle": "Doku",
       "art": "doku",
       "notiz": "Claude for Financial Services"
+    },
+    {
+      "ordner": "FinRL",
+      "art": "python",
+      "notiz": "FinRL: Financial Reinforcement Learning → FinRL-X"
     },
     {
       "ordner": "fintool",
@@ -261,6 +288,11 @@
       ]
     },
     {
+      "ordner": "freqtrade",
+      "art": "python",
+      "notiz": "Freqtrade is a free and open source crypto trading bot written in Python. It is designed to support all major exchanges and be controlled via Telegram or webUI. It contains backtesting, plotting and m"
+    },
+    {
       "ordner": "gbrain",
       "rolle": "Werkzeug",
       "art": "node",
@@ -284,6 +316,11 @@
       "bot": "grill-me",
       "gruppe": "doku",
       "notiz": "Skill grill-me (RobMitt): interviewt dich zu Plan/Design bis zum gemeinsamen Verstaendnis - kein Startprogramm, der Bot grillt auf Anforderung"
+    },
+    {
+      "ordner": "handel-stack",
+      "art": "python",
+      "notiz": "DCA-Simulator"
     },
     {
       "ordner": "Harvard-Algorithmic-Trading-with-AI",
@@ -563,6 +600,21 @@
       "notiz": "🚀 OmniRoute — The Free AI Gateway"
     },
     {
+      "ordner": "omnitrade",
+      "art": "rust",
+      "notiz": "omnitrade"
+    },
+    {
+      "ordner": "omnitrade2",
+      "art": "rust",
+      "notiz": "omnitrade"
+    },
+    {
+      "ordner": "OmniTrade3",
+      "art": "python",
+      "notiz": "Omnitrade"
+    },
+    {
       "ordner": "onchainos-skills",
       "art": "node",
       "notiz": "onchainos Skills"
@@ -698,6 +750,16 @@
       ]
     },
     {
+      "ordner": "PolyStrata",
+      "art": "python",
+      "notiz": "English** · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt-BR.md)"
+    },
+    {
+      "ordner": "project-nomad",
+      "art": "node",
+      "notiz": "Project NOMAD"
+    },
+    {
       "ordner": "ProjectAtlas",
       "rolle": "Werkzeug",
       "art": "rust",
@@ -721,6 +783,11 @@
       "ordner": "puter",
       "art": "node",
       "notiz": "·"
+    },
+    {
+      "ordner": "RLTrader",
+      "art": "python",
+      "notiz": "RLTrader — The Predecessor to [TensorTrade](https://github.com/notadamking/tensortrade)"
     },
     {
       "ordner": "robinhood-fomo-kronos-arena",
@@ -769,6 +836,12 @@
       "ordner": "skillspector",
       "art": "python+node",
       "notiz": "SkillSpector"
+    },
+    {
+      "ordner": "StrataTrading",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "Strata"
     },
     {
       "ordner": "superpowers",
@@ -838,9 +911,24 @@
       "notiz": "Trail of Bits Skills Marketplace"
     },
     {
+      "ordner": "trigora",
+      "art": "node+rust",
+      "notiz": "·"
+    },
+    {
       "ordner": "unsloth",
       "art": "python",
       "notiz": "Unsloth is the first desktop app to run and train models."
+    },
+    {
+      "ordner": "vestige",
+      "art": "node+rust",
+      "notiz": "Vestige"
+    },
+    {
+      "ordner": "Whallm",
+      "art": "python",
+      "notiz": "Whallm"
     },
     {
       "ordner": "winget-cli",
@@ -895,6 +983,13 @@
     },
     {
       "ordner": "Altlasten",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "Altlasten-Dokumente-Musikdedupe-2026-10-13",
       "wurzel": "werkstatt",
       "rolle": "Ablage",
       "art": "ablage",
@@ -991,6 +1086,33 @@
       ]
     },
     {
+      "ordner": "jev-trader-hl-livetest",
+      "wurzel": "werkstatt",
+      "art": "node",
+      "notiz": "jev-trader"
+    },
+    {
+      "ordner": "KryptoBrief",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "Logs",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "nautilus-venv",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
       "ordner": "OmniRoute",
       "wurzel": "werkstatt",
       "rolle": "Projekt",
@@ -1020,6 +1142,18 @@
       "beleg_frist_s": 120
     },
     {
+      "ordner": "omnitrade-pr",
+      "wurzel": "werkstatt",
+      "art": "rust",
+      "notiz": "omnitrade"
+    },
+    {
+      "ordner": "omnitrade_max",
+      "wurzel": "werkstatt",
+      "art": "rust",
+      "notiz": "omnitrade"
+    },
+    {
       "ordner": "privkopie",
       "wurzel": "werkstatt",
       "art": "python",
@@ -1032,6 +1166,13 @@
       "art": "ablage",
       "gruppe": "doku",
       "notiz": "Protokolle abgeschlossener Laeufe"
+    },
+    {
+      "ordner": "Repos",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
     },
     {
       "ordner": "repos-verschoben-aus-skills",
@@ -1095,6 +1236,13 @@
       "art": "doku",
       "gruppe": "doku",
       "notiz": "Security-Skills fuer Claude Code - Nachschlagewerk, kein Programm"
+    },
+    {
+      "ordner": "Sicherung-eingebettet-2026-10-11",
+      "wurzel": "werkstatt",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "doku"
     },
     {
       "ordner": "Sitzungen",
@@ -1173,6 +1321,20 @@
       "notiz": "Quantisierte Modellgewichte (GGUF)"
     },
     {
+      "ordner": "handel",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "hermes-plans-wurzel-2026-10-20",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
       "ordner": "HuggingFace",
       "wurzel": "projekte",
       "rolle": "Ablage",
@@ -1187,6 +1349,13 @@
       "art": "doku",
       "gruppe": "doku",
       "notiz": "Anlage-Unterlagen; eigene LIESMICH.md im Ordner"
+    },
+    {
+      "ordner": "leitstand",
+      "wurzel": "projekte",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "leitstand"
     },
     {
       "ordner": "NautilusTrader",
@@ -1213,12 +1382,46 @@
       "notiz": "Skill-Automatik: Zuarbeit und Skripte"
     },
     {
+      "ordner": "superpowers-wurzel-2026-10-20",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "telemetry-wurzel-2026-10-20",
+      "wurzel": "projekte",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": ".telemetry/"
+    },
+    {
+      "ordner": "Tools-Wurzel-2026-10-20",
+      "wurzel": "projekte",
+      "art": "python",
+      "notiz": "python"
+    },
+    {
+      "ordner": "Tracking",
+      "wurzel": "projekte",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
       "ordner": "workflow",
       "wurzel": "projekte",
       "rolle": "Ablage",
       "art": "ablage",
       "gruppe": "doku",
       "notiz": "Arbeitsablaeufe der Projekte"
+    },
+    {
+      "ordner": "zielstruktur-c-o-20260930",
+      "wurzel": "projekte",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "doku"
     },
     {
       "ordner": "5m_historie_holen.py",
@@ -1261,6 +1464,19 @@
       "anleitung": "DCA-Agent: verwaltet mehrere Sparplaene und bereitet Kaeufe VOR - der Vorbereitungsschritt ist die Grenze zur Order."
     },
     {
+      "ordner": "agent_entscheide.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "LLM-Entscheidungs-Programm zur automatischen Freigabe von Handels-Spuren"
+    },
+    {
+      "ordner": "agenten",
+      "wurzel": "handel",
+      "art": "python",
+      "notiz": "PreToolUse-Hook fuer `Bash` des handels-disponent - Erlaubnisliste statt Selbstverpflichtung."
+    },
+    {
       "ordner": "ai4trade",
       "wurzel": "handel",
       "rolle": "Werkzeug",
@@ -1284,6 +1500,13 @@
         "--help"
       ],
       "venv_pflicht": true
+    },
+    {
+      "ordner": "aufgaben",
+      "wurzel": "handel",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "doku"
     },
     {
       "ordner": "ausstieg_studie.py",
@@ -2064,6 +2287,20 @@
       ]
     },
     {
+      "ordner": "jev_trader",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Auswertung des jev_trader-Papierbuchs: laesst sich das Signal tragen?"
+    },
+    {
+      "ordner": "journal_abgleich.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Journal-Abgleich: fehlende Abschluesse aus den Handelsjournalen in tracking.db nachtragen."
+    },
+    {
       "ordner": "journal_pos_id_nachziehen.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
@@ -2340,6 +2577,13 @@
         "--help"
       ],
       "venv_pflicht": true
+    },
+    {
+      "ordner": "llm_stunde",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "llm_stunde"
     },
     {
       "ordner": "macd_mtf",
@@ -2818,6 +3062,13 @@
       ]
     },
     {
+      "ordner": "omnitrade2",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "omnitrade2 — Haus-Spur auf den Rust-Laeufen des Forks"
+    },
+    {
       "ordner": "omnitrade_futures",
       "wurzel": "handel",
       "rolle": "Spur",
@@ -2869,6 +3120,20 @@
         "handeln.py",
         "--vorschau"
       ]
+    },
+    {
+      "ordner": "papier_journal",
+      "wurzel": "handel",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "papier_journal.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Das zentrale Papier-Journal: Agenten, Bots und Spuren in EINEM Buch."
     },
     {
       "ordner": "papierbuch_schliessen.py",
@@ -2924,6 +3189,13 @@
       ],
       "venv_pflicht": true,
       "anleitung": "Tafel der Drawdown-Ratsche je Spur. Fragt jede Spur ueber ihr EIGENES lage() - eine nachgebaute Formel wuerde die Formel pruefen, nicht die Spur. Die Spalte '1.0x?' prueft, dass der Betrag nicht davongelaufen ist."
+    },
+    {
+      "ordner": "pruefe_stufen.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Kann die Stufen-Kontrolle auf den BESTAND ueberhaupt reissen? (PLAN §4.2)"
     },
     {
       "ordner": "regime_studie.py",
@@ -2996,6 +3268,13 @@
         "--vorschau"
       ],
       "venv_pflicht": true
+    },
+    {
+      "ordner": "scanner_llm",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Aus der Rangliste des Leichtscans Kandidaten bauen, per LLM sieben und -"
     },
     {
       "ordner": "scanner_quant",

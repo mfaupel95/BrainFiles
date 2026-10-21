@@ -17,7 +17,7 @@ Schutzregeln sollen vor *jedem* schreibenden Zugriff gelesen werden, und ein
 Dokument, das dabei zur Hälfte von Hebel und Funding handelt, wird nicht
 gelesen, sondern überflogen. Die Regeln selbst sind unverändert übernommen.
 
-Die Löschsperren, Schutzstufen und der Mehrsitzungsbetrieb stehen weiterhin in
+Welche Instrumente eine Spur überhaupt handeln darf, steht in [[Handelsuniversum]]. Die Löschsperren, Schutzstufen und der Mehrsitzungsbetrieb stehen weiterhin in
 [[Schutzregeln]]. Wer eine Grenze ändert, ändert sie in `wachen.json` — nicht
 hier; dieser Text beschreibt, was die Dateien bedeuten, er ersetzt sie nicht.
 

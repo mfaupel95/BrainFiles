@@ -80,6 +80,32 @@ import omnitrade_auswertung                                 # noqa: E402
 # Die Spurliste - eine Wahrheit, aus dem laufenden Code gelesen.
 SPUREN = list(dauerlauf.SPUREN)
 
+
+def spuren_der_ansicht():
+    """(Anzeigename, Ordner) je gefuehrtem BUCH - Arme einzeln.
+
+    Eine Spur ist nicht immer ein Buch: `llm_stunde` fuehrt SECHS Buecher
+    unter `laeufe/<arm>/` (drei Indikatoren x Regel-/LLM-Arm). Der frueher
+    benutzte Ordner `llm_stunde/zustand.json` existiert nicht, deshalb stand
+    im Fenster eine Zeile mit "unbekannt" - und die sechs Buecher, die
+    tatsaechlich handeln, waren gar nicht zu sehen (Befund 21.10.2026).
+
+    Der Schluessel `arme` in `dauerlauf.SPUREN` nennt sie als
+    (Anzeigename, Unterordner); ohne ihn bleibt es bei einer Zeile je Spur.
+    Die Reihenfolge ist die der Spurliste, die Arme folgen ihrer Spur.
+    """
+    aus = []
+    for spur in SPUREN:
+        eintrag = dauerlauf.SPUREN[spur]
+        ordner = os.path.join(HIER, eintrag.get("ordner", spur))
+        arme = eintrag.get("arme") or ()
+        if not arme:
+            aus.append((spur, ordner))
+            continue
+        for name, unter in arme:
+            aus.append((name, os.path.join(ordner, unter)))
+    return aus
+
 # Risikostufe dieser Ansicht: None = Basis (Vorgabe). Ein zweiter Dauerlauf
 # fuehrt dieselben Spuren mit groesseren Betraegen in EIGENEN Dateien
 # (zustand.mittel.json, handelsjournal.mittel.csv, dauerlauf.mittel.log) - siehe
@@ -2029,8 +2055,11 @@ class Handelszentrale:
     def refresh(self):
         jetzt = datetime.now(UTC)
         self.positionen = []
-        for spur in SPUREN:
-            ordner = os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur))
+        # Ein Buch je Zeile, Arme einzeln (spuren_der_ansicht). self._ordner
+        # merkt sich den Ordner je Anzeigename: _pfad() und der Herzschlag
+        # lesen damit denselben Ort, den refresh() gelesen hat.
+        self._ordner = dict(spuren_der_ansicht())
+        for spur, ordner in self._ordner.items():
             # Das Zustandbuch DIESER Stufe, nicht still die Basis: die drei
             # Dauerlaeufe fahren dieselben Spuren in eigenen Dateien
             # (zustand.mittel.json, zustand.hoch.json). Bis 30.09.2026 las
@@ -2069,8 +2098,10 @@ class Handelszentrale:
                 pass
 
     def _pfad(self, spur, name):
-        return os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur),
-                            stufenname(name))
+        ordner = (getattr(self, "_ordner", {}) or {}).get(spur)
+        if not ordner:
+            ordner = os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur))
+        return os.path.join(ordner, stufenname(name))
 
     def _starte_kurs_worker(self):
         """Nur EIN Kurslauf gleichzeitig.
@@ -2418,7 +2449,7 @@ class Handelszentrale:
         # Spurtabelle
         for i in self.t_spuren.get_children():
             self.t_spuren.delete(i)
-        for spur in SPUREN:
+        for spur, _ordner in spuren_der_ansicht():
             stand = spur_stand(spur, self.zustaende[spur], self.wachen[spur],
                                self.fenster[spur], jetzt)
             marke = ()
@@ -2510,14 +2541,15 @@ class Handelszentrale:
         k.delete("1.0", "end")
 
         ereignisse = []
-        for spur in SPUREN:
+        alle_buecher = spuren_der_ansicht()
+        for spur, _ordner in alle_buecher:
             ereignisse.extend(journal_ereignisse(
                 spur, self._pfad(spur, "handelsjournal.csv"), 3))
         ereignisse.sort(key=lambda e: e["zeit"], reverse=True)
         k.insert("end", "letzte Buchungen (alle Spuren)\n", "kopf")
         if not ereignisse:
             k.insert("end", "  keine Buchungen vorhanden\n", "matt")
-        for e in ereignisse[:len(SPUREN) * 2]:
+        for e in ereignisse[:len(alle_buecher) * 2]:
             gv = ereignis_gv(e)
             marke = "matt" if gv is None else ("gut" if gv >= 0 else "schlecht")
             k.insert("end", "  " + ereignis_zeile(e) + "\n", marke)
@@ -2547,19 +2579,26 @@ def pruefe(jetzt=None):
     """Gibt zurueck, was das Fenster zeigen wuerde - zum Nachlesen im Log."""
     jetzt = jetzt or datetime.now(UTC)
     aus = ["Spuren aus dauerlauf.SPUREN: %s" % ", ".join(SPUREN)]
+    buecher = spuren_der_ansicht()
+    if len(buecher) != len(SPUREN):
+        aus.append("Buecher in der Ansicht: %d (Arme einzeln)" % len(buecher))
     text, alt = dauerlauf_stand(dauerlauf_dateien()[1], jetzt)
+    # Gelesen wie im Leitstand: die Sperrdatei traegt "PID Zeitstempel"
+    # (sperre.py schreibt beides). Ein int() auf die ganze Zeile scheitert
+    # still und meldete hier "PID None, lebt None", waehrend der Dauerlauf lief
+    # (Befund 21.10.2026).
     pid = None
     try:
         with open(dauerlauf_dateien()[0], encoding="ascii") as f:
-            pid = int((f.read() or "0").strip() or 0)
+            roh_pid = (f.read() or "").strip()
+        pid = int(roh_pid.split()[0]) if roh_pid else None
     except Exception:                                        # noqa: BLE001
         pid = None
     aus.append("Ansicht: %s (Dateien %s)"
                % (RISIKO or BASIS_NAME, stufenname("zustand.json")))
     aus.append("Dauerlauf: PID %s, lebt %s, letzter Log-Eintrag %s (%.0f min)"
                % (pid, prozess_lebt(pid), text, alt if alt is not None else -1))
-    for spur in SPUREN:
-        ordner = os.path.join(HIER, dauerlauf.SPUREN[spur].get("ordner", spur))
+    for spur, ordner in buecher:
         z = lade_json(os.path.join(ordner, stufenname("zustand.json")))
         w = lade_json(os.path.join(ordner, "wachen.json"))
         try:

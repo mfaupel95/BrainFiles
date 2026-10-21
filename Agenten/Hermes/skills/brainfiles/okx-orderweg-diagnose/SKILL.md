@@ -434,6 +434,16 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   gleich -> still, ungleich -> Meldung, `ctVal` unbekannt -> still. Dasselbe Muster
   gilt fuer jede Kennzahl aus zwei Quellen: erst die Einheit klaeren, dann die
   Schwelle setzen.
+- **Eine Ablehnung, die den eigenen RiskGuard nennt, ist kein Boersenfehler.**
+  „drawdown violation", „position size violation", „Liquidationspreis oder
+  Markpreis fehlt bei offener Position" kommen aus dem Haus-Code — die Boerse hat
+  die Order nie gesehen. Zwei Feldlesefehler liegen dem fast immer zugrunde:
+  die Equity in einer Waehrung gerechnet, die das Konto nicht fuehrt (Symbol und
+  Instrument sagen `USD`, abgerechnet wird in `USDC` — `/account/config` →
+  `settleCcy`), und `liqPx: "0"` als „unbekannt" statt als „keine Liquidation"
+  gelesen. Beides samt Testfalle (der Guard steigt bei `peak <= 0` frueh aus, ein
+  Test ohne positiven Peak beweist nichts):
+  `references/kontostand-und-positionen.md`.
 - **Antwortform an Max.** Zuerst die Ursache in einem Satz, dann die Belege
   (Zahlen, nicht Adjektive), dann was jetzt anders ist und was absichtlich NICHT
   angefasst wurde (Fremdarbeit im Arbeitsbaum, laufende Prozesse), am Ende genau

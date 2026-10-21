@@ -482,8 +482,19 @@ SPUREN = {
                            "skript": "handeln.py"},
     # LLM-STUNDE (12.10.2026): drei Indikator-Kandidaten auf 1H, je Regelarm
     # und LLM-Arm (sechs Straenge in laeufe/). Papier, kein Live-Zweig.
+    # "arme" = je Buch ein Eintrag (Anzeigename, Unterordner). Die Handels-
+    # zentrale/der Leitstand zeigen damit SECHS Zeilen statt einer leeren:
+    # ohne diesen Schluessel las das Fenster llm_stunde/zustand.json, das es
+    # nicht gibt, und meldete "unbekannt", waehrend die sechs Buecher unter
+    # laeufe/ liefen (Befund 21.10.2026).
     "llm_stunde": {"ordner": "llm_stunde", "waehrung": "USD",
-                   "skript": "handeln.py"},
+                   "skript": "handeln.py",
+                   "arme": (("llm_stunde_ema1h-L", os.path.join("laeufe", "ema1h-L")),
+                            ("llm_stunde_ema1h-R", os.path.join("laeufe", "ema1h-R")),
+                            ("llm_stunde_rsi1h-L", os.path.join("laeufe", "rsi1h-L")),
+                            ("llm_stunde_rsi1h-R", os.path.join("laeufe", "rsi1h-R")),
+                            ("llm_stunde_st1h-L", os.path.join("laeufe", "st1h-L")),
+                            ("llm_stunde_st1h-R", os.path.join("laeufe", "st1h-R")))},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im

@@ -23,6 +23,26 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   im PATH). Ein Start mit `./hermes` bricht mit "No such file or directory"
   (exit 127) ab. Immer den vollen Pfad oder `hermes` aus dem PATH verwenden.
 
+## Profil und Laufzeit-Bot auseinanderhalten
+
+- Vor dem Dispatch den exakten Namen gegen `profiles/<name>/config.yaml`
+  pruefen. Fehlt das Profil, nicht sofort als Tippfehler oder fehlenden Bot
+  behandeln: gezielt im zustaendigen Modul README, Einstiegsskript und
+  Statuslog nach einem Dienst, Bridge- oder Alias-Bot suchen (z. B.
+  `Agenten/Bus/skillsbot.py`). Profile (`hermes -p`) und dauerhaft laufende
+  Bruecken sind unterschiedliche Dinge; vor „rausschmeissen" Eigentum,
+  Nutzerpfad und laufenden Prozess pruefen.
+- Ein kurzes SkillsBot-Log mit `status=ok` und 11 Ausgabezeichen belegt nur die
+  sofortige A2A-Annahme `Angenommen.`: `skillsbot.py` startet danach einen
+  Hintergrund-Thread und sendet das Ergebnis separat. Vor einem Wiederholen
+  auf die spaetere Ergebnisnachricht bzw. den A2A-Abschluss warten oder den
+  Taskstatus in der autoritativen Quelle pruefen; den Ack nicht als erledigt
+  oder gescheitert missdeuten und denselben Auftrag nicht doppelt starten.
+- Statuswerte trennen: `abgewiesen` ist meist eine Chat-Allowlist-Entscheidung,
+  `bildfehler` betrifft den Medien-Eingang; beides beweist keinen A2A-Ausfall.
+  Vor einer Codeaenderung den Zielchat gegen `chat_erlaubt()` und den A2A-Fehler
+  nach dem Ack separat pruefen.
+
 ## Lektion: Immer als Hintergrundjob mit notify starten
 - Repo-Bot-Kaltstart + Auftrag ueberschreitet hier regelmaessig das Foreground-
   Timeout (~7 min, terminal wird mit exit 0 timeout abgebrochen). Das Ergebnis
@@ -64,6 +84,22 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   unklarer Lage einen Trivial-Prompt als Credit-Probe schicken (z. B. "Antworte
   nur mit BEREIT"); schlaegt der fehl, erst Credits aufladen oder den Teil ohne
   LLM (Prozess-Checks, Watcher, Commits) direkt selbst machen statt zu warten.
+- **"Gateway did not answer session.create" ist NICHT automatisch ein
+  Gateway-Ausfall — es kann das `:free`-Modell EINES Profils sein, dessen
+  Gratis-Fenster beendet ist (HTTP 404 "free period has ended").** Isolieren
+  statt raten: einen Trivial-Prompt an ein bekannt-gutes Profil schicken
+  (z. B. `jev-trader` auf deepseek). Antwortet das, ist das Gateway gesund und
+  das fehlschlagende Profil hat das Modellproblem. Dann `model.default` in
+  dessen `config.yaml` pruefen und auf `deepseek/deepseek-v4-flash-0731`
+  umstellen (config committen, profiles/ gehoert dem bot-Bereich), danach den
+  Auftrag neu starten. Ein `:free`-Modell mit beendetem Fenster antwortet
+  nicht — es haengt, bis der Client mit session.create aufgibt.
+- **Die Modell-Karte in diesem Skill kann vom IST der config.yaml abweichen —
+  vor dem Delegieren `model.default` des Zielprofils lesen, nicht der Karte
+  glauben.** Ein Profil, das laut Karte deepseek faehrt, kann in der config
+  laengst auf longcat zurueckgefallen sein (parallele Sitzung, frueherer
+  Umbau). Der Fehlschlag "session.create" mit einem `:free`-Modell ist genau
+  das Symptom einer solchen Drift.
 - Kollabiert ein delegierter Bot mit exit 1 / "Repetition Detected" (Modell-Loop),
   NICHT denselben Bot blind erneut starten — das Modell kollabiert wieder. Erst im
   Repo pruefen, was wirklich passiert ist (Commit da? Fenster offen? Position

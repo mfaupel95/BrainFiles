@@ -346,6 +346,25 @@ Zwei Fallen:
 - `unrecognized_model: auto/best-coding` in der Warnung betrifft nur die
   Session-Titel-Generierung — die eigentliche Antwort kommt korrekt. Harmlos.
 
+## GitHub: Konten und PR-Weg (Stand 2026-10-21)
+
+Das Upstream `TraderAlice/Auto-Quant-V2` ist öffentlich, und `mfaupel95` hat dort nur
+Leserechte (Push-Test: 403). Ein PR geht deshalb nur über einen Fork.
+
+**Warum:** Ein Branch auf dem eigenen Repo reicht für einen PR nach fremdem Upstream
+nicht. Der Fork muss unter dem eigenen Konto liegen.
+
+**Fallstrick:** Unter `mfaupel95` existiert bereits ein privates Repo `Auto-Quant-V2`
+(seit 2026-10-09). `gh repo fork` ohne Namensangabe scheitert deshalb. Lösung:
+`gh repo fork TraderAlice/Auto-Quant-V2 --fork-name Auto-Quant-V2-fork --clone=false`.
+Das private Repo nicht umbenennen oder löschen, ohne Max zu fragen.
+
+**Stand:** Fork `mfaupel95/Auto-Quant-V2-fork` (öffentlich, folgt dem Upstream). PR #4
+nach `TraderAlice:main` ist offen, Branch `research/auto-quant`.
+
+**Lokal nicht committen:** `journal_korrektur_xperp.py` gehört zum privaten Handelsjournal
+und darf nicht in ein öffentliches Repo.
+
 ## Kandidaten fur spater
 
 - **GitHub** — sobald das System versioniert werden soll

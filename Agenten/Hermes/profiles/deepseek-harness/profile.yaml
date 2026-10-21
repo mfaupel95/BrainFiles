@@ -1,3 +1,9 @@
 description: 'DeepSeek-Harness: Repo warten, RL-Orchestrierung und Trainings-Runs
   dokumentieren.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    sectionId: sec-mvic8zsw-093i3
+    sectionName: CLaude/Codex
+_ui_meta_revisions:
+  hermes-bots: 2

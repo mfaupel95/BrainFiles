@@ -1,3 +1,9 @@
 description: 'Caveman-Skill: token-sparende Agenten-Kommunikation nutzen und das Repo
   pflegen.'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    sectionId: sec-mvica45b-uuvz7
+    sectionName: Optimirung
+_ui_meta_revisions:
+  hermes-bots: 2

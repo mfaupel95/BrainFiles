@@ -48,3 +48,7 @@ desktop:
     - C:\Users\faupe\documents\BrainFiles\Werkstatt
 display:
   streaming: true
+delegation:
+  reasoning_effort: low
+agent:
+  service_tier: auto

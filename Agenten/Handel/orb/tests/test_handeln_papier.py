@@ -306,5 +306,37 @@ class TestMehrInstrumente(unittest.TestCase):
         self.assertEqual(len(z["positionen"]), 1)
 
 
+class AltstandZeichenketteTest(unittest.TestCase):
+    """Zustand aus der Zeit VOR "ein Trade je Instrument" darf nicht werfen.
+
+    Befund 21.10.2026: `zuletzt_gehandelt_tag` stand als EINE Zeichenkette in
+    zustand.json (so schreibt orbk es heute noch). `ztl.get()` darauf warf
+    AttributeError, der Einstiegsweg brach ab, orb endete 37 h lang in JEDEM
+    Zyklus mit Rueckgabe 1 - und weil der Zustand erst am Ende geschrieben
+    wird, blieb auch `letzter_lauf` stehen. Der Fehler sah im Leitstand wie
+    eine blosse Pause aus.
+    """
+
+    def test_zeichenkette_heute_hemmt(self):
+        z = {"positionen": [], "zuletzt_gehandelt_tag": "2026-09-13"}
+        self.assertTrue(handeln._schon_gehandelt_heute(
+            z, "ETH_USDT", date(2026, 9, 13)))
+
+    def test_zeichenkette_gestern_hemmt_nicht(self):
+        z = {"positionen": [], "zuletzt_gehandelt_tag": "2026-09-12"}
+        self.assertFalse(handeln._schon_gehandelt_heute(
+            z, "ETH_USDT", date(2026, 9, 13)))
+
+    def test_lade_zustand_ersetzt_zeichenkette_durch_dict(self):
+        with tempfile.TemporaryDirectory() as w:
+            zpfad = Path(w) / "zustand.json"
+            zpfad.write_text(json.dumps({"positionen": [],
+                                         "zuletzt_gehandelt_tag": "2026-10-20"}),
+                             encoding="utf-8")
+            with patch.object(handeln, "ZUSTAND", zpfad):
+                z = handeln.lade_zustand()
+        self.assertEqual(z["zuletzt_gehandelt_tag"], {})
+
+
 if __name__ == "__main__":
     unittest.main()
