@@ -17,6 +17,10 @@ Prueft den Loop unter Agenten/Hermes/cache/omnitrade2/:
   7. Loop lebt, hat aber 0 Orders platziert, obwohl Signale kamen und Orders
      abgelehnt wurden -> der Orderweg ist kaputt (genau der Zustand vom
      21.10.: 12 Rejects, 0 Fills, und niemandem fiel es als Wegfehler auf).
+  8. STEHT der Lauf (Status alt oder state != running), startet die Wache ihn
+     selbst neu - aber nur, wenn eine offene Position an der Boerse vollstaendig
+     geschuetzt ist, die Position lesbar ist und der letzte Neustart mindestens
+     15 min her ist (Entscheidung Max 21.10.2026, Regeln in neustart_grund).
 
 Muster: leere Ausgabe = nichts zu melden (nichts senden). Ein Fehler der
 PRUEFUNG selbst darf nie in diesen stillen Zweig fallen - er wird gemeldet.
@@ -122,6 +126,108 @@ def _nachzieher():
         return modul, None
     except Exception as e:  # noqa: BLE001 - jeder Ladefehler ist ein Befund
         return None, "Nachzieher nicht ladbar: %s" % e
+
+
+# --- Neustart eines haengenden oder toten Laufs (Entscheidung Max 21.10.2026) --
+# Die Wache meldete bisher nur. Am 21.10. stand der Lauf 5,5 h still, weil
+# niemand den Bericht in eine Aktion uebersetzte. Sie startet ihn jetzt selbst -
+# aber nur unter drei Bedingungen: der Lauf steht, eine offene Position ist an
+# der Boerse vollstaendig geschuetzt, und der letzte Neustart ist mindestens
+# NEUSTART_ABSTAND_S her (Sperre gegen Startschleifen).
+NEUSTART_ABSTAND_S = 15 * 60
+NEUSTART_WARTE_S = 25  # so lange darf der neue Prozess fuer den ersten Status brauchen
+
+
+def position_und_deckung():
+    """(Menge, gedeckte Kontrakte) der Boersenposition oder None, wenn unklar."""
+    modul, _fehler = _nachzieher()
+    if modul is None:
+        return None
+    try:
+        lauf = modul.lies_json(modul.LAUF_DATEI, {})
+        inst = str(lauf.get("inst") or "").strip()
+        if not inst:
+            return None
+        okxf = modul.okxf_laden()
+        pos = modul.position(okxf, inst)
+        if pos is None:
+            return (0.0, 0.0)
+        summe, _anzahl, _fremde = modul.deckung(okxf, inst, pos["seite"])
+        return (float(pos["menge"]), float(summe))
+    except Exception:  # noqa: BLE001 - unklare Lage heisst: nicht neu starten
+        return None
+
+
+def neustart_grund(steht, deckung, jetzt_s, merk):
+    """Grund fuer einen Neustart, sonst None. Reine Regel, ohne Seiteneffekt.
+
+    steht:   Text, WARUM der Lauf steht ("Status 42 min alt, state=running"),
+             None = Lauf ist gesund.
+    deckung: (Menge, gedeckte Kontrakte) der Boersenposition, None = unbekannt.
+    """
+    if not steht:
+        return None
+    if jetzt_s - float(merk.get("neustart_ts") or 0) < NEUSTART_ABSTAND_S:
+        return None
+    if deckung is None:
+        return None  # Position unbekannt -> Handarbeit, kein blinder Neustart
+    menge, gedeckt = deckung
+    if abs(menge) > 0.5 and gedeckt + 0.5 < abs(menge):
+        return None  # offene, ungeschuetzte Position: nur melden
+    return steht
+
+
+def _status_lesen():
+    try:
+        with open(STATUS_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def neustart_ausfuehren(grund, merk, jetzt_s=None):
+    """Stoppt den Lauf (falls er haengt) und startet ihn neu. Rueckgabe: Texte."""
+    texte = []
+    modul, fehler = _nachzieher()
+    if modul is None:
+        return ["omnitrade2-Wache: Neustart nicht moeglich - %s" % fehler]
+    pid = modul.loop_pid()
+    if pid and modul.pid_lebt(pid):
+        if not modul.loop_beenden(pid):
+            return [
+                "omnitrade2-Wache: Neustart abgebrochen - PID %d liess sich nicht beenden."
+                % pid
+            ]
+        texte.append(
+            "omnitrade2-Wache: haengenden Loop PID %d beendet (%s)." % (pid, grund)
+        )
+    antwort = modul.lauf_starten()
+    zeilen = (antwort or "").strip().splitlines()
+    texte.append(
+        "omnitrade2-Wache: Loop NEU GESTARTET (%s) - %s"
+        % (grund, zeilen[-1] if zeilen else "keine Ausgabe von start.ps1")
+    )
+    # Beweis: der neue Prozess muss innerhalb von NEUSTART_WARTE_S Status schreiben.
+    neu = None
+    for _ in range(NEUSTART_WARTE_S):
+        st = _status_lesen()
+        if st and time.time() * 1000 - float(st.get("updated_ms") or 0) < 90_000:
+            neu = st
+            break
+        time.sleep(1)
+    if neu is None:
+        texte.append(
+            "omnitrade2-Wache: WARNUNG - nach dem Neustart kam in %d s kein frischer Status."
+            % NEUSTART_WARTE_S
+        )
+    else:
+        texte.append(
+            "omnitrade2-Wache: neuer Status frisch (PID %s, %s Kerzen)."
+            % (neu.get("pid"), neu.get("candles_seen"))
+        )
+        merk["neustart_ts"] = jetzt_s if jetzt_s is not None else time.time()
+        merk["letzter_neustart_pid"] = neu.get("pid")
+    return texte
 
 
 def boersenpruefung(merk, st, net):
@@ -407,7 +513,9 @@ def haupt():
     pid = st.get("pid", "?")
 
     # 1) Leben: Status frische ist der Lebensbeweis (Loop schreibt je Kerze).
-    if alter > FRESH_MS:
+    #    Steht der Lauf, wird er - unter den Regeln von neustart_grund() - selbst
+    #    neu gestartet; die Meldung nennt Grund und Ergebnis.
+    if alter > FRESH_MS or state != "running":
         key = "stall-%s" % ("tot" if state != "running" else "hang")
         if merk.get("stall_gemeldet") != key:
             merk["stall_gemeldet"] = key
@@ -423,6 +531,18 @@ def haupt():
                     "omnitrade2-Wache: Loop HAENGT (state=running, Status %d min alt, PID %s)"
                     % (alter // 60000, pid),
                 )
+        steht = (
+            "state=%s" % state
+            if alter <= FRESH_MS
+            else "Status %d min alt, state=%s" % (alter // 60000, state)
+        )
+        grund = neustart_grund(steht, position_und_deckung(), time.time(), merk)
+        if grund:
+            # Eine Aktion wird IMMER berichtet, auch wenn das Tageslimit fuer
+            # Beobachtungsmeldungen schon erschoepft ist.
+            for text in neustart_ausfuehren(grund, merk):
+                print(text)
+                meldet += 1
         schreibe_merk(merk)
         return meldet
     merk.pop("stall_gemeldet", None)
