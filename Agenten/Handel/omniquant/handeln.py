@@ -67,6 +67,7 @@ import ereignis                                            # noqa: E402
 import okx                                                 # noqa: E402
 import wachen_pruefung as wp                               # noqa: E402
 import live_perp                                           # noqa: E402
+import telemetrie                                          # noqa: E402
 
 # Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
 # und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
@@ -522,6 +523,10 @@ def schliesse(z, p, grund, kurs, w):
             mfe_pct=round(p.get("mfe_pct", 0.0), 4),
             mae_pct=round(p.get("mae_pct", 0.0), 4),
             haltetage=_haltetage(p))
+    if SCHREIBEN:
+        telemetrie.geschlossen(JOURNAL, p, "papier", grund,
+                               ergebnis - p["nominal"], kurs, _haltetage(p) or 0,
+                               risikostufe.stufe())
     print("AUSSTIEG (%s): %s %s @ %.6g, wert %.2f USD"
           % (grund, p["inst"], p["seite"], kurs, ergebnis))
 

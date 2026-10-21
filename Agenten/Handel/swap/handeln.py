@@ -79,6 +79,7 @@ import indikatoren                                              # noqa: E402
 import kandidaten                                              # noqa: E402
 import okxf                                                    # noqa: E402
 import wachen_xperp as wx                                      # noqa: E402
+import telemetrie                                              # noqa: E402
 
 # Risikostufe (HANDEL_RISIKO): Faktor auf die Betraege, Suffix auf Zustand
 # und Journal. OHNE die Variable aendert sich nichts (Faktor 1.0, kein
@@ -436,6 +437,15 @@ def _ergebnis(p, kurs):
     return p["margin"] + gewinn - gebuehr
 
 
+def _tage(p):
+    """Haltedauer in Tagen (Bruchteil) seit dem Einstieg; 0, wenn die Zeit fehlt."""
+    try:
+        return (datetime.now(timezone.utc)
+                - datetime.fromisoformat(p["eroeffnet_zeit"])).total_seconds() / 86400
+    except (KeyError, TypeError, ValueError):
+        return 0
+
+
 def bueche_papier_altlasten_aus(z):
     """ALTBESTAENDE ohne modus-Feld aus dem Buch buchen (Live-Lauf).
 
@@ -482,6 +492,8 @@ def bueche_papier_altlasten_aus(z):
                 margin_usd="%.2f" % erloes,
                 hebel=p["hebel"],
                 grund="buchbereinigung")
+        telemetrie.geschlossen(JOURNAL, p, "papier", "buchbereinigung", gv,
+                               kurs or p["einstieg"], _tage(p), risikostufe.stufe())
     z["positionen"] = behalten
     return len(altlasten)
 
@@ -550,6 +562,8 @@ def pruefe_ausstiege(z, live, w):
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
                 margin_usd="%.2f" % erloes, hebel=p["hebel"], grund=grund)
+        telemetrie.geschlossen(JOURNAL, p, "live" if live else "papier", grund, gv,
+                               kurs, _tage(p), risikostufe.stufe())
         if grund in ("stop", "LIQUIDATION"):
             z["letzte_stops"][p["basis"]] = _heute()
     z["positionen"] = behalten
@@ -624,6 +638,8 @@ def flach_stellen(z, live, grund):
                 familie=p.get("familie", ""), preis="%.6f" % kurs,
                 kontrakte=p["kontrakte"], nominal_usd="%.2f" % p["nominal"],
                 margin_usd="%.2f" % erloes, hebel=p["hebel"], grund=grund)
+        telemetrie.geschlossen(JOURNAL, p, "live" if live else "papier", grund,
+                               erloes - p["margin"], kurs, _tage(p), risikostufe.stufe())
     z["positionen"] = behalten
 
 
