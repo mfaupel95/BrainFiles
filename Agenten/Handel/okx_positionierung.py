@@ -158,6 +158,60 @@ def kipp_abwaerts(ccy: str = "BTC", takt: str = "1H",
     return urteil
 
 
+def stuetzt_richtung(richtung, ccy="BTC", takt="1H",
+                       ls_abfall_min=0.02, oi_abbau_min=0.0,
+                       takervolumen_min=1.0):
+    """Stuetzt die Positionierung die Signalrichtung?
+
+    Richtungs-agnostische Variante von kipp_abwaerts: fuer "short" wird die
+    Abwaerts-Wende geprueft (Longs loesen auf, OI baut ab, Verkaufsdruck),
+    fuer "long" die Aufwaerts-Wende (Longs bauen auf, OI steigt, Kaufdruck).
+
+    Rueckgabe: Dict mit den Teilurteilen und `stuetzt` (alle verfuegbaren
+    Teilurteile positiv UND mindestens eines verfuegbar). Fehlt eine Quelle,
+    steht ihr Feld auf None und zaehlt nicht gegen das Urteil.
+    """
+    urteil = {"richtung": richtung, "stuetzt": False, "quellen": 0}
+
+    ls = long_short_ratio(ccy, takt, 6)
+    if ls and len(ls) >= 3:
+        jetzt = ls[0][1]
+        mittel = sum(w for _, w in ls[1:]) / float(len(ls) - 1)
+        if richtung == "short":
+            urteil["ls_stuetzt"] = bool(mittel - jetzt >= float(ls_abfall_min))
+        else:
+            urteil["ls_stuetzt"] = bool(jetzt - mittel >= float(ls_abfall_min))
+        urteil["ls_jetzt"] = jetzt
+        urteil["ls_mittel"] = round(mittel, 4)
+
+    oi = open_interest(ccy, takt, 3)
+    if oi and len(oi) >= 2:
+        jetzt, vor = oi[0][1], oi[1][1]
+        rel = (vor - jetzt) / vor if vor else 0.0
+        if richtung == "short":
+            urteil["oi_stuetzt"] = bool(rel >= float(oi_abbau_min))
+        else:
+            urteil["oi_stuetzt"] = bool(-rel >= float(oi_abbau_min))
+        urteil["oi_rel"] = round(rel, 6)
+
+    tf = taker_flow(ccy, takt, 2)
+    if tf:
+        verkauf, kauf = tf[0][1], tf[0][2]
+        quote = (verkauf / kauf) if kauf else None
+        if quote is not None:
+            if richtung == "short":
+                urteil["taker_stuetzt"] = bool(quote >= float(takervolumen_min))
+            else:
+                urteil["taker_stuetzt"] = bool((1.0 / quote) >= float(takervolumen_min))
+            urteil["taker_quote"] = round(quote, 4)
+
+    teil = [urteil[k] for k in ("ls_stuetzt", "oi_stuetzt", "taker_stuetzt")
+            if urteil.get(k) is not None]
+    urteil["quellen"] = len(teil)
+    urteil["stuetzt"] = bool(teil) and all(teil)
+    return urteil
+
+
 if __name__ == "__main__":
     import pprint
     pprint.pprint(kipp_abwaerts())

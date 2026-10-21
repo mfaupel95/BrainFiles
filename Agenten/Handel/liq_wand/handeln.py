@@ -60,6 +60,7 @@ for _p in (os.path.join(HANDEL, "scanner"), HANDEL, HIER):
 import spur_buch                                                   # noqa: E402
 import moondev_daten as md                                         # noqa: E402
 import okx                                                         # noqa: E402
+import okx_positionierung as pos                                   # noqa: E402
 
 # Test-Seam: None = echte Quelle (OKX, oeffentlich).
 liq_quelle = None
@@ -170,10 +171,28 @@ def signal(d, w):
     # 2-%-Grenze (max_abstand_prozent) deckelt weiterhin die Entfernung.
     toleranz = spot * float(w.get("hinter_dem_spot_prozent", 0.5)) / 100.0
     if seite == "short":
+        richtung = "long"
+    elif seite == "long":
+        richtung = "short"
+    else:
+        return None
+    # POSITIONIERUNGS-FILTER (21.10.2026, Auftrag Max): die OKX-Rubik-Reihen
+    # muessen die Signalrichtung stuetzen. Quelle okx_positionierung.py, kein
+    # Schluessel, fail-soft. Standard AUS.
+    if w.get("positionierung_filter"):
+        ccy = str(w.get("positionierung_ccy", "BTC"))
+        u = pos.stuetzt_richtung(
+            richtung, ccy, str(w.get("kerzen_zeitrahmen", "1H")),
+            ls_abfall_min=float(w.get("positionierung_ls_abfall_min", 0.02)),
+            oi_abbau_min=float(w.get("positionierung_oi_abbau_min", 0.0)),
+            takervolumen_min=float(w.get("positionierung_taker_min", 1.0)))
+        if u.get("quellen", 0) > 0 and not u.get("stuetzt"):
+            print("  liq_wand: Positionierung stuetzt %s nicht (%s)"
+                  % (richtung, u), file=sys.stderr)
+            return None
+    if richtung == "long":
         return "long" if preis >= spot - toleranz else None
-    if seite == "long":
-        return "short" if preis <= spot + toleranz else None
-    return None
+    return "short" if preis <= spot + toleranz else None
 
 
 def ziel(d, w):
