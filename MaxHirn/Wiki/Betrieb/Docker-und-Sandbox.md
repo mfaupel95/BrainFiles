@@ -3,7 +3,7 @@ id: 20260921-docker-und-sandbox
 title: 'Betrieb — Docker und Sandbox'
 tags: [betrieb, docker]
 created: 2026-09-21
-updated: 2026-10-08
+updated: 2026-10-21
 related: ['[[Lektionen/Windows-Umgebung]]', '[[Betrieb/Hermes]]']
 summary: 'Der Docker-Terminal-Backend als Sandbox, seine Grenzen, und windows-mcp als Rueckfallweg fuer Host-Arbeit.'
 ---
@@ -113,4 +113,24 @@ jederzeit moeglich:
 - Wache `docker-wache` (Cron `a41ae0df5b47`, 15 min) heilt weiter, unabhaengig vom
   aktiven Backend
 
-Verwandt: [[Betrieb/Wachen-und-Aufgaben]], [[Betrieb/Hermes]], [[Wissen/Schutzregeln]].
+## Falle: Compose-Projekt verschoben, Container zeigen auf den alten Pfad (21.10.2026)
+
+**Befund puter:** `Werkstatt\Repos\puter` wurde am 14.10.2026 nach `Werkstatt\puter` verschoben, die
+laufenden Container (Projekt `puter-selfhosted`) behielten aber ihre **Bind-Mounts auf den alten Pfad**
+(`docker inspect` zeigt `Source` und das Label `com.docker.compose.project.working_dir`). Nach dem
+Docker-Neustart am 20.10. 21:53 legte Docker die fehlenden Quellordner **leer und mit Docker-Rechten
+neu an**: `Repos\puter\puter-selfhosted\puter\data\...` mit einer **frischen** MariaDB (161 MB, wird
+seither beschrieben), waehrend die **echten Daten** (MariaDB 177 MB, Stand 14.10. 00:28) unberuehrt in
+`Werkstatt\puter\...\data` liegen. `puter` (User `node`) und `puter-s3` (User `rustfs`) scheiterten
+mit `mkdir volatile/runtime` bzw. `Permission denied (os error 13)` (Exit 1, 21.10. 21:16);
+MariaDB, Valkey und Dynamo laufen dagegen scheinbar gesund - auf der falschen, leeren Datenbank.
+
+**Merksatz:** Ein verschobenes Compose-Projekt erst **neu erzeugen**, nicht nur den Ordner schieben.
+Nach jedem Umzug `docker inspect --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' <container>`
+gegen den neuen Pfad halten. Ein Container, der "laeuft", beweist nicht, dass er die richtigen Daten
+sieht - der Alt-Pfad taucht als **neuer leerer Ordner** auf. Reparatur (Entscheidung Max):
+`docker compose` im neuen Ordner `down`, dann `up -d`, danach den leeren Alt-Baum pruefen und
+verwerfen. Container-Namen der Gruppe: `puter`, `puter-s3`, `puter-mariadb`, `puter-valkey`,
+`puter-dynamo` (plus `puter-caddy`, `puter-smtp`, `puter-ollama` laut Compose-Datei).
+
+Verwandt: [[Betrieb/Wachen-und-Aufgaben]], [[Betrieb/Hermes]], [[Wissen/Schutzregeln]], [[Betrieb/Sicherung-und-Laufwerke]].
