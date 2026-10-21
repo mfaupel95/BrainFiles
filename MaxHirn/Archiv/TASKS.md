@@ -32,6 +32,14 @@
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: Werkstatt/omnitrade-pr (okx/client.rs, live_loop.rs),
           Agenten/Hermes/scripts/omnitrade2-sol-wache.py, Agenten/Handel/omnitrade2/
+      Nachtrag 21.10.2026 18:20 (eigene Arbeit, nach dem Reconnect): Der Lauf konnte
+          danach NICHT handeln - jeder Auftrag wurde mit 'drawdown violation: current
+          4.688.672 %' abgelehnt, weil pair_equity mit der Quote des Symbols rechnete
+          (XPERP sagt USD) und das Konto in USDC fuehrt. Fixes 669484f + abf54a6:
+          Equity in der Abrechnungswaehrung des KONTOS (/account/config settleCcy,
+          die Instrument-Angabe fuehrt in die Irre) und Buch liest die Position je
+          Kerze von der Boerse. 18:15 neu gestartet (PID 15136): Log 'Equity-Bewertung
+          in USDC', net_quantity 0.1 = Boerse, 0 Rejects, 3 neue Tests + 2 Gegenproben.
 
 
 - [x] **T-440 — Schutzregeln.md Z.181: veralteter `Repos/`-Verweis (T-405-Follow-up)**
@@ -53,6 +61,10 @@
       Nachtrag 21.10.2026 11:40: Der Lauf hing ab 06:09 (WS-Reset, siehe T-441) —
           4 Minuten Entscheidungszeit, danach 5,5 h Stillstand bei 0 Orders. Ein Urteil
           auf diesem Fenster misst den Haenger, nicht die Strategie.
+      Nachtrag 21.10.2026 18:20: Der Lauf wurde nach den Fixes zweimal neu
+          gestartet (18:07, 18:15) - das 48-h-Fenster zaehlt ab 18:15. Offen ist
+          eine Long-Position 0.1 SOL @ 108,24 mit vollstaendiger Boersen-Deckung
+          (Stop 10/10 Kontrakte). Sie wurde 18:05 von der ALTEN Bin eroeffnet.
       Betrifft: Agenten/Handel/omnitrade2/, Agenten/Hermes/scripts/omnitrade2-sol-wache.py
 - [ ] **T-438 — omnitrade2: quantity_voll und hochziehen() sind nach 0.10 sinnlos**
       Kontext: Der Nachzieher kann den Lauf von einer Mikro-Stufe (1 Kontrakt)
