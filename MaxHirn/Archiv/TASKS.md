@@ -63,13 +63,21 @@
       Commits, vorher cc946be); es gab keinen offenen PR auf omnitrade2,
       deshalb push claude/nice-pasteur-940iq0:main. Danach Zweig lokal und
       remote geloescht (ls-remote zeigt nur main), Worktree omnitrade-pr1
-      abgemeldet. OFFEN: der leere Ordner O:\Werkstatt\omnitrade-pr1 bleibt
-      stehen (4 KB, von einem eigenen bash-Kind gehalten - verschwindet mit
-      ihm); der Klon O:\Werkstatt\omnitrade steht noch auf cc946be, weil dort
-      6 unversionierte Dateien mit ANDEREM Inhalt als main liegen (Fremdarbeit
-      einer parallelen Sitzung, nicht ueberschrieben); omnitrade-pr haelt
-      uncommittete Aenderungen an swap_client/instrument (Semantik quantity =
-      Base-Waehrung statt Kontrakte) - ebenfalls nicht angefasst.
+      abgemeldet. KLON NACHGEZOGEN 21.10.2026: O:\Werkstatt\omnitrade steht
+      auf 8288e46. Vorher 68 kollidierende unversionierte Dateien entfernt;
+      11 davon wichen inhaltlich von main ab und liegen gesichert unter
+      O:\Werkstatt\omnitrade\.fremd-20261021 (mit MANIFEST.json) - darunter
+      live_loop.rs, live.rs, kill.rs, binance/rest.rs, binance/signing.rs,
+      trading.rs, okx.rs, tests/binance_integration.rs, risk/guard.rs,
+      script/grid.rs, ui/feed.rs. SONDERFALL omnitrade-exchange/src/okx.rs:
+      eine unversionierte Datei gleichen Namens verdeckt den Modulordner
+      okx/mod.rs - Rust nimmt okx.rs und ignoriert mod.rs, deshalb gesichert.
+      Nachweis: cargo check --workspace und cargo test --workspace gruen
+      (86/63/42/138/41/75/32). OFFEN: der leere Ordner
+      O:\Werkstatt\omnitrade-pr1 bleibt stehen (4 KB, von einem eigenen
+      bash-Kind gehalten); omnitrade-pr haelt uncommittete Aenderungen an
+      swap_client/instrument (Semantik quantity = Base-Waehrung statt
+      Kontrakte) - nicht angefasst.
       kaputt) und die PR-Freigabe.
 
 - [x] **T-420 - Werkstatt/omnitrade-Klon: origin fehlt, upstream auf fremdes Repo umgebaut**
