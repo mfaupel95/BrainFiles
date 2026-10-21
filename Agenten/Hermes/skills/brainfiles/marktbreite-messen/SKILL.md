@@ -31,7 +31,7 @@ jeder Zahl, Gegenprobe bei zwei Boersen) stehen in `markt-recherche`.
 `scripts/alt_breite.py` — nur Standardbibliothek, oeffentliche OKX-Kerzen, kein
 Schluessel, rein lesend:
 
-    python <skill>/scripts/alt_breite.py              # 30 Paare, EMA200, Tageskerzen
+    python <skill>/scripts/alt_breite.py              # 29 Paare, EMA200, Tageskerzen
     python <skill>/scripts/alt_breite.py --laenge 100 # kuerzerer Durchschnitt
 
 Ausgabe: je Paar eine Zeile (Schluss, EMA, Abstand in Prozent), sortiert; dann
