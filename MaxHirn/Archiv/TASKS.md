@@ -2,6 +2,11 @@
 
 
 
+- [ ] **T-440 — Schutzregeln.md Z.181: veralteter `Repos/`-Verweis (T-405-Follow-up)**
+      Kontext: `MaxHirn/Wissen/Schutzregeln.md` Z. 181 nennt `Werkstatt/` — Übergaben, Sitzungsreste, geklonte Fremd-Repos (`Repos/`). Seit T-405 (21.10.) tragen AGENTS.md/CLAUDE.md die korrigierte Formulierung (Fremd-Repos direkt in `Werkstatt/`), Schutzregeln.md nicht. Einziger aktiver Regelverweis auf den toten `Repos/`-Pfad; wird bei jeder Stufen-Zuordnung gelesen. Befund aus der Diskussion 21.10. (obsidian-skills, gemessen).
+      Naechster Schritt: Z. 181 auf „direkt in `Werkstatt/`" umstellen (wortgleich zu T-405), dann committen.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: MaxHirn/Wissen/Schutzregeln.md
 - [ ] **T-439 — omnitrade2-Versuch: Urteil am 23.10.2026 (48 h)**
       Kontext: Der XPERP-Live-Lauf (SOL-USD_UM_XPERP-310404, 10 Kontrakte je
           Stufe, Deckel 25, Stop 2 % an der Boerse) wurde am 21.10.2026 mit
