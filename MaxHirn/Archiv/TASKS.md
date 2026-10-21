@@ -144,6 +144,16 @@
           aber 0 Orders bei Abgelehnten, Loop-Stand vs. Boersenmenge.
       (8) Hochziehen 1 -> 19 Kontrakte AUTOMATISCH nach belegtem Fill +
           gedecktem Stop (einmalig, Merker in omnitrade2/zustand.json).
+      BELEGT 21.10.2026 04:49 (echtes Geld, EEA-Mainnet): der Lauf wurde um
+      04:38 von aussen mit 19 Kontrakten neu gestartet (nicht mit dem
+      Mikro-Beleg); er ging um 04:46 SHORT 19 Kontrakte @ 106,17
+      (margin 20,17 USDC, Hebel 1, liqPx 210,12). Der Nachzieher-Cron hat um
+      04:49 SELBST den Schutz-Stop gestellt: buy 19 (reduceOnly),
+      slTriggerPx 108,29 = +2 %, algoId 4028160750812815360, state live,
+      Deckung 19/19 (NACHKONTROLLE im Cron-Output). Der Positionsdeckel hat
+      einen zweiten Short (40,36 > 25,00) abgelehnt - der Deckel schuetzt.
+      Risiko je Runde: 19 x 0,01 SOL x 106,17 x 2 % = 0,40 USD.
+      Stand: lauf.json = 0.19/phase voll deckungsgleich mit dem Prozess.
       STAND 21.10.2026 04:20: Loop PID 48072 auf main f46ccbc, phase mikro
       (quantity 0.01 = 1 Kontrakt), 302 Kerzen gesehen, 0 Orders, 0
       Rejects, keine Position. Neuer Nachzieher-Cron f615fc2a8daf (2 min,
