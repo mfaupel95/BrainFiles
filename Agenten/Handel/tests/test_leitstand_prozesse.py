@@ -199,6 +199,7 @@ class SpurStatus(unittest.TestCase):
         self.assertEqual(lp._modus_der_spur({}), "-")
 
 
+
 class ProzessReiterUI(unittest.TestCase):
     def test_statusfilter_zeigt_nautilus_oder_alle_spuren(self):
         import tkinter as tk
