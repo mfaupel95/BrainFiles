@@ -14,12 +14,18 @@
           Boerse ohne SOL-XPERP-Position, max-size isolated 43 Kontrakte, 46,43 USDC
           frei — der Versuch ist finanzierbar, er kam nur nie zum Zug (4 Minuten
           Entscheidungszeit, dann Stillstand).
-      Naechster Schritt: drei Entscheidungen von Max, im Grill am 21.10. zweimal ohne
-          Antwort geblieben — (1) Reconnect im Rust-Client (Lesetask neu aufbauen,
-          Kerzenluecke per REST) | nur Prozess-Supervisor | beides; (2) soll die Wache
-          omnitrade2-sol-wache einen haengenden Loop selbst neu starten (heute meldet
-          sie nur, FRESH_MS 10 min, Zeile 411-421); (3) T-439-Fenster neu beginnen statt
-          am 23.10. abrechnen.
+      Stand 21.10.2026 16:20: (1) ERLEDIGT — Reconnect im Rust-Client gebaut
+          (okx/client.rs: verbinde + lesen_mit_neuaufbau, Backoff 1-30 s bis zum Erfolg),
+          Trait-Rueckfallweg recent_candles (OKX ueber klines::fetch_klines) und
+          Funkstille-Waechter im Live-Loop (Puffer nach 3 Intervallen / min. 60 s einmalig
+          aus REST). 506 Tests gruen, clippy -D warnings sauber; Gegenprobe: ohne Reconnect
+          faellt der neue Verbindungstest ("nach dem Abbruch kam keine zweite Kerze").
+          Commits 22b85c3 + 1d9bb01 auf hermes/okx-reconnect-20261021, PR #4 offen,
+          Release 16:18 gebaut, Lauf PID 60584 seit 16:18 (Status frisch, 0 Orders).
+      Naechster Schritt: offen bleiben (2) soll die Wache omnitrade2-sol-wache einen
+          haengenden Loop selbst neu starten (heute meldet sie nur, FRESH_MS 10 min,
+          Zeile 411-421) und (3) das T-439-Fenster neu beginnen statt am 23.10.
+          abzurechnen — beide Entscheidungen von Max.
       Nebenbefund: start.ps1 leitet stdout per -RedirectStandardOutput um (truncate) —
           jeder Neustart loescht die Log-Evidenz des vorigen Laufs; es existiert genau EIN
           WS-Fehler in EINEM Log, die Historie ist verloren.
