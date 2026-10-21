@@ -64,6 +64,17 @@ Anfang September noch auf die Altanlage.
    Einstellungsaenderung in Desktop/TUI nachzaehlen (`grep -c "claude-opus-4.1:batch"
    Agenten/Hermes/config.yaml` muss 1 sein). Offen als T-297.
 
+8. **Ausgeschaltete MCP-Eintraege sind seit 21.10.2026 sichtbar (T-434).** Sieben
+   OAuth-Kandidaten (gitlab, airtable, deepwiki, buildkite, circleci, algolia, postman)
+   standen in `Agenten/Hermes/config.yaml` als `enabled: false`, fehlten im Manifest und
+   wurden vom Pruefer nie genannt - er strich ausgeschaltete Eintraege aus BEIDEN
+   Namenslisten. Entfernt per `hermes -p default mcp remove <name>` (raeumt auch die
+   OAuth-Tokens; ein reiner Textschnitt liesse sie stehen - die Meldung lautet
+   'Cleaned up OAuth tokens'), dokumentiert unter `disabled` im Manifest mit URL, Grund
+   und Rueckholbefehl. Der Pruefer meldet einen ausgeschalteten Eintrag ohne
+   Manifest-Eintrag jetzt als `HINWEIS` (Exit bleibt 0, es ist keine Drift). Beleg:
+   `Agenten/Routinen/tests/mcp-sync-check.test.ps1` (19 Pruefungen).
+
 **Nachtrag 01.10.2026: die BOT-PROFILE tragen jetzt das Gegenteil.** Auf Auftrag Max
 („die botprofile brauchen noch weniger") sind die `models:`-Listen der 19 Profile, die je
 ~1.739 Eintraege aus der omniroute-Liste mitkopiert hatten, auf das gekuerzt, was das Profil

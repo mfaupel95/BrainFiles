@@ -1279,18 +1279,6 @@ mcp_servers:
         - atlas_purpose_review
         - atlas_purpose_set
         - atlas_root
-  gitlab:
-    url: https://gitlab.com/api/v4/mcp
-    auth: oauth
-    enabled: false
-    tools:
-      exclude:
-        - get_mcp_server_version
-        - list_duo_sessions
-  airtable:
-    url: https://mcp.airtable.com/mcp
-    auth: oauth
-    enabled: false
   MCP_DOCKER:
     command: docker
     args:
@@ -1303,33 +1291,6 @@ mcp_servers:
       LOCALAPPDATA: C:\Users\faupe\AppData\Local
       ProgramData: C:\ProgramData
       ProgramFiles: C:\Program Files
-  deepwiki:
-    url: https://mcp.deepwiki.com/mcp
-    enabled: false
-  buildkite:
-    url: https://mcp.buildkite.com/mcp
-    auth: oauth
-    enabled: false
-    tools:
-      exclude:
-        - access_token
-        - get_job_env
-  circleci:
-    url: https://mcp.circleci.com/v1/mcp
-    auth: oauth
-    enabled: false
-    tools:
-      exclude:
-        - hello
-        - download_usage_data
-  algolia:
-    url: https://mcp.algolia.com/mcp
-    auth: oauth
-    enabled: false
-  postman:
-    url: https://mcp.postman.com/minimal
-    auth: oauth
-    enabled: false
   ziplime:
     command: C:\Users\faupe\Documents\BrainFiles\Werkstatt\ziplime\.venv\Scripts\python.exe
     args:

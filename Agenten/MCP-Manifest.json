@@ -258,6 +258,34 @@
     {
       "name": "robinhood",
       "reason": "KANDIDAT (noch nicht aktiv): war am 16.09.2026 per 'hermes mcp add robinhood --url https://agent.robinhood.com/mcp/trading --auth oauth' in der Hermes-Config eingetragen (enabled=false), OAuth-Anmeldung steht aus. Am 16.09.2026 aus der Hermes-Config entfernt und hier dokumentiert; nach erfolgreichem Login als aktiver Eintrag mit agent='hermes' fuehren."
+    },
+    {
+      "name": "gitlab",
+      "reason": "KANDIDAT, nie benutzt: war per 'hermes mcp add' als Streamable-HTTP-Server https://gitlab.com/api/v4/mcp (auth: oauth) in Agenten/Hermes/config.yaml eingetragen, dort enabled: false und ohne Anmeldung. Am 21.10.2026 (T-434) aus der Hermes-Config entfernt ('hermes -p default mcp remove gitlab', raeumt auch die OAuth-Tokens) und hier dokumentiert, damit Manifest und Config dieselben Server nennen. Wieder aufnehmen: 'hermes -p default mcp add gitlab --url https://gitlab.com/api/v4/mcp --auth oauth'; danach als aktiven Eintrag mit agent='hermes' fuehren. Die Werkzeug-Ausschluesse des alten Eintrags (get_mcp_server_version, list_duo_sessions) sind mit dem Entfernen entfallen, bei Bedarf wieder setzen."
+    },
+    {
+      "name": "airtable",
+      "reason": "KANDIDAT, nie benutzt: war per 'hermes mcp add' als Streamable-HTTP-Server https://mcp.airtable.com/mcp (auth: oauth) in Agenten/Hermes/config.yaml eingetragen, dort enabled: false und ohne Anmeldung. Am 21.10.2026 (T-434) aus der Hermes-Config entfernt ('hermes -p default mcp remove airtable', raeumt auch die OAuth-Tokens) und hier dokumentiert, damit Manifest und Config dieselben Server nennen. Wieder aufnehmen: 'hermes -p default mcp add airtable --url https://mcp.airtable.com/mcp --auth oauth'; danach als aktiven Eintrag mit agent='hermes' fuehren."
+    },
+    {
+      "name": "deepwiki",
+      "reason": "KANDIDAT, nie benutzt: war per 'hermes mcp add' als Streamable-HTTP-Server https://mcp.deepwiki.com/mcp (ohne auth, oeffentlich, kein Login noetig) in Agenten/Hermes/config.yaml eingetragen, dort enabled: false und ohne Anmeldung. Am 21.10.2026 (T-434) aus der Hermes-Config entfernt ('hermes -p default mcp remove deepwiki', raeumt auch die OAuth-Tokens) und hier dokumentiert, damit Manifest und Config dieselben Server nennen. Wieder aufnehmen: 'hermes -p default mcp add deepwiki --url https://mcp.deepwiki.com/mcp'; danach als aktiven Eintrag mit agent='hermes' fuehren."
+    },
+    {
+      "name": "buildkite",
+      "reason": "KANDIDAT, nie benutzt: war per 'hermes mcp add' als Streamable-HTTP-Server https://mcp.buildkite.com/mcp (auth: oauth) in Agenten/Hermes/config.yaml eingetragen, dort enabled: false und ohne Anmeldung. Am 21.10.2026 (T-434) aus der Hermes-Config entfernt ('hermes -p default mcp remove buildkite', raeumt auch die OAuth-Tokens) und hier dokumentiert, damit Manifest und Config dieselben Server nennen. Wieder aufnehmen: 'hermes -p default mcp add buildkite --url https://mcp.buildkite.com/mcp --auth oauth'; danach als aktiven Eintrag mit agent='hermes' fuehren. Die Werkzeug-Ausschluesse des alten Eintrags (get_mcp_server_version, list_duo_sessions) sind mit dem Entfernen entfallen, bei Bedarf wieder setzen."
+    },
+    {
+      "name": "circleci",
+      "reason": "KANDIDAT, nie benutzt: war per 'hermes mcp add' als Streamable-HTTP-Server https://mcp.circleci.com/v1/mcp (auth: oauth) in Agenten/Hermes/config.yaml eingetragen, dort enabled: false und ohne Anmeldung. Am 21.10.2026 (T-434) aus der Hermes-Config entfernt ('hermes -p default mcp remove circleci', raeumt auch die OAuth-Tokens) und hier dokumentiert, damit Manifest und Config dieselben Server nennen. Wieder aufnehmen: 'hermes -p default mcp add circleci --url https://mcp.circleci.com/v1/mcp --auth oauth'; danach als aktiven Eintrag mit agent='hermes' fuehren. Die Werkzeug-Ausschluesse des alten Eintrags (get_mcp_server_version, list_duo_sessions) sind mit dem Entfernen entfallen, bei Bedarf wieder setzen."
+    },
+    {
+      "name": "algolia",
+      "reason": "KANDIDAT, nie benutzt: war per 'hermes mcp add' als Streamable-HTTP-Server https://mcp.algolia.com/mcp (auth: oauth) in Agenten/Hermes/config.yaml eingetragen, dort enabled: false und ohne Anmeldung. Am 21.10.2026 (T-434) aus der Hermes-Config entfernt ('hermes -p default mcp remove algolia', raeumt auch die OAuth-Tokens) und hier dokumentiert, damit Manifest und Config dieselben Server nennen. Wieder aufnehmen: 'hermes -p default mcp add algolia --url https://mcp.algolia.com/mcp --auth oauth'; danach als aktiven Eintrag mit agent='hermes' fuehren."
+    },
+    {
+      "name": "postman",
+      "reason": "KANDIDAT, nie benutzt: war per 'hermes mcp add' als Streamable-HTTP-Server https://mcp.postman.com/minimal (auth: oauth) in Agenten/Hermes/config.yaml eingetragen, dort enabled: false und ohne Anmeldung. Am 21.10.2026 (T-434) aus der Hermes-Config entfernt ('hermes -p default mcp remove postman', raeumt auch die OAuth-Tokens) und hier dokumentiert, damit Manifest und Config dieselben Server nennen. Wieder aufnehmen: 'hermes -p default mcp add postman --url https://mcp.postman.com/minimal --auth oauth'; danach als aktiven Eintrag mit agent='hermes' fuehren."
     }
   ]
 }

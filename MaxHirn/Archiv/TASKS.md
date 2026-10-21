@@ -28,17 +28,6 @@
           Nachlauf heilen, nie live ersetzen.
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Werkzeuge/tests/test_breite.py
-- [ ] **T-434 — Sieben entfernte MCP-Server in der Hermes-Config, nicht im Manifest**
-      Kontext: gitlab, airtable, deepwiki, buildkite, circleci, algolia und
-          postman stehen in Agenten/Hermes/config.yaml als url+oauth-Server,
-          alle enabled: false. Der Pruefer verwirft ausgeschaltete Eintraege und
-          sieht sie deshalb gar nicht; im Manifest fehlen sie vollstaendig.
-      Naechster Schritt: entscheiden - als Kandidaten mit Grund in `disabled`
-          dokumentieren oder per `hermes mcp remove` entfernen; den Pruefer so
-          erweitern, dass er ausgeschaltete Config-Eintraege ohne Manifest-
-          Eintrag wenigstens als Hinweis zeigt.
-      Angelegt 21.10.2026 · Zuletzt 21.10.2026
-      Betrifft: Agenten/Hermes/config.yaml, Agenten/MCP-Manifest.json
 - [ ] **T-430 — Telegram: DM-Themen fehlen, weil Threaded Mode aus ist**
       Kontext: In Agenten/Hermes/config.yaml sind vier DM-Themen verdrahtet
           (Allgemein 32025, Handel 32027, Markt 32029, Wissen 32031), aber
@@ -2342,6 +2331,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
     - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
     - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 ## Erledigt
+- [x] **T-434 — Sieben entfernte MCP-Server in der Hermes-Config, nicht im Manifest**
+      Kontext: gitlab, airtable, deepwiki, buildkite, circleci, algolia und
+          postman stehen in Agenten/Hermes/config.yaml als url+oauth-Server,
+          alle enabled: false. Der Pruefer verwirft ausgeschaltete Eintraege und
+          sieht sie deshalb gar nicht; im Manifest fehlen sie vollstaendig.
+      Naechster Schritt: entscheiden - als Kandidaten mit Grund in `disabled`
+          dokumentieren oder per `hermes mcp remove` entfernen; den Pruefer so
+          erweitern, dass er ausgeschaltete Config-Eintraege ohne Manifest-
+          Eintrag wenigstens als Hinweis zeigt.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/MCP-Manifest.json
+      **Erledigt 2026-10-21.** Entschieden: die sieben Kandidaten werden in der Hermes-Config NICHT geduldet, sondern entfernt und im Manifest dokumentiert. Gemessen: 'hermes -p default mcp remove <name>' hat alle sieben entfernt (config.yaml 0 Insertions / 39 Deletions, danach 15 Server = 15 Manifest-Servern, 'mcp list' nennt sie nicht mehr) und dabei die OAuth-Tokens aufgeraeumt ('Cleaned up OAuth tokens') - ein reiner Textschnitt haette sie stehen lassen. Manifest: 7 Eintraege unter 'disabled' mit URL, Grund und Rueckholbefehl (28 Insertions, 0 Deletions), Sicherungen config.yaml.bak-20261021 + MCP-Manifest.json.bak-20261021. Die Luecke im Pruefer selbst ist geschlossen: HoleHermesEintraege liefert eingeschaltet UND ausgeschaltet, ein ausgeschalteter Eintrag ohne Manifest-Eintrag erscheint als HINWEIS (Exit bleibt 0, es ist keine Drift), Testnaht -Manifest/-ConfigHermes/-ConfigClaude. Belege: mcp-sync-check.ps1 'ALLES IN ORDNUNG' Exit 0 (12 eingeschaltet, 3 ausgeschaltet), Agenten/Routinen/tests/mcp-sync-check.test.ps1 19/19 gruen - mit dem alten Pruefer 9 rot (Gegenprobe). Doku: Wiki/Betrieb/Hermes.md Punkt 8, Skill mcp-sync.
 - [x] **T-436 — Zwei venvs zeigen mit .pth auf den geloeschten Pfad Werkstatt\Repos**
       Kontext: Beim Reparieren der ziplime-Bruecke gefunden - Werkstatt/foreman/.venv
           und Werkstatt/tradememory-protocol/.venv tragen je eine __editable__-*.pth

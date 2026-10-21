@@ -21,18 +21,25 @@
 #
 # Aufruf: powershell -ExecutionPolicy Bypass -File mcp-sync-check.ps1 [-Streng]
 
-param([switch]$Streng)
+param(
+  [switch]$Streng,
+  # Testnaht (T-434): ohne diese Parameter liest der Pruefer die Hausdateien.
+  [string]$Manifest = '',
+  [string]$ConfigHermes = '',
+  [string]$ConfigClaude = ''
+)
 
 $ErrorActionPreference = 'Stop'
 $wurzel = Split-Path $PSScriptRoot -Parent
-$manifest = Join-Path $PSScriptRoot 'MCP-Manifest.json'
-$confHermes = Join-Path $wurzel 'Agenten\Hermes\config.yaml'
+if ($Manifest) { $manifest = $Manifest } else { $manifest = Join-Path $PSScriptRoot 'MCP-Manifest.json' }
+if ($ConfigHermes) { $confHermes = $ConfigHermes } else { $confHermes = Join-Path $wurzel 'Agenten\Hermes\config.yaml' }
 
 # Claude-Konfiguration suchen: erst der MSIX-Container (Pfad der installierten App),
 # dann der klassische Pfad %APPDATA%\Claude. Eine verwaiste klassische Datei daneben
 # wuerde den Abgleich verfaelschen - sie wird unten gemeldet.
 $confClaude = $null
 $kandidaten = @()
+if ($ConfigClaude) { $kandidaten += $ConfigClaude }
 $pakete = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Packages') -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue
 foreach ($p in $pakete) {
   $kandidaten += (Join-Path $p.FullName 'LocalCache\Roaming\Claude\claude_desktop_config.json')
@@ -44,6 +51,9 @@ foreach ($k in $kandidaten) {
 
 $fehler = @()
 $warnungen = @()
+# Hinweise sind keine Drift: sie nennen Eintraege, die nie laufen und in der
+# Wahrheit (Manifest) gar nicht vorkommen. Exit-Code bleibt davon unberuehrt.
+$hinweise = @()
 
 function Schreibe($marker, $text) {
   Write-Host ('  ' + $marker + ' ' + $text)
@@ -51,22 +61,30 @@ function Schreibe($marker, $text) {
 
 # Hermes: Servernamen aus dem mcp_servers-Block der YAML ziehen.
 # Nur Schluessel mit EXAKT 2 Leerzeichen Einzug und ohne Wert gelten als Servername.
-function HoleHermesNamen {
+# Liefert $null, wenn kein mcp_servers-Block existiert, sonst
+# @{ Aktiv = @(...); Aus = @(...) }. Ausgeschaltete Server (enabled: false)
+# laufen nicht und zaehlen nicht als vorhanden (29.09.2026: revolut-x und
+# blender galten sonst als OK); sie werden aber WEITERGEGEBEN, damit der
+# Abgleich sie als Hinweis zeigen kann, wenn das Manifest sie nicht kennt
+# (T-434, 21.10.2026 - vorher waren sie in beiden Listen unsichtbar).
+function HoleHermesEintraege {
   param($pfad)
   $zeilen = Get-Content $pfad
   $idx = ($zeilen | Select-String -Pattern '^mcp_servers:' | Select-Object -First 1).LineNumber
   if (-not $idx) { return $null }
-  $namen = @()
+  $aktiv = @()
+  $aus = @()
+  $letzter = $null
   for ($i = $idx; $i -lt $zeilen.Count; $i++) {
     $ln = $zeilen[$i]
     if ($ln -match '^[A-Za-z0-9_]' -and $ln -notmatch '^mcp_servers:') { break }
-    if ($ln -match '^  ([A-Za-z0-9_.\-]+):\s*$') { $namen += $Matches[1]; continue }
-    # 'enabled: false' auf Serverebene: eingetragen, aber abgeschaltet - zaehlt
-    # nicht als vorhanden. Ohne das meldete der Abgleich revolut-x und blender
-    # als OK, obwohl Hermes sie gar nicht startet (29.09.2026).
-    if ($ln -match '^    enabled:\s*false\s*$' -and $namen.Count) { $namen = @($namen | Select-Object -SkipLast 1) }
+    if ($ln -match '^  ([A-Za-z0-9_.\-]+):\s*$') { $letzter = $Matches[1]; $aktiv += $letzter; continue }
+    if ($ln -match '^    enabled:\s*false\s*$' -and $letzter) {
+      $aktiv = @($aktiv | Where-Object { $_ -ne $letzter })
+      $aus += $letzter
+    }
   }
-  return $namen
+  return @{ Aktiv = @($aktiv); Aus = @($aus) }
 }
 
 Write-Host '=== MCP-Sync-Pruefung ==='
@@ -96,18 +114,23 @@ if (-not $confClaude) {
 }
 
 $hermesNamen = @()
+$hermesAus = @()
 if (-not (Test-Path $confHermes)) {
   $warnungen += 'Hermes-Konfiguration nicht gefunden: ' + $confHermes
 } else {
   Schreibe 'OK' 'Hermes-Konfiguration vorhanden'
-  $hermesNamen = @(HoleHermesNamen -pfad $confHermes | Sort-Object)
-  if (-not $hermesNamen) {
+  $hermesEintraege = HoleHermesEintraege -pfad $confHermes
+  if ($null -eq $hermesEintraege) {
     $fehler += 'Hermes-Konfiguration enthaelt keinen mcp_servers-Block'
+  } else {
+    $hermesNamen = @($hermesEintraege.Aktiv | Sort-Object)
+    $hermesAus = @($hermesEintraege.Aus | Sort-Object)
   }
 }
 
 if ($confClaude -and $claude) { Schreibe 'OK' ('Claude hat ' + $claude.Count + ' Server eingetragen') }
 if ($hermesNamen) { Schreibe 'OK' ('Hermes hat ' + $hermesNamen.Count + ' Server eingetragen') }
+if ($hermesAus) { Schreibe 'OK' ('Hermes hat ' + $hermesAus.Count + ' Server eingetragen, aber ausgeschaltet: ' + ($hermesAus -join ', ')) }
 
 # 1b. Konfiguration neuer als Manifest? (stille App-Ueberschreibungen erkennen)
 if (Test-Path $manifest) {
@@ -170,6 +193,21 @@ if (Test-Path $manifest) {
       $warnungen += $aus.name + ': im Manifest deaktiviert, laeuft aber bei einem Agenten'
     }
   }
+
+  # 3b. Ausgeschaltete Hermes-Eintraege, die das Manifest GAR NICHT kennt.
+  # Der Abgleich oben laeuft nur ueber die eingeschalteten Namen; ohne diesen
+  # Block sind solche Eintraege unsichtbar (T-434: sieben OAuth-Kandidaten
+  # standen in der Config, fehlten im Manifest und meldeten nichts).
+  if ($hermesAus) {
+    $manifestNamen = @()
+    foreach ($s in @($mcp.servers)) { if ($s) { $manifestNamen += $s.name } }
+    foreach ($s in @($mcp.disabled)) { if ($s) { $manifestNamen += $s.name } }
+    foreach ($name in $hermesAus) {
+      if ($name -notin $manifestNamen) {
+        $hinweise += $name + ': in Hermes-Config abgeschaltet (enabled: false), im Manifest weder aktiv noch unter disabled gefuehrt'
+      }
+    }
+  }
 }
 
 # 4. Klartext-Zugangsdaten in der Claude-Konfiguration?
@@ -191,9 +229,13 @@ if ($confClaude) {
 
 # Ausgabe
 Write-Host ''
-if ($fehler.Count -eq 0 -and $warnungen.Count -eq 0) {
+if ($fehler.Count -eq 0 -and $warnungen.Count -eq 0 -and $hinweise.Count -eq 0) {
   Write-Host '=== ALLES IN ORDNUNG ==='
   exit 0
+}
+if ($hinweise.Count -gt 0) {
+  Write-Host '=== HINWEISE ==='
+  foreach ($h in $hinweise) { Write-Host ('  HINWEIS ' + $h) }
 }
 if ($warnungen.Count -gt 0) {
   Write-Host '=== WARNUNGEN ==='
