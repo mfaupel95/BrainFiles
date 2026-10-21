@@ -232,6 +232,21 @@ class BotFragenProzess(unittest.TestCase):
     """_bot_fragen: der echte hermes.exe-Aufruf wird NIE ausgefuehrt, aber der
     Aufruf muss die richtige Form haben (Name als -p, Text als -q, saubere
     Umgebung ohne PYTHONHOME/PYTHONPATH)."""
+    def setUp(self):
+        # _bot_fragen verweigert ohne vorhandene hermes.exe. Im Test steht
+        # keine echte Binaries (ungetrackt, fehlt im frischen Worktree) - eine
+        # Fake-Datei genuegt, damit die isfile-Pruefung durchlaeuft und der
+        # Popen-Mock greift. Der echte Aufruf wird nie ausgefuehrt.
+        self.tmp = tempfile.TemporaryDirectory()
+        self.exe = patch.object(s, "HERMES_EXE",
+                                str(Path(self.tmp.name) / "hermes.exe"))
+        self.exe.start()
+        Path(self.exe.new).touch()
+
+    def tearDown(self):
+        self.exe.stop()
+        self.tmp.cleanup()
+
     def test_hermes_umgebung_raeumt_auf(self):
         with patch.dict(s.os.environ, {"PYTHONHOME": "x", "PYTHONPATH": "y"}):
             env = s._hermes_umgebung()

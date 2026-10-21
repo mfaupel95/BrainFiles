@@ -237,8 +237,30 @@ class PollschleifeTest(unittest.TestCase):
         self.assertIn("(Bild ohne Unterschrift)", block)
 
     def test_das_ganze_fenster_geht_raus(self):
-        """Nur das neue Bild waere zu wenig: der Auftrag nennt Bild 1 UND 2."""
-        self.assertIn("_fenster_bilder(cache_key)", self._schleife())
+        """Nur das neue Bild waere zu wenig: der Auftrag nennt Bild 1 UND 2.
+
+        Seit der Bilder-Regel vom 14.10.2026 waehlt `_bilder_fuer_auftrag` aus,
+        was mitgeht - `_fenster_bilder` direkt anzusprechen klebte am
+        04.10.2026 Fliesenbilder an einen reinen Textauftrag. Die Eigenschaft
+        bleibt: verweist der Auftrag auf ein Bild, kommt das GANZE Fenster mit.
+        """
+        self.assertIn("_bilder_fuer_auftrag(nachricht, text, cache_key)",
+                      self._schleife())
+        alt = s.BILDER_PFAD
+        s.BILDER_PFAD = os.path.join(tempfile.mkdtemp(), "bilder")
+        try:
+            ziel = os.path.join(s.BILDER_PFAD, "chat7")
+            os.makedirs(ziel)
+            for nummer in (1, 2):
+                with open(os.path.join(ziel, "bild%d.jpg" % nummer), "wb") as f:
+                    f.write(b"x")
+            nachricht = {"photo": [{"file_id": "p2", "file_size": 900}]}
+            pfade = s._bilder_fuer_auftrag(nachricht, "Muster im 2. Bild",
+                                           "chat7")
+        finally:
+            s.BILDER_PFAD = alt
+        self.assertEqual([os.path.basename(p) for p in pfade],
+                         ["bild1.jpg", "bild2.jpg"])
 
     def test_bildfehler_landet_im_protokoll(self):
         """Ein Ladefehler darf nicht spurlos verschwinden."""

@@ -350,24 +350,21 @@ def kb_snapshot_json(ziel_pfad: Path | None = None) -> None:
                 return round(gewinne / verluste, 2)
 
             def _max_drawdown(spur: str, tage: int) -> float | None:
+                # Equity-Kurve in Prozent des Nominals (Start 100), nie ueber 100 %.
                 rows = con.execute("""
-                    SELECT json_extract(properties,'$.ergebnis_eur') FROM events
+                    SELECT json_extract(properties,'$.ergebnis_pct') FROM events
                     WHERE event = ? AND json_extract(properties,'$.spur_name') = ?
                       AND ts >= datetime('now',?) ORDER BY ts
                 """, (Events.ZYKLUS_ABGESCHLOSSEN, spur, f"-{tage} days")).fetchall()
                 werte = [r[0] for r in rows if r[0] is not None]
                 if not werte:
                     return None
-                peak = 0.0
-                balance = 0.0
+                equity = peak = 100.0
                 max_dd = 0.0
                 for v in werte:
-                    balance += v
-                    if balance > peak:
-                        peak = balance
-                    dd = (peak - balance) / abs(peak) * 100 if peak > 0 else 0.0
-                    if dd > max_dd:
-                        max_dd = dd
+                    equity *= max(0.0, 1 + v / 100)
+                    peak = max(peak, equity)
+                    max_dd = max(max_dd, (peak - equity) / peak * 100)
                 return round(max_dd, 1)
 
             def _stop_quote(spur: str, tage: int) -> float | None:
