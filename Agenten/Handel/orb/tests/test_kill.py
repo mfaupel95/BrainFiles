@@ -55,7 +55,7 @@ class KillOrb(unittest.TestCase):
         handeln._wachen = lambda: dict(self.w)
         self.kurs = {"BTC_USDT": 96.0, "ETH_USDT": 96.0}
         handeln._letzter_kurs = lambda w, key: self.kurs[key]
-        handeln.pruefe_ausstiege = lambda z, w, jetzt=None: []
+        handeln.pruefe_ausstiege = lambda z, w, jetzt=None, live=False: []
         self.einstiege = []
         handeln.pruefe_einstieg = lambda z, w, jetzt=None: self.einstiege_liefern(z)
         self.verluste(5)
