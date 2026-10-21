@@ -1246,3 +1246,10 @@ Agenten/Werkzeuge/routing-plan/werkstatt/
 !Agenten/Handel/omnitrade2/lauf.json
 !Agenten/Handel/omnitrade2/start.ps1
 Agenten/Handel/omnitrade2/zustand.json
+# CI-Workflows der XPERP-Spur. Nur diese Datei ist gemeint - die Whitelist
+# oben (Zeile 20: *) packt .github/ sonst ein, und ohne diese Zeile ist der
+# Ordner fuer git unsichtbar.
+!/.github/
+!/.github/workflows/
+!/.github/workflows/*.yml
+

@@ -1,0 +1,71 @@
+name: XPERP Tests
+
+# Unittest-Suite der XPERP-Spur (Spur 2, OKX-Perpetuals).
+#
+# Was hier laeuft:  `python -m unittest discover -s tests` in
+# Agenten/Handel/xperp - dieselbe Befehlsform wie lokal, derselbe Runner wie
+# der Handelsbetrieb. Die Suite ist ein Reines-Import-Feld: sie mockt jede
+# Boersenfrage, sie braucht keine Zugangsdaten und sie richtet keine Order aus.
+#
+# Bewusst NICHT dabei (nicht gefragt, nicht noetig, jede weitere Suite
+# verlaengert den Lauf ohne etwas an dieser Spur zu pruefen):
+#   - die Bus-Suite (Agenten/Bus) und die Werkzeug-Tests (Agenten/Werkzeuge)
+#   - pytest: die Suite ist unittest, pytest ist nicht installiert
+#   - ein Python-Matrixlauf: der Betrieb laeuft auf 3.13, die Suite ist
+#     versionierungsunabhaengig und ein zweiter Zweig waere Replikation
+#
+# Keine Pfadfilter: ein Workflow ohne paths laeuft auf jedem pull_request und
+# jedem push auf master, genau wie gefordert. Ein Filter haette den Nachteil,
+# dass ein kaputter Import in einer Nachbar-Spuren-Datei unentdeckt bliebe.
+#
+# Secrets: keine. okxf._roh() baut zwar OK-ACCESS-*-Header, liest aber nur
+# OKX_API_KEY/OKX_API_SECRET/OKX_API_PASSPHRASE aus der Umgebung - und die
+# Tests setzen dafuer mock.patch auf _mit_wiederholung. Ohne Schlussel ist
+# schluessel_vorhanden() False und es wird nichts gesendet.
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+# Nie zwei Laeufe desselben Zweigs gleichzeitig: der zweite wird abgebrochen.
+# Ein handsortiertes Concurrency-Objekt ist kein Pfadfilter - es schraenkt
+# nicht ein, WANN gelaufen wird, sondern nur, dass nicht doppelt gelaufen wird.
+concurrency:
+  group: xperp-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  xperp-tests:
+    # Windows: derselbe Laufzeit-Typ wie der Handelsbetrieb. Die Suite importiert
+    # winreg (okxf.py) - unter Linux waere das ein ImportError am Dateianfang,
+    # nicht ein fachlicher Befund.
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    env:
+      # Kein OKX-Schluessel im Lauf. Fehlt er, nimmt okxf den Demo-Modus und die
+      # Tests mocken die Boersenfrage ohnehin.
+      OKX_DEMO: "true"
+
+    steps:
+      - name: Repo auschecken
+        uses: actions/checkout@v4
+
+      # setup-python laedt einen CPython; die Suite nutzt nur die
+      # Standardbibliothek, deshalb wird kein requirements.txt installiert.
+      # cache: none - es gibt nichts zum Cachen.
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: none
+
+      - name: XPERP-Unittests
+        shell: pwsh
+        working-directory: Agenten/Handel/xperp
+        run: python -m unittest discover -s tests -v
