@@ -93,7 +93,9 @@ class MaeTest(_Basis):
 
 class BerichtTest(_Basis):
     def test_mindestrunden_marke(self):
-        b = sk.bericht("scanner")
+        # Ohne Stichtagsfilter: die Regel ist "unter MIN_RUNDEN = Befund", und
+        # die Gesamtzahl der Journalrunden ist hier nicht der Gegenstand.
+        b = sk.bericht("scanner", nur_gueltige=False)
         self.assertIsNotNone(b)
         self.assertGreaterEqual(b["e"]["trades"], sk.MIN_RUNDEN)
         b2 = sk.bericht("swap")
@@ -102,6 +104,37 @@ class BerichtTest(_Basis):
 
     def test_spur_ohne_runden_gibt_none(self):
         self.assertIsNone(sk.bericht("gibt_es_nicht"))
+
+
+
+class StichtagTest(unittest.TestCase):
+    """Runden aus der Fehlerzeit des Scanners zaehlen nicht in den Kennzahlen."""
+
+    def test_runden_vor_dem_preisfix_fallen_heraus_und_werden_gezaehlt(self):
+        from unittest import mock
+        runden = [
+            {"ergebnis": 5.0, "einstieg_zeit": "2026-10-01T10:00:00+00:00"},
+            {"ergebnis": 7.0, "einstieg_zeit": "2026-10-02T22:00:00+00:00"},
+            {"ergebnis": -2.0, "einstieg_zeit": "2026-10-03T09:00:00+00:00"},
+            {"ergebnis": 3.0, "einstieg_zeit": "2026-10-04T09:00:00+00:00"},
+            {"ergebnis": 9.0, "einstieg_zeit": None},   # nicht belegbar = vor Fix
+        ]
+        with mock.patch.object(a, "runden_fuer", return_value=runden):
+            alle = sk.bericht("scanner", nur_gueltige=False)
+            gueltig = sk.bericht("scanner")
+        self.assertEqual(alle["e"]["trades"], 5)
+        self.assertEqual(alle["n_vor_fix"], 0)
+        self.assertEqual(gueltig["e"]["trades"], 2)
+        self.assertEqual(gueltig["n_vor_fix"], 3)
+
+    def test_andere_spuren_bleiben_ungefiltert(self):
+        from unittest import mock
+        runden = [{"ergebnis": 1.0, "einstieg_zeit": "2026-01-01T00:00:00+00:00"},
+                  {"ergebnis": 2.0, "einstieg_zeit": "2026-01-02T00:00:00+00:00"}]
+        with mock.patch.object(a, "runden_fuer", return_value=runden):
+            b = sk.bericht("kraken")
+        self.assertEqual(b["e"]["trades"], 2)
+        self.assertEqual(b["n_vor_fix"], 0)
 
 
 if __name__ == "__main__":

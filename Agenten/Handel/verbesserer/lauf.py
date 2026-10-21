@@ -176,7 +176,18 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
         return None
 
     eingang = len(kerzen_je_inst)
-    kerzen_je_inst, ausricht_hinweise = ruecktest.ausrichten(kerzen_je_inst)
+    if konfig.get("ungleiche_historien", False):
+        ungleich, ausricht_hinweise = ruecktest.ausrichten_ungleich(
+            kerzen_je_inst)
+        if len(ungleich) >= 3:
+            kerzen_je_inst = ungleich
+        else:  # zu wenig lange Historien: wie bisher auf die Schnittmenge
+            kerzen_je_inst, alt_hinweise = ruecktest.ausrichten(kerzen_je_inst)
+            ausricht_hinweise = ["ungleiche Historien: weniger als 3 "
+                                 "Instrumente mit genug Tagen - altes "
+                                 "ausrichten()"] + list(alt_hinweise)
+    else:
+        kerzen_je_inst, ausricht_hinweise = ruecktest.ausrichten(kerzen_je_inst)
     if universum_hinweis:
         ausricht_hinweise = [universum_hinweis + "; nach Ausrichtung %d"
                              % len(kerzen_je_inst)] + list(ausricht_hinweise)
