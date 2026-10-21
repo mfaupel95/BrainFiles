@@ -111,6 +111,23 @@ class TelemetrieTest(unittest.TestCase):
                 telemetrie.eroeffnet(pfad, {"pos_id": "p"}, "papier", "B", "long"), "fremd")
         self.assertEqual(self._zeilen(), [])
 
+    def test_haken_lauf_beendet(self):
+        self.assertEqual(telemetrie.lauf_beendet(self.journal, "ok", 1.234, "papier"), "datei")
+        ev, = self._zeilen()
+        self.assertEqual(ev["event"], "lauf.beendet")
+        self.assertEqual(ev["group_spur"], "xperp")
+        self.assertEqual(ev["properties"], {"ergebnis": "ok", "dauer_s": 1.234, "modus": "papier"})
+        self.assertNotIn("_fehlt", ev)
+        fremd = os.path.join(self.tmp.name, "x", "handelsjournal.csv")
+        self.assertEqual(telemetrie.lauf_beendet(fremd, "ok", 1, "papier"), "fremd")
+
+    def test_haken_stoerung(self):
+        telemetrie.stoerung("kraken", "herzschlag_alt", dauer_s=5400)
+        ev, = self._zeilen()
+        self.assertEqual(ev["event"], "stoerung.erkannt")
+        self.assertEqual(ev["properties"]["flachgestellt"], False)
+        self.assertNotIn("_fehlt", ev)
+
     def test_haken_wirft_bei_kaputter_position_nicht(self):
         self.assertIn(telemetrie.eroeffnet(self.journal, None, "papier", "B", "long"),
                       ("nichts",))

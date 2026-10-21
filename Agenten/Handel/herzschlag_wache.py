@@ -115,6 +115,13 @@ def lauf(handel=HIER, jetzt=None, melden=True, merkdatei=MERK):
     still = stille_spuren(handel, jetzt)
     merk = _json(merkdatei)
     neu, da = wechsel(still, merk)
+    if melden and handel == HIER:
+        try:
+            import telemetrie                                # noqa: PLC0415
+            for s in neu:
+                telemetrie.stoerung(s, "herzschlag_alt", dauer_s=still[s] * 60)
+        except Exception:                                    # noqa: BLE001
+            pass                  # Telemetrie darf die Wache nie stoeren
     if melden and (neu or da):
         try:
             sys.path.insert(0, os.path.join(os.path.dirname(handel), "Bus"))

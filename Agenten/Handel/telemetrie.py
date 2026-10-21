@@ -183,6 +183,26 @@ def eroeffnet(journal_pfad, p, modus, inst, seite):
         return "nichts"
 
 
+def lauf_beendet(journal_pfad, ergebnis, dauer_s, modus):
+    """lauf.beendet: ein Zyklus der Spur ist durch (spur_buch.zyklus)."""
+    try:
+        if not _im_haus(journal_pfad):
+            return "fremd"
+        return ereignis(LAUF_BEENDET, spur_aus_pfad(journal_pfad),
+                        ergebnis=ergebnis, dauer_s=_zahl(dauer_s), modus=modus)
+    except Exception:                                       # noqa: BLE001
+        return "nichts"
+
+
+def stoerung(spur_id, art, dauer_s=None, flachgestellt=False):
+    """stoerung.erkannt: art in herzschlag_alt | abruf_fehler | api_fehler | journal_luecke."""
+    try:
+        return ereignis(STOERUNG_ERKANNT, spur_id, art=art,
+                        dauer_s=_zahl(dauer_s), flachgestellt=bool(flachgestellt))
+    except Exception:                                       # noqa: BLE001
+        return "nichts"
+
+
 def geschlossen(journal_pfad, p, modus, grund, gv, haltetage):
     """position.geschlossen aus der beendeten Position `p`; gv = G/V in USD."""
     try:

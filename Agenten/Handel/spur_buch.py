@@ -22,6 +22,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 from datetime import datetime, timezone
 
 # --- Gemeinsame Abhaengigkeiten ueber den PFAD laden -----------------------
@@ -1286,8 +1287,17 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         spiegeln(zustand_pfad, journal_pfad, z, w)
         return 0
 
-    with ereignis.lauf(ereignis_name):
-        return _lauf()
+    begonnen = time.monotonic()
+    ergebnis = "fehler"
+    try:
+        with ereignis.lauf(ereignis_name):
+            rc = _lauf()
+            ergebnis = "ok" if rc in (0, None) else "fehler"
+            return rc
+    finally:
+        if SCHREIBEN and modus in ("papier", "live"):
+            telemetrie.lauf_beendet(journal_pfad, ergebnis,
+                                    time.monotonic() - begonnen, modus)
 def _signal_queue(ordner, inst, seite, kurs):
     """Signal-Wechsel in die Queue schreiben (vom signal-executor abgeholt).
 
