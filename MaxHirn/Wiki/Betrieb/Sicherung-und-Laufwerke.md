@@ -261,6 +261,11 @@ Hintergrund starten; ein 300-s-Vordergrund-Lauf bricht ab).
   `state=RUNNING`). **Pruefweg:** gemerkte Namen aus `Werkstatt\Logs\docker-platten-container.txt` gegen
   `docker ps -a --format '{{.Names}}|{{.Status}}'` halten, `unhealthy`/`Restarting` suchen; das Skript meldet
   nur "gestartet", nicht "gesund". Nach dem Lauf ist `wsl -l -v` kurz "Stopped" - das ist normal.
+  **`DockerDesktop.vhdx` (31,4 GB) ist nach Befund ungenutzt:** Docker laeuft mit `WslEngineEnabled: true`
+  und `CustomWslDistroDir=O:\Modelle\DockerDesktopWSL` (dort liegt die benutzte `docker_data.vhdx`); die
+  Datei liegt im `SailorDataFolder` (`DockerDesktopVMM`), wurde zuletzt am 11.10. 22:17 geschrieben, am
+  21.10. nur vom Kompaktieren gelesen und ist bei laufendem Docker **nicht gesperrt**. Erstellt 02.10.2026.
+  Nicht geloescht (Entscheidung Max; vorher Docker-Desktop-Einstellungen auf VMM-Backend gegenpruefen).
   **Unabhaengig davon kaputt:** `puter` und `puter-s3` beendeten sich schon um 21:16 (Exit 1,
   `mkdir volatile/runtime` bzw. rustfs `Permission denied`, os error 13) - Bind-Mount-Rechte, nicht
   das Kompaktieren; nicht repariert.
