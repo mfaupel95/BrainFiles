@@ -2,6 +2,27 @@
 
 
 
+- [ ] **T-426 - OKX-Demo (EEA) gemessen: SWAP und XPERP gesperrt, nur datierte Futures handelbar**
+      Kontext: 21.10.2026 gemessen. Demo-Keys funktionieren NUR mit dem
+      Header x-simulated-trading: 1 gegen eea.okx.com - ohne ihn antwortet
+      OKX 50101 'does not match current environment' (das war mein Fehler,
+      nicht der Key). Handeln geht ausschliesslich auf dem datierten Future
+      BTC-USD_UM-261030 (ctVal 0.0001 BTC, minSz 0.1): Order gefuellt,
+      2,1 Kontrakte ~17 USD, Hebel 3, Margin 4,74 USDC. SWAP
+      (BTC-USDT-SWAP/BTC-USD-SWAP/ETH-USDT-SWAP) gibt beim ORDER 50124
+      'no trading permission', obwohl set-leverage dort code=0 liefert.
+      BTC-USD_UM_XPERP-310404 existiert auf dem Demo-Konto gar nicht (51001).
+      Das Demo-Orderbuch des datierten Future ist kaputt (bid 109,4 gegen
+      ask 67.768,9): Kaeufe fuellen, VERKAEUFE haengen (market und limit).
+      Folge: der -SWAP-Adapter aus PR #1 ist am Demo-KONTO nicht pruefbar,
+      nicht am Code.
+      Naechster Schritt: entscheiden, ob der Adapter auf das datierte Future
+      (instType FUTURES, BTC-USD_UM-<Verfall>) umgestellt wird - der einzige
+      auf Demo bewiesene Weg - oder ob PR #1 gegen das LIVE-EEA-Konto
+      geprueft wird (dort ist XPERP handelbar, SWAP nicht).
+      Wache: Hermes-Cron okx-demo-wache (3f204f21b49c, alle 30 min, no_agent)
+      bewacht die offene Testposition (2,1 Kontrakte long, Stop 61.000).
+      Angelegt: 21.10.2026 - Betrifft: Agenten/Handel/omnitrade, mfaupel95/omnitrade2
 - [ ] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
       Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
       OKX-Perpetuals-Adapter (SWAP) in mfaupel95/omnitrade2 gebaut (swap.rs,
