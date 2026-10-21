@@ -51,6 +51,7 @@ if _handel_ordner not in sys.path:
 import basis_deckel_tor
 import mae
 import pos_kennung  # noqa: E402
+import telemetrie  # noqa: E402  (Ereignisse nach tracking-plan.yaml, wirft nie)
 
 
 def _lade_modul(name):
@@ -857,6 +858,10 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
               ziel=pformat(p.get("ziel") or 0.0),
               stop_pct="%.2f" % ratschen.stop_prozent(p),
               grund=grund, **mae.felder(p))
+        if SCHREIBEN:
+            telemetrie.geschlossen(journal_pfad, p,
+                                   "live" if ist_live else "papier", grund, gv,
+                                   mae.felder(p)["haltetage"])
 
 
 # --- Kill: Zwangsschluss mit Buchung -----------------------------------------
@@ -1270,6 +1275,10 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                         stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
                         stop_pct="%.2f" % p["stop_pct"],
                         grund=grund)
+                if SCHREIBEN:
+                    telemetrie.eroeffnet(journal_pfad, p,
+                                         "live" if live else "papier",
+                                         inst, seite)
 
         z["datenlage"] = {"keine_daten": False, "kandidaten": len(daten),
                           "hinweis": datenlage() if datenlage else None}
