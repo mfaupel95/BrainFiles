@@ -1,7 +1,7 @@
 {
   "description": "Single source of truth for all MCP servers. Both Claude Desktop (via claude_desktop_config.json) and Hermes (via Agenten/Hermes/config.yaml) read from this.",
   "version": "1.2",
-  "updated": "2026-10-14",
+  "updated": "2026-10-21",
   "note": "Keep this file in sync with both claude_desktop_config.json mcpServers and Hermes/config.yaml mcp_servers. Automated check runs in systempruefung.ps1 via mcp-sync-check.ps1. Feld 'agent': 'beide' (Standard) oder 'hermes'/'claude', wenn nur ein Agent den Server eintragen soll. ACHTUNG: Beide Apps (Claude Desktop, Hermes) ueberschreiben ihre Konfiguration aus dem eigenen Speicher - am 10./11.09.2026 ist so mcp-memory aus beiden Konfigurationen verschwunden. Der Pruefer meldet Konfigurationen, die neuer als das Manifest sind.",
   "servers": [
     {
@@ -211,7 +211,7 @@
     {
       "name": "ziplime",
       "enabled": true,
-      "agent": "beide",
+      "agent": "hermes",
       "type": "stdio",
       "command": ".venv\\Scripts\\python.exe",
       "args": [
@@ -219,7 +219,7 @@
         "ziplime.mcp"
       ],
       "cwd": "Werkstatt\\ziplime",
-      "description": "Ziplime (Fork mfaupel95/ziplime): Backtesting-Engine (Polars, Zipline-API) mit MCP-Server. 14 Tools: ingest_*, check/write/read_strategy, run_backtest, get/compare_backtests, describe_live_trading. Daten aus ~/.ziplime (Yahoo, 15.376 Aktien). Kein Order-Tool - live nur ueber Lime-SDK, nie durch ein Tool. Registriert am 12.10.2026 fuer Max' Handelsoptimierung (Aktien/ETF + Krypto-CSV)."
+      "description": "Ziplime (Fork mfaupel95/ziplime): Backtesting-Engine (Polars, Zipline-API) mit MCP-Server. 14 Tools: ingest_*, check/write/read_strategy, run_backtest, get/compare_backtests, describe_live_trading. Daten aus ~/.ziplime (Yahoo, 15.376 Aktien). Kein Order-Tool - live nur ueber Lime-SDK, nie durch ein Tool. Registriert am 12.10.2026 fuer Max' Handelsoptimierung (Aktien/ETF + Krypto-CSV) Am 21.10.2026 vom MCP-Sync-Pruefer als Drift gemeldet: das Manifest sagte 'beide', eingetragen war der Server aber nur bei Hermes. Bewusst Hermes-only gefuehrt (14 Backtest-Tools gehoeren zur Handelsarbeit; Claude Desktop traegt den Werkzeugkatalog sonst in jeder Sitzung mit). Zum Einschalten bei Claude: dieses Feld wieder auf 'beide' setzen und den Eintrag bei GESCHLOSSENER Claude-Desktop-App in claude_desktop_config.json nachtragen."
     }
   ],
   "disabled": [
