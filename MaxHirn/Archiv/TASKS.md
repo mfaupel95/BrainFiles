@@ -2,6 +2,24 @@
 
 
 
+- [ ] **T-428 — Rust-Toolchain gelöscht (~/.cargo, 21.10.2026 ~03:25) — wer?**
+      Kontext: Während des omnitrade2-Live-Lauf-Setups (Builds liefen) verschwand
+      C:\Users\faupe\.cargo komplett; C:\Users\faupe\.rustup blieb als LEERER Ordner
+      (mtime 03:25). Kein rustup-Prozess aktiv, keine Routine (Routinen-Logs
+      03:15-03:35: nur fremdarbeit 03:20 = Commits), kein Scheduled-Task in dem
+      Fenster. Verdacht: parallele Sitzung oder manueller Aufräum-Vorgang (C:
+      hatte wenig Platz; T-231). Folge: cargo/rustc weg, alle omnitrade-Builds
+      tot, der SOL-XPERP-Live-Lauf (T-427) läuft bis zum Neustart auf dem alten
+      Binary (fail closed: Buy-Signale werden abgelehnt, keine Position, kein
+      Schaden). Gegenmaßnahme 21.10.: rustup neu installiert (stable, minimal,
+      61,7 GB frei auf C:), Rebuild + Tests folgen.
+      Naechster Schritt: klären, WER gelöscht hat (parallele Sitzung anfragen /
+      in deren Log suchen: "cargo", "rustup", "rm"); falls Aufräum-Intention
+      war: Rust braucht ~4-6 GB (Toolchain + Registry-Cache) — in die
+      Aufräum-Regeln aufnehmen statt löschen.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: C:\Users\faupe\.cargo, C:\Users\faupe\.rustup, Werkstatt/omnitrade-pr
+
 - [ ] **T-427 — omnitrade2 SOL-XPERP-Live-Lauf läuft (Auftrag Max 21.10.2026: „starte den loop")**
       Kontext: PID 18108, gestartet 21.10.2026 02:49 (CEST), Binary
       Werkstatt/omnitrade-pr (Zweig claude/xperp-base-semantik @ 895d1e7, PR #2
