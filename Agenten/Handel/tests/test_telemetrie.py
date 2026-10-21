@@ -56,6 +56,15 @@ class TelemetrieTest(unittest.TestCase):
                          ("xperp", "BTC", "long", True, "mittel", 100.0, 48.5, 55.0))
         self.assertNotIn("hebel", e)
 
+    def test_kleine_kurse_werden_nicht_zu_null_gerundet(self):
+        p = {"inst": "TOKEN", "seite": "long", "nominal": 125.0, "einstieg": 1.2345e-7,
+             "stop": 9.9e-8, "ziel": 2.5e-7}
+        telemetrie.eroeffnet(self.journal, p, "papier", "TOKEN", "long")
+        telemetrie.geschlossen(self.journal, p, "papier", "ziel", 10.0, 2.5e-7, "1")
+        (_, e), (_, z) = self._events()
+        self.assertEqual((e["einstieg_kurs"], e["stop_kurs"], e["ziel_kurs"]), (1.2345e-7, 9.9e-8, 2.5e-7))
+        self.assertEqual((z["einstieg_kurs"], z["ausstieg_kurs"]), (1.2345e-7, 2.5e-7))
+
     def test_geschlossen_short_vorzeichenrichtig(self):
         p = {"inst": "BTC", "seite": "short", "nominal": 200.0, "einstieg": 50.0}
         telemetrie.geschlossen(self.journal, p, "live", "stop 3.0", -4.0, 52.0, "2.0", "hoch")

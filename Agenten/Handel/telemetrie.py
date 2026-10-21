@@ -49,6 +49,15 @@ def _im_haus(journal_pfad):
             and os.path.basename(ordner) not in ("tests", "telemetrie"))
 
 
+def _kurs(x):
+    """Ein Kurs, UNGERUNDET. Token-Preise (Sniper, Memecoins) liegen bei 1e-7;
+    auf 4 Stellen gerundet wurde daraus 0.0 (Befund 2026-10-21, moondev_sniper)."""
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
 def _zahl(x):
     try:
         return round(float(x), 4)
@@ -85,8 +94,8 @@ def eroeffnet(journal_pfad, p, modus, inst, seite, stufe="basis"):
     """position.eroeffnet aus der frisch eroeffneten Position `p` (spur_buch.einstieg)."""
     return _tue(journal_pfad, lambda: tracking.track_position_eroeffnet(
         spur_name=spur_aus_pfad(journal_pfad), instrument=inst, richtung=seite,
-        einstieg_kurs=_zahl(p.get("einstieg")), stop_kurs=_zahl(p.get("stop")),
-        ziel_kurs=_zahl(p.get("ziel")), nominal_eur=_zahl(p.get("nominal")),
+        einstieg_kurs=_kurs(p.get("einstieg")), stop_kurs=_kurs(p.get("stop")),
+        ziel_kurs=_kurs(p.get("ziel")), nominal_eur=_zahl(p.get("nominal")),
         is_paper=modus != "live", risikostufe=stufe, hebel=_zahl(p.get("hebel"))))
 
 
@@ -97,7 +106,7 @@ def geschlossen(journal_pfad, p, modus, grund, gv, kurs, haltetage, stufe="basis
         tracking.track_zyklus_abgeschlossen(
             spur_name=spur_aus_pfad(journal_pfad), instrument=p.get("inst"),
             richtung=p.get("seite") or p.get("richtung"),
-            einstieg_kurs=_zahl(p.get("einstieg")), ausstieg_kurs=_zahl(kurs),
+            einstieg_kurs=_kurs(p.get("einstieg")), ausstieg_kurs=_kurs(kurs),
             # G/V auf den Nominalwert, vorzeichenrichtig fuer long UND short
             ergebnis_pct=round(float(gv) / nominal * 100, 4) if nominal else None,
             ergebnis_eur=_zahl(gv),
