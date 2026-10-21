@@ -41,16 +41,17 @@ cd "$TMPDIR" && curl -sSL -o rustup-init.exe \
 ```
 
 Danach **nicht** auf `cargo` aus dem PATH verlassen, sondern das Binary direkt rufen:
-`/c/Users/faupe/.cargo/bin/cargo --version`. Je nach Vorgeschichte liegt die Toolchain
-auch unter `C:\Users\faupe\.config\cargo\bin` (dort gehoeren `CARGO_HOME`/`RUSTUP_HOME`
-hin) — den Fundort mit `ls /c/Users/faupe/.cargo/bin/cargo.exe` bzw.
-`.config/cargo/bin` feststellen, nicht raten.
+`/c/Users/faupe/.config/cargo/bin/cargo --version`. Dort gehoeren `CARGO_HOME` und
+`RUSTUP_HOME` hin (seit 21.10.2026 gesetzt auf `C:\Users\faupe\.config\cargo` bzw.
+`.config\rustup`). Eine zweite Kopie unter `C:\Users\faupe\.cargo` (Neuaufbau 21.10.,
+Standardpfad, weil die Umgebungsvariablen im Prozess fehlten) ist nicht maßgeblich;
+den Fundort mit `ls /c/Users/faupe/.config/cargo/bin/cargo.exe` feststellen, nicht raten.
 
 **`--profile minimal` enthaelt weder clippy noch rustfmt.** Vor dem ersten
 Lint-Lauf einmalig:
 
 ```bash
-/c/Users/faupe/.cargo/bin/rustup component add clippy
+/c/Users/faupe/.config/cargo/bin/rustup component add clippy
 ```
 
 Ohne diesen Schritt bricht `cargo clippy` mit „run `rustup component add clippy`“
@@ -60,10 +61,10 @@ ab — und wer die Zeile nur als Hinweis liest, haelt den Lint faelschlich fuer 
 
 ```bash
 cd C:/Users/faupe/Documents/BrainFiles/Werkstatt/omnitrade-pr \
- && /c/Users/faupe/.cargo/bin/cargo test --workspace 2>&1 | grep -E "test result:|FAILED" \
- && /c/Users/faupe/.cargo/bin/rustup component list --installed >/dev/null \
- && /c/Users/faupe/.cargo/bin/cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -3 \
- && /c/Users/faupe/.cargo/bin/cargo build --release -p omnitrade-cli 2>&1 | tail -2
+ && /c/Users/faupe/.config/cargo/bin/cargo test --workspace 2>&1 | grep -E "test result:|FAILED" \
+ && /c/Users/faupe/.config/cargo/bin/rustup component list --installed >/dev/null \
+ && /c/Users/faupe/.config/cargo/bin/cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tail -3 \
+ && /c/Users/faupe/.config/cargo/bin/cargo build --release -p omnitrade-cli 2>&1 | tail -2
 ```
 
 - **Testzahl aus den `test result:`-Zeilen summieren**, nicht aus dem letzten Binary:

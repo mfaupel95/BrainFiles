@@ -302,7 +302,7 @@ Signal - gemessen wird die FORM, nicht ein Markt-Urteil).
 - **candle-0.11 hat die API geaendert:** `Linear::new(weight, bias)` ist jetzt
   die freie Funktion `candle_nn::linear(in, out, vb)`, und `AdamW::new(vars,
   lr)` heisst `AdamW::new_lr(vars, lr)`. Vor dem Schreiben die Signaturen in
-  `~/.cargo/registry/src/index.crates.io-*/candle-nn-0.11.0/src/` pruefen,
+  `~/.config/cargo/registry/src/index.crates.io-*/candle-nn-0.11.0/src/` pruefen,
   nicht aus dem Gedaechtnis (Details: `references/rust-stack.md`).
 - **`bars[i].ts_event` ist int-Nanosekunden.** `ts_event + timedelta` wirft
   TypeError; erst `datetime.fromtimestamp(te/1e9, tz=timezone.utc)`. Und eine

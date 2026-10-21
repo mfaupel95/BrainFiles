@@ -86,7 +86,7 @@ ohne alle gelernten Modelle verliert das System nichts Demonstrierbares.
 - `AdamW::new(vars, lr)` heisst jetzt `AdamW::new_lr(vars, lr)` (Config-Typ
   ist `ParamsAdamW`, nicht f64).
 - Vor dem Schreiben die Signaturen in
-  `~/.cargo/registry/src/index.crates.io-*/candle-nn-0.11.0/src/` pruefen,
+  `~/.config/cargo/registry/src/index.crates.io-*/candle-nn-0.11.0/src/` pruefen,
   nicht aus dem Gedaechtnis.
 
 ## Nautilus-Rust-Backtest (BacktestEngine, low-level)
@@ -125,7 +125,7 @@ kompilierte NIE — erst der erste echte `cargo check` fand die geaenderte API.
   in 0.64 gibt es kein `From<f64>` fuer beide.
 - `QuoteTick::new(..., ts, ts)` will `UnixNanos`, nicht `u64`: `ts.into()`.
 - Merkregel: API-Formen in den Quellen unter
-  `~/.cargo/registry/src/index.crates.io-*/nautilus-*-0.64.0/src/` pruefen,
+  `~/.config/cargo/registry/src/index.crates.io-*/nautilus-*-0.64.0/src/` pruefen,
   NICHT aus dem Gedaechtnis oder aus Blog-Code abtippen.
 
 ## Guards gegen Seam-Defekte 2 und 3 (im Referenz-Workspace gebaut)
