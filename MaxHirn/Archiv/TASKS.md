@@ -38,6 +38,11 @@
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: C:\Users\faupe\.cargo, C:\Users\faupe\.rustup, Werkstatt/omnitrade-pr
 
+      STAND 21.10.2026 04:30: behoben - rustup stable/minimal neu
+      installiert, Clippy-Component nachgezogen; cargo test --workspace
+      499 Tests gruen, clippy -D warnings gruen, Release-Build gruen,
+      Commit 9f8e0b8 auf main gepusht. Ursache bleibt ungeklaert (kein
+      Wiederholungsfall); der Punkt bleibt offen nur fuer die Frage WER.
 - [ ] **T-427 — omnitrade2 SOL-XPERP-Live-Lauf läuft (Auftrag Max 21.10.2026: „starte den loop")**
       Kontext: PID 18108, gestartet 21.10.2026 02:49 (CEST), Binary
       Werkstatt/omnitrade-pr (Zweig claude/xperp-base-semantik @ 895d1e7, PR #2
@@ -107,6 +112,18 @@
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: mfaupel95/omnitrade2 (PR #2), OKX EEA Mainnet
 
+      STAND 21.10.2026 04:35 CEST: Loop laeuft NEU als PID 48072 (Start
+      04:12:15) mit SHORTS: --allow-shorts aktiv, Menge 0.01 SOL (~1.06
+      USDC), Deckel 25, 1x isolated, EEA-Mainnet; Binary aus main (PR #3
+      gemergt, f46ccbc). Status 04:35: running, 315 Kerzen, 0 Orders, 0
+      abgelehnt, net 0, letzter Schluss 106.00, keine Fehler - der
+      Einheitsmismatch ist weg (vorher 12 Ablehnungen). Doppelstart
+      nachgewiesen: start-sol-xperp.ps1 bricht mit Exit 2 'Laeuft schon
+      (PID 48072)' ab, genau EIN Prozess mit SOL-USD_UM_XPERP.
+      OFFEN (Entscheidung Max): Groesse 0.01 statt der im Skript
+      hinterlegten 0.19 SOL - die Parallel-Sitzung hat den Lauf kleiner
+      gestartet; fuer einen echten Test (~20 USDC) waere ein Neustart mit
+      dem Skript noetig.
 - [ ] **T-426 - OKX-Demo (EEA) gemessen: SWAP und XPERP gesperrt, nur datierte Futures handelbar**
       Kontext: 21.10.2026 gemessen. Demo-Keys funktionieren NUR mit dem
       Header x-simulated-trading: 1 gegen eea.okx.com - ohne ihn antwortet
