@@ -178,7 +178,8 @@ Rückfrage auf, auch in Massenoperationen. Häufige Fälle:
   (geprüft an `Fristen.md`). **`Zugaenge.md`** steht in Stufe 0 und ist nicht in
   Git; `Passwoerter-Quarantaene.md` wird wie eine Zugangsdatei behandelt.
 - `**/.venv/`, `**/__pycache__/`, `**/node_modules/` — aus `requirements.txt` / `package.json`
-- `Werkstatt/` — Übergaben, Sitzungsreste, geklonte Fremd-Repos (`Repos/`).
+- `Werkstatt/` — Übergaben, Sitzungsreste, geklonte Fremd-Repos (seit
+  14.10.2026 direkt in `Werkstatt/`, nicht mehr unter `Werkstatt/Repos/`).
   Durchgangsware, aus der Sicherung ausgenommen, eigene Spielregeln in
   `Werkstatt/AGENTS.md`
 - `Modelle/` (51 GB, seit 30.08.2026 außerhalb des Vaults) — neu herunterladbar.
