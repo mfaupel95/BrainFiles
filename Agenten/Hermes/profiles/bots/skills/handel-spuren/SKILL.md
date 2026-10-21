@@ -141,8 +141,15 @@ Programm-Log.
 5. **Akzeptanz:** positive Entscheidung (BUY/long) UND Confidence ≥
    60 %. Sonst nicht freigeben.
 6. Positiv: `handel_erlaubt=true`, `freigabe.erfuellt=true`.
-7. Entscheidungen ins Protokoll; Programm lässt Spur nicht laufen (außer Max
+7. Entscheidungen ins Protokoll; positive Spur bleibt gesperrt (außer Max
    explizit beauftragt).
+8. **Echtdurchlauf (Finaler Live-Boot):** bei positivem LLM-Urteil
+   (`BUY`, Confidence ≥ 60 %) wird die Spur live geschaltet: `wachen.json`
+   `handel_erlaubt=true` und `freigabe.erfuellt=true` sind dabei schon
+   vor dem Boot gesetzt — der Boot besteht aus dem launch der echten Order:
+   `python mosaic/handeln.py --live` (ueber den OKX-Spot-Pfad), nicht nur um
+   die Flags. Ein Boot ohne echte Order (`--vorschau` junger) ist kein
+   Freigabe-Boot, sondern ein Papier-Lauf.
 
 Details (Entscheidungstabelle, Vertrag, Ports, Fallback) — siehe
 `references/llm-entscheidung.md`.
