@@ -114,6 +114,17 @@ def lauf_fehlgeschlagen(journal_pfad, dauer_s, modus, stufe="basis"):
         is_paper=modus != "live", risikostufe=stufe))
 
 
+def konfiguriert(wachen_pfad, feld, alt=None, neu=None):
+    """spur.konfiguriert: die wachen.json einer Spur wurde per Skript geaendert.
+
+    `wachen_pfad` = Agenten/Handel/<spur>/wachen.json (gleiche Pfadregel wie bei den Journalen).
+    """
+    return _tue(wachen_pfad, lambda: tracking.track_spur_konfiguriert(
+        spur_name=spur_aus_pfad(wachen_pfad), geaendertes_feld=feld,
+        alter_wert=None if alt is None else str(alt),
+        neuer_wert=None if neu is None else str(neu)))
+
+
 def stoerung(spur_id, art, dauer_s=None, flachgestellt=False):
     """stoerung.erkannt: art in herzschlag_alt | abruf_fehler | api_fehler | journal_luecke."""
     return _tue(None, lambda: tracking.track_stoerung_erkannt(

@@ -6,7 +6,9 @@ darf den Handelslauf stoppen.
 Generiert aus .telemetry/tracking-plan.yaml (Version 1, 2026-10-06).
 """
 import json
+import os
 import sqlite3
+import sys
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,20 +28,36 @@ class Events:
     # Ergaenzt 2026-10-21 (telemetrie.py, Haken in spur_buch.py)
     LAUF_FEHLGESCHLAGEN  = "lauf.fehlgeschlagen"
     STOERUNG_ERKANNT     = "stoerung.erkannt"
+    POSITION_NACHGEZOGEN = "position.nachgezogen"
 
 
 # ---------------------------------------------------------------------------
 # Konfiguration
 # ---------------------------------------------------------------------------
 _DB_PFAD: Path | None = None
+_EXPLIZIT = False     # True, sobald init_tracking() einen eigenen Pfad bekam
 _LOG = logging.getLogger(__name__)
+
+
+def _unter_test() -> bool:
+    """Laeuft dieser Prozess als Test? (python -m unittest ... / python test_x.py)
+
+    Grund (2026-10-21): die xperp- und Scanner-Tests riefen track_* ohne eigene
+    Datenbank auf und schrieben in die echte tracking.db - dort stammen
+    Hunderte Ereignisse von Testfixtures (z. B. XAU-USD_UM_XPERP-310620,
+    W0-USDC), was die KB-Kennzahlen verfaelscht.
+    """
+    start = os.path.basename(sys.argv[0] or "").lower()
+    return start.startswith("test_") or "unittest" in start or start == "__main__.py"
 
 
 def init_tracking(db_pfad: Path | None = None) -> None:
     """DB initialisieren. Idempotent — mehrfache Aufrufe sind sicher."""
-    global _DB_PFAD
+    global _DB_PFAD, _EXPLIZIT
     if db_pfad is None:
         db_pfad = Path(__file__).parent / "tracking.db"
+    else:
+        _EXPLIZIT = True
     _DB_PFAD = db_pfad
     try:
         with _verbinden() as con:
@@ -77,7 +95,14 @@ def _verbinden() -> sqlite3.Connection:
 
 
 def track(event: str, properties: dict[str, Any]) -> None:
-    """Beliebiges Event schreiben. Fehlerschluckend."""
+    """Beliebiges Event schreiben. Fehlerschluckend.
+
+    Unter einem Testlauf wird nur geschrieben, wenn der Test eine eigene
+    Datenbank angegeben hat (init_tracking(pfad)); die echte tracking.db bleibt
+    sauber.
+    """
+    if _unter_test() and not _EXPLIZIT:
+        return
     try:
         ts = datetime.now(timezone.utc).isoformat()
         with _verbinden() as con:
@@ -249,6 +274,32 @@ def track_lauf_fehlgeschlagen(
         "is_paper": is_paper,
         "risikostufe": risikostufe,
     })
+
+
+def track_position_nachgezogen(
+    spur_name: str,
+    instrument: str,
+    stop_alt: float,
+    stop_neu: float,
+    is_paper: bool,
+    quelle: str = "trailing",   # "trailing" | "ratsche"
+    hoch_r: float | None = None,
+    pos_id: str | None = None,
+) -> None:
+    """Der Stop einer offenen Position wurde an der Boerse nachgezogen."""
+    props: dict[str, Any] = {
+        "spur_name": spur_name,
+        "instrument": instrument,
+        "stop_alt": stop_alt,
+        "stop_neu": stop_neu,
+        "quelle": quelle,
+        "is_paper": is_paper,
+    }
+    if hoch_r is not None:
+        props["hoch_r"] = hoch_r
+    if pos_id:
+        props["pos_id"] = pos_id
+    track(Events.POSITION_NACHGEZOGEN, props)
 
 
 def track_stoerung_erkannt(

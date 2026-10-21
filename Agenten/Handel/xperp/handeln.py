@@ -1616,6 +1616,13 @@ def _trailing_versuch(p, kurs, w):
             grund=("Stop %.6f -> %.6f (Hoch %.6f, %.2fR)"
                    % (alt, p["stop"], float(ergebnis["hoechstkurs"]),
                       float(ergebnis["hoch_r"]))))
+    try:
+        _tracking.track_position_nachgezogen(
+            spur_name="xperp", instrument=p.get("inst") or "",
+            stop_alt=alt, stop_neu=p["stop"], is_paper=False,
+            hoch_r=float(ergebnis["hoch_r"]), pos_id=p.get("pos_id"))
+    except Exception:                                       # noqa: BLE001
+        pass                 # Telemetrie darf das Nachziehen nie stoeren
     return True
 
 

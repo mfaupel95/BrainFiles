@@ -76,6 +76,19 @@ class TelemetrieTest(unittest.TestCase):
         self.assertEqual((c, ec["spur_name"], ec["art"], ec["flachgestellt"]),
                          ("stoerung.erkannt", "kraken", "herzschlag_alt", False))
 
+    def test_konfiguriert_und_nachgezogen(self):
+        wachen = os.path.join(HANDEL, "gitter", "wachen.json")   # wird nie angelegt
+        self.assertEqual(telemetrie.konfiguriert(wachen, "freigabe.backtest"), "ok")
+        fremd = os.path.join(self.tmp.name, "gitter", "wachen.json")
+        self.assertEqual(telemetrie.konfiguriert(fremd, "x"), "fremd")
+        tracking.track_position_nachgezogen("xperp", "BTC", 90.0, 95.0, False,
+                                            hoch_r=1.5, pos_id="p1")
+        (a, ea), (b, eb) = self._events()
+        self.assertEqual((a, ea["spur_name"], ea["geaendertes_feld"]),
+                         ("spur.konfiguriert", "gitter", "freigabe.backtest"))
+        self.assertEqual((b, eb["stop_alt"], eb["stop_neu"], eb["quelle"], eb["pos_id"]),
+                         ("position.nachgezogen", 90.0, 95.0, "trailing", "p1"))
+
     def test_fremde_journale_werden_uebersprungen(self):
         for teil in (("tests",), ("xperp", "unter")):
             pfad = os.path.join(HANDEL, *teil, "handelsjournal.csv")
@@ -94,6 +107,22 @@ class TelemetrieTest(unittest.TestCase):
     def test_kaputte_position_wirft_nicht(self):
         self.assertEqual(telemetrie.eroeffnet(self.journal, None, "papier", "B", "long"), "nichts")
         self.assertEqual(telemetrie.geschlossen(self.journal, None, "papier", "stop", 1, 1, 1), "nichts")
+
+    def test_testlauf_schreibt_nur_in_ausdruecklich_angegebene_db(self):
+        # setUp hat init_tracking(self.db) gerufen -> geschrieben wird
+        tracking.track("x.y", {"a": 1})
+        self.assertEqual(len(self._events()), 1)
+        # ohne ausdrueckliche DB (Standardpfad) wird unter Test NICHT geschrieben
+        with mock.patch.object(tracking, "_EXPLIZIT", False):
+            tracking.track("x.z", {"a": 2})
+        self.assertEqual(len(self._events()), 1)
+
+    def test_unter_test_erkennt_testlaeufe_aber_keine_produktion(self):
+        for argv0, erwartet in (("tests/test_x.py", True), ("python -m unittest", True),
+                                ("C:/x/unittest/__main__.py", True), ("__main__.py", True),
+                                ("dauerlauf.py", False), ("handeln.py", False), ("", False)):
+            with mock.patch.object(sys, "argv", [argv0]):
+                self.assertEqual(tracking._unter_test(), erwartet, argv0)
 
     def test_kaputtes_tracking_wirft_nicht(self):
         with mock.patch.object(tracking, "track_stoerung_erkannt", side_effect=RuntimeError("x")):
