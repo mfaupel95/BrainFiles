@@ -26,6 +26,7 @@ Merkdatei: Agenten/Hermes/cache/omnitrade2/wache-zustand.json
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -183,6 +184,81 @@ def orderwegpruefung(merk, st):
     return 0
 
 
+def _arg_wert(zeile, name):
+    """Zahl hinter '--name 0.19' aus einer Kommandozeile (None, wenn nicht da)."""
+    teile = str(zeile or "").split()
+    for i, t in enumerate(teile):
+        if t == name and i + 1 < len(teile):
+            try:
+                return float(teile[i + 1].strip('"'))
+            except ValueError:
+                return None
+    return None
+
+
+def lauf_argumente(inst):
+    """Kommandozeile des LAUFENDEN Prozesses fuer dieses Instrument (Naht)."""
+    ps = (
+        "Get-CimInstance Win32_Process -Filter \"Name='omnitrade-cli.exe'\" | "
+        "Where-Object { $_.CommandLine -like '*%s*' } | "
+        "Select-Object -First 1 -ExpandProperty CommandLine" % inst
+    )
+    try:
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps],
+            capture_output=True, text=True, timeout=90,
+        )
+    except Exception as e:  # noqa: BLE001 - Prueffeheler ist ein Befund
+        return None, str(e)
+    zeile = (r.stdout or "").strip()
+    return (zeile or None), None
+
+
+def parameterpruefung(merk):
+    """Laeuft der Prozess mit den Parametern, die lauf.json nennt?
+
+    Anlass 21.10.2026: der Lauf wurde von aussen mit quantity 0.19 neu
+    gestartet, waehrend lauf.json 0.01/mikro trug - der Nachzieher haette
+    danach ein zweites Hochziehen ausgeloest. Eine Datei, die den Lauf
+    beschreibt, muss gegen den LAUFENDEN Prozess geprueft werden.
+    """
+    pfad = os.path.join(HIER, "..", "..", "Handel", "omnitrade2", "lauf.json")
+    pfad = os.path.normpath(pfad)
+    try:
+        with open(pfad, encoding="utf-8") as f:
+            lauf = json.load(f)
+    except Exception as e:  # noqa: BLE001
+        return 1 if meldung(merk, "omnitrade2-Wache: lauf.json nicht lesbar (%s): %s" % (pfad, e)) else 0
+
+    inst = lauf.get("inst") or ""
+    soll = float(lauf.get("quantity") or 0.0)
+    zeile, fehler = lauf_argumente(inst)
+    if fehler:
+        return 1 if meldung(merk, "omnitrade2-Wache: Prozessabfrage scheiterte: %s" % fehler) else 0
+    if zeile is None:
+        return 0  # kein Prozess: das meldet schon die Stillstandspruefung
+
+    ist = _arg_wert(zeile, "--quantity")
+    if ist is None:
+        schluessel = "ohne-quantity"
+        if merk.get("parameter_gemeldet") != schluessel:
+            merk["parameter_gemeldet"] = schluessel
+            return 1 if meldung(merk, "omnitrade2-Wache: laufender Prozess hat KEIN --quantity - lauf.json (%s) beschreibt einen anderen Lauf" % soll) else 0
+        return 0
+    if abs(ist - soll) > 1e-9:
+        schluessel = "qty-%.4f-%.4f" % (soll, ist)
+        if merk.get("parameter_gemeldet") != schluessel:
+            merk["parameter_gemeldet"] = schluessel
+            return 1 if meldung(
+                merk,
+                "omnitrade2-Wache: lauf.json sagt quantity %s, der LAUFENDE Prozess faehrt %s "
+                "- Datei und Lauf sind auseinander (Restart von aussen?)" % (soll, ist),
+            ) else 0
+        return 0
+    merk.pop("parameter_gemeldet", None)
+    return 0
+
+
 def haupt():
     merk = heutig(lade_merk())
     meldet = 0
@@ -297,6 +373,8 @@ def haupt():
     meldet += boersenpruefung(merk, st, net)
     # 7) Orderweg: lebt der Loop, ohne je zu handeln?
     meldet += orderwegpruefung(merk, st)
+    # 8) Faehrt der Prozess die Parameter, die lauf.json beschreibt?
+    meldet += parameterpruefung(merk)
 
     schreibe_merk(merk)
     return meldet

@@ -164,6 +164,28 @@ class WachenPruefungTest(unittest.TestCase):
         self.assertEqual(self.w.boersenpruefung(self.merk, st, 5.0), 1)
         self.assertEqual(self.w.boersenpruefung(self.merk, st, 5.0), 0, "nicht doppelt melden")
 
+    def test_arg_wert_liest_die_zahl(self):
+        self.assertAlmostEqual(
+            self.w._arg_wert("cli live --quantity 0.19 --allow-shorts", "--quantity"), 0.19)
+        self.assertIsNone(self.w._arg_wert("cli live --allow-shorts", "--quantity"))
+
+    def test_parameterdrift_wird_gemeldet_und_nicht_wiederholt(self):
+        # Anlass 21.10.: Lauf von aussen mit 0.19 gestartet, lauf.json sagte 0.01.
+        self.w.lauf_argumente = lambda inst: ("cli live --quantity 0.01", None)
+        self.assertEqual(self.w.parameterpruefung(self.merk), 1)
+        self.assertEqual(self.w.parameterpruefung(self.merk), 0, "nicht doppelt melden")
+
+    def test_passende_parameter_bleiben_still(self):
+        lauf = json.loads((SPUR / "lauf.json").read_text(encoding="utf-8"))
+        self.w.lauf_argumente = lambda inst: (
+            "cli live --quantity %s --allow-shorts" % lauf["quantity"], None)
+        self.assertEqual(self.w.parameterpruefung(self.merk), 0)
+        self.assertNotIn("parameter_gemeldet", self.merk)
+
+    def test_prozessabfrage_fehler_wird_gemeldet(self):
+        self.w.lauf_argumente = lambda inst: (None, "CIM weg")
+        self.assertEqual(self.w.parameterpruefung(self.merk), 1)
+
     def test_boersenabfrage_fehler_wird_gemeldet(self):
         def platzt():
             raise RuntimeError("EAPI:Invalid nonce")
