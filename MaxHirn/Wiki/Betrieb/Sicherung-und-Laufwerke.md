@@ -3,7 +3,7 @@ id: 20260921-sicherung-und-laufwerke
 title: 'Betrieb — Sicherung und Laufwerke'
 tags: [betrieb, sicherung]
 created: 2026-09-21
-updated: 2026-10-13
+updated: 2026-10-21
 related: ['[[Wissen/Off-Site-Backup]]', '[[Wissen/Ordnerstruktur]]', '[[Wissen/Hardware]]']
 summary: 'Welches Laufwerk was ist, welche Ordner gesichert werden, wie die Junctions funktionieren, wohin der Plattenplatz geht (pagefile, Logs) und was die Sicherung NICHT kann.'
 ---
@@ -201,3 +201,35 @@ unter Loeschsperre. Mehrere als "leer" vermutete App-Ordner (`MuseScore3`, `Powe
 enthalten tatsaechlich 1-11 Elemente, nicht 0 - nachgemessen, nicht geloescht. `Documents\WPA
 Files` ist bestaetigt leer (0 Elemente), die Loeschung wurde vom Auto-Mode-Klassifikator
 blockiert ("Irreversible Local Destruction") und liegt bei Max.
+
+## Stand 21.10.2026: Sicherung repariert, O: knapp
+
+**Sicherung `MaxHirn-Sicherung`:** Exitcode 1 am 06.10.2026 war NICHT der Plattenplatz (G: hatte
+509 GB frei), sondern robocopy Code 11 durch vier **fluechtige** Hermes-Dateien (`projects.db-shm`,
+`projects.db-wal`, `*.lock`, `.leases\*`): FEHLER 2, sie verschwinden zwischen Auflisten und
+Kopieren, keine Nutzdatei fehlte. Fix in `Agenten/sichern.ps1` (`/XF *.db-shm *.db-wal *.lock`,
+`/XD .leases`), Commit `20e445cb`. Lauf am 20.10.2026: Code 3 (erfolgreich), 762 s statt 1870 s.
+**Merksatz:** Code 11 mit lauter `FEHLER 2`/`FEHLER 32` auf Laufzeitdateien laufender Prozesse
+(SQLite-Nebendateien, Locks, Cookies, Snapshots) ist ein Ausschluss-Befund, kein Datenverlust.
+Erst die Fehlerzeilen im Log lesen (`Select-String 'FEHLER [0-9]'`), dann den Pfad ausschliessen.
+
+**Offen: `MaxHirn-Ausserhaus-Kopie`** (Code 1 am 19. und 20.10.). Gleiches Muster, Archiv-Teil
+sonst sauber (242.086 Dateien, 2 Fehler): `Hermes\browser-profile\chrome\Default\Network\Cookies`
+(gesperrt, FEHLER 32) und `Hermes\profiles\bots\cache\terminal\hermes-snap-*.sh` (verschwunden,
+FEHLER 2). `sichern.ps1` schliesst `browser-profile` schon aus, `Agenten/Routinen/ausserhaus-kopie.ps1`
+noch nicht. Fix vorgeschlagen, noch nicht umgesetzt. Ziel `Q:` hatte 75,6 GB frei.
+
+**O: Belegung (gemessen 21.10.2026, rund 550 GB, frei 29,3 -> 21,8 GB, Tendenz fallend):**
+Modelle 248,7 | Werkstatt 106,5 | Documents 61,8 | Archiv 44,9 | MaxHirn-Zweitkopie 43,2 |
+iTunes 36,6 | privkopie-cache 7,5 | .pnpm-store 1,9. Messung: Skriptzeile mit
+`Get-ChildItem -Recurse -File` je Top-Ordner, Summe der `Length` (dauert Minuten, daher im
+Hintergrund starten; ein 300-s-Vordergrund-Lauf bricht ab).
+- `Documents`: Ableton 24,8, Native Instruments 20,0, Maximilian 7,8, FREEDB 2,2 (Musik-/Spielesoftware).
+- `iTunes`: 36,1 GB davon `iTunes.BackupByiTunesPortable`, Rest leer.
+- `Werkstatt`: Ausgemustert 19,8 | omnitrade-pr 16,1 | omnitrade 12,1 | OmniRoute 11,8 | openmontage 4,6.
+  `omnitrade-pr` besteht fast nur aus `target` (16,1 GB Rust-Build-Cache), `omnitrade` aus
+  `target` 9,9 + `.git` 1,2 + `target-live` 0,8. **Die `target`-Ordner (rund 27 GB) sind der
+  groesste neu erzeugbare Posten** (cargo baut sie neu), danach `Ausgemustert` (eigene
+  Quarantaene der letzten Wochen, groesste: `windows11-20261014` 6,6, `c-entlasten-20260930` 3,6).
+- **Nichts davon geloescht.** Loeschen nur nach ausdruecklichem Ja von Max, vorher Inhalt
+  pruefen (nicht nur Groesse). `target` unter einem laufenden Handelslauf nicht anfassen.
