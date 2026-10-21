@@ -2,6 +2,20 @@
 
 
 
+- [ ] **T-437 — Sechs zusammengefuehrte Zweige und vier Worktrees liegen noch herum**
+      Kontext: Nach dem Zusammenfuehren am 21.10.2026 steht jeder Zweig auf 0 Commits vor
+          master: claude/wissen-befund-20261013, hermes/xperp-ci-tests,
+          worktree-itb-signal-uebersetzer, claude/messung-configs-klassik,
+          arbeit/trendwende-lade-wachen, claude/telemetrie. Ihre Arbeitsbaeume existieren
+          weiter (.claude/worktrees/itb-signal-uebersetzer, .claude/worktrees/telemetrie,
+          .worktrees/ci-xperp, C:/Users/faupe/Documents/Handel-trendwende); telemetrie ist
+          als Worktree GESPERRT (locked).
+      Naechster Schritt: je Zweig `git branch -d` (sicher, weil 0 voraus), vorher
+          `git worktree unlock` fuer telemetrie, dann `git worktree remove` und
+          `git worktree prune`; danach `git branch -vv` als Beleg, dass nur master und
+          zwischenstand stehen. Sicherung: sicherung/master-2026-10-14 bleibt unangetastet.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: .git/refs/heads, .claude/worktrees, .worktrees
 - [ ] **T-435 — breite.py: nachgerechnete Zeilen nennen ihren Ausfall nicht**
       Kontext: 122 Zeilen der Reihe (31.05.-16.10.2026) tragen offen=[] bei
           n_gesamt 29 - ein Paar fehlt ohne Namen. Ursache: reihe_rechnen()
