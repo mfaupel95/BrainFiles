@@ -862,7 +862,8 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
         if SCHREIBEN:
             telemetrie.geschlossen(journal_pfad, p,
                                    "live" if ist_live else "papier", grund, gv,
-                                   mae.felder(p)["haltetage"])
+                                   kurs, mae.felder(p)["haltetage"],
+                                   risikostufe.stufe())
 
 
 # --- Kill: Zwangsschluss mit Buchung -----------------------------------------
@@ -1249,22 +1250,13 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                 # signal-executor (Hermes-Cron) unabhaengig vom Dauerlauf ausfuehrt.
                 _signal_queue(ordner, inst, seite, kurse.get(inst))
                 if SCHREIBEN:
-                    telemetrie.signal(journal_pfad, inst, seite)
+                    telemetrie.signal_ausgewaehlt(journal_pfad, inst, seite,
+                                                  "live", risikostufe.stufe())
                 continue
-            # Telemetrie: ein Signal steht jeden Zyklus an, solange es gilt.
-            # Gemeldet wird nur, wenn das Instrument noch nicht offen ist und
-            # die Positionszahl nicht voll ist - sonst Dauerrauschen.
-            bereits_offen = any(q.get("inst") == inst
-                                for q in z.get("positionen", []))
-            voll = (len(z.get("positionen", []))
-                    >= w.get("max_offene_positionen", 3))
             p = einstieg(z, inst, seite, kurse.get(inst), w, faktor,
                          None,
                          ziel_preis=(ziel(daten[inst], w) if ziel else None),
                          journal_pfad=journal_pfad, live=live, weg=weg)
-            if SCHREIBEN and not bereits_offen and (p or not voll):
-                telemetrie.signal(journal_pfad, inst, seite,
-                                  "keine" if p else "einstieg_abgelehnt")
             if p:
                 print("EINSTIEG %s %s @ %.6f  Stop %.2f%%  Ziel %.6f  "
                       "Nominal %.2f USD"
@@ -1289,9 +1281,12 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                         stop_pct="%.2f" % p["stop_pct"],
                         grund=grund)
                 if SCHREIBEN:
-                    telemetrie.eroeffnet(journal_pfad, p,
-                                         "live" if live else "papier",
-                                         inst, seite)
+                    modus_text = "live" if live else "papier"
+                    telemetrie.signal_ausgewaehlt(journal_pfad, inst, seite,
+                                                  modus_text,
+                                                  risikostufe.stufe())
+                    telemetrie.eroeffnet(journal_pfad, p, modus_text, inst,
+                                         seite, risikostufe.stufe())
 
         z["datenlage"] = {"keine_daten": False, "kandidaten": len(daten),
                           "hinweis": datenlage() if datenlage else None}
@@ -1307,9 +1302,10 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
             ergebnis = "ok" if rc in (0, None) else "fehler"
             return rc
     finally:
-        if SCHREIBEN and modus in ("papier", "live"):
-            telemetrie.lauf_beendet(journal_pfad, ergebnis,
-                                    time.monotonic() - begonnen, modus)
+        if SCHREIBEN and modus in ("papier", "live") and ergebnis == "fehler":
+            telemetrie.lauf_fehlgeschlagen(journal_pfad,
+                                           time.monotonic() - begonnen, modus,
+                                           risikostufe.stufe())
 def _signal_queue(ordner, inst, seite, kurs):
     """Signal-Wechsel in die Queue schreiben (vom signal-executor abgeholt).
 

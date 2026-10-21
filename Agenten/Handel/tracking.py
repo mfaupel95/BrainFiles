@@ -23,6 +23,9 @@ class Events:
     POSITION_EROEFFNET   = "position.eroeffnet"
     ZYKLUS_ABGESCHLOSSEN = "zyklus.abgeschlossen"
     SPUR_KONFIGURIERT    = "spur.konfiguriert"
+    # Ergaenzt 2026-10-21 (telemetrie.py, Haken in spur_buch.py)
+    LAUF_FEHLGESCHLAGEN  = "lauf.fehlgeschlagen"
+    STOERUNG_ERKANNT     = "stoerung.erkannt"
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +233,38 @@ def track_spur_konfiguriert(
     if neuer_wert is not None:
         props["neuer_wert"] = neuer_wert
     track(Events.SPUR_KONFIGURIERT, props)
+
+
+def track_lauf_fehlgeschlagen(
+    spur_name: str,
+    dauer_s: float,
+    is_paper: bool,
+    risikostufe: str = "basis",
+) -> None:
+    """Ein Zyklus einer Spur endete mit Fehler. Erfolgreiche Laeufe werden
+    bewusst NICHT gemeldet (Minutentakt x 26 Spuren waeren ~37 000 Zeilen/Tag)."""
+    track(Events.LAUF_FEHLGESCHLAGEN, {
+        "spur_name": spur_name,
+        "dauer_s": dauer_s,
+        "is_paper": is_paper,
+        "risikostufe": risikostufe,
+    })
+
+
+def track_stoerung_erkannt(
+    spur_name: str,
+    art: str,               # "herzschlag_alt"|"abruf_fehler"|"api_fehler"|"journal_luecke"
+    dauer_s: float | None = None,
+    flachgestellt: bool = False,
+) -> None:
+    props: dict[str, Any] = {
+        "spur_name": spur_name,
+        "art": art,
+        "flachgestellt": flachgestellt,
+    }
+    if dauer_s is not None:
+        props["dauer_s"] = dauer_s
+    track(Events.STOERUNG_ERKANNT, props)
 
 
 # ---------------------------------------------------------------------------
