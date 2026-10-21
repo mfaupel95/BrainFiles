@@ -93,7 +93,10 @@ def lage() -> dict:
         return {"fehler": "Algo-Orders: %s %s" % (a.get("code"), a.get("msg", ""))}
     stops = [x for x in (a.get("data") or [])]
     trigger = None
+    geschuetzt = 0.0
     for x in stops:
+        if float(x.get("sz") or 0) > 0:
+            geschuetzt += float(x.get("sz") or 0)
         if x.get("slTriggerPx"):
             trigger = float(x["slTriggerPx"])
 
@@ -106,7 +109,7 @@ def lage() -> dict:
             kurs = None
 
     return {"position": pos, "upl": upl, "avg": avg, "stops": len(stops),
-            "trigger": trigger, "kurs": kurs}
+            "geschuetzt": geschuetzt, "trigger": trigger, "kurs": kurs}
 
 
 def beurteilen(jetzt: dict, alt: dict, zeit: float) -> list[str]:
@@ -126,6 +129,13 @@ def beurteilen(jetzt: dict, alt: dict, zeit: float) -> list[str]:
             meldungen.append(
                 "WARNUNG: %s offen mit %s Kontrakten, aber KEIN Schutz-Stop mehr"
                 % (INST, jetzt["position"])
+            )
+    elif hat_pos and jetzt.get("geschuetzt", 0.0) + 1e-9 < jetzt["position"]:
+        # Ein Stop, der nur einen TEIL deckt, schuetzt den Rest nicht.
+        if zeit - float(alt.get("letzte_schutzmeldung", 0)) > WIEDERHOLUNG_S:
+            meldungen.append(
+                "WARNUNG: %s offen mit %s Kontrakten, Schutz-Stop deckt nur %s"
+                % (INST, jetzt["position"], jetzt.get("geschuetzt", 0.0))
             )
 
     if hatte_pos and not hat_pos:
@@ -177,7 +187,10 @@ def main() -> int:
         neu["letzter_fehler"] = zeit
     else:
         neu["position_war_da"] = jetzt["position"] > 0
-        if jetzt["stops"] == 0 and jetzt["position"] > 0:
+        ungedeckt = jetzt["position"] > 0 and (
+            jetzt["stops"] == 0 or jetzt.get("geschuetzt", 0.0) + 1e-9 < jetzt["position"]
+        )
+        if ungedeckt:
             neu["letzte_schutzmeldung"] = zeit
         if jetzt["trigger"] and jetzt["kurs"]:
             abw = (jetzt["kurs"] - jetzt["trigger"]) / jetzt["trigger"] * 100

@@ -17,9 +17,11 @@ _spec.loader.exec_module(w)
 JETZT = 1_800_000_000.0
 
 
-def lage(pos=2.1, stops=1, trigger=61000.0, kurs=67768.9, fehler=None, upl=2.43):
+def lage(pos=2.1, stops=1, trigger=61000.0, kurs=67768.9, fehler=None, upl=2.43, geschuetzt=None):
+    if geschuetzt is None:
+        geschuetzt = pos if stops else 0.0
     return {"position": pos, "upl": upl, "stops": stops, "trigger": trigger,
-            "kurs": kurs, "fehler": fehler}
+            "kurs": kurs, "fehler": fehler, "geschuetzt": geschuetzt}
 
 
 class RegelTest(unittest.TestCase):
@@ -63,6 +65,16 @@ class RegelTest(unittest.TestCase):
 
     def test_ohne_trigger_keine_abstandsmeldung(self):
         self.assertEqual(w.beurteilen(lage(trigger=None), {}, JETZT), [])
+
+    def test_teilgedeckter_stop_wird_gemeldet(self):
+        # Ein Stop mit 2,1 deckt eine Position von 2,2 NICHT - genau der Fall
+        # vom 21.10.2026, nachdem eine zweite Order 0,1 Kontrakte dazukamen.
+        jetzt = lage(pos=2.2, stops=1, geschuetzt=2.1)
+        m = w.beurteilen(jetzt, {}, JETZT)
+        self.assertEqual(len(m), 1)
+        self.assertIn("deckt nur", m[0])
+        # voll gedeckt -> keine Meldung
+        self.assertEqual(w.beurteilen(lage(pos=2.2, stops=1, geschuetzt=2.2), {}, JETZT), [])
 
 
 if __name__ == "__main__":
