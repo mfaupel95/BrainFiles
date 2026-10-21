@@ -34,8 +34,8 @@
   "gebuehr_taker": 0.001,
   "mtf_faktoren": [
     1,
-    4,
-    16
+    2,
+    8
   ],
   "mtf_schnell": 12,
   "mtf_langsam": 26,
