@@ -2,6 +2,32 @@
 
 
 
+- [ ] **T-439 — omnitrade2-Versuch: Urteil am 23.10.2026 (48 h)**
+      Kontext: Der XPERP-Live-Lauf (SOL-USD_UM_XPERP-310404, 10 Kontrakte je
+          Stufe, Deckel 25, Stop 2 % an der Boerse) wurde am 21.10.2026 mit
+          0.10 SOL neu gestartet. Abbruchkriterium (Entscheidung Max): 48 h,
+          vorher nur bei kumuliert -2,50 USD oder 3 Verlustrunden in Folge -
+          die Wache omnitrade2-sol-wache meldet es, entschieden wird von Hand.
+          Kein Kriterium ist erreicht, wenn bis dahin schlicht nichts passiert
+          (hold) - dann ist die Stichprobe zu klein, nicht der Versuch gut.
+          Naechster Schritt: Runden, netto (realizedPnl aus positions-history)
+          und Treffer zaehlen, gegen die 1m-Kostenrechnung (0,011 USD je Runde)
+          halten, dann weiterlaufen lassen oder stoppen.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Handel/omnitrade2/, Agenten/Hermes/scripts/omnitrade2-sol-wache.py
+- [ ] **T-438 — omnitrade2: quantity_voll und hochziehen() sind nach 0.10 sinnlos**
+      Kontext: Der Nachzieher kann den Lauf von einer Mikro-Stufe (1 Kontrakt)
+          auf quantity_voll hochziehen. Nach der Entscheidung vom 21.10.2026
+          (0.10 SOL je Stufe, Deckel 25 fuer zwei Stufen) sind quantity und
+          quantity_voll identisch und phase steht auf "voll" - der Weg ist
+          tot, aber scharf: wer spaeter nur quantity aendert, laesst
+          quantity_voll auf dem alten Wert stehen, und ein Zustand mit
+          phase "mikro" zieht den Lauf wieder dorthin.
+          Naechster Schritt: hochziehen() entfernen oder auf eine reine
+          Meldung zurueckbauen, samt Test; quantity_voll aus lauf.json
+          streichen (start.ps1 liest es nicht).
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Handel/omnitrade2/nachziehen.py, Agenten/Handel/omnitrade2/lauf.json
 - [ ] **T-437 — Sechs zusammengefuehrte Zweige und vier Worktrees liegen noch herum**
       Kontext: Nach dem Zusammenfuehren am 21.10.2026 steht jeder Zweig auf 0 Commits vor
           master: claude/wissen-befund-20261013, hermes/xperp-ci-tests,

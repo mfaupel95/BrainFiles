@@ -40,6 +40,11 @@ MERK_FILE = os.path.join(CACHE, "wache-zustand.json")
 FRESH_MS = 10 * 60 * 1000  # Status muss juester sein (eine 1m-Kerze + Puffer)
 LOSS_PCT_WARN = 2.5  # Boersen-Stop liegt bei 2 % - -25 % waere nie erreicht worden
 MAX_MELDUNGEN_PRO_TAG = 6
+# Abbruchkriterium des Versuchs (Entscheidung Max 21.10.2026): der Lauf bekommt
+# 48 h; vorher wird er nur bei kumuliert -2,50 USD oder nach drei
+# Verlustrunden in Folge zur Entscheidung gemeldet.
+ABBRUCH_USD = -2.5
+VERLUSTE_IN_FOLGE = 3
 # Nachzieher = EINE Quelle fuer Boersenposition, Deckung und Stop-Regeln.
 NACHZIEHER = os.path.normpath(
     os.path.join(HIER, "..", "..", "Handel", "omnitrade2", "nachziehen.py")
@@ -81,7 +86,19 @@ def heutig(merk):
     if merk.get("tag") != time.strftime("%Y-%m-%d"):
         merk["tag"] = time.strftime("%Y-%m-%d")
         merk["meldungen"] = 0
+        merk["deckel_zaehler"] = 0
     return merk
+
+
+def ist_deckel(text):
+    """Ist das eine Ablehnung durch den POSITIONSDECKEL?
+
+    Solche Ablehnungen sind erwartetes Verhalten: der Plan haelt nur so viele
+    Stufen, wie der Deckel zulaesst, und die Strategie wiederholt ihr Signal
+    minuetlich. Sie werden gezaehlt, nicht als Fehler gemeldet
+    (Entscheidung Max 21.10.2026).
+    """
+    return "positionsdeckel" in str(text or "").lower()
 
 
 def meldung(merk, text):
@@ -116,7 +133,10 @@ def boersenpruefung(merk, st, net):
     try:
         okxf = modul.okxf_laden()
         pos = modul.position(okxf, inst)
-        gedeckt, anzahl = modul.deckung(okxf, inst) if pos else (0.0, 0)
+        # Richtungsgebunden (Entscheidung Max 21.10.2026): ein Stop der
+        # GEGENRICHTUNG deckt die Position nicht.
+        gedeckt, anzahl, fremde = (modul.deckung(okxf, inst, pos["seite"]) if pos
+                                   else (0.0, 0, []))
     except Exception as e:  # noqa: BLE001 - ein Prueffeheler darf nie still bleiben
         return 1 if meldung(merk, "omnitrade2-Wache: Boersenabfrage scheiterte: %s" % e) else 0
 
@@ -140,8 +160,15 @@ def boersenpruefung(merk, st, net):
             meldet += meldung(
                 merk,
                 "omnitrade2-Wache: Position %+.2f (%.2f Kontrakte) OHNE vollstaendigen "
-                "Schutz-Stop - gedeckt %.2f in %d Auftrag/Auftraegen"
-                % (pos["menge"], abs(pos["menge"]), gedeckt, anzahl),
+                "Schutz-Stop - gedeckt %.2f in %d Auftrag/Auftraegen%s"
+                % (
+                    pos["menge"],
+                    abs(pos["menge"]),
+                    gedeckt,
+                    anzahl,
+                    ("; %d Stop(s) der Gegenrichtung liegen falsch" % len(fremde))
+                    if fremde else "",
+                ),
             )
     else:
         merk.pop("stop_gemeldet", None)
@@ -259,6 +286,102 @@ def parameterpruefung(merk):
     return 0
 
 
+def ablehnungen(merk, st):
+    """Regel 3: neue Ablehnungen. Deckel = NORMAL, alles andere = Befund.
+
+    Eine Ablehnung durch den Positionsdeckel ist erwartetes Verhalten
+    (Entscheidung Max 21.10.2026): der Plan haelt nur so viele Stufen, wie der
+    Deckel zulaesst, und die Strategie wiederholt ihr Signal minuetlich. Sie
+    wird gezaehlt und hoechstens einmal am Tag in EINER Zeile genannt - vorher
+    erzeugte jede Aenderung des Notional-Werts im Meldungstext eine neue
+    Meldung (6 an einem Vormittag).
+    """
+    rejected = int(st.get("orders_rejected", 0))
+    vorher = int(merk.get("rejected_seen", 0))
+    if rejected <= vorher:
+        return 0
+    merk["rejected_seen"] = rejected
+    if ist_deckel(st.get("last_error", "")):
+        merk["deckel_zaehler"] = int(merk.get("deckel_zaehler", 0)) + (rejected - vorher)
+        if merk.get("deckel_gemeldet") != merk.get("tag") and merk["deckel_zaehler"] > 0:
+            merk["deckel_gemeldet"] = merk.get("tag")
+            return 1 if meldung(
+                merk,
+                "omnitrade2-Wache: %d Deckel-Ablehnung(en) heute - normal, der Plan "
+                "haelt nur begrenzte Stufen (nichts zu tun)." % merk["deckel_zaehler"],
+            ) else 0
+        return 0
+    return 1 if meldung(
+        merk,
+        "omnitrade2-Wache: %d Order(s) ABGELEHNT (RiskGuard oder Boerse) - Log pruefen."
+        % rejected,
+    ) else 0
+
+
+def abbruchpruefung(merk, st):
+    """Abbruchkriterium des Versuchs (Entscheidung Max 21.10.2026).
+
+    Der Versuch laeuft 48 h. Vorher wird er nur beendet, wenn
+      a) die Summe der realisierten Ergebnisse seit dem Start -2,50 USD
+         erreicht oder
+      b) drei Verlustrunden in Folge geschlossen wurden.
+    Die Wache STOPPT nichts - sie meldet, entschieden wird von Max.
+
+    Quelle ist die BOERSE (`positions-history`, realizedPnl), nicht der Loop:
+    der Status des Laufs fuehrt kein Ergebnis.
+    """
+    modul, _fehler = _nachzieher()
+    if modul is None:
+        return 0  # der Ladefehler wird in boersenpruefung gemeldet
+    inst = st.get("symbol") or ""
+    try:
+        seit = int(st.get("started_ms") or 0)
+    except (TypeError, ValueError):
+        seit = 0
+    try:
+        eintraege = modul.okxf_laden().geschlossene_positionen(inst, 20) or []
+    except Exception:  # noqa: BLE001 - ein Prueffehlschlag darf nicht still bleiben
+        return 0
+
+    kumuliert = 0.0
+    folge = 0
+    folge_offen = True
+    for e in eintraege:
+        try:
+            zeit = int(e.get("uTime") or 0)
+        except (TypeError, ValueError):
+            continue
+        if seit and zeit < seit:
+            continue
+        try:
+            pnl = float(e.get("realizedPnl") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        kumuliert += pnl
+        if folge_offen:
+            if pnl < 0:
+                folge += 1
+            else:
+                folge_offen = False
+
+    grund = None
+    if seit and kumuliert <= ABBRUCH_USD:
+        grund = "kumuliert %.2f USD seit Start (Grenze %.2f)" % (kumuliert, ABBRUCH_USD)
+    elif seit and folge >= VERLUSTE_IN_FOLGE:
+        grund = "%d Verlustrunden in Folge" % folge
+    if grund is None:
+        merk.pop("abbruch_gemeldet", None)
+        return 0
+    if merk.get("abbruch_gemeldet") == grund:
+        return 0
+    merk["abbruch_gemeldet"] = grund
+    return 1 if meldung(
+        merk,
+        "omnitrade2-Wache: ABBRUCHKRITERIUM erreicht - %s. Der Loop laeuft weiter, "
+        "der Boersen-Stop schuetzt; Entscheidung faellig (stoppen oder weiter)." % grund,
+    ) else 0
+
+
 def haupt():
     merk = heutig(lade_merk())
     meldet = 0
@@ -325,14 +448,7 @@ def haupt():
             meldet += meldung(merk, "omnitrade2-Wache: %d neue Order(s), Details im Log." % (placed - seen))
 
     # 3) Abgelehnte Orders (RiskGuard/Boerse).
-    rejected = int(st.get("orders_rejected", 0))
-    if rejected > merk.get("rejected_seen", 0):
-        merk["rejected_seen"] = rejected
-        meldet += meldung(
-            merk,
-            "omnitrade2-Wache: %d Order(s) ABGELEHNT (RiskGuard oder Boerse) - Log pruefen."
-            % rejected,
-        )
+    meldet += ablehnungen(merk, st)
 
     # 4) Offene Position im Minus: Entry = letzte Order der Position Richtung.
     #    Long: Kurs fallend gegen Entry. Short: Kurs steigend gegen Entry.
@@ -363,9 +479,13 @@ def haupt():
     else:
         merk.pop("minus_gemeldet", None)
 
-    # 5) Letzter Fehler (einmal pro Fehlermeldung).
+    # 5) Letzter Fehler (einmal pro Fehlermeldung). Eine Deckel-Ablehnung ist
+    #    kein Fehler - sie traegt den Notional-Wert im Text und wuerde sonst bei
+    #    jedem Tick als "neu" gelten (heute 6 Meldungen daraus).
     last_error = st.get("last_error", "")
-    if last_error and merk.get("error_gemeldet") != last_error:
+    if last_error and ist_deckel(last_error):
+        merk["error_gemeldet"] = last_error
+    elif last_error and merk.get("error_gemeldet") != last_error:
         merk["error_gemeldet"] = last_error
         meldet += meldung(merk, "omnitrade2-Wache: letzter Fehler im Loop: %s" % last_error[:200])
 
@@ -375,6 +495,8 @@ def haupt():
     meldet += orderwegpruefung(merk, st)
     # 8) Faehrt der Prozess die Parameter, die lauf.json beschreibt?
     meldet += parameterpruefung(merk)
+    # 9) Abbruchkriterium erreicht? (meldet, stoppt nichts)
+    meldet += abbruchpruefung(merk, st)
 
     schreibe_merk(merk)
     return meldet

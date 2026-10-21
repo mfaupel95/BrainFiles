@@ -90,16 +90,42 @@ def position(okxf, inst: str):
     return None
 
 
-def deckung(okxf, inst: str):
-    """(Summe der geschuetzten Kontrakte, Anzahl der Schutz-Auftraege)."""
+def deckt_position(auftrag: dict, seite: str) -> bool:
+    """Schuetzt dieser Auftrag eine Position der genannten Seite?
+
+    Als Schutz zaehlt nur ein Auftrag, der ``reduceOnly`` traegt UND dessen
+    Seite GEGEN die Position steht (Short-Position -> Kauf-Stop, Long-Position
+    -> Verkaufs-Stop). Entscheidung Max 21.10.2026.
+    """
+    gegen = "buy" if seite == "short" else "sell"
+    if str(auftrag.get("side") or "").strip().lower() != gegen:
+        return False
+    return str(auftrag.get("reduceOnly") or "").strip().lower() in ("true", "1")
+
+
+def deckung(okxf, inst: str, seite: str | None = None):
+    """(gedeckte Kontrakte, Anzahl, fremde Auftraege).
+
+    ``seite`` bindet die Deckung an die RICHTUNG der Position. Ohne diese
+    Bedingung zaehlt der Stop der VORIGEN Richtung als Deckung der neuen
+    Position: nach einem Wechsel stuende sie nackt da, weil
+    ``okxf.ist_schutz_stop`` nur prueft, OB ein Triggerpreis vorhanden ist -
+    nicht, wen er schuetzt. ``None`` zaehlt alles (nur fuer Altaufrufer).
+    """
     stops = [s for s in (okxf.schutz_stops(inst) or []) if okxf.ist_schutz_stop(s)]
     summe = 0.0
+    anzahl = 0
+    fremde = []
     for s in stops:
+        if seite is not None and not deckt_position(s, seite):
+            fremde.append(s)
+            continue
         try:
             summe += abs(float(s.get("sz") or 0.0))
         except (TypeError, ValueError):
             continue
-    return summe, len(stops)
+        anzahl += 1
+    return summe, anzahl, fremde
 
 
 def stop_preis(pos: dict) -> float:
@@ -191,8 +217,22 @@ def lauf(anwenden: bool = False) -> dict:
         return ergebnis
     ergebnis.update({"menge": pos["menge"], "einstieg": pos["einstieg"], "seite": pos["seite"]})
 
-    gedeckt, anzahl = deckung(okxf, inst)
-    ergebnis.update({"gedeckt": gedeckt, "stops": anzahl})
+    gedeckt, anzahl, fremde = deckung(okxf, inst, pos["seite"])
+    ergebnis.update({"gedeckt": gedeckt, "stops": anzahl, "fremde_stops": len(fremde)})
+    if fremde:
+        # Ein Stop der GEGENRICHTUNG schuetzt diese Position nicht und wuerde
+        # nach einem Wechsel sogar falsch ausloesen - er wird storniert.
+        kennungen = [str(s.get("algoId") or "") for s in fremde]
+        ergebnis["handlung"].append(
+            "FREMDE Stops (%d) decken die %s-Position nicht: %s"
+            % (len(fremde), pos["seite"], ", ".join(k for k in kennungen if k) or "ohne algoId"))
+        if anwenden:
+            for kennung in [k for k in kennungen if k]:
+                try:
+                    okxf.algo_stornieren(inst, kennung)
+                    ergebnis["handlung"].append("Storniert: %s" % kennung)
+                except Exception as e:  # noqa: BLE001 - jeder Fehlschlag ist ein Befund
+                    ergebnis["fehler"] = "Storno %s scheiterte: %s" % (kennung, e)
     luecke = abs(pos["menge"]) - gedeckt
     if luecke < MIN_LUECKE:
         ergebnis["handlung"].append("Deckung vollstaendig (%.2f von %.2f Kontrakten)"
@@ -206,7 +246,7 @@ def lauf(anwenden: bool = False) -> dict:
         if anwenden:
             antwort = okxf.schutz_stop_setzen(inst, pos["seite"], luecke, preis)
             ergebnis["stop_antwort"] = antwort
-            gedeckt2, anzahl2 = deckung(okxf, inst)
+            gedeckt2, anzahl2, _fremd2 = deckung(okxf, inst, pos["seite"])
             ergebnis.update({"gedeckt": gedeckt2, "stops": anzahl2})
             if gedeckt2 + MIN_LUECKE >= abs(pos["menge"]):
                 ergebnis["handlung"].append("NACHKONTROLLE: gedeckt %.2f (Auftraege %d)"
