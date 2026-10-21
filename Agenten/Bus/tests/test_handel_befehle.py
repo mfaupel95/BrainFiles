@@ -147,7 +147,8 @@ class ReadOnlyTest(unittest.TestCase):
         # Code ("bewachte Anbindung unvollstaendig"). Eine feste Zeile altert
         # still. Hier muss der Stand aus der Datei der Spur kommen.
         import handel_befehle as h
-        with tempfile.TemporaryDirectory() as t, patch.object(h, 'HANDEL', Path(t)):
+        with tempfile.TemporaryDirectory() as t, patch.object(h, 'HANDEL', Path(t)), \
+                patch.object(h, '_spurliste', return_value=['swap']):
             swap = Path(t) / 'swap'
             swap.mkdir()
             (swap / 'zustand.json').write_text(json.dumps(
