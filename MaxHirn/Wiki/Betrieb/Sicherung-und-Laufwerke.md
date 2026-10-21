@@ -254,6 +254,16 @@ Hintergrund starten; ein 300-s-Vordergrund-Lauf bricht ab).
   **Admin**, nur wenn O: unter 15 GB). Sie **stoppt alle Container** (laufen u.a. 20 freqtrade-Bots und
   `nautilus-demo`) und Docker/WSL - darum nicht ohne Max' Ja und nicht mitten im Handel von Hand starten.
   Log: `Werkstatt\Logs\docker-platten.log` (zuletzt 19.10.: "genug Platz", 26,4 GB frei).
+- **Docker kompaktiert 21.10.2026 22:45-22:47 (Max, Admin-Shell, `-Erzwingen`):** `docker_data.vhdx`
+  27,4 -> **19,6 GB**, `DockerDesktop.vhdx` unveraendert 31,4 GB (der Hyper-V-Datentraeger schrumpft
+  nicht - vermutlich ungenutzt, nicht geprueft), **O: 9,0 -> 23,8 GB frei**. Dauer ~2 min, 27 von 27
+  Containern liefen danach wieder ohne Neustart (`nautilus-demo` streamt Kurse, `freqtrade-orb`
+  `state=RUNNING`). **Pruefweg:** gemerkte Namen aus `Werkstatt\Logs\docker-platten-container.txt` gegen
+  `docker ps -a --format '{{.Names}}|{{.Status}}'` halten, `unhealthy`/`Restarting` suchen; das Skript meldet
+  nur "gestartet", nicht "gesund". Nach dem Lauf ist `wsl -l -v` kurz "Stopped" - das ist normal.
+  **Unabhaengig davon kaputt:** `puter` und `puter-s3` beendeten sich schon um 21:16 (Exit 1,
+  `mkdir volatile/runtime` bzw. rustfs `Permission denied`, os error 13) - Bind-Mount-Rechte, nicht
+  das Kompaktieren; nicht repariert.
 - **Zweitkopie 21.10. 21:00 Code 1:** gleiche Ursache wie die Ausserhaus-Kopie, `hermes-snap-*.sh.tmp.*`
   unter `profiles\*\cache\terminal` verschwand (FEHLER 2). Fix in `sichern-zweitkopie.ps1` und
   `sichern-ausser-haus.ps1` (`.leases` zusaetzlich), Commit `eaea7184`. Alle drei Kopier-Skripte
