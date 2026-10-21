@@ -21,7 +21,7 @@ terminal:
   timeout: 180
   home_mode: auto
 model:
-  default: upstage/solar-pro4
+  default: upstage/solar-pro4:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -30,7 +30,7 @@ fallback_providers:
     model: gemma-4-E4B-it-OBLITERATED-Q8_0
 plugins:
   enabled: []
-_config_version: 50
+_config_version: 51
 onboarding:
   seen:
     tool_progress_prompt: true

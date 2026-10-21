@@ -14,7 +14,7 @@ fallback_providers:
     model: google/gemini-3.1-flash-lite
 plugins:
   enabled: []
-_config_version: 50
+_config_version: 51
 onboarding:
   seen:
     tool_progress_prompt: true

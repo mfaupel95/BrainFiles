@@ -1,5 +1,5 @@
 model:
-  default: deepseek/deepseek-v4-flash-0731
+  default: meituan/longcat-2.5-preview:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -433,7 +433,7 @@ providers:
       anthropic/claude-sonnet-5.5:batch: {}
       anthropic/claude-sonnet-5:batch: {}
       ~anthropic/claude-sonnet-latest: {}
-_config_version: 50
+_config_version: 51
 terminal:
   cwd: C:\Users\faupe\Documents\BrainFiles
 fallback_providers:
@@ -455,3 +455,7 @@ telemetry:
     offer_version: 2
 command_allowlist:
   - execute_code
+kanban:
+  auto_decompose: true
+  default_assignee: informatiker161
+  orchestrator_profile: lotse

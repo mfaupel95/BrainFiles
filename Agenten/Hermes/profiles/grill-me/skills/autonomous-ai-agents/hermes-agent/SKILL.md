@@ -84,6 +84,8 @@ $HERMES_HOME/skills/        Installed skills
 
 Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile is active, resolve the real home from `$HERMES_HOME` — never hardcode `~/.hermes`.
 
+Operating on a specific profile from the CLI: target it with the `-p <name>` flag (pre-parsed, works on any subcommand incl. `config` and `cron`) or `HERMES_HOME=<home>/profiles/<name>` on a single command. Never rely on `HERMES_HOME=<root home>` to reach the **default** profile: with a sticky `active_profile` file present the CLI silently follows that profile instead. Each profile's `config.yaml` is **standalone** — nothing merges from the root config, so a section a profile needs (e.g. `desktop:`) must exist in that profile's own file. After every `hermes config set`, read the `in <path>` in the success line — a misdirected write still prints "✓ Set".
+
 ## Routing Table — load the reference for the task
 
 | User wants... | Load |

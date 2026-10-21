@@ -3,6 +3,8 @@ model:
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
+  request_overrides:
+    max_tokens: 16384
 providers:
   nous:
     models:
@@ -695,7 +697,7 @@ display:
   bell_on_complete: true
   show_reasoning: true
   background_process_notifications: concise
-  streaming: false
+  streaming: true
   skin: default
   language: ger
   interim_assistant_messages: true
@@ -711,7 +713,7 @@ display:
   in_app_tips: true
   in_app_tours: true
 dashboard:
-  theme: midnight
+  theme: default
   font: ibm-plex-mono
 tts:
   provider: piper
@@ -1030,7 +1032,7 @@ gateway:
       extra:
         port: 9900
 streaming:
-  enabled: false
+  enabled: true
 sessions:
   auto_archive: true
   auto_archive_days: 2
@@ -1054,7 +1056,6 @@ proxy:
 desktop:
   repo_scan_roots:
     - 'C:\Users\faupe\documents\BrainFiles\Werkstatt'
-    - O:\Werkstatt
   repo_scan_exclude_paths:
     - C:\Users\faupe\documents\Github
   font_family: IBM Plex Sans
@@ -1064,7 +1065,7 @@ desktop:
   renderer_max_old_space_mb: 4096
 local_runtime:
   enabled: true
-_config_version: 50
+_config_version: 51
 a2a_agents:
   omniroute:
     auth:
