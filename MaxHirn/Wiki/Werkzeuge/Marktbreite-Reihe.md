@@ -1,6 +1,6 @@
 ---
 titel: Die Marktbreite als Reihe
-aktualisiert: 2026-10-01
+aktualisiert: 2026-10-21
 tags: [werkzeug, krypto, markt, breite, regime, reihe, wache]
 ---
 
@@ -62,7 +62,7 @@ Fenster 600 gegen 1200 ueber dieselben 250 Tage): Mittel, Median, kleinster und
 groesster Wert sind **gleich**. Auf einzelnen Tagen kippt trotzdem ein Paar — am
 2026-07-01 steht die Breite mit 600 Kerzen auf 6,9 %, mit 1200 auf 10,3 %, das ist
 1 von 29 Paaren genau an der EMA. Ein laengeres Fenster waere an dieser Stelle
-schaerfer, kostet aber die halbe Geschichte (30 Paare x 1200 Kerzen) und aendert
+schaerfer, kostet aber die halbe Geschichte (29 Paare x 1200 Kerzen) und aendert
 die Richtungsaussage nicht.
 
 Beim ersten Nachrechnen (`--ueberschreiben`) wurde keine Live-Messung verworfen:
@@ -70,10 +70,32 @@ der alte Wert bleibt als `live_alt` in der Zeile (plus `live_alt_unter`).
 
 ## Die Reihe als Zeitzeuge (Stand 30.09.2026)
 
-250 Kerzentage, **2026-01-22 bis 2026-09-28**, 30 Paare in der Liste; gemessen
-werden je Tag 28 oder 29 (SEI-USDT existiert erst ab Juni — 129 Tage mit 28,
-121 mit 29). Ein Fehlschlag wird **namentlich** in `offen` gefuehrt: TON-USDT an
-einem Tag, SEI-USDT an 129.
+250 Kerzentage, **2026-01-22 bis 2026-09-28**, 30 Eintraege in der Liste, 29
+messbar (s. 21.10.2026); gemessen werden je Tag 28 oder 29 (SEI-USDT existiert
+erst ab Juni — 129 Tage mit 28, 121 mit 29).
+
+Ein Fehlschlag soll **namentlich** in `offen` gefuehrt werden — und wird es nicht
+in jeder Zeile: SEI-USDT steht an 129 Tagen, TON-USDT an 20 (28.09.–19.10.), in
+**122 nachgerechneten Zeilen** (31.05.–16.10.) fehlt der Name, obwohl `n_gesamt`
+29 sagt. Ursache: `reihe_rechnen` zaehlt nur Paare, deren Kerzen geliefert wurden —
+ein Paar, das schon beim Abruf scheitert, ist dort gar nicht vorhanden und
+erscheint deshalb nicht als offen. In solchen Zeilen ist der Ausfall nur an der
+Zahl zu erkennen, nicht am Namen (offen als T-435).
+
+### 21.10.2026: TON-USDT entfernt, kein Ersatz
+
+TON-USDT ist auf dem EEA-Host delistet (`51001` fuer TON-USDT UND TON-USDC,
+Lebendprobe SEI-USDT = code 0), seit wann, ist offen; in der Reihe war es nie
+mitgezaehlt (`n_gesamt` 28/29 in allen 271 Zeilen). Entfernt, nicht ersetzt: ein
+30. Paar mitten in der Reihe waere eine Zusammensetzungsaenderung, keine
+Reparatur — die `unter`/`ueber`-Listen sind dann nicht mehr mit dem Vormonat
+vergleichbar. Geprueft (Volumen 24 h / Tageskerzen ab, 21.10.2026): WLD 30,8 Mio /
+2023-07-23, CRV 2,7 Mio / 2022-11-11, HBAR 2,6 Mio / 2022-11-11, AAVE 2,2 Mio /
+2022-11-11, ICP 1,8 Mio / 2022-11-11 — alle lang genug fuer die ganze Reihe
+(>=871 Kerzen); ONDO (814), ENA (399) und TAO (113) nicht. Kommt je ein 30. Paar
+dazu, dann mit vollstaendigem Nachlauf, damit alle Zeilen denselben Korb tragen.
+
+Die Deckungszeile sagt seither `29 von 29` statt dauerhaft `29 von 30`.
 
 | Monat | Tage | Mittel | min–max |
 |---|---|---|---|

@@ -63,9 +63,17 @@ from datetime import datetime, timedelta, timezone
 
 REIHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "breite-reihe.jsonl")
 
+# TON-USDT am 21.10.2026 ENTFERNT: auf dem EEA-Host delistet (51001 fuer
+# TON-USDT UND TON-USDC, Lebendprobe SEI-USDT = code 0). Ersatz bewusst
+# NICHT aufgenommen - die Reihe ist seit 2026-01-22 durchgehend ein
+# 29-Paar-Korb (n_gesamt 28/29, TON war nie mitgezaehlt); ein 30. Paar
+# waere eine Zusammensetzungsaenderung MITTEN in der Reihe. Geprueft mit
+# voller Historie (>=871 Tageskerzen): HBAR, ICP, AAVE, CRV, WLD - zu kurz:
+# ONDO (814), ENA (399), TAO (113).
+
 PAARE = [
     "BTC-USDT", "ETH-USDT", "SOL-USDT", "XRP-USDT", "BNB-USDT",
-    "DOGE-USDT", "ADA-USDT", "LINK-USDT", "AVAX-USDT", "TON-USDT",
+    "DOGE-USDT", "ADA-USDT", "LINK-USDT", "AVAX-USDT",
     "DOT-USDT", "POL-USDT", "LTC-USDT", "TRX-USDT", "SHIB-USDT",
     "ATOM-USDT", "UNI-USDT", "NEAR-USDT", "APT-USDT", "ARB-USDT",
     "OP-USDT", "FIL-USDT", "INJ-USDT", "SUI-USDT", "SEI-USDT",
