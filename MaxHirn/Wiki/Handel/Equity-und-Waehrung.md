@@ -60,3 +60,22 @@ alte Wert stehen und es wird gewarnt (nie stillschweigend auf 0).
 - Laufender Nachweis im Log: `SOL-USD_UM_XPERP-310404: Equity-Bewertung in USDC`.
 
 Siehe auch [[Boersen-und-Schluessel]] und [[Dauerlauf-Tode]].
+
+## Dritte Lehre: `0` ist ein Preis, kein fehlender Wert (2026-10-21, 18:28)
+
+Nach dem Neustart wurde ein `Buy` auf die offene Position abgelehnt:
+`Liquidationspreis oder Markpreis fehlt bei offener Position` — obwohl der
+Markpreis mit 108,27 vorlag. Ursache war nicht die Boerse, sondern der Parser:
+`optional_price` machte aus jedem Wert `<= 0` ein `None`. OKX meldet bei einer
+Position ohne Liquidationspreis (1x isolated) `liqPx: "0"` — das heisst „es gibt
+keine Liquidation", nicht „unbekannt". Mit `None` verweigerte
+`check_liquidation_distance` jedes Nachlegen, die zweite Stufe des Plans war
+unerreichbar.
+
+**Regel:** Bei Preisfeldern unterscheidet der Parser LEER (unbekannt, fail closed)
+von `0` (Aussage der Boerse). Wer beides gleich behandelt, macht aus „kein Risiko"
+ein „unbekanntes Risiko" und sperrt den Handel still.
+
+**Beleg:** Commit `f01c37f`; Tests `liquidation_preis_null_bedeutet_keine_liquidation`
+und `liquidation_beim_preis_null_sperrt_das_nachlegen_nicht`, Gegenprobe: 0 wieder
+als `None` → Parsertest rot. Lauf PID 70448, 0 Rejects.
