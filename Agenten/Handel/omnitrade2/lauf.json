@@ -3,12 +3,12 @@
   "netz": "mainnet",
   "strategie": "strategien/momentum_ema_rsi.omni",
   "interval": "1m",
-  "quantity": 0.01,
+  "quantity": 0.19,
   "quantity_voll": 0.19,
-  "phase": "mikro",
+  "phase": "voll",
   "max_notional_usd": 25,
   "initial_capital": 50,
   "hebel": 1,
   "stop_prozent": 2.0,
-  "_vermerk": "quantity 0.01 = 1 Kontrakt (ctVal 0.01 SOL) als Mikro-Beleg; nach belegtem Fill + Boersen-Stop zieht nachziehen.py einmalig auf quantity_voll. Entscheidungen Max 21.10.2026: Shorts aktiv, Stop 2 %, 1m bleibt, Hochziehen automatisch."
+  "_vermerk": "21.10.2026 04:38: der Lauf wurde von aussen mit quantity 0.19 (19 Kontrakte) neu gestartet (Prozess-Kommandozeile gemessen) - der Mikro-Beleg von 1 Kontrakt war damit ueberholt, das Log wurde beim Neustart ueberschrieben. lauf.json folgt dem LAUFENDEN Prozess, sonst wuerde der Nachzieher den Lauf faelschlich noch einmal hochziehen. Stop 2 % an der Boerse, Entscheidungen Max 21.10.2026: Shorts aktiv, 1m bleibt."
 }
