@@ -631,6 +631,34 @@ def _bot_profil_ordner():
     return os.path.join(WURZEL, "Agenten", "Hermes", "profiles")
 
 
+def _adressat_am_anfang(text):
+    """Schreibt Max einen Bot direkt an, ohne `/bot`?
+
+    `kraken-cli: Was steht im Buch?` oder `@kraken-cli Was steht im Buch?`
+    Rueckgabe (name, auftrag) oder None. Ein Auftrag ohne Doppelpunkt/Namen
+    bleibt Freitext an den Hauptagenten - ein Tippfehler im Namen darf keinen
+    Bot starten (dieselbe Regel wie bei HANDELS_ALIASE: unbekannt bleibt
+    unbekannt).
+
+    Anlass (21.10.2026, Auftrag Max: "/bot NAME ist super umstaendlich"): am
+    Handy ist ein Befehlswort mit Unterstrich das Hindernis, nicht der Bot.
+    """
+    roh = (text or "").strip()
+    if not roh:
+        return None
+    namen = bot_namen()
+    if roh.startswith("@"):
+        teile = roh[1:].split(None, 1)
+        if teile and teile[0].lower() in namen:
+            return teile[0].lower(), (teile[1].strip() if len(teile) > 1 else "")
+        return None
+    kopf, trenner, rest = roh.partition(":")
+    kopf = kopf.strip().lower()
+    if trenner and kopf and " " not in kopf and kopf in namen:
+        return kopf, rest.strip()
+    return None
+
+
 def bot_namen():
     """Namen aller Hermes-Profile (Unterordner mit config.yaml)."""
     wurzel = _bot_profil_ordner()
@@ -886,7 +914,10 @@ def hilfe_text():
             "/skill NAME - ein Skill im Volltext\n"
             "/run NAME [Auftrag] - einen Skill AUSFUEHREN (bis 5 min)\n"
             "/bots - alle Hermes-Profile (Repo-Bots)\n"
+            "NAME: AUFTRAG - direkt an ein Profil, ohne Befehl\n"
+            "  (Beispiel: kraken-cli: Was steht im Buch?)\n"
             "/bot NAME NACHRICHT - Frage an einen Repo-Bot (bis 5 min)\n"
+            "/b = dasselbe in kurz\n"
             "/bot NAME - schaltet den Bot EIN; der naechste Auftrag\n"
             "  (Text ODER Bild, ohne Schraegstrich) geht an IHN, nicht\n"
             "  an den Hauptagenten. /bot aus schaltet wieder ab.\n"
@@ -1017,10 +1048,11 @@ def bearbeite(text, chat):
         # danach das Argument von /bot - die Wahrheit liegt auf der Platte,
         # nicht in einer gepflegten Liste (die wuerde altern).
         return _bot_liste(), kontext
-    if wort == "/bot":
+    if wort == "/bot" or wort == "/b":
         # Eine Frage an EIN Profil: der SkillsBot ist nur die Bruecke, der
         # andere Agent antwortet mit seinem eigenen Verlauf. Der A2A-Kontext
-        # von hermes-maks-pc bleibt deshalb unveraendert.
+        # von hermes-maks-pc bleibt deshalb unveraendert. `/b` ist seit
+        # 21.10.2026 dieselbe Sache in kurz (Max: "/bot NAME ist umstaendlich").
         antwort, _ = _bot_befehl(teile[1:], chat)
         return antwort, kontext
     if wort == "/prognose":
@@ -1085,6 +1117,14 @@ def bearbeite(text, chat):
                 "/nein_xperp, /stop_xperp.\n"
                 "Einen Bot rufst du mit /bot NAME (schaltet ihn ein), danach "                "kommt der Auftrag ohne Schraegstrich - Text oder Bild.\n"
                 "SWAP-Live ist nicht angebunden. Kein Auftrag an den Agenten gesendet."), kontext
+    # Direkt adressiert? "kraken-cli: ..." oder "@kraken-cli ..." geht an
+    # dieses Profil, ohne /bot. Explizit schlaegt den gerade aktiven Bot, denn
+    # wer das Profil hinschreibt, meint es. Der aktive Bot bleibt stehen.
+    adressat = _adressat_am_anfang(t)
+    if adressat:
+        name, auftrag = adressat
+        antwort, _ = _bot_befehl([name] + ([auftrag] if auftrag else []), chat)
+        return antwort, kontext
     # Aktiver Bot? Dann geht der Auftrag an ihn, nicht an den Hauptagenten
     # (Auftrag Max 03.10.2026). Nach EINEM Auftrag ist er abgeschaltet,
     # damit der naechste Freitext nicht im falschen Bot landet.
