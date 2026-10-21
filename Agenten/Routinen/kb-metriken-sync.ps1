@@ -37,7 +37,7 @@ import pathlib
 
 init_tracking()
 # Alle bekannten Spuren
-for spur in ['scanner', 'xperp']:
+for spur in ['scanner', 'xperp', 'llm_stunde', 'omnitrade2']:
     snapshot_sync(spur)
 kb_snapshot_json(pathlib.Path(r'$ZIEL_JSON'))
 print('ok')
