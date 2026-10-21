@@ -1214,7 +1214,22 @@ importieren **beide** Wege `pydantic_core 2.46.4` - das `tools`-Python und
 
 ### Nachtrag 20.10.2026 - WSL-Speicherdeckel 16 GB
 
-
-### Nachtrag 20.10.2026 - WSL-Speicherdeckel 16 GB
-
 - `C:\Users\faupe\.wslconfig`: `memory=16GB` (vorher 24GB). Wirksam nach `wsl --shutdown`, am 20.10.2026 ausgefuehrt; laufende Docker-Container wurden dabei beendet.
+
+## 08.10.2026 — Python-Absturzanalyse (Ereignis-ID 1000)
+
+Befund aus Sitzung adbdf1eb (08.10.2026), erhoben nach dem Node/Python-Absturzcluster an diesem Tag.
+
+- **Node.js:** 0 Abstürze seit 06.08.2026.
+- **Python:** 36 Abstürze seit 06.08.2026 (Quelle: Ereignis-ID 1000, Anwendungsprotokoll).
+
+| Datum / Uhrzeit | Version / Modul | Fehlercode | Bemerkung |
+|---|---|---|---|
+| 08.10. 16:04 | Python 3.14.7 (Hermes), `python314.dll` | **0xc00000fd** Stack Overflow | zeitgleich mit Bearbeitung von `gbrain-maintenance-wache.py`; Cron 06:00 war ok |
+| 08.10. 16:18 | Python 3.13, `ucrtbase.dll` | **0xc0000409** | 14 min nach dem vorigen |
+| 19.–30.09. | `nautilus_pyo3.cp313-win_amd64.pyd`, 5× | **0xc0000409** | seither keine weiteren |
+| 05.10. 02:40–02:45 | `python3.exe` (Windows Store-Stub), 3× | **0xc06d007e** Modul nicht gefunden | |
+| 07.10. | `tk86t.dll` | — | Einzelfund |
+| verstreut | `_pydantic_core`, `pandas_datetime` | — | Einzelfunde |
+
+**Abfrage-Rezept:** Ereignisanzeige → Windows-Protokolle → Anwendung → Filter → Ereignis-ID 1000, Quelle auf `python` bzw. `node` einschränken.
