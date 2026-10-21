@@ -196,6 +196,17 @@ git push origin main
 gh repo sync $GH_USER/repo-name
 ```
 
+**Measure staleness — never recall it.** `git fetch upstream` then
+`git rev-list --count HEAD..upstream/main` is the only honest answer to "is
+there anything new"; `git status -sb` shows it inline as `behind N`. A routine
+that answers from session context reports "no new commits" for weeks without
+anything looking wrong, because the fetch is the step that is easiest to skip
+and the number is the only evidence.
+
+**Check the remote name before fetching.** In a fork the tracked project is the
+`upstream` remote and your own fork is `origin`; a fetch against the wrong name
+returns nothing and reads as "nothing new". Confirm with `git remote -v`.
+
 ## 4. Repository Information
 
 **With gh:**
