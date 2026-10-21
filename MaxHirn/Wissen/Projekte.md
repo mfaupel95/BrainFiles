@@ -93,9 +93,12 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
   Neuinstallation unter `C:\Users\faupe\.cargo` und `.rustup` (03:44). Zwei
   Kopien existieren jetzt; maßgeblich ist `.config\`. Die Ursachenfrage in T-428
   ist damit wahrscheinlich beantwortet.
+- **Nachtrag npm:** `.npmrc` (enthält nur `allow-scripts`, keine Zugangsdaten) nach
+  `.config\npm\npmrc` umgezogen, `NPM_CONFIG_USERCONFIG` gesetzt, verifiziert.
 - **Zurückgestellt, mit Grund:** `.docker` (6,9 GB Modelle, Docker-Desktop-Daten),
-  `.bun` (15 laufende bun-Prozesse), `.gitconfig` (GitHub Desktop liest es direkt),
-  `.npmrc` (MCP-Server ohne Umgebungsvariable). Entscheidung ausstehend.
+  `.bun` (21 laufende bun-Prozesse, Umzug würde sie stören), `.gitconfig`
+  (GitHub Desktop liest es direkt, Umgebungsvariable greift dort erst nach Neustart).
+  Entscheidung ausstehend.
 - **Nächste Schritte:** Entscheidungen oben einholen, dann alte Ordner (`.matplotlib`,
   `.kube`, `.cargo`, `.rustup`) vom Nutzer entfernen lassen, sobald die Verifikation
   bestätigt ist.
