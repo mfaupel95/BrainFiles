@@ -11,6 +11,11 @@
     "ETH-USDT-SWAP",
     "SOL-USDT-SWAP"
   ],
+  "_positionierung": "Filter (21.10.2026): die oeffentlichen OKX-Rubik-Reihen (Long/Short-Konten, Open Interest, Taker-Fluss) muessen die Signalrichtung stuetzen. Quelle okx_positionierung.py, kein Schluessel, fail-soft. AUS = die Spur rechnet wie bisher.",
+  "positionierung_filter": true,
+  "positionierung_ls_abfall_min": 0.02,
+  "positionierung_oi_abbau_min": 0.0,
+  "positionierung_taker_min": 1.0,
   "kerzen_zeitrahmen": "4H",
   "kerzen_anzahl": 400,
   "rsi_n": 2,
