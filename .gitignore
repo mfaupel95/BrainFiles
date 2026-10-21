@@ -506,6 +506,15 @@ Werkstatt/*/
 !Werkstatt/Projekte/
 !Werkstatt/Projekte/leitstand/
 !Werkstatt/Projekte/leitstand/**
+# omnitrade_max (21.10.2026, Auftrag Max): Rust-Workspace, Quelle Branch mainnet-gate.
+# Versioniert sind Quelltext und Doku; Build-Ausgaben und Zugangsdaten bleiben draussen.
+!Werkstatt/omnitrade_max/
+!Werkstatt/omnitrade_max/**
+Werkstatt/omnitrade_max/target/
+Werkstatt/omnitrade_max/**/target/
+Werkstatt/omnitrade_max/**/.env*
+Werkstatt/omnitrade_max/**/*.pem
+Werkstatt/omnitrade_max/**/*.key
 Agenten/Hermes/hermes-agent/**
 Modelle/**
 
