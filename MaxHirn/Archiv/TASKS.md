@@ -23,6 +23,15 @@
       Wache: Hermes-Cron okx-demo-wache (3f204f21b49c, alle 30 min, no_agent)
       bewacht die offene Testposition (2,1 Kontrakte long, Stop 61.000).
       Angelegt: 21.10.2026 - Betrifft: Agenten/Handel/omnitrade, mfaupel95/omnitrade2
+      ERLEDIGT 21.10.2026: Adapter auf datierte Futures umgestellt (Zweig
+      claude/nice-pasteur-940iq0, Commit 8288e46, gepusht und mit ls-remote
+      abgeglichen). Die Notation steht jetzt EINMAL in okx/instrument.rs
+      (is_dated_future / is_contract_id / inst_type_for_symbol),
+      swap_client und live.rs delegieren nur noch dorthin. cargo test
+      --workspace und clippy -D warnings gruen. Echter Demo-Lauf mit
+      BTC-USD_UM-261030 0.1: Instrument geladen, set_leverage ok, net_mode
+      ok, Market-Buy gefuellt. OFFEN bleibt der Verkauf (Demo-Orderbuch
+      kaputt) und die PR-Freigabe.
 
 - [x] **T-420 - Werkstatt/omnitrade-Klon: origin fehlt, upstream auf fremdes Repo umgebaut**
       **Erledigt 20.10.2026.** Reparatur durchgefuehrt: git init als eigenes
