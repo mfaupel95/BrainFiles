@@ -46,6 +46,20 @@ NACHZIEHER = os.path.normpath(
 OHNE_ORDER_KERZEN = 120  # zwei Stunden 1m-Kerzen ohne eine einzige Order = Wegfehler
 
 
+def basis_je_kontrakt(okxf, inst):
+    """ctVal des Kontrakts in Basis-Einheiten (0.0 = unbekannt).
+
+    Der Loop fuehrt net_quantity in BASIS-Einheiten (0.19 SOL), die Boerse in
+    KONTRAKTEN (19) - ohne ctVal ist der Vergleich zweier Zahlen aus
+    verschiedenen Einheiten und meldet bei jeder Position eine Abweichung.
+    """
+    try:
+        d = okxf.instrument(inst) or {}
+        return float(d.get("ctVal") or 0.0)
+    except Exception:  # noqa: BLE001 - unbekannt heisst: nicht vergleichen
+        return 0.0
+
+
 def lade_merk():
     try:
         with open(MERK_FILE, encoding="utf-8") as f:
@@ -111,8 +125,8 @@ def boersenpruefung(merk, st, net):
             merk["drift_gemeldet"] = "boerse-leer"
             meldet += meldung(
                 merk,
-                "omnitrade2-Wache: Loop fuehrt %+.2f Kontrakte, die BOERSE kennt keine "
-                "Position (%s)" % (net, inst),
+                "omnitrade2-Wache: Loop fuehrt %+.4f Basiseinheiten, die BOERSE kennt "
+                "keine Position (%s)" % (net, inst),
             )
         return meldet
     merk.pop("drift_gemeldet", None)
@@ -131,15 +145,19 @@ def boersenpruefung(merk, st, net):
     else:
         merk.pop("stop_gemeldet", None)
 
-    if abs(net) > 0 and abs(abs(pos["menge"]) - abs(net)) > 0.5:
-        schluessel = "menge-%.2f-%.2f" % (round(net, 2), round(pos["menge"], 2))
-        if merk.get("menge_gemeldet") != schluessel:
-            merk["menge_gemeldet"] = schluessel
-            meldet += meldung(
-                merk,
-                "omnitrade2-Wache: Loop-Stand %+.2f weicht von der BOERSE ab (%+.2f)"
-                % (net, pos["menge"]),
-            )
+    if abs(net) > 0:
+        ctval = basis_je_kontrakt(okxf, inst)
+        soll_kontrakte = net / ctval if ctval > 0 else net
+        if abs(abs(pos["menge"]) - abs(soll_kontrakte)) > 0.5:
+            schluessel = "menge-%.2f-%.2f" % (round(net, 2), round(pos["menge"], 2))
+            if merk.get("menge_gemeldet") != schluessel:
+                merk["menge_gemeldet"] = schluessel
+                meldet += meldung(
+                    merk,
+                    "omnitrade2-Wache: Loop-Stand %+.4f Basiseinheiten (=%+.2f Kontrakte) "
+                    "weicht von der BOERSE ab (%+.2f Kontrakte)"
+                    % (net, soll_kontrakte, pos["menge"]),
+                )
     else:
         merk.pop("menge_gemeldet", None)
     return meldet
