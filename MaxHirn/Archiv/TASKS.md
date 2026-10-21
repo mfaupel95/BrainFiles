@@ -2,6 +2,28 @@
 
 
 
+- [ ] **T-433 — pdf-vault bei Claude Desktop zeigt auf einen toten Pfad**
+      Kontext: claude_desktop_config.json uebergibt pdf-vault den Ordner
+          MaxHirn\Claude - den gibt es nicht mehr. Manifest und Hermes nutzen
+          MaxHirn\Referenz\Claude_prompts (Commit ba516d25 korrigierte nur diese
+          beiden). Der Pruefer meldet es nicht, weil er nur Servernamen
+          vergleicht, keine Argumente.
+      Naechster Schritt: Claude Desktop schliessen, in der Config den pdf-vault-
+          Pfad auf MaxHirn\Referenz\Claude_prompts setzen, App starten; danach
+          mcp-sync-check.ps1 um einen Vergleich der args erweitern.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: claude_desktop_config.json (MSIX-Container), Agenten/mcp-sync-check.ps1
+- [ ] **T-434 — Sieben entfernte MCP-Server in der Hermes-Config, nicht im Manifest**
+      Kontext: gitlab, airtable, deepwiki, buildkite, circleci, algolia und
+          postman stehen in Agenten/Hermes/config.yaml als url+oauth-Server,
+          alle enabled: false. Der Pruefer verwirft ausgeschaltete Eintraege und
+          sieht sie deshalb gar nicht; im Manifest fehlen sie vollstaendig.
+      Naechster Schritt: entscheiden - als Kandidaten mit Grund in `disabled`
+          dokumentieren oder per `hermes mcp remove` entfernen; den Pruefer so
+          erweitern, dass er ausgeschaltete Config-Eintraege ohne Manifest-
+          Eintrag wenigstens als Hinweis zeigt.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/MCP-Manifest.json
 - [ ] **T-430 — Telegram: DM-Themen fehlen, weil Threaded Mode aus ist**
       Kontext: In Agenten/Hermes/config.yaml sind vier DM-Themen verdrahtet
           (Allgemein 32025, Handel 32027, Markt 32029, Wissen 32031), aber
