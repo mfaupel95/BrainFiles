@@ -84,8 +84,18 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
   Client-Konfiguration per `DOCKER_CONFIG` abdeckbar), `.bun` (nicht im PATH, laufende
   Prozesse), `aws`/`azure` (leer, CLIs nicht installiert), `dotnet`, `git`/`npm`
   (Entscheidung ausstehend). Protokoll: `Werkstatt/Protokolle/2026-10-21-profil-umzug.txt`.
-- **Offen:** `.dotnet\tools` steht wieder im User-PATH und ist tot; Herkunft unklar.
-  Entscheidung über `.docker`-Aufteilung und git/npm ausstehend.
+- **Nachtrag (2026-10-21, später):** aws, azure, dotnet ebenfalls nach `.config\`
+  umgezogen und verifiziert (dotnet 10.0.402 läuft); toter PATH-Eintrag
+  `.dotnet\tools` entfernt (PATH jetzt 32 Einträge). Abhängigkeiten repariert:
+  `rust-cargo-betrieb` und `nautilus-okx-handel` zeigen auf `.config\cargo`.
+- **Rust-Vorfall T-428:** Der Rust-Umzug dieser Sitzung fiel in das Zeitfenster,
+  in dem `.cargo` verschwand (Notiz T-428 in `Archiv/TASKS.md`). Danach
+  Neuinstallation unter `C:\Users\faupe\.cargo` und `.rustup` (03:44). Zwei
+  Kopien existieren jetzt; maßgeblich ist `.config\`. Die Ursachenfrage in T-428
+  ist damit wahrscheinlich beantwortet.
+- **Zurückgestellt, mit Grund:** `.docker` (6,9 GB Modelle, Docker-Desktop-Daten),
+  `.bun` (15 laufende bun-Prozesse), `.gitconfig` (GitHub Desktop liest es direkt),
+  `.npmrc` (MCP-Server ohne Umgebungsvariable). Entscheidung ausstehend.
 - **Nächste Schritte:** Entscheidungen oben einholen, dann alte Ordner (`.matplotlib`,
   `.kube`, `.cargo`, `.rustup`) vom Nutzer entfernen lassen, sobald die Verifikation
   bestätigt ist.
