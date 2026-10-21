@@ -31,6 +31,17 @@
       --workspace und clippy -D warnings gruen. Echter Demo-Lauf mit
       BTC-USD_UM-261030 0.1: Instrument geladen, set_leverage ok, net_mode
       ok, Market-Buy gefuellt. OFFEN bleibt der Verkauf (Demo-Orderbuch
+      GEMERGT + AUFGERAEUMT 21.10.2026: main = 8288e46 (Fast-Forward, 68
+      Commits, vorher cc946be); es gab keinen offenen PR auf omnitrade2,
+      deshalb push claude/nice-pasteur-940iq0:main. Danach Zweig lokal und
+      remote geloescht (ls-remote zeigt nur main), Worktree omnitrade-pr1
+      abgemeldet. OFFEN: der leere Ordner O:\Werkstatt\omnitrade-pr1 bleibt
+      stehen (4 KB, von einem eigenen bash-Kind gehalten - verschwindet mit
+      ihm); der Klon O:\Werkstatt\omnitrade steht noch auf cc946be, weil dort
+      6 unversionierte Dateien mit ANDEREM Inhalt als main liegen (Fremdarbeit
+      einer parallelen Sitzung, nicht ueberschrieben); omnitrade-pr haelt
+      uncommittete Aenderungen an swap_client/instrument (Semantik quantity =
+      Base-Waehrung statt Kontrakte) - ebenfalls nicht angefasst.
       kaputt) und die PR-Freigabe.
 
 - [x] **T-420 - Werkstatt/omnitrade-Klon: origin fehlt, upstream auf fremdes Repo umgebaut**
