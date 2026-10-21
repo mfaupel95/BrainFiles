@@ -78,8 +78,17 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
   nachvollziehbar verifiziert sind. Die jüngsten Detailabfragen konnten wegen
   vorübergehender Nichtverfügbarkeit des Ausführungsdienstes nicht abgeschlossen
   werden.
-- **Nächste Schritte:** Erst die Kandidaten mit einer sicheren, begrenzten Prüfung
-  klären; danach das pragmatische Dotfolder-/XDG-Design fortsetzen.
+- **Stand (2026-10-21), Umzug nativ ausgeführt:** matplotlib, kube und Rust
+  (`.cargo` + `.rustup` nach `.config\`) umgezogen und verifiziert; Umgebungsvariablen
+  gesetzt, Rust-PATH-Eintrag angepasst. Zurückgestellt: `.docker` (6,9 GB Modelle, nur
+  Client-Konfiguration per `DOCKER_CONFIG` abdeckbar), `.bun` (nicht im PATH, laufende
+  Prozesse), `aws`/`azure` (leer, CLIs nicht installiert), `dotnet`, `git`/`npm`
+  (Entscheidung ausstehend). Protokoll: `Werkstatt/Protokolle/2026-10-21-profil-umzug.txt`.
+- **Offen:** `.dotnet\tools` steht wieder im User-PATH und ist tot; Herkunft unklar.
+  Entscheidung über `.docker`-Aufteilung und git/npm ausstehend.
+- **Nächste Schritte:** Entscheidungen oben einholen, dann alte Ordner (`.matplotlib`,
+  `.kube`, `.cargo`, `.rustup`) vom Nutzer entfernen lassen, sobald die Verifikation
+  bestätigt ist.
 
 ### Digitales Archiv
 
