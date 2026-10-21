@@ -217,7 +217,12 @@ Erst die Fehlerzeilen im Log lesen (`Select-String 'FEHLER [0-9]'`), dann den Pf
 sonst sauber (242.086 Dateien, 2 Fehler): `Hermes\browser-profile\chrome\Default\Network\Cookies`
 (gesperrt, FEHLER 32) und `Hermes\profiles\bots\cache\terminal\hermes-snap-*.sh` (verschwunden,
 FEHLER 2). `sichern.ps1` schliesst `browser-profile` schon aus, `Agenten/Routinen/ausserhaus-kopie.ps1`
-noch nicht. Fix vorgeschlagen, noch nicht umgesetzt. Ziel `Q:` hatte 75,6 GB frei.
+noch nicht. **Fix umgesetzt 21.10.2026** - nicht in `ausserhaus-kopie.ps1` (nur Wrapper), sondern
+in `Agenten/sichern-ausser-haus.ps1`: `browser-profile` in `$fluechtig`, `profiles\*\cache\terminal`
+(29 Treffer) ueber die aufgeloeste Liste `$waisen` (Wildcards sind in `/XD` verboten). Die Meldung
+"Gesperrte Update-Reste ausgeschlossen: N" zaehlt dadurch auch diese Ordner mit. **Noch nicht durch
+einen echten Lauf bestaetigt** - erst der naechste `MaxHirn-Ausserhaus-Kopie`-Lauf (21:30) zeigt es.
+Ziel `Q:` hatte 75,6 GB frei.
 
 **O: Belegung (gemessen 21.10.2026, rund 550 GB, frei 29,3 -> 21,8 GB, Tendenz fallend):**
 Modelle 248,7 | Werkstatt 106,5 | Documents 61,8 | Archiv 44,9 | MaxHirn-Zweitkopie 43,2 |

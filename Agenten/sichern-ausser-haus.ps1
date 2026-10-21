@@ -63,7 +63,9 @@ $start = Get-Date
 #               Laufs (E2, Datei nicht gefunden). Berichte, keine Daten.
 $fluechtig = @(
   (Join-Path $quelle 'Agenten\Hermes\cache'),
-  (Join-Path $quelle 'Agenten\Hermes\cron\output')
+  (Join-Path $quelle 'Agenten\Hermes\cron\output'),
+  # 21.10.2026: Chrome-Profil, `Network\Cookies` haelt ein LAUFENDER Prozess (E32, Code 11 am 19./20.10.)
+  (Join-Path $quelle 'Agenten\Hermes\browser-profile')
 )
 
 # Derselbe gesperrte Waisen-Rest wie in sichern.ps1 (03.10.2026):
@@ -73,7 +75,10 @@ $fluechtig = @(
 # /XD verboten ('Ungueltiger Parameter #11', Code 16, ohne Kopieren), also
 # wird der Pfad aufgeloest.
 $waisen = @()
-foreach ($muster in @('Agenten\Hermes\state-snapshots\.*.partial')) {
+# 21.10.2026: zusaetzlich `profiles\*\cache\terminal` - die hermes-snap-*.sh entstehen und
+# verschwinden im Betrieb (E2, Code 11 am 20.10.). Wildcard darum hier aufgeloest, nicht in /XD.
+foreach ($muster in @('Agenten\Hermes\state-snapshots\.*.partial',
+                      'Agenten\Hermes\profiles\*\cache\terminal')) {
   $waisen += @(Get-ChildItem -Path (Join-Path $quelle $muster) -Directory `
                  -Force -ErrorAction SilentlyContinue |
                ForEach-Object { $_.FullName })
