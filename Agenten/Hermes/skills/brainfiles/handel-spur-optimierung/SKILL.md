@@ -95,6 +95,18 @@ an Spuren.
    ueber die Performance; eine Spur mit sauberem Excess bleibt abgeschaltet,
    wenn ihr Schalter das sagt.
 
+   **Beim Buch-gegen-Boerse-Abgleich zuerst das `modus`-Feld jeder Position
+   lesen, bevor ein fehlender Stop als Befund gilt.** Eine Position mit
+   `modus: papier` im Buch braucht keinen Boersen-Stop - ein fehlender Stop
+   dort ist kein Befund, sondern der erwartete Zustand (gemessen:
+   moondev_marktlage fuehrte eine BTC-Position als papier, die offenen Orders
+   zeigten keinen BTC-Stop, alles korrekt). Erst die live-Positionen
+   (`modus: live` oder fehlendes Feld bei einer Spur, die live laeuft) gegen
+   die Boerse pruefen. Umgekehrt: eine live-Position, deren Boersenmenge
+   deutlich vom Buch abweicht (Buch 244 gegen Boerse 2653,9 Kontrakte), ist
+   ein echter Befund - entweder eine fremde/Hand-Position auf dem Konto oder
+   ein abgedriftetes Buch. Nicht raten, gegen die Order-Historie klaeren.
+
    **Ein Audit ueber das GESAMTE Journal misst Altbestand - die
    Datenabdeckung gehoert an die Seite der Zahl.** Ein Echtheits-Alarm
    (identischer Einstiegspreis je (Instrument, Tag)) und der Excess rechnen
@@ -404,6 +416,15 @@ den Grund zu finden, der die Spur schliesst. Reihenfolge:
   unabhaengigen Teil des Auftrags beantworten, das Ergebnis melden lassen,
   sobald es eintrifft. Ein Optimierer, der scheinbar haengt, arbeitet
   meistens - ein leerer stdout ist bei ihm kein Abbruchsignal.
+- **`optimieren.py` verlangt `lade_wachen()` im Spurenmodul - nicht jede Spur
+  hat es.** Der Lauf bricht sofort mit `replay.spur_modul(...).lade_wachen()`
+  ab, wenn die Spur zu einer anderen Familie gehoert (gemessen: trendwende_btc
+  hat kein `lade_wachen`, die Indikator-Spuren schon). Vor dem Start pruefen,
+  dass das Modul die Funktion traegt (`grep -n 'def lade_wachen' <spur>/*.py`),
+  sonst ist der Lauf eine sofortige Leiche und die anderen Spuren laufen
+  scheinbar parallel weiter, waehrend nur der eine Job tot ist. Eine Spur ohne
+  `lade_wachen` ist kein Optimierer-Kandidat, auch wenn sie in `spur_opt.json`
+  steht - das ist ein Befund ueber die Spur-Familie, kein Fix am Optimierer.
 - **Der Backtest kann eine ANDERE QUOTE messen, als die Spur handelt.**
   Der Historienleser bildet `BTC-USDC` auf die USDT-Reihe ab. Bei BTC ist
   der Unterschied unter 0,1 % und das eine dokumentierte Naeherung - aber

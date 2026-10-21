@@ -1216,7 +1216,6 @@ mcp_servers:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\okx-agentkit\start-demo.cmd
     args:
       - --read-only
-    enabled: true
   pdf-vault:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
@@ -1336,7 +1335,6 @@ mcp_servers:
     args:
       - -m
       - ziplime.mcp
-    enabled: true
 platform_toolsets:
   cli:
     - a2a

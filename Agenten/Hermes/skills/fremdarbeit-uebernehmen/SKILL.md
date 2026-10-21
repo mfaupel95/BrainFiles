@@ -170,6 +170,15 @@ stehen in `references/spiegeln-parallelsitzung.md` (laden mit `skill_view`).
 - **Nichts fremdes zuruecksetzen.** `git checkout -- <datei>` verwirft die
   Arbeit der anderen Sitzung. Zum Trennen `GIT_INDEX_FILE` nehmen, aus der
   Sicherung oder byteweise zurueckholen.
+- **Blockieren fremde unversionierte Dateien den Wechsel, wird klassifiziert,
+  nicht erzwungen.** `git checkout -f` ueberschreibt fremde Arbeit ohne Spur;
+  „The following untracked working tree files would be overwritten" ist eine
+  Einladung zum Vergleichen, nicht zum Erzwingen. Je Datei `git hash-object`
+  gegen `git rev-parse <ziel>:<pfad>`: gleich -> loeschen verliert nichts,
+  anders -> nach `.fremd-JJJJMMTT/` sichern (mit `MANIFEST.json`), erst dann
+  loeschen und wechseln. Fertiges Verfahren samt Nachweis und der Falle
+  „unversionierte Datei verdeckt ein Modulverzeichnis":
+  `references/klon-nachziehen-und-aufraeumen.md`.
 - **Der Zeitstempel im Sandbox-Terminal ist die Uhr des Containers**, nicht des
   Rechners — „vor 5 min" kann 7 Stunden heissen. Das Alter fremder Dateien ueber
   den Host pruefen, bevor daraus eine Reihenfolge wird.

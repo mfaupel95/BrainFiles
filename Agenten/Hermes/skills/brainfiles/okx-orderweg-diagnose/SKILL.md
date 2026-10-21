@@ -343,6 +343,28 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   entscheidet), und alle anderen Schichten delegieren dorthin. Beim Erweitern
   um eine Familie zuerst die bestehenden Kopien suchen
   (`grep -rn "ends_with(\"-SWAP\")"`) und ersetzen, nicht daneben ergaenzen.
+- **Order-Routing: Instrument-Cache vor String-Heuristik.** Eine
+  `is_contract_id`-Pruefung, die nur `ends_with("-SWAP")`/`contains("_XPERP-")`
+  kennt, stuft ein datiertes `BTC-USD-261030` (keine der beiden Marken) als
+  SPOT ein und schickt die Order in den falschen Body — der Fehler sieht dann
+  wie ein Instrument-Problem aus (`tgtCcy`-Ablehnung), obwohl das Instrument
+  korrekt geladen ist. Wenn das Instrument bereits im Cache liegt, dessen
+  `inst_type.is_contract_based()` als Wahrheit nehmen und die String-Heuristik
+  nur als Rueckfall fuer nicht geladene Symbole; die Heuristik ist eine
+  Abkuerzung, kein Ersatz fuer den geladenen Typ.
+- **`ctValCcy` entscheidet die Mengeneinheit — NICHT die Instrumentklasse.**
+  Die Menge ist bei SWAP UND bei XPERP/datierten Futures die BASE-Waehrung, und
+  `base_to_contracts` rechnet sie korrekt um, WEIL `ctValCcy` die Base ist
+  (gemessen eea.okx.com: `BTC-USD_UM-261030` ctVal=0.0001, ctValCcy=BTC).
+  Ein Adapter, der Futures-Mengen als „direkt in Kontrakten" behandelt, bricht
+  den Live-Loop, der `quantity x Kurs` als Notional rechnet — der Fix ist die
+  EINHEITLICHE Base-Semantik, nicht ein Futures-Sonderfall. Die Verwirrung
+  entsteht durch Instrumente, deren `ctVal` in USD steht (z. B. `BTC-USD-261030`
+  ctVal=100) — das ist eine ANDERE Produktklasse, die auf dem EEA-Demo-Konto
+  ohnehin compliance-blockiert ist, nicht der Normalfall des XPERP. Vor jeder
+  Mengenlogik `ctValCcy` des Instruments pruefen (im Instrument-Datensatz),
+  nicht die Klasse raten; eine Probe, die fuer SWAP und Futures dieselbe
+  Mengenlogik nutzt, ist dann korrekt, solange beide `ctValCcy`=Base haben.
 - **Ein Sicherungsauftrag ist manchmal die Antwort „nichts“.** Geprueft lag ein
   vollstaendiger OCO (Stop *und* Ziel auf der vollen Menge) — drei zusaetzliche
   TP-Stufen haetten beim ersten Treffer doppelt verkauft, weil ihre Mengen sich

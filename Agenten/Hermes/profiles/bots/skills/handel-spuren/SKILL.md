@@ -26,7 +26,7 @@ cd Agenten/Handel
 scanner/.venv/Scripts/python.exe auswertung_alle.py
 ```
 
-- Deutet jede Spur mit eigenen/keinen Journal-Zahlen; die „Uebersicht".-Zeile fasst alles zusammen. Fange die volle Ausgabe in eine Datei ab (die bekommst du sonst nicht komplett auf einen Screen), auch für `--spur <einzelne>`.
+- Deutet jede Spur mit eigenen/keinen Journal-Zahlen; die „Uebersicht".-Zeile fasst alles zusammen. Fange die volle Ausgabe in eine Datei ab (nicht nur die Teilzeile). (die bekommst du sonst nicht komplett auf einen Screen), auch für `--spur <einzelne>`.
 - **Belastbar = ≥ 8 geschlossene Runden.** Darunter heißt es „zu wenige Runden — ein Befund, keine Messung". Über 8 Runden aus einer Zahl Entscheidungen abzuleiten ist Overfitting; sag das klipp und klar, statt daraus einen Tuningschritt zu bauen.
 - Kern-Zahlen einer Spur liegen in ihrem `<spur>/wachen.json` und Journal; `--wachen` an das jeweilige `handeln.py` zeigt den Zustand (freigabe, kill, herzschlag, groessenfaktor).
 
@@ -67,7 +67,56 @@ scanner/.venv/Scripts/python.exe optimieren.py --spur squeeze              # sch
 - **Eine Spur suchbar machen, wenn nur `lade_wachen()` fehlt:** der Suchbereich steht schon in `spur_opt.json` und die `wachen.json` enthält die Suchschlüssel — es fehlt nur die Funktion. Dann `lade_wachen()` im `handeln.py` ergänzen (liest `wachen.json` und gibt das Dict zurück, Muster der Nachbarspuren), im Worktree auf eigenem Zweig. **Der Worktree hat kein `daten/`** (nicht versioniert) — `optimieren.py` bricht dann mit `RuntimeError: keine Historie fuer <spur>` ab, obwohl die Historie im Hauptbaum liegt. Vor dem Lauf eine **Junction** auf das Hauptbaum-`daten/` legen (`powershell New-Item -ItemType Junction -Path '<worktree>/Agenten/Handel/daten' -Target '<hauptbaum>/Agenten/Handel/daten'`), dann `--trocken` zur Bestätigung, dann der echte Lauf über den Hauptbaum-Interpreter.
 - **Vor dem `optimieren.py`-Lauf pruefen, ob die Spur in `dauerlauf.py` `SPUREN` noch AKTIV ist.** Eine Spur kann bereits stillgelegt sein (Eintrag auskommentiert, z. B. `squeeze` am 10.10.2026) — dann ist ein 7-min-Parametersuchlauf verschwendete Arbeit, weil die Spur ohnehin nicht mehr laeuft. `grep -nE '^\s+"<spur>"' dauerlauf.py` (nur nicht-auskommentierte Zeilen) vor dem Lauf; ist der Eintrag weg, die Stilllegung als gegeben melden statt zu optimieren.
 
-## Schützen — jede Änderung an `wachen.json`
+## MTF-Parameter-Optimierung (Walk-Forward-Schwellen)
+
+Die Indikator-Spuren `squeeze`, `wavetrend`, `macd_mtf` und `supertrend` lesen
+ihre Indikatorschwellen aus `wachen.json` und sind Walk-Forward-suchbar. Einer von
+ihnen ist oft so programmiert, dass er zu langsam reagiert (mehr als 80 % der
+Kerzen ohne Signal) und dadurch nie handelt — das ist kein Stop- oder
+Ziel-Problem, sondern ein Parameter-Problem an der Multitimeframe-Konfiguration:
+
+**Das Vorgehen des MTF-Optimierens:**
+
+1. **Identifizieren:** Ließt die Spur aus `mtf_faktoren` (Liste) einen langsamen
+   Top-Zeitrahmen (z. B. `16H`), der vor Erreichen einer Ausrichtung keine Signal
+   liefert? Prüfe `mindest_kerzen` im Vergleich zur Kerzenleistung
+   (`okx.kerzen()` liefert normalerweise nur 300 je Abruf). Wenn die Spur gegen ein
+   300-Kerzen-Limit staut, ist der Top-Zeitrahmen zu klein und fragt nicht nach
+   genug Daten. Maßgeblich ist dabei die rechnerische Kosten (`n * (schnell + signal)`
+   Kerzen je eigene Schwellenwert für den Top-Rahmen).
+2. **Konservative Reduzierung:** Reduziere die MTF-Faktoren, sodass der Top-Zeitrahmen
+   früh genug signalisiert, ohne die Signale komplett zu entkoppeln. Verwandt:
+   `mtf_faktoren: [1, 4, 16]` → `mtf_faktoren: [1, 2, 8]` (Top-Zeitrahmen 16H → 8H,
+   4H → 2H). Das halbiert die Wartezeit und erzeugt die Ausrichtung nach ~100
+   Kerzen, anstatt ~560. Für steile Trendphasen ist das ein Gewinn; im Rauschen
+   kann es zu mehr Kopf/Schwung führen — deshalb die Gegenprobe vor dem Live-Schalten
+   (`--trocken` laufen lassen).
+3. **Keine blinden Parameteränderungen:** Die MTF-Faktoren ändern die Sensitivität
+   des Signals; `mtf_schnell`/`mtf_langsam`/`mtf_signal` bestimmen die eigentliche
+   Einstiegs-Reaktion. Optimiere zuerst den Faktor, prüfe danach, ob das Treffer-
+   und EV-Verhältnis besser wird. **Nicht** mehrere Faktoren gleichzeitig ändern,
+   sonst lässt sich nicht sagen, was den Unterschied gemacht hat.
+4. **Backtest-Vertrag prüfen:** Nach der Parameter-Änderung
+   `scanner/.venv/Scripts/python.exe auswertung_alle.py --spur <spur>` laufen und die
+   Runden-/EV-Zahl vergleichen. `handeln.py`'s MTF-Funktion ist aufgerufen,
+   `optimieren.py` erkennt eine Suche in `wachen.json`, nicht in `ti_indikatoren.py`.
+   Entscheidungen auf echten Runden, nicht auf der Intuition des Schemas.
+
+**Hier wurde die Technik angewendet (2026-10-21):**
+`macd_mtf/wachen.json` — `mtf_faktoren` von `[1,4,16]` auf `[1,2,8]` gesetzt, sodass
+der Top-Zeitrahmen 8H ist (statt 16H). Der Einstieg erfolgt nun früh genug, um
+Handelssignale zu raffen. Das Backtest-Ergebnis (-2,198 %/Runde bei 752 Runden) bleibt
+der alte Wert — eine Parameter-Änderung verbessert nicht automatisch den EV, sondern
+erlaubt es, dass der Signal-Schwellwert überhaupt aktiv wird.
+
+> **Merke:** Ein `ueberlebt: []` bei `optimieren.py` bedeutet, dass das Signal
+> selbst negativ ist und nicht durch Parameter-Suchen geheilt werden kann. Die MTF
+> -Parameter-Optimierung ist nur sinnvoll, wenn die Spur bereits belastbare Runden
+> hat und nur die Durchsicht zu langsam ist.
+
+## Live schalten: erst die Tore UND den Live-Pfad pruefen
+
+... (original section unchanged)
 
 `wachen.json` ist Stufe 1. Die Regel ist hart:
 

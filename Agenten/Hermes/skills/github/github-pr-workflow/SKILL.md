@@ -311,6 +311,36 @@ git branch -d $BRANCH
 
 Merge methods: `"merge"` (merge commit), `"squash"`, `"rebase"`
 
+### When there is no PR — integrate the branch by push
+
+`gh pr list --state open` empty and `gh pr view N` answering
+`Could not resolve to a PullRequest` means the branch never became a PR. Do not
+guess a number and do not create one retroactively; integrate directly — but
+prove first that the push is a true fast-forward:
+
+```bash
+git fetch origin
+git merge-base --is-ancestor origin/main origin/<branch> && echo "fast-forward ok"
+git rev-list --count origin/main..origin/<branch>        # size of what moves
+git push origin <branch>:main
+```
+
+- **The push message is not the merge proof.** Read the ref back:
+  `git ls-remote origin main` must print exactly the branch tip SHA.
+- **Run the test suite on the EXACT tip being merged**, and re-run it after any
+  rebase — a rebase changes what `main` receives.
+- **If the remote branch moved under you** (a parallel session pushed):
+  `git fetch`, `git rebase origin/<branch>`, suite, push again. Never `--force`
+  a shared branch, and never rewrite history in a repo others push to.
+- **If `main` is not an ancestor** the push is refused. Then merge for real in a
+  DISPOSABLE worktree (`git worktree add <tmp> origin/main`, `git merge --no-ff
+  <branch>`, push, `git worktree remove <tmp>`) — never `git switch` inside a
+  clone another session is working in.
+- After the merge, delete the branch locally AND remotely and deregister the
+  worktree; a worktree carrying uncommitted foreign changes is not yours to
+  delete (see `arbeitsbaum-git-hygiene`,
+  `references/worktree-und-klon-aufraeumen.md`).
+
 ### Enable Auto-Merge (curl)
 
 ```bash
