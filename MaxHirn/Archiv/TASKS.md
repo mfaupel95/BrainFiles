@@ -2,6 +2,47 @@
 
 
 
+- [ ] **T-430 — Telegram: DM-Themen fehlen, weil Threaded Mode aus ist**
+      Kontext: In Agenten/Hermes/config.yaml sind vier DM-Themen verdrahtet
+          (Allgemein 32025, Handel 32027, Markt 32029, Wissen 32031), aber
+          Telegram lehnt jede Erzeugung ab: "Threaded Mode is not enabled"
+          (gateway.log, zuletzt 10.10.). Die IDs sind deshalb Platzhalter -
+          keine davon taucht je in einer Session auf. Bis das an ist, landet
+          im DM alles in EINEM Chat, und Bot-Wechsel kostet ein Befehlswort
+          (seit 21.10. wenigstens NAME: AUFTRAG oder /b).
+      Naechster Schritt: Max schaltet in der BotFather-Mini-App unter "My
+          bots -> Bot Settings -> Threads Settings" den Threaded Mode ein.
+          Danach legt der Adapter die Themen selbst an und schreibt die
+          ECHTEN thread_ids in die config; erst dann je Thema ein Profil in
+          gateway.profile_routes eintragen (nicht vorher raten).
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Hermes/config.yaml, Telegram-Bot des Hauptprofils
+- [ ] **T-431 — Gruppen-Themen-Routen in config.yaml zeigen ins Leere**
+      Kontext: Sechs profile_routes fuer die Gruppe -1003980261765 nennen
+          thread_id 1998/1999/2000/2001/2006 (Dispatch/Handel/Auswertung/
+          Wissen/Bots). In den Sessions existieren nur die Threads 615 und 1,
+          und die Doku Telegram-Themen-Bot-Zuordnung.md nennt je Thema
+          jev-trader/recherche/obsidian-skills/gbrain - die config sagt
+          dagegen ueberall "bots". Die Routen greifen also nie.
+      Naechster Schritt: echte thread_id je Thema einmal aus einer Nachricht
+          im Thema ablesen (Log/Session), dann die Route auf den Fachbot
+          legen; bis dahin bleibt die Chat-weite Route auf "bots" der
+          Fallback.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Hermes/config.yaml, Agenten/Hermes/profiles/bots/Telegram-Themen-Bot-Zuordnung.md
+- [ ] **T-432 — Drei vorbestehende rote Tests in Agenten/Bus/tests**
+      Kontext: Mit dem SkillsBot-Auftrag vom 21.10. gemessen (114 Tests, 3
+          Fehlschlaege, gegen HEAD unveraendert): test_skillsbot_bilder.
+          test_das_ganze_fenster_geht_raus verlangt den alten Aufruf
+          _fenster_bilder(cache_key), seit der Bilder-Regel vom 14.10. heisst
+          er _bilder_fuer_auftrag(nachricht, text, cache_key); zwei Modell-Tests
+          (test_skillsbot_modell) frieren "auto/smart" ein, das Profil faehrt
+          inzwischen stepfun/step-5-preview:free.
+      Naechster Schritt: auf die Eigenschaft statt auf den Text pruefen -
+          Bilder: "der Auftrag bekommt die Bilder des Fensters, wenn er auf
+          Bild verweist"; Modell: der genannte Name existiert in der config.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Bus/tests/test_skillsbot_bilder.py, test_skillsbot_modell.py
 - [ ] **T-429 — omnitrade2: Demo-Mechanik offen, 12 Testnet-Laeufe auf altem Binary**
       Kontext: Aus dem Grill 21.10.2026 blieben drei Punkte absichtlich liegen.
       (a) Die beschlossene Demo-Mechanik auf BTC-USD_UM-261030 (Order-Annahme
@@ -122,6 +163,15 @@
       SOL-USD_UM_XPERP); Wache schweigt (Exit 0 = gesund). Der vorige
       Lauf (PID 48072, 0.01 SOL, Parallel-Sitzung) war flach und wurde
       ersetzt.
+      ERSTE ECHTE SHORT 21.10.2026 04:48: sell 0.19 SOL @ 106.17 (19
+      Kontrakte); Boersen-Stop buy 19 @ 108.29 (reduceOnly, conditional,
+      algoId 4028160750812815360, Deckung 19/19) vom Schutz-Cron
+      omnitrade2-stop-nachziehen (2 min) gesetzt, Liquidation erst bei
+      210.12 - 1x, Risiko auf ~20 USDC begrenzt. Wachen-Fehler behoben
+      (2b8e75ce): der Mengenvergleich rechnete Basiseinheiten gegen
+      Kontrakte und meldete JEDE offene Position als Abweichung; jetzt
+      ueber ctVal umgerechnet (Gegenprobe: gleich still, ungleich
+      Meldung, ctVal unbekannt kein Vergleich).
 - [ ] **T-426 - OKX-Demo (EEA) gemessen: SWAP und XPERP gesperrt, nur datierte Futures handelbar**
       Kontext: 21.10.2026 gemessen. Demo-Keys funktionieren NUR mit dem
       Header x-simulated-trading: 1 gegen eea.okx.com - ohne ihn antwortet
