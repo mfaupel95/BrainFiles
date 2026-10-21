@@ -2,6 +2,18 @@
 
 
 
+- [ ] **T-435 — breite.py: nachgerechnete Zeilen nennen ihren Ausfall nicht**
+      Kontext: 122 Zeilen der Reihe (31.05.-16.10.2026) tragen offen=[] bei
+          n_gesamt 29 - ein Paar fehlt ohne Namen. Ursache: reihe_rechnen()
+          laeuft nur ueber Paare, deren Kerzen geliefert wurden; ein Paar, das
+          schon beim Abruf scheitert, fehlt ganz. Gemessen am 21.10.2026 an
+          TON-USDT: 20 Zeilen nennen es, 122 nicht.
+      Naechster Schritt: reihe_rechnen um paare= erweitern (fehlende Paare als
+          offen mit Grund "keine Kerzen"), fuellen() gibt PAARE mit, Test mit
+          einer Attrappe, in der ein Paar scheitert; alte Zeilen nur per
+          Nachlauf heilen, nie live ersetzen.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Werkzeuge/tests/test_breite.py
 - [ ] **T-433 — pdf-vault bei Claude Desktop zeigt auf einen toten Pfad**
       Kontext: claude_desktop_config.json uebergibt pdf-vault den Ordner
           MaxHirn\Claude - den gibt es nicht mehr. Manifest und Hermes nutzen
