@@ -2,17 +2,6 @@
 
 
 
-- [ ] **T-436 — Zwei venvs zeigen mit .pth auf den geloeschten Pfad Werkstatt\Repos**
-      Kontext: Beim Reparieren der ziplime-Bruecke gefunden - Werkstatt/foreman/.venv
-          und Werkstatt/tradememory-protocol/.venv tragen je eine __editable__-*.pth
-          mit dem Ziel O:\Werkstatt\Repos\... (seit dem Repo-Umzug am 14.10.2026
-          fort). Die Pakete sind damit nur importierbar, solange man im Repo-Ordner
-          steht; aus einem fremden Ordner kommt ModuleNotFoundError.
-      Naechster Schritt: die zwei .pth auf den neuen Pfad schreiben (Muster wie bei
-          ziplime: Sicherung ziplime.pth.bak-20261021 daneben), danach
-          `python -c "import foreman"` aus einem fremden Ordner als Beleg.
-      Angelegt 21.10.2026 · Zuletzt 21.10.2026
-      Betrifft: Werkstatt/foreman/.venv, Werkstatt/tradememory-protocol/.venv
 - [ ] **T-435 — breite.py: nachgerechnete Zeilen nennen ihren Ausfall nicht**
       Kontext: 122 Zeilen der Reihe (31.05.-16.10.2026) tragen offen=[] bei
           n_gesamt 29 - ein Paar fehlt ohne Namen. Ursache: reihe_rechnen()
@@ -2339,6 +2328,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
     - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
     - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 ## Erledigt
+- [x] **T-436 — Zwei venvs zeigen mit .pth auf den geloeschten Pfad Werkstatt\Repos**
+      Kontext: Beim Reparieren der ziplime-Bruecke gefunden - Werkstatt/foreman/.venv
+          und Werkstatt/tradememory-protocol/.venv tragen je eine __editable__-*.pth
+          mit dem Ziel O:\Werkstatt\Repos\... (seit dem Repo-Umzug am 14.10.2026
+          fort). Die Pakete sind damit nur importierbar, solange man im Repo-Ordner
+          steht; aus einem fremden Ordner kommt ModuleNotFoundError.
+      Naechster Schritt: die zwei .pth auf den neuen Pfad schreiben (Muster wie bei
+          ziplime: Sicherung ziplime.pth.bak-20261021 daneben), danach
+          `python -c "import foreman"` aus einem fremden Ordner als Beleg.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Werkstatt/foreman/.venv, Werkstatt/tradememory-protocol/.venv
+      **Erledigt 21.10.2026.** Beide .pth zeigten auf O:\Werkstatt\Repos\<repo>\src; jetzt auf C:/Users/faupe/Documents/BrainFiles/Werkstatt/<repo>/src (Sicherungen *.pth.bak-20261021). Beleg aus einem FREMDEN Arbeitsordner: `import foreman` -> src\foreman\__init__.py, `import tradememory` -> src\tradememory\__init__.py; `python -m foreman --help` zeigt die Typer-Hilfe. Die Importnamen sind foreman/tradememory, NICHT die Verteilungsnamen foreman_core/tradememory_protocol - der erste Test mit dem Verteilungsnamen scheiterte und sah wie ein kaputter Fix aus. venvs sind gitignoriert (Werkstatt/*/), die Reparatur ist daher nur lokal und hier belegt.
 - [x] **T-433 — pdf-vault bei Claude Desktop zeigt auf einen toten Pfad**
       Kontext: claude_desktop_config.json uebergibt pdf-vault den Ordner
           MaxHirn\Claude - den gibt es nicht mehr. Manifest und Hermes nutzen
