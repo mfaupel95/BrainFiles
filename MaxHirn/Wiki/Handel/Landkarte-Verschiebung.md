@@ -94,7 +94,7 @@ MaxHirn/Wiki/Handel/
 
 ## Pfad-Korrektur
 
-- `leitstand_backtests.json`: `docs/plans/2026-09-29-leitstand-plan.md` → `MaxHirn/Wiki/Handel/plans/2026-09-29-leitstand-plan.md`
+- `leitstand_backtests.json`: `docs/plans/2026-09-29-leitstand-plan.md` → `Werkstatt/Projekte/handel/plans/2026-09-29-leitstand-plan.md` (seit 21.10.2026; vorher `MaxHirn/Wiki/Handel/plans/`)
 
 ## TASKS
 
