@@ -1240,3 +1240,9 @@ Agenten/Werkzeuge/routing-plan/werkstatt/
 # Wurzel-Aufrufer fuer die Modelllisten der Bot-Profile (CRLF, kein LF):
 # liegt NACH allen Sperrregeln, weil die spaetere Regel gewinnt.
 !/profil-listen.cmd
+# omnitrade2: Live-Lauf-Start und Lauf-Parameter (Auftrag Max 21.10.2026).
+# Der Ordner ist sonst gesperrt; zustand.json bleibt Laufzeitstand und
+# kommt NACH den Freigaben, weil die spaetere Regel gewinnt.
+!Agenten/Handel/omnitrade2/lauf.json
+!Agenten/Handel/omnitrade2/start.ps1
+Agenten/Handel/omnitrade2/zustand.json

@@ -2,6 +2,24 @@
 
 
 
+- [ ] **T-429 — omnitrade2: Demo-Mechanik offen, 12 Testnet-Laeufe auf altem Binary**
+      Kontext: Aus dem Grill 21.10.2026 blieben drei Punkte absichtlich liegen.
+      (a) Die beschlossene Demo-Mechanik auf BTC-USD_UM-261030 (Order-Annahme
+          + Boersen-Stop) ist NICHT gefahren - der Loop lief direkt als echter
+          XPERP-Mikro-Auftrag (1 Kontrakt). Der Demo-Platz ist der einzige
+          kostenlose Kontrakt des EEA-Demo-Kontos; sein Orderbuch ist laut
+          T-426 halb kaputt (bid 109 gegen ask 67.769), ein Verkauf haengt.
+      (b) 12 omnitrade-cli.exe laufen weiter auf dem ALTEN Binary
+          (Werkstatt/omnitrade/target-live, testnet, BTC/ETH-USDC) - eine
+          parallele Sitzung startet dort nach. Nicht angefasst: fremder Betrieb.
+      (c) Werkstatt/omnitrade-pr traegt die unverfolgte Datei
+          omnitrade-exchange/examples/keyring_check.rs (Fremd-Artefakt).
+      Naechster Schritt: (a) Loop fuer ein paar Minuten pausieren, eine
+          Demo-Order auf dem datierten Future setzen und den Stop pruefen;
+          (b) nach Rueckfrage bei der parallelen Sitzung gemeinsam auf main
+          umstellen; (c) Datei behalten oder loeschen, dann committen.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Werkstatt/omnitrade-pr, Werkstatt/omnitrade, OKX EEA Demo
 - [ ] **T-428 — Rust-Toolchain gelöscht (~/.cargo, 21.10.2026 ~03:25) — wer?**
       Kontext: Während des omnitrade2-Live-Lauf-Setups (Builds liefen) verschwand
       C:\Users\faupe\.cargo komplett; C:\Users\faupe\.rustup blieb als LEERER Ordner
@@ -54,6 +72,38 @@
       quantity 0, kein Geld in Gefahr. Damit der Fix wirkt, muss der Loop
       mit dem neuen Stand neu gebaut+gestartet werden (Entscheidung Max,
       Live-Prozess).
+      GRILL MIT MAX 21.10.2026, 04:00-04:20 - Entscheidungen (und je ein
+      belegter Grund):
+      (1) Shorts bewusst AN (--allow-shorts bleibt im Startskript), aber
+          erst nach Schutz + Beleg.
+      (2) Beleg ZWEISTUFIG, weil das Demo-Konto XPERP NICHT fuehrt
+          (gemessen: /public/instruments und set-leverage geben 51001 fuer
+          SOL-USD_UM_XPERP-310404, BTC-USD_UM-261030 gibt 0): erst
+          Demo-Mechanik auf dem datierten Future, dann ein echter
+          XPERP-Mikro-Auftrag von 1 Kontrakt (~1,06 USDC).
+      (3) Schutz-Stop als PYTHON-CRON (okxf.schutz_stop_setzen), nicht im
+          Rust-Client: omnitrade-exchange/src/okx kennt kein order-algo/
+          reduceOnly, ein Stop im Prozess stirbt mit dem Prozess.
+      (4) Phantom-Short verhindert: LongOnlyGuard als eigene Pruefung VOR
+          dem Deckel (vorher hing die Long-only-Bremse an
+          --max-notional; ohne Deckel konnte ein Sell bei flacher Position
+          einen Short eroeffnen). PR #3 gemergt (f46ccbc), Tests 95 gruen.
+      (5) 1m-Kerze BLEIBT (Entscheidung Max gegen die Messung): gleiche
+          Regel nachgerechnet 1m 14,4 Runden/Tag, roh -0,60 %, Gebuehren
+          1,40 %, netto -2,00 % (1 Tag); 15m netto -1,07 % (14,6 Tage);
+          1H netto +5,67 % (58,3 Tage). Bekannt und akzeptiert.
+      (6) Stop 2,0 % vom Einstieg (~1,9 x ATR 1H = 1,07 %); Schwelle der
+          Wache von -25 % auf -2,5 % gezogen (war nach dem Stop toter Code).
+      (7) Wache prueft zusaetzlich: Position ohne Boersen-Stop, Loop lebt
+          aber 0 Orders bei Abgelehnten, Loop-Stand vs. Boersenmenge.
+      (8) Hochziehen 1 -> 19 Kontrakte AUTOMATISCH nach belegtem Fill +
+          gedecktem Stop (einmalig, Merker in omnitrade2/zustand.json).
+      STAND 21.10.2026 04:20: Loop PID 48072 auf main f46ccbc, phase mikro
+      (quantity 0.01 = 1 Kontrakt), 302 Kerzen gesehen, 0 Orders, 0
+      Rejects, keine Position. Neuer Nachzieher-Cron f615fc2a8daf (2 min,
+      no_agent) haelt den 2-%-Stop an der Boerse. Parameter stehen in
+      Agenten/Handel/omnitrade2/lauf.json, Start ueber start.ps1 daneben
+      (das alte cache-Skript ist abgeloest).
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: mfaupel95/omnitrade2 (PR #2), OKX EEA Mainnet
 
