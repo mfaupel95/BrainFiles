@@ -44,6 +44,48 @@ def _hash(pfad):
         return hashlib.sha256(f.read()).hexdigest()
 
 
+def _config_zeilen():
+    with open(s.CONFIG_HERMES, "r", encoding="utf-8") as f:
+        return f.read().splitlines()
+
+
+def _haus_modell():
+    """model.default und model.provider aus der ECHTEN Hermes-config.
+
+    Bewusst eigener Mini-Leser statt `s.modell_text()`: sonst pruefte der Test
+    den Befehl gegen sich selbst.
+    """
+    default = provider = None
+    im_modell = False
+    for zeile in _config_zeilen():
+        if not zeile.strip() or zeile.lstrip().startswith("#"):
+            continue
+        if not zeile.startswith(" "):
+            im_modell = zeile.strip() == "model:"
+            continue
+        if im_modell and zeile.startswith("  ") and not zeile.startswith("   "):
+            schluessel, _, wert = zeile.strip().partition(":")
+            if schluessel == "default":
+                default = wert.strip().strip("\"'")
+            elif schluessel == "provider":
+                provider = wert.strip().strip("\"'")
+    return default, provider
+
+
+def _gemeldetes_modell(text):
+    """Die Zeile '<modell>  ueber  <provider>' aus der /model-Ausgabe.
+
+    Kein eingefrorener Name: das Haus wechselt (auto/smart bis 20.10.2026,
+    seither stepfun/step-5-preview:free) - geprueft wird, dass die Ausgabe
+    den Stand der config nennt.
+    """
+    for zeile in text.splitlines():
+        if "  ueber  " in zeile:
+            modell, _, provider = zeile.partition("  ueber  ")
+            return modell.strip(), provider.strip()
+    return "", ""
+
+
 class ModellBefehl(unittest.TestCase):
     def _config(self, inhalt):
         d = tempfile.TemporaryDirectory()
@@ -53,10 +95,17 @@ class ModellBefehl(unittest.TestCase):
         return str(p)
 
     def test_echte_config_wird_gelesen(self):
-        """Kein Nachbau: der Befehl liest die echte Hermes-config."""
+        """Kein Nachbau: der Befehl liest die echte Hermes-config.
+
+        Geprueft wird die EIGENSCHAFT statt eines eingefrorenen Namens: was
+        /model nennt, muss das sein, was in der config steht (bis 20.10.2026
+        stand hier "auto/smart", das Profil faehrt seither
+        stepfun/step-5-preview:free).
+        """
         text = s.modell_text()
-        self.assertIn("auto/smart", text)
-        self.assertIn("ueber  smart", text)
+        haus = _haus_modell()
+        self.assertTrue(all(haus), "config ohne model.default/provider")
+        self.assertEqual(_gemeldetes_modell(text), haus)
         self.assertIn("Fallback:", text)
 
     def test_kontextlaenge_kommt_aus_dem_providerblock(self):
@@ -100,10 +149,13 @@ class ModellBefehl(unittest.TestCase):
         self.assertIn("/model", s.hilfe_text())
 
     def test_bearbeite_model_ruft_kein_a2a(self):
-        """Die Auskunft kommt aus der Datei, nicht vom Agenten."""
+        """Die Auskunft kommt aus der Datei, nicht vom Agenten.
+
+        Der genannte Name wird gegen die config geprueft, nicht eingefroren.
+        """
         with patch.object(s, "_a2a_ruf", side_effect=AssertionError("kein A2A-Aufruf")):
             antwort, kontext = s.bearbeite("/model", 424242)
-        self.assertIn("auto/smart", antwort)
+        self.assertEqual(_gemeldetes_modell(antwort), _haus_modell())
 
 
 class ModellBefehlSchreibtNichts(unittest.TestCase):
