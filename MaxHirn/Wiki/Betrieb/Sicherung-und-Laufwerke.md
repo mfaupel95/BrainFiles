@@ -237,4 +237,25 @@ Hintergrund starten; ein 300-s-Vordergrund-Lauf bricht ab).
   groesste neu erzeugbare Posten** (cargo baut sie neu), danach `Ausgemustert` (eigene
   Quarantaene der letzten Wochen, groesste: `windows11-20261014` 6,6, `c-entlasten-20260930` 3,6).
 - **Nichts davon geloescht.** Loeschen nur nach ausdruecklichem Ja von Max, vorher Inhalt
-  pruefen (nicht nur Groesse). `target` unter einem laufenden Handelslauf nicht anfassen.
+  pruefen (nicht nur Groesse). `target` unter einem laufenden Handelslauf nicht anfassen
+  (13 `omnitrade-cli`-Prozesse laufen aus diesem Baum).
+
+**Nachtrag 21.10.2026 abends - O: nur noch 9,0 GB frei:**
+- Der Freiraum sprang im Tagesverlauf 29,3 -> 21,8 -> 9,2 GB. Eine **laufende** Schreiblast war
+  um 22:40 nicht zu finden: Freiraum ueber 189 s unveraendert, in den letzten 20 min nur
+  `jev-trader\data\events.jsonl` (0,73 GB, wachst ~0,1 MB/min) und `omnitrade` (242 MB) beschrieben.
+  Der Verursacher des Tagessprungs ist **nicht belegt**; Kandidaten waren Cargo-Builds und die
+  Zweitkopie (21:00), beide ohne Dauerzuwachs gemessen.
+- **Docker-Platten sind nicht gewachsen:** `DockerDesktopVMM\DockerDesktop.vhdx` 31,4 GB und
+  `DockerDesktopWSL\disk\docker_data.vhdx` 27,4 GB, beide identisch zum 19.10. (zusammen 58,8 GB).
+  `docker system df`: Images 16,1 GB (5,5 GB freigebbar), 29 Container, 27 laufen. VHDX schrumpfen nie
+  von selbst; am 11.10.2026 brachte das Kompaktieren 14 GB (8,8 -> 22,7 GB frei). Routine
+  `Agenten/Routinen/docker-platten-kompaktieren.ps1` (Aufgabe `MaxHirn-Docker-Platten`, woechentlich,
+  **Admin**, nur wenn O: unter 15 GB). Sie **stoppt alle Container** (laufen u.a. 20 freqtrade-Bots und
+  `nautilus-demo`) und Docker/WSL - darum nicht ohne Max' Ja und nicht mitten im Handel von Hand starten.
+  Log: `Werkstatt\Logs\docker-platten.log` (zuletzt 19.10.: "genug Platz", 26,4 GB frei).
+- **Zweitkopie 21.10. 21:00 Code 1:** gleiche Ursache wie die Ausserhaus-Kopie, `hermes-snap-*.sh.tmp.*`
+  unter `profiles\*\cache\terminal` verschwand (FEHLER 2). Fix in `sichern-zweitkopie.ps1` und
+  `sichern-ausser-haus.ps1` (`.leases` zusaetzlich), Commit `eaea7184`. Alle drei Kopier-Skripte
+  (`sichern`, `sichern-ausser-haus`, `sichern-zweitkopie`) halten diese Ausschlussliste jetzt gleich;
+  bei einem neuen fluechtigen Pfad **alle drei** anfassen. Bestaetigung steht aus (naechste Laeufe 21:00/21:30).
