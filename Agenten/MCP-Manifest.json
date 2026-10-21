@@ -211,7 +211,7 @@
     {
       "name": "ziplime",
       "enabled": true,
-      "agent": "hermes",
+      "agent": "beide",
       "type": "stdio",
       "command": ".venv\\Scripts\\python.exe",
       "args": [
@@ -219,7 +219,7 @@
         "ziplime.mcp"
       ],
       "cwd": "Werkstatt\\ziplime",
-      "description": "Ziplime (Fork mfaupel95/ziplime): Backtesting-Engine (Polars, Zipline-API) mit MCP-Server. 14 Tools: ingest_*, check/write/read_strategy, run_backtest, get/compare_backtests, describe_live_trading. Daten aus ~/.ziplime (Yahoo, 15.376 Aktien). Kein Order-Tool - live nur ueber Lime-SDK, nie durch ein Tool. Registriert am 12.10.2026 fuer Max' Handelsoptimierung (Aktien/ETF + Krypto-CSV) Am 21.10.2026 vom MCP-Sync-Pruefer als Drift gemeldet: das Manifest sagte 'beide', eingetragen war der Server aber nur bei Hermes. Bewusst Hermes-only gefuehrt (14 Backtest-Tools gehoeren zur Handelsarbeit; Claude Desktop traegt den Werkzeugkatalog sonst in jeder Sitzung mit). Zum Einschalten bei Claude: dieses Feld wieder auf 'beide' setzen und den Eintrag bei GESCHLOSSENER Claude-Desktop-App in claude_desktop_config.json nachtragen."
+      "description": "Ziplime (Fork mfaupel95/ziplime): Backtesting-Engine (Polars, Zipline-API) mit MCP-Server. 14 Tools: ingest_*, check/write/read_strategy, run_backtest, get/compare_backtests, describe_live_trading. Daten aus ~/.ziplime (Yahoo, 15.376 Aktien). Kein Order-Tool - live nur ueber Lime-SDK, nie durch ein Tool. Registriert am 12.10.2026 fuer Max' Handelsoptimierung (Aktien/ETF + Krypto-CSV) Am 21.10.2026 vom MCP-Sync-Pruefer als Drift gemeldet: das Manifest sagte 'beide', eingetragen war der Server aber nur bei Hermes. Bewusst Hermes-only gefuehrt (14 Backtest-Tools gehoeren zur Handelsarbeit; Claude Desktop traegt den Werkzeugkatalog sonst in jeder Sitzung mit). Zum Einschalten bei Claude: dieses Feld wieder auf 'beide' setzen und den Eintrag bei GESCHLOSSENER Claude-Desktop-App in claude_desktop_config.json nachtragen Am 21.10.2026 bei GESCHLOSSENER Claude-Desktop-App dort eingetragen (8 Server); der Pruefer hatte den Eintrag vorher als fehlend gemeldet, weil 'beide' im Manifest stand, der Server aber nur bei Hermes lag. Pfad bei Claude absolut, cwd wird von Claude ignoriert, von Hermes gelesen."
     }
   ],
   "disabled": [

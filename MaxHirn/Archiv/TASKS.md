@@ -2,6 +2,17 @@
 
 
 
+- [ ] **T-436 — Zwei venvs zeigen mit .pth auf den geloeschten Pfad Werkstatt\Repos**
+      Kontext: Beim Reparieren der ziplime-Bruecke gefunden - Werkstatt/foreman/.venv
+          und Werkstatt/tradememory-protocol/.venv tragen je eine __editable__-*.pth
+          mit dem Ziel O:\Werkstatt\Repos\... (seit dem Repo-Umzug am 14.10.2026
+          fort). Die Pakete sind damit nur importierbar, solange man im Repo-Ordner
+          steht; aus einem fremden Ordner kommt ModuleNotFoundError.
+      Naechster Schritt: die zwei .pth auf den neuen Pfad schreiben (Muster wie bei
+          ziplime: Sicherung ziplime.pth.bak-20261021 daneben), danach
+          `python -c "import foreman"` aus einem fremden Ordner als Beleg.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Werkstatt/foreman/.venv, Werkstatt/tradememory-protocol/.venv
 - [ ] **T-435 — breite.py: nachgerechnete Zeilen nennen ihren Ausfall nicht**
       Kontext: 122 Zeilen der Reihe (31.05.-16.10.2026) tragen offen=[] bei
           n_gesamt 29 - ein Paar fehlt ohne Namen. Ursache: reihe_rechnen()
@@ -14,17 +25,6 @@
           Nachlauf heilen, nie live ersetzen.
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: Agenten/Werkzeuge/breite.py, Agenten/Werkzeuge/tests/test_breite.py
-- [ ] **T-433 — pdf-vault bei Claude Desktop zeigt auf einen toten Pfad**
-      Kontext: claude_desktop_config.json uebergibt pdf-vault den Ordner
-          MaxHirn\Claude - den gibt es nicht mehr. Manifest und Hermes nutzen
-          MaxHirn\Referenz\Claude_prompts (Commit ba516d25 korrigierte nur diese
-          beiden). Der Pruefer meldet es nicht, weil er nur Servernamen
-          vergleicht, keine Argumente.
-      Naechster Schritt: Claude Desktop schliessen, in der Config den pdf-vault-
-          Pfad auf MaxHirn\Referenz\Claude_prompts setzen, App starten; danach
-          mcp-sync-check.ps1 um einen Vergleich der args erweitern.
-      Angelegt 21.10.2026 · Zuletzt 21.10.2026
-      Betrifft: claude_desktop_config.json (MSIX-Container), Agenten/mcp-sync-check.ps1
 - [ ] **T-434 — Sieben entfernte MCP-Server in der Hermes-Config, nicht im Manifest**
       Kontext: gitlab, airtable, deepwiki, buildkite, circleci, algolia und
           postman stehen in Agenten/Hermes/config.yaml als url+oauth-Server,
@@ -2339,6 +2339,18 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
     - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
     - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 ## Erledigt
+- [x] **T-433 — pdf-vault bei Claude Desktop zeigt auf einen toten Pfad**
+      Kontext: claude_desktop_config.json uebergibt pdf-vault den Ordner
+          MaxHirn\Claude - den gibt es nicht mehr. Manifest und Hermes nutzen
+          MaxHirn\Referenz\Claude_prompts (Commit ba516d25 korrigierte nur diese
+          beiden). Der Pruefer meldet es nicht, weil er nur Servernamen
+          vergleicht, keine Argumente.
+      Naechster Schritt: Claude Desktop schliessen, in der Config den pdf-vault-
+          Pfad auf MaxHirn\Referenz\Claude_prompts setzen, App starten; danach
+          mcp-sync-check.ps1 um einen Vergleich der args erweitern.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: claude_desktop_config.json (MSIX-Container), Agenten/mcp-sync-check.ps1
+      **Erledigt 21.10.2026.** Claude Desktop ist jetzt in Sync: pdf-vault bekommt MaxHirn\Referenz\Claude_prompts (der alte Pfad MaxHirn\Claude existiert nicht mehr), ziplime ist als achter Server eingetragen. Beleg: Agenten/mcp-sync-check.ps1 -> ALLES IN ORDNUNG, Exit 0; stdio-Gegenprobe des eigenen Pruefers aus einem fremden Ordner (pdf-vault 9 Tools, ziplime 14 Tools). Sicherungen: claude_desktop_config.json.bak-20261021-mcpsync, MCP-Manifest.json.bak-20261021.
 - [x] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
       Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
       OKX-Perpetuals-Adapter (SWAP) in mfaupel95/omnitrade2 gebaut (swap.rs,
