@@ -133,6 +133,18 @@ class TelemetrieTest(unittest.TestCase):
             with mock.patch.object(sys, "argv", [argv0]):
                 self.assertEqual(tracking._unter_test(), erwartet, argv0)
 
+    def test_max_drawdown_ist_equity_kurve_und_hoechstens_100(self):
+        for g in (5, -2, -3, 4, -10):
+            tracking.track_zyklus_abgeschlossen(
+                spur_name="x", instrument="B", richtung="long", einstieg_kurs=1.0,
+                ausstieg_kurs=1.0, ergebnis_pct=g, ergebnis_eur=g, haltedauer_stunden=1,
+                ausstiegsgrund="stop", is_paper=True)
+        tracking.snapshot_sync("x")
+        ziel = Path(self.tmp.name) / "kb.json"
+        tracking.kb_snapshot_json(ziel)
+        dd = json.loads(ziel.read_text(encoding="utf-8"))["spuren"]["x"]["max_drawdown_30d_pct"]
+        self.assertEqual(dd, 11.0)
+
     def test_kaputtes_tracking_wirft_nicht(self):
         with mock.patch.object(tracking, "track_stoerung_erkannt", side_effect=RuntimeError("x")):
             self.assertEqual(telemetrie.stoerung("x", "herzschlag_alt"), "nichts")
