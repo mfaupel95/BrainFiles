@@ -15,6 +15,8 @@ The call shape is `clarify(questions=[{question, choices, multi_select?}])` — 
 
 Ask **one question at a time**. Wait for the user's answer before moving to the next question. This keeps the conversation focused and prevents overwhelm.
 
+**Aber: jede Frist kostet bis zu einer Stunde.** Die Form laeuft ins Timeout, wenn niemand am Platz ist. Ist absehbar, dass keine Antwort kommt (CLI-Sitzung ohne anwesenden Nutzer, spaete Stunde, der Auftrag war nur "grill me" ohne Plan), dann die UNABHAENGIGEN Zweige in EIN Formular legen (bis 5 Fragen) und nur die voneinander abhaengigen einzeln stellen. Eine Kette aus vier Fragen kostet sonst vier Stunden stilles Warten, ohne eine einzige Entscheidung.
+
 For each question, provide 2–4 concrete multiple-choice options representing the most likely answers or directions. Think about what the user would realistically choose — generic options like "Yes" / "No" aren't helpful unless the question is genuinely binary. **Every option must be a real answer.** A placeholder or empty first entry (`", "`, `": "`) renders as a pickable row at the top of the list: the user ticks it, the form returns `","` and nothing at all was decided. If the answer comes back as a non-answer, say in one line that the form had a broken entry and re-ask the SAME question with clean options — do not interpret it and do not move on. Put the recommended option FIRST (the UI marks it as recommended). The user always has the "Other" field available to write something custom. **An "Other" answer that MODIFIES an offered option ("not switching anything, just the sizes down") is the governing constraint, not a rejection of every option** — keep it verbatim as the frame and recompute the remaining branches against it.
 
 ## Flow
@@ -23,7 +25,7 @@ For each question, provide 2–4 concrete multiple-choice options representing t
 1. After receiving an answer, briefly acknowledge the decision (1–2 sentences max), then immediately ask the next question via the clarify tool.
 2. If a question can be answered by exploring the codebase or files, explore them yourself instead of asking the user.
 3. Continue until all branches of the design tree are resolved.
-4. The form TIMES OUT when nobody answers (about 60 min). A timed-out question is not a "no": implement what WAS decided and list the unanswered branch as an open decision — never block the whole execution on it.
+4. The form TIMES OUT when nobody answers (about 60 min). A timed-out question is not a "no": implement what WAS decided and list the unanswered branch as an open decision — never block the whole execution on it. **Nach einem Timeout zuerst die Uhr neu lesen** (`Get-Date` bzw. `git log -1 --format=%ci`, nie die Sandbox-Uhr): die Frist hat wirklich Zeit verstreichen lassen, und jedes Alter, das du VOR der Frage gemessen hast, ist veraltet — sonst steht im Bericht "3,5 h" fuer einen Gegenstand, der inzwischen 5,5 h stillsteht. Dann die entscheidungsfreie Arbeit tun: nachmessen, den Befund als Aufgabe mit Zahlen und `datei:zeile` festhalten, eigene Pfade committen. Alles, was live oder irreversibel ist (Prozess neu starten, Order, Loeschen, Guthaben bewegen), bleibt unangetastet — eine ausgelaufene Frist ist keine Zustimmung.
 5. When finished, provide a concise summary of all decisions made.
 
 ## Pitfalls

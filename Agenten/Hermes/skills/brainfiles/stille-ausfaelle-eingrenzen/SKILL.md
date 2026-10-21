@@ -30,6 +30,8 @@ bleibt. Er repariert nichts und bewertet keinen laufenden Betrieb — dafuer
 - ein Startweg funktioniert in einer Umgebung und in einer anderen nicht
 - zwei Werkzeuge widersprechen sich: eines sieht die Datei, das andere nicht
 - ein Skriptwirt/VBS/Task startet ein Programm "versteckt" und es passiert nichts
+- ein Prozess lebt, seine Statusdatei sagt `running`, aber es geschieht seit
+  Stunden nichts (keine Orders, keine Zyklen, keine neuen Zeilen)
 - bevor "das Werkzeug ist kaputt" oder "der Dienst ist tot" gemeldet wird
 
 ## Prerequisites
@@ -104,6 +106,38 @@ Fertige Wahrheitstabelle fuer Fensterstile: `scripts/probe-stiller-start.ps1`.
    beim naechsten Lauf auf — dann gehoert eine Pruefung dazu (Cron/Aufgabe) und
    ein Punkt in `MaxHirn/Archiv/TASKS.md`.
 
+## Wenn der Prozess lebt und das Erzeugnis schweigt
+
+Der Haenger sieht wie ein gesunder Dienst aus: Prozess da, Zustandsdatei sagt
+`running`, CPU nahe null. Vier Messungen entscheiden ihn, keine davon ueber den
+Prozessnamen:
+
+1. **Alter gegen den SCHREIBRHYTHMUS des Erzeugnisses messen, nicht gegen eine
+   feste Grenze.** Eine Statusdatei, die nur je Ereignis geschrieben wird (je
+   Kerze, je Zyklus, je Auftrag), ist im Ruhezustand absichtlich still. Ihre
+   Frische ist erst dann ein Lebensbeweis, wenn man die Zeile gelesen hat, die
+   sie schreibt, und den Takt kennt (Kerzenabstand, Zyklusdauer). Ein festes
+   "10 Minuten" ist bei einer Stundenkerze ein Fehlalarm und bei einer
+   Minutenkerze zu spaet.
+2. **CPU zweimal messen** (`KernelModeTime + UserModeTime`, 20 s Abstand, beide
+   Werte mit der Startzeit des Prozesses). Millisekunden Zuwachs heisst: der
+   Prozess WARTET. Sekunden Zuwachs heisst: er arbeitet.
+3. **Den Ausgang des Wartens pruefen.** Wartet der Prozess auf einem Kanal, den
+   ein abgebrochener Leseteil nicht schliesst, kehrt er nie zurueck: die
+   Empfangs-Task bricht bei einem Lesefehler ab, ein Sender-Klon haelt den Kanal
+   offen, `recv()` liefert nie `None`, und die Abbruchbedingung (`None => break`)
+   ist unerreichbar. Die Wartestelle im Code lesen und fragen: WELCHES Ereignis
+   beendet sie, und kann dieses Ereignis ueberhaupt noch eintreten?
+4. **Pruefen, ob das Log Evidenz ueber Neustarts traegt.** Wird stdout je Start
+   umgeleitet bzw. abgeschnitten (`-RedirectStandardOutput`, `>`), existiert nach
+   einem Neustart nur der letzte Lauf — "dieser Fehler kam genau einmal" ist dann
+   ein Artefakt der Datei, nicht des Betriebs. Vor jeder Haeufigkeitsaussage
+   nachsehen, ob die Datei angehaengt oder ueberschrieben wird.
+
+Gehoert zu einem Dienst immer ein Neustart-Weg: meldet eine Wache den Haenger
+nur, ist das eine bewusste Entscheidung mit Preis (Stunden Blindflug) — dann den
+Preis in die Aufgabe schreiben, nicht nur den Befund.
+
 ## Pitfalls
 
 - **Ein Rueckgabewert ist keine Wirkung.** `sh.Run` meldet in den
@@ -137,6 +171,13 @@ Fertige Wahrheitstabelle fuer Fensterstile: `scripts/probe-stiller-start.ps1`.
   (`@{n='TimeCreated';e={$_.TimeCreated.ToString('o')}}` im `Select-Object`),
   nicht nachtraeglich in Python. Gegenprobe: Erstlauf ohne Merkdatei MUSS melden;
   meldet er nichts, ist der Parser schuld, nicht der Markt.
+- **Ein selbst gerechneter Wert erfindet Blocker.** Ein Leser, der "frei" als
+  `eq − staking − gebunden` zusammenrechnet, meldet ein Konto als leer, waehrend
+  das Feld `availEq` derselben Antwort ein Vielfaches nennt (gemessen: 0,56
+  gegen 46,43 — und die darauf gebaute Frage "Guthaben fehlt" war gegenstandslos).
+  Fuer jede Sperr-Entscheidung das FERTIGE Feld der Quelle nehmen (`availEq`,
+  `max-size`, `availBal`), nicht die eigene Subtraktion; und wenn eines fehlt,
+  `max-size` fragen statt zu schaetzen.
 - **Die Uhr der Sandbox geht falsch.** Datum/Zeit fuer Notizen und Commits vom
   Host (`Get-Date`) oder aus `git log -1 --format=%ci` nehmen — sonst gilt
   eigene Arbeit als "ruhend" und wird als fremde committet.
