@@ -1248,11 +1248,23 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                 # Signal-Wechsel in die Queue schreiben, damit der
                 # signal-executor (Hermes-Cron) unabhaengig vom Dauerlauf ausfuehrt.
                 _signal_queue(ordner, inst, seite, kurse.get(inst))
+                if SCHREIBEN:
+                    telemetrie.signal(journal_pfad, inst, seite)
                 continue
+            # Telemetrie: ein Signal steht jeden Zyklus an, solange es gilt.
+            # Gemeldet wird nur, wenn das Instrument noch nicht offen ist und
+            # die Positionszahl nicht voll ist - sonst Dauerrauschen.
+            bereits_offen = any(q.get("inst") == inst
+                                for q in z.get("positionen", []))
+            voll = (len(z.get("positionen", []))
+                    >= w.get("max_offene_positionen", 3))
             p = einstieg(z, inst, seite, kurse.get(inst), w, faktor,
                          None,
                          ziel_preis=(ziel(daten[inst], w) if ziel else None),
                          journal_pfad=journal_pfad, live=live, weg=weg)
+            if SCHREIBEN and not bereits_offen and (p or not voll):
+                telemetrie.signal(journal_pfad, inst, seite,
+                                  "keine" if p else "einstieg_abgelehnt")
             if p:
                 print("EINSTIEG %s %s @ %.6f  Stop %.2f%%  Ziel %.6f  "
                       "Nominal %.2f USD"

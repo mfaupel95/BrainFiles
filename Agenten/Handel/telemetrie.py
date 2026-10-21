@@ -18,7 +18,7 @@ AUS = os.environ.get("TELEMETRIE_AUS") == "1"
 BUS_AN = os.environ.get("TELEMETRIE_BUS") == "1"
 BUS = os.path.join(os.path.dirname(HIER), "Bus")
 
-VERSION_PLAN = "1.0.1"
+VERSION_PLAN = "1.1.0"
 USER_ID = "max"
 
 # --- Ereignisnamen (Plan v1.0.0). Nie als Rohtext im Code schreiben. ---------
@@ -179,6 +179,18 @@ def eroeffnet(journal_pfad, p, modus, inst, seite):
                         hebel=_zahl(p.get("hebel")),
                         stop_abstand_pct=_zahl(p.get("stop_pct")),
                         ziel_abstand_pct=ziel_pct)
+    except Exception:                                       # noqa: BLE001
+        return "nichts"
+
+
+def signal(journal_pfad, inst, seite, abgelehnt_von="keine"):
+    """signal.erkannt. abgelehnt_von: keine | einstieg_abgelehnt | wache |
+    risikovorfilter | deckel | freigabe (die letzten vier fuer genauere Haken spaeter)."""
+    try:
+        if not _im_haus(journal_pfad):
+            return "fremd"
+        return ereignis(SIGNAL_ERKANNT, spur_aus_pfad(journal_pfad),
+                        inst=inst, seite=seite, abgelehnt_von=abgelehnt_von)
     except Exception:                                       # noqa: BLE001
         return "nichts"
 

@@ -121,6 +121,16 @@ class TelemetrieTest(unittest.TestCase):
         fremd = os.path.join(self.tmp.name, "x", "handelsjournal.csv")
         self.assertEqual(telemetrie.lauf_beendet(fremd, "ok", 1, "papier"), "fremd")
 
+    def test_haken_signal(self):
+        self.assertEqual(telemetrie.signal(self.journal, "BTC", "long"), "datei")
+        telemetrie.signal(self.journal, "ETH", "short", "einstieg_abgelehnt")
+        a, b = self._zeilen()
+        self.assertEqual((a["event"], a["properties"]["abgelehnt_von"]), ("signal.erkannt", "keine"))
+        self.assertEqual(b["properties"]["abgelehnt_von"], "einstieg_abgelehnt")
+        self.assertNotIn("_fehlt", a)
+        fremd = os.path.join(self.tmp.name, "x", "handelsjournal.csv")
+        self.assertEqual(telemetrie.signal(fremd, "BTC", "long"), "fremd")
+
     def test_haken_stoerung(self):
         telemetrie.stoerung("kraken", "herzschlag_alt", dauer_s=5400)
         ev, = self._zeilen()
