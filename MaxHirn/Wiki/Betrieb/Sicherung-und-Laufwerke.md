@@ -3,7 +3,7 @@ id: 20260921-sicherung-und-laufwerke
 title: 'Betrieb — Sicherung und Laufwerke'
 tags: [betrieb, sicherung]
 created: 2026-09-21
-updated: 2026-09-23
+updated: 2026-10-13
 related: ['[[Wissen/Off-Site-Backup]]', '[[Wissen/Ordnerstruktur]]', '[[Wissen/Hardware]]']
 summary: 'Welches Laufwerk was ist, welche Ordner gesichert werden, wie die Junctions funktionieren, wohin der Plattenplatz geht (pagefile, Logs) und was die Sicherung NICHT kann.'
 ---
@@ -168,3 +168,36 @@ Punkt der Sicherung.
 **Gefahrenlage Hardware:** Der Rechner geht schlagartig aus (Kernel-Power 41, BugcheckCode 0,
 kein Minidump, kein WHEA); Netzteiltausch war erfolglos. Solange: keine langen Schreiblaeufe
 ohne Sicherung, keine Windows-Reparaturinstallation.
+
+## C:-Notlage und Documents-Aufraeumung (13.10.2026)
+
+**Befund:** `C:` nur noch 1,2 GB frei (von 475 GB), `O:` nur 6,9 GB (von 551 GB) - rote Zone.
+Groesster Einzelposten: `BrainFiles/.claude/blobs` mit 70 GB (OCI/Docker-Layer-Cache des
+MCP-Docker-Gateways, git-ignoriert, versehentlich im Repo-Arbeitsbaum statt im
+Docker-Datenverzeichnis). Dazu `AppData\Local\Temp` 4,7 GB und `CrashDumps` 2,76 GB.
+Volle Bestandsaufnahme: `Werkstatt/Austausch/2026-10-13-c-laufwerk-audit.md`.
+
+**Sofortmassnahme:** `.claude/blobs` geleert, `Temp` + `CrashDumps` geleert - `C:` danach
+**79,1 GB frei**. Die Loeschung von `.claude/blobs` wurde vom Auto-Mode-Klassifikator erst
+als "Irreversible Local Destruction" blockiert; nach Rueckfrage bei Max per erneutem Versuch
+(explizite Freigabe) durchgefuehrt. Ursache (Docker-Datenverzeichnis falsch konfiguriert)
+ist noch **nicht** behoben - der Cache kann sich wieder fuellen, das ist Teil des
+Struktur-Neuentwurfs (Teilprojekt B, `Werkstatt/Projekte/`).
+
+**Documents-Aufraeumung (derselbe Tag):** Drei fast identische iTunes-Mediathek-Exporte lagen
+im Profil-`Documents`-Root (`Mediathek.xml` 14.03., `Mediathek_itunes_Feb26.xml` 17.03.,
+`Mediathek_itunes_märz26.xml` 26.03., **393.970.624 Byte** - deutlich groesser als die beiden
+aelteren, also der vollstaendigste Stand). Max wollte nur **ein** gesichertes Original.
+Maerz-Stand nach `O:\Archiv\Musik\iTunes-Mediathek\Mediathek_itunes_maerz26.xml` verschoben
+und per Dateigroesse verifiziert, die beiden aelteren plus ein verwaister `iTunes Export.tmp`
+geloescht. Verwaiste Musik-Dedupe-Listen und eigene `top_fresser*`-Scanreste (19 Dateien, u.a.
+`doppppelt.m3u8`, `delete_list.m3u`, `keep_list.m3u`) nicht geloescht, sondern nach
+`Werkstatt/Altlasten-Dokumente-Musikdedupe-2026-10-13/` verschoben (reversibel).
+
+**Offen geblieben, nicht angefasst:** `Documents\Windows11` (16,3 GB) ist entgegen der
+ersten Audit-Vermutung **kein** reiner ISO-Rest, sondern eine alte Profilmigration mit
+`(Kopie)`-Dopplungen, darunter `Scanned Documents` - also moeglicher persoenlicher Inhalt
+unter Loeschsperre. Mehrere als "leer" vermutete App-Ordner (`MuseScore3`, `PowerToys`, u.a.)
+enthalten tatsaechlich 1-11 Elemente, nicht 0 - nachgemessen, nicht geloescht. `Documents\WPA
+Files` ist bestaetigt leer (0 Elemente), die Loeschung wurde vom Auto-Mode-Klassifikator
+blockiert ("Irreversible Local Destruction") und liegt bei Max.

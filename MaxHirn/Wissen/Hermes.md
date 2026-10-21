@@ -107,6 +107,7 @@ Lehre 13.10.2026: Werkzeugnamen beim Kopieren nur bei echten Werkzeugaufrufen um
 nie per Textersetzung. Die erste Kopie hat PowerShell zerstoert (`Write-Host` wurde
 `write_file-Host`). Korrigiert per Byte-Kopie aus dem Vault; kaputte Fassung in Git
 (`d70d8566`).
+Die beschaedigte Fassung liegt zusaetzlich als Nachweis unter `Agenten/Hermes/.sicherung/skills-import-20261013/`.
 
 **Der Abgleich vom 07.10.2026 hat sich selbst ins Knie geschossen — und ist
 repariert.** Der Import-Commit `0b7b5158` (07.10., 20:54) setzte drei Hermes-Kopien
