@@ -130,7 +130,17 @@ Nach jedem Umzug `docker inspect --format '{{range .Mounts}}{{.Source}}{{"\n"}}{
 gegen den neuen Pfad halten. Ein Container, der "laeuft", beweist nicht, dass er die richtigen Daten
 sieht - der Alt-Pfad taucht als **neuer leerer Ordner** auf. Reparatur (Entscheidung Max):
 `docker compose` im neuen Ordner `down`, dann `up -d`, danach den leeren Alt-Baum pruefen und
-verwerfen. Container-Namen der Gruppe: `puter`, `puter-s3`, `puter-mariadb`, `puter-valkey`,
+verwerfen. **Ausgefuehrt 21.10.2026 ~23:10 (Max: "in Puter ist nichts Neues"):** Rueckfallkopie der echten
+Daten (323 Dateien, 177 MB) nach `$CLAUDE_JOB_DIR\tmp\puter-data-vor-umstellung-20261021`, dann im Ordner
+`Werkstatt\puter\puter-selfhosted` `docker compose down` und `docker compose up -d dynamo mariadb valkey s3 puter`
+(bewusst nur die fuenf bisherigen Dienste; `caddy`, `smtp` und das Profil `ai` laufen nicht und waren auch
+vorher nicht da). Ergebnis: alle fuenf `healthy`, Mount-Quellen unter `Werkstatt\puter\...`, `PuterServer has
+fully booted`. **Falle dabei:** `up` zog `ghcr.io/heyputer/puter:main` und `amazon/aws-cli` neu, und die Log-Zeile
+des Puter-Containers gibt das Admin-Passwort im Klartext aus (`password for admin is ...`, solange es nicht
+geaendert wurde) - **Container-Logs von `puter` nie in Berichte oder Notizen kopieren**, das Passwort in Puter aendern.
+Der Host-Port ist ohne `caddy` nicht veroeffentlicht (`docker port puter` leer); der Alt-Baum
+`Werkstatt\Repos\puter` (leere Neuanlage, 161 MB frische MariaDB) ist jetzt unbenutzt und noch nicht geloescht.
+Container-Namen der Gruppe: `puter`, `puter-s3`, `puter-mariadb`, `puter-valkey`,
 `puter-dynamo` (plus `puter-caddy`, `puter-smtp`, `puter-ollama` laut Compose-Datei).
 
 Verwandt: [[Betrieb/Wachen-und-Aufgaben]], [[Betrieb/Hermes]], [[Wissen/Schutzregeln]], [[Betrieb/Sicherung-und-Laufwerke]].
