@@ -241,7 +241,14 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   Bedingungen: Schutz-Stop weg **oder Stop-MENGE kleiner als die
   Positionsmenge** (Summe der `sz`, nicht die ANZAHL der Stops), Position
   geschlossen (mit PnL), Kurs naeher als ~1,5 % am Stop (einmal je
-  Annaeherung), Abfrage kaputt (hoechstens alle 6 h).
+  Annaeherung), Abfrage kaputt (hoechstens alle 6 h), **und: der Prozess lebt,
+  hat genug Kerzen gesehen und trotzdem `orders_placed = 0` bei
+  `orders_rejected > 0`** — dann ist der ORDERWEG kaputt, nicht der Markt. Diese
+  fuenfte Bedingung fehlt fast immer: eine Wache, die nur Fuellungen und
+  Stop-Deckung prueft, schweigt bei einem Loop, der seit Stunden jedes Signal
+  ablehnt (falsches Symbolformat, Einheitenfehler im Client, Order-Gate).
+  "Kein Signal" und "Signal kommt nie an" sehen in `state=running` gleich aus —
+  die Ablehnungszahl unterscheidet sie, und die steht im Status.
   Die Mengenfassung ist der Teil, der gern fehlt: eine Wache, die `len(stops)`
   prueft, schweigt genau dann, wenn eine zweite Order die Position vergroessert
   (2,1 -> 2,2 Kontrakte bei einem Stop ueber 2,1) — der Rest laeuft nackt, und
@@ -399,6 +406,34 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   Browser-String ebenso); nur der Standard wird abgelehnt. Jeder rohe OKX-Aufruf
   (Probe, Diagnose) setzt den Header deshalb selbst; der Rust-`reqwest`-Client
   sendet von sich aus einen gueltigen UA und ist davon unberuehrt.
+- **Wenn die Demo die Zielklasse nicht fuehrt, wird in ZWEI Stufen belegt.**
+  Stufe 1: die Mechanik auf der im Demo handelbaren Klasse (Order-Annahme,
+  Stop-Annahme, Storno) — das belegt Signatur, Body und Algo-Weg, nicht das
+  Instrument. Stufe 2: das ECHTE Instrument mit der KLEINSTEN handelbaren Menge
+  (`minSz` des Instruments, nicht eine geratene Zahl), dann erst die volle
+  Groesse. Wer Stufe 1 als Freigabe fuer die volle Groesse liest, hat den
+  Instrument-spezifischen Teil (ctVal, Mengensemantik, Preisband) nie geprueft.
+- **Stop-DECKUNG ist eine Mengenfrage und muss nach jeder Groessenaenderung
+  nachgezogen werden.** Ein Stop ueber 1 Kontrakt schuetzt keine 20. Nach dem
+  Hochziehen der Positionsgroesse nur die LUECKE stellen
+  (`Positionsmenge - Summe der Stop-Mengen`), nie die volle Menge erneut — sonst
+  liegen zwei Stops derselben Groesse nebeneinander, von denen der engere zuerst
+  feuert. Und der Nachzieher liest die Position an der BOERSE, nicht aus dem
+  Statusfile des Loops: ein Loop, dessen Prozess tot ist, schreibt keinen neuen
+  Stand, aber die Position liegt weiter offen. Fertiges Muster:
+  `Agenten/Handel/omnitrade2/nachziehen.py` (Vorschau Standard, `--anwenden`
+  schreibt, ein Merker verhindert das zweite Hochziehen).
+- **Buch und Boerse in DERSELBEN Einheit vergleichen — sonst meldet die Wache bei
+  JEDER offenen Position eine Abweichung.** Der Loop fuehrt `net_quantity` in
+  BASIS-Einheiten (`-0.19` SOL), die Boerse in KONTRAKTEN (`-19`); ein roher
+  Vergleich `abs(abs(pos) - abs(net)) > 0.5` ist dann immer wahr, und der Fehlalarm
+  kommt im Cron-Takt, bis niemand mehr hinsieht. Ueber `ctVal` des Instruments
+  umrechnen (`soll_kontrakte = net / ctVal`), die Meldung in BEIDEN Einheiten
+  drucken und bei unbekanntem `ctVal` gar nicht vergleichen (statt 0.0 zu lesen und
+  zu melden). Gegenprobe in drei Faellen, sonst ist die Pruefung nicht belegt:
+  gleich -> still, ungleich -> Meldung, `ctVal` unbekannt -> still. Dasselbe Muster
+  gilt fuer jede Kennzahl aus zwei Quellen: erst die Einheit klaeren, dann die
+  Schwelle setzen.
 - **Antwortform an Max.** Zuerst die Ursache in einem Satz, dann die Belege
   (Zahlen, nicht Adjektive), dann was jetzt anders ist und was absichtlich NICHT
   angefasst wurde (Fremdarbeit im Arbeitsbaum, laufende Prozesse), am Ende genau

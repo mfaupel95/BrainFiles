@@ -69,6 +69,20 @@ Die Pfade, Versionen und die Herkunft der Zahlen stehen in
 - **Die Sandbox ist ein anderer Rechner.** `terminal`/`execute_code` laufen im
   Docker-Container mit eigenem Python; Host-Pfade und Host-Pakete sind dort nicht
   dieselbe Welt. Host-Arbeit ueber windows-mcp fahren.
+- **Ein Paket, das nur im eigenen Quellordner importierbar ist, hat eine tote editable-`.pth`.**
+  `pip show <paket>` nennt dann unter "Editable project location" einen Pfad, den
+  es nicht mehr gibt (typisch nach einem Ordner-/Repo-Umzug); die Zeile selbst
+  steht als `<paket>.pth` oder `__editable__.<paket>-<version>.pth` in
+  `<venv>/Lib/site-packages`. Solange das Arbeitsverzeichnis zufaellig der
+  Quellordner ist, importiert Python schlicht diesen Ordner (`''` in `sys.path`)
+  und der Fehler bleibt unsichtbar — erst `python -c "import <paket>"` aus einem
+  FREMDEN Ordner zeigt `No module named '<paket>'`. Reparatur: Pfad in der `.pth`
+  auf die heutige Lage schreiben (Sicherung `.bak-JJJJMMTT` daneben), Beleg ist
+  dieselbe Importprobe aus dem fremden Ordner. Nach jedem Umzug einmal ueber
+  alle venvs suchen: `grep -rl "<alter-pfad>" --include="*.pth" --include="*.egg-link"`.
+  Symptom in Anwendungen: ein Dienst/Server „funktioniert beim Testen im
+  Repo-Ordner, aber nicht aus dem Betrieb" — dann ist nicht der Startweg
+  schuld, sondern die Installation.
 - **Ein fehlendes Paket ist kein Beweis fuer einen fehlenden Interpreter.**
   Erst `sys.executable` und `pip list` im LAUFENDEN Interpreter zeigen, dann
   installieren — sonst installiert man in den falschen Baum.

@@ -114,6 +114,39 @@ erlaubt es, dass der Signal-Schwellwert überhaupt aktiv wird.
 > -Parameter-Optimierung ist nur sinnvoll, wenn die Spur bereits belastbare Runden
 > hat und nur die Durchsicht zu langsam ist.
 
+## Auto-Genehmigung von Spuren via LLM-Entscheidungsprogramm (Live)
+
+Bei der Aufbereitung positiver Spuren auf Live **ohne manuelles
+Freigabefenster** wird ein dediziertes Entscheidungsprogramm (z. B.
+`agent_entscheide.py`) eingesetzt: Es liest die Positiv-Spuren aus der
+Klassifizierung von `auswertung_alle.py`, leitet für jede eine LLM-Entscheidung
+ab und schaltet bei positivem Urteil die Spur frei
+(`handel_erlaubt=true`, `freigabe.erfuellt=true`). Jedes Urteil landet im
+Programm-Log.
+
+**Reihenfolge:**
+1. **Klassifizierung einholen** (`scanner/.venv/Scripts/python.exe auswertung_alle.py`).
+   Positiv werden nach der Klassifizierung die Spuren. Nicht die partielle
+   `backtest_prognose_ergebnis.json` als Quelle nutzen (widerspricht der
+   Klassifizierung und täuscht über die Eignung).
+2. Für jede Positiv-Spur Prompt auf die Klassifizierungs-Metriken
+   (Trefferquote, Rendite, Runden) setzen — nicht auf Rucksatzzahlen.
+3. **Alle LLM-Aufrufe auf einen laufenden lokalen Ollama-Dienst**
+   (`127.0.0.1:11434`, Modell `deepseek-chat:latest`) leiten. Die Felder
+   `llm_modell`/`llm_weg` in `wachen.json` dürfen nicht Einfluss nehmen:
+   das `bonsai`-Dienst (Port 8080) ist nicht erreichbar, und ein
+   `llm_modell: bonsai` blockiert jede Entscheidung.
+4. Prompt: vertragsgleiche 3 Zeilen (Zeile 1 `BUY`/`SELL`/`NOTHING`,
+   Zeile 2 kurze Begründung, Zeile 3 `Confidence: X%`).
+5. **Akzeptanz:** positive Entscheidung (BUY/long) UND Confidence ≥
+   60 %. Sonst nicht freigeben.
+6. Positiv: `handel_erlaubt=true`, `freigabe.erfuellt=true`.
+7. Entscheidungen ins Protokoll; Programm lässt Spur nicht laufen (außer Max
+   explizit beauftragt).
+
+Details (Entscheidungstabelle, Vertrag, Ports, Fallback) — siehe
+`references/llm-entscheidung.md`.
+
 ## Live schalten: erst die Tore UND den Live-Pfad pruefen
 
 ... (original section unchanged)
@@ -390,6 +423,10 @@ Pruefer vergleicht dann einen leeren Hauptordner gegen `Q:` und meldet
 - Im Lauf-Status zaehlt ein Arm ueber seinen Hauptnamen — in `dauerlauf.SPUREN`
   steht die Spur (`llm_stunde`), nie die einzelnen Straenge. Ein Arm ist deshalb
   nicht "ausserhalb des Dauerlaufs", nur weil sein Name dort fehlt.
+
+## Weitere Dateien (Support)
+`references/llm-entscheidung.md` — Details zum Auto-Genehmigungs-Programm
+(Ordner, Vertrag, Akzeptanz-Schwelle, Fehler-Härte).
 
 ## Fallen
 

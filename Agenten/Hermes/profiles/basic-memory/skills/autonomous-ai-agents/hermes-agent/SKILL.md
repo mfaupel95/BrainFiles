@@ -83,7 +83,7 @@ $HERMES_HOME/skill-bundles/  Grouped skill aliases (see references/skill-bundles
 ~/.hermes/hermes-agent/     Source code (if git-installed)
 ```
 
-Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile is active, resolve the real home from `$HERMES_HOME` — never hardcode `~/.hermes`.
+Profiles use `~/.hermes/profiles/<name>/` with the same layout — **each profile has its own `state.db`**, so sessions belong to the profile, not to the working directory; the gateway DB additionally holds hosted-room and bot-room transcripts (`references/session-storage.md`). When a profile is active, resolve the real home from `$HERMES_HOME` — never hardcode `~/.hermes`.
 
 ## Routing Table — load the reference for the task
 
@@ -112,6 +112,7 @@ Profiles use `~/.hermes/profiles/<name>/` with the same layout. When a profile i
 | delegate_task "capped at N" reports | `references/delegate-task-concurrency-diagnosis.md` |
 | "Can app X use my Nous Portal subscription/OAuth?" | `references/portal-auth-for-third-party-apps.md` |
 | Connecting a messaging platform (Telegram, Discord, Slack, WhatsApp, …) | docs: `/user-guide/messaging` |
+| Where sessions live, whether old sessions are stranded after a move, bot-room transcripts | `references/session-storage.md` + `scripts/profile-sessions.py` |
 
 The reference list above is not the feature list — it is the set of topics that
 need more than their docs page. For everything else Hermes ships, fetch

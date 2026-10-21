@@ -130,6 +130,30 @@ zusätzlich Stufen": liegt ein OCO auf der vollen Menge, heisst die Antwort
 „das ist bereits gedeckt, hier ist die Lücke in einer anderen Position", nicht
 eine weitere Order.
 
+## Wer den Schutz stellt: ein Prozess ausserhalb des Handelsprozesses
+
+Ein Stop, den der Handelsprozess selbst haelt, ist nur solange Schutz, wie der
+Prozess laeuft — nach Absturz oder Neustart steht die Position nackt da. Der
+Schutz gehoert an die **Boerse**, gestellt von einem eigenen kurztaktigen Cron
+(2–5 min), der die Position bei der Boerse liest statt im Handelsspeicher.
+
+- **Nur die LUECKE stellen, nicht die Vollmenge.** Erst die gedeckte Menge
+  summieren, dann genau `Position − gedeckt` ordern. Eine zweite Order ueber die
+  volle Menge ist beim ersten Treffer ein doppelter Ausstieg — und bei einer
+  schon geschlossenen Position eine neue, inverse Position.
+- **Seite = Gegenrichtung der Position**, `reduceOnly`, Marktausloesung.
+- **Nachkontrollieren und das Ergebnis in den Cron-Output schreiben**
+  („Luecke 19.00: Stop bei X" + „NACHKONTROLLE: gedeckt 19.00 in 1 Auftrag").
+  Eine stille Platzierung ist von einer nie stattgefundenen nicht zu
+  unterscheiden.
+- **Der Nachzieher ist auch der Ort fuer das Nachwachsen**: waechst die
+  Position, deckt der naechste Lauf die neue Luecke. Kein Sonderpfad im
+  Handelsprozess, der bei jedem Neustart mitstirbt.
+- **Erst decken, dann skalieren.** Ein geplanter Sprung auf die volle Groesse
+  („Hochziehen nach belegtem Fill") gehoert hinter den Beleg: Position da UND
+  Deckung vollstaendig. Vorher ist die groessere Menge nur ein groesseres
+  offenes Risiko.
+
 ## Einen gestuften Take-Profit rechnen
 
 Take-Profit in Stufen ist eine **Mengenrechnung zuerst**: die Summe der
@@ -222,6 +246,20 @@ der Stop auf den vollen Bestand zeigt.
   „der Schalter wirkt" pruefen, dass das Freigabefenster offen ist und die
   Spur wirklich live laeuft — sonst ist die Aenderung inert und die
   Handpositionen bleiben stehen, obwohl der Schalter auf true steht.
+- **Eine Datei, die einen Lauf beschreibt, ist eine Behauptung.** Nach einem
+  Neustart von aussen (parallele Sitzung, Handstart) faehrt der Prozess andere
+  Parameter als die Konfigurationsdatei nennt — gemessen: Datei 1 Kontrakt,
+  Prozess 19. Folge: die Automatik haelt den Lauf fuer unfertig, zieht ein
+  zweites Mal hoch und startet ihn grundlos neu. Vor jeder Automatik die
+  **Kommandozeile des laufenden Prozesses** gegen die Datei halten
+  (`--quantity`), Abweichung melden — und die Datei dem gemessenen Prozess
+  folgen lassen, nicht der Absicht.
+- **Eine Bremse, die an einem optionalen Deckel haengt, ist keine Bremse.** Die
+  Long-only-Pruefung lag in derselben Funktion wie der Nominal-Deckel und lief
+  deshalb nur mit `--max-notional`; ohne Deckel konnte ein Verkaufssignal bei
+  flacher Position eine Gegenposition eroeffnen. Jede Sicherung, die eine Order
+  ablehnen soll, ist eine EIGENE, immer ausgefuehrte Pruefung VOR dem Deckel —
+  und ein Test, der die Gegenprobe ohne Deckel faehrt, beweist es.
 - **`json.dump(..., sort_keys=True)` schreibt die ganze Datei neu.** Ein
   einzelner neuer Schluessel in einer wachen.json wird so zu einem
   Ganzdatei-Diff (alle Schluessel umsortiert) — Konfliktrisiko mit parallelen

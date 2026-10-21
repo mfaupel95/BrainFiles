@@ -48,6 +48,17 @@ in [[Ordnerstruktur]]; hier die Kurzform als Checkliste:
 | `.exe`-Startprogramm in `Scripts\` | trägt den Pfad zu `python.exe` im Binärcode — Textersetzung hilft nicht |
 | laufender Prozess | Windows benennt keinen Ordner um, unter dem eine `.exe` läuft |
 
+**Nicht jede Pfad-Spur ist eine Referenz, die man fixen muss.** Hermes-Sitzungen
+tragen ihren Startpfad nur als Historie (`cwd`/`git_repo_root` in
+`Agenten/Hermes/profiles/<name>/state.db`) — sie hängen am Profil, nicht am Ordner.
+Ein Umzug lässt sie deshalb nicht verwaist, und alte `cwd`-Werte muss man nicht
+umsetzen. Ein **Worktree** enthält keine Sitzungen (das Profil steht in
+`.gitignore`), also ist „die alten Sitzungen liegen im alten Worktree" regelhaft
+die falsche Hypothese: in der DB messen, nicht migrieren. Was nach einem Umzug
+nachgemessen wird, steht in der Referenz `session-storage` des Hermes-Skills
+`hermes-agent` (dort liegt auch das Skript `profile-sessions.py`, das alle Profile
+in einem Lauf durchsucht).
+
 **Für `.exe`-Startprogramme gibt es einen billigen Ausweg:** statt das venv neu
 zu bauen, den Aufruf auf den Modulweg umstellen. Das Ziel steht in
 `site-packages\<paket>.dist-info\entry_points.txt`:

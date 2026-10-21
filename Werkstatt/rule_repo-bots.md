@@ -278,3 +278,20 @@ Auftrag (Schutzregeln, Stufe 1).
 - Folgerung: nach einem Reboot ohne Login sind alle Cron-Jobs tot, bis der Gateway
   von Hand startet. Boot-Autostart ist der eigentliche Fix, das Timeout nur das
   Symptom.
+
+## Nachtrag 21.10.2026 (basic-memory: Sitzungen stehen nicht im Worktree)
+
+- `O:\Werkstatt\Reposasic-memory` existiert nicht mehr; `O:\Werkstatt\Repos` hat nur
+  `puter`. Aktuell: `O:\Werkstattasic-memory`, Branch `sync/upstream-2026-10-19` @ `ad9158af`
+  = `upstream/main` (ahead 0 / behind 0), Working Tree sauber (nur untracked `.env.template`).
+  `git worktree list` = genau 1 Eintrag, keine verwaiste Registrierung.
+- Sitzungen liegen **pro Profil** in `Agenten/Hermes/profiles/<name>/state.db`, nicht im
+  Repo-Pfad. basic-memory: 30 Sitzungen / 612 Nachrichten. Ueber alle Profile gemessen
+  (`cwd`/`git_repo_root` LIKE `%Repos%`, `%worktree%`): keine Sitzung mit dem alten Pfad -
+  nach dem Umzug 14.10.2026 ist nichts verwaist, es gibt nichts zu migrieren.
+- Vorheriger Diskussions-Thread (19.10., Raum `rmv8if5lm-yvl2g`) griff basic-memory ueber
+  `20261019_004609_95cd14` und `20261019_161058_7f3c3d`; aktuell `local-f9d618...` (bot_room).
+- Altbestand an `Repos/`-Sitzungen gibt es ausgerechnet bei den Repos, die vor dem Umzug
+  dort lagen: fomo-radar (20+), caveman (2), moon-dev-agents (1). copilot-worktrees lagen
+  unter `Werkstatt/copilot-worktrees` und wurden 07.10.2026 nach
+  `Ausgemustert/copilot-worktrees-20261007/` verschoben.

@@ -107,6 +107,33 @@ es der Datei an. Gegenprobe: `--reihe` muss die Zahl der KERZENTAGE nennen, nich
 die Zahl der Zeilen, und bei nur einem Tag ausdruecklich sagen, dass ein Messpunkt
 keine Richtung ist. Fuer die Auswertung zaehlen Kerzentage.
 
+## Ein Paar faellt aus dem Korb (delistet, nicht ausgefallen)
+
+Ein Paar, das auf BEIDEN Quotenvarianten `51001` liefert, ist **delistet**, nicht
+an einem Tag ausgefallen. Beleg in einem Aufruf statt in drei: `/public/instruments`
+fuer `PAAR-USDT` UND `PAAR-USDC` fragen und EIN bekannt lebendes Paar als
+Kontrolle mitgeben (code 0 = die Boerse antwortet, das Instrument fehlt wirklich).
+
+**Entfernen ist billiger als ersetzen.** Erst `n_gesamt` der Reihe lesen: ist der
+Korb schon immer ein Paar kuerzer gewesen (z. B. 30 Eintraege, 29 gemessen in
+ALLEN Zeilen), aendert das Entfernen KEINE Zahl — es repariert nur die
+Deckungszeile („29 von 30" → „29 von 29"). Ein Ersatzpaar dagegen aendert die
+ZUSAMMENSETZUNG mitten in der Reihe: die `unter`/`ueber`-Listen sind dann nicht
+mehr mit dem Vormonat vergleichbar, und der Prozentzahl sieht man es nicht an.
+Kommt je ein Paar dazu, dann mit vollstaendigem Nachlauf, damit alle Zeilen
+denselben Korb tragen.
+
+**Ein Ersatz braucht Geschichte, nicht Volumen.** Fuer eine Reihe ueber N
+Kerzentage braucht ein Kandidat mindestens `FENSTER + N` Tageskerzen (600er-
+Fenster, 271 Tage → ~871); sonst laeuft er mit demselben Kurzfenster-Fehler wie
+SEI-USDT. Das 24-h-Volumen sagt nur, ob er liquide genug ist.
+
+**Eine Nachlauf-Probe meldet das FENSTER, nicht das Listing.** Ein Kandidatencheck,
+der Kerzen blaettert, bis er `FENSTER` zusammen hat, gibt als „aeltester Tag" den
+Anfang des Fensters aus — damit sieht JEDES Paar zwei Jahre alt aus, und die
+Historientiefe ist ungeprueft. Bis zur Erschoepfung blaettern (Seite kuerzer als
+das Limit = Ende), erst dann urteilen.
+
 ## Regeln, die die Zahl tragen
 
 1. **Nur GESCHLOSSENE Kerzen rechnen.** Die laufende Tageskerze wandert und macht
@@ -118,6 +145,11 @@ richtige Zahlen fuer einen Widerspruch.
 3. **Deckung nennen, nicht nur die Quote.** „29 von 29 = 100 %" ist eine Messung,
 „0 von 0 = 0 %" ein Fehler. Die Zeile „X von Y gemessen, Z nicht messbar" ist
 das, was einen stillen Ausfall von einem Ergebnis unterscheidet.
+   **Gegengeprueft, nicht gelesen:** das Feld `offen` kann LEER sein, waehrend
+   `n_gesamt` ein Paar vermissen laesst — `reihe_rechnen` laeuft nur ueber Paare,
+   deren Kerzen geliefert wurden, ein beim Abruf gescheitertes Paar erscheint dort
+   gar nicht. Maszstab ist `n_gesamt` gegen die Laenge der Paarliste, nicht das
+   Namensfeld; betroffen sind vor allem NACHRECHNETE Zeilen.
 4. **Ein Fenster ist keine Messung.** Wer die Laenge des Durchschnittsfensters
    aendert, aendert bei einzelnen Paaren das Vorzeichen — die Fensterlaenge gehoert
    zur Rechnung wie die Quelle, und ein Nachlauf muss DASSELBE Fenster benutzen
@@ -174,7 +206,9 @@ Wert weit ueber seinem Durchschnitt ist weit gelaufen, nicht automatisch ein Kau
   Schnittstelle offen ist.
 - **Ein Symbol, das auf dem Host nicht existiert, meldet `51001`** — nicht als
   Nullkurs verbuchen, sondern namentlich als Luecke nennen. Faellt so ein Paar
-  still aus der Liste, sieht die Quote vollstaendiger aus als sie ist.
+  still aus der Liste, sieht die Quote vollstaendiger aus als sie ist. Beide
+  Quoten plus eine Lebendprobe pruefen, bevor du es fuer einen Tagesausfall
+  haeltst — delistet ist dauerhaft (Abschnitt „Ein Paar faellt aus dem Korb").
 - **Die Zahl nie aus `zustand.json`, Journalen oder einer Notiz ableiten** — immer
   neu messen. Kurse sind Momentaufnahmen; die Messung traegt Zeitpunkt und Quelle.
 - **CoinGecko als Breitenquelle nur als Notnagel** (HTTP 429 im Haus regelmaessig).

@@ -438,6 +438,13 @@ grep -cE "^- \[[ x]\] \*\*T-368" MaxHirn/Archiv/TASKS.md   # 0 = Nummer ist frei
   Nachfolgerblock lesen, bevor ersetzt wird.
 - **Zeilenenden sind CRLF.** `open(..., "w")` dreht die Datei auf LF und erzeugt
   einen Ganzdatei-Diff; Gegenprobe `git diff --numstat`.
+  **Und die Sorte wird an BYTES gemessen, nicht an einer Ausgabe.** Eine
+  Ansicht (`sed`, `cat -A`, Editor, ein Diff-Fenster) kann das `^M` verschlucken
+  und eine CRLF-Datei wie eine LF-Datei zeigen; eine Byte-Zaehlung nicht:
+  `r.count(b"\r\n")` gegen `r.count(b"\n") - r.count(b"\r\n")`. Eine
+  Vorpruefung, die die falsche Sorte erwartet (`assert b.count(b"\r\n") == 0`),
+  bricht den Schreibvorgang ab, obwohl die Datei gesund ist - erst zaehlen,
+  dann `nl` waehlen.
 - **Und der ANKER traegt dieselben Enden.** Ein mehrzeiliger Suchtext, dessen
   Zeilen mit `\n` verbunden sind, trifft in einer CRLF-Datei NICHTS - der Block
   bleibt unveraendert stehen, und ohne `assert text.count(anker) == 1` sieht das

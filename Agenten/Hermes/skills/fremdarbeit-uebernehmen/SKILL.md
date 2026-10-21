@@ -167,6 +167,16 @@ stehen in `references/spiegeln-parallelsitzung.md` (laden mit `skill_view`).
   loeschen. Die Routine macht das von selbst richtig: sie ueberspringt bei
   Lock, und ein spaeterer Lauf committet die inzwischen gesicherte Arbeit
   nicht doppelt.
+- **Ein `git add`, das nichts meldet, heisst „schon drin“, nicht „nie geaendert“.**
+  Hat eine Parallelsitzung die eigene Arbeitskopie committet (die
+  fremdarbeit-Routine tut genau das, und ein Mensch kann sie als PR gemergt
+  haben), zeigt `git status` die Datei nicht mehr, und `git diff HEAD~1 --stat`
+  nennt sie unter fremdem Autor. Dann NICHT „mein Fix ist weg“ schliessen und
+  doppelt bauen, sondern `git log --oneline -5` und
+  `git rev-parse HEAD origin/main` lesen: liegt der Stand in HEAD, ist nur noch
+  der Rest zu tun (z. B. ein Lint-Fix am Test). Folge fuer die Zukunft: eigene
+  Arbeit unter 30 Minuten committen — sonst bleibt der Inhalt erhalten, die
+  Zuordnung aber nicht.
 - **Nichts fremdes zuruecksetzen.** `git checkout -- <datei>` verwirft die
   Arbeit der anderen Sitzung. Zum Trennen `GIT_INDEX_FILE` nehmen, aus der
   Sicherung oder byteweise zurueckholen.

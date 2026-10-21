@@ -24,12 +24,23 @@ Fuer den Monad-Marktmacher `Werkstatt/jev-trader` (Kuru, MON-USDC).
 
 Der Bot laesst sich ueber `ENGINE=hyperliquid` in `.env` vom Kuru-On-Chain-Marktmacher auf Hyperliquid-Perps umschalten. Dann greifen:
 
-- `HL_TESTNET=true|false`, `HL_COIN=BTC` (oder ETH/SOL/...), `HL_LEVERAGE=0` (0 = nicht setzen).
+- `HL_TESTNET=true|false`, `HL_COIN=BTC` (oder ETH/SOL/...), `HL_LEVERAGE=0` (0 = nicht setzen), `HL_LIQ_PUFFER_BPS=100` (Liquidation-Stop-Puffer vor dem Liq-Preis).
 - SDK `@nktkas/hyperliquid`: `InfoClient({transport: new HttpTransport({isTestnet})})`, `ExchangeClient({transport, wallet})`.
-- `info.clearinghouseState({user})` = Konto (accountValue, totalMarginUsed, assetPositions).
-- `info.l2Book({coin})` = Book. `info.meta()` = Universe (maxLeverage, szDecimals je Coin).
+- `info.clearinghouseState({user})` = Konto (accountValue, totalMarginUsed, assetPositions). `assetPositions[].position` traegt `szi` (signierte Groesse, >0 long), `entryPx`, `liquidationPx` (kann null sein), `positionValue`, `unrealizedPnl`, `leverage.value`.
+- `info.l2Book({coin})` = Book mit `levels=[[bids],[asks]]` (px/sz/n) — NICHT `bids`/`asks` als eigene Felder. `info.meta()` = Universe (maxLeverage, szDecimals je Coin).
 - `info.userRole({user})` = `"missing"` wenn das Wallet noch nie auf HL eingezahlt hat.
+- **Liquidation-Stop (implementiert):** bei offener Position setzt `liquidationSchutz()` einen reduce-only Market-Stop (`t:{trigger:{isMarket:true, triggerPx, tpsl:"sl"}}`, `r:true`) hinter dem Liq-Preis (long: liq*(1-puffer), short: liq*(1+puffer)); einmal je Position, ersetzt wenn liqPx sich bewegt. `openOrders`-Eintraege tragen `isPositionTpsl`.
+- **Funding:** `info.fundingHistory({coin, startTime})` summiert die 24h-Funding-Zahlungen in `fundingUsd` (negativ = wir zahlten). Funding fliesst real in den Kontostand (margin.usdc sinkt), nicht in eine pnl-Zeile.
 - **Testnet-Faucet (`app.hyperliquid-testnet.xyz/drip`) braucht $5+ Mainnet-Deposit** auf demselben Wallet. Ohne Mainnet-Historie kein Testnet-USDC. Bridge laeuft ueber Arbitrum — MON auf Monad ist keine Quelle.
+
+## Wallet-Onboarding fuer Max (MetaMask/Rabby)
+
+Max ist nicht sattelfest in EVM-Wallet-Tooling — klick-fuer-klick fuehren, exakte Feldwerte nennen.
+
+1. **Frischen Key erzeugen** (nie den Bot-Key aus der .env in eine Browser-Wallet importieren): `Wallet.createRandom()` + Gegenprobe `new Wallet(privateKey).address === address`, sonst Abbruch. Key nur in eine nicht versionierte Scratch-Datei, nie in den Chat.
+2. **MetaMask zwingt beim Erststart zu "Create a new wallet"** (Seed-Phrase) — erst durchklicken, dann Avatar -> "Import account" -> privaten Key einfuegen. Die Seed-Phrase ist das leere Standard-Wallet, der importierte Key ein separates Konto.
+3. **Monad-Netzwerk manuell hinzufuegen** (MetaMask zeigt es nicht von selbst): Network name `Monad`, RPC `https://rpc.monad.xyz`, Chain ID `10143`, Symbol `MON`, Explorer `https://explorer.monad.xyz`.
+4. **WalletConnect-`wc:`-Links kann der Agent NICHT ausfuehren** — sie brauchen eine Wallet-App mit dem privaten Key. Sie sind fuer Max zum Oeffnen in seiner Wallet-App; der Agent bereitet nur vor (Key, Netzwerk, Guthaben).
 
 ## Wallet-Guthaben pruefen (ethers v5)
 

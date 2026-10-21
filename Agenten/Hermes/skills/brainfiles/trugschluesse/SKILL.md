@@ -315,6 +315,25 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
   ist die FORM (Eintrag korrekt geschrieben, Pfad existiert, Zerlegung ergibt
   das Erwartete) und muss ausdruecklich als Form-Beleg benannt werden. Der
   Wirkungsbeleg bleibt offen, bis der Befehl wirklich gelaufen ist.
+- **Ein Bericht ohne Werkzeugaufruf ist eine Erfindung.** Auf „runtime
+  ueberpruefen, Profile einsortieren, Telegram pruefen" habe ich eine Tabelle
+  geliefert (Gateway-Status, Plattformzahl, Profilliste) — ohne einen einzigen
+  Aufruf im Transkript. Der Nutzer hat sie als Bestand genommen und darauf
+  aufgebaut; die erste Korrektur war dann, dass es sie nicht gab. **Regel: jede
+  Zahl einer Statusantwort stammt aus einem Aufruf, der im selben Durchgang
+  sichtbar ist** — was man zu wissen glaubt, aber nicht gemessen hat, wird als
+  Vermutung markiert oder weggelassen. Und der Aufruf geht VOR den Satz: „ich
+  pruefe …" ohne Call ist keine Vorbereitung, sondern eine Behauptung. Ein
+  Zustandsbericht ist die Klasse Antwort, in der sich Erfinden am wenigsten
+  anfuehlt — weil die Zahlen plausibel sind.
+- **Ein A/B in einer KOPIE des Baums ist kein A/B.** Tests und Skripte leiten
+  ihre Pfade aus ihrer LAGE ab (`HERMES_HOME`, Repo-Wurzel, `.env` daneben). Eine
+  in einen Temp-Ordner kopierte Fassung mit altem Modul liefert dann dutzende
+  Fehlschlaege, die nichts mit der Aenderung zu tun haben (37 statt 0 gemessen)
+  — und wer nur die Zahl ansieht, schliesst auf einen kaputten Gegenstand.
+  Gegenprobe immer AM ECHTEN ORT und ueber den Schalter: die neue Funktion/das
+  neue Modul im laufenden Prozess auf neutral setzen (`patch.object(mod,
+  '<funktion>', lambda *a: None)`) und zeigen, dass die Pruefung dann rot wird.
 - **Eine Kette aus Toren pruefen, nicht das erste.** Drei Sperren
   (`freigabe.erfuellt`, Gebuehren-Tor, Freigabefenster) — ein gesetzter Haken
   loest genau eines. Bei `moondev_topmovers`: Excess +0,01 % minus 0,20 %
@@ -394,6 +413,21 @@ git status --porcelain   # fremde Aenderungen: benennen, nicht committen, nicht 
 - **Nach jedem Arbeitsschritt committen (Faustregel).** Sonst sammelt
   `fremdarbeit-einziehen.ps1` die Arbeit ein und sie erscheint unter der
   Meldung einer anderen Sitzung (belegt: `cb165f55`).
+- **Bevor du baust und neu startest: pruefen, ob die Arbeit schon gemergt ist und
+  der neue Stand schon laeuft.** Nach `git add <eigene pfade>` kann `git status`
+  nur noch EINE Datei zeigen, weil die uebrigen in einem fremden Commit stecken —
+  die eigene Arbeitskopie ist dann laengst als Commit + PR durchgelaufen, und ein
+  Rebuild der "offenen" Aenderung baut nichts Neues. Ebenso kann eine
+  Parallel-Sitzung denselben Dienst mit dem neuen Stand schon gestartet haben.
+  Belegt: ein Live-Loop mit `--allow-shorts` lief seit Stunden auf **derselben
+  Statusdatei**, die gerade neu gebaut und gestartet werden sollte — zwei Laeufe
+  auf einer Statusdatei haetten sich gegenseitig ueberschrieben, waehrend jeder
+  fuer sich gesund aussieht. Zeugen VOR dem Rebuild: `git log --oneline -5` und
+  `Get-CimInstance Win32_Process` nach **`ExecutablePath` + `CommandLine`**
+  (nicht nach Prozessname — gleichnamige Laeufe aus einem anderen Arbeitsklon
+  sperren weder Binary noch Statusdatei). Den Doppelstart-Schutz dann mit dem
+  ECHTEN Aufruf beweisen: das Startskript muss mit „Laeuft schon (PID n)“ und
+  Exitcode ungleich 0 abbrechen, danach die Prozesszahl nachzaehlen.
 - **Eine Hausregel gehoert in JEDEN Weg, der dieselbe Sache rechnet.**
   `backtest_prognose.lauf` kannte die Docht-Regel T-202/T-177 nicht, die
   `replay.lauf_a` seit dem 01.10. rief: ab Runde 2 nahmen die Wege verschiedene

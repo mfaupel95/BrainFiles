@@ -73,6 +73,7 @@ Der Ablauf ist eine Kette, und jeder Schritt kann stoppen:
 | „der Fix wirkt" | der **erste** Teilschritt | die **letzte** Stufe der Kette messen (`trugschluesse`) |
 | eine rote Suite | eine **kaputte Pruefung** oder ein echter Fehler | auf `HEAD` zuruecknehmen, Suite erneut fahren |
 | „nichts passiert" | ein **veralteter Hintergrundlauf** | Zeitstempel der Ausgabedatei gegen die Reparatur |
+| „der Fix ist doch drin, der Fehler bleibt" | das **Binary/der Prozess ist aelter als der Fix** | Build-Zeit gegen Commit-Zeit, laufende Kommandozeile gegen die Startdatei |
 
 ## Procedure
 
@@ -251,6 +252,9 @@ meldet trotzdem „ok". Beleg in eine Datei schreiben und den Aufruf als
 
 ## Pitfalls
 
+- **Ein Fix, der nicht gebaut und gestartet wurde, ist kein Fix.** Drei Zeugen, in dieser Reihenfolge: (a) die Build-Zeit der laufenden Datei gegen die Commit-Zeit der Reparatur (`ls -l --time-style=full-iso <binary>` gegen `git log --format='%h %ci'`), (b) die **laufende** Kommandozeile gegen die Startdatei auf der Platte — eine parallele Sitzung aendert das Skript nach dem Start, dann zeigt die Datei Flags, die der Prozess nie hatte, (c) das Protokoll: wiederholt sich dieselbe Fehlerzeile nach dem Fix, laeuft alter Code. Auf Windows sperrt ein laufendes Programm seine .exe: erst stoppen, dann bauen — sonst scheitert das Linken, und ein gescheiterter Build sieht in der Ausgabe wie ein gruener Lauf aus, wenn man nur den letzten Treffer liest.
+- **Eine Sicherheitsbremse, die an einem optionalen Parameter haengt, existiert nur wenn der Parameter gesetzt ist.** Die Long-only-Sperre stand in derselben Struktur wie der Positionsdeckel und wurde deshalb nur geprueft, wenn `--max-notional` mitkam; ohne Deckel konnte ein Verkauf bei flacher Position eine Kurzposition eroeffnen. Deckel und Sicherheitsregel gehoeren in **getrennte** Pruefungen, die Regel zuerst und ohne Bedingung. Wer eine solche Kopplung findet, sucht die zweite Stelle gleich mit (jede Regel, die „nur mit Parameter X" gilt, ist verdaechtig).
+- **Ein roter Test, der eine SCHUTZ-Eigenschaft beschreibt, ist ein Befund und kein Rauschen.** Er kann die Attrappe falsch aufbauen (dann Test reparieren) oder eine echte Luecke zeigen (dann Code reparieren). Erst die Frage klaeren, ob die Attrappe den Betriebszustand herstellt (hier: fehlender Deckel); die Eigenschaft ist richtig, der Code war es nicht. Den Test weich stellen, damit er gruen wird, haette genau das Loch zugedeckt, das er gefunden hat.
 - **Ein veralteter Hintergrundlauf sieht aus wie ein Befund.** Ein
   `FAILED`, der Minuten spaeter eintrifft, gehoert zu einem Lauf von **vor**
   der Reparatur. Immer den aktuellen Lauf wiederholen, bevor man auf eine

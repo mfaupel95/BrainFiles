@@ -52,6 +52,40 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:9900/' -Method Post -ContentType 'appli
 - Telegram-Ausgaben als Klartext nach UTF-16-Laenge teilen; HTML-Escaping vor dem Split zerreisst Entities. --probe muss bei fehlenden Voraussetzungen oder Telegram-Fehler einen Nichtnull-Exit liefern, auch wenn A2A antwortet. Identischen SKILLSBOT_TOKEN/TELEGRAM_TOKEN vor dem Polling ablehnen.
 - Antworten koennen Emojis enthalten: stdout vor dem Drucken auf utf-8/replace stellen (`sys.stdout.reconfigure`), sonst UnicodeEncodeError in cp1252-Konsolen.
 
+## Profile ohne Befehlswort ansprechen
+
+Max' Beschwerde war nicht der Bot, sondern das Befehlswort ("umstaendlich"). Wer
+am Handy tippt, will den Namen hinschreiben, nicht einen Befehl lernen:
+
+| Form | Beispiel | Wirkung |
+|---|---|---|
+| `NAME: Auftrag` | `kraken-cli: kurz Status` | geht an dieses Profil |
+| `@NAME Auftrag` | `@jev-trader wie steht das Buch?` | dasselbe |
+| `/b NAME Auftrag` | kurz fuer `/bot` | dasselbe |
+| `NAME:` ohne Auftrag | | schaltet das Profil als Adressat ein (wie `/bot NAME`) |
+
+Regeln, die `_adressat_am_anfang(text)` in skillsbot.py traegt:
+- **Ein unbekannter Name startet KEINEN Bot.** Ein Tippfehler darf keinen
+  fremden Agenten wecken und keine lange Frist kosten; das Wort bleibt Freitext
+  an den Hauptagenten. Ein Doppelpunkt MIT Leerzeichen im Kopf ("Ich sage: …")
+  ist ebenfalls Freitext.
+- **Explizit genannt schlaegt den gerade aktiven Bot**; das aktive Ziel bleibt
+  dabei gesetzt (der naechste Freitext geht wieder dorthin).
+- Gross-/Kleinschreibung ist egal, der Name wird auf die Plattenform gezogen
+  (`bot_namen()` liest die Profilordner, keine gepflegte Liste).
+- **Wer ein Profil mit eigenem TELEGRAM_BOT_TOKEN hat, wird ohne jedes Praefix
+  angeschrieben** (eigener Bot in Telegram, eigener Chat). Neue Bots legt nur
+  Max bei BotFather an; der Agent traegt nur Token und Allowlist ein.
+
+**Pitfall bei Quelltext-schneidenden Gegenproben:** `tests/test_skillsbot_zielmodus.py`
+baut eine "Vor-Fassung", indem es den Block `def _ziel_lesen` … `def _bot_profil_ordner`
+aus dem Quelltext herausschneidet und das Ergebnis importiert. Eine NEUE Funktion,
+die in diesem Bereich liegt, verschwindet mit, waehrend ihr Aufruf in `bearbeite()`
+stehen bleibt — die Vor-Fassung wirft dann `NameError`, drei Tests werden rot, und
+der Fehler sieht wie ein Codeproblem aus. Neue Helfer deshalb AUSSERHALB der
+geschnittenen Region ablegen (hinter `_bot_profil_ordner`) und nach dem Einbau die
+ganze Datei `test_skillsbot_*.py` fahren, nicht nur die neuen Tests.
+
 ## Hermes-CLI richtig aufrufen (Windows, Stand 11.09.2026)
 - `hermes.exe` (PATH) ist KAPUTT: hermes-agent\venv ist gegen uv-cpython-3.13 gebaut, dessen Python-Installation gemischt ist (SRE mismatch, f-string SyntaxError).
 - Funktioniert: `.hermes-runtime\python\cpython-3.11-windows-x86_64-none\python.exe -m hermes_cli.main <args>` mit cwd=hermes-agent UND `PYTHONPATH=hermes-agent\venv\Lib\site-packages`.
@@ -151,6 +185,36 @@ fuer a2a_call tot sind.
   Kommentar-Schluss der config.yaml ab (Security-/Fallback-Model-Doku). Nach
   JEDEM Set `git diff --stat` pruefen und den Schluss aus der `.bak`
   byte-genau (CRLF) wieder anhaengen.
+
+## Telegram-Themen und profile_routes
+
+Diagnose, Bot-Identitaeten und die YAML-Form stehen in
+`references/telegram-profil-routing.md`. Die Regeln hier, weil sie jeden Fall
+betreffen:
+
+- **Ein Topic empfaengt genau EIN Profil** (`gateway/profile_routing.py`,
+  `match_profile_route`); spezifischer gewinnt (user_id 16 > thread_id 8 >
+  chat_id 4 > guild_id 2), unabhaengig von der Reihenfolge in der Datei. Ein
+  Profil BRAUCHT dafuer keinen eigenen Bot - geroutete Nachrichten beantwortet
+  der Bot des Default-Profils; `served_profiles` im `gateway_state.json` muss
+  das Ziel nennen, sonst wird die Route verworfen (`ProfileRouteRejected`).
+- **Themen muessen ERST existieren, dann darf man sie routen.** DM-Themen legt
+  der Adapter selbst an - aber nur, wenn der Bot in der BotFather-Mini-App unter
+  *Bot Settings → Threads Settings* den **Threaded Mode** hat. Fehlt er, steht im
+  `gateway.log` `Cannot create DM topic '…': Threaded Mode is not enabled`, und
+  die in `config.yaml` eingetragenen `thread_id`s sind Platzhalter: sie tauchen
+  in keiner Sitzung auf und keine Route greift je.
+- **`thread_id` NIE aus einer Doku oder einem Nachrichten-Link uebernehmen.**
+  Wahrheit sind die Spalten `thread_id`/`chat_id` in `state.db` (Tabelle
+  `sessions`) und das `gateway.log`. Steht in der Doku "Thema Handel → jev-trader"
+  und in der config ueberall `profile: bots`, ist die config die Wahrheit fuer
+  das Verhalten und die Doku die Luege.
+- **Eine chat-weite Fallback-Route ist normal und gewollt** (`chat_id` ohne
+  `thread_id` → `bots`): solange die Themen fehlen, faengt sie alles ab, und
+  genau deshalb brauchte es das Befehlswort.
+- Nach jeder Aenderung an `profile_routes` den Gateway neu starten und die
+  Route EINMAL im echten Chat ausloesen - die effektive Zuordnung ist eine
+  Laufzeitentscheidung, kein lesbarer Zustand.
 
 ## Bekannte Zustände
 - omniroute (Port 20128, LLM-Router, custom provider 'smart') kann aus sein: dann laufen Gateway-Antworten ueber Ausweichpfade oder scheitern. `Test-NetConnection 127.0.0.1 -Port 20128`.
