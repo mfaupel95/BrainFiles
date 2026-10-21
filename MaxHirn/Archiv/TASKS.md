@@ -2,6 +2,32 @@
 
 
 
+- [ ] **T-441 — omnitrade2-Live-Loop haengt still bei OKX-WS-Reset (kein Reconnect)**
+      Kontext: Am 21.10.2026 06:09 Ortszeit brach die OKX-WebSocket-Lesetask ab
+          ("Connection reset without closing handshake"). `omnitrade-exchange/src/okx/
+          client.rs:216` bricht bei `Some(Err)` hart ab, ohne Reconnect;
+          `omnitrade-cli/src/live_loop.rs:195` wartet danach in `candle_rx.recv()` — der
+          Kanal bleibt offen (ein Sender lebt weiter), `None => break` greift nie.
+          Folge: Prozess lebt (PID 29196, 3,2 s CPU, +0,015 s je 20 s), Statusdatei sagt
+          `state=running`, wird aber nur je Kerze geschrieben (status.rs:194) — seit 06:09
+          still, 5,5 h blind, 0 Orders, 0 Rejects, net_quantity 0. Gebucht war nichts:
+          Boerse ohne SOL-XPERP-Position, max-size isolated 43 Kontrakte, 46,43 USDC
+          frei — der Versuch ist finanzierbar, er kam nur nie zum Zug (4 Minuten
+          Entscheidungszeit, dann Stillstand).
+      Naechster Schritt: drei Entscheidungen von Max, im Grill am 21.10. zweimal ohne
+          Antwort geblieben — (1) Reconnect im Rust-Client (Lesetask neu aufbauen,
+          Kerzenluecke per REST) | nur Prozess-Supervisor | beides; (2) soll die Wache
+          omnitrade2-sol-wache einen haengenden Loop selbst neu starten (heute meldet
+          sie nur, FRESH_MS 10 min, Zeile 411-421); (3) T-439-Fenster neu beginnen statt
+          am 23.10. abrechnen.
+      Nebenbefund: start.ps1 leitet stdout per -RedirectStandardOutput um (truncate) —
+          jeder Neustart loescht die Log-Evidenz des vorigen Laufs; es existiert genau EIN
+          WS-Fehler in EINEM Log, die Historie ist verloren.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Werkstatt/omnitrade-pr (okx/client.rs, live_loop.rs),
+          Agenten/Hermes/scripts/omnitrade2-sol-wache.py, Agenten/Handel/omnitrade2/
+
+
 - [ ] **T-440 — Schutzregeln.md Z.181: veralteter `Repos/`-Verweis (T-405-Follow-up)**
       Kontext: `MaxHirn/Wissen/Schutzregeln.md` Z. 181 nennt `Werkstatt/` — Übergaben, Sitzungsreste, geklonte Fremd-Repos (`Repos/`). Seit T-405 (21.10.) tragen AGENTS.md/CLAUDE.md die korrigierte Formulierung (Fremd-Repos direkt in `Werkstatt/`), Schutzregeln.md nicht. Einziger aktiver Regelverweis auf den toten `Repos/`-Pfad; wird bei jeder Stufen-Zuordnung gelesen. Befund aus der Diskussion 21.10. (obsidian-skills, gemessen).
       Naechster Schritt: Z. 181 auf „direkt in `Werkstatt/`" umstellen (wortgleich zu T-405), dann committen.
@@ -19,6 +45,9 @@
           und Treffer zaehlen, gegen die 1m-Kostenrechnung (0,011 USD je Runde)
           halten, dann weiterlaufen lassen oder stoppen.
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Nachtrag 21.10.2026 11:40: Der Lauf hing ab 06:09 (WS-Reset, siehe T-441) —
+          4 Minuten Entscheidungszeit, danach 5,5 h Stillstand bei 0 Orders. Ein Urteil
+          auf diesem Fenster misst den Haenger, nicht die Strategie.
       Betrifft: Agenten/Handel/omnitrade2/, Agenten/Hermes/scripts/omnitrade2-sol-wache.py
 - [ ] **T-438 — omnitrade2: quantity_voll und hochziehen() sind nach 0.10 sinnlos**
       Kontext: Der Nachzieher kann den Lauf von einer Mikro-Stufe (1 Kontrakt)
