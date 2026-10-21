@@ -36,6 +36,14 @@ from tracking import init_tracking, snapshot_sync, kb_snapshot_json
 import pathlib
 
 init_tracking()
+# Erst fehlende Abschluesse aus den Journalen nachtragen (journal_abgleich.py);
+# ein Fehler dort darf den Sync nicht blockieren.
+try:
+    import tracking, journal_abgleich
+    b = journal_abgleich.abgleich(str(tracking._DB_PFAD), r'$HANDEL_DIR', schreiben=True)
+    print('journal-abgleich:', sum(z['geschrieben'] for z in b.values()), 'nachgetragen')
+except Exception as e:
+    print('journal-abgleich-fehler:', e)
 # Alle bekannten Spuren
 for spur in ['scanner', 'xperp', 'llm_stunde', 'omnitrade2']:
     snapshot_sync(spur)
