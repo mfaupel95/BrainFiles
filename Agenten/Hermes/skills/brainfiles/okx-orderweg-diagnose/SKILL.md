@@ -1,6 +1,6 @@
 ---
 name: okx-orderweg-diagnose
-description: "Use when eine Live-Order scheitert (OKX-Code deuten)."
+description: "Use when eine OKX-Order scheitert oder ein Adapter gegen ein Demo-Konto geprueft wird (Code deuten)."
 version: 0.1.0
 author: Hermes
 license: MIT
@@ -24,7 +24,10 @@ fuer die Auswertung der Buecher (`handel-spuren`).
 ## When to Use
 
 - „scanner: Verkauf X fehlgeschlagen: OKX 51000 …" / „Kauf X fehlgeschlagen" / „Stop … fehlgeschlagen"
-- ein OKX-Code muss gedeutet werden (51000, 51603, 51008, 50119, 50101, 50124)
+- ein OKX-Code muss gedeutet werden (51000, 51603, 51008, 50119, 50101, 50124,
+  51006, 51001)
+- ein Adapter/Probe soll gegen ein DEMO-Konto verifiziert werden (welche
+  Instrumentklasse handelt dieses Konto ueberhaupt, und fuellt sie?)
 - eine echte Position scheint zu fehlen, oder das Buch und das Konto passen nicht zusammen
 - eine Order soll gesetzt/verkauft werden und der Live-Pfad ist unklar
 
@@ -51,6 +54,9 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
    Fertige Sonde statt Handarbeit: `scripts/okx-zugang-pruefen.py` druckt Host,
    Handelsrecht, freie Quote-Waehrung und die offenen Notausstiege — rein lesend,
    setzt keine Order.
+   Gegen ein DEMO-Konto: `scripts/okx-demo-matrix.py` (Host x Demo-Kopf x
+   Instrumentklasse x Orderbuch in einem Lauf, `--order <inst> <sz>` setzt genau
+   eine Kauforder).
    Buch gegen Boerse stellen (Fuellung, Geister, Wiederherstellung):
    `references/buch-gegen-boerse.md`.
    **Und der teuerste Fall davon: ein HANDVERKAUF, der als Geist gebucht wird** —
@@ -92,6 +98,23 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
 
 ## Pitfalls
 
+- **`code=1 All operations failed` sagt NICHTS — der Grund steht in `data[0]`.**
+  OKX meldet je Order `sCode`/`sMsg` IM Datensatz, das Top-Level-`code` ist nur
+  die Zusammenfassung (bei mehreren Orders in einem Aufruf ist sie immer `1`).
+  Reihenfolge: `data[0].sCode`, `data[0].sMsg`, dann `ordId`/`algoId` pruefen —
+  sonst deutet man „All operations failed" als Guthaben- oder Rechteproblem,
+  waehrend in `sCode` z. B. `51006` (Preisband) oder `51001` (Instrument) steht.
+- **Im `posMode=net_mode` kein `posSide` mitschicken.** `posMode` aus
+  `/account/config` lesen; ein Orderkoerper mit `posSide: long` auf einem
+  net_mode-Konto ist ein Formfehler, kein Handelsfehler. `posSide` gehoert nur
+  in den long/short-Modus.
+- **`50101`/`50119`/`51001` zuerst gegen die EIGENE Aenderung stellen, nicht
+  gegen den Schluessel.** Alle drei entstehen auch durch einen fehlenden oder
+  falschen Kopf (`x-simulated-trading`), einen falschen Host oder einen
+  Tippfehler im Pfad. Bevor ein neuer Schluessel angelegt oder eine neue ID
+  gebaut wird, den Aufruf mit den Daten eines NACHBARWEGS wiederholen, der
+  nachweislich funktioniert (gleicher Host, gleiche Signatur, anderer Pfad) —
+  erst wenn der Nachbarweg traegt, ist der Schluessel das Problem.
 - **`51000 Parameter ordId error` ist ein Parameterproblem, kein Bestandsproblem.**
   Python-`urlencode` schreibt `None` als den Text „None"; eine Position ohne
   Order-Kennung schickt also genau das. Ein formal gueltiger, aber unbekannter
@@ -199,18 +222,51 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   GEHANDELTEN Kontrakts) und eine Reihe ohne Zwilling aus der Liste fallen lassen
   statt in einen Fehler laufen. Codes und Sonden:
   `references/okx-fehler-und-nachweis.md`.
-  **Und ein DEMO-Konto kann gar keine Perpetual-Berechtigung haben.** Beim
-  Verifizieren eines Adapters gegen ein OKX-Demo-Konto zuerst pruefen, welche
-  Instrumentklasse das Konto UEBERHAUPT handeln darf: ein EEA-Demo-Konto kann
-  nur Spot handeln — `-SWAP` gibt `50124`, der XPERP-Zwilling
-  (`BASE-USD_UM_XPERP-<expiry>`, `instType=FUTURES`) gibt `51001` auf
-  `set-leverage` und `All operations failed` auf die Order. Das ist eine
-  KONTO-Konfiguration, kein Codefehler: der Adapter kann auf diesem Konto nicht
-  demo-verifiziert werden, egal wie korrekt er ist. Vor dem Bau/der Verifikation
-  eines Perpetual-Adapters die handelbare Klasse des Zielkontos belegen
+  **Und ein DEMO-Konto handelt eine ANDERE Instrumentklasse als das Live-Konto.**
+  Vor der Verifikation eines Adapters gegen ein OKX-Demo-Konto die handelbare
+  Klasse MESSEN, nicht annehmen — ein EEA-Demo-Konto handelte in der Messung
+  `FUTURES` (datiert, z. B. `BTC-USD_UM-261030`: Order fuellt) und weder `SWAP`
+  (`50124`) noch XPERP (`51001`, Instrument auf dem Konto nicht vorhanden).
+  Der Kopf `x-simulated-trading: 1` ist dabei PFLICHT: ohne ihn antwortet jeder
+  signierte Aufruf `50101`, und das liest sich wie ein falscher Schluessel.
+  Messmatrix und Buch-Falle: `references/okx-fehler-und-nachweis.md`. Das ist eine
+  KONTO-Konfiguration, kein Codefehler: ein `SWAP`-Adapter kann auf so einem Konto
+  NICHT demo-verifiziert werden, egal wie korrekt er ist — also entweder den
+  Adapter auf die handelbare Klasse umstellen oder das Konto mit der Klasse
+  versehen, und das VOR dem Bauen entscheiden.
+  **Bleibt danach eine Testposition offen, weil sie sich nicht verkaufen laesst,
+  gehoert eine WACHE dazu — nicht die Zusage, spaeter nachzusehen.** Max liest
+  das im Chat; er will den ersten echten Vorgang automatisch gemeldet haben.
+  Also Cron (`no_agent`, leere Ausgabe = nichts senden) mit genau vier
+  Bedingungen: Schutz-Stop weg **oder Stop-MENGE kleiner als die
+  Positionsmenge** (Summe der `sz`, nicht die ANZAHL der Stops), Position
+  geschlossen (mit PnL), Kurs naeher als ~1,5 % am Stop (einmal je
+  Annaeherung), Abfrage kaputt (hoechstens alle 6 h).
+  Die Mengenfassung ist der Teil, der gern fehlt: eine Wache, die `len(stops)`
+  prueft, schweigt genau dann, wenn eine zweite Order die Position vergroessert
+  (2,1 -> 2,2 Kontrakte bei einem Stop ueber 2,1) — der Rest laeuft nackt, und
+  sie meldet „geschuetzt".  Die Merkdatei nach `Agenten/Hermes/cache/`, Kern bei
+  der Spur, duenner Wrapper in `Agenten/Hermes/scripts/` — das Cron-Feld `script`
+  nimmt nur einen DATEINAMEN, keinen Pfad. Fertiges Muster zum Abschreiben:
+  `Agenten/Handel/omnitrade/demo_position_wache.py` (Kern, reine `beurteilen()`
+  plus duenne `lage()`), `Agenten/Hermes/scripts/okx-demo-wache.py` (Wrapper per
+  Pfad importiert, fehlender Kern = Exit 2 statt leerer Ausgabe),
+  `omnitrade/tests/test_demo_position_wache.py` (Tests nur gegen die reine
+  Funktion, kein Netz). Vor dem Setzen des Stops die
+  haengenden Verkaufsorders stornieren, sonst liegen zwei Verkaeufe plus Stop auf
+  demselben Bestand.  **Vor dem Bau oder der Verifikation eines Perpetual-Adapters die handelbare
+  Klasse des Zielkontos belegen**
   (`/account/config` `perm`/`settleCcy` + eine kleine Spot-Order als Positivprobe),
   und das `InstType`-Enum des Adapters gegen die EEA-tradable Klasse pruefen
-  (EEA-Perpetuals sind `FUTURES`/XPERP, nicht `SWAP`).
+  (EEA-Perpetuals sind `FUTURES`/XPERP, nicht `SWAP`). **Geglueckte
+  Zwischenendpoints sind KEIN Handelsbeweis.** `set-leverage` und `ensure-net-mode`
+  sind Konto-Endpunkte und laufen auch auf einem Konto durch, das den Markt
+  trotzdem nicht handeln darf — eine Verifikationsprobe darf da nicht stehen
+  bleiben ("leverage ok, net-mode ok" ≠ "handelbar"). Beweisen darf es nur die
+  (kleine) Order selbst oder die signierte Sichtbarkeits-Differenz; und die
+  DEMO-Balance muss die Quote-Waehrung der Ziel-Order ueberhaupt tragen (ein
+  Demo-Konto ohne USDT kann keine `-USDT`-Order finanzieren, egal welche Rechte
+  es haelt).
   **Der Beweis dafuer ist die DIFFERENZPROBE signiert gegen unsigniert.**
   `/api/v5/public/instruments` ist ein OEFFENTLICHER Endpunkt, wird aber mit
   Anmeldekopf auf den Kontoumfang eingeschraenkt. Denselben Pfad also zweimal
@@ -269,6 +325,24 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
 - **Diagnose-Skripte nicht in den Spur-Ordner legen.** Nach
   `Agenten/Hermes/cache/` schreiben und danach loeschen; der Spur-Ordner ist
   versioniert und wird gespiegelt.
+- **Eine Probe oder ein Adapter-Beispiel druckt NIE Schluesselfragmente.**
+  Ein `eprintln!("key={}… secret={}…", &key[..8], &secret[..8])` als
+  Debug-Zeile schreibt Praxis und Passphrase-Fragment in jedes Log und in jede
+  Sitzung — acht Zeichen sind genug, um sie wiederzuerkennen, und der Nutzer
+  haelt sie fuer ausgegeben. Beleg dafuer, dass die Zugangsdaten da sind, ist
+  ein BOOLEAN (`key gesetzt: true`) oder die Laenge, niemals ein Anfang der
+  Zeichenkette. Beim Lesen einer fremden Probe zuerst nach `[..8]`/`[:8]`
+  greppen.
+- **Die Instrument-Notation steht EINMAL im Code.** OKX kennt drei
+  kontraktbasierte Familien an der ID: `-SWAP`, `_XPERP-` und datiert
+  `-YYMMDD`. Drei Kopien dieser Regel (Client, CLI, Beispiel) laufen
+  auseinander, sobald eine Familie dazukommt — genau so entstand ein
+  `BTC-USD-*`-Praefix-Raten im Beispiel, das datierte `BTC-USD_UM-…` nicht
+  erkannte. Richtig ist eine Funktion im Exchange-Modul, die Symbol ->
+  `Option<InstType>` abbildet (`None` = kein Kontrakt, der Aufrufer
+  entscheidet), und alle anderen Schichten delegieren dorthin. Beim Erweitern
+  um eine Familie zuerst die bestehenden Kopien suchen
+  (`grep -rn "ends_with(\"-SWAP\")"`) und ersetzen, nicht daneben ergaenzen.
 - **Ein Sicherungsauftrag ist manchmal die Antwort „nichts“.** Geprueft lag ein
   vollstaendiger OCO (Stop *und* Ziel auf der vollen Menge) — drei zusaetzliche
   TP-Stufen haetten beim ersten Treffer doppelt verkauft, weil ihre Mengen sich
@@ -295,13 +369,14 @@ wird NIE eine Order gesetzt (auch keine kleine, auch nicht „zum Testen").
   abschalten — sonst bleiben Positionen stehen, die die Boerse schon verkauft
   hat, und die Spur kauft beim naechsten Signal in eine Position, die es nicht
   gibt. Details und die gebaute Bruecke: `references/handverkauf-geist.md`.
-- **OKX blockt urllib ohne Browser-User-Agent mit `403 error code: 1010`.**
-  `urllib.request` sendet einen Standard-UA, den OKXs Cloudflare-Schutz
-  ablehnt — die signierte Anfrage kommt nie an, und der Fehler sieht wie ein
-  Schluessel-/Signaturproblem aus. Jeder rohe OKX-Aufruf (Probe, Diagnose)
-  braucht einen Browser-UA-Header (`Mozilla/5.0 … Chrome/…`); der Rust-
-  `reqwest`-Client sendet von sich aus einen gueltigen UA und ist davon
-  unberuehrt.
+- **OKX blockt urllib ohne ausdruecklichen User-Agent mit `403 error code: 1010`.**
+  `urllib.request` sendet den Standard-UA `Python-urllib/3.x`, den OKXs
+  Cloudflare-Schutz ablehnt — die signierte Anfrage kommt nie an, und der Fehler
+  sieht wie ein Schluessel-/Signaturproblem aus. Es genuegt IRGENDEIN
+  ausdruecklicher Wert (`User-Agent: Python/3.11` wird angenommen, ein
+  Browser-String ebenso); nur der Standard wird abgelehnt. Jeder rohe OKX-Aufruf
+  (Probe, Diagnose) setzt den Header deshalb selbst; der Rust-`reqwest`-Client
+  sendet von sich aus einen gueltigen UA und ist davon unberuehrt.
 - **Antwortform an Max.** Zuerst die Ursache in einem Satz, dann die Belege
   (Zahlen, nicht Adjektive), dann was jetzt anders ist und was absichtlich NICHT
   angefasst wurde (Fremdarbeit im Arbeitsbaum, laufende Prozesse), am Ende genau

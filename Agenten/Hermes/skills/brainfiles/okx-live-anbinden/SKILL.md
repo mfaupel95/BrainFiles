@@ -24,6 +24,8 @@ zeitlich begrenzt).
 - „nimm automatisch an" / Freigabe ohne /ja erteilen (Auto-Freigabe)
 - Eine OKX-Spur soll echtes Geld bewegen (XPERP-Futures, Spot)
 - OKX-Keys funktionieren nicht (50101) oder Guthaben fehlt im Trading-Konto
+- Ein Adapter/CLI soll LIVE gegen OKX verifiziert werden (kleiner Roundtrip à ~20 USD):
+  unten „Live-Verifikation eines Adapters“
 
 ## Prerequisites
 
@@ -44,11 +46,19 @@ Invoke through the `terminal` tool, aus dem Spur-Ordner:
 - Bedingung 1: `MaxHirn/Wissen/Handelsregeln.md` Zeile ~401
 - wachen.json freigabe-Block: `erfuellt`, `papierlauf_min_runden`, `netto_positiv_nach_gebuehren_und_funding`, `groesster_ruecklauf`
 - Lockerung: `_netto_positiv_entfaellt`, `_papierlauf_min_wochen_entfaellt`, `_papierlauf_min_runden_entfaellt`
-- OKX-Basis: `OKX_BASE` (www vs eea); 50101 = falsche Basis
+- OKX-Basis: `OKX_BASE` (www vs eea); 50101 = falsche Basis (Demo-Keys brauchen den Header
+  `x-simulated-trading: 1` zum selben Host)
 - Demo-Modus: `OKX_DEMO`/`OKX_SIMULATED` (Registry HKCU\Environment)
-- Guthaben Trading: `GET /api/v5/account/balance`
+- Guthaben Trading: `GET /api/v5/account/balance` (maessig ist `availEq` je Waehrung, NICHT `eq`
+  — `stgyEq` (Staking) und Margin offener Positionen sind nicht frei)
 - Guthaben Funding: `GET /api/v5/asset/balances`
 - Transfer Funding→Trading: `POST /api/v5/asset/transfer` from=6 to=18
+- Kurs fuer Sizing: `GET /api/v5/market/tickers?instType=<SWAP|FUTURES>` (BATCH) — die
+  Single-Endpoint-Form `/api/v5/public/ticker?instId=…` antwortet auf dem EEA-Host mit
+  HTTP 404, selbst fuer gelistete Live-Instrumente. Fuer XPERP also immer die Batch-Form.
+- Instrument-Regeln: `GET /api/v5/public/instruments?instType=FUTURES&instId=<…>` — `ctVal`,
+  `ctValCcy`, `lotSz`, `minSz`, `state`. Bei XPERP ist `ctVal` in der BASISWAEPHRUNG
+  (ctValCcy=BTC/SOL/…), nicht in der Settlement-Waehrung; Notional = ctVal × Kontrakte × Kurs.
 
 ## Procedure
 
@@ -144,8 +154,41 @@ Invoke through the `terminal` tool, aus dem Spur-Ordner:
   move_order_stop-Auftraege und stellte drei Stops doppelt — der neuere, engere
   feuert zuerst, der Stop wurde damit unbemerkt von -8.6 % auf -2.7 % gezogen.
 
-## Verification
+## Live-Verifikation eines Adapters (kleiner Roundtrip à ~20 USD)
 
-`../scanner/.venv/Scripts/python.exe handeln.py --wachen` zeigt `Freigabe erfuellt True`
-und `handel_erlaubt true`; `GET /api/v5/account/balance?ccy=USDC` zeigt USDC im
-Trading-Konto.
+Wenn ein Code-Stand (z. B. ein PR) das erste Mal LIVE echtes Geld bewegen darf, läuft die
+Verifizierung als BOUNDED ROUNDTRIP über den ORDER-PFAD DES ADAPTERS selbst — nie eine
+eigenhändige API-Nachbildung (die prüft den Adapter nicht). Prozedur, wie am 21.10.2026
+gefahren (SOL-USD_UM_XPERP-310404, 19 Kontrakte = 20.20 USDC, 1x isolated, Long):
+
+1. **Kandidat wählen**: aus der Batch-Ticker-Liste ein Instrument mit engem Spread und
+   `state=live`; Kontraktzahl so, dass Notional ≈ Zielbetrag (1x isolated → Margin = Notional,
+   gegen `availEq` des Kontos rechnen).
+2. **ctVal/ctValCcy lotSz/minSz live holen** und das Sizing daraus rechnen (siehe Quick
+   Reference). niemals aus Code-Kommentaren — die können veraltet sein.
+3. **Probe bauen**, die den Adapter aufruft: `load_instrument → set_leverage(1) →
+   ensure_net_mode → place_order (Market-Buy) → position_snapshot → place_order
+   (Market-Sell) → position_snapshot`. Sicherheitswächter vor jeder Order (fail closed):
+   Kill-Datei (selber Pfad wie der Haus-kill-switch), Kontraktzahl ≤ 30, Notional ≤ ~45 USDC
+   (aus live Marktpreis berechnet), nur das geplante Symbol, nur Long.
+4. **Start über die HOST-Shell**: `powershell.exe -NoProfile -Command "$env:OKX_REST_BASE='https://eea.okx.com'; & '<probe>' '<symbol>' <kontrakte>'` — die
+   Windows-Benutzervariablen (Keys) erbt der Host-Prozess aus HKCU; die Sandbox-/bash-Shell
+   sieht sie nicht, und ein `env | grep` dort beweist nichts.
+5. **Belegen, nicht behaupten**: Buy- und Sell-ordId im Output, `pos=0` nach dem Schliessen,
+   danach `GET /api/v5/account/positions-history?instType=FUTURES&instId=<…>`: `realizedPnl`
+   und `fee` der Runde (Fee je Seite = taker-Satz × Notional; bei XPERP 0.05 % je Seite)
+   und `availEq` des Kontos (vorher/nachher).
+
+## Gates für Perpetuals auf Mainnet (Adapter-Ebene)
+
+Ein hartkodierter Mainnet-Block für kontraktbasierte Symbole („bis Demo-Verifikation
+erledigt“) ist auf EEA-Demo-Konten nicht begehbar — sie haben keine Derivate-Berechtigung
+(50124 bei Order, 51001 bei XPERP-Instrumenten; SWAP-Order 50124 kann nicht über den
+Demo-UI-Freischalter gelöst werden). Wer das Live-Verbot für Perps trotzdem auflösen will
+(auftrags), ersetzt den Block nicht durch „weg“, sondern durch eine AUSDRÜCKLICHE, NAMENTLICHE
+Freigabe: neben `OMNITRADE_MAINNET_APPROVED` + `--confirm-real-money` + Mainnet-Deckel
+(≤100 USD) jetzt `OMNITRADE_PERP_MAINNET_APPROVED` (Liquidationsrisiko über Spot hinaus). Das
+Gate bleibt testbar: neuer Test `mainnet_perp_needs_the_perp_approval` (Symbol ein XPERP,
+Umfeld-Variable NIE gesetzt → Fehlschlag muss den Namen nennen), 480 Tests + Clippy -D
+warnings grün, und die Verweigerung mit dem echten Binary ohne die Variable gemessen (begründete
+Ablehnung, kein Order)."

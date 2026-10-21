@@ -20,7 +20,7 @@ model:
   provider: nous
 plugins:
   enabled: []
-_config_version: 50
+_config_version: 51
 agent: {}
 platforms:
   photon:

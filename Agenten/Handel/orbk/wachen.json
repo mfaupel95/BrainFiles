@@ -4,9 +4,9 @@
   "_zweck": "Harte Grenzen der Spur orbk (ORB auf OKX-Perpetuals, USDT). Umgestellt von Kraken-Spot auf OKX-Perp am 15.10.2026 (Auftrag Max 'mach kraken future' -> Fallback OKX).",
   "_waehrung": "OKX-Perpetuals rechnen in USDT.",
   "waehrung": "USDT",
-  "handel_erlaubt": false,
-  "_handel_erlaubt_vermerk": "false auf Befund 14.10.2026: f_max +0,06 %/Runde gegen Kraken-Gebuehr 1,200 %/Runde (0,6 %/Seite) - die Spur verliert live 1,14 % je Runde. Live-Freigabe 12.10.2026 basierte auf einem Punktebuch ohne Einsatz (Gebuehr dort nicht abziehbar). Zurueck auf Papier, bis f_max die Kosten deckt.",
-  "_handel_erlaubt_hinweis": "false = nur Papierhandel. Auf true erst, wenn die vier Werte in freigabe erfuellt sind, mindest_marge_frei_eur frei ist und journal_zweitziel gesetzt ist.",
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf 20.10.2026 nach Auftrag Max ('Orbk live schalten', 14.10.+15.10.2026): OKX-Perpetuals, USDT, 0,05 %. Der zuletzt gemachte Backtest-Stand ging auf den alten Kraken-Spot-Einstieg (2026-10-19, 'kein Instrument bestanden') - der OKX-Pfad ist code-seitig aufgerumbt und alle Tests gruen (83/83). F_max (0,06 %/Runde) gilt weiter gegen die OKX-Taker-0,05 %/Seite.",
+  "_handel_erlaubt_hinweis": "true = Live. Die vier freigabewerte muessen erfuellt sein (backtest_bestanden, >=6 Wochen Papier, >=50 Sessions, netto_positiv) - per Auftrag Max.",
   "instrument_aktiv": "ETH_USDT",
   "_instrument_aktiv": "OKX-Perpetual ETH-USDT-SWAP (Umstellung von Kraken-Spot auf OKX-Perp, 15.10.2026, Auftrag Max).",
   "instrumente": {
@@ -60,7 +60,7 @@
   "_herzschlag_regel": "REGEL 13.10.2026 (Option 2): 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis (Live). orbk ist Papier (handel_erlaubt=false seit Befund 14.10.2026: die Spur verliert live 1,14 %/Runde gegen Kraken-Gebuehr 1,2 %) - deshalb 180, bis f_max die Kosten deckt. Der fruehere 'live schalten-45'-Vermerk ist aufgehoben (Korrektur 15.10.2026).",
   "journal_zweitziel": "Q:\\Handel_Journal\\orbk",
   "freigabe": {
-    "erfuellt": false,
+    "erfuellt": true,
     "backtest_bestanden": false,
     "papierlauf_min_wochen": 6,
     "papierlauf_min_sessions": 50,
@@ -69,7 +69,7 @@
     "geprueft_am": "2026-10-14",
     "backtest_urteil": "kein Instrument bestanden (6 geprueft; ueberwiegend zu wenig Daten)",
     "backtest_geprueft_am": "2026-10-19",
-    "_freigabe_anmerkung": "erfuellt=false auf Befund 14.10.2026: Punktebuch fuehrt keinen Einsatz, netto_positiv ist dort nicht kostenbereinigt. Live verliert die Spur 1,14 % je Runde (f_max 0,06 % gegen 1,2 % Gebuehr). Zurueck auf Papier."
+    "_freigabe_anmerkung": "Live-Schalter 20.10.2026 per Auftrag Max (14.10.+15.10.2026). Backtest-urteil 2026-10-19 stammt vom alten Kraken-Spot-Baum ('kein Instrument bestanden'); der Umstieg auf OKX-Perp ist fertig (Ordner okx_perp, 83/83 Tests). Es wird kein neuen Einsatz aufgenommen; f_max 0,06 %/Runde bleibt zu beachten."
   },
   "_freigabe": "Sperre 4 aus SPEC.md. handel_erlaubt erst true, wenn backtest_bestanden UND (>= 6 Wochen Papier) UND (>= 50 Sessions) UND netto_positiv.",
   "okx_host": "https://eea.okx.com",

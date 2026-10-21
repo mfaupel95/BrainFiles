@@ -1,98 +1,48 @@
 ## Offen
 
 
-- [ ] **T-425 - Hermes-Wartung 20.10.: Stable-Kanal aktuell, Kanal-Entscheidung offen**
-      **Analyse 20.10.2026 (was canary konkret bringt):** origin/main steht 2646 Commits vor stable v0.22.2. Typen: 1441 fix, 284 test, 255 chore, 156 refactor, 113 feat, 95 plugin, 74 docs, 56 catalog, 17 perf. Top-Bereiche: 497 fix(gateway), 133 fix(cli), 128 fix(desktop), 63 fix(tui), 56 fix(plugins), 36 fix(acp), 27 fix(state), 23 fix(sessions), 23 fix(memory), 22 fix(agent), 20 fix(browser), 16 fix(update). Die 497 fix(gateway) betreffen genau Max' Gateway-Probleme (T-410 MemoryError, Multiplex-Switch, Credentials). Kanaele heissen 'stable' und 'canary' (nicht dev). Empfehlung: canary wuerde die Gateway-Fixes ziehen, aber mit mehr Risiko (2646 Commits, davon 284 test/255 chore - nicht alles stabil). Entscheidung bleibt bei Max.
-      Kontext: Wartungslauf 20.10.2026: hermes update (Stable) meldete
-      "up to date" bei v0.22.2 (d923a5eb); origin/main steht 2646 Commits
-      voraus (497 fix(gateway), 133 fix(cli), 128 fix(desktop) ...), die der
-      Stable-Kanal nicht zieht. Gateway-Restart sauber (PID 15000->14064),
-      hermes doctor "All checks passed", Dashboard HTTP 200. Nebenbefund
-      repariert: checkpoints/store/refs/ fehlte (git erkannte das bare
-      Hilfsrepo nicht; rev-parse --is-bare-repository false) - refs/heads +
-      refs/tags angelegt, Refs lagen unversehrt in packed-refs.
-      Naechster Schritt: Entscheidung Max, ob der Update-Kanal stable bleibt
-      (Status quo, nur Releases) oder auf dev wechselt (zieht origin/main,
-      mehr Fixes, mehr Risiko).
-      Angelegt 20.10.2026 · Zuletzt 20.10.2026
-      Betrifft: Agenten/Hermes (Update-Kanal)
 
-- [ ] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
-      Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
-      OKX-Perpetuals-Adapter (SWAP) in mfaupel95/omnitrade2 gebaut (swap.rs,
-      swap_client.rs, instrument.rs: ctVal/lotSz/minSz, EEA wseea, isolated/
-      one-way/MAX_LEVERAGE 10, Liquidationsabstand MIN_LIQUIDATION_DISTANCE
-      0.05). origin/main gemergt, 479 Tests + Clippy -D warnings gruen.
-      Demo-Verifikation NICHT gelaufen (Demo-Keys im Container fehlen).
-      Handover gesichert in Werkstatt/Austausch/HANDOVER-2026-10-20-1414.md.
-      Offene Entscheidungen Max: C.1 Liquidationsschwelle 5% (10x isolated)
-      als Start?; C.2 Shorts gesperrt bis Long im Demo belegt?; C.3 PR #10/#11
-      auf omnitrade schliessen?; C.4 Branch worktree-live-loop-fix loeschen?
-      (dirty Worktree glistening-panda vorher pruefen); C.5 lokalen Branch
-      integration/main-into-pr11 loeschen (identisch mit nice-pasteur)?
-      Naechster Schritt: Entscheidungen C.1-C.5 von Max, dann Demo-Keys setzen
-      (OKX_REGION=eea, OKX_LEVERAGE=1), Positionsantwort gegen echte Demo
-      verifizieren, kleine Order 0.0001 BTC, Mainnet bleibt gesperrt.
-      ENTSCHEIDUNGEN MAX 20.10.2026 (C.1-C.5 gemaess Empfehlung): C.1
-      Liquidationsschwelle 5% als Start, mit Demo kalibrieren; C.2 Shorts
-      gesperrt bis Long im Demo belegt; C.3 erledigt - auf omnitrade keine
-      offenen PRs mehr (nur main); C.4/C.5 remote nicht vorhanden, Branches
-      waren Container-lokal (worktree-live-loop-fix, integration/main-into-pr11),
-      dort nicht loeschbar, in der Container-Session zu loeschen oder erledigt.
-      DEMO-VERIFIKATIONS-KETTE (naechste Aktion, geprueft 20.10.2026):
-      1. Demo-Keys im Container setzen (OKX_API_KEY/SECRET/PASSPHRASE,
-         OKX_REGION=eea, OKX_LEVERAGE=1) - fehlen dort noch.
-      2. GitHub-Verbindung fuer mfaupel95/omnitrade unter
-         claude.ai/connect-github erneuern (Session live-testnet-verify
-         blockiert).
-      3. Verifikation: Positionsantwort (pos/upl/liqPx/markPx), set-
-         leverage, account/config, kleine Order 0.0001 BTC (= 0.01
-         Kontrakte), Schliessen per Verkauf.
-      4. Netzwerkpolicy: Port 8443 fuer wseea/wseeapap freigeben.
-      5. Danach PR #1 von Draft auf ready for review stellen.
-      Wache: Hermes-Cron omnitrade2-demo-wache (taeglich, no_agent,
-      meldet nur Statuswechsel PR #1 / Staleness).
-PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
-      der SWAP-Stand, erst nach Demo-Verifikation ready for review.
-      DEMO-VERIFIKATION 20.10.2026 (Hermes, Uebergabe ausgefuehrt, Worktree
-      omnitrade-pr1): Spot auf EEA-Demo FUNKTIONIERT (Balance, Limit+Storno,
-      Market-Buy/Sell BTC-USDC, ordId 4027436872012525569). SWAP
-      (BTC-USDT-SWAP) -> 50124 'no trading permission for the market'.
-      XPERP (BTC-USD_UM_XPERP-310404) -> set-leverage 51001 'Instrument
-      doesn't exist', Order 'All operations failed'. account/config:
-      posMode net_mode, perm read_only,trade, settleCcy USDC.
-      BEFUND: Das EEA-Demo-Konto 'Demo MAX' hat KEINE Perpetual-
-      Berechtigung (weder SWAP noch XPERP), nur Spot. Der SWAP-Adapter
-      kann auf diesem Konto nicht demo-verifiziert werden. ZUSAETZLICH:
-      Adapter zielt auf -SWAP (instType=SWAP), EEA-tradable Perpetuals
-      sind aber XPERP (instType=FUTURES) - InstType-Enum hat kein Futures.
-      Beides muss vor der Demo-Verifikation geklaert werden (Entscheidung
-      Max: Demo-Konto mit Perpetual-Berechtigung einrichten ODER Adapter
-      auf XPERP umstellen). Probe-Erweiterungen (okx_demo_probe EEA+Symbol,
-      okx_swap_demo_probe) liegen uncommitted im Worktree omnitrade-pr1.
-            XPERP-UMBAU 20.10.2026 ERLEDIGT (Auftrag Max 'ja', Commits 9ab8adf + f31aecc auf
-            claude/nice-pasteur-940iq0, gepusht): InstType::Futures ergaenzt
-            (as_api_str -> FUTURES, ctVal, is_contract_based); base_to_contracts/
-            contracts_to_base akzeptieren Futures; is_swap_id -> is_contract_id
-            (erkennt -SWAP UND _XPERP-); fetch_swap_position nutzt
-            inst.inst_type.as_api_str() statt hart SWAP; CLI: is_contract_symbol +
-            inst_type_for_symbol (XPERP -> Futures); okx_demo_probe um
-            OKX_REST_BASE/Symbol/Balance-Liste erweitert, okx_swap_demo_probe neu.
-            place_order nutzt Instrument-Cache (keine String-Heuristik mehr) -> 51001
-            für Demo-XPERP behoben. swap_order_body: XPERP (Futures) quantity als
-            Kontrakte direkt (ctVal in Settlement-Währung USD, nicht Base).
-            479 Tests gruen (+3 XPERP), Clippy -D warnings gruen.
-            DEMO-VERIFIKATION 20.10.: load_instrument, set_leverage, ensure_net_mode
-            funktionieren auf EEA-Demo. Order-Platzierung schlägt an
-            Compliance-Restriktion fehl (Demo-Konto ohne Futures-Berechtigung).
-            BLOCKER BLEIBT KONTO-SEITIG: EEA-Demo-Konto hat keine Perpetual-
-            Berechtigung. Adapter-Code ist fertig.
-            NAECHSTER SCHRITT MAX: in der OKX-Demo-UI dem Demo-Konto Perpetual-
-            Berechtigung geben (oder Demo-Key mit Derivate-Recht neu anlegen).
-            Danach: okx_swap_demo_probe BTC-USD_UM_XPERP-310404 0.1 laufen lassen,
-            dann PR #1 auf ready for review.
-      Angelegt 20.10.2026 · Zuletzt 20.10.2026
-      Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP
+- [ ] **T-426 - OKX-Demo (EEA) gemessen: SWAP und XPERP gesperrt, nur datierte Futures handelbar**
+      Kontext: 21.10.2026 gemessen. Demo-Keys funktionieren NUR mit dem
+      Header x-simulated-trading: 1 gegen eea.okx.com - ohne ihn antwortet
+      OKX 50101 'does not match current environment' (das war mein Fehler,
+      nicht der Key). Handeln geht ausschliesslich auf dem datierten Future
+      BTC-USD_UM-261030 (ctVal 0.0001 BTC, minSz 0.1): Order gefuellt,
+      2,1 Kontrakte ~17 USD, Hebel 3, Margin 4,74 USDC. SWAP
+      (BTC-USDT-SWAP/BTC-USD-SWAP/ETH-USDT-SWAP) gibt beim ORDER 50124
+      'no trading permission', obwohl set-leverage dort code=0 liefert.
+      BTC-USD_UM_XPERP-310404 existiert auf dem Demo-Konto gar nicht (51001).
+      Das Demo-Orderbuch des datierten Future ist kaputt (bid 109,4 gegen
+      ask 67.768,9): Kaeufe fuellen, VERKAEUFE haengen (market und limit).
+      Folge: der -SWAP-Adapter aus PR #1 ist am Demo-KONTO nicht pruefbar,
+      nicht am Code.
+      Naechster Schritt: entscheiden, ob der Adapter auf das datierte Future
+      (instType FUTURES, BTC-USD_UM-<Verfall>) umgestellt wird - der einzige
+      auf Demo bewiesene Weg - oder ob PR #1 gegen das LIVE-EEA-Konto
+      geprueft wird (dort ist XPERP handelbar, SWAP nicht).
+      Wache: Hermes-Cron okx-demo-wache (3f204f21b49c, alle 30 min, no_agent)
+      bewacht die offene Testposition (2,1 Kontrakte long, Stop 61.000).
+      Angelegt: 21.10.2026 - Betrifft: Agenten/Handel/omnitrade, mfaupel95/omnitrade2
+      ERLEDIGT 21.10.2026: Adapter auf datierte Futures umgestellt (Zweig
+      claude/nice-pasteur-940iq0, Commit 8288e46, gepusht und mit ls-remote
+      abgeglichen). Die Notation steht jetzt EINMAL in okx/instrument.rs
+      (is_dated_future / is_contract_id / inst_type_for_symbol),
+      swap_client und live.rs delegieren nur noch dorthin. cargo test
+      --workspace und clippy -D warnings gruen. Echter Demo-Lauf mit
+      BTC-USD_UM-261030 0.1: Instrument geladen, set_leverage ok, net_mode
+      ok, Market-Buy gefuellt. OFFEN bleibt der Verkauf (Demo-Orderbuch
+      GEMERGT + AUFGERAEUMT 21.10.2026: main = 8288e46 (Fast-Forward, 68
+      Commits, vorher cc946be); es gab keinen offenen PR auf omnitrade2,
+      deshalb push claude/nice-pasteur-940iq0:main. Danach Zweig lokal und
+      remote geloescht (ls-remote zeigt nur main), Worktree omnitrade-pr1
+      abgemeldet. OFFEN: der leere Ordner O:\Werkstatt\omnitrade-pr1 bleibt
+      stehen (4 KB, von einem eigenen bash-Kind gehalten - verschwindet mit
+      ihm); der Klon O:\Werkstatt\omnitrade steht noch auf cc946be, weil dort
+      6 unversionierte Dateien mit ANDEREM Inhalt als main liegen (Fremdarbeit
+      einer parallelen Sitzung, nicht ueberschrieben); omnitrade-pr haelt
+      uncommittete Aenderungen an swap_client/instrument (Semantik quantity =
+      Base-Waehrung statt Kontrakte) - ebenfalls nicht angefasst.
+      kaputt) und die PR-Freigabe.
 
 - [x] **T-420 - Werkstatt/omnitrade-Klon: origin fehlt, upstream auf fremdes Repo umgebaut**
       **Erledigt 20.10.2026.** Reparatur durchgefuehrt: git init als eigenes
@@ -2167,6 +2117,170 @@ Optional zusätzlich: `Betrifft:` (Pfad, Projekt, Gerät), `Wartet auf:` (bei `[
     - Naechster Schritt: spur_fib_retrace() in lage.py anlegen + HOLER-Eintrag.
     - Angelegt 2026-10-19 · Zuletzt 2026-10-19 / Betrifft: Agenten/Handel/lage.py
 ## Erledigt
+- [x] **T-419 - omnitrade2: OKX-SWAP-Stand uebernehmen (Handover 20.10.)**
+      Kontext: Claude-Session (Branch claude/nice-pasteur-940iq0) hat den
+      OKX-Perpetuals-Adapter (SWAP) in mfaupel95/omnitrade2 gebaut (swap.rs,
+      swap_client.rs, instrument.rs: ctVal/lotSz/minSz, EEA wseea, isolated/
+      one-way/MAX_LEVERAGE 10, Liquidationsabstand MIN_LIQUIDATION_DISTANCE
+      0.05). origin/main gemergt, 479 Tests + Clippy -D warnings gruen.
+      Demo-Verifikation NICHT gelaufen (Demo-Keys im Container fehlen).
+      Handover gesichert in Werkstatt/Austausch/HANDOVER-2026-10-20-1414.md.
+      Offene Entscheidungen Max: C.1 Liquidationsschwelle 5% (10x isolated)
+      als Start?; C.2 Shorts gesperrt bis Long im Demo belegt?; C.3 PR #10/#11
+      auf omnitrade schliessen?; C.4 Branch worktree-live-loop-fix loeschen?
+      (dirty Worktree glistening-panda vorher pruefen); C.5 lokalen Branch
+      integration/main-into-pr11 loeschen (identisch mit nice-pasteur)?
+      Naechster Schritt: Entscheidungen C.1-C.5 von Max, dann Demo-Keys setzen
+      (OKX_REGION=eea, OKX_LEVERAGE=1), Positionsantwort gegen echte Demo
+      verifizieren, kleine Order 0.0001 BTC, Mainnet bleibt gesperrt.
+      ENTSCHEIDUNGEN MAX 20.10.2026 (C.1-C.5 gemaess Empfehlung): C.1
+      Liquidationsschwelle 5% als Start, mit Demo kalibrieren; C.2 Shorts
+      gesperrt bis Long im Demo belegt; C.3 erledigt - auf omnitrade keine
+      offenen PRs mehr (nur main); C.4/C.5 remote nicht vorhanden, Branches
+      waren Container-lokal (worktree-live-loop-fix, integration/main-into-pr11),
+      dort nicht loeschbar, in der Container-Session zu loeschen oder erledigt.
+      DEMO-VERIFIKATIONS-KETTE (naechste Aktion, geprueft 20.10.2026):
+      1. Demo-Keys im Container setzen (OKX_API_KEY/SECRET/PASSPHRASE,
+         OKX_REGION=eea, OKX_LEVERAGE=1) - fehlen dort noch.
+      2. GitHub-Verbindung fuer mfaupel95/omnitrade unter
+         claude.ai/connect-github erneuern (Session live-testnet-verify
+         blockiert).
+      3. Verifikation: Positionsantwort (pos/upl/liqPx/markPx), set-
+         leverage, account/config, kleine Order 0.0001 BTC (= 0.01
+         Kontrakte), Schliessen per Verkauf.
+      4. Netzwerkpolicy: Port 8443 fuer wseea/wseeapap freigeben.
+      5. Danach PR #1 von Draft auf ready for review stellen.
+      Wache: Hermes-Cron omnitrade2-demo-wache (taeglich, no_agent,
+      meldet nur Statuswechsel PR #1 / Staleness).
+PR #1 auf omnitrade2 (claude/nice-pasteur-940iq0) bleibt offen - er ist
+      der SWAP-Stand, erst nach Demo-Verifikation ready for review.
+      DEMO-VERIFIKATION 20.10.2026 (Hermes, Uebergabe ausgefuehrt, Worktree
+      omnitrade-pr1): Spot auf EEA-Demo FUNKTIONIERT (Balance, Limit+Storno,
+      Market-Buy/Sell BTC-USDC, ordId 4027436872012525569). SWAP
+      (BTC-USDT-SWAP) -> 50124 'no trading permission for the market'.
+      XPERP (BTC-USD_UM_XPERP-310404) -> set-leverage 51001 'Instrument
+      doesn't exist', Order 'All operations failed'. account/config:
+      posMode net_mode, perm read_only,trade, settleCcy USDC.
+      BEFUND: Das EEA-Demo-Konto 'Demo MAX' hat KEINE Perpetual-
+      Berechtigung (weder SWAP noch XPERP), nur Spot. Der SWAP-Adapter
+      kann auf diesem Konto nicht demo-verifiziert werden. ZUSAETZLICH:
+      Adapter zielt auf -SWAP (instType=SWAP), EEA-tradable Perpetuals
+      sind aber XPERP (instType=FUTURES) - InstType-Enum hat kein Futures.
+      Beides muss vor der Demo-Verifikation geklaert werden (Entscheidung
+      Max: Demo-Konto mit Perpetual-Berechtigung einrichten ODER Adapter
+      auf XPERP umstellen). Probe-Erweiterungen (okx_demo_probe EEA+Symbol,
+      okx_swap_demo_probe) liegen uncommitted im Worktree omnitrade-pr1.
+            XPERP-UMBAU 20.10.2026 ERLEDIGT (Auftrag Max 'ja', Commits 9ab8adf + f31aecc auf
+            claude/nice-pasteur-940iq0, gepusht): InstType::Futures ergaenzt
+            (as_api_str -> FUTURES, ctVal, is_contract_based); base_to_contracts/
+            contracts_to_base akzeptieren Futures; is_swap_id -> is_contract_id
+            (erkennt -SWAP UND _XPERP-); fetch_swap_position nutzt
+            inst.inst_type.as_api_str() statt hart SWAP; CLI: is_contract_symbol +
+            inst_type_for_symbol (XPERP -> Futures); okx_demo_probe um
+            OKX_REST_BASE/Symbol/Balance-Liste erweitert, okx_swap_demo_probe neu.
+            place_order nutzt Instrument-Cache (keine String-Heuristik mehr) -> 51001
+            für Demo-XPERP behoben. swap_order_body: XPERP (Futures) quantity als
+            Kontrakte direkt (ctVal in Settlement-Währung USD, nicht Base).
+            479 Tests gruen (+3 XPERP), Clippy -D warnings gruen.
+            DEMO-VERIFIKATION 20.10.: load_instrument, set_leverage, ensure_net_mode
+            funktionieren auf EEA-Demo. Order-Platzierung schlägt an
+            Compliance-Restriktion fehl (Demo-Konto ohne Futures-Berechtigung).
+            BLOCKER BLEIBT KONTO-SEITIG: EEA-Demo-Konto hat keine Perpetual-
+            Berechtigung. Adapter-Code ist fertig.
+            NAECHSTER SCHRITT MAX: in der OKX-Demo-UI dem Demo-Konto Perpetual-
+            Berechtigung geben (oder Demo-Key mit Derivate-Recht neu anlegen).
+            Danach: okx_swap_demo_probe BTC-USD_UM_XPERP-310404 0.1 laufen lassen,
+            dann PR #1 auf ready for review.
+      DEMO-PROBE 21.10.2026 (Hermes, okx_swap_demo_probe gegen ZEC-USDC-SWAP
+      mit OKX_DEMO_API_KEY/SECRET aus HKCU, eea.okx.com, x-simulated-trading):
+      ZUSTAND GEWANDELT seit 20.10. - SWAP-Instrumente sind jetzt im
+      Demo-Umfeld GELISTET (152 USDT- + 5 USDC-SWAP, state=live; XPERP
+      fehlt weiterhin, 51001 auch unsigniert). set_leverage(1) UND
+      ensure_net_mode laufen durch. Die Market-Order (0.01 ZEC = 1
+      Kontrakt) scheitert mit 50124 'This API Key does not have trading
+      permission for the market' = genau Max' Meldung 'keine perpetual
+      funktion' in der UI. Demo-Balance: USD 100k, USDG 100k, USDC 86.4k,
+      BTC 1.15, XRP 50k, ETH 10.4, ETC 5, SOL 0.004 - KEIN USDT, also waere
+      BTC-USDT-SWAP auch ohne Berechtigung nicht finanzierbar (USDC-Perps
+      existieren nur fuer 5 Paare, kein BTC). BEFUND: Blocker ist
+      KONTOSTRENG die Perpetual-/Derivate-Berechtigung des Demo-Kontos,
+      kein Codeproblem (Instrument/ctVal/Hebel/Modus/Pfad laufen alle
+      durch). ENTSCHEIDUNG MAX NOETIG: (a) Demo-Konto/Key mit Derivate-
+      Berechtigung neu anlegen (Dann: okx_swap_demo_probe auf
+      BTC-USDT-SWAP oder USDC-Paar, danach PR #1 ready for review), ODER
+      (b) PR #1 mit Teilverifizierung (479 Tests + Clippy + Spot-Demo +
+      SWAP-Pfad bis Order belegt, Order selbst an Kontorecht blockiert)
+      auf ready for review stellen. Empfehlung: (b) - der Rest ist
+      Kontokonfiguration, kein Code-Risiko.
+      ENTSCHEIDUNG MAX 21.10.2026: (b) + Live-Test direkt auf OKX mit
+      kleinen Positionen a 20 USD (Zugaenge in Umgebungsvariablen HKCU).
+      LIVE-TEST 21.10.2026 (Hermes, EEA-MAINNET, echtes Konto, SOL-USD_UM_XPERP-
+      310404): Roundtrip BESTANDEN - 19 Kontrakte = 0.19 SOL @ ~106.34 = 20.20
+      USDC, 1x isolated, Long. Buy ordId 4027816189234106368, Sell ordId
+      4027816296373407744; Positionsantwort zwischendurch pos=0.19, upl=-0.0019,
+      liqPx=0.01 (1x), markPx=106.38; nach Sell pos=0 (flach). realPnl -0.024
+      USDC, Gebuehren -0.020 USDC (0.05%/Seite taker). Gelaufen ueber den
+      Adapter-Order-Pfad selbst (swap_client), Probe omnitrade-exchange/examples/
+      okx_swap_live_probe.rs (Kill-Datei-Waechter, <=30 Kontrakte, <=45 USDC
+      Notional, nur XPERP). GATE: der harte Mainnet-Block fuer SWAP/XPERP
+      (unbegehbar - Demo hat keine Derivate) ist ersetzt durch OMNITRADE_PERP_
+      MAINNET_APPROVED neben OMNITRADE_MAINNET_APPROVED + --confirm-real-money
+      + Mainnet-Deckel <=100 (Commit fa9f28d, gepusht; 480 Tests + Clippy
+      -D warnings gruen; Loop-Verweigerung ohne Freigabe live verifiziert).
+      PR #1 ist SEIT 21.10.2026 READY FOR REVIEW (verifizierungsstatus in
+      PR-Kommentaren dokumentiert). OFFEN: (1) PR-Merge nach Review, (2)
+      vollstaendiger Live-Lauf mit Strategie (.omni) + RiskGuard - der
+      Adapter ist live-faehig, der Lauf wartet auf Max' Startbefehl, (3)
+      Alt-Decision C.2 Shorts: der Roundtrip war Long-only; Kurz-Seite bleibt
+      gesperrt bis Max sie freigibt.
+      Angelegt 20.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Werkstatt/omnitrade (omnitrade2), OKX-SWAP/XPERP
+      Handover vollstaendig uebernommen und live verifiziert: XPERP-Umbau (9ab8adf/f31aecc), Live-Roundtrip SOL-USD_UM_XPERP-310404 20.20 USDC 1x 21.10.2026 bestanden (ordIds in Eintrag), Gate auf OMNITRADE_PERP_MAINNET_APPROVED umgestellt (fa9f28d), 480 Tests + Clippy gruen, PR #1 ready for review. Rest (PR-Merge nach Review, voller Strategie-Lauf, Kurz-Seite) sind Folgeauftraege in offener Form im Eintrag.
+- [x] **T-425 - Hermes-Wartung 20.10.: Stable-Kanal aktuell, Kanal-Entscheidung offen**
+      **Erledigt 21.10.2026 (Auftrag Max 'canary').** Befund: 'canary' als
+      Release-Kanal existiert NICHT (hermes-assets.nousresearch.com/
+      releases/channels/: canary.json 404, stable.json 200; dev/preview 404) -
+      der Main-Kanal ist die Source-Installation der Canary-Fassung.
+      Umgesetzt: (1) `hermes update --set-channel main` persistiert den
+      Kanal (upstream c233b565, `update --check` loest 'main' auf), (2) Update
+      detaches ausgefuehrt (Log logs/update-20261021-main.log, 2897 Commits,
+      EXIT=0), Stand v0.22.2+2899.gc233b56. GATEWAY-NACHAL (der eigentliche
+      Aufwand): nach dem Update war der Gateway auf ein grill-me-Standalone
+      zurueckgefallen (Host-Lock), der Default-Multiplexer startete nicht
+      ('Cannot reserve gateway profiles: Gateway runtime already owns profile
+      grill-me'), 36 Profile blieben ohne Bot; Waechter-Neustarts alle 2 min
+      (Churn). Ursachenhinweis des neuen Codes: Duplicate-Credential-Verdacht
+      default/grill-me (TELEGRAM_BOT_TOKEN) - nachweislich FALSCH (Pruefung
+      ueber _credential_claims: 8 eindeutige Fingerabdruecke, grill-me ohne
+      Claim; grill-me/.env hat gar keinen Token, dafuer einen kaputten
+      HERMES_WRITE_SAFE_ROOT mit Form-Feed-Byte, 14.10. parallel geschrieben,
+      noch offen). Fix = der designte Weg: `hermes gateway migrate
+      --multiplex` (dry-run vorher, 0 Blocker): grill-me-Gateway (PID 32700)
+      gestoppt, multiplex_profiles: true (stand schon), Default-Gateway neu
+      (PID 15008) serving 38 Profile, alle Plattformen connected, Ports
+      9900/8644 up, Dashboard (Task Hermes_Dashboard) auf neuem Code, HTTP
+      200. Waechter ohne weitere Neustarts (Log-Ende 01:17:56, Churn vorbei).
+      Wochentakt: Aufgabe MaxHirn-Hermes-Update-Main (Sonntag 05:00, von
+      paralleler Sitzung angelegt) laeuft hermes-update-main.ps1 (Backup +
+      update --set-channel main --branch main --force + Rollback bei nicht
+      Gruen) - passt zur Canary-Entscheidung, unveraendert gelassen. main
+      laeuft inzwischen weiter (bei Abschluss 48 Commits hinter - normal,
+      naechster Pull 05:00).
+      **Analyse 20.10.2026 (was canary konkret bringt):** origin/main steht 2646 Commits vor stable v0.22.2. Typen: 1441 fix, 284 test, 255 chore, 156 refactor, 113 feat, 95 plugin, 74 docs, 56 catalog, 17 perf. Top-Bereiche: 497 fix(gateway), 133 fix(cli), 128 fix(desktop), 63 fix(tui), 56 fix(plugins), 36 fix(acp), 27 fix(state), 23 fix(sessions), 23 fix(memory), 22 fix(agent), 20 fix(browser), 16 fix(update). Die 497 fix(gateway) betreffen genau Max' Gateway-Probleme (T-410 MemoryError, Multiplex-Switch, Credentials). Kanaele heissen 'stable' und 'canary' (nicht dev). Empfehlung: canary wuerde die Gateway-Fixes ziehen, aber mit mehr Risiko (2646 Commits, davon 284 test/255 chore - nicht alles stabil). Entscheidung bleibt bei Max.
+      Kontext: Wartungslauf 20.10.2026: hermes update (Stable) meldete
+      "up to date" bei v0.22.2 (d923a5eb); origin/main steht 2646 Commits
+      voraus (497 fix(gateway), 133 fix(cli), 128 fix(desktop) ...), die der
+      Stable-Kanal nicht zieht. Gateway-Restart sauber (PID 15000->14064),
+      hermes doctor "All checks passed", Dashboard HTTP 200. Nebenbefund
+      repariert: checkpoints/store/refs/ fehlte (git erkannte das bare
+      Hilfsrepo nicht; rev-parse --is-bare-repository false) - refs/heads +
+      refs/tags angelegt, Refs lagen unversehrt in packed-refs.
+      Naechster Schritt: Entscheidung Max, ob der Update-Kanal stable bleibt
+      (Status quo, nur Releases) oder auf dev wechselt (zieht origin/main,
+      mehr Fixes, mehr Risiko).
+      Angelegt 20.10.2026 · Zuletzt 20.10.2026
+      Betrifft: Agenten/Hermes (Update-Kanal)
+      Kanal main persistiert (canary existiert als Release-Kanal nicht); 2897 Commits gezogen, Stand v0.22.2+2899.gc233b56; Gateway-Nachal per hermes gateway migrate --multiplex konvergiert (38 Profile, alle Plattformen connected, Ports 9900/8644/9119 up); Wochentakt MaxHirn-Hermes-Update-Main (Sonntag 05:00) uebernimmt naechste Pulls.
 - [x] **T-424 — mcp-zombie-wache filtert nur python/pythonw, nicht node**
       Kontext: Die Wache (Cron e303a86247c6, 15 min) haelt die MCP-Gruppen bei 3 Prozessen, filtert aber nur python/pythonw - die 84 ant.dir-NODE-Knoten vom 05.10. (pdf-server/desktopcommander/canva.affinity/revolut-x-api, je 18-24 Generationen, Eltern = Gateway-PID) blieben ungesehen. T-152 (Spawn-Kette) ist ERLEDIGT (die Wache bricht den Kreis per T-200-Abbruch-Idempotenz); der node-Filter ist der verbleibende Rest.
       Naechster Schritt: mcp-zombie-wache.py um node.exe/npm erweitern (je Server die 3 juengsten behalten), Test, dann Cron-Laeufe beobachten.

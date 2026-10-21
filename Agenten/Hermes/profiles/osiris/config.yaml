@@ -22,7 +22,7 @@ providers:
     discover_models: true
     model: gemma-4-E4B-it-OBLITERATED-Q8_0
     name: LLaMA.cpp
-_config_version: 50
+_config_version: 51
 terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\osiris

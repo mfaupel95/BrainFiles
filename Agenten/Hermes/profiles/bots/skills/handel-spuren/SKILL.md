@@ -45,6 +45,7 @@ Nicht jede Spur hat ein `handelsjournal.csv`, das über `pos_id` paar-bar ist �
 Typischer Befund (liq_wand 10.2026): **hohe Trefferquote, aber netto negativ.** Ursache ist fast immer eine Gewinn/Verlust-Asymmetrie — Zielgewinne klein, Stops 3× größer. Rechnung aus dem Journal: durchschnittlicher Gewinn ÷ durchschnittlicher Verlust, gegen die Break-even-Schwelle `Verlustanteil / Gewinnanteil`. Liegt die Asymmetrie darunter, ist netto negativ, egal wie oft du triffst.
 
 - Der eine Stellhebel, der diese Klasse von Spur korrigiert: **den Stop nah an die Realitaet der Zielgewinne ziehen** (`stop_prozent` in `wachen.json`), nicht das Ziel vergrössern — wenn das Ziel eine Marktstruktur ist (z. B. die Liquidationswand), ist es nicht beweglich.
+- **Der Stop-Hebel passt NUR zur Klasse "hohe Trefferquote, netto negativ".** Miss die Asymmetrie zuerst und klassifiziere, bevor du einen Hebel vorschlaegst: (a) Asymmetrie < Break-even UND hohe Trefferquote → Stop enger (die Verlustseite ist zu breit); (b) Asymmetrie GUT (avgG/avgV > BE) aber Trefferquote zu niedrig → das Problem ist die Signalselektion, NICHT der Stop — Stop enger wuerde nur den seitlichen Rand treffen und die wenigen Gewinne kuerzen, nicht das Trefferproblem loesen. Bei (b) ist Stop-Tuning ein unbegruendeter Eingriff; dort erst mehr Daten/anderes Signal, nicht blind ein Risiko umbauen. Eine Spur mit guter Asymmetrie aber 3/14 Treffern (z. B. prophet_signal) ist ein Signal-Problem, kein Stop-Problem.
 - **Der Stop-Schluessel heisst nicht ueberall `stop_prozent`.** ATR-basierte Spuren (z. B. `swap`) tragen die Stop-Breite als Faktor (`stop_atr_faktor`, `ziel_atr_faktor`), nicht als Prozent. Beim Befund zum Stop-Hebel den Schluessel aus der WACHE nehmen (`grep stop_atr|ziel_atr|stop_prozent <spur>/wachen.json`), nicht den Prozent-Namen aus dem Muster uebernehmen — sonst verschreibt man einen Schluessel, den die Spur gar nicht liest.
 - **Eine Grid-/Mehrfach-Kandidaten-Spur ist nicht ohne weiteres eine Familie-A-Spur.** `optimieren.py`/`lauf_a` handeln pro Instrument EINE Position mit festem Stop/Ziel je Kerze; eine Grid-Spur (z. B. `swap` auf XPERP mit `grid_stufen`, `grid_spanne_atr`) ist ein anderes Modell. Sie in die Familie-A-Parametersuche zu zwingen ist eine konzeptionelle Übernahme (Grid → pro-Kerze-Einstieg mit ATR-Stop/Ziel), keine mechanische Ergaenzung von `lade_wachen`+Suchbereich. Vor einem solchen Umbbau Max entscheiden lassen, ob der Grid-Aspekt erhalten bleibt (Mehrfach-Kandidaten in Familie-A) oder wegfaehrt (reine Einzel-Position) — die zwei Varianten bestimmen, ob Suchbereich und Suchschluessel nur Stop/Ziel oder auch Grid-Parameter abdecken.
 - Halte dich an das Pflichtband der Spur (`pflicht_stop_prozent_min/max`).
@@ -63,6 +64,7 @@ scanner/.venv/Scripts/python.exe optimieren.py --spur squeeze              # sch
 - **Ergebnis-Lesart:** `ueberlebt: []` bei allen Kandidaten heißt: die Spur ist **von keinem Stop/Ziel-Parameter behebbar** — das Signal selbst ist negativ. Das ist ein Stilllegungs-Kriterium, kein Fehlschlag-Tuning.
 - Etwas, das live netto negativ ist und dem die Parametersuche keinen Ausweg zeigt, gehört zur Disposition (nächster Abschnitt).
 - **Nur Spuren mit Suchbereich UND `lade_wachen()` sind überhaupt suchbar.** `optimieren.py` braucht beides: einen Eintrag in `spur_opt.json` (Suchbereich mit `schluessel`) UND eine `lade_wachen()`-Funktion im `handeln.py` der Spur (geladen via `replay.spur_modul(spur).lade_wachen()`). Fehlt eines, bricht die Suche ab (`KeyError: kein Suchbereich` bzw. `AttributeError: module 'bt_<spur>' has no attribute 'lade_wachen'`). Vor dem Lauf beide Prüfungen machen: `python -c "import json; print('swap' in json.load(open('spur_opt.json',encoding='utf-8')))"` und `grep -n 'def lade_wachen' <spur>/handeln.py`. Eine Spur, die nicht suchbar ist, ist damit NICHT als negativ belegt — das `ueberlebt: []`-Stilllegungs-Kriterium kann für sie gar nicht ausgewertet werden. Das ist ein fehlender Suchbereich/fehlende Funktion, kein Signal-Urteil; die Asymmetrie-Rechnung aus dem Journal bleibt der Weg, um den Stop-Hebel zu beurteilen.
+- **Eine Spur suchbar machen, wenn nur `lade_wachen()` fehlt:** der Suchbereich steht schon in `spur_opt.json` und die `wachen.json` enthält die Suchschlüssel — es fehlt nur die Funktion. Dann `lade_wachen()` im `handeln.py` ergänzen (liest `wachen.json` und gibt das Dict zurück, Muster der Nachbarspuren), im Worktree auf eigenem Zweig. **Der Worktree hat kein `daten/`** (nicht versioniert) — `optimieren.py` bricht dann mit `RuntimeError: keine Historie fuer <spur>` ab, obwohl die Historie im Hauptbaum liegt. Vor dem Lauf eine **Junction** auf das Hauptbaum-`daten/` legen (`powershell New-Item -ItemType Junction -Path '<worktree>/Agenten/Handel/daten' -Target '<hauptbaum>/Agenten/Handel/daten'`), dann `--trocken` zur Bestätigung, dann der echte Lauf über den Hauptbaum-Interpreter.
 - **Vor dem `optimieren.py`-Lauf pruefen, ob die Spur in `dauerlauf.py` `SPUREN` noch AKTIV ist.** Eine Spur kann bereits stillgelegt sein (Eintrag auskommentiert, z. B. `squeeze` am 10.10.2026) — dann ist ein 7-min-Parametersuchlauf verschwendete Arbeit, weil die Spur ohnehin nicht mehr laeuft. `grep -nE '^\s+"<spur>"' dauerlauf.py` (nur nicht-auskommentierte Zeilen) vor dem Lauf; ist der Eintrag weg, die Stilllegung als gegeben melden statt zu optimieren.
 
 ## Schützen — jede Änderung an `wachen.json`
@@ -125,6 +127,36 @@ Wenn eine belastbare Spur netto negativ ist UND der Parametersuche nichts überl
 5. Eine `wachen.json`-Wertänderung ist Betriebskonfig und darf direkt auf master (Commit mit `--author="Hermes <hermes@local>"`); eine `dauerlauf.py`-Spurlisten-Änderung ebenso nach dem spiegel-Muster.
 
 **Eine Stilllegung in `SPUREN` greift erst beim Neustart des Dauerlaufs** — das Dict wird einmal beim Import gelesen, laufende Zyklen sehen die alte Liste. Einen Dauerlauf-Neustart nicht ungefragt machen: er recycelt die Echtgeld-Spuren (scanner/xperp in mittel/hoch) und kann offene Positionen flachstellen. Committen und die Wirkung als „beim nächsten Neustart wirksam" vermerken, Max die Entscheidung über den Neustart überlassen.
+
+## Freqtrade-Container auf Anbindung pruefen
+
+Max' Freqtrade-Flotte (Moon-Dev-Agenten als Docker-Container, `Agenten/Handel/freqtrade/`, verdrahtung in `bots.json`) ist Teil der Haus-Auswertung — ein "Freqtrade-Bots pruefen"-Auftrag ist ein Anbindungs-Check, kein Spur-Tuning.
+
+- **Container "Up" + heartbeat `RUNNING` bedeutet: der Bot laeuft und handelt — HTTP-000 ist NICHT der Beweis fuer "unerreichbar".** Freqtrade antwortet auf HTTP nur, wenn `api_server.enabled=true` in seiner Config steht. Die `klassik_*`/Indikator-Container laufen absichtlich OHNE Web-API (kein `api_server`-Block) und liefern darum auf jeden Port-Check 000, obwohl sie gesund sind. Nur 4 der Flotte sind API-exponiert (die Moon-Dev-Bots auf 8080–8083). Diagnose-Reihenfolge statt curl-Panik: `docker ps --format "{{.Names}}\t{{.Status}}\t{{.Ports}}"` (Up = lebt) → `docker logs --tail <n> <container>` (heartbeat `RUNNING` = arbeitet) → erst wenn beides fehlt, im Aufsatz `api_server.enabled` pruefen und Port erreichen.
+- `/api/v1/ping` ist der richtige Health-Endpoint (antwortet `{"status":"pong"}`); eine `000` auf `/` ist kein Befund. Gemapped wird auf `127.0.0.1:<port>`; ein API-exponierter Container kann von ausserhalb trotzdem 000 liefern, wenn das Port-Mapping fehlt.
+- Start der Flotte: `bash Agenten/Handel/freqtrade/bots_starten.sh` (legt Container neu an, `--restart unless-stopped`; nach Docker-Neustart kommen sie von selbst zurueck). Gemeinsame DB trennt die drei Bots nur, wenn jede eigene `user_data/tradesv3-<bot>.sqlite` hat (`--db-url` ist die Trennung, kein Beiwerk).
+
+## Positionierungs-Filter (OKX-Rubik) in eine Spur einbauen
+
+Will Max eine Spur um ein Positionierungs-/Sentiment-Signal als Einstiegs-Filter
+erweitern (z. B. "kippt die Positionierung die Trendwende?"), ist der
+naheliegende Weg — das smartmoney-Modul aus `Werkstatt/agent-trade-kit` — fuer
+den Haus-Key NICHT nutzbar: dessen Endpunkte liegen nur auf `www.okx.com`
+(global), der Haus-Key ist EEA-gebunden (50119). Der Ersatz sind die
+**oeffentlichen OKX-Rubik-Reihen** (Long/Short-Ratio, Open Interest, Taker-Flow)
+— dasselbe Prinzip, ohne Schluessel, auf beiden Hosts mit 200 verifiziert.
+Endpunkte, Baustein-Muster (fail-soft, Standard AUS) und die Test-Strategie:
+`references/okx-positionierung.md`.
+
+- **Filter-Tests: Indikatoren mocken, nicht synthetische Kerzen bauen.** Ein
+  Filter-Test will die FILTER-Logik beweisen, nicht den Indikator. Synthetische
+  Kerzen, die gleichzeitig einen ATR-Indikator (SuperTrend) von +1 auf -1 drehen
+  UND unter eine EMA schliessen, existieren praktisch nicht — die zwei
+  Indikatoren drehen nie synchron, keine Parameter-Kombination trifft beide
+  Bedingungen. Stattdessen `xi.supertrend`/`xi.ema` im Test mocken (determinis-
+  tisches Basissignal) und nur den Filter pruefen: AUS ruft die Quelle nicht,
+  AN+stuetzt=False blockiert, AN+stuetzt=True laesst durch, 0 Quellen blockiert
+  nicht (fail-soft).
 
 ## Ziplime — externer Backtesting-Engine
 
@@ -283,6 +315,32 @@ Max will einen externen Handels-Bot (eigene Sprache/Blockchain, z. B. ein TypeSc
 - **Idempotent journalen:** einen Marker (letzter verarbeiteter Block/ts) in `zustand.json` halten, damit ein zweiter Lauf keine Journal-Zeilen dupliziert. Tests mit synthetischem JSONL, nie mit der echten 50-MB-Datei.
 - **`--vorschau` druckt die Journal-Statistik** (Runden, Trefferquote, Ergebnis) und `Live waere gesperrt durch: kein Live-Pfad (Papier-Spur)` — konsistent mit den anderen Spuren, aber ohne Freigabefenster-Logik.
 - **Auswerten heisst zuerst die Historie messen** (Runden, Trefferquote, EV, P&L-Kurve aus den totals), dann erst bauen — die Zahlen entscheiden, ob die Einbindung lohnt. Ein Dry-Run-Bot mit 546 Fills und −0,28 % P&L ist ein Befund (break-even/experimentell), kein Freigabe-Kandidat.
+
+## Spiegelung (Bedingung 4) bei Mehr-Arm-Spuren
+
+`spiegelstand.py` listet Spuren als **Verzeichnisse mit `wachen.json` direkt im
+Handel-Ordner**. Eine Spur, die ihre Buecher in Unterordnern fuehrt
+(`<spur>/laeufe/<variante>-<arm>/` mit je eigener `wachen.json`, Muster
+`llm_stunde` mit 6 Armen), hat im eigenen Ordner GAR KEINE Quelldateien — der
+Pruefer vergleicht dann einen leeren Hauptordner gegen `Q:` und meldet
+`ABWEICHUNG [handelsjournal.csv, zustand.json]` bzw. `kein Ziel`.
+
+- **Dieser Befund ist ein Werkzeug-Fehlalarm, kein Spiegelungsfehler — vor
+  jeder Meldung byte-genau gegenpruefen.** `cmp <spur>/laeufe/<arm>/handelsjournal.csv
+  "Q:/Handel_Journal/<spur>/handelsjournal.csv"`: ist er still, spiegeln die Arme
+  korrekt und nur die Erkennung fehlt. Eine Spiegelungs-Luecke zu melden, die
+  nicht existiert, kostet denselben Aufwand wie eine echte.
+- Alle Arme einer solchen Spur spiegeln in **denselben** Zielordner
+  (`journal_zweitziel` steht in jeder Arm-`wachen.json`, nicht in der Haupt-Datei
+  der Spur) — der Pruefer braucht also pro Arm eine eigene Zeile gegen dasselbe Ziel.
+- Der Fix in `spiegelstand.py` ist die Arm-Erkennung (`laeufe_arme(handel, ordner)`
+  findet `<ordner>/laeufe/<arm>/` mit eigener `wachen.json`; `stand()` ersetzt die
+  quellenlose Haupt-Spur durch ihre Arme). Dabei muss die Schatten-Suffix-Heuristik
+  fuer Arme ABGESCHALTET werden (`_wachen_vorgabe`): ein Armname wie `ema1h-L`
+  hat keinen Unterstrich zum Kuerzen, sonst greift die `wachen.<suffix>.json`-Suche ins Leere.
+- Im Lauf-Status zaehlt ein Arm ueber seinen Hauptnamen — in `dauerlauf.SPUREN`
+  steht die Spur (`llm_stunde`), nie die einzelnen Straenge. Ein Arm ist deshalb
+  nicht "ausserhalb des Dauerlaufs", nur weil sein Name dort fehlt.
 
 ## Fallen
 

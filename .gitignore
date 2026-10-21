@@ -1000,13 +1000,14 @@ Agenten/Handel/moondev_sniper/handelsjournal.csv
 # Fremd-Repos, die direkt im Vault-Baum liegen (geklonte Arbeitskopien). Sie
 # bringen ein eigenes .git mit; Git nimmt sie sonst als Submodul-Verweis auf
 # (gemessen 06.09.2026: MaxHirn/skills/, MaxHirn/CLIProxyAPI/,
-# Agenten/Handel/OpenAlice/). Ein solcher Verweis speichert nur einen fremden
+# Agenten/Handel/OpenAlice/; CLIProxyAPI liegt seit 21.10.2026 unter Werkstatt/).
+# Ein solcher Verweis speichert nur einen fremden
 # Commit-Hash - beim Auschecken faende sich dort ein leerer Ordner. Sie sind
 # ohnehin aus Git reproduzierbar (Klon der Quellen unter Documents/GitHub/).
 # Der Unterordner-Freigabe-Mechanismus (!*/) macht sie sonst begehbar und
 # git status meldet sie als "??" - das Rauschen verdeckt die echten Zeilen.
 MaxHirn/skills/
-MaxHirn/CLIProxyAPI/
+Werkstatt/CLIProxyAPI/
 Agenten/Handel/OpenAlice/
 # NautilusTrader-Node. Er bringt einen eigenen, gewachsenen Git-Verlauf mit
 # (vier Commits vom 07.-09.09.2026) und 558 MB .venv. Im Vault-Repo waere er

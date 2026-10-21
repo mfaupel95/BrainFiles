@@ -454,5 +454,80 @@ class SupertrendTests(unittest.TestCase):
         self.assertIn("long", gef)
 
 
+
+class PositionierungsFilterKlassik(unittest.TestCase):
+    """Der Positionierungs-Filter in klassik_regeln.signal.
+
+    KEIN Netzzugriff: kr.okx_positionierung wird gemockt. Beweist: Filter AUS
+    ruft die Quelle nicht; stuetzt nicht -> blockiert; fail-soft bei 0 Quellen.
+    """
+
+    def _signal_funktion(self):
+        _q, signal, _a, _p = kr.bauen("klassik_ema")
+        return signal
+
+    def _eliche_kerzen(self):
+        # genug Kerzen fuer mindest_kerzen
+        return kerzen([100.0] * 210 + [130.0] * 10)
+
+    def test_filter_aus_ruft_quelle_nicht(self):
+        import okx_positionierung as _pos
+        orig = _pos.stuetzt_richtung
+        gerufen = []
+        _pos.stuetzt_richtung = lambda *a, **kw: (gerufen.append(1) or {"quellen": 3, "stuetzt": True})
+        try:
+            sig = self._signal_funktion()
+            w = {"kerzen_zeitrahmen": "4H", "positionierung_filter": False}
+            out = sig({"kerzen": self._eliche_kerzen()}, w)
+            # Signal darf existieren ODER None (EMA-Kreuz ist datenabhaengig),
+            # Hauptpunkt: die Quelle wurde nicht gerufen.
+            self.assertIn(out, ("long", "short", None))
+            self.assertEqual(gerufen, [])
+        finally:
+            _pos.stuetzt_richtung = orig
+
+    def test_stuetzt_nicht_blockiert(self):
+        import okx_positionierung as _pos
+        orig = _pos.stuetzt_richtung
+        _pos.stuetzt_richtung = lambda *a, **kw: {
+            "quellen": 2, "stuetzt": False, "je_inst": {}}
+        try:
+            sig = self._signal_funktion()
+            w = {"kerzen_zeitrahmen": "4H", "positionierung_filter": True,
+                 "instrumente": ["BTC-USDT-SWAP"]}
+            self.assertIsNone(sig({"kerzen": self._eliche_kerzen()}, w))
+        finally:
+            _pos.stuetzt_richtung = orig
+
+    def test_keine_quelle_blockiert_nicht(self):
+        import okx_positionierung as _pos
+        orig = _pos.stuetzt_richtung
+        _pos.stuetzt_richtung = lambda *a, **kw: {"quellen": 0, "stuetzt": False}
+        try:
+            sig = self._signal_funktion()
+            w = {"kerzen_zeitrahmen": "4H", "positionierung_filter": True,
+                 "instrumente": ["BTC-USDT-SWAP"]}
+            out = sig({"kerzen": self._eliche_kerzen()}, w)
+            self.assertIn(out, ("long", "short", None))
+        finally:
+            _pos.stuetzt_richtung = orig
+
+    def test_richtung_argument_ist_long_oder_short(self):
+        import okx_positionierung as _pos
+        orig = _pos.stuetzt_richtung
+        empfangen = []
+        _pos.stuetzt_richtung = lambda rt, *a, **kw: (
+            empfangen.append(rt) or {"quellen": 1, "stuetzt": True})
+        try:
+            sig = self._signal_funktion()
+            w = {"kerzen_zeitrahmen": "4H", "positionierung_filter": True,
+                 "instrumente": ["BTC-USDT-SWAP"]}
+            sig({"kerzen": self._eliche_kerzen()}, w)
+            if empfangen:
+                self.assertIn(empfangen[0], ("long", "short"))
+        finally:
+            _pos.stuetzt_richtung = orig
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

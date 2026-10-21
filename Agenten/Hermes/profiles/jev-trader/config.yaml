@@ -3,7 +3,7 @@ model:
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
-_config_version: 50
+_config_version: 51
 terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles
