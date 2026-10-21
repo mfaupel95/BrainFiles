@@ -30,6 +30,9 @@ aber nach dem Geruest hier. Eine bestehende Spur aendern: `handel-spuren`.
 - eine BESTEHENDE Spur soll eine ZWEITE Messung bekommen (weichere Tore, andere
   Ausstiegsform), ohne ihr Hauptbuch anzufassen — Schattenarm, Rezept in
   `references/schattenarm.md`
+- eine Spur laeuft LIVE und soll mit anderen Parametern weiterlaufen, ein
+  Schutz-Stop nachgezogen oder eine Wache eingerichtet werden —
+  `references/live-lauf-betreiben.md`
 
 ## 1. Bauform waehlen (zuerst entscheiden)
 

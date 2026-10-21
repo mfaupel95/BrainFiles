@@ -154,6 +154,32 @@ parallele Sitzung hat sie direkt committet) — kein Fehler, kein offener Punkt;
 Remote holen (`git fetch origin`); ist er divergiert (Routine-Commit), direkt
 `git merge --no-ff origin/master` statt `pull --rebase` (siehe Schritt 8).
 
+**Konflikte entscheidet das ALTER des Textes, nicht die Seite.** Ein Zweig, der
+hunderte Commits hinter master liegt, traegt in gemeinsamen Dateien oft den Stand
+von vor Wochen: eine Regel, die master laengst entschieden hat, und Pfade von vor
+einem Umzug. Vor jeder Entscheidung beide Fassungen GEGENLESEN (`git show
+HEAD:<pfad>` gegen `git show <zweig>:<pfad>`) und nach Beleg entscheiden - Datum im
+Text, Stand der Regel, `git log` der Datei. Regeln:
+
+- Fassung aus master nehmen, wenn master die spaetere ist: `git checkout --ours --
+  <pfad>`. `--ours` ist die AKTUELLE Verzweigung (master), nicht der Zweig - die
+  Falle ist die Verwechslung.
+- Generierte Dateien (Routinen-Ausgaben wie `spur-metriken.json`) immer aus master:
+  der Zweig traegt einen alten Lauf.
+- `CONFLICT (modify/delete)` - in master geloescht, im Zweig geaendert:
+  Loeschung behalten (`git rm`), nicht wiederbeleben; der Inhalt bleibt in der
+  Historie erreichbar.
+- Traegt der Zweig neben dem veralteten Text einen ECHTEN Zusatz (einen Pfad, eine
+  Messung, eine Lehre), nimm die master-Fassung und haenge NUR diesen Fakt an,
+  wortgetreu - nicht den ganzen Block.
+- Jede Entscheidung in die Merge-Meldung: welcher Konflikt, welche Seite, warum.
+  Ohne diesen Satz liest die naechste Sitzung den Merge als Inhaltsverlust.
+
+**Nach dem Merge beweisen, nicht behaupten:** keine Konfliktmarker mehr
+(`grep -c '<<<<<<<'` je Datei = 0), JSON-Dateien durch `json.load`, und die vom
+Zweig mitgebrachten Tests LAUFEN LASSEN - der Merge ist erst belegt, wenn sie gruen
+sind.
+
 ### 2. Lebende von toten Ständen trennen
 
 - **Vor dem Schreiben erneut messen** (`sitzungs-rekonstruktion`): eine „tote“
@@ -454,6 +480,18 @@ sie werden nur gelesen oder per `hermes sessions import` einseitig übernommen.
 - **Eine Sitzung mit wiederaufnahmefähigem `end_reason` ist nicht erledigt.**
   `agent_close`/`ws_orphan_reap`/`startup_orphan_reap`/`superseded_by_resume`
   holt die Wiederaufnahme zurück — nur archivieren, nie löschen.
+- **Lautet der Auftrag „alles pushen / Arbeit zusammenführen“, wird die fremde Arbeit
+  COMMITTEN — als eigener Commit mit neutralem Autor.** Die Regel oben („benennen,
+  nicht committen“) gilt fuer den EIGENEN Auftrag; beim Sammelauftrag ist die
+  ruhende Arbeit der Gegenstand. Ablauf: (1) Pfade frisch aus `git status
+  --porcelain` lesen; (2) in einem EIGENEN Index (`GIT_INDEX_FILE=<scratch>/idx_sammel`
+  + `git read-tree HEAD`) `git add -u` fuer alle verfolgten Aenderungen und die
+  untracked Ordner namentlich; (3) `git commit --author="Andere Sitzung
+  <fremd@local>"`; (4) danach im ECHTEN Index `git reset -q HEAD -- <pfade>` — sonst
+  meldet `git status` dieselben Pfade als `MM`/`AD` und der naechste fremde Commit
+  nimmt sie erneut mit; (5) was zwischen dem Lesen von `git status` und dem Commit
+  NEU auftaucht (typisch: eine Sitzung schreibt gerade an einem Live-Skript),
+  bleibt liegen und wird im Bericht genannt.
 
 ## Verification
 

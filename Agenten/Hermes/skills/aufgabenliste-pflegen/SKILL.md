@@ -620,6 +620,17 @@ print(bereich.count("- [ ] "), bereich.count("- [x]"), bereich.count("- [?]"))
   das Ende — und **alle** Vorkommen zaehlen (`text.count(...)`), dann das
   RICHTige nehmen: die Ueberschrift, unter der Eintraege stehen, nicht die
   frueheste. Die Wahl ist damit begruendbar statt geraten.
+  **Dritte Form: zwei ECHTE Listen.** Eine parallele Sitzung kann ihren eigenen
+  `## Offen`-Block VORN voranstellen, waehrend die alte Liste unveraendert weiter
+  unten steht - beide mit Eintraegen. `doppelte_nummern.py` meldet dann trotzdem
+  „beide Abschnitte vorhanden“ und ist gruen (es prueft nur das VORHANDENSEIN),
+  die Doppelung ist also ein Struktur-Befund, kein Grund fuer einen Umbau. Neue
+  Eintraege gehoeren in den OBEREN Block, direkt vor seinen ersten Eintrag
+  (`i = text.index("## Offen")`, `j = text.index("- [ ] **T-", i)`, Einsetzen
+  hinter `j`) — dort stehen die neuesten, und `erledigen.py` findet sie ebenfalls.
+  Den doppelten Kopf im Bericht nennen, nicht stillschweigend entfernen: das
+  Aufraeumen der Struktur ist ein eigener Auftrag, weil dabei Nummern und
+  Abschnitte gegenzupruefen sind.
   **Und die REIHENFOLGE der Abschnitte ist nicht stabil.** Eine parallele
   Sitzung kann `## Erledigt` UEBER `## Offen` ziehen (gemessen: Erledigt bei
   Position 508, Offen bei 3109). Ein Schnitt `text[offen:erledigt]` mit
