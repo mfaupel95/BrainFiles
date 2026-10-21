@@ -135,3 +135,22 @@ offen (WAL), und ein Kopieren waehrend des Checkpoints liefert Zufallsdaten.
 Merksatz: `sessions/request_dump_*.json` ist eine **andere** Sache (Debug-Dumps,
 Groessenordnung zig MB) und wird von keinem Prune beruehrt — wer die Zahl an
 `du -sh sessions` misst, misst die Dumps.
+
+## Wartungslauf 20.10.2026 — Stable-Kanal bereits aktuell
+
+`hermes update --yes` (losgeloest, Log logs/update-20261020-hermes-maintenance.log):
+EXIT=0, HEAD unveraendert d923a5eb (v0.22.2) — der **Stable**-Kanal zieht nur
+Releases, und v0.22.2 ist das juengste. origin/main steht 2646 Commits voraus
+(497 fix(gateway), 133 fix(cli), 128 fix(desktop), dep-Aenderungen in
+pyproject/uv.lock), die der Kanal nicht einspielt.
+
+Gateway wurde vom Lauf pausiert und sauber neu gestartet (PID 15000 -> 14064,
+alle Plattformen connected, Dashboard HTTP 200). `hermes doctor`: All checks
+passed. Nebenbefund repariert: `checkpoints/store/refs/` fehlte (git erkannte
+das bare Hilfsrepo nicht; `rev-parse --is-bare-repository` war false) —
+`mkdir refs/heads refs/tags`, Refs lagen unversehrt in packed-refs. Ohne den
+Fix waere jede Arbeitsstands-Sicherung gescheitert.
+
+Merksatz: "Rueckstand zu origin/main" ist bei diesem Projekt KEIN
+Update-Auftrag — massgeblich ist, ob der Kanal Releases oder die Dev-Linie
+folgt. Entscheidung Max offen: Kanal stable (Status quo) oder dev.

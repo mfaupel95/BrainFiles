@@ -36,6 +36,8 @@ Journal-Forensik (FIFO-Paarung, Kapitalkurve, Boersenzeugen, Geister-Regel).
 - Verdacht auf Geister-Positionen: Journal zeigt Positionen, die Boerse nicht
 - nach einem Boersen-/Handgriff-Abgleich verschwinden Buchpositionen
 - Vor einer Live-Empfehlung kapitalrelevanter Zahlen (excess, kill, ratsche)
+- "Journal leert sich / weniger Runden" - die GEGENrichtung: erst pruefen, ob
+  es die dokumentierte Bereinigung ist, bevor Datenverlust angenommen wird
 
 ## Prerequisites
 
@@ -139,6 +141,27 @@ cd /c/Users/faupe/Documents/BrainFiles/Agenten/Handel/xperp && \
   ../scanner/.venv/Scripts/python.exe scripts/phantom_scan.py --spur xperp --boerse
 ```
 
+### 3b. Position verschwand OHNE Journalzeile: die Boersen-History ist der Zeuge
+
+Gegenrichtung zum Geist: eine Position ist aus dem Buch weg, aber das Journal
+hat keinen Ausstieg - und die Spur meldet WEITER (z.B. SICHERHEITSLUECKE,
+weil sie den Stop nicht setzen kann), weil sie den Verkauf nicht kennt. Das
+ist der Hinweis, dass der Verkauf von aussen kam (Hand in der Boersen-App
+oder anderer Prozess), nicht von der Spur. Der Zeuge ist die Boersen-History
+(`/fills` bei Kraken-Futures), nicht das Buch.
+
+```bash
+# Kraken-Futures: /fills OHNE Query-Parameter (mit ?lastFillTime= -> authenticationError)
+cd /c/Users/faupe/Documents/BrainFiles/Agenten/Handel/nautilus_kraken && \
+  python -c "import kraken_futures as kf; d=kf._roh('/fills');\
+fl=[f for f in d.get('fills',[]) if f.get('symbol')=='PF_NEARUSD'];\
+[print(f.get('fillTime'),f.get('side'),f.get('size'),f.get('price'),f.get('realized_pnl')) for f in fl]"
+```
+
+Fills tragen `symbol` (nicht `instrument`). Der Verkauf zeigt Zeit, Menge,
+Preis und `realized_pnl` - damit ist der fehlende Ausstieg belegt und der
+Verlust (z.B. -9,63 USD) kann als `buchbereinigung` nachgebucht werden.
+
 ### 4. Kurve neu rechnen, bevor irgendetwas geschrieben wird
 
 Der Kill misst `ruecklauf = hoechststand - kum` auf der **realisierten
@@ -206,6 +229,26 @@ Danach die volle Spur-Suite (hier 184) und Bedingung 4 (Q: byte-gleich).
 - **Ein Boersenwert gehoert zur richtigen Zeile.** Eine kuerzere Position mit
   realizedPnl bezeugt NUR ihre eigene Schliessung - wer sie auf eine andere
   Zeile projiziert, erfindet ein Ergebnis.
+- **Eine Position, die aus dem Buch verschwindet ohne Journalzeile, aber an
+  der Boerse verkauft wurde, ist ein Buchhaltungs-Geist - und die Spur meldet
+  weiter, weil sie den Verkauf nicht kennt.** Wenn eine Spur eine Position
+  weiter ueberwacht (z.B. SICHERHEITSLUECKE), die an der Boerse laengst weg
+  ist, kam der Verkauf von aussen (Hand/anderer Prozess), nicht von der Spur.
+  Der Zeuge ist die Boersen-History (`/fills`), nicht das Buch. Es gibt
+  keinen Code-Weg, der eine Live-Position ohne Journalzeile entfernt -
+  verschwindet sie trotzdem, wurde sie manuell entfernt oder durch einen
+  unerkannten Prozess.
+- **Kraken-Futures `/fills` schlaegt mit Query-Parameter fehl.**
+  `?lastFillTime=` (und jeder Query-String) in der Signatur ->
+  authenticationError, obwohl der Schluessel gueltig ist. Ohne Parameter
+  liefert `/fills` die letzten 100 Fills (Zeitraum ~1 Monat). `/orders` ist
+  404, `/accountlogcsv` 401 (keine Berechtigung), `/orders/status` ohne
+  Parameter = nur offene Orders. Fills tragen `symbol`, nicht `instrument`.
+- **Die Hausfunktion nutzen statt die Signatur nachzubauen.** Ein manuell
+  nachgebauter signierter Aufruf (eigene HMAC-Konstruktion) kann
+  authenticationError liefern, waehrend der Haus-Weg (`kraken_futures.py`)
+  denselben Schluessel korrekt signiert - erst den Haus-Weg pruefen, bevor
+  ein Schluessel fuer tot erklaert wird.
 - **Der lokale `.bak` ist kein Zeuge.** Der Dauerlauf schreibt das Journal
   weiter; Bedingung-4-Kopie (Q:) sofort nachziehen und gegen DIESE
   verifizieren.
@@ -223,6 +266,35 @@ Danach die volle Spur-Suite (hier 184) und Bedingung 4 (Q: byte-gleich).
 - **Datum/Uhrzeit:** Die Session kann ueber Tage laufen - vor einer
   Zustandsaussage die Hostzeit pruefen (`Get-Date`), nicht den
   Sitzungsbeginn.
+- **Eine buchbereinigung mit ECHTEM Verlust ist kein neutraler Geist.** Das
+  vorhandene Werkzeug (z.B. `omniquant/buch_bereinigen.py`) bucht NEUTRAL
+  (Wert = Einsatz), weil es fuer Geister gebaut wurde - Positionen, die an der
+  Boerse NIE existierten. Eine Position, die an der Boerse WIRKLICH verkauft
+  wurde (realized_pnl aus `/fills`), bucht den ECHTEN Verlust: `wert_usd =
+  einsatz - verlust` in der Journalzeile UND `verluste_usd += verlust` in
+  zustand.json. Wer das neutrale Werkzeug auf einen echten Verkauf anwendet,
+  versteckt den Verlust vor der Kapitalkurve. Erst belegen (Boersen-History),
+  dann entscheiden: neutral (Geist) oder echter Verlust (real verkauft).
+- **Eine Spur mit 0 Runden in der Auswertung, aber Eintraegen im Journal, hat
+  ein Aktionsnamen-Problem, kein Datenproblem.** `runden_fuer()` paart je
+  Rechenweg feste Aktionsnamen (kauf/verkauf, eroeffnen/schliessen,
+  EINSTIEG/AUSSTIEG). Schreibt eine Spur andere Namen als ihr Rechenweg
+  erwartet (z.B. omniquant in BOT_SPUREN, aber EINSTIEG/AUSSTIEG statt
+  kauf/verkauf), meldet die Auswertung still 0 Runden - kein Fehler, keine
+  Meldung. Diagnose: `Counter(r.get('aktion') for r in zeilen)` gegen die
+  Aktionsmengen des Rechenwegs halten; passt nichts, bekommt die Spur einen
+  eigenen Rechenweg statt in den generischen zu fallen.
+- **"Journal leert sich" ist meist die dokumentierte Bereinigung, kein
+  Datenverlust.** `spur_buch.journal()` schreibt ausschliesslich mit `"a"`
+  (append) - ein Journal leert sich nie von selbst. Ein "leeres" Journal
+  (nur Kopfzeile, 80-254 B) ist eine Spur, die nie gehandelt hat, kein
+  Defekt. "Weniger Runden" in der Auswertung heisst: Phantom-Zeilen wurden
+  in `handelsjournal.verworfen-*.csv` verschoben (dokumentierte Forensik).
+  Diagnose-Reihenfolge, bevor ein Befund gemeldet wird: (1) existieren
+  `.verworfen-*.csv`-Dateien? (2) schreibt die Spur das Journal nur mit
+  `"a"`? (3) ist die Q:-Spiegelung byte-gleich? Erst wenn alle drei nein
+  sind, ist es ein echter Verlust. Die einzigen `"w"`-Schreiber sind
+  `replay.py` (Backtest-Ordner) und Tests (Temp-Ordner) - nie echte Spuren.
 
 ## Verification
 

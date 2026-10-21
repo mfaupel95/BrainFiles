@@ -137,9 +137,33 @@ sys.path.insert(0, VERB_DIR)
 try:
     import anfrage as verbesserer_anfrage                # noqa: E402
     import anwenden as verbesserer_anwenden              # noqa: E402
-except Exception:                                        # noqa: BLE001
+except Exception as _e:                                  # noqa: BLE001
     verbesserer_anfrage = None
     verbesserer_anwenden = None
+    # Nicht lautlos: ein kaputter Import schaltete den Anfrage-Typ bisher ab,
+    # ohne dass es jemand erfuhr (Review 09.10.2026). Der Grund bleibt hier
+    # stehen und wird beim Start gemeldet (verbesserer_import_melden).
+    VERB_IMPORT_FEHLER = "%s: %s" % (type(_e).__name__, _e)
+else:
+    VERB_IMPORT_FEHLER = None
+
+
+def verbesserer_import_melden():
+    """Meldet einmal beim Start, wenn verbesserer/ nicht geladen werden konnte.
+
+    Der Dauerlauf laeuft ohne den Selbstverbesserungs-Typ weiter - das bleibt
+    so -, aber der Ausfall steht jetzt im Log und im Bus. Wirft nie.
+    """
+    if not VERB_IMPORT_FEHLER:
+        return False
+    text = ("verbesserer/ nicht geladen (%s) - der Dauerlauf laeuft ohne "
+            "Selbstverbesserungs-Anfragen weiter" % VERB_IMPORT_FEHLER)
+    print(text, file=sys.stderr)
+    try:
+        ereignis.hinweis("handel/dauerlauf", text)
+    except Exception:                                    # noqa: BLE001
+        pass
+    return True
 
 PYTHON = os.path.join(HIER, "scanner", ".venv", "Scripts", "python.exe")
 
@@ -313,8 +337,15 @@ SPUREN = {
     #                 "skript": "squeeze_eth.py"},
     # Schattenarm squeeze_eth (03.10.2026, Auftrag Max "Schattenarm"):
     # dieselbe Regel fest auf ETH, Hauptarm unveraendert als Vergleich.
-    "supertrend": {"ordner": "supertrend", "waehrung": "USD",
-                  "skript": "handeln.py"},
+    # SUPERTREND AUS seit 18.10.2026 (Hermes, Auftrag Max "beide stilllegen"):
+    # Parameter-Suche (optimieren.py, 9 Kandidaten) fand keinen Kandidaten -
+    # die Spur ist von keinem Stop/Ziel-Wert behebbar, Live netto -0.11 %
+    # (10 Runden), Backtest +0.116 %/Runde grenzwertig. Journal bleibt als
+    # Vergleichsbuch stehen.
+    # WIEDER ANSCHALTEN: die Zeile hier re-einkommentieren und in
+    # supertrend/zustand.json "letzter_lauf" auf jetzt setzen.
+    # "supertrend": {"ordner": "supertrend", "waehrung": "USD",
+    #               "skript": "handeln.py"},
     "wavetrend": {"ordner": "wavetrend", "waehrung": "USD",
                  "skript": "handeln.py"},
     # MOSAIC (Mehr-Zeitrahmen-Preisaktion, angelegt 15.09.2026):
@@ -341,7 +372,7 @@ SPUREN = {
     #                  "skript": "spiegel_weit.py"},
     # MOONDEV_FUNDING (16.09.2026): Papierbuch auf den Funding-Extremen von
     # Hyperliquid. Die Zahlen liefert der geklonte Bot
-    # (Werkstatt/Repos/moon-dev-ai-agents, src/nice_funcs_hl.get_funding_rates),
+    # (Werkstatt/moon-dev-ai-agents, src/nice_funcs_hl.get_funding_rates),
     # gerufen in DESSEN venv - kein Sprachmodell, kein Orderpfad, kein Live.
     # Die Spur laeuft unter dem gemeinsamen venv, weil sie selbst nur stdlib
     # braucht; fremde Pakete bleiben im Bot. Siehe moondev_funding/README.md.
@@ -379,6 +410,15 @@ SPUREN = {
     # Orderweg (Robinhood Chain hat in diesem Haus keinen).
     "robinhood_radar": {"ordner": "robinhood_radar", "waehrung": "USD",
                         "skript": "handeln.py"},
+    # JEV_TRADER (13.10.2026, parallele Sitzung): Papier-Spur ueber das
+    # Block-Event-Log des jev-trader-Bots (Monad/Kuru). Liest die Datei,
+    # bucht geschlossene Roundtrips als Journal. PAPIER-FEST, kein Live-Pfad.
+    "jev_trader": {"ordner": "jev_trader", "waehrung": "USD",
+                   "skript": "handeln.py"},
+    # SCANNER_LLM (13.10.2026, parallele Sitzung): leichter Marktscanner +
+    # LLM-Qualitaetsfilter (llm_lokal). Papier, handel_erlaubt=false.
+    "scanner_llm": {"ordner": "scanner_llm", "waehrung": "USD",
+                    "skript": "handeln.py"},
     # OMNITRADE (30.09.2026, Auftrag Max "nur noch omnitrade auf kraken handel
     # erlaubt"): spiegelt die POSITION der Rust-Laeufe in Werkstatt/omnitrade
     # (Statusdatei, gelesen ueber omnitrade_bridge.py) in ein eigenes Buch. Der
@@ -440,6 +480,10 @@ SPUREN = {
                      "skript": "handeln.py"},
     "klassik_supertrend": {"ordner": "klassik_supertrend", "waehrung": "USD",
                            "skript": "handeln.py"},
+    # LLM-STUNDE (12.10.2026): drei Indikator-Kandidaten auf 1H, je Regelarm
+    # und LLM-Arm (sechs Straenge in laeufe/). Papier, kein Live-Zweig.
+    "llm_stunde": {"ordner": "llm_stunde", "waehrung": "USD",
+                   "skript": "handeln.py"},
     "moondev_marktlage": {"ordner": "moondev_marktlage", "waehrung": "USD",
                           "skript": "handeln.py"},
     # IV-WAND (17.09.2026): der Strike mit dem groessten Open Interest im
@@ -480,6 +524,25 @@ SPUREN = {
     # Sprachmodell, kein Wallet, kein Live.
     "moondev_sniper": {"ordner": "moondev_sniper", "waehrung": "USD",
                        "skript": "handeln.py"},
+    "fib_retrace": {"ordner": "fib_retrace", "waehrung": "USD",
+                    "skript": "handeln.py"},
+    # OMNI2 (Papierbuch auf den Rust-Laeufen des Forks, angelegt 14.10.2026,
+    # Auftrag Interpool): spiegelt die POSITION der omnitrade2-Laeufe in
+    # Werkstatt/omnitrade2/status/ in ein eigenes Buch. Muster ist die
+    # bestehende omnitrade-Spur (Agenten/Handel/omnitrade/), geteilt sind
+    # omnitrade_bridge.py und omnitrade_lauf.py.
+    # AUS DEM DAUERLAUF GENOMMEN (14.10.2026): omnitrade2 schreibt aktuell
+    # KEINE Statusdatei - sein CLI kennt nur 'backtest' und 'validate', keinen
+    # 'live'-Befehl. Der Statuspfad ist definiert
+    # (Werkstatt/omnitrade2/status/live.json), die Datei existiert aber nicht.
+    # Die Spur wuerde nur "keine Statusdatei" melden und nichts tun - sie
+    # erfindet keine Position. Sobald der Rust-Klon einen Live-Modus bekommt,
+    # kann die Spur hier re-einkommentiert werden.
+    # WIEDER ANSCHALTEN: die Zeile hier re-einkommentieren und in
+    # omnitrade2/zustand.json "letzter_lauf" auf jetzt setzen - sonst stellt
+    # der erste Zyklus offene Papierpositionen flach (herzschlag_alt).
+    # "omnitrade2": {"ordner": "omnitrade2", "waehrung": "USD",
+    #                "skript": "handeln.py"},
 }
 
 # Spuren, die NUR der Basislauf fuehrt: der Spiegel hat in jeder Risikostufe
@@ -521,12 +584,42 @@ TAKT_MAX_MINUTEN = 15
 # Der Orderweg auf Kraken Futures ist gebaut (omniquant/kraken_perp.py +
 # live_perp.py, Hebel 6 als Sizing-Regel). Bindende Grenze ist die freie
 # Margin im flex-Konto (mindest_guthaben_usd 31).
-AUTO_FREIGABE = ("xperp", "scanner", "mosaic", "kraken",
+# SCANNER AM 13.10.2026 ENTZOGEN (Auftrag Max: "Scanner zurueckbauen", T-322):
+# keine neuen Einstiege/Freigaben mehr. Die Spur laeuft weiter und laesst ihre
+# offenen Live-Positionen mit Boersen-Stop auslaufen; nur die Auto-Freigabe
+# entfaellt. handel_erlaubt und freigabe.erfuellt stehen in scanner/wachen.json
+# auf false.
+# ORBK AM 14.10.2026 ENTZOGEN (Auftrag Max 'letzte Aufgabe der
+# Handelsauswertung fertig machen', Befund 13.10.): Punktebuch ohne Einsatz,
+# Kosten 1,2 %/Runde gegen f_max +0,06 % - die Live-Freigabe vom 12.10. ist
+# zurueckgenommen (handel_erlaubt=false, freigabe.erfuellt=false in
+# orbk/wachen.json). orb bleibt live (OKX, 0,1 %/Runde).
+# ORBK AM 14.10.2026 WIEDER LIVE (Auftrag Max 'Orbk live schalten'):
+# ueberstimmt die Ruecknahme vom selben Tag. handel_erlaubt=true,
+# freigabe.erfuellt=true in orbk/wachen.json.
+#
+# STAND 15.10.2026 (Auftrag Max 'Ja autofreigabe fuer live handel komplett'):
+# Die Liste ist die Abwicklung der Live-Spuren, KEIN Schalter. Ein Eintrag
+# oeffnet ein Fenster nur, wenn NUR noch das Fenster fehlt (nur_fenster_fehlt,
+# genau ein Grund) - handel_erlaubt, Freigabe, Bedingung 1/5 muessen offen
+# sein. Gemessen heute mit spuren_stand + Wachten: 11 der 14 Eintraege haben
+# handel_erlaubt=true UND einen Live-Pfad im Code (xperp, orb, kraken, mosaic,
+# omniquant, nautilus_kraken, moondev_listingarb, moondev_marktlage,
+# moondev_signalwelle, omnitrade_futures, moondev_topmovers). Keine Spur mit
+# Live-Pfad fehlt. Drei Eintraege sind derzeit WIRKUNGSLOS, weil ihre Wachen
+# sperren: orbk (handel_erlaubt=false seit 14.10., f_max +0,06 % gegen
+# 1,2 % Kosten), trendwende_btc (handel_erlaubt=false), liq_wand
+# (handel_erlaubt=false, und orderweg() findet keinen Orderpfad). Sie
+# bleiben stehen: sobald Max die Schalter umlegt, braucht es keinen zweiten
+# Eingriff an dieser Stelle. moondev_topmovers steht ebenfalls drin, hat aber
+# laut Wachen handel_erlaubt=true und keinen Orderpfad - der Eintrag wartet
+# auf den Live-Pfad. SCANNER fehlt hier seit 13.10. absichtlich (T-322).
+AUTO_FREIGABE = ("xperp", "mosaic", "kraken",
                  "moondev_listingarb", "moondev_topmovers",
                  "trendwende_btc", "liq_wand", "omniquant",
                  "moondev_marktlage", "nautilus_kraken",
-                 "omnitrade_futures",
-                 "moondev_signalwelle")
+                 "omnitrade_futures", "moondev_signalwelle",
+                 "orb", "orbk")
 AUTO_FREIGABE_STUNDEN = 12
 
 
@@ -809,21 +902,27 @@ class Lauf:
         # (scanner ab 21.09. 19:22 in jedem Zyklus).
         umgebung = zyklus_umgebung(modus, umgebung)
 
+        # Popen statt run: bei Timeout muss der GANZE Prozessbaum enden. run()
+        # beendet nur den direkten Kindprozess; dessen Enkel bleiben als
+        # Waisen stehen und laufen in jedem Zyklus weiter (am 12.10.2026 wuchs
+        # so die Zahl der Scanner-Prozesse auf 768).
+        p = subprocess.Popen([python, skript, modus], cwd=ordner,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             text=True, env=umgebung,
+                             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         try:
-            p = subprocess.run([python, skript, modus], cwd=ordner,
-                               capture_output=True, text=True, timeout=TIMEOUT_S,
-                               env=umgebung,
-                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
-        except subprocess.TimeoutExpired as e:
-            # FIXED: Timeout-Exception nicht mehr fatal
-            protokoll("%s TIMEOUT (exceeded %ds limit)" % (spur, TIMEOUT_S))
+            out, err = p.communicate(timeout=TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)],
+                           capture_output=True)
+            p.communicate()
+            protokoll("%s TIMEOUT (exceeded %ds limit), Prozessbaum beendet" % (spur, TIMEOUT_S))
             return kennung, 124, "TIMEOUT: Handelslogik antwortet nicht"
         except Exception as e:
-            # Andere Subprocess-Fehler (OSError, etc.)
             protokoll("%s subprocess ERROR: %s" % (spur, e))
             return kennung, 1, str(e)
-        
-        return kennung, p.returncode, (p.stdout or "") + (p.stderr or "")
+        return kennung, p.returncode, (out or "") + (err or "")
+
 
     def zyklus(self):
         self.zyklen += 1
@@ -1357,6 +1456,7 @@ def main():
               % (a.risiko, gelesen[0] if gelesen else "?"))
         return 0
     sperre.schreibe(sperr_datei)
+    verbesserer_import_melden()
 
     try:
         with ereignis.lauf("handel/dauerlauf"):

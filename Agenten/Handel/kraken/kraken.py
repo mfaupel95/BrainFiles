@@ -314,6 +314,34 @@ def stop_setzen(paar, menge, stop_preis, echt=False, leverage=None,
                       echt=echt, **felder)
 
 
+def take_profit_setzen(paar, menge, tp_preis, echt=False, leverage=None,
+                   close_txid=None):
+    """Take-Profit (Ziel) setzen - eine VERKAUFS-Triggerorder (take-profit-market).
+
+    Long-only wie stop_setzen: Kraken-Spot kann kein Short halten, das Ziel
+    eines Long ist immer ein Verkauf. `take-profit-market` loest eine
+    MARKET-ORDER aus, sobald der letzte Handelspreis den triggenden
+    `tp_preis` erreicht - anders als ein Limit raeumt es damit die Position
+    garantiert ab (das Ziel soll raus, kein Rest bleiben). Wird der Trigger
+    aufgerundet (preis_gerundet richtung='auf'), triggert die Order fruehestens
+    beim Ziel - nie davor, das Risiko wird nicht kleiner verkauft als gerechnet.
+
+    Euristisch identisch zu stop_setzen: preis_gerundet, _add_order, und
+    close_txid fuer eine MARGIN-Position. echt=False laesst Kraken die Order
+    nur durchrechnen (validate) - sie landet nicht im Buch.
+    """
+    preis = preis_gerundet(paar, tp_preis, "auf")
+    felder = {}
+    if leverage is not None:
+        felder["leverage"] = str(leverage)
+    if close_txid:
+        felder["close[ordertxid]"] = close_txid
+        felder["close[ordertype]"] = "take-profit-market"
+        felder["close[price]"] = preis
+    return _add_order(paar, "sell", menge, "take-profit-market", preis=preis,
+                      echt=echt, **felder)
+
+
 def offene_orders():
     """Alle offenen Orders des Kontos (lesend, /0/private/OpenOrders).
 

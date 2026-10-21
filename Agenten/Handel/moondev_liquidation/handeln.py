@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `liquidation_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` summiert
+Der Agent `liquidation_agent` aus `Werkstatt/moon-dev-ai-agents` summiert
 die Zwangsschluesse der letzten Minuten getrennt nach Seite (long/short),
 vergleicht sie mit dem vorigen Stand und laesst ein Sprachmodell urteilen -
 genau drei Zeilen: BUY, SELL oder NOTHING, ein Grund, eine Confidence. Sein
@@ -227,10 +227,10 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if a.modus == "live":
-        print("Live waere gesperrt durch: kein Live-Zweig in dieser Spur "
-              "(Papier). Der Fremd-Agent handelt mit echten Schluesseln - "
-              "dieser Haus-Lauf bucht nur Papier.")
-        return 0
+        # Live-Pfad ueber spur_buch (sperren_live + orderweg). Ist die
+        # Sperrenkette zu, faellt der Lauf auf Papier zurueck und nennt den
+        # Grund - derselbe Fallsafe wie die anderen Buch-Spuren.
+        return buch.zyklus(HIER, daten_holen, signal, "live", "handel/moondev_liquidation")
     # Der Name im Bus-Journal steht WOERTLICH hier: die Anbindung oeffnet der
     # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur die
     # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen

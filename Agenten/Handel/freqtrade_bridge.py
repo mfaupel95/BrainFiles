@@ -99,7 +99,10 @@ def bots(pfad=None):
                     "strategie": str(b.get("strategie") or "?"),
                     "zeitrahmen": str(b.get("zeitrahmen") or "?"),
                     "container": str(b.get("container") or ""),
-                    "max_open_trades": b.get("max_open_trades")})
+                    "max_open_trades": b.get("max_open_trades"),
+                    # Haus-Spur hinter einem HausSpur-Bot (seit 10.10.2026),
+                    # leer bei den Moon-Dev-Bots - der Leitstand zeigt sie an.
+                    "hausspur": str(b.get("hausspur") or "")})
     return aus
 
 

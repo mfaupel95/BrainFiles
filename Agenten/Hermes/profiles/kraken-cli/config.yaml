@@ -1,10 +1,10 @@
 model:
   default: meituan/longcat-2.5-preview:free
   provider: nous
-_config_version: 50
+_config_version: 51
 terminal:
   backend: local
-  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\kraken-cli
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\kraken-cli
 platforms:
   photon:
     enabled: false
@@ -23,10 +23,10 @@ delegation:
   reasoning_effort: medium
 mcp_servers:
   # Kraken native MCP - nur sichere Service-Gruppen, kein live trading, kein dangerous.
-  # Binary: Werkstatt/Repos/kraken-cli/target/release/kraken.exe (selbst kompiliert).
+  # Binary: Werkstatt/kraken-cli/target/release/kraken.exe (selbst kompiliert).
   # Signal-Ausgabe: nur nach Papier-/Demo-Nachweis in Handel/ promoten.
   kraken-native:
-    command: O:\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
+    command: O:\Werkstatt\kraken-cli\target\release\kraken.exe
     args:
       - mcp
       - -s
@@ -34,3 +34,6 @@ mcp_servers:
     env:
       KRAKEN_PAPER_MODE: "true"
     enabled: true
+onboarding:
+  seen:
+    tool_progress_prompt: true

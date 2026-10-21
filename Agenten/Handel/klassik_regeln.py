@@ -713,6 +713,38 @@ def _kerzen(inst, bar, anzahl):
     return k
 
 
+
+def _positionierung_stuetzt(insts, richtung, w):
+    """Positionierungs-Urteil ueber die Instrumente einer klassik-Spur.
+
+    Klassik-Spuren handeln mehrere Instrumente (z.B. BTC/ETH/SOL-USDT-SWAP).
+    Ein Signal bezieht sich auf ein konkretes Instrument, aber wie das
+    Instrument zum Zeitpunkt des Signals bestimmt wird, wissen nur die
+    Spuren selbst. Hier wird das Urteil je Instrument gebildet und als
+    "stuetzt" nur gewertet, wenn MEHRHEITLICH stuetzt - konservativ bei
+    mehreren Paaren. Quelle okx_positionierung.py, kein Schluessel, fail-soft.
+    """
+    import okx_positionierung as _pos
+    takt = str(w.get("kerzen_zeitrahmen", "4H"))
+    urteil = {"quellen": 0, "stuetzt": False, "je_inst": {}}
+    stuetzt, gesamt = 0, 0
+    for inst in insts:
+        # Aus BTC-USDT-SWAP -> BTC
+        ccy = inst.split("-")[0]
+        u = _pos.stuetzt_richtung(
+            richtung, ccy, takt,
+            ls_abfall_min=float(w.get("positionierung_ls_abfall_min", 0.02)),
+            oi_abbau_min=float(w.get("positionierung_oi_abbau_min", 0.0)),
+            takervolumen_min=float(w.get("positionierung_taker_min", 1.0)))
+        urteil["je_inst"][inst] = u
+        if u.get("quellen", 0) > 0:
+            gesamt += 1
+            if u["stuetzt"]:
+                stuetzt += 1
+    urteil["quellen"] = gesamt
+    urteil["stuetzt"] = bool(gesamt) and stuetzt > gesamt / 2
+    return urteil
+
 def bauen(name, ordner=None):
     """(quelle, signal, ausstieg, preis_fuer) fuer die Spur `name`.
 
@@ -748,10 +780,29 @@ def bauen(name, ordner=None):
             print("  %s: Regel nicht rechenbar (%s)" % (name, e), file=sys.stderr)
             return None
         # nur_long (Auftrag Max 09.10.2026): Short-Signale eroeffnen nichts.
-        # Der Ausstieg (Gegensignal/Kanal) rechnet ueber `aus`, nicht ueber
-        # diese Funktion, und bleibt davon unberuehrt. Standard: aus.
         if s == "short" and w.get("nur_long"):
             return None
+        # Fibonacci-Retracement-Filter (10.10.2026): wenn gesetzt, wird das
+        # Signal nur akzeptiert, wenn der Markt im richtigen Retracement-Level
+        # steht (Einstieg bei >=50% Retracement). Sonst kein Handel.
+        if s and w.get("fibonacci_filter"):
+            try:
+                import fibonacci_retracement as _fib
+                _fib_richtung, _, _fib_grund = _fib.signal(k, richtung=s)
+                if _fib_richtung != s:
+                    return None  # Fibonacci-Filter verwirft das Signal
+            except Exception:                                # noqa: BLE001
+                pass  # Filter defekt => Signal trotzdem durchlassen
+        # POSITIONIERUNGS-FILTER (21.10.2026, Auftrag Max): die OKX-Rubik-
+        # Reihen muessen die Signalrichtung stuetzen. Quelle
+        # okx_positionierung.py, kein Schluessel, fail-soft. Standard AUS.
+        if s and w.get("positionierung_filter"):
+            insts = w.get("instrumente") or ["BTC-USDT-SWAP"]
+            urteil = _positionierung_stuetzt(insts, s, w)
+            if urteil.get("quellen", 0) > 0 and not urteil.get("stuetzt"):
+                print("  %s: Positionierung stuetzt %s nicht (%s)"
+                      % (name, s, urteil), file=sys.stderr)
+                return None
         return s
 
     def ausstieg(p, w):

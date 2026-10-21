@@ -1,3 +1,9 @@
 description: 'jev-trader-Repo-Bot: Monad-Marktmacher auf Kuru (MON-USDC), Bun-Server
-  mit Snapshot und SSE in Werkstatt/Repos/jev-trader'
+  mit Snapshot und SSE in Werkstatt/jev-trader'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    sectionId: sec-mvgqbvqt-tnilh
+    sectionName: AI TRADING
+_ui_meta_revisions:
+  hermes-bots: 1

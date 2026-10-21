@@ -67,9 +67,15 @@ prompt_caching:
 memory:
   memory_char_limit: 220000
   user_char_limit: 137500
-_config_version: 50
+_config_version: 51
 onboarding:
   seen:
     tool_progress_prompt: true
 command_allowlist:
+  - force kill processes (taskkill /F)
   - script execution via -e/-c flag
+platforms:
+  photon:
+    enabled: false
+display:
+  busy_input_mode: queue

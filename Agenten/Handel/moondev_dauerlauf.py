@@ -3,7 +3,7 @@ MoonDev-Agenten an den Haus-Dauerlauf anbinden (17.09.2026, Max).
 
 Was das ist
 -----------
-Die geklonten Moon-Dev-Agenten (Werkstatt/Repos/moon-dev-ai-agents/src/agents)
+Die geklonten Moon-Dev-Agenten (Werkstatt/moon-dev-ai-agents/src/agents)
 sind eigenstaendige Endlos-Loops mit eigener main() - KEINE Haus-Spuren mit
 Buch. Dieses Modul faehrt sie als Kindprozesse weiter, damit sie ueberleben:
 
@@ -43,7 +43,7 @@ from datetime import datetime
 from pathlib import Path
 
 HIER = Path(__file__).resolve().parent                      # Agenten/Handel
-REPO = (HIER / ".." / ".." / "Werkstatt" / "Repos" / "moon-dev-ai-agents").resolve()
+REPO = (HIER / ".." / ".." / "Werkstatt" / "moon-dev-ai-agents").resolve()
 
 # WICHTIG: Die Agenten brauchen Pakete aus dem REPO-EIGENEN venv (requests,
 # pandas, openai ...) - sys.executable ist hier der AUFRUFER-Interpreter
@@ -87,14 +87,33 @@ def _repo_env() -> dict[str, str]:
         pass
     return werte
 
-# Der LOKALE Weg fuer Agenten, die ihre Sprachmodell-Antwort ueber das
-# OpenAI-SDK holen (Zweig: "deepseek" in AI_MODEL): der Ollama-eigene
-# /v1-Adapter liefert bei Denk-Modellen LEEREN content (gemessen
-# 24.09.2026: finish_reason=length, Text im Feld reasoning). Die Bruecke
-# ruft Ollama stattdessen NATIV mit think:false auf.
-BRUECKE_PORT = 11499
-BRUECKE_BASIS = "http://127.0.0.1:11499/v1"
-BRUECKE_WERKZEUG = (HIER / ".." / "Werkzeuge" / "ollama-openai-bruecke.py").resolve()
+# Der LOKALE Weg. Ollama wurde am 11.10.2026 deinstalliert; die Haus-Laufzeit
+# ist jetzt der verwaltete llama-server auf 127.0.0.1:18434. Der spricht NUR
+# OpenAI - `/api/chat`, `/api/tags`, `/api/version` antworten dort mit HTTP 404
+# (nachgemessen 12.10.2026). Die Agenten rufen aber genau Ollamas native Form.
+# Deshalb steht hier jetzt ein Adapter, der Ollama-nativ annimmt und an
+# llama-server weiterreicht - das Gegenstueck der alten Bruecke.
+BRUECKE_PORT = 11498
+BRUECKE_BASIS = "http://127.0.0.1:11498/v1"
+BRUECKE_WERKZEUG = (HIER / ".." / "Werkzeuge" / "llamacpp-ollama-bruecke.py").resolve()
+
+def _bruecke_laeuft(port: int = BRUECKE_PORT) -> bool:
+    """Lauscht ueberhaupt jemand auf dem Port?
+
+    Der Unterschied zu _bruecke_gesund ist die Kernreparatur vom 12.10.2026:
+    "gesund" fragt die GEGENSTELLE, "laeuft" fragt den EIGENEN Port. Vorher
+    entschied nur "gesund" - und als die Gegenstelle (Ollama) fehlte, konnte
+    die Antwort nie gesund werden. Jeder Zyklus startete eine weitere Bruecke,
+    keine wurde je beendet: 776 Prozesse, 7,4 GB, Commit-Limit am Anschlag.
+    Wer nur nach "laeuft" entscheidet, startet hoechstens EINE.
+    """
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=2.0):
+            return True
+    except OSError:
+        return False
+
 
 def _bruecke_gesund(port: int = BRUECKE_PORT, frist: float = 5.0) -> bool:
     """Antwortet die OpenAI-Bruecke auf Ollama?
@@ -117,8 +136,15 @@ def _bruecke_sicherstellen() -> str:
     wird nicht als Kind gefuehrt (ein Kind stuerbe beim Aufraeumen des Treibers
     mit und muesste jeden Zyklus neu starten).
     """
-    if _bruecke_gesund():
-        return ""
+    # ERST den Port fragen, dann die Gegenstelle. Ein belegter Port laesst
+    # keinen zweiten Prozess zu - ein Start waere sinnlos und erzeugt genau
+    # die Schwemme, die am 12.10.2026 776 Prozesse auf den Rechner brachte.
+    if _bruecke_laeuft():
+        if _bruecke_gesund():
+            return ""
+        return ("Bruecke laeuft auf Port %d, meldet aber ungesund - kein "
+                "zweiter Start (der Port ist belegt). Gegenstelle pruefen: "
+                "llama-server auf 127.0.0.1:18434." % BRUECKE_PORT)
     if not BRUECKE_WERKZEUG.exists():
         return ("WARNUNG: Bruecke fehlt (%s) - Sprachmodell-Aufrufe ueber den "
                 "OpenAI-Zweig scheitern." % BRUECKE_WERKZEUG)
@@ -165,9 +191,12 @@ def _bruecke_sicherstellen() -> str:
 # (18.09.2026 mit einer echten Anfrage geprueft: HTTP 200, Antwort "OK").
 NOUS_BASIS = "https://inference-api.nousresearch.com/v1"
 NOUS_MODELL = "deepseek/deepseek-v4-flash-0731"
-OLLAMA_TAGS = "http://127.0.0.1:11434/api/tags"
-LOKAL_STANDARD = "qwen35-8k:latest"          # im Store vorhanden (Hausstandard)
-LOKAL_BASIS = "http://127.0.0.1:11434/v1"
+OLLAMA_TAGS = "http://127.0.0.1:11498/api/tags"
+# Der Adapter, nicht Ollama: llm_lokal() haengt "/api" und "/chat" an, also
+# muss hier die nackte Basis ohne /v1 stehen. Mit dem alten "/v1" entstand
+# ".../v1/api/chat" - eine Adresse, die es nie gab.
+LOKAL_STANDARD = "gemma-4-E4B-it-OBLITERATED-Q8_0"   # Hausmodell der llama-server-Laufzeit
+LOKAL_BASIS = "http://127.0.0.1:11498"
 
 def _nous_schluessel() -> str:
     """NOUS_API_KEY aus der Prozessumgebung, sonst aus HKCU\\Environment.
@@ -249,8 +278,12 @@ AGENTEN = {
         "cmd": [REPO_PYTHON, "-m", "src.agents.new_or_top_agent"],
         "cwd": str(REPO),
     },
+    # kraken: seit Fork-Commit 0cb95b7 (04.10.2026) "from src.agents.
+    # zyklus_watchdog import ..." - als Skriptpfad dieselbe Falle wie oben
+    # (ModuleNotFoundError: No module named 'src', Neustart im Kreis bis
+    # 09.10.2026). Deshalb ebenfalls -m.
     "kraken": {
-        "cmd": [REPO_PYTHON, str(REPO / "src" / "agents" / "kraken_agent.py")],
+        "cmd": [REPO_PYTHON, "-m", "src.agents.kraken_agent"],
         "cwd": str(REPO),
     },
     # sniper_agent (19.09.2026): scannt neue Solana-Launches ueber die
@@ -364,12 +397,18 @@ def _prozesse() -> list[dict]:
     """
     if os.name != "nt":
         return []
-    skript = ("Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,"
+    # UTF-8 auf BEIDEN Seiten: Windows PowerShell 5 schreibt umgeleitet in der
+    # OEM-Codepage (cp850), Python las cp1252 und brach am ersten Umlaut einer
+    # Kommandozeile ab (Byte 0x81) - stdout None, Liste leer, Aufraeumen
+    # uebersprungen ("Prozessliste nicht lesbar", gefunden 11.10.2026).
+    skript = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8; "
+              "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,"
               "CreationDate,Name,CommandLine | ConvertTo-Json -Compress")
     try:
         p = subprocess.run([_powershell_pfad(), "-NoProfile", "-NonInteractive",
                             "-Command", skript],
-                           capture_output=True, text=True, timeout=60,
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=60,
                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     except Exception:                                          # noqa: BLE001
         return []
@@ -475,6 +514,9 @@ class MoonDevDauerlauf:
         umgebung["HANDEL_RISIKO"] = self.risiko
         # Haus-Ordner fuer CSV-Export der Agenten (Emppfehlungen/Urteile).
         umgebung["MOONDEV_HAUS_DIR"] = str(HIER)
+        # stdout geht in eine Datei - ohne das Flag puffert Python 8 KB, und ein
+        # wortkarger Agent (kraken) schreibt stundenlang keine Zeile ins Log.
+        umgebung["PYTHONUNBUFFERED"] = "1"
         # PFLICHT: die Agenten drucken Emoji (print_fancy). Ueber eine PIPE
         # (subprocess.PIPE, kein echtes Konsolenfenster) faellt Python ohne
         # dieses Flag auf die Windows-ANSI-Codepage zurueck und stirbt beim

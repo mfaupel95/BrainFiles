@@ -8,7 +8,7 @@
 | `51603` | Order unbekannt | Kennung formal gueltig, aber die Order existiert nicht / liegt ausserhalb des Orderhistorie-Fensters. |
 | `51008` | zu wenig Guthaben | Quote-Waehrung des Paares ist leer (0 USDT bei gefuelltem USDC). **Beim VERKAUF ist der Code meist die Folge einer Position, die es an der Boerse nie gab** (Buch-Geist: `modus: live` im Journal, keine Order in der Historie) — dann ist nicht die Kontolage, sondern der Geist zu pruefen (siehe Deutung unten). |
 | `50119` | Key existiert nicht (in dieser Umgebung) | **Haeufigster Grund ist der falsche HOST**, nicht ein toter Schluessel: der Schluessel kam ueber den Registry-Rueckfall, der Host aber nicht (nur `os.environ`) — ein EEA-Schluessel gegen `www.okx.com` gibt genau diesen Code. Erst die Basis pruefen, dann den Schluessel. |
-| `50101` | Key passt nicht zur Umgebung | Basis (www vs eea) oder Demo-Modus (`OKX_DEMO`/`OKX_SIMULATED`) — dieselbe Wurzel wie `50119`. |
+| `50101` | Key passt nicht zur Umgebung | **Erste Ursache bei einem DEMO-Konto: der Kopf `x-simulated-trading: 1` fehlt** — ein Demo-Schluessel gegen `eea.okx.com` ohne diesen Kopf gibt genau `50101`, obwohl Host und Schluessel stimmen. Erst danach Basis (www vs eea) pruefen (`OKX_DEMO`/`OKX_SIMULATED`) — dieselbe Wurzel wie `50119`. |
 | `50124` | keine Handelsberechtigung FUER DIESEN MARKT | Meist der falsche NAMENSRAUM desselben Marktes: die Spur schickt `XAU-USDT-SWAP` (`instType=SWAP`), handelbar ist nur der XPERP-Kontrakt (`instType=FUTURES`, `XAU-USD_UM_XPERP-…`). `perm`/`acctLv` sind dabei in Ordnung. |
 | `51015` | `instId` passt nicht zu `instType` | Falscher `instType` beim Nachweis — der XPERP-Kontrakt ist `FUTURES`, nicht `SWAP`. |
 | `1` | generisch „All operations failed" | **Meist KEIN freies Guthaben**: `availEq` der Margin-Waehrung ist 0, obwohl die Spur in ihrem eigenen Modell Platz sieht. Eine CROSS-Margin-Position frisst das GESAMTE Konto, nicht nur ihre eigene Margin — das eigene `max_margin_gesamt_usd` zaehlt nur das eigene Buch und sieht eine fremde Cross-Position nicht. |
@@ -23,6 +23,48 @@ die Kontakt-Basis, ist der Prozess in Ordnung; kommt die globale, hat der Aufruf
 Schluessel nur ueber die Registry gefunden. Den Host im Fehlertext MITNENNEN (welcher
 angesprochen wurde und welcher in der Registry steht), sonst sucht der Naechste wieder
 beim Schluessel.
+
+## Demo-Konto (x-simulated-trading): der Kopf entscheidet, nicht der Schluessel
+
+Ein Demo-Schluessel wird NUR mit dem Kopf `x-simulated-trading: 1` angenommen.
+Ohne ihn antwortet OKX `50101 APIKey does not match current environment` — der
+Text klingt nach falschem Host oder falschem Key, ist aber der fehlende Kopf.
+Gemessene Matrix (EEA-Demo, signiertes `/account/balance`):
+
+| Host | `x-simulated-trading` | Ergebnis |
+|---|---|---|
+| `eea.okx.com` | `1` | `code=0` — gueltig |
+| `eea.okx.com` | fehlt | `50101` |
+| `www.okx.com` | `1` | `50119 API key doesn't exist` |
+
+**Reihenfolge bei `50101`/`50119`: erst den Demo-Kopf pruefen, dann Host, dann
+Schluessel.** Wer hier mit dem Schluessel anfaengt, laesst den Nutzer drei Mal
+neue Keys anlegen, ohne dass sich etwas aendert.
+
+Was ein EEA-Demo-Konto tatsaechlich handeln darf (gemessen: `acctLv=2`,
+`perm=read_only,trade`, `posMode=net_mode`, `totalEq` ~474k):
+
+| Instrument | `set-leverage` | Order |
+|---|---|---|
+| datiertes Future `BTC-USD_UM-261030` (`FUTURES`) | `code=0` | **fuellt** (`code=0`, `avgPx` gesetzt, Margin gebucht) |
+| `BTC-USDT-SWAP`, `BTC-USD-SWAP`, `ETH-USDT-SWAP` (`SWAP`) | `code=0` | `50124 no trading permission for the market` |
+| `BTC-USD_UM_XPERP-310404` | `51001` | Instrument existiert auf diesem Konto nicht |
+
+Zwei Folgen fuer eine Adapter-Verifikation:
+
+- **`set-leverage` ist kein Handelsbeweis** — es antwortet auf `SWAP` mit 0,
+  waehrend die Order dort `50124` gibt. Nur die Order selbst (oder die
+  signiert/unsigniert-Differenz bei `51001`) beweist etwas.
+- **Das Demo-Orderbuch datierter Futures ist unbrauchbar.** Gemessen:
+  `bid 109,4` gegen `ask 67.768,9` bei BTC. Kaeufe fuellen gegen den Ask,
+  VERKAEUFE haengen dauerhaft in `state=live, accFillSz=0` (market und limit),
+  weil kein Gebot da ist. Bevor man die Ausstiegslogik fuer kaputt erklaert:
+  `/api/v5/market/books?instId=…&sz=5` lesen. Ein Verkaufslimit ausserhalb des
+  Preisbands gibt `51006 Order price is not within the price limit` (Band im
+  Fehlertext mitgeliefert) — der untere Rand ist NICHT handelbar.
+  Konsequenz: eine Demo-Position, die sich nicht verkaufen laesst, mit einem
+  `order-algo`-Stop (`ordType=conditional`, `reduceOnly=true`) decken und den
+  Zustand melden; Stop-Annahme und -Storno funktionieren auf dem Demo-Konto.
 
 ## Beleg-Rezept (signiert, rein lesend)
 

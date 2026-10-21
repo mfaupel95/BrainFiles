@@ -3,7 +3,7 @@ id: 20260830-handelsbots
 title: 'Handelsbots auf OKX'
 tags: [handel]
 created: 2026-08-24
-updated: 2026-09-02
+updated: 2026-10-11
 related: [20260902-handelsregeln, 20260830-schutzregeln]
 summary: 'Gemessene Ergebnisse der OKX-DCA-Bots und welche Stellschraube tatsächlich wirkt.'
 ---
@@ -112,6 +112,82 @@ python dca_auswertung.py --tage 30          # kurzes Fenster zum Vergleich
 Die Bot-Werte stehen in `KONFIG` oben im Skript und lassen sich alle aus
 `dca_get_order_details` ablesen. Verwandt: [[Verbindungen]] (OKX Agent Trade
 Kit als MCP-Server), [[Marktlage-August-2026]], [[Projekte]].
+
+## Haus-Spuren als Freqtrade-Bots (seit 10.10.2026)
+
+17 Haus-Spuren laufen zusätzlich zu den drei Moon-Dev-Bots als
+Freqtrade-Dry-Run-Bots: 11 × `klassik_*`, `macd_mtf`, `squeeze`, `wavetrend`,
+`supertrend`, `trendwende_btc`, `orb` (Ports 8084–8100, Liste in
+`Agenten/Handel/freqtrade/bots.json`). Grundlage ist **eine** Strategie
+`HausSpur`, die die Regel nicht nachbaut, sondern über
+`Agenten/Handel/hausspur_regeln.py` aus dem Haus importiert. `Agenten/` hängt
+dafür nur lesend unter `/agenten` im Container. Gerechnet wird je Kerze auf
+demselben Fenster wie im Haus (`kerzen_anzahl`), Futures, Hebel 1.
+
+- **Bot ergänzen:** Spur in `ALLE` von `hausspur_regeln.py`, Eintrag in
+  `bots.json`; der Test `Manifest` in `freqtrade/tests/test_bots_hausspur.py`
+  prüft Zeitrahmen und Paare gegen die `wachen.json`.
+- **Urteil:** `python bots.py backtest <bot>` schreibt Runden, Netto % und
+  Rücklauf nach `freqtrade/urteile.json`. Der Leitstand-Reiter **FreqTrade**
+  (Strg+8) zeigt es neben jedem Bot. Viele Bots heißt nicht viel Kante: erster
+  Probelauf `klassik-ema`, 4h, 21 Monate: 227 Runden, −30,5 %. Das Ziel läuft
+  über `custom_roi`, damit der Backtest zum Zielpreis schließt wie das Haus;
+  mit `custom_exit` waren es geschönte −25,7 % (Ziel erst zum Kerzenschluss).
+- **Container sieht nur** `Agenten/Handel` und `Agenten/Bus` (read-only); alle
+  Handel-Ordner, die keine Spur braucht, sind per tmpfs überdeckt — dort liegen
+  fremde Zugänge.
+- **Schnellere Strategien (Phase B)** ersetzen eine Spur erst, wenn
+  `freqtrade/gleichheit.py` auf derselben Kerzenreihe keine Abweichung zum
+  Adapter meldet. Erste B-Fassung: `HausSpurKlassikDonchianTrend` (seit
+  11.10.2026). Knackpunkt war die Haus-EMA: Sie wird je Kerze im 400er-Fenster
+  neu gerechnet, gestartet mit dem SMA der ersten n Kerzen. Eine durchgehende
+  EMA weicht davon ab.
+
+### Walk-Forward `klassik-donchian-trend` (11.10.2026): Haus-Wachen bleiben
+
+Optimiert wurden Einstiegs- und Ausstiegskanal, EMA-Länge, EMA-Steigung und
+Stop, mit `python freqtrade/walkforward.py` und der Strategie
+`HausSpurDonchianTrendOpt`. Gerechnet in 3 rollenden Falten: je 8 Monate
+lernen, dann 4–5 Monate prüfen, 300 Epochen, Sharpe auf Tagesbasis. Daten:
+4h-Futures BTC/ETH/SOL.
+
+| Falte | Vorgabe gelernt | Optimiert gelernt | Vorgabe geprüft | Optimiert geprüft |
+|---|---|---|---|---|
+| 01–09/25 → 09–12/25 | +28,2 % | +44,8 % | +1,4 % (8) | +4,4 % (7) |
+| 05–12/25 → 01–04/26 | +25,7 % | +42,9 % | −8,3 % (16) | −9,9 % (15) |
+| 09/25–04/26 → 05–10/26 | −7,0 % | +8,6 % | +8,2 % (34) | +3,4 % (41) |
+| **Summe Prüfzeiten** | | | **+1,36 % (58)** | **−2,15 % (63)** |
+
+In der Lernzeit liegt die Optimierung 15–17 Punkte vorn, in der ungesehenen
+Prüfzeit 3,5 Punkte hinten. Die Siegerwerte springen von Falte zu Falte:
+EMA 168/273/139, Ausstiegskanal 16/5/29. Das ist Überanpassung, also bleiben
+die Haus-Wachen. Stabil blieben nur zwei Werte: Einstiegskanal 29–35 statt 20
+und Stop 2,8–3,5 % statt 5 %. Das ist ein Hinweis, kein Beleg; die
+Prüffenster haben nur 7–41 Runden.
+
+**Regel daraus:** Ein Hyperopt-Gewinn zählt erst, wenn er in der späteren
+Prüfzeit gegen die Vorgabe besteht. Der Gewinn in der Lernzeit allein sagt
+nichts.
+
+Fallen beim Hyperopt mit `HausSpur`:
+
+- **Hyperopt-Worker fanden `Handel/freqtrade` statt des echten Pakets**
+  (`ImportError __version__`). Seit 11.10. nimmt `bot_start` den echten
+  Paketordner in `sys.path` auf.
+- **`hyperopt-show --best` schreibt selbst die Parameterdatei**
+  `strategies/<Strategie>.json`, und jeder spätere Backtest liest sie still mit.
+  `walkforward.py` legt sie nur für die Sieger-Backtests an und löscht sie
+  danach. Mit `--strategy` liest `hyperopt-show` keine Epochen und schweigt.
+- **Parameterabhängige Spalten gehören nach `populate_entry_trend`.**
+  `populate_indicators` läuft beim Hyperopt nur einmal je Lauf, nicht je
+  Epoche.
+
+Auslösung auf Kerzenschluss (Schalter `hausspur.ausloesung: "schluss"`,
+seit 11.10.): Bei `squeeze` war sie schlechter, −27,6 % gegen −4,5 % mit
+Auslösung schon beim Docht. Die Vorgabe bleibt deshalb „docht“.
+
+Spec und Plan: `Werkstatt/spec-freqtrade-hausspuren-2026-10-10.md`,
+`Werkstatt/plan-freqtrade-hausspuren-2026-10-10.md`.
 
 ## Grenze
 

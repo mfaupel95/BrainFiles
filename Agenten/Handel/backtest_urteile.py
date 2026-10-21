@@ -275,6 +275,13 @@ def _sichern_und_ersetzen(p, text2):
         except OSError:
             pass
         raise
+    try:                         # Telemetrie: spur.konfiguriert, wirft nie
+        if str(HIER) not in sys.path:
+            sys.path.append(str(HIER))
+        import telemetrie
+        telemetrie.konfiguriert(p, "freigabe.backtest")
+    except Exception:                                       # noqa: BLE001
+        pass
 
 
 def _freigabe_anlegen(spur, text, p, bestanden, urteil_kurz, tag, nl, vorschau):

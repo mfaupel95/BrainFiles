@@ -59,8 +59,17 @@ Datei und die echten Git-Prozesse pruefen, dann die Sperre **umbenennen**
 (`.git/index.lock.verwaist-JJJJMMTT`).
 
 **Warum.** Die Dutzenden `git fsmonitor--daemon run --detach`-Prozesse laufen dauerhaft
-und beweisen nichts — zaehlen nur Prozesse OHNE `fsmonitor`. Bisher war die Sperre
-immer 0 Byte und von einer abgebrochenen Fremdsitzung.
+und beweisen nichts — zaehlen nur Prozesse OHNE `fsmonitor`. Meist war die Sperre
+0 Byte und von einer abgebrochenen Fremdsitzung — **aber nicht immer**: am
+13.10.2026 hielt ein echter `git commit -F -`-Prozess aus GitHub Desktop die
+Sperre fast eine Stunde (haengender Commit-Dialog, kein Routinefall). Deshalb
+bleibt die Prozessliste Pflicht, auch wenn die Sperre schon mehrfach alt wirkte.
+
+**Eigener Fehlgriff, zweimal am selben Tag:** `rm -f .git/index.lock` statt
+umbenennen. Eine geloeschte Sperre laesst sich nicht mehr pruefen, falls die
+Einschaetzung falsch war; eine umbenannte schon. Naechstes Mal: immer
+`Rename-Item`/`mv`, nie `rm`/`Remove-Item`, auch wenn die Prozessliste leer
+aussieht.
 
 ## 4. Fremdarbeit im Arbeitsbaum
 
@@ -234,7 +243,7 @@ Zwei Regeln fuer den Umgang mit solchen Funden:
   ohne dass ein Geheimnis im Protokoll steht.
 
 Werkzeug fuer den Scan (liest `*.env`, `.env.example/.template/.sample` in Wurzel
-und `Werkstatt/Repos`, meldet Pfad + Schluesselname + Laenge, nie den Wert):
+und `Werkstatt`, meldet Pfad + Schluesselname + Laenge, nie den Wert):
 `Agenten/Hermes/cache/scratch/keys_bereinigen.py`. Ausgenommen bleiben
 `Wissen/Zugaenge.md` (Stufe 0) und die per `.gitignore` gesperrten `.env`-Dateien.
 

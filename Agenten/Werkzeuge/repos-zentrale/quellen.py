@@ -1,13 +1,13 @@
 """Die Wurzeln der Zentrale: welche Orte sie zeigt und was daraus eine Zeile wird.
 
-Die Zentrale war bis 30.09.2026 auf `Werkstatt/Repos` festgelegt. Sie zeigt
+Die Zentrale war bis 30.09.2026 auf `Werkstatt` festgelegt. Sie zeigt
 jetzt drei **Bereiche** - jede mit eigenem Wurzelordner, eigener Sperrliste und
 eigener Regel, was ueberhaupt eine Zeile bekommt:
 
 | Kennung | Bereich | Wurzel | Regel |
 |---|---|---|---|
-| `repos` | REPOS | `Werkstatt/Repos` | nur Klone mit `.git` (wie bisher) |
-| `werkstatt` | WERKSTATT | `Werkstatt` | Projekt- und Ablageordner; `Repos`/`Projekte` sind eigene Wurzeln |
+| `repos` | REPOS | `Werkstatt` | nur Klone mit `.git` (wie bisher) |
+| `werkstatt` | WERKSTATT | `Werkstatt` | Projekt- und Ablageordner; Klone und `Projekte` sind eigene Bereiche |
 | `handel` | HANDEL | `Agenten/Handel` | Spuren, Werkzeuge, Ausgabefelder |
 
 Diese Datei kennt weder tkinter noch das Manifest - sie ist ohne Fenster
@@ -104,6 +104,7 @@ class Wurzel:
     erklaerung: str              # eine Zeile unter der Ueberschrift
     pfad_rel: str                # relativ zur BrainFiles-Wurzel
     nur_git: bool = False        # nur Ordner mit eigenem .git
+    ohne_git: bool = False       # Ordner mit eigenem .git ueberspringen (Klone gehoeren zu REPOS)
     ohne: tuple[str, ...] = ()   # Namen, die hier keine Zeile bekommen (zusaetzlich zu UEBERALL_OHNE)
     tiefe: int = 1               # 1 = direkte Kinder, 2 = auch eine Ebene tiefer
     dateien: bool = False        # auch Werkzeug-Dateien in der Wurzel zeigen
@@ -117,8 +118,8 @@ WURZELN: tuple[Wurzel, ...] = (
     Wurzel(
         kennung="repos",
         titel="REPOS",
-        erklaerung="geklonte Fremd-Repos unter Werkstatt/Repos, je Repo ein Bot",
-        pfad_rel="Werkstatt/Repos",
+        erklaerung="geklonte Fremd-Repos unter Werkstatt, je Repo ein Bot",
+        pfad_rel="Werkstatt",
         nur_git=True,
         ohne=("copilot-worktrees",),
     ),
@@ -127,7 +128,8 @@ WURZELN: tuple[Wurzel, ...] = (
         titel="WERKSTATT",
         erklaerung="eigene Projekte, Datenfelder und Ablagen unter Werkstatt/",
         pfad_rel="Werkstatt",
-        ohne=("Repos", "Projekte"),
+        ohne=("Projekte",),
+        ohne_git=True,
     ),
     Wurzel(
         kennung="handel",

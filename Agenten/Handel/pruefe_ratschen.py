@@ -67,6 +67,7 @@ SPUREN = [
     ("trendwende_btc", "trendwende_btc", "scanner", "wachen_pruefung"),
     ("liq_wand", "liq_wand", "scanner", "wachen_pruefung"),
     ("robinhood_radar", "robinhood_radar", "scanner", "wachen_pruefung"),
+    ("scanner_llm", "scanner_llm", "scanner", "wachen_pruefung"),
     # OMNITRADE (30.09.2026): spur_buch-Spur, Betrag ausdruecklich (15.00 =
     # 1.0x Buchrisiko aus 5 USD x 3 Plaetzen).
     ("omnitrade", "omnitrade", "scanner", "wachen_pruefung"),
@@ -77,6 +78,7 @@ SPUREN = [
     # Prophet-Signal (02.10.2026): spur_buch-Spur ueber prophet_regeln.py,
     # Betrag ausdruecklich (10.00 = 1.0x Buchrisiko aus 5.0 USD x 2 Plaetzen).
     ("prophet_signal", "prophet_signal", "scanner", "wachen_pruefung"),
+    ("fib_retrace", "fib_retrace", "scanner", "wachen_pruefung"),
     ("klassik_sma", "klassik_sma", "scanner", "wachen_pruefung"),
     ("klassik_ema", "klassik_ema", "scanner", "wachen_pruefung"),
     ("klassik_macd", "klassik_macd", "scanner", "wachen_pruefung"),

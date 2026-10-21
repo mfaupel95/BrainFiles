@@ -7,7 +7,7 @@ Fremde Repos werden lokal auf Max zugeschnitten, nicht zurückgespielt. Jedes Re
 
 ## Bereits erledigt (09.10.)
 - `auto-prediction-modest-birch-bridge`: `origin` (TraderAlice) entfernt, Zweig `research/prediction` bleibt lokal. Keine PR.
-- 13 Klone in `Werkstatt/Repos/` auf eigenen Fork `mfaupel95/<name>` gesetzt; `origin` heißt jetzt `upstream`, **kein `origin`** mehr, also kein versehentlicher Push: Scrapling, EasyCLIProxyAPI, basic-memory, caveman, claude-code, claudian, codex, deepseek-harness, everything-claude-code, gbrain, intelligent-trading-bot, obsidian-skills, one-skill-to-rule-them-all.
+- 13 Klone in `Werkstatt/` auf eigenen Fork `mfaupel95/<name>` gesetzt; `origin` heißt jetzt `upstream`, **kein `origin`** mehr, also kein versehentlicher Push: Scrapling, EasyCLIProxyAPI, basic-memory, caveman, claude-code, claudian, codex, deepseek-harness, everything-claude-code, gbrain, intelligent-trading-bot, obsidian-skills, one-skill-to-rule-them-all.
 - Bewusst NICHT angefasst: die 20 bestehenden Forks (Hausregel: `origin`=Fork, `upstream`=Original), Hermes-verwaltete Klone (`hermes-agent`, `plugins/*`, `skills/.archive/*`; `hermes update` braucht `origin`), TraderAlice-Mirror/Workspaces (du wolltest dort nicht forken), `CLIProxyAPI` in `MaxHirn/`.
 
 ## Offene Entscheidungen (Max)
@@ -26,7 +26,7 @@ Fremde Repos werden lokal auf Max zugeschnitten, nicht zurückgespielt. Jedes Re
 ## Phasen
 **Phase 0 – Inventur (je Repo ~15 min, lesend).** Start-Befehl, Abhängigkeiten, Börsen-/API-Anbindung, Testmodus, Lizenz. Ergebnis: Tabelle in `MaxHirn/Wissen/` (Bereich `wissen`, Befund melden) oder Werkstatt-Notiz.
 **Phase 1 – Handels-Adapter.** Ein gemeinsamer Auftrags-/Signalvertrag in `Agenten/Handel/` (Bereich `handel`, Sitzung mit Besitz abstimmen, Befund melden). Fremde Repos liefern nur Signale oder Papier-Aufträge; ausgeführt wird ausschließlich über bestehende Wachen (`wachen.json`, Herzschlag 180 min, Stop-Pflicht). Börsen: OKX-DEMO, Kraken nur lesend, Revolut-X lesend.
-**Phase 2 – Hermes-Agent je Repo.** Profil unter `Agenten/Hermes/profiles/<bot>/` (Muster wie `moon-dev-agents`, `jev-trader`), Start-Verzeichnis `Werkstatt/Repos/<repo>`, Skill unter `Agenten/Hermes/skills/brainfiles/` (Hausformat, Skill `skill`). Pro Rolle ein Topic für die Delegierung (Handel, Recherche, Gedächtnis, UI); Zuordnung in der Hermes-Konfiguration, Kanban-Board `handel` für Aufträge.
+**Phase 2 – Hermes-Agent je Repo.** Profil unter `Agenten/Hermes/profiles/<bot>/` (Muster wie `moon-dev-agents`, `jev-trader`), Start-Verzeichnis `Werkstatt/<repo>`, Skill unter `Agenten/Hermes/skills/brainfiles/` (Hausformat, Skill `skill`). Pro Rolle ein Topic für die Delegierung (Handel, Recherche, Gedächtnis, UI); Zuordnung in der Hermes-Konfiguration, Kanban-Board `handel` für Aufträge.
 **Phase 3 – UI-Start.** Pro Repo ein `start`-Skript (Muster `omnitrade.cmd ui`), Eintrag in Desktop-Verknüpfungen (`Agenten/Werkzeuge/desktop-verknuepfungen.ps1`). Für Repos ohne UI: OpenTerminalUI als gemeinsame Oberfläche vor `Handel/`.
 **Phase 4 – Test und Betrieb.** Je Repo: Papierlauf, Eintrag in die Systemprüfung/Wachen, Tests wie `handel-tests.ps1`. Live erst nach Freigabe durch Max, nie automatisch.
 
@@ -115,46 +115,45 @@ Ein Fremd-Werkzeug liefert nur ein **Signal** oder eine **Papier-Order** im Form
 - Topic-Delegierung: Zuordnung in der Hermes-Konfiguration (`dm_topics`) noch nicht angefasst.
 - Naechste Repos: intelligent-trading-bot (Signalpipeline auf OKX umbauen), tradememory-protocol (Journal).
 
-## Phase 0 – Rest der Handels-Rolle (10.10., nur gelesen)
-| Repo | Stack | Lizenz | Börsen (Treffer) | Papier/Test | UI | Eignung |
-|---|---|---|---|---|---|---|
-| Harvard-Algorithmic-Trading-with-AI | Ordner backtest/implement/research, kein Paket | keine Lizenzdatei | Hyperliquid (11) | – | – | **Niedrig**: Lehrmaterial (RBI-Methode), kein ausführbares System; als Ideenquelle für Strategien nutzbar |
-| fomo-robinhood-radar | Python, pyproject | MIT | Robinhood Chain (527), Coinbase | Beobachtung von Wallets, kein Handel | Site + Telegram-Bot | **Niedrig für Handel**: Wallet-Radar auf Robinhood Chain, kein Börsenanschluss an OKX/Kraken; eher Signalquelle. Enthält Datenbanken (`fomo_agent.db`) im Klon – nicht versionieren |
-| osiris | Next.js, Docker | MIT | OKX (33) am Rand | Live-Demo | Dashboard (Web) | **Niedrig**: allgemeines Lage-Dashboard (Flüge, Erdbeben, News); kein Handelssystem. Als UI-Rahmen höchstens Anregung |
-| auto-prediction (TraderAlice, Mirror) | TS/pnpm, Alice-Harness | – | Prognosemärkte (Polymarket, Kalshi u. a.) | Fixtures | `apps/studio` | **Eigenes Thema**: Forschung zu semantischer Arbitrage; kein Anschluss an Krypto-Börsen. Fork `mfaupel95/Auto-Prediction` angelegt, lokal ohne origin |
+## Stand 11.10.2026 - Demo-Kette und offenes Tor
 
-### Gesamtbild Handels-Rolle (11 Repos)
-- **Anschlussreif:** agent-trade-kit (OKX), kraken-cli (Kraken Papier) – beide umgesetzt (Phase 1/2).
-- **Umbau nötig:** intelligent-trading-bot (Binance -> OKX), danach als Signalquelle über `fremd_signal`.
-- **Zusatz/Journal:** tradememory-protocol (Handelsgedächtnis, Wartungsmodus).
-- **Keine Anbindung sinnvoll:** Harvard, fomo-robinhood-radar, osiris, jev-trader (DEX), ziplime (EULA).
-- **Nächster sinnvoller Schritt:** intelligent-trading-bot auf OKX-Demo umschreiben (Datenabruf + Signal-Ausgabe im Schema), erst nach Demo-Key.
+- Tor `Agenten/Handel/fremd_signale/wachen.json` auf Max' Ansage **geoeffnet** (nur paper/demo, nie live); 59 Instrumente (OKX `-USDC` Spot, Kraken `/USD`), 11 Quellen.
+- OKX-Demo im EWR: Swap/Perps gesperrt (Fehler 50124), nur Spot. Durchlauf BTC-USDC (Kauf 50 USDC mit Stop 4 %, Verkauf, Stop-Storno) fehlerfrei.
+- Neu: `Agenten/Handel/fremd_demo.py` (rechnet Plan), `fremd_signale/demo_plan.py` (`--vorschau|--vormerken|--verwerfen`), Hermes-Ausfuehrungsschritt im Skill `fremd-handel-papier`. Hermes-MCP okx-agentkit schreibend (ohne `--read-only`), nur Demo.
+- Offen: Hermes als Ausfuehrer noch nicht mit echtem Signal erprobt; Task `MaxHirn-Fremd-Papier` nicht registriert; Adapter fuer die neuen Quellen fehlen.
 
-## intelligent-trading-bot auf OKX – Walk-forward (10.10.)
-Lauf: BTC-USDT 1H von OKX, 9000 Kerzen, rollierend 4 x 1000 ungesehene Stunden (27.04.-10.10.2026), Zweig `claude/okx-collector` im Fork-Klon, Config `configs/config-okx-walk-forward.json`.
-- **Vorhersagegüte ungesehen:** AUC high_30 = 0,438, low_30 = 0,430 (Zufall = 0,5). Das Modell ist schlechter als Raten; precision/recall nahe 0.
-- **Simulation:** beste Kombination +37,6 % bei 5 Trades (2 gewinnbringend), Buy&Hold im selben Fenster +4,7 %. Die Zahl ist die beste von 100 Rasterpunkten, auf denselben ungesehenen Daten gewählt, also optimistisch und bei 5 Trades nicht belastbar.
-- **Urteil:** kein Beleg für einen Vorteil. Adapter `adapter_itb` bleibt technisch fertig, das Tor bleibt zu; kein Zeitplan für diese Quelle, solange kein stabiler Out-of-sample-Nutzen gezeigt ist.
-- **Nächste Schritte (nur wenn gewollt):** andere Labels/Horizonte, mehr Historie, Gebühren und Funding in die Simulation, Mehrfach-Fenster; erst danach Routine.
+## Stand 11.10.2026 abends - Kette laeuft (Papier)
 
-### Varianten-Lauf (10.10., drei vorab festgelegte Varianten, alle gemeldet)
-AUC auf ungesehenen Stunden (Zufall = 0,5), BTC-USDT 1H, OKX:
-| Variante | Daten / ungesehen | Modell, Schwelle | AUC high_30 | AUC low_30 |
+- Adapter gemergt: `adapter_nautilus.py`, `adapter_moondev.py` (Konsens zweier Agenten), Aufrufer `adapter_lauf.py` + `adapter_quellen.json` (ITB aus).
+- `Bus/nautilus_signalgeber.py` (EMA-Kreuzung, schreibt nur Absichtszeilen) und `Bus/nautilus_okx_lauf.py` (echte OKX-Kerzen BTC-USDC 5m). Umgebung `Werkstatt/nautilus-venv` (Nautilus 1.231 aus PyPI; der Fork hat eine neuere API).
+- Registriert: `MaxHirn-Nautilus-OKX` (5 Min), `MaxHirn-Fremd-Adapter` (2 Min), `MaxHirn-Fremd-Papier` (2 Min). Alles Papier, nie live.
+- Beobachten: `stale`-Verwuerfe im Journal (Fenster 180 s knapp), erste Papier-Positionen in `fremd_signale/zustand.json`.
+
+## Auswertung 12.10.2026 - EMA-Kreuzung (nautilus_signalgeber), Walk-forward
+
+Skript `Werkstatt/ema_walkforward.py` (unversioniert). BTC-USDC, OKX-Kerzen, Long/Flat, Kosten 0,07 %/Seite (Gebuehr 0,05 + Slippage 0,02), 1 Kerze Verzug. Raster fast {5,8,10,13,20} x slow {20..120}, IS 30 Tage waehlt, OOS naechste 7 Tage. Kriterium vorab: OOS-Summe > 0 UND >= 60 % der Fenster positiv.
+
+| Lauf | OOS gewaehlt | OOS fix 10/20 | Buy&Hold |
+|---|---|---|---|
+| 1H, 367 Tage, 48 Fenster | -36,96 % (14/48 positiv) | -47,47 % (17/48) | -13,47 % |
+| 5m, 120 Tage, 12 Fenster | -4,76 % (3/12 positiv) | **-74,69 %** (1/12) | +33,84 % |
+
+**Ergebnis: Kriterium in beiden Laeufen NICHT erfuellt.** Die live laufende Einstellung (5m, 10/20) verliert Out-of-sample praktisch alles an Kosten und Fehlsignalen. Die Walk-forward-Wahl landet bei langsamen Paaren (20/120), d. h. das Raster flieht vor den Kosten. Kein Vorteil; Strategie taugt nur als Rohrleitungs-Test der Kette. Grenzen: kein Stop simuliert (4 %-Stop aendert auf 5m wenig), ein Instrument, eine Marktphase.
+
+## Auswertung 12.10.2026 - moon-dev-ai-agents (nicht durchfuehrbar)
+
+`ai_analysis_buys.csv`: 95 Zeilen, nur 12.-31.01.2025 (Memecoins). 47x BUY/BUY, 35x BUY/DO NOTHING, 13x DO NOTHING/BUY; keine SELL-Zeilen, keine Ergebnisspalte. **Kein einziges Symbol steht in der Tor-Liste** (kein Token auf OKX-/Kraken-Spot). Kursverlauf zur Pruefung: CoinGecko-Gratisschnittstelle liefert fuer Daten aelter als 365 Tage HTTP 401 (28 von 28 Abfragen), danach 429. Eine Auswertung ist ohne bezahlten Schluessel nicht moeglich; `Werkstatt/moondev_auswertung.py` bleibt als Vorlage (unversioniert). Selbst mit Daten waeren die Signale nicht handelbar (Token nicht gelistet, Survivorship-Bias, Alter der Daten). Der Adapter bleibt, hat aber nichts zu tun, bis das Repo frische Empfehlungen fuer gelistete Paare schreibt.
+
+## Auswertung 12.10.2026 - handelsarme Trendvarianten (BTC-USDT, OKX)
+
+Skript `Werkstatt/trend_wenighandel.py` (unversioniert). Fuenf Varianten VORAB festgelegt, nicht optimiert: A SMA 50/200 1D, B Donchian 55/20 1D, C Donchian 20/10 1D, D EMA 20/50 4H, E Donchian 55d/20d 4H. Long/Flat, Kosten 0,07 %/Seite, 1 Kerze Verzug, 5,8 Jahre (1D) bzw. 4,2 Jahre (4H). Kriterium vorab: netto > 0 in BEIDEN Zeithaelften, maxDD kleiner als Buy&Hold, <= 30 Wechsel/Jahr.
+
+| Variante | Gesamt (B&H) | maxDD (B&H) | Wechsel/Jahr | Kriterium |
 |---|---|---|---|---|
-| Basis | 9000 / 4 x 1000 | SVC, 3 % | 0,438 | 0,430 |
-| V1 | 20 000 / 5 x 2000 | SVC, 3 % | 0,554 | 0,483 |
-| V2 | 9000 / 4 x 1000 | SVC, 1,5 % | 0,511 | 0,479 |
-| V3 | 20 000 / 5 x 2000 | Gradient Boosting, 3 % | 0,542 | 0,469 |
-- **Lesart:** Die `low`-Labels liegen in allen Läufen unter 0,5; die `high`-Labels streuen zwischen 0,44 und 0,55. Mehr Historie hilft, aber 0,54-0,55 ist schwach und wegen überlappender Stunden (Autokorrelation) statistisch weicher, als die Zahl wirkt. Kein belastbarer Vorteil.
-- **Entscheidung:** `intelligent-trading-bot` bleibt ruhende Quelle (Adapter fertig, Tor zu, kein Zeitplan). Lohnt sich nur mit grundlegend anderem Ansatz (andere Features/Labels, Gebühren und Funding in der Simulation).
+| A SMA 50/200 1D | +84 % (+139 %) | 44,6 % (76,4 %) | 1,9 | erfuellt |
+| B Donchian 55/20 1D | +151 % (+139 %) | 35,2 % (76,4 %) | 7,1 | erfuellt |
+| C Donchian 20/10 1D | +46 % | 65,1 % | 16,3 | nicht |
+| D EMA 20/50 4H | +198 % (+253 %) | 30,2 % (53,4 %) | 39,5 | nicht (zu viele Wechsel) |
+| E Donchian 55/20 4H | +107 % | 41,3 % | 8,4 | nicht (2. Haelfte -3 %) |
 
-### Anderer Ansatz, einmal gerechnet (10.10.) - Ergebnis: negativ
-Skript `Werkstatt/okx_walkforward_itb.py` (alles vorab festgelegt: Features Renditen/Vol/Volumen/Abstand, Label = 24-h-Rendite > 0, logreg + LightGBM, expandierend mit 24-h-Embargo, feste Schwelle 0,55, Gebuehr 0,05 %/Seite, Funding 0,01 %/8 h). Daten: BTC-USDT 1H, 19 999 Stunden (06.2024-10.2026), rein ungesehene Prognosen.
-| Modell | Fenster | AUC | Rendite | Buy&Hold | Trades | MaxDD |
-|---|---|---|---|---|---|---|
-| logreg | Entwicklung | 0,470 | -40,1 % | -19,8 % | 406 | -48 % |
-| logreg | Endfenster (5000 h) | 0,525 | -17,7 % | +12,9 % | 83 | -25 % |
-| lgbm | Entwicklung | 0,474 | -42,4 % | -19,8 % | 516 | -54 % |
-| lgbm | Endfenster (5000 h) | 0,488 | -18,5 % | +12,9 % | 181 | -21 % |
-- **Urteil:** Kein Vorhersagevorteil (AUC 0,47-0,53) und mit Gebuehren/Funding klar verlustreich, in beiden Fenstern und beiden Modellen. Das Ergebnis ist eindeutig genug, dass weitere Varianten auf diesen Daten nicht lohnen.
-- **Folge:** `intelligent-trading-bot` als Signalquelle ruht endgueltig bis ein anderer Datenvorteil (z. B. Orderbuch, Funding-/OI-Daten, andere Maerkte) vorliegt. Adapter und Tor bleiben als Infrastruktur fuer kuenftige Quellen.
+Lesart: A und B bestehen die Vorab-Hurde; die Wirkung ist vor allem **halbierter Drawdown**, nicht Mehrertrag (A bleibt unter Buy&Hold, B liegt knapp darueber). Grenzen: ein Instrument, eine Bullenphase mit zwei grossen Rueckschlaegen, 5 Varianten getestet (Auswahlrisiko, 2 bestanden), keine Aussicht auf Zukunft. Naechster Schritt waere B als Nautilus-Strategie auf Tageskerzen (7 Wechsel/Jahr) zur Papier-Beobachtung, kein Geld.

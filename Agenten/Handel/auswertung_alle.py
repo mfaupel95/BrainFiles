@@ -57,6 +57,12 @@ MIN_RUNDEN = 8
 FREMDES_BUCH = {
     "nautilus_kraken_futures": ("nautilus_kraken", "handelsjournal.futures.csv"),
     "squeeze_eth": ("squeeze", "handelsjournal.eth.csv"),
+    "llm_stunde_ema1h-R": ("llm_stunde/laeufe/ema1h-R", "handelsjournal.csv"),
+    "llm_stunde_ema1h-L": ("llm_stunde/laeufe/ema1h-L", "handelsjournal.csv"),
+    "llm_stunde_st1h-R": ("llm_stunde/laeufe/st1h-R", "handelsjournal.csv"),
+    "llm_stunde_st1h-L": ("llm_stunde/laeufe/st1h-L", "handelsjournal.csv"),
+    "llm_stunde_rsi1h-R": ("llm_stunde/laeufe/rsi1h-R", "handelsjournal.csv"),
+    "llm_stunde_rsi1h-L": ("llm_stunde/laeufe/rsi1h-L", "handelsjournal.csv"),
 }
 
 # Dasselbe fuer die WACHEN: der Futures-Arm faehrt aus demselben Ordner, seine
@@ -115,6 +121,7 @@ INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic",
                    # Prophet-Signal (02.10.2026): EMA30-Trend + Saisonalitaet als
                    # Kursregel (prophet_regeln.py), schreibt dieselbe Journalform.
                    "prophet_signal",
+                   "fib_retrace",
                    # Schattenarm squeeze_eth (03.10.2026, Auftrag Max
                    # "Schattenarm"): dieselbe Regel fest auf ETH, damit sich
                    # fragegt, ob sie Coin-spezifisch ist. Schreibt dieselbe
@@ -124,7 +131,7 @@ INDIKATOR_SPUREN = ("squeeze", "wavetrend", "macd_mtf", "supertrend", "mosaic",
                    "squeeze_eth")
 
 # Bot-Spuren (16.09.2026): Papierbuecher auf den Signalen geklonter Fremd-Bots
-# (Werkstatt/Repos/moon-dev-ai-agents). Ihr Journal hat dieselbe Form wie das
+# (Werkstatt/moon-dev-ai-agents). Ihr Journal hat dieselbe Form wie das
 # der Indikator-Spuren (kauf/verkauf mit einsatz_usd), deshalb derselbe
 # Rechenweg - nur der NAME der Gruppe ist ein anderer.
 BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
@@ -143,6 +150,14 @@ BOT_SPUREN = ("moondev_funding", "moondev_listingarb", "moondev_topmovers",
               # Handel/spur_buch.py, Journalform kauf/verkauf mit
               # einsatz_usd - derselbe Rechenweg.
               "robinhood_radar",
+                # SCANNER_LLM (13.10.2026): kauf/verkauf mit usd - derselbe Weg.
+                "scanner_llm",
+                "llm_stunde_ema1h-R",
+                "llm_stunde_ema1h-L",
+                "llm_stunde_st1h-R",
+                "llm_stunde_st1h-L",
+                "llm_stunde_rsi1h-R",
+                "llm_stunde_rsi1h-L",
               # OMNITRADE (30.09.2026): Buch ueber Handel/spur_buch.py,
               # Journalform kauf/verkauf mit einsatz_usd - derselbe Rechenweg.
               "omnitrade",
@@ -327,6 +342,8 @@ def runden_fuer(spur, z=None, gebuehr=None, stand=None):
         return runden_spot(z, gebuehr, einsatz_feld="eur", stand=stand)
     if spur in ("orb", "orbk"):
         return runden_orbk(z)
+    if spur == "omniquant":
+        return runden_omniquant(z, stand=stand)
     if spur in INDIKATOR_SPUREN or spur in BOT_SPUREN:
         return runden_indikator(z, stand=stand)
     if spur in NAUTILUS_SPUREN:
@@ -336,7 +353,28 @@ def runden_fuer(spur, z=None, gebuehr=None, stand=None):
     return []
 
 
-def kennzahlen_fuer(spur, von=None, bis=None):
+# AB WANN EIN JOURNAL ETWAS BELEGT. Der Scanner nahm bis zum 03.10.2026 als
+# Einstieg den Preis des Vortagesberichts statt des Marktkurses (Befund
+# scanner/BEFUND-einstiegspreis-20261003.md): Ziel lag beim Kauf schon im
+# Markt, ein Instrument wurde alle 15 Minuten neu gekauft und im "Ziel"
+# verkauft. Die Runden davor messen den Rechenfehler, nicht das Signal
+# (t = 15,3 bei Haltedauer-Median 0,0 Tage). Gilt der EINSTIEG vor diesem
+# Zeitpunkt, zaehlt die Runde nicht - auch wenn sie danach ausstieg, denn
+# der falsche Einstiegspreis steckt dann in ihrem Ergebnis. Zeitpunkt = Commit
+# 5c8dc582 (02.10.2026 22:23:13 UTC); der Dauerlauf startet das Skript je
+# Zyklus neu, die Wirkung setzte also binnen Minuten ein.
+# `--alles` schaltet den Filter ab (Vergleich mit den alten Zahlen).
+GUELTIG_AB = {"scanner": "2026-10-02T22:23:13+00:00"}
+
+
+def _vor_fix(r, grenze):
+    """Gehoert die Runde in die Fehlerzeit? Ohne lesbare Einstiegszeit: ja -
+    ihre Unschuld ist nicht belegbar (gleiche Linie wie zeitfenster)."""
+    d = zeitfenster.parse(r.get("einstieg_zeit"))
+    return d is None or d < grenze
+
+
+def kennzahlen_fuer(spur, von=None, bis=None, nur_gueltige=True):
     """Die Kennzahlen EINER Spur - Zuordnung Spur -> Rechenweg an EINER Stelle.
 
     Der Weg stand bis zum 15.09.2026 nur in `main()`. Ein zweiter Aufrufer
@@ -345,6 +383,10 @@ def kennzahlen_fuer(spur, von=None, bis=None):
     `main()` und `befehle.py` rufen jetzt beide diese Funktion.
 
     von/bis mit Vorgabe None: ohne Angabe bleibt alles wie vorher.
+
+    nur_gueltige: Runden, deren Einstieg vor `GUELTIG_AB[spur]` liegt, werden
+    nicht mitgerechnet, aber AUSGEWIESEN (`paarung["vor_fix"]`, `"vor_fix_ergebnis"`).
+    Nur Spuren in GUELTIG_AB sind betroffen; alle anderen rechnen unveraendert.
 
     DAS FENSTER SCHNEIDET RUNDEN, NICHT ZEILEN. Eine Runde gehoert in das
     Fenster ihres AUSSTIEGS - dort faellt ihr Ergebnis an. Der Schnitt
@@ -365,6 +407,12 @@ def kennzahlen_fuer(spur, von=None, bis=None):
     stand = {}
     runden = runden_fuer(spur, z, stand=stand)
     runden = [r for r in runden if zeitfenster.im_fenster(r, von, bis)]
+    if nur_gueltige and spur in GUELTIG_AB:
+        grenze = zeitfenster.parse(GUELTIG_AB[spur])
+        alt = [r for r in runden if _vor_fix(r, grenze)]
+        runden = [r for r in runden if not _vor_fix(r, grenze)]
+        stand["vor_fix"] = len(alt)
+        stand["vor_fix_ergebnis"] = sum(r["ergebnis"] for r in alt)
     k = kennzahlen(runden, einheit_fuer(spur),
                    gebuehr=gebuehr_fuer(spur),
                    brutto=spur not in GEBUEHR_SCHON_DRIN)
@@ -605,6 +653,10 @@ def paarung_text(p):
                      % p["ohne_kennung"])
     if p.get("offen"):
         teile.append("%d Position(en) offen" % p["offen"])
+    if p.get("vor_fix"):
+        teile.append("%d Runde(n) mit Einstieg vor dem Preisfix NICHT mitgezaehlt "
+                     "(Scheinergebnis %+.2f; --alles zeigt sie)"
+                     % (p["vor_fix"], p.get("vor_fix_ergebnis") or 0.0))
     return "; ".join(teile) or "vollstaendig gepaart"
 
 
@@ -669,6 +721,7 @@ def _paare(zeilen_, einstieg_namen, ausstieg_namen, einsatz_feld, ergebnis_fn,
             "inst": schluessel, "einsatz": einsatz, "ergebnis": ergebnis,
             "kosten": kosten, "grund": (r.get(grund_feld) or "").strip() or None,
             "halten": tage(ein.get("zeit"), r.get("zeit")),
+            "einstieg_zeit": ein.get("zeit") or "",
             # Die Zeit der Runde ist die ihres AUSSTIEGS - dort faellt das
             # Ergebnis an. Der Name `zeit` ist der der Journalspalte, damit
             # zeitfenster.im_fenster() die Runde ohne Sonderfall liest.
@@ -773,6 +826,38 @@ def runden_nautilus(zeilen_, stand=None):
 
     return _paare(zeilen_, {"eroeffnen"}, {"schliessen"},
                   ("einsatz_usd", "einsatz_eur"), ergebnis, "USD", stand=stand)
+
+
+def runden_omniquant(zeilen_, stand=None):
+    """omniquant: EINSTIEG/eroeffnen (Einstieg) und AUSSTIEG/schliessen (Ausstieg).
+
+    Die Spur schreibt im Papierzweig EINSTIEG/AUSSTIEG (handeln.py), im
+    Live-Zweig eroeffnen/schliessen (live_perp.py). Einsatz steht in
+    `einsatz_usd`, der Erloes in `wert_usd` - der G/V ist die Differenz,
+    dieselbe Rechnung wie bei den Indikator-Spuren.
+
+    WARUM ES DIESE FUNKTION GIBT (T-389, 11.10.2026): omniquant stand in
+    BOT_SPUREN und fiel damit in runden_indikator, der kauf/verkauf paart.
+    Die Spur schreibt aber EINSTIEG/AUSSTIEG und eroeffnen/schliessen -
+    die Auswertung meldete 0 Runden trotz 37 EINSTIEG- und 20 AUSSTIEG-Zeilen.
+    Eine Auswertung, die eine ganze Spur still auf null setzt, macht jede
+    Verbesserung unsichtbar.
+
+    buchbereinigung-Zeilen (schliessen mit grund=buchbereinigung) zaehlen
+    NICHT als Runde: sie sind Buchhaltung, keine Handelsentscheidung
+    (stoerungen.ist_stoerung erkennt den Grund). Der reale Verlust einer
+    nachgebuchten Position steht in zustand.json `verluste_usd`, nicht hier.
+    """
+    def ergebnis(ein, aus):
+        einsatz = zahl(ein.get("einsatz_usd"))
+        erloes = zahl(aus.get("wert_usd"))
+        if not einsatz or erloes is None:
+            return None, None
+        return erloes - einsatz, 0.0
+
+    zeilen_ = [r for r in zeilen_ if (r.get("grund") or "") != "buchbereinigung"]
+    return _paare(zeilen_, {"EINSTIEG", "eroeffnen"}, {"AUSSTIEG", "schliessen"},
+                  "einsatz_usd", ergebnis, "USD", stand=stand)
 
 
 def runden_orbk(zeilen_):
@@ -1107,6 +1192,8 @@ def main():
                         % risikostufe.STANDARD)
     p.add_argument("--tage", type=int,
                    help="nur die letzten N Tage auswerten")
+    p.add_argument("--alles", action="store_true",
+                   help="auch Runden vor dem Preisfix (GUELTIG_AB) mitrechnen")
     p.add_argument("--seit", help="Fensteranfang, JJJJ-MM-TT")
     p.add_argument("--bis", help="Fensterende, JJJJ-MM-TT (einschliesslich)")
     a = p.parse_args()
@@ -1129,7 +1216,7 @@ def main():
     for spur in spuren:
         # Ein Weg fuer beide Aufrufer: hier stand die Zuordnung Spur ->
         # Rechenweg bis 15.09.2026 ein zweites Mal (siehe kennzahlen_fuer).
-        k = kennzahlen_fuer(spur, von=von, bis=bis)
+        k = kennzahlen_fuer(spur, von=von, bis=bis, nur_gueltige=not a.alles)
         zahlen[spur] = k
         zeige(spur, k)
 

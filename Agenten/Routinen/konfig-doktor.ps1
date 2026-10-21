@@ -21,8 +21,15 @@ $Wurzel = [System.IO.Path]::GetFullPath($Wurzel).TrimEnd('\', '/')
 $script:Befunde = New-Object System.Collections.ArrayList
 
 # Bus-Anbindung (Hausmuster): jede geplante Routine meldet Start und Ende.
-$agenten = Join-Path $Wurzel 'Agenten'
-. (Join-Path $agenten 'Bus\Ereignis.ps1')
+# Nur beim Lauf gegen das eigene Repo: eine Fixture-Wurzel (Tests) hat keinen Bus,
+# und ohne Melde-Ende ging der Exit-Code verloren (immer 0). Stubs statt Journal-Eintraegen.
+$eigeneWurzel = [System.IO.Path]::GetFullPath((Split-Path (Split-Path $PSScriptRoot -Parent) -Parent)).TrimEnd('\', '/')
+$ereignis = Join-Path $Wurzel 'Agenten\Bus\Ereignis.ps1'
+if (($Wurzel -ieq $eigeneWurzel) -and (Test-Path -LiteralPath $ereignis)) { . $ereignis }
+else {
+    function Melde-Start { param($Wer, $Log) return $null }
+    function Melde-Ende { param($Marke, $Code, $Text) }
+}
 $marke = Melde-Start -Wer 'routine/konfig-doktor' `
            -Log 'Agenten/Routinen/logs/konfig-doktor-letzter-lauf.md'
 
@@ -30,7 +37,7 @@ $marke = Melde-Start -Wer 'routine/konfig-doktor' `
 function Maske([string]$t) {
     if ($null -eq $t) { return '' }
     # auch JSON-/YAML-Form: "api_key": "wert" (Schluessel in Anfuehrungszeichen, Wert mit Leerzeichen)
-    $t = $t -replace '(?i)(bearer\s+|(api[_-]?key|token|secret|password)["'']?\s*[:=]\s*)("[^"]*"|''[^'']*''|\S+)', '${1}***'
+    $t = $t -replace '(?i)((bearer|basic)\s+|(api[_-]?key|token|secret|password)["'']?\s*[:=]\s*)("[^"]*"|''[^'']*''|\S+)', '${1}***'
     $t = $t -replace '(?i)\b(sk|pk|ghp|gho|xox[abp]|AKIA)[-_A-Za-z0-9]{12,}', '***'
     $t = $t -replace '(?=[A-Za-z0-9_\-]*\d)(?=[A-Za-z0-9_\-]*[A-Za-z])[A-Za-z0-9_\-]{40,}', '***'
     return $t
@@ -141,6 +148,7 @@ function Get-Eig($Objekt, [string]$Name) {
 }
 
 function Pruefe-McpPfade {
+    $uhr = [System.Diagnostics.Stopwatch]::StartNew()
     $mf = Join-Path $Wurzel 'Agenten/MCP-Manifest.json'
     if (-not (Test-Path -LiteralPath $mf)) {
         Add-Befund -Id 'MCP-MANIFEST-FEHLT' -Modul 'mcp-pfade' -Schwere 'KRITISCH' -Titel 'MCP-Manifest fehlt' `
@@ -238,7 +246,7 @@ function Pruefe-McpPfade {
     if ((Test-Path -LiteralPath $sc) -and -not $OhneExtern) {
         $ps = (Get-Process -Id $PID).Path
         # Eigenes Limit unter dem Modul-Limit, damit der Befund noch vor dem Modul-Abbruch entsteht
-        $to = [Math]::Max(5, $ModulLimitSek - 5)
+        $to = [Math]::Max(1, [Math]::Min($ModulLimitSek - 5, (Get-RestBudget $uhr) - 2))
         $r = Invoke-Extern -Datei $ps -Argumente @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $sc) -TimeoutSek $to
         if ($r.TimedOut) {
             Add-Befund -Id 'MCP-SYNC-ZEITLIMIT' -Modul 'mcp-pfade' -Schwere 'UNKLAR' -Titel 'mcp-sync-check.ps1 antwortet nicht im Zeitlimit' `
@@ -865,6 +873,54 @@ function Pruefe-Laufzeit {
     }
 }
 
+# ---------- Modul 7: wurzel (Regel "Wurzel bleibt leer", seit 11.10.2026) ----------
+# Erlaubt: die vier Hauptordner, Regeldateien, README, .cmd-Aufrufer, Git-Dateien
+# und Konfigurationsordner (.claude, .githooks, ...). Alles andere wird gemeldet;
+# bekannte Ablagefehler (Plaene, npm, venv, Dumps, Schluessel) als WARNUNG.
+$WurzelErlaubt = @('MaxHirn', 'Modelle', 'Agenten', 'Werkstatt', 'AGENTS.md', 'CLAUDE.md', 'README.md',
+    '.gitattributes', '.gitignore')
+$WurzelVerboten = @(
+    @{ Muster = '^(docs|memory|plans|specs)$'; Grund = 'Plaene/Specs/Handover (superpowers legt docs/superpowers/ an) - gehoeren nach Werkstatt/Projekte bzw. Werkstatt/Austausch' },
+    @{ Muster = '^(node_modules|package(-lock)?\.json|pnpm-lock\.yaml|yarn\.lock)$'; Grund = 'npm-Reste (kein npm install in der Wurzel)' },
+    @{ Muster = '^(\.?venv|__pycache__)$'; Grund = 'Python-Umgebung/Cache' },
+    @{ Muster = '^\.env(\..*)?$|\.(pem|key|p12|pfx)$'; Grund = 'Zugangsdaten/Schluessel - einzige Ablage ist MaxHirn/Wissen/Zugaenge.md' },
+    @{ Muster = '^docker-compose.*\.ya?ml$|^compose\.ya?ml$'; Grund = 'Compose-Datei (ein docker compose up startet hier ungeprueft Container)' },
+    @{ Muster = '\.(bak|orig|old)($|[._-])'; Grund = 'Sicherungskopie (Stand steht in git)' },
+    @{ Muster = '^(handover|report)\b|\.(dmp|log)$'; Grund = 'Sitzungs-/Absturzrest' }
+)
+
+function Pruefe-Wurzel {
+    $warn = New-Object System.Collections.ArrayList
+    $hinw = New-Object System.Collections.ArrayList
+    $grund = @{}
+    $jetzt = Get-Date
+    foreach ($e in @(Get-ChildItem -LiteralPath $Wurzel -Force -ErrorAction SilentlyContinue)) {
+        $n = $e.Name
+        if ($WurzelErlaubt -contains $n) { continue }
+        if (-not $e.PSIsContainer -and $e.Extension -ieq '.cmd') { continue }
+        # Konfigurationsordner (.git, .claude, .githooks, .worktrees, Plugin-Ordner) - nicht .venv
+        if ($e.PSIsContainer -and $n.StartsWith('.') -and $n -ine '.venv') { continue }
+        $tage = [int][Math]::Floor(($jetzt - $e.LastWriteTime).TotalDays)
+        $art = 'Datei'
+        if ($e.PSIsContainer) { $art = 'Ordner' }
+        $eintrag = "$n ($art, $tage Tage alt)"
+        $treffer = $null
+        foreach ($v in $WurzelVerboten) { if ($n -match $v.Muster) { $treffer = $v.Grund; break } }
+        if ($treffer) { [void]$warn.Add($eintrag); $grund[$treffer] = $true }
+        else { [void]$hinw.Add($eintrag) }
+    }
+    if ($warn.Count -gt 0) {
+        Add-Befund -Id 'WURZEL-ABLAGEFEHLER' -Modul 'wurzel' -Schwere 'WARNUNG' -Titel "$($warn.Count) Ablagefehler in der Wurzel" `
+            -Beleg (($warn -join '; ') + ' | Art: ' + (@($grund.Keys) -join '; ')) -Status 'gesichert' `
+            -Vorschlag 'Regel "Wurzel bleibt leer" (CLAUDE.md): nach Werkstatt/ verschieben bzw. loeschen - nach Freigabe, Dateien juenger als 10 min liegen lassen'
+    }
+    if ($hinw.Count -gt 0) {
+        Add-Befund -Id 'WURZEL-UNBEKANNT' -Modul 'wurzel' -Schwere 'HINWEIS' -Titel "$($hinw.Count) unbekannte Eintraege in der Wurzel" `
+            -Beleg ($hinw -join '; ') -Status 'Vermutung' `
+            -Vorschlag 'Gehoert es in einen der vier Hauptordner? Sonst nach Werkstatt/ - oder in die Erlaubt-Liste von Modul wurzel aufnehmen'
+    }
+}
+
 # === MODULE (neue Pruefe-*-Funktionen oberhalb dieser Zeile einfuegen) ===
 
 $ModulTabelle = [ordered]@{
@@ -874,6 +930,7 @@ $ModulTabelle = [ordered]@{
     'git-regeln' = 'Pruefe-GitRegeln'
     'ballast'    = 'Pruefe-Ballast'
     'laufzeit'   = 'Pruefe-Laufzeit'
+    'wurzel'     = 'Pruefe-Wurzel'
 }
 $VersteckteModule = @{
     'selbsttest-fehler'   = 'Pruefe-SelbsttestFehler'

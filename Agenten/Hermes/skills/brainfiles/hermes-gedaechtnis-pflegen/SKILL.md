@@ -108,6 +108,14 @@ Auftrag - das Brauchbare von Hand nachziehen, den Rest loeschen.
   anderen Eintrag steht, loescht diesen. Nach JEDEM `replace`/`remove` das Feld
   `replaced_entries`/`removed_entries` lesen: dort steht im Volltext, welcher Eintrag
   getroffen wurde. Es ist die einzige Kontrolle.
+- **Direkt schreiben: `replace` gibt es im Werkzeug nicht mehr (nur `add`/`patch`/`remove`).**
+  `replace` existiert nur noch zum Abspielen ALTER gepinnter Vorschlaege; beim eigenen
+  Schreiben ist `patch` ein SPAN-Ersatz - es ersetzt genau die Stelle, die `old_text` trifft,
+  und behaelt den Rest des Eintrags. Um einen GANZEN Eintrag zu ersetzen, `old_text` = den
+  VOLLEN aktuellen Eintragstext setzen (kommt genau einmal vor); ein kurzer Anker (z.B. der
+  Eintragsanfang) ersetzt nur diesen Anfang und laesst den Rest stehen - ein halber Umbau, der
+  wie ein Erfolg aussieht. Das Ergebnis zeigt `patched_entries_after` im Volltext: dort
+  nachsehen, WELCHER Eintrag und WIEVIEL getroffen wurde, statt zu raten.
 - **Ein Verlust ist erst ein Verlust, wenn Text UND Anfang fehlen.** `memory-verlust.py`
   vergleicht die ersten ~70 Zeichen; ein umgeschriebener Eintrag ist der Normalfall, kein
   Verlust. Erst bei beiden Fehlanzeigen suchen - und der Rueckweg steht in `state.db`

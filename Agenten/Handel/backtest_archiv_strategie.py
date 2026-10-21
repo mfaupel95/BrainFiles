@@ -16,7 +16,7 @@ from backtesting import Backtest, Strategy
 # Pfade relativ zur eigenen Datei (SSD-umzugsfaehig, keine absoluten
 # Benutzerpfade): Agenten/Handel/<datei> -> parents[2] ist die Wurzel.
 WURZEL = Path(__file__).resolve().parents[2]
-REPO = WURZEL / "Werkstatt" / "Repos" / "Harvard-Algorithmic-Trading-with-AI" / "backtest" / "data"
+REPO = WURZEL / "Werkstatt" / "Harvard-Algorithmic-Trading-with-AI" / "backtest" / "data"
 
 
 def lade_harvard(datei="BTC-1h-1000wks-data.csv"):

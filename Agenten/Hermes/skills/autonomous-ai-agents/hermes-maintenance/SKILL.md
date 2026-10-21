@@ -20,7 +20,10 @@ finish cleanly on its own.
 
 ## When to Use
 
-- `hermes update` exits non-zero, or the install sits N commits behind `origin/main`.
+- `hermes update` exits non-zero, or the install sits N commits behind `origin/main` — NUR auf dem
+  **main**-Kanal ist origin/main das Update-Ziel. Auf dem **stable**-Kanal ist origin/main
+  unveroeffentlichte Entwicklung und der Rueckstand kein Update-Auftrag (siehe Procedure Schritt 2/3
+  und den Abschnitt "Update-Kanal waehlen" unten).
 - "Der update laeuft endlos und der Gateway antwortet nicht" / every `hermes` call burns
   minutes in "finishing an interrupted source update": the armed pending marker —
   `references/update-schwanz-endlosschleife.md`.
@@ -38,6 +41,42 @@ finish cleanly on its own.
   a repeating 500 in the UI), gateway healthy: the desktop-backend connection is dropping —
   `references/desktop-verbindungsfehler.md` (ECONNRESET is a symptom of a 500-flood on a
   polling endpoint; known 500 source: dead GGUF symlinks in `models/`).
+
+## Update-Kanal waehlen (stable / main / canary)
+
+Der Kanal ist eine PERSISTENTE Entscheidung je Install, nicht ein Lauf-Flag. Der Mechanismus ist
+`hermes update --set-channel <name>` (schreibt `update.installs.<install_id>.channel`;
+`--channel <name>` ist nur die transiente Einmal-Uebersteuerung fuer den Lauf). Es gibt KEINEN
+"dev"-Kanal — wer "dev" sagt, meint `main`. Ein Source-Checkout des offiziellen Repos folgt per
+Vorgabe `stable` (nur Releases); `main` zieht `origin/main` (taegliche Fixes, mehr Churn).
+
+**Pruefe, welche Kanaele fuer DIESE Install loesbar sind, bevor du einen setzt.** Die Theorie
+nennt `stable`/`main`/`canary`, aber ein Source-Checkout loest nicht alle drei auf: die
+Release-Kanaele liegen als Dateien auf dem Assets-Host (`releases/channels/<name>.json`), und
+dort kann `canary.json` mit `404` antworten, waehrend `stable.json` `200` gibt. `hermes update
+--check --channel canary` meldet dann `Could not resolve the canary source channel: Channel
+object not found`. **Ein Nutzerwunsch nach "canary" loest sich auf einem Source-Checkout also
+auf `main`** — das ist der Kanal, der dort wirklich an origin/main dranbleibt. Probe vor dem
+Setzen: `hermes update --check --channel <name>` (loesbar = es druckt "Update channel: <name>"
+und einen Abstands-Zaehler, nicht eine Resolve-Fehlermeldung). Was `update --check` am Ende
+meldet, ist der Beweis, dass der Kanal wirksam ist — nicht die Zeile in `config.yaml`.
+
+Entscheidung anhand der ZUSAMMENSETZUNG des Rueckstands, nicht der Zahl: `git log --oneline
+HEAD..origin/main | grep -oE '^[a-z]+\([a-z-]+\)' | sort | uniq -c | sort -rn`. Ueberwiegen
+`fix(gateway)`/`fix(desktop)`/`fix(update)` — genau die Stellen, an denen dieses Haus haengt
+(Multiplex, Kanban, Telegram, Update-Pipeline) — lohnt `main`; sind es nur Doku-/Relay-Fixes,
+bleibt `stable` billiger. Vor dem Wechsel `git log` auf `_config_version`-Bumps und
+`BREAKING`-Marker pruefen (kein Treffer = kein Migrations-Bruch zu erwarten).
+
+**Ein Worktree kann einen anderen Kanal NICHT testen.** `hermes doctor`/Gateway/Desktop laufen
+aus dem INSTALLIERTEN Pfad (`<HERMES_HOME>/hermes-agent/.hermes/bin/hermes.cmd` — der Launcher
+hat den Checkout-Pfad mehrfach fest eingebettet), nicht aus einem beliebigen Worktree. Ein
+Worktree auf `main` ist ein reiner Code-Checkout ohne eigenes venv/installs/tools; ein dort
+gestarteter `hermes` laedt den ECHTEN Checkout-Code. Der echte Testlauf ist `hermes update
+--backup` selbst: der Update-Weg ist transaktional (plan → snapshot → apply → restart → verify →
+report) mit `--backup` als Rollback, und ein sauberer Baum (0 lokale Commits) ist der ideale
+Ausgangszustand. "Erst in einem Worktree testen" ist bei diesem Setup eine Sackgasse — dem
+Nutzer die transaktionale Natur des Updates als den vorhandenen Testweg nennen.
 
 ## Prerequisites
 
@@ -90,6 +129,11 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
    Lauf plus ein bis zwei Stunden zaeher Werkzeuge.
 3. **`hermes update --plan` and show the restart list** to the user before the real run. Note the
    dashboard entry: the plan promises a restart the run does not always deliver (see step 8).
+   Der Plan ist zugleich der KANAL-CHECK: druckt er `Install: git (vX.Y.Z @ <dein aktueller
+   HEAD>)`, ist der Kanal bereits aktuell und der Lauf ein No-Op — es kommt kein Code, EXIT=0
+   mit `AFTER_HEAD == BEFORE_HEAD`. Der Lauf ist trotzdem wertvoll (verifiziert Deps, raeumt
+   `__pycache__`, startet den Gateway neu), wird aber als "bereits aktuell" gemeldet, nicht als
+   "N Commits gezogen". Messgroesse ist `hermes update --plan`, nicht `rev-list --count`.
 4. **Handle holders.** Exit 2 is a holder, not a failure; the dashboard's PID pair and the TUI
    backends hold the venv. Count them with the canonical functions in
    `hermes_cli/update_cmd_windows.py`, never with a command-line substring.
@@ -103,7 +147,11 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
    `git -C <checkout> log -1 --oneline`. Exit code alone proves nothing.
 8. **Triage the exit code:** `1` = one service (usually the dashboard) was not brought back —
    `Start-ScheduledTask -TaskName 'Hermes_Dashboard'`, then HTTP 200 on port 9119.
-   `2` = holder. `0` = done.
+   `2` = holder. `0` = done. `0` mit `AFTER_HEAD == BEFORE_HEAD` = "bereits aktuell", kein Fehler.
+   Die Logzeile `Update follow-up 'gateway_restart' did not finish` ist dabei oft VERALTET:
+   der Lauf hat den Gateway selbst neu gestartet. Vor einem `hermes gateway restart` die
+   `gateway_state.json` messen — neue PID, `state=running`, Plattformen connected heisst:
+   kein Neustart noetig (Messregel "wenn noch noetig").
 9. **`hermes doctor` triage:** fix a `WAL-reset bug` line (SQLite repair section); npm advisories
    have their own fix; the photon duplicate lines are a false alarm of the shared credential
    store — measure before deleting anything.
@@ -116,6 +164,14 @@ Every step goes through the `terminal` tool. Write each PowerShell step to a fil
 12. **Write it down:** Wiki page (`Wiki/Betrieb/Hermes.md`, lessons under `Wiki/Lektionen/`),
     every untouched point as a task in `Archiv/TASKS.md`, then commit only your own paths and
     push. A maintenance run without that record repeats itself next month.
+    Schlaegt der Push mit `Updates were rejected` fehl (parallele Sitzung hat gepusht), NICHT
+    `git pull --rebase` nehmen — der verweigert mit ungestagten Fremdaenderungen im Baum
+    (`cannot pull with rebase: You have unstaged changes`), und der Stash ist in diesem
+    geteilten Arbeitsbaum verboten. Stattdessen `git fetch origin && git merge origin/master
+    --no-edit` (integriert die fremden Commits, fasst die uncommitteten Arbeitsbaum-Dateien
+    nicht an), dann erneut pushen. Eigenes Commit zuerst mit eigenem Index bauen
+    (`GIT_INDEX_FILE` + `read-tree HEAD` + `add <eigene Pfade>`), danach die eigenen Pfade im
+    echten Index nachziehen.
     **Und die WIRKUNG beim Nutzer abfragen.** Ein Lauf wird selten "einfach so" gefahren — er
     hatte einen Grund (hier: das Fenster-Flackern). Nach dem Lauf fragen, ob genau das weg ist,
     und die Antwort mit Datum festhalten; "momentan nicht da" ist eine Momentaufnahme, kein
@@ -398,6 +454,72 @@ geteilte Kennung anzutasten. Achtung beim `hermes config set`: danach `git diff 
 PRUEFEN (Zeilenende CRLF koennen umgebrochen werden) und die diff zeigt evtl. fremde
 nebenlaeufige Aenderungen mit — nur die eigene Zeile stagen.
 
+## Gateway liegt nach grosser Source-Update auf der FALSCHEN Topologie: ein Profil-Standalone haelt den Host-Lock
+
+Symptom nach einem groesseren `hermes update` (viele Commits, v.a. `fix(gateway)`): `hermes
+gateway status` meldet `This gateway is STANDALONE … Profiles NOT served (their bots stay
+silent)` und zaehlt DUSINE Profile auf (default darunter); im Default-Home ist
+`gateway_state.json` auf `stopped`, waehrend ein `profiles/<ein-profil>/gateway_state.json`
+`running` zeigt; der Gateway-Waechter loest alle 2 min „kein Gateway-Prozess — Neustart
+ausgeloest" aus (Churn), ohne dass etwas hochkommt. `hermes gateway status` benennt dann
+dazu eine Ursache wie „Profiles 'default' and '<profil>' both hold the same telegram credential
+(TELEGRAM_BOT_TOKEN)".
+
+**Der Credential-Hinweis in der Statusbox ist NICHT automatisch wahr — er kann ein veralteter
+Elections-Artefakt sein.** Vor dem Glauben die CLAIMS pruefen, nicht die Box lesen:
+`scripts/gateway-claim-probe.py` laedt `hermes_cli.gateway_migrate._credential_claims` ueber
+alle Profil-Heime und druckt je Plattform den Fingerabdruck (NUR Praefix, nie Wert). Zeigt
+es bei JEDEM Profil einen eindeutigen Fingerabdruck und das beschuldigte Profil gar keinen
+Claim,
+ist der Duplicate-Hinweis falsch und der eigentliche Befund ist der HOST-LOCK: ein
+Profil-Standalone-Gateway ist gestartet und reserviert sein Profil-Home, waehrend der
+Default-Multiplexer beim Start scheitert (`Cannot reserve gateway profiles: Gateway runtime
+already owns profile <x>` in `logs/agent.log`) und daher nie hochkommt — alle anderen Profile
+bleiben ohne Bot.
+
+**Reparatur = der designte Konvergenzweg, nicht Config-Flag-Klopfen:**
+
+    hermes gateway migrate --multiplex --dry-run    # Plan + Blocker lesen; 0 Blocker erwartet
+    hermes gateway migrate --multiplex -y           # stoppt den Standalone, startet Default-Multiplexer neu
+
+Der Plan zeigt je Profil `gateway pid`/`service`; ein Standalone ohne Service wird nur
+gestoppt (SIGTERM, drainet aktive Turns), der Default wird ueber die Windows-Aufgabe neu
+gestartet und bedient danach ALLE Profile. `--dry-run` zuerst, weil der Lauf den laufenden
+Gateway-PROZESS beenden darf — ein Blocker (z.B. ein ECHTER Duplikat-Token) wird sonst
+uebersprungen („changes nothing when blocked").
+
+**Nachweis, dass es konvergiert hat (nicht „Statusbox ist weg"):**
+`gateway_state.json` (Default-Home) `running`, `served_profiles` = VOLLSTAENDIGE Anzahl
+(alle Profile, nicht nur eins), alle Plattformen `connected`; Ports 9900/8644 listen;
+Dashboard `Start-ScheduledTask Hermes_Dashboard` + HTTP 200 auf 9119 (der Standalone hat das
+Dashboard auf altem Code stehen lassen). Und der Waechter meldet danach KEINE weiteren
+„Neustart ausgeloest"-Zeilen mehr (Log-Endzeile vor dem Fix als Zeitstempel-Marke nehmen).
+
+**Der Churn kann ueber Stunden unsichtbar bleiben.** Der Host-Lock-Elections-Fall hat sich
+dreimal mit derselben Signatur wiederholt — und zwei davon erst, als der Ausfall schon
+2.5–5 h alt war: `gateway_state.json` zeigt `stopped` (Default-Home), ein
+`profiles/<profil>/gateway_state.json` zeigt `running`, der Waechter loest alle 2 min
+„Neustart ausgeloest" aus, aber KEIN Prozess kommt hoch (der Standalone haelt den Lock, der
+Default scheitert mit `Cannot reserve gateway profiles`). `hermes gateway status` meldet
+parallel oft einen Credential-Duplikat-Hinweis, der ALLEIN die Ursache zu sein scheint —
+Claims gegen die Box messen (oberes Probe-Skript) UND beide `gateway_state.json` lesen,
+bevor man den Token toucht. Ist der Standalone das EIGENE Profil des Nutzers (z. B. ein
+Bot-Profil, das `hermes -p <x>` direkt gestartet hat), laesst er sich nicht „wegmelden":
+`hermes gateway migrate --multiplex` stoppt ihn als Teil der Konvergenz (SIGTERM, drainet
+aktive Turns) — danach ist das Profil vom Multiplexer bedient, nicht stumm.
+
+**Nach dem Update kann die `gateway_state.json` des Default-Homes noch den ALTEN PID tragen**
+(`state=stopped`, `code_version` = alte), waehrend ein frischer Gateway-Prozess (neue
+`code_version`) parallel hochkommt und kurz spaeter sauber gestoppt wird. Die State-Datei ist
+nicht der Wahrheit: die `code_version` im Prozess (`Get-CimInstance Win32_Process` auf
+`ExecutablePath` + `gateway.log`-Zeile `Gateway running with N platform(s)`) ist es. Erst
+wenn der neue Prozess `running` in der Datei und im `served_profiles` steht, ist konvergiert.
+
+**Zweite Falle aus demselben Fall: die Channel-Record-Position ist nicht die Wirksamkeit.**
+`--set-channel` kann den Kanal-Record in eine unerwartete Profil-Config schreiben (statt ins
+Default-Home); ob der Kanal gilt, entscheidet `hermes update --check` (meldet „Update channel:
+<main>") — nicht, in welcher Datei die Zeile steht.
+
 ## Hänger im TUI, Antwort im Einzelschritt: erst der Weg, dann die Credentials
 
 Ein Profil-Bot „antwortet nicht" heisst zuerst einmal **nichts** über die
@@ -443,6 +565,18 @@ und ist der Weg, den der Nutzer dann nimmt.
 
 ## Gateway-Ausfall: Diagnose und Waechter (Windows)
 
+**Erst pruefen, ob der Waechter-Task ueberhaupt ENABLED ist - ein deaktivierter Task ist
+die haeufigste Ursache eines unbemerkten Ausfalls, kein Erkennungsfehler.**
+`Get-ScheduledTask -TaskName 'MaxHirn-Gateway-Waechter'` muss `Ready` zeigen; ist er
+deaktiviert, lief er im Ausfall-Fenster gar nicht und konnte nichts neu starten. Ein
+deaktivierter Task reaktiviert sich nicht selbst, und ein NUR-meldender taeglicher
+Check laesst das Fenster bis zum naechsten Crash offen - die Systempruefung aktiviert
+kritische Waechter deshalb SELBST wieder (Block 9, $kritischeWaechter, per
+`schtasks /Change /ENABLE`, ohne Admin; gewollt Deaktivierte bleiben in der Allowlist).
+Ob er in einem Zeitfenster lief, belegt
+`wevtutil qe "Microsoft-Windows-TaskScheduler/Operational"` mit Zeitfilter (Get-WinEvent
+laeuft in Timeouts). Details: `references/gateway-identitaet-und-wachen.md` Abschnitt 5(f).
+
 Zuerst `logs/gateway-exit-diag.log` lesen (Exit 75 = Neustart-Verbleib, echter Crash hinterlaesst
 `previous_unclean_exit`) und Kernel-Power-41-Ereignisse zaehlen - keine heissen Prozess-, nicht
 Hardware-Ausfall. "Another gateway instance … started" ist ein DOPPELSTART, kein Absturz: den
@@ -454,11 +588,32 @@ Endzustand: genau EIN Launcher-Task plus Waechter.
 Messstelle - nicht der Dienst.** `WScript.Shell.Run <zeile>, 0, False` (Fensterstil 0,
 versteckt) startet ein **Konsolen**programm gar nicht: kein Prozess, keine Fehlermeldung, der
 Aufruf kehrt sauber zurueck. Eine Launcher-VBS, die `python.exe` mit Stil 0 startet, kann
-deshalb nie etwas starten; versteckt geht nur mit `pythonw.exe` (GUI-Subsystem). Beweis fuehrt
+deshalb nie etwas starten. Beweis fuehrt
 man mit einem VBS-Einzeiler, der eine Datei schreibt, plus `Test-Path` darauf - nie mit der
 Erfolgsmeldung von `sh.Run`. Und: eine Prozesswache, die nur `python.exe` sucht, sieht den
 umgestellten Gateway nicht mehr - immer beide Namen abfragen. `hermes update` schreibt die
-Launcher-VBS neu und setzt sie auf `python.exe` zurueck; nach jedem Lauf nachsehen. Stiltabelle,
+Launcher-VBS neu; nach jedem Lauf nachsehen.
+
+**KORREKTUR 15.10.2026 (2,5 h Ausfall, gemessen): `pythonw.exe` mit Stil 0 ist NICHT der
+funktionierende Weg - es ist der AUSFALL-Weg.** Der Waechter loeste von 00:10 bis 02:59 alle
+zwei Minuten "kein Gateway-Prozess - Neustart ausgeloest" aus, ohne dass ein Prozess hochkam:
+der pythonw-Start bleibt im Source-Update-Completion-Tail haeng (`pm: worker exited without a
+result` im stdout, sonst nichts) und erreicht den Gateway-Loop nie. `python.exe -m
+hermes_cli.main gateway run` startet denselben Befehl sofort durch und lief 16 Minuten stabil
+(bis ein MemoryError unter Commit-Druck den Liveness-Watchdog ausloeste - ein ZWEITER,
+getrennter Befund). Der gemessene, funktionierende Launcher ist die Kette **VBS ->
+`cmd.exe /c gateway-direkt.cmd` (Stil 0 - cmd.exe ist mit Stil 0 startfaehig, per
+Probe-Datei bewiesen) -> `start /b python.exe`**; der CMD setzt die Umgebung per `setlocal`
+selbst (HERMES_HOME, PYTHONPATH, VIRTUAL_ENV, HERMES_GATEWAY_DETACHED,
+HERMES_SUPERVISED_CHILD). Nachweis: VBS-Neustart brachte den Gateway in 12 s hoch,
+`state=running`, 22/22 Plattformen connected. Sicherung desalten VBS als `.bak-<datum>`
+daneben.
+
+**Merksatz fuer die Diagnose:** schreibt der Waechter minuetlich "Neustart ausgeloest" und es
+passiert nichts, ist der LAUNCHER der Befund, nicht der Watchdog. Den Launcher-Weg isoliert
+messen (wscript direkt aufrufen, PID-Vergleich per `tasklist /FO CSV` - **nicht** per
+`Get-CimInstance`, das warf unter Last `ResourceBusy`/"Nicht genuegend Arbeitsspeicher"), und
+python.exe gegen pythonw gegeneinander fahren, bevor man am Watchdog oder am Dienst sucht. Stiltabelle,
 Reparatur und die zugehoerige Wachen-Falle: `references/gateway-identitaet-und-wachen.md`,
 Abschnitte 3 und 5(c).
 **Start-Tot-Schleife: erst die KINDER zaehlen, nicht den Dienst verdaechtigen.** Startet der

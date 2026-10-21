@@ -215,6 +215,22 @@ nach Normalisierung, `getUpdates` leer. Der Nutzer entscheidet dann ueber das
 Korrektieren - ein `.env`-Wert wird nicht ueberschrieben, auch wenn er mit
 hoher Wahrscheinlichkeit falsch ist.
 
+## Token-Rotation verifizieren (nach /revoke)
+
+Nach einer Rotation den NEUEN Token mit `getMe` pruefen, BEVOR Erfolg gemeldet
+wird — ein 401 auf dem neuen Token heisst falsch abgeschrieben oder noch nicht
+aktiv, nicht "der Bot ist kaputt". Der alte Token (aus der Sicherung) muss
+parallel 401 liefern: das bestaetigt, dass der `/revoke` wirklich gegriffen hat.
+Beide 401 = der neue Token ist falsch, der Nutzer holt ihn erneut von
+@BotFather. Bis der korrekte Token eingetragen ist, antwortet der Bot nicht —
+das ist erwartet und heilt mit dem richtigen Wert.
+
+Welchem Bot ein Token gehoert, ohne das Geheimnis auszugeben: die numerische
+Bot-ID (Ziffern vor dem Doppelpunkt) extrahieren und `getMe` damit aufrufen —
+die Antwort nennt `username`/`first_name`. So laesst sich ein Klartext-Fund in
+einer `.env` oder einem Transkript einem konkreten Bot zuordnen, bevor rotiert
+wird.
+
 ## Was in eine leere Kanalzeile gehoert
 
 Bevor der Nutzer eine leere `.env`-Zeile fuellt, die Bedeutung in einem Satz

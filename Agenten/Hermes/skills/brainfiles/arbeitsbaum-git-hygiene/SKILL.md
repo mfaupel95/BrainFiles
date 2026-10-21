@@ -1011,6 +1011,21 @@ sichern - in dieser Reihenfolge, sonst steht der fremde Teil im eigenen Commit.
 
 - **Ein Werkzeug zum Aufraeumen braucht eine Bremse, die man TESTEN kann — sonst ist es schlimmer als keines.** Zwei Regeln, die beim Bau von `zweige.py` je einen Test gekostet haben. (a) **Die Bremse ist ein Feld im Befund, nicht eine Absicht im Code**: `entfernen()` liest `belegt_weg` aus dem uebergebenen Messergebnis; wer ihm einen fremdgebauten Befund ohne dieses Feld gibt, passiert nichts. So bleibt das Entfernen unwirksam, sobald die Messung fehlt — auch bei einem Fehler in der Messung. (b) **Die Gegenprobe ist Teil des Wegs, nicht der Abschlussmeldung**: nach dem Entfernen muss die Klassifikation der Reste unveraendert sein, und ein Zweig mit echtem Vorlauf darf nie verschwinden. Beides als Test festnageln, mit echten temporaeren Repos statt Attrappen — `merge-base`, `cherry` und `worktree` sind genau die Befehle, die ein Mock nicht zeigen kann. **Wird ein Test gegen die eigene Bremse rot, zuerst fragen, WER die falsche Haelfte festgenagelt hat.** Ein Test, der einem Objekt mit echtem Vorlauf den Status „wegwerfbar" gab, schlug fehl, als das Werkzeug zu Recht stehen blieb — hier wurde der Test korrigiert, nicht die Bremse. Ebenso zu streng gefasst: „die Klassifikation bleibt komplett gleich" enthielt auch das zu Entfernende, obwohl dessen Verschwinden der Beweis ist (die Erwartung lautet: Rest unveraendert UND entfernter Zweig fehlt). **Merksatz: wenn ein Test die eigene Schutzvorkehrung als Fehler meldet, ist die Schutzvorkehrung das Beweisziel, nicht der Kandidat** — die Frage lautet: welche Seite der Absicht wuerde der Test nach dem Fix noch entdecken, wenn der Fehler zurueckkommt? Wird die Antwort leer, wird nicht die Erwartung gelockert, sondern die Regel falsch gebaut.
 
+- **Ein Worktree erbt KEINE gitignorierten Ordner — die Luecke mit einer Junction schliessen.**
+  Gemessen am 11.10.2026: `.worktrees/hausspur-schluss/Agenten/Handel/` fehlten 68
+  Eintraege gegenueber dem Hauptbaum — `nautilus/` (das eigene Repo, per `.gitignore`
+  gesperrt), `.venv`, `daten/`, `cache/`, `Bus/`, Logs. Keine einzige `.py` fehlte
+  (git materialisiert die versionierte Ebene), aber alles, was per `.gitignore`
+  draussen ist, ist im Worktree **einfach nicht da**. Ein Skript, das
+  `nautilus/.venv/Scripts/python.exe` erwartet, laeuft dort nicht.
+  Fix (ohne 567 MB zu duplizieren, ohne Admin): **Junction** auf den Hauptbaum.
+  `powershell -NoProfile -Command "New-Item -ItemType Junction -Path 'nautilus'
+  -Target 'C:\...\BrainFiles\Agenten\Handel\nautilus'"` — Junction statt Symlink,
+  weil ein Symlink auf Windows Admin-Rechte braucht. Danach
+  `Get-Item <pfad> | Select LinkType,Target` als Nachweis und ein Blick auf
+  `git status` im Worktree (bleibt leer: die Junction stoert git nicht).
+  **Und mit `cmd /c mklink /J` erst gar nicht anfangen** — unter MSYS-Bash
+  scheitert das Quoting still, es kommt kein Link heraus und `ls` findet nichts.
 - **Verwaisten Worktree/Branch nicht raten, sondern nachmessen und sauber entfernen.** Ein
   geloester Arbeitsbaum (z. B. `.worktrees/2` auf Branch `2`) ist kein Verlustrisiko, wenn
   seine Commits schon in master stecken. Vor jeder Entfernung belegen:
@@ -1021,8 +1036,8 @@ sichern - in dieser Reihenfolge, sonst steht der fremde Teil im eigenen Commit.
   wie bei einem normalen Zweig der Fehler. Nachher `git worktree list` + `git branch -a`:
   es soll nur noch `master` (plus `zwischenstand` = Nachtsicherung) stehen.
 - **Nested `copilot-worktrees/*` in Klon-Repos sind KEIN Aufraeumkandidat.** `git worktree
-  list` in einem Klon unter `Werkstatt/Repos/<repo>` zeigt neben dem Hauptbaum oft
-  `Werkstatt/Repos/copilot-worktrees/<repo>/<name>` auf einem Branch mit automatischem
+  list` in einem Klon unter `Werkstatt/<repo>` zeigt neben dem Hauptbaum oft
+  `Werkstatt/copilot-worktrees/<repo>/<name>` auf einem Branch mit automatischem
   Copilot-Namen. Das ist die eigene Feature-Sammlung von Copilot (jeder auf dem Helden-
   Commit), nicht ein verwaister BrainFiles-Worktree. Nie mit `git worktree remove` anfassen
   — nur Worktrees im BrainFiles-eigenen Baum (`BrainFiles/.worktrees/*`) aufraeumen, die
@@ -1042,7 +1057,7 @@ sichern - in dieser Reihenfolge, sonst steht der fremde Teil im eigenen Commit.
   (`git check-ignore -v --no-index <pfad>` je Datei) und einzeln freigeben — eine
   Freigabezeile mit dem Grund daneben, nicht ein pauschales `!*.vbs`.
   **Dieselbe Falle im Fremd-Klon, eine Ebene tiefer:** eine Hausdatei, die im
-  Repo-Ordner unter `Werkstatt/Repos/<repo>` entsteht (eigenes Werkzeug, eigene
+  Repo-Ordner unter `Werkstatt/<repo>` entsteht (eigenes Werkzeug, eigene
   To-do-Notiz), ist dort `??` - der Klon hat ein EIGENES Repo, also schuetzt die
   BrainFiles-`.gitignore` sie nicht und die Sicherung nimmt sie nicht mit. Vor dem
   Melden „fertig" je selbstgebauter Datei `git -C <klon> status --porcelain --
@@ -1226,5 +1241,5 @@ sichern - in dieser Reihenfolge, sonst steht der fremde Teil im eigenen Commit.
   Arbeit im Baum?). Reihenfolge beim Auftrag „alles pushen": erst die EIGENEN Repos
   (BrainFiles und die verschachtelten eigenen wie `Agenten/Handel/nautilus`), dann die
   Fork-Klone, an denen in dieser Sitzung wirklich gearbeitet wurde — NICHT alle Klone
-  unter `Werkstatt/Repos/`; ein Fork, den diese Sitzung nie angefasst hat, bleibt
+  unter `Werkstatt/`; ein Fork, den diese Sitzung nie angefasst hat, bleibt
   unberuehrt und wird nur benannt.

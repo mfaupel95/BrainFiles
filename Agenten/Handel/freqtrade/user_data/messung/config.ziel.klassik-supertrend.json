@@ -1,0 +1,72 @@
+{
+ "max_open_trades": 3,
+ "stake_currency": "USDT",
+ "stake_amount": "unlimited",
+ "tradable_balance_ratio": 0.99,
+ "dry_run": true,
+ "initial_state": "running",
+ "dry_run_wallet": 10000,
+ "trading_mode": "futures",
+ "timeframe": "4h",
+ "strategy": "HausSpur",
+ "exchange": {
+  "name": "binance",
+  "key": "",
+  "secret": "",
+  "pair_whitelist": [
+   "BTC/USDT:USDT",
+   "ETH/USDT:USDT",
+   "SOL/USDT:USDT"
+  ],
+  "pair_blacklist": []
+ },
+ "entry_pricing": {
+  "price_side": "same",
+  "use_order_book": true,
+  "order_book_top": 1
+ },
+ "exit_pricing": {
+  "price_side": "same",
+  "use_order_book": true,
+  "order_book_top": 1
+ },
+ "pairlists": [
+  {
+   "method": "StaticPairList"
+  }
+ ],
+ "unfilledtimeout": {
+  "entry": 10,
+  "exit": 10,
+  "unit": "minutes"
+ },
+ "api_server": {
+  "enabled": true,
+  "listen_ip_address": "0.0.0.0",
+  "listen_port": 8094,
+  "jwt_secret_key": "4e5debab682bc8a4cdccc6e312d4757257a09c81c7698830b44d23b51d803b38",
+  "ws_token": "KA74VO-s0ep0ND7lmIw9gLCjnqYygGMq",
+  "CORS_origins": [],
+  "username": "max",
+  "password": "<78781578>"
+ },
+ "telegram": {
+  "enabled": false,
+  "token": "",
+  "chat_id": ""
+ },
+ "bot_name": "freqtrade-klassik-supertrend",
+ "db_url": "sqlite:////freqtrade/user_data/tradesv3.klassik-supertrend.sqlite",
+ "logfile": "/freqtrade/user_data/logs/klassik-supertrend.log",
+ "internals": {
+  "process_throttle_secs": 5
+ },
+ "moondev": {
+  "signal_ausstieg": true
+ },
+ "margin_mode": "isolated",
+ "hausspur": {
+  "name": "klassik_supertrend",
+  "pfad": "/agenten/Handel"
+ }
+}

@@ -46,6 +46,7 @@ class Fake:
         self.prozesse = []
         pid = 2000
         marker = dict(w.MARKER)
+        marker.update(w.NODE_MARKER)
         for g, anzahl in (gruppen or {}).items():
             for _ in range(anzahl):
                 pid += 1
@@ -167,6 +168,35 @@ class NormalbetriebTest(BasisTest):
         self.assertIn("MCP-Zombies gekillt", text)
 
 
+class NodeTest(BasisTest):
+    """T-424: die Wache sieht seit 05.10.2026 auch die ant.dir-NODE-MCP-Server.
+
+    Am 05.10.2026 wuchsen 84 node-Knoten (pdf-server/desktopcommander/
+    canva.affinity/revolut-x-api, je 18-24 Generationen) ungesehen, weil
+    _prozesse_json nur python/pythonw filterte. Jetzt wird node.exe mitgelesen
+    und je Server-Gruppe auf BEHALTEN_JE_GRUPPE gekuerzt.
+    """
+
+    def test_node_ueberlauf_wird_erkannt_und_gekuerzt(self):
+        fake = Fake({"pdf-server": 20})
+        text = self.lauf(fake)
+        self.assertIn("MCP-Zombies gekillt", text)
+        self.assertIn("pdf-server", text)
+        self.assertEqual(len(fake.prozesse), 3,
+                         "node-Gruppe wird wie jede andere auf BEHALTEN_JE_GRUPPE gekuerzt")
+
+    def test_node_im_rahmen_meldet_nichts(self):
+        text = self.lauf(Fake({"pdf-server": 2, "revolut-x-api": 1}, commit_mb=20000))
+        self.assertEqual(text, "")
+
+    def test_node_und_python_gemischt_zaehlen_gesamt(self):
+        # 4 python-Gruppen a 5 + 1 node-Gruppe a 5 = 25 > GESAMT (24), keine ueber MAX_JE_GRUPPE.
+        gruppen = {g: 5 for g in w.MARKER}
+        gruppen["pdf-server"] = 5
+        text = self.lauf(Fake(gruppen))
+        self.assertIn("MCP-Zombies gekillt", text)
+
+
 class NachpruefungTest(unittest.TestCase):
     def test_lebende_fragt_powershell_nur_einmal(self):
         """Vorher: ein Aufruf je PID - bei 130 Prozessen dauerte das Minuten."""
@@ -180,7 +210,12 @@ class NachpruefungTest(unittest.TestCase):
         for gruppe, marker in w.MARKER.items():
             self.assertEqual(w._gruppe(r"C:\x\MCP-Server\a\.venv\python.exe " + marker),
                              gruppe)
+        for gruppe, marker in w.NODE_MARKER.items():
+            self.assertEqual(
+                w._gruppe(r"C:\x\MCP-Server\ant.dir.gh.owner." + marker + r"\dist\index.js"),
+                gruppe)
         self.assertIsNone(w._gruppe(r"C:\x\andere\python.exe run.py"))
+        self.assertIsNone(w._gruppe(r"C:\x\andere\node.exe server.js"))
 
     def test_docker_pruefung_ohne_docker_ist_none(self):
         """Kein Docker installiert darf nicht als 'Docker laeuft' gelten."""

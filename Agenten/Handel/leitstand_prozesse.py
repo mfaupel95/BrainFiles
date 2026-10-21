@@ -27,6 +27,8 @@ _PY = HIER / "scanner" / ".venv" / "Scripts" / "python.exe"
 _NAUTILUS_PY = HIER / "nautilus" / ".venv" / "Scripts" / "python.exe"
 _CREATE_NEW_CONSOLE = 0x00000010
 _KRAKEN_NODE = HIER / "nautilus_kraken" / "run_kraken_paper_node.py"
+sys.path.insert(0, str(HIER / "nautilus_kraken"))
+from papierbuch import lese_stand as lese_papierstand  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +75,12 @@ class _OmnitradetLauf:
             pass
 
 
+def _produkt_aus_env(env):
+    """Wie run_kraken_paper_node.produkt_typ(): ohne Angabe gilt spot."""
+    wahl = (env.get("KRAKEN_PRODUKT") or "spot").strip().lower()
+    return "futures" if wahl in ("futures", "future", "perpetual", "pf") else "spot"
+
+
 class _KrakenQuoteNode:
     """Eigenstaendiger, read-only Kraken-Quote-Node fuer Spot oder Futures."""
 
@@ -84,6 +92,14 @@ class _KrakenQuoteNode:
         self.name = "Kraken Paper-Node (%s)" % produkt.upper()
         self._prozess = None
         self._pid_pfad = HIER / ("nautilus_kraken_node_%s.pid" % produkt)
+
+    def zusatz(self):
+        """PnL-Kurztext aus dem Papierbuch des Nodes, sonst leer."""
+        stand = lese_papierstand(self.produkt, HIER / "nautilus_kraken")
+        if not stand:
+            return ""
+        gesamt = stand["realisiert"] + stand["unrealisiert"]
+        return "PnL %+.2f (%d Trades)" % (gesamt, stand["trades"])
 
     def _pid(self):
         try:
@@ -101,16 +117,46 @@ class _KrakenQuoteNode:
                    for a in proc.cmdline()]
             skript = os.path.normcase(os.path.realpath(str(_KRAKEN_NODE)))
             return (exe == erwartet_exe and skript in cmd
-                    and proc.environ().get("KRAKEN_PRODUKT") == self.produkt)
+                    and _produkt_aus_env(proc.environ()) == self.produkt)
         except (psutil.Error, OSError, PermissionError):
             return False
+
+    def _suche_node(self):
+        """PID des laufenden Nodes per Prozess-Scan, falls die PID-Datei veraltet ist.
+
+        Der venv-python.exe ist ein Launcher, der den Basis-Python als Kind
+        startet; beide tragen Skript und Produkt. Gemeldet wird der oberste.
+        """
+        skript = os.path.normcase(os.path.realpath(str(_KRAKEN_NODE)))
+        treffer = set()
+        for proc in psutil.process_iter():
+            try:
+                cmd = [os.path.normcase(os.path.realpath(a)) if os.path.exists(a) else a
+                       for a in proc.cmdline()]
+                if skript in cmd and _produkt_aus_env(proc.environ()) == self.produkt:
+                    treffer.add((proc.pid, proc.ppid()))
+            except (psutil.Error, OSError):
+                continue
+        pids = {pid for pid, _ in treffer}
+        oberste = sorted(pid for pid, eltern in treffer if eltern not in pids)
+        return oberste[0] if oberste else None
 
     def laeuft(self):
         if self._prozess is not None and self._prozess.poll() is None:
             return True
         pid = self._pid()
-        return (pid is not None and hz.prozess_lebt(pid) is True
-                and self._persistiert_ist_eigener_node(pid))
+        if (pid is not None and hz.prozess_lebt(pid) is True
+                and self._persistiert_ist_eigener_node(pid)):
+            return True
+        gefunden = self._suche_node()
+        if gefunden is None:
+            return False
+        # Nur Merkhilfe fuer den naechsten Start: fehlt der Ordner, gilt die PID trotzdem.
+        try:
+            self._pid_pfad.write_text("%d\n" % gefunden, encoding="ascii")
+        except OSError:
+            pass
+        return True
 
     def starten(self):
         if self.laeuft():
@@ -134,15 +180,31 @@ class _KrakenQuoteNode:
     def stoppen(self):
         pid = self._prozess.pid if self._prozess is not None else self._pid()
         if pid is None or not hz.prozess_lebt(pid):
+            pid = self._suche_node()
+        if pid is None or not hz.prozess_lebt(pid):
             self._pid_pfad.unlink(missing_ok=True)
             return
         subprocess.run(
             [os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
                           "System32", "taskkill.exe"),
-             "/F", "/PID", str(pid)],
+             "/F", "/T", "/PID", str(pid)],
             capture_output=True, check=False,
         )
         self._pid_pfad.unlink(missing_ok=True)
+
+
+def _modus_der_spur(zustand):
+    """Oberer `modus` der Spur; fehlt er, die Modi der Positionen.
+
+    mosaic etc. tragen den Modus nur je Position - ohne diesen Rueckgriff
+    stuende dort faelschlich '-'.
+    """
+    oben = zustand.get("modus")
+    if oben:
+        return str(oben)
+    modi = sorted({str(p.get("modus")) for p in zustand.get("positionen") or []
+                   if isinstance(p, dict) and p.get("modus")})
+    return "/".join(modi) if modi else "-"
 
 
 def spuren_status(jetzt=None):
@@ -160,10 +222,10 @@ def spuren_status(jetzt=None):
         zustand = hz.lade_json(str(ordner / ("zustand%s.json" % suffix)))
         wachen = hz.lade_json(str(ordner / ("wachen%s.json" % suffix)))
         lage, alter, grenze = hz.herzschlag_lage(spur, zustand, wachen, jetzt)
-        positionen = hz.positionen_aus(zustand)
+        positionen = hz.positionen_der_spur(spur, zustand, wachen)
         zeilen.append({
             "spur": spur,
-            "modus": str(zustand.get("modus") or "-"),
+            "modus": _modus_der_spur(zustand),
             "herzschlag": lage,
             "alter_minuten": alter,
             "positionen": len(positionen),
@@ -181,15 +243,19 @@ def filter_spuren(zeilen, auswahl):
 
 def formatiere_spuren_status(zeilen):
     """Monospace-Statusmatrix aus der dauerlauf.SPUREN-Liste."""
-    aus = ["SPUR                 MODUS     HERZSCHLAG       POSITIONEN  HANDEL_ERLAUBT",
-           "-" * 76]
+    # Breite nach dem laengsten Namen, sonst verrutschen Spalten bei
+    # nautilus_kraken_futures / klassik_donchian_trend.
+    breite = max([20] + [len(z["spur"]) for z in zeilen])
+    aus = ["%-*s MODUS     HERZSCHLAG          POSITIONEN  HANDEL_ERLAUBT" % (breite, "SPUR"),
+           "-" * (breite + 59)]
     for z in zeilen:
-        live = "true" if z.get("handel_erlaubt") else "false"
+        erlaubt = z.get("handel_erlaubt")
+        live = "-" if erlaubt is None else ("true" if erlaubt else "false")
         alter = z.get("alter_minuten")
         lage = ("%s (%d min)" % (z["herzschlag"], alter)
                 if alter is not None else z["herzschlag"])
-        aus.append("%-20s %-9s %-17s %10d  %s" %
-                   (z["spur"], z["modus"], lage, z["positionen"], live))
+        aus.append("%-*s %-9s %-20s %10d  %s" %
+                   (breite, z["spur"], z["modus"], lage, z["positionen"], live))
     return "\n".join(aus)
 
 
@@ -244,7 +310,7 @@ class _ProzessZeile(ttk.Frame):
         super().__init__(eltern)
         self._p = prozess
         ttk.Label(self, text=prozess.name, width=22, anchor="w").pack(side="left")
-        self.w_zustand = ttk.Label(self, text="", width=22, anchor="w")
+        self.w_zustand = ttk.Label(self, text="", width=40, anchor="w")
         self.w_zustand.pack(side="left", padx=(0, 12))
         self.w_start = ttk.Button(self, text="Start", command=self._starten, width=7)
         self.w_start.pack(side="left", padx=(0, 4))
@@ -254,7 +320,9 @@ class _ProzessZeile(ttk.Frame):
 
     def refresh(self):
         laeuft = self._p.laeuft()
-        self.w_zustand.config(text="\u25cf l\u00e4uft" if laeuft else "\u25cb gestoppt")
+        text = "\u25cf l\u00e4uft" if laeuft else "\u25cb gestoppt"
+        zusatz = getattr(self._p, "zusatz", lambda: "")()
+        self.w_zustand.config(text=text + ("  " + zusatz if zusatz else ""))
         self.w_start.config(state="disabled" if laeuft else "normal")
         self.w_stopp.config(state="normal" if laeuft else "disabled")
 
@@ -294,7 +362,7 @@ class ProzessReiter(ttk.Frame):
         filterzeile.pack(fill="x", pady=(0, 4))
         ttk.Label(filterzeile, text="Handelsspuren — nur Status; gesteuert vom Dauerlauf",
                   style="Titel.TLabel", anchor="w").pack(side="left")
-        self._spur_filter = tk.StringVar(value="Nautilus")
+        self._spur_filter = tk.StringVar(value="Alle")
         self._spur_auswahl = ttk.Combobox(filterzeile, textvariable=self._spur_filter,
                                           values=("Nautilus", "Alle"),
                                           state="readonly", width=12)

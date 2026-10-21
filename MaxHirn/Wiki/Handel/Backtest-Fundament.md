@@ -12,7 +12,7 @@ summary: 'Wie die Spuren ueber 5,7 Jahre historische Daten nachgerechnet werden,
 
 Quelle: `Agenten/Handel/historie_binance.py`, `replay.py`, Spezifikation
 `Agenten/Handel/docs/design/2026-09-24-backtest-fundament-design.md`,
-Plan `docs/plans/2026-09-24-backtest-fundament.md`.
+Plan `Werkstatt/Projekte/handel/plans/2026-09-24-backtest-fundament.md`.
 
 ## Wozu
 

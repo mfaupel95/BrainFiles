@@ -1,0 +1,169 @@
+{
+  "aufrufort": {
+    "orb/tests": "spur",
+    "orbk/tests": "spur"
+  },
+  "stand": {
+    "ai4trade/tests": {
+      "fehler": 1,
+      "tests": 17
+    },
+    "fib_retrace/tests": {
+      "fehler": 0,
+      "tests": 0
+    },
+    "freqtrade/tests": {
+      "fehler": 0,
+      "tests": 45
+    },
+    "gitter/tests": {
+      "fehler": 0,
+      "tests": 30
+    },
+    "iv_waelle/tests": {
+      "fehler": 0,
+      "tests": 55
+    },
+    "iv_wand/tests": {
+      "fehler": 1,
+      "tests": 23
+    },
+    "kopier/tests": {
+      "fehler": 0,
+      "tests": 53
+    },
+    "kraken/tests": {
+      "fehler": 0,
+      "tests": 199
+    },
+    "liq_wand/tests": {
+      "fehler": 0,
+      "tests": 32
+    },
+    "macd_mtf/tests": {
+      "fehler": 0,
+      "tests": 22
+    },
+    "moondev_funding/tests": {
+      "fehler": 0,
+      "tests": 22
+    },
+    "moondev_liquidation/tests": {
+      "fehler": 0,
+      "tests": 11
+    },
+    "moondev_listingarb/tests": {
+      "fehler": 0,
+      "tests": 10
+    },
+    "moondev_marktlage/tests": {
+      "fehler": 0,
+      "tests": 33
+    },
+    "moondev_sentiment/tests": {
+      "fehler": 0,
+      "tests": 9
+    },
+    "moondev_signalwelle/tests": {
+      "fehler": 0,
+      "tests": 48
+    },
+    "moondev_sniper/tests": {
+      "fehler": 0,
+      "tests": 17
+    },
+    "moondev_topmovers/tests": {
+      "fehler": 0,
+      "tests": 6
+    },
+    "moondev_whale/tests": {
+      "fehler": 0,
+      "tests": 16
+    },
+    "mosaic/tests": {
+      "fehler": 0,
+      "tests": 158
+    },
+    "nautilus_emacross/tests": {
+      "fehler": 0,
+      "tests": 8
+    },
+    "nautilus_kraken/tests": {
+      "fehler": 0,
+      "tests": 0
+    },
+    "okx_bot_waechter/tests": {
+      "fehler": 0,
+      "tests": 92
+    },
+    "omniquant/tests": {
+      "fehler": 0,
+      "tests": 124
+    },
+    "omnitrade/tests": {
+      "fehler": 1,
+      "tests": 32
+    },
+    "omnitrade_futures/tests": {
+      "fehler": 1,
+      "tests": 8
+    },
+    "orb/tests": {
+      "fehler": 0,
+      "tests": 60
+    },
+    "orbk/tests": {
+      "fehler": 0,
+      "tests": 76
+    },
+    "robinhood_radar/tests": {
+      "fehler": 0,
+      "tests": 25
+    },
+    "scanner/tests": {
+      "fehler": 0,
+      "tests": 198
+    },
+    "scanner_quant/tests": {
+      "fehler": 0,
+      "tests": 22
+    },
+    "spiegel/tests": {
+      "fehler": 0,
+      "tests": 99
+    },
+    "squeeze/tests": {
+      "fehler": 0,
+      "tests": 27
+    },
+    "supertrend/tests": {
+      "fehler": 0,
+      "tests": 25
+    },
+    "swap/tests": {
+      "fehler": 0,
+      "tests": 57
+    },
+    "tests": {
+      "fehler": 27,
+      "tests": 2440
+    },
+    "trendwende_btc/tests": {
+      "fehler": 0,
+      "tests": 20
+    },
+    "verbesserer/tests": {
+      "fehler": 0,
+      "tests": 358
+    },
+    "wavetrend/tests": {
+      "fehler": 0,
+      "tests": 24
+    },
+    "xperp/tests": {
+      "fehler": 0,
+      "tests": 205
+    }
+  },
+  "zeitlimit_sekunden": 2100
+}

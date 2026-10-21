@@ -1,12 +1,12 @@
 # Zentrale — Repos, Werkstatt und Handel
 
 Ein Fenster fuer **alles, was auf diesem Rechner liegt und startet**: die 46
-geklonten Repos unter `Werkstatt/Repos`, die eigenen Projekte und Ablagen unter
+geklonten Repos unter `Werkstatt`, die eigenen Projekte und Ablagen unter
 `Werkstatt/` und die Handelsspuren samt Werkzeugen unter `Agenten/Handel`.
 Ordner oeffnen, Terminal, starten, Bot-Chat, Doku lesen — plus die Angabe, was
 fehlt, bevor man es vergebens versucht.
 
-Entstanden am 18.09.2026 als „Repos-Zentrale" fuer `Werkstatt/Repos`; am
+Entstanden am 18.09.2026 als „Repos-Zentrale" fuer `Werkstatt`; am
 30.09.2026 auf drei **Bereiche** erweitert. Spezifikation der ersten Fassung:
 `docs/design/2026-09-18-repos-zentrale-design.md`, Plan:
 `docs/plans/2026-09-18-repos-zentrale.md`.
@@ -35,7 +35,7 @@ Bot, Port) und schreibt den Bericht nach `logs/` — derselbe Lauf wie der Knopf
 
 | Bereich | Wurzel | Regel, was eine Zeile bekommt |
 |---|---|---|
-| **REPOS** | `Werkstatt/Repos` | nur Klone mit `.git` |
+| **REPOS** | `Werkstatt` | nur Klone mit `.git` |
 | **WERKSTATT** | `Werkstatt` + `Werkstatt/Projekte` | jeder Ordner (auch Datenfelder und Ablagen) |
 | **HANDEL** | `Agenten/Handel` | jeder Ordner, jede Werkzeugdatei der Wurzel mit eigenem Einstieg **und** die ausdruecklich genannten Werkzeuge in Unterordnern |
 

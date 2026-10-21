@@ -98,6 +98,26 @@ rg -n "AlterName[/\\]" --glob '!*.bak-*'
 Dazu die Dateizahl vor und nach dem Umzug vergleichen
 (`00-bestand.ps1`, `00-bestand.ps1 -Nachher`).
 
+**Den Namen in jeder TIEFE suchen.** Die Ersetzungsregel auf den vollen alten
+Pfad greift nur, wenn jeder Verweis ihn ganz traegt — verschachtelte Werte
+(JSON-Felder wie `"datei": "Unterordner/..."`) tragen oft nur den SCHWANZ.
+Deshalb zusaetzlich nach dem blossen Ordnernamen suchen (`rg -n "Repos/"`
+neben `rg -n "Werkstatt/Repos"`) und jeden Treffer einzeln lesen, statt die
+Trefferzahl als Erfolg zu nehmen.
+
+**Vor jedem `git -C <pfad>` pruefen, dass dort ein Repo liegt.** Ohne eigenes
+`.git` liest git still von einem Eltern-Repo weiter — `log`/`status` liefern
+dann plausible Werte eines ganz anderen Repos (dieselbe HEAD-Uhr ueberall,
+dirty-Zaehler aus dem Hausbaum). Nachweis: `git -C <pfad> rev-parse
+--show-toplevel` muss in dem Ordner enden. Ein Zurueckbleibsel ohne `.git`
+ist eine leere Huelse, kein Klon — nichts ist zu retten, nur zu entfernen.
+
+**`nul`-Restdateien nur per Geraetepfad loeschen.** Eine Datei namens `nul`
+ist ueber normale Pfade nicht adressierbar (`Zugriff verweigert`/`Illegal
+function`); das `\\?\`-Praefix wird aus der Bash-Kommandozeile zerschossen —
+das Loeschkommando in eine .ps1-Datei schreiben und mit -File ausfuehren:
+`[System.IO.File]::Delete('\\?\O:\Pfad\nul')`.
+
 ## Zwei Regeln, die Schaden verhindert haben
 
 **Berechtigungsvermerke nicht mitziehen.** In `claude_desktop_config.json`

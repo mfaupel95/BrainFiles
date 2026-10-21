@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `sentiment_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` sammelt
+Der Agent `sentiment_agent` aus `Werkstatt/moon-dev-ai-agents` sammelt
 Texte zu seinen Tokens, bewertet sie (Stimmung zwischen -1 und +1) und meldet,
 wenn der Betrag ueber `SENTIMENT_ANNOUNCE_THRESHOLD` (0.4) liegt. Seine Texte
 kommen von Twitter ueber `twikit` (Cookies, Konto noetig), seine Bewertung aus
@@ -171,10 +171,10 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if a.modus == "live":
-        print("Live waere gesperrt durch: kein Live-Zweig in dieser Spur "
-              "(Papier). Der Fremd-Agent handelt mit echten Schluesseln - "
-              "dieser Haus-Lauf bucht nur Papier.")
-        return 0
+        # Live-Pfad ueber spur_buch (sperren_live + orderweg). Ist die
+        # Sperrenkette zu, faellt der Lauf auf Papier zurueck und nennt den
+        # Grund - derselbe Fallsafe wie die anderen Buch-Spuren.
+        return buch.zyklus(HIER, daten_holen, signal, "live", "handel/moondev_sentiment")
     # Der Name im Bus-Journal steht WOERTLICH hier: die Anbindung oeffnet der
     # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur die
     # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen

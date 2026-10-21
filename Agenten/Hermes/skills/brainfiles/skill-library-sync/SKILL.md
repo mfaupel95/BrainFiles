@@ -115,7 +115,7 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
    Sicherheitsscan mit Verdikt (`SAFE` / `BLOCKED`), dann
    `Installed: <kategorie>/<name>`. `--force` nur bei blockiertem Verdikt und nur
    nach dem Lesen der Scanbegründung. Fehlt ein `name:` im Frontmatter, `--name` setzen.
-   Fuer einen Kandidaten aus einem Klon (Fundus, `Werkstatt/Repos`) gibt es **keinen**
+   Fuer einen Kandidaten aus einem Klon (Fundus, `Werkstatt`) gibt es **keinen**
    Hub-Scan — den vor dem Uebernehmen selbst scannen: Ablauf, Regelbedeutungen und
    die zwei Fallen des Scanners in `references/sicherheitsscan.md`. Die fertige
    Schleife (alle Skill-Ordner einer oder mehrerer Wurzeln, Hash-Dedupe,
@@ -126,9 +126,16 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
    Oft existiert schon eine gepflegte Fassung, dann ist der Fremd-Klon unnötig.
 4. **Belegen:** `hermes skills list` zeigt den Eintrag mit Quelle `url` und
    Herkunft `community` als `enabled` — und den Slash-Namen des Skills.
-5. **Claude-Seite:** denselben Text nach `MaxHirn/.claude/skills/<name>/SKILL.md`
-   legen. Der Pfad ist in `.gitignore` freigegeben (`!MaxHirn/.claude/skills/**`),
-   `git check-ignore -v <pfad>` bestätigt das vor dem Commit.
+5. **Claude-Seite: das ORIGINAL** nach `MaxHirn/.claude/skills/<name>/SKILL.md`
+   legen — nicht die adaptierte Hermes-Fassung. Die Werkzeugnamen-Umsetzung ist
+   EINSEITIG: nennt der fremde Skill ein Claude-natives Werkzeug (z. B.
+   `AskUserQuestion`), hat Claude Code das selbst, und die Vault-Kopie behaelt den
+   Original-Namen; nur die Hermes-Kopie uebersetzt ihn (auf das `clarify`-Tool mit
+   Auswahloptionen, Empfehlung zuerst). Eine auf Hermes uebersetzte Claude-Kopie
+   wuerde dort ins Leere zeigen. Die Vault-Kopie bleibt unangepasst, nur die
+   Hermes-Kopie traegt eine Provenienz-Zeile (Quell-Repo). Der Pfad ist in
+   `.gitignore` freigegeben (`!MaxHirn/.claude/skills/**`),
+   `git check-ignore -v <pfad>` bestaetigt das vor dem Commit.
 6. **Immer-an-Wirkung gehört woanders hin.** Ein Skill wird nachgeladen, nie
    dauerhaft in den Prompt geschrieben — soll der Fremd-Skill das Verhalten
    *jeder* Antwort ändern, landet sein Kern in `SOUL.md` (`hermes-config-ops`,
@@ -137,7 +144,7 @@ Bibliothek — kein Klon des Ganzen, kein Import des Fremd-Baums:
 Fallen:
 
 - **Mehrere Skills aus einem Klon: parallele Delegation mit Adoptionsauftrag.**
-  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt/Repos) ins Spiel, ist je
+  Bringt der Nutzer einen ganzen Klon (z. B. Werkstatt) ins Spiel, ist je
   Skill dieselbe Adaption faellig: Kern behalten, fremde Werkzeugnamen auf
   Hermes-Werkzeuge umsetzen, auf ~6.000 Zeichen kuerzen, Beschreibung kurz und
   selbsttragend. Harte Grenze fuer die Beschreibung: **60 Zeichen gesamt**, ein
@@ -185,6 +192,16 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
 3. **Weglegen statt loeschen** — `.archive/<baum>/`, vorher `hermes curator backup`.
    Danach zaehlen (`hermes skills list`, Gesamtzahl der SKILL.md) und Stichproben
    laden: die wichtigsten Haus-Skills muessen weiter erscheinen.
+   **Vor dem Loeschen eines Skills im Hauptbaum die Profil-Symlink-Ketten
+   pruefen:** `profiles/<bot>/skills/<name>` sind oft Symlinks auf
+   `skills/<name>` — ein `git rm`/`rm` des Hauptziels reisst ALLE Bot-Ketten mit,
+   und `git status` zeigt dann scheinbar willkuerliche `D`-Eintraege unter
+   `Agenten/Hermes/profiles/*/skills/`. Vor dem Loeschen
+   `git status --porcelain -- Agenten/Hermes/profiles` lesen; nach dem Loeschen
+   erneut. Reparatur-Muster: tote Links je Profil finden (`-L && ! -e`),
+   tote Links `rm`, fehlende gueltige Links neu auf die verbleibende Quelle
+   setzen (`ln -s .../skills/<name> .../profiles/<bot>/skills/<name>`), dann
+   `git add` der Profile und committen.
 4. **Falle Windows-Junction.** Fremd-Importe (die `okx-*`) sind JUNCTIONS auf
    `~/.agents/skills`. Python meldet sie NICHT als Symlink — `Path.is_symlink()` und
    `os.path.islink()` sind beide `False`, nur `os.path.isjunction()` erkennt sie. Ein
@@ -214,6 +231,29 @@ je Anfrage, derselbe Baum liegt doppelt drin. Werkzeug im Haus:
    einer Klasse fehlt in der geladenen Liste UND steht in der Schlusszeile), dann haelt
    der Test auch die naechste Ausmistung aus.
 
+## Namenskollisionen: gleicher Name, verschiedene Inhalte
+
+Ein Skill-Name kann mehrfach im Ladepfad liegen, mit VERSCHIEDENEM Inhalt
+(z. B. eine aktive v4.6.0-Fassung als Junction und eine aeltere Kopie in einem
+Klon-Ordner). Symptom: `skill_view('<name>')` antwortet `Ambiguous skill name
+... refusing to guess` und listet die Kandidaten — ein reiner Hash-Duplikat-Scan
+findet den Fall NICHT, weil die Inhalte verschieden sind.
+
+Regeln:
+
+- **Erst den INHALT vergleichen, nicht nur die Existenz.** Byte-identische
+  Kopien stoeren Hermes nicht (eine Fassung wird aufgeloest); kollidieren tun
+  nur Ordner mit verschiedenen Inhalten unter demselben Namen.
+- **Die Ambiguous-Meldung traegt die Diagnose:** `matches` = alle Kandidaten,
+  `load_names` = die aufloesbaren. Eine Junction auf `~/.agents/skills`
+  erscheint als match, aber nicht als load_name — die Kollision loest man,
+  indem man die ZWEITE Version verschiebt oder umbenennt, nicht die
+  identische Kopie loescht.
+- **Verschieben nach `.archive/<name>/` statt Loeschen** — Hermes laedt aus
+  `.archive` nicht, der Inhalt bleibt erreichbar und umkehrbar.
+- **Nach dem Eingriff jeden betroffenen Namen per `skill_view` pruefen** — muss
+  eindeutig aufloesen; `hermes skills list` zeigt die Namen ohne Warnung.
+
 ## Vor dem Ersetzen: Richtung und Historie lesen
 
 Ein Abgleich ist die einzige Stelle im Haus, an der ein Werkzeug Inhalt **loeschen**
@@ -241,6 +281,9 @@ Ist die Kopie weiter als die Quelle: **erst die Quelle nachziehen, dann kopieren
 
 ## Fallen
 
+- **`hermes skills list --json` haengt (Timeout).** Fuer Laden-Status und
+  Kategorie reicht die Text-Liste ohne `--json`; der greppbare Name ist in der
+  Kategorie-Spalte abgegrenzt.
 - **Die SKILL.md hat eine harte Groessengrenze: ab ~100.000 Zeichen verweigert
   `skill_manage` JEDE Aenderung an diesem Skill** — auch eine einzelne Zeile, auch eine
   neue Referenzdatei im selben Aufruf (der ganze Stapel wird zurueckgerollt). Ein

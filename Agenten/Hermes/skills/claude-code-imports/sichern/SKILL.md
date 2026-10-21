@@ -75,7 +75,29 @@ Routine nehmen (sonst läuft sie stündlich um :20 von selbst):
 Einzelheiten und Log in [[Routinen]] („Fremdarbeit übernehmen"); Hermes-Gegenstück
 ist der Skill `arbeitsbaum-git-hygiene`.
 
-## 3. Was nie passiert
+## 3. Zweige und Merge (seit 08.10.2026)
+
+Maßgeblich ist der Abschnitt „Zweige" in der Wurzel-`CLAUDE.md`; hier nur, was
+beim Sichern daraus folgt:
+
+- **Eigene Arbeit** liegt auf dem eigenen Zweig (`<agent>/<thema>`, Arbeitsbaum
+  unter `.worktrees/`), nie per `git switch` im geteilten Hauptbaum. Dort oft
+  committen, auch halbfertig.
+- **Nach `master` kommt nur Abgeschlossenes:** Tests grün, PR eröffnet und
+  freigegeben. Gemergt wird per PR, danach Zweig und Arbeitsbaum löschen
+  (`git branch -d`, `git worktree remove`, `git push origin --delete`).
+  Direkt auf `master` committet werden nur Routinen (kb-sync, Fremdarbeit
+  einziehen) und reine Pflege (Notizen, Index, TASKS-Vermerke).
+- **Fremdarbeit aus einem anderen Zweig-Arbeitsbaum** (Zweig `wt/…`, `t_…`)
+  wird nicht still nach `master` geschoben: erst melden, was drinliegt, dann
+  per PR oder auf ausdrückliche Freigabe mergen. Liegenlassen ist erlaubt.
+- **Fremd-Repos** in `Werkstatt/` haben ihre eigenen Zweignamen (meist
+  `main`). Die Regel „alles auf master" gilt nur fürs BrainFiles-Repo; ein
+  Push in einen Fork braucht Rückfrage, und Workflow-Dateien
+  (`.github/workflows/`) lehnt GitHub ohne Token-Scope `workflow` ab — der Push
+  überträgt die ganze Commit-Kette, nicht nur den eigenen Commit.
+
+## 4. Was nie passiert
 
 `git reset --hard`, `git checkout -- <datei>`, `git restore`, `git stash`,
 `git clean` löschen genau das, was Git noch nicht schützt. Nur auf ausdrückliche
@@ -85,7 +107,7 @@ Ein zu viel gemachter Commit ist dagegen harmlos: als Spitze mit
 `git reset --soft HEAD~1` zurückzunehmen, sonst mit `git revert`. **Sichern ist
 immer die richtige Richtung** — verwerfen ist die einzige unumkehrbare Handlung.
 
-## 4. Was nicht ins Repository gehört
+## 5. Was nicht ins Repository gehört
 
 Versioniert ist nur die Textebene des Vaults. Die persönlichen Bestände
 (`Archiv/Dokumente/`, `Bilder/`, `Videos/`, `Musik/`) enthalten keine einzige
@@ -101,7 +123,7 @@ Vor dem Commit prüfen, ob versehentlich etwas Großes oder Geheimes ansteht:
 git diff --cached --stat
 ```
 
-## 5. Wann
+## 6. Wann
 
 Nach **jedem** abgeschlossenen Arbeitsschritt, nicht am Sitzungsende. Ein
 Sitzungsabbruch nimmt sonst alles mit, was noch im Arbeitsbaum liegt — und in

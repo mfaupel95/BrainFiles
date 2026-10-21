@@ -34,7 +34,7 @@ class FensterBauTest(unittest.TestCase):
     def setUp(self):
         self.t = tempfile.TemporaryDirectory()
         self.brainfiles = Path(self.t.name)
-        self.repos = self.brainfiles / "Werkstatt" / "Repos"
+        self.repos = self.brainfiles / "Werkstatt"
         (self.repos / "moon-dev-ai-agents" / "src").mkdir(parents=True)
         (self.repos / "moon-dev-ai-agents" / ".git").mkdir()
         (self.repos / "moon-dev-ai-agents" / "README.md").write_text("# x\n", encoding="utf-8")

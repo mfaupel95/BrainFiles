@@ -1,0 +1,13 @@
+description: 'Grill-Me: stress-testet deinen Plan/Design durch hartnäckiges Interview
+  bis zum gemeinsamen Verständnis (Repo RobMitt/grill-me-skill, Skill grill-me). Sag
+  "grill me" oder schick einen Plan.'
+description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+      - Grill Me, Awesome Systematic Trading, Agent Trade Kit, Harvard T
+      - System 2
+    group: Grill Me, Findusarbeitus, Informatiker161, One Skill To Rule The
+_ui_meta_revisions:
+  hermes-bots: 3

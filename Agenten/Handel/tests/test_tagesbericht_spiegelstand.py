@@ -259,5 +259,88 @@ class GleichTest(unittest.TestCase):
         self.assertTrue(spiegelstand.gleich(a, b))
 
 
+class LaeufeArmeTest(Basis):
+    """Die laeufe-Arme (llm_stunde, 12.10.2026) werden als eigene Spuren geprueft.
+
+    Der Hauptordner haelt nur die Basis-Wachen, die Straenge fahren eigene
+    Buecher unter laeufe/<variante>-<arm>/ mit eigener wachen.json. Jeder Arm
+    spiegelt in denselben Zielordner. Vor dem Fix meldete der Hauptordner
+    faelschlich ABWEICHUNG, weil dort keine Quelldateien liegen.
+    """
+
+    def arm_spur(self, name, zweitziel, gleich=True):
+            """Ein laeufe-Arm mit eigener Wachen, Buch und Kopie im Ziel."""
+            # Der Hauptordner haelt die Basis-Wachen (wie in der echten Spur) -
+            # ohne sie landet llm_stunde nicht in `alle` und wird nicht expandiert.
+            haupt = os.path.join(self.handel, "llm_stunde")
+            os.makedirs(haupt, exist_ok=True)
+            if not os.path.isfile(os.path.join(haupt, "wachen.json")):
+                with open(os.path.join(haupt, "wachen.json"), "w",
+                          encoding="utf-8") as f:
+                    json.dump({"handel_erlaubt": False}, f)
+            ordner = os.path.join(haupt, "laeufe", name)
+            os.makedirs(ordner, exist_ok=True)
+            w = {"handel_erlaubt": False, "journal_zweitziel": zweitziel}
+            with open(os.path.join(ordner, "wachen.json"), "w",
+                      encoding="utf-8") as f:
+                json.dump(w, f)
+            with open(os.path.join(ordner, "handelsjournal.csv"), "w",
+                      encoding="utf-8", newline="") as f:
+                f.write(JOURNAL)
+            with open(os.path.join(ordner, "zustand.json"), "w",
+                      encoding="utf-8") as f:
+                json.dump(dict(ZUSTAND, journal_zweitziel_ok=True), f)
+            zielordner = zweitziel
+            os.makedirs(zielordner, exist_ok=True)
+            with open(os.path.join(zielordner, "handelsjournal.csv"), "w",
+                      encoding="utf-8", newline="") as f:
+                f.write(JOURNAL if gleich else JOURNAL.replace("20", "99"))
+            with open(os.path.join(zielordner, "zustand.json"), "w",
+                      encoding="utf-8") as f:
+                json.dump(dict(ZUSTAND, journal_zweitziel_ok=True), f)
+            return ordner
+
+    def test_arme_werden_als_eigene_spuren_geprueft(self):
+        ziel = os.path.join(self.ziel, "llm_stunde")
+        for arm in ("ema1h-L", "ema1h-R", "rsi1h-L", "rsi1h-R",
+                    "st1h-L", "st1h-R"):
+            self.arm_spur(arm, ziel)
+        self.dauerlauf("llm_stunde")
+        e = spiegelstand.stand(self.handel)
+        namen = [x["spur"] for x in e["spuren"]]
+        for arm in ("ema1h-L", "ema1h-R", "rsi1h-L", "rsi1h-R",
+                    "st1h-L", "st1h-R"):
+            self.assertIn("llm_stunde/%s" % arm, namen)
+        # Der Hauptordner selbst wird NICHT als eigene Spur geprueft.
+        self.assertNotIn("llm_stunde", namen)
+        self.assertEqual(e["geprueft"], 6)
+        self.assertEqual(e["abweichend"], [])
+        self.assertEqual(e["ausserhalb"], [])
+        for x in e["spuren"]:
+            self.assertEqual(x["stand"], "gleich")
+            self.assertEqual(x["ziel"], ziel)
+
+    def test_abweichender_arm_wird_mit_namen_gemeldet(self):
+        # Eigene Zielordner je Arm, damit die Abweichung des einen den anderen
+        # nicht ueber den geteilten Zielordner mitreisst (im echten Lauf sind
+        # die Arm-Dateien byte-gleich, der geteilte Ordner kollidiert nicht).
+        ziel_l = os.path.join(self.ziel, "llm_stunde_l")
+        ziel_r = os.path.join(self.ziel, "llm_stunde_r")
+        self.arm_spur("ema1h-L", ziel_l)
+        self.arm_spur("ema1h-R", ziel_r, gleich=False)
+        self.dauerlauf("llm_stunde")
+        e = spiegelstand.stand(self.handel)
+        self.assertEqual(e["abweichend"], ["llm_stunde/ema1h-R"])
+        self.assertEqual(e["geprueft"], 2)
+
+    def test_ohne_laeufe_bleibt_die_spur_normal(self):
+        # Eine Spur ohne laeufe-Unterordner wird wie vorher geprueft.
+        self.spur("swap")
+        self.dauerlauf("swap")
+        e = spiegelstand.stand(self.handel)
+        self.assertEqual([x["spur"] for x in e["spuren"]], ["swap"])
+        self.assertEqual(e["geprueft"], 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

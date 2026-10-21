@@ -5,7 +5,7 @@
 
 QUELLE
 ------
-`Werkstatt/Repos/moon-dev-ai-agents/src/agents/coingecko_agent.py` ist ein
+`Werkstatt/moon-dev-ai-agents/src/agents/coingecko_agent.py` ist ein
 Drei-Agenten-System (technische Analyse, Fundamentalanalyse, Token-Extraktor),
 das ueber CoinGecko-Marktdaten laeuft und alle 30 Minuten eine Runde dreht.
 Die Haus-Fassung derselben Absicht steht in

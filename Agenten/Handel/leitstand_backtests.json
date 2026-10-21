@@ -1,5 +1,5 @@
 {
-  "_zweck": "Welche Einzelskripte der Leitstand starten darf. Aufnahme nur nach Pruefung: keine Order-Funktion, kein Boersen-Client mit Schluessel, keine Datei aus 'schreibt' wird im Betrieb gelesen (MaxHirn/Wiki/Handel/plans/2026-09-29-leitstand-plan.md, Befund 2). Nie --json, --cache oder --lokal. optimieren.py und backtest_urteile.py haben eigene Bereiche.",
+  "_zweck": "Welche Einzelskripte der Leitstand starten darf. Aufnahme nur nach Pruefung: keine Order-Funktion, kein Boersen-Client mit Schluessel, keine Datei aus 'schreibt' wird im Betrieb gelesen (Werkstatt/Projekte/handel/plans/2026-09-29-leitstand-plan.md, Befund 2). Nie --json, --cache oder --lokal. optimieren.py und backtest_urteile.py haben eigene Bereiche.",
   "eintraege": [
     {
       "name": "Gitter",

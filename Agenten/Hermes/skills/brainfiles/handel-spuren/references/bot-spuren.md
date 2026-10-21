@@ -2,7 +2,7 @@
 
 Ausloeser: „nimm Bot X in die Handelsspuren", „installiere die Repos und bau
 Spuren daraus", „bau IHNEN eine Spur". Die Quelle liegt in einem Fremd-Repo
-unter `Werkstatt/Repos/` (Repo einrichten: `repo-flotte`).
+unter `Werkstatt/` (Repo einrichten: `repo-flotte`).
 
 ## Die Grundentscheidung zuerst
 
@@ -28,7 +28,7 @@ und das Haus-venv wird nicht angefasst. Dieselbe Bauform nutzt der Dauerlauf mit
 `SPUREN[...]["python"]` fuer die nautilus-Spur.
 
 ```python
-BOT = os.path.join(HANDEL, os.pardir, os.pardir, "Werkstatt", "Repos", "<repo>")
+BOT = os.path.join(HANDEL, os.pardir, os.pardir, "Werkstatt", "<repo>")
 BOT_PYTHON = os.path.join(BOT, ".venv", "Scripts", "python.exe")
 BOT_AUFRUF = (
     "import json, contextlib, io, sys\n"

@@ -13,6 +13,14 @@ um 20:00).
 - **Eigener Index, damit der Staging-Bereich anderer Sitzungen unberuehrt bleibt:**
   `$env:GIT_INDEX_FILE = .git\fremdarbeit.index` -> `git read-tree <tip>` ->
   `git add -- <pfade>` -> `git write-tree`.
+- **Viele Pfade: `git add` NICHT ueber die Kommandozeile.** Ab einigen hundert
+  ruhenden Dateien (gemessen: 2044 Profil-Skill-Pfade) sprengt `git add -- $ruhend`
+  die Windows-32k-Grenze und scheitert mit dem irrefuehrenden `Der Dateiname oder
+  die Erweiterung ist zu lang` (WinError 206 - Prozess-Startfehler, nicht
+  Pfadlaenge). Loesung in der Routine seit 11.10.2026: Pfade NUL-getrennt nach
+  `.git\fremdarbeit-pfade.txt` schreiben, dann
+  `git add --pathspec-from-file=<pfad> --pathspec-file-nul` (git >= 2.25).
+  Gegenprobe in einem Wegwerf-Klon (2044 Pfade staged, Exit 0), nie am echten Baum.
 - **Commit ohne HEAD/Arbeitsbaum anzufassen:** `git commit-tree $baum -p $tip -F <msgdatei>`,
   Autor per `GIT_AUTHOR_NAME/EMAIL` = `Andere Sitzung <fremd@local>`,
   Committer = `Routine <routine@localhost>` (die Historie soll nicht behaupten,
@@ -31,7 +39,7 @@ um 20:00).
 
 - Schwelle 30 Minuten ohne Aenderung (dieselbe wie `arbeitsbaum-pruefen.ps1` und die
   Schutzregeln). Was juenger ist, gehoert einer Sitzung, die gerade schreibt.
-- Ein Pfad in einem eingebetteten Repo (`Werkstatt/Repos/*`, `Agenten/Handel/nautilus`)
+- Ein Pfad in einem eingebetteten Repo (`Werkstatt/*`, `Agenten/Handel/nautilus`)
   wird uebersprungen - dort fuehrt ein anderes `.git` die Versionierung.
 - Eine GELOESCHTE Datei hat keine mtime: Ersatzwahrheit ist `LastWriteTime` ihres
   Elternordners (Windows schreibt sie beim Loeschen fort).
@@ -63,6 +71,29 @@ heilt auch ein Lauf, der ohne den Nachtrag beendet wurde. Idempotent.
 
 `git update-index` braucht `.git/index.lock`: in einer Schleife wiederholen
 (12 x 5 s), damit die Sperre einer anderen Sitzung nicht den ganzen Lauf kostet.
+
+## Unmerged File (`UU`) aufloesen: beide Seiten lesen, neuere gewinnt
+
+Ein `UU <pfad>` im `git status --porcelain` ist ein Konflikt zwischen zwei Seiten,
+keine kaputte Datei. Die eine Seite ist der HEAD-Stand (`git show HEAD:<pfad>`), die
+andere liegt im Arbeitsbaum mit `<<<<<<<`/`=======`/`>>>>>>>`-Markern. Die Seiten
+unterscheiden sich oft nur im Zeitstempel und ein paar Werten (z. B. `generiert_at`
+und Rundenzahlen einer Metrik-Datei) - die NEUERE Seite gewinnen lassen, nicht die
+erste. Ablauf:
+
+1. Beide Seiten lesen: `git show HEAD:<pfad>` fuer die committete, den Arbeitsbaum
+   fuer die andere. Die Marker zeigen, welche Seite welche ist (`Updated upstream`
+   = HEAD, `Stashed changes` = die andere).
+2. Die Marker-Zeilen entfernen und die gewaehlte Seite behalten. Bei mehreren
+   Konflikt-Bloecken je Block die neuere Seite nehmen.
+3. Das Ergebnis VALIDIEREN (`json.loads` fuer JSON) - sonst committet man eine
+   kaputte Datei.
+4. Das Zeilenende der Datei erhalten (CRLF-Datei mit `\r\n` zurueckschreiben, sonst
+   wird der Diff zur Ganzdatei).
+5. Mit eigenem Index committen (`GIT_INDEX_FILE` + `read-tree HEAD` + `git add --
+   <pfad>`), damit die fremde Vormerkung anderer Sitzungen nicht mitreist.
+6. Die Pfade danach im ECHTEN Index nachziehen (`git add -- <pfad>`) - sonst meldet
+   `git status` die frisch committete Datei als `D ` plus `??`.
 
 ## Von Hand committen, waehrend FREMDE Dateien vorgemerkt sind
 

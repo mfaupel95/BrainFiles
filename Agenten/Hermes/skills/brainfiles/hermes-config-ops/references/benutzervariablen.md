@@ -142,7 +142,12 @@ $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)
   Variablennamen aus einer String-Variablen braucht in PowerShell 5.1 ausserdem die
   `${env:<NAME>}`-Schreibweise; `$env:<NAME>` ist ein Parse-Fehler.
 - **Laufende Prozesse erben neu gesetzte Variablen nicht.** In der Sitzung nachziehen:
-  `$env:NAME = (Get-Item HKCU:\Environment).GetValue('NAME')`.
+  `$env:NAME = (Get-Item HKCU:\Environment).GetValue('NAME')`. Das gilt auch fuer einen
+  Dienst, den man per `Start-Process` startet: das Kind erbt die SHELL-Umgebung, nicht
+  die Registry — die Variable VOR dem Start in der Shell setzen, sonst startet der
+  Dienst mit dem alten Wert (gemessen: OLLAMA_MODELS korrigiert, Server per
+  Start-Process neu gestartet, `/api/tags` zeigte weiter 0 Modelle, bis `$env:OLLAMA_MODELS`
+  in der startenden Shell gesetzt war).
 - **Belegt wird nicht „steht drin", sondern „wird akzeptiert":** den Wert in eine
   Shell-Variable lesen (nie als Literal in den Befehl) und den echten Endpunkt damit
   abfragen — ohne Token 401, mit Token 200 ist der Nachweis. Rezepte, Hash-Vergleich

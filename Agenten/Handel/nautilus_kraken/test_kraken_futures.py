@@ -217,7 +217,8 @@ class RechnenTest(unittest.TestCase):
         with patch.object(kf, "hebel_je_kontrakt", return_value=None), \
              patch.object(kf, "instrument", return_value={
                 "marginSchedules": {"europa": {"retail": [
-                    {"numNonContractUnits": 0.0, "initialMargin": 0.1}]}}}),              patch.object(kf, "letzter_kurs", return_value=84485.0):
+                    {"numNonContractUnits": 0.0, "initialMargin": 0.1}]}}}), \
+             patch.object(kf, "letzter_kurs", return_value=84485.0):
             grund = kf.handelbar("PF_XBTUSD", 1, frei=141.58)
             self.assertEqual(grund, "1 Kontrakt PF_XBTUSD braucht 8448.50 USD "
                                     "Einschuss, frei sind 141.58 USD")
@@ -317,6 +318,54 @@ class OrderformTest(unittest.TestCase):
         kf.markt_verkauf("PF_XBTUSD", 0.0001)
         kf.stop_setzen("PF_XBTUSD", 0.0001, 78000)
         self.assertEqual(self.gesendet, [])
+
+
+class FehlerErlaubenTest(unittest.TestCase):
+    """GEMESSEN 01.10.2026: /sendorder kann `result: "error"` mit
+    `authenticationError` zurueckgeben, obwohl die Order GEFUELLT wurde (zwei
+    Probe-Kaeufe). `_roh(fehler_erlauben=True)` gibt die Antwort dann zurueck,
+    und `_order_aufgeben` liest die sendStatus - steht dort 'placed', ist die
+    Order da, egal was result sagt. Ein ECHTER Fehler (keine placed-sendStatus)
+    wird weiterhin laut erhoben.
+    """
+
+    def test_roh_gibt_antwort_trotz_error_zurueck(self):
+        antwort = {"result": "error", "errors": ["authenticationError"],
+                   "sendStatus": {"status": "placed", "order_id": "OID-9"}}
+        with patch("kraken_futures.urllib.request.urlopen",
+                   return_value=FakeAntwort(antwort)):
+            r = kf._roh("/sendorder", {"orderType": "mkt"}, post=True,
+                        fehler_erlauben=True)
+        self.assertEqual(r["result"], "error")
+        self.assertEqual(r["sendStatus"]["status"], "placed")
+
+    def test_roh_ohne_fehler_erlauben_wirft_weiter(self):
+        antwort = {"result": "error", "errors": ["authenticationError"]}
+        with patch("kraken_futures.urllib.request.urlopen",
+                   return_value=FakeAntwort(antwort)):
+            with self.assertRaises(kf.KrakenFuturesFehler):
+                kf._roh("/sendorder", {"orderType": "mkt"}, post=True)
+
+    def test_order_aufgeben_liest_placed_trotz_error(self):
+        antwort = {"result": "error", "errors": ["authenticationError"],
+                   "sendStatus": {"status": "placed", "order_id": "OID-9"}}
+        with patch.object(kf, "_roh", return_value=antwort):
+            kennung = kf._order_aufgeben({"orderType": "mkt"})
+        self.assertEqual(kennung, "OID-9")
+
+    def test_order_aufgeben_wirft_bei_echtem_fehler(self):
+        antwort = {"result": "error", "errors": ["insufficientAvailableFunds"],
+                   "sendStatus": {"status": "notFound"}}
+        with patch.object(kf, "_roh", return_value=antwort):
+            with self.assertRaises(kf.KrakenFuturesFehler):
+                kf._order_aufgeben({"orderType": "mkt"})
+
+    def test_order_aufgeben_wirft_ohne_kennung(self):
+        antwort = {"result": "error", "errors": ["authenticationError"],
+                   "sendStatus": {"status": "placed"}}
+        with patch.object(kf, "_roh", return_value=antwort):
+            with self.assertRaises(kf.KrakenFuturesFehler):
+                kf._order_aufgeben({"orderType": "mkt"})
 
 
 class GuthabenTest(unittest.TestCase):

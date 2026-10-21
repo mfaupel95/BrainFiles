@@ -3,7 +3,7 @@ model:
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
-_config_version: 50
+_config_version: 51
 onboarding:
   seen:
     tool_progress_prompt: true
@@ -13,3 +13,47 @@ auxiliary:
     provider: nous
     model: deepseek/deepseek-v4-flash-0731
     timeout: 180
+
+skills:
+  disabled:
+    - apple-notes
+    - apple-reminders
+    - findmy
+    - imessage
+    - architecture-diagram
+    - ascii-video
+    - baoyu-infographic
+    - claude-design
+    - design-md
+    - humanizer
+    - manim-video
+    - p5js
+    - popular-web-designs
+    - songwriting-and-ai-music
+    - email-inbox-triage
+    - himalaya
+    - gif-search
+    - songsee
+    - youtube-content
+    - airtable
+    - box
+    - document-to-action-items
+    - docx
+    - google-workspace
+    - maps
+    - meeting-action-items
+    - notion
+    - pdf
+    - powerpoint
+    - product-price-monitor
+    - teams-meeting-pipeline
+    - weekly-review-planning
+    - xlsx
+    - arxiv
+    - competitor-news-monitor
+    - grounded-citations
+    - llm-wiki
+    - xurl
+platforms:
+  photon:
+    enabled: false

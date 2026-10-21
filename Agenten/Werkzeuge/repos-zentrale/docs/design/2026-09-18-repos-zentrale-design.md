@@ -5,7 +5,7 @@ Ansaetzen). Ort des Vorhabens: `Agenten/Werkzeuge/repos-zentrale/`.
 
 ## 1. Ziel
 
-Ein Fenster, aus dem **jedes** Projekt unter `Werkstatt/Repos/` zuverlaessig zu
+Ein Fenster, aus dem **jedes** Projekt unter `Werkstatt/` zuverlaessig zu
 erreichen ist: oeffnen, Terminal, starten, mit seinem Bot sprechen, Doku lesen.
 Heute ist „starten" ein Sammelbegriff fuer fuenf verschiedene Dinge (Fenster,
 Prozess, Skript, Bau, Doku) und deshalb nicht verlaesslich.
@@ -18,7 +18,7 @@ Prozess, Skript, Bau, Doku) und deshalb nicht verlaesslich.
    bis zur ersten Ausgabe.
 3. Aus dem Fenster heraus meldet `Agent-Reach doctor` seine Kanaele.
 4. Jede Zeile der Liste nennt ihre Gruppe (startbar / einrichten / nur Doku) und
-   ob eine venv auf der Platte liegt — nachpruefbar gegen `ls Werkstatt/Repos/`.
+   ob eine venv auf der Platte liegt — nachpruefbar gegen `ls Werkstatt/`.
 5. Ein Repo, das noch nie gestartet wurde, steht im Manifest **ohne**
    Startbefehl und wird nicht geraten.
 
@@ -38,7 +38,7 @@ Prozess, Skript, Bau, Doku) und deshalb nicht verlaesslich.
   Falsch war also nur der `lazygit`-Teil; `code.cmd` findet PowerShell sehr wohl.
   Das Skript wurde zusaetzlich nie versioniert (es lag nur auf der Platte) und
   liegt jetzt als Werkzeug unter `Agenten\Werkzeuge\`.
-- Bestand: **28 Git-Repos** in `Werkstatt/Repos/`, dazu `copilot-worktrees` (kein
+- Bestand: **28 Git-Repos** in `Werkstatt/`, dazu `copilot-worktrees` (kein
   `.git`) und `.vscode`. **28 Hermes-Bots**, einer je Repo.
 - Nur **4 Repos haben eine venv**: `Agent-Reach`, `moon-dev-ai-agents`,
   `openmontage`, `Trading-View-MCP-for-AI-by-Moon-Dev`.
@@ -233,7 +233,7 @@ danach steht er im Manifest und das Repo wandert in die Gruppe STARTBAR.
 
 - Der Test der Zentrale startet **nichts** echt: die Prozessaufrufe werden
   ersetzt, geprueft wird die Kommandozeile (argv), nicht das Fenster.
-- **Bot-Weg gemessen** (18.09.2026): aus `Werkstatt/Repos/moon-dev-ai-agents`
+- **Bot-Weg gemessen** (18.09.2026): aus `Werkstatt/moon-dev-ai-agents`
   heraus gibt `hermes -p moon-dev-agents chat -q "Antworte mit genau einem
   Wort: PONG" -Q` die Antwort **PONG**. Genau diese Kommandozeile (mit `wt.exe
   -d <repo>` davor) baut der Bot-Knopf.

@@ -1,0 +1,18 @@
+[package]
+name = "omnitrade-ui"
+version = "0.1.0"
+description = "GPU-accelerated desktop GUI built with egui and egui_tiles"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+omnitrade-core = { path = "../omnitrade-core" }
+omnitrade-engine = { path = "../omnitrade-engine" }
+omnitrade-exchange = { path = "../omnitrade-exchange" }
+tokio = { version = "1", features = ["sync", "rt", "macros", "time"] }
+egui = "0.30"
+eframe = { version = "0.30", default-features = false, features = ["default_fonts", "glow"] }
+egui_tiles = "0.11"
+tracing = "0.1"

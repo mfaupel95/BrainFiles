@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,9 +20,38 @@ class KrakenQuoteNodes(unittest.TestCase):
         self.assertEqual([p.produkt for p in nodes], ["spot", "futures"])
         self.assertTrue(all(p.read_only for p in nodes))
 
+    def test_veraltete_pid_datei_findet_node_per_scan(self):
+        node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "spot")
+
+        def proc(pid, ppid, produkt):
+            m = unittest.mock.MagicMock(pid=pid)
+            m.ppid.return_value = ppid
+            m.cmdline.return_value = ["python.exe", str(lp._KRAKEN_NODE)]
+            m.environ.return_value = {"KRAKEN_PRODUKT": produkt} if produkt else {}
+            return m
+
+        launcher, kind, fremd = proc(19412, 1, None), proc(66816, 19412, None), proc(5, 1, "futures")
+        with tempfile.TemporaryDirectory() as tmp:
+            node._prozess = None
+            node._pid_pfad = Path(tmp) / "node.pid"
+            node._pid_pfad.write_text("101976\n", encoding="ascii")
+            with patch.object(lp.hz, "prozess_lebt", return_value=False),                  patch.object(lp.psutil, "process_iter", return_value=[fremd, kind, launcher]):
+                self.assertTrue(node.laeuft())
+            self.assertEqual(node._pid_pfad.read_text(encoding="ascii").strip(), "19412")
+            with patch.object(lp.hz, "prozess_lebt", return_value=False),                  patch.object(lp.psutil, "process_iter", return_value=[fremd]):
+                self.assertFalse(node.laeuft())
+
+    def test_zusatz_zeigt_papier_pnl_oder_nichts(self):
+        node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "spot")
+        with patch.object(lp, "lese_papierstand", return_value=None):
+            self.assertEqual(node.zusatz(), "")
+        stand = {"realisiert": 3.5, "unrealisiert": -1.25, "trades": 2}
+        with patch.object(lp, "lese_papierstand", return_value=stand):
+            self.assertEqual(node.zusatz(), "PnL +2.25 (2 Trades)")
+
     def test_spot_start_uebergibt_produkt_symbol_und_keinen_order_client(self):
         node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "spot")
-        with patch.object(lp.subprocess, "Popen") as popen:
+        with patch.object(type(node), "laeuft", return_value=False), patch.object(lp.subprocess, "Popen") as popen:
             node.starten()
         args, kwargs = popen.call_args
         self.assertIn("run_kraken_paper_node.py", args[0][1])
@@ -59,14 +89,17 @@ class KrakenQuoteNodes(unittest.TestCase):
         secrets = {"KRAKEN_SPOT_API_KEY": "secret", "KRAKEN_SPOT_API_SECRET": "secret",
                    "KRAKEN_FUTURES_DEMO_API_KEY": "secret",
                    "KRAKEN_FUTURES_DEMO_API_SECRET": "secret"}
-        with patch.dict(lp.os.environ, secrets), patch.object(lp.subprocess, "Popen") as popen:
+        with patch.dict(lp.os.environ, secrets), patch.object(type(node), "laeuft", return_value=False), patch.object(lp.subprocess, "Popen") as popen:
             node.starten()
         child_env = popen.call_args.kwargs["env"]
         self.assertFalse(set(secrets) & set(child_env))
 
     def test_futures_start_uebergibt_pf_solusd_und_keinen_order_client(self):
         node = next(p for p in lp.PROZESSE if getattr(p, "produkt", None) == "futures")
-        with patch.object(lp.subprocess, "Popen") as popen:
+        # laeuft() fest auf False: sonst entscheidet ein echter, evtl. noch
+        # lebender Node aus einer frueheren Sitzung, ob Popen aufgerufen wird.
+        with patch.object(type(node), "laeuft", return_value=False), \
+             patch.object(lp.subprocess, "Popen") as popen:
             node.starten()
         _, kwargs = popen.call_args
         self.assertEqual(kwargs["env"]["KRAKEN_PRODUKT"], "futures")
@@ -160,6 +193,12 @@ class SpurStatus(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["herzschlag"], "unbekannt")
 
+    def test_modus_faellt_auf_positionen_zurueck_wenn_oben_fehlt(self):
+        self.assertEqual(lp._modus_der_spur({"positionen": [{"modus": "live"}]}), "live")
+        self.assertEqual(lp._modus_der_spur({"modus": "papier", "positionen": [{"modus": "live"}]}), "papier")
+        self.assertEqual(lp._modus_der_spur({}), "-")
+
+
 
 class ProzessReiterUI(unittest.TestCase):
     def test_statusfilter_zeigt_nautilus_oder_alle_spuren(self):
@@ -186,13 +225,14 @@ class ProzessReiterUI(unittest.TestCase):
         with patch.object(lp, "PROZESSE", [StubProzess()]),              patch.object(lp, "spuren_status", return_value=rows):
             view = lp.ProzessReiter(root, object())
             text = view._spur_text.get("1.0", "end")
+            # Standard ist "Alle" - sonst fehlen 40 von 45 Spuren.
             self.assertIn("nautilus_kraken", text)
-            self.assertNotIn("scanner", text)
-            view._spur_filter.set("Alle")
+            self.assertIn("scanner", text)
+            view._spur_filter.set("Nautilus")
             view._zeige_spuren()
             text = view._spur_text.get("1.0", "end")
             self.assertIn("nautilus_kraken", text)
-            self.assertIn("scanner", text)
+            self.assertNotIn("scanner", text)
 
 
 

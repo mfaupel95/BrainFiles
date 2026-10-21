@@ -86,7 +86,7 @@ eindeutig.
 
 | Slug | Zweck | Zuerst zustaendig |
 |---|---|---|
-| `repos` | Klone in `Werkstatt/Repos`, Bots/Profile, Rueckstand, Sicherung | `default`, `hermes-wartung` |
+| `repos` | Klone in `Werkstatt`, Bots/Profile, Rueckstand, Sicherung | `default`, `hermes-wartung` |
 | `wartung` | Hermes selbst: Gateway, Dashboard, MCP-Spawn-Kette, Updates, Leistung | `hermes-wartung` |
 | `handel` | Spuren bauen/rechnen/pruefen, Backtest, Befunde | `default`, `markt-recherche` |
 | `wissen` | Wiki, Skills, Fundus, Vault-Doku | `obsidian-skills`, `basic-memory` |
@@ -269,6 +269,31 @@ Datenbankstand.
   Eine falsche `--body-file`-Uebergabe (relativer Pfad, falscher Pfad)
   zeigt sich nur dort.
 
+## Artefakte einsammeln (nach Planungs-/Kartendurchgang)
+
+Worker geben Abschlussberichte als Karten-Artefakte ab
+(`Agenten/Hermes/kanban/attachments/<id>/` und `kanban/workspaces/<id>/`).
+Diese laufen unbegrenzt auf und verrauchen, bis jemand sie durchgeht. Erst
+Messen: beide Ordner listen, Task-IDs ueber `kanban --board <slug> list --json`
+zu Titeln mappen, Inhalte per Hash gegenrechnen — dieselbe Datei liegt oft in
+BEIDEN Ordnern, nach Dateinamen gezaehlt wird daraus eine Doppelung.
+
+Dann je Datei die Klasse entscheiden:
+
+| Klasse | Merkmal | Weg |
+|---|---|---|
+| Plan/Konzept | Einzigartig im Baum — nirgends sonst versioniert | Nach `Werkstatt/Projekte/` kopieren (AGENTS.md-Regel: Plaene gehoeren dort hin) |
+| Code | Duplikat eines Moduls, das schon im Baum lebt | Nichts kopieren — Artefakt-Fassungen sind oft AELTER als der Live-Code; Hash gegen das Live-Modul, nie blind ueberschreiben |
+| Bericht/Rohdaten | Situations-Snapshot eines Laufs (groessen, block-review, requeue-report) | Wegwerf — bleibt als Karten-Beleg stehen, NICHT nach Werkstatt |
+
+Bei mehreren Fassungen EINES Dokuments (z. B. `name.md` neben `name_1.md`)
+vor dem Kopieren gegenlesen: die kurze ist oft ein abgeschnittener Entwurf,
+die lange die Endfassung. Nach dem Einsammeln das Wissen verteilen: eine
+Wiki-Seite (Skill `wiki-pflege`) mit dem Bestand und der Regel + INDEX-Eintrag.
+Regel dahinter: ein Plan darf nie NUR als Karten-Artefakt existieren —
+`kanban/attachments/` ist Durchgangsware und geht bei einem Aufraeumen mit
+verloren.
+
 ## Einzelkarten-Werkzeuge
 
 Fuer den laufenden Betrieb (nicht beim Anlegen) gibt es `comment`, `attach`,
@@ -277,3 +302,39 @@ Fuer den laufenden Betrieb (nicht beim Anlegen) gibt es `comment`, `attach`,
 `reassign`, `set-model`, `promote`, `archive`, `stats` und den Ereignisstrom
 mitlesen (`kanban tail`).
 `complete` markiert fertig - ein Commit oder Diff allein schliesst keine Karte.
+
+## Eine blockierte Karte ist keine offene Arbeit — erst nachmessen
+
+Eine Karte, die nach zwei Fehlversuchen auf `blocked` steht, sieht aus wie
+Arbeit, die liegen blieb. Sehr oft ist sie erledigt: eine SPAETERE Sitzung hat
+den Fix gebaut und committet, aber die Karte nicht geschlossen (der Fix-Commit
+nennt sie sogar im Betreff). Gemessen am 11.10.2026: `t_1b24afd4` stand seit dem
+09.10. auf `blocked`, obwohl `2389eeba` den Fix enthielt und die Karte im
+Commit-Betreff nannte.
+
+**Vor jedem „die Karte ist noch offen" also drei Messungen, nicht eine:**
+
+1. **Den Fix in der Historie suchen, nicht nur die Karte lesen.**
+   `git log --all --grep="<Karten-ID>"` — der Fix nennt die ID oft im Betreff.
+2. **Die genannten Zahlen nachmessen.** Die Karte behauptete „Token-Limit"; der
+   Worker-Log zeigte eine **Repetitionsschleife des Modells**
+   (`Response dominated by repeated text`, `rc=1`). Das sind zwei verschiedene
+   Krankheiten mit demselben Symptom. Die im Body genannten Nachbarkarten
+   (`t_29c89f80` …) ebenfalls pruefen — waren sie laengst `done`, beschreibt
+   der Body eine Lage, die es nicht mehr gibt.
+3. **Erst dann entscheiden.** Ist die Arbeit erledigt: `unblock` **mit
+   Begruendung**, dann `complete`. Die Begruendung ist der Beleg und wird als
+   Kommentar gespeichert.
+
+**Nach dem `unblock` dispatcht der Dispatcher von selbst — das ist die
+Gegenprobe.** Gemessen: der `unblock` um 07:12 weckte sofort einen Worker
+(`run 74`, PID 90272), der die Karte in 1m54s mit `rc=0` schloss. Damit ist der
+Fix nicht nur behauptet, sondern **an der Karte bewiesen** — und die Kette lief
+danach von allein weiter (das Kind `t_efb789dd` wurde `running`, ohne dass
+jemand es promotete). Wer die Kette von Hand schliesst, nimmt sich diesen Beweis.
+
+**Und ein blockierter Geister-Claim ist kein laufender Worker.** Vor
+`reclaim`/`complete --force` die PID pruefen: der Claim auf `t_1b24afd4` zeigte
+`expires` und `run 73`, die PID 8272 war aber seit dem 09.10. tot. `complete`
+verweigert dann mit „a live worker is running it" — die richtige Antwort ist
+`unblock` + warten, nicht `--force`.

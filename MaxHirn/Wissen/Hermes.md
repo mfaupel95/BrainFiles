@@ -3,7 +3,7 @@ id: 20260830-hermes
 title: 'Hermes Agent'
 tags: [ki-agenten, betrieb]
 created: 2026-08-24
-updated: 2026-10-08
+updated: 2026-10-11
 related: [20260830-verbindungen, 20260831-python-versionen]
 summary: 'Einrichtung, Ablageorte und Fallstricke des Hermes-Agenten neben Claude.'
 ---
@@ -92,12 +92,21 @@ In `../Agenten/Hermes/.env`:
 
 ## Skills
 
-Dazu seit 09.10.2026 `docker-cascade-repair` unter `skills/system/`
-(Quelle `~/.claude/skills`, einzeln uebernommen, Vault-Kopie in `MaxHirn/.claude/skills/`). 
-**24 eigene** unter `Hermes/skills/claude-code-imports/` — jeder Vault-Skill hat
-dort eine Kopie, keine Luecke. Dazu `data-guard-audit` unter `skills/productivity/`.
-`hermes skills list` (HERMES_HOME gesetzt): **161 Skills geladen** (145 local,
-15 builtin, 1 hub), alle vier neuen `local`/`enabled`.
+Stand 13.10.2026: `docker-cascade-repair` liegt nur unter `skills/system/` (byte-identisch
+zum Vault, Dublette per Commit `ad1e8a43` entfernt). `geld` liegt unter `skills/geld/`
+(identisch bis Zeilenenden). Vault-Skills ohne Kopie unter `claude-code-imports/`: sie sind
+dort bewusst weg, nicht vergessen. `i-have-adhd` liegt unter `skills/productivity/`.
+Dazu `data-guard-audit` unter `skills/productivity/`.
+Gemessen 13.10.2026 (`hermes skills list`, HERMES_HOME gesetzt): **157 Skills aktiv**
+(140 local, 15 builtin, 2 hub).
+Stand 14.10.2026: Fremd-Skill `grill-me` einzeln uebernommen (RobMitt/grill-me-skill,
+Sicherheits-Verdikt SAFE): Hermes-Fassung unter `skills/software-development/grill-me/`
+(`AskUserQuestion` -> `clarify` uebersetzt, Beschreibung auf 60 Zeichen gekuerzt),
+Vault-Original unter `.claude/skills/grill-me/`.
+Lehre 13.10.2026: Werkzeugnamen beim Kopieren nur bei echten Werkzeugaufrufen umsetzen,
+nie per Textersetzung. Die erste Kopie hat PowerShell zerstoert (`Write-Host` wurde
+`write_file-Host`). Korrigiert per Byte-Kopie aus dem Vault; kaputte Fassung in Git
+(`d70d8566`).
 
 **Der Abgleich vom 07.10.2026 hat sich selbst ins Knie geschossen — und ist
 repariert.** Der Import-Commit `0b7b5158` (07.10., 20:54) setzte drei Hermes-Kopien
@@ -1234,7 +1243,7 @@ erweitern.
 **Die Ursache lag tiefer als erwartet.** `BrainFiles\Werkstatt` ist ein **Symlink auf
 `O:\Werkstatt`** (Laufwerk O:, nicht unterhalb von BrainFiles). Die Sandbox stand nur auf
 `BrainFiles`, der Pruefer loest den Symlink auf und lehnte jeden Schreibzugriff in die
-Repos unter `Werkstatt\Repos` ab (AGENTS.md-Schreiben scheiterte dreimal). Lesen und
+Repos unter `Werkstatt` ab (AGENTS.md-Schreiben scheiterte dreimal). Lesen und
 Terminal waren nie betroffen - deshalb lief die Analyse, nur das Schreiben nicht.
 
 **Gesetzt wurde es NICHT in der Registry und nicht in `config.yaml`** (Zeile 630 dort ist
@@ -1255,8 +1264,8 @@ Trennzeichen ist `os.pathsep` (`;` unter Windows), mehrere Wurzeln sind vorgeseh
 
 - Frische Instanz aus der Profil-.env: aufgeloeste Wurzeln =
   `C:\Users\faupe\Documents\BrainFiles` **und** `O:\Werkstatt`.
-- Schreibpruefung: `O:\Werkstatt\Repos\claude-code\AGENTS.md` ERLAUBT,
-  `O:\Werkstatt\Repos\codex\AGENTS.md` ERLAUBT,
+- Schreibpruefung: `O:\Werkstatt\claude-code\AGENTS.md` ERLAUBT,
+  `O:\Werkstatt\codex\AGENTS.md` ERLAUBT,
   `C:\Windows\System32\drivers\etc\hosts` GESPERRT,
   `C:\Users\faupe\.ssh\id_rsa` GESPERRT.
 - Genau eine Zeile je Datei geaendert (`diff` gegen die Sicherung), BOM-Status und
@@ -1325,7 +1334,7 @@ Rauschen. Aufraeumen braucht einen Auftrag (Schutzregeln, Stufe 1).
 Sicherungen: `.claude.json.bak-20261007`, `.claude/settings.json.bak-20261007`
 (beide byte-identisch zurueck bis auf `autoUpdates`),
 `versions/2.1.285.bak-20261007` (Rueckfall-Binary).
-Gelerntes auch in `Werkstatt/Repos/rule_repo-bots.md`.
+Gelerntes auch in `Werkstatt/rule_repo-bots.md`.
 
 ## Wirkungslose Write-Regeln bereinigt (07.10.2026)
 
@@ -1596,3 +1605,262 @@ Desktop bleibt beim (nicht versionierten) `MCP-Manifest.json` und
 `hermes-mcp` (Port 9900, Token `HERMES_A2A_TOKEN`); im Code nirgends benutzt,
 nur im Skill `a2a-telegram-skills` als "lokaler Peer" genannt. Woher die Zahl
 stammt, steht nirgends im Repo.
+## RAM-Limit und Absturzschutz, 11.10.2026
+
+**Anlass:** Renderer-Freeze vom 13.09.2026 und RAM-Druck durch Container,
+Renderer, Gateway und Hilfsprozesse. Die Grenzen sind jetzt getrennt geprueft.
+
+**Aenderungen an `Agenten/Hermes/config.yaml`:**
+
+- `terminal.container_memory`: **5120 -> 8192 MB.** Container sind der
+  Python-Prozess, Modell-Inferenz und Tool-Loop; 5 GB war bei groesseren
+  Sitzungen und mehreren Subagenten knapp.
+- `desktop.renderer_max_old_space_mb`: **4096 -> 3072 MB.** Der Renderer darf
+  nicht mehr als 3 GB V8-Heap beanspruchen. Der Freeze war Renderer-basiert,
+  nicht Gateway-basiert. Bei 64 GB Host-RAM bleibt damit Reserve.
+- `delegation.max_concurrent_children`: **10 -> 5.** Begrenzt parallele
+  Subagenten und damit gleichzeitige Modell-/Tool-Arbeit.
+- `compression.idle_compact_after_seconds`: **0 -> 3600.** Komprimiert eine
+  Sitzung nach einer Stunde Inaktivitaet.
+
+**Belege:** Sicherung `config.yaml.bak-20261011`; `yaml.safe_load` bestaetigt
+alle vier Zielwerte; `diff` gegen die Sicherung zeigt exakt vier Ersetzungen;
+CRLF und kein BOM erhalten. `herges gateway status` lief vor und nach der
+Aenderung ohne Neustart. Die Werte greifen ab dem naechsten Neustart bzw.
+fueuer neue Sitzungen; der laufende Prozess behaelt seine bisherige Konfiguration.
+
+**Auslagerungsdateien — gemessen, nicht geraten.** Die Pagefiles liegen auf
+`C:\pagefile.sys` (8 GB) und `O:\pagefile.sys` (32 GB), beide fest, beide auf
+**NVMe-SSDs**. Auf `G:` liegt **kein** Pagefile; G: ist eine USB-HDD (Seagate
+Portable, sequentiell 73 MB/s gemessen) und waere fuer einen Pagefile auch der
+falsche Ort. An der Pagefile-Lage ist **nichts zu aendern**.
+
+**Die eigentliche Ursache des Speicherdrucks liegt ausserhalb der Hermes-Config.**
+Am 11.10.2026 meldete Windows fuenfzehnmal `Id 2004` (virtueller Speicher
+unzureichend), zwischen 13:22 und 16:28. Die genannten Verbraucher:
+
+- `vmmemWSL` (PID 19968): **19,5 GB** — die WSL-VM hat **keinen** `.wslconfig`-Deckel,
+  Docker Desktop setzt `MemoryMiB = 33024` (32 GB).
+- `llama-server.exe`: wechselnde PIDs, **4 bis 16 GB** — `--models-autoload` laedt
+  Modelle mit `ctx-size 65536` nach; ein Crash-Dump vom 13:22 ist 232 MB gross.
+- `WindowsTerminal.exe`: 5,8 GB.
+
+Commit-Limit 103,7 GB (63,7 RAM + 40 Pagefile), belegt 88,1 GB — nur 15,6 GB Luft.
+Abhilfe waere ein `%USERPROFILE%\.wslconfig` mit `memory=16GB` und ein kleineres
+`MemoryMiB` in Docker Desktop; beides wurde am 11.10.2026 **nicht** angefasst.
+
+**Was die vier Config-Aenderungen leisten und was nicht:** `container_memory`
+(5120 -> 8192) ist ein **Deckel, keine Belegung** — er greift nur im
+Docker-Terminal-Zweig, und `terminal.backend` steht auf `local`. Der
+Renderer-Deckel (3072 MB) und `idle_compact_after_seconds` (3600) wirken wie
+gedacht; `max_concurrent_children` (5) begrenzt parallele Subagenten. Gegen den
+WSL-Druck helfen sie nicht.
+
+### `.wslconfig` angelegt, 11.10.2026
+
+**Der Hebel liegt bei WSL, nicht bei Docker.** Docker Desktop fuehrt in seiner
+`settings-store.json` `MemoryMiB = 33024`, `Cpus = 22` und `SwapMiB = 3072` —
+alle drei sind im **WSL2-Modus wirkungslos**. Die Docker-Doku ist eindeutig:
+*"In WSL 2 mode, configure memory, CPU, and swap limits on the WSL 2 utility
+VM."* Diese Werte stammen aus der Hyper-V-Aera. Gemessen passt es dazu: die
+WSL-VM meldet 31.932 MB total (also die 50-%-Vorgabe), nicht 33.024.
+
+Angelegt wurde `C:\Users\faupe\.wslconfig` (vorher **nicht vorhanden**, also
+nichts ueberschrieben):
+
+```ini
+[wsl2]
+memory=24GB
+swap=8GB
+
+[experimental]
+autoMemoryReclaim=gradual
+sparseVhd=true
+```
+
+`autoMemoryReclaim=gradual` ist der eigentliche Gewinn: es gibt den Linux-
+Page-Cache schrittweise an Windows zurueck. Docker empfiehlt die Einstellung
+ausdruecklich nach Image-Builds. Ohne sie haelt die VM den Cache, bis der
+Deckel greift — genau das Bild vom 11.10. WSL 2.7.13 unterstuetzt beide
+experimentellen Schalter.
+
+**Noch nicht wirksam.** Die Datei wird beim Start der WSL-VM gelesen; sie
+braucht `wsl --shutdown`. Das beendet **alle** Distributionen und damit die
+**38 laufenden Docker-Container** (16 `freqtrade-*`, n8n, puter-Stack mit
+MariaDB/RustFS/Valkey, `nautilus-demo`, kind-Cluster). Der Befehl wurde deshalb
+**nicht** ausgefuehrt — das ist Max' Entscheidung zu einem Zeitpunkt seiner
+Wahl. Danach pruefen: `wsl --system free -m` muss ~24 GB zeigen statt 31,9.
+
+### Was WSL tatsaechlich belegt
+
+Die 19,5 GB sind **kein** Leck, sondern die Summe aus:
+
+- **38 laufende Container**, u. a. 16 × `freqtradeorg/freqtrade:stable` (je ein
+  Python-Prozess), der komplette puter-Stack (Caddy, puter, MariaDB, RustFS,
+  DynamoDB, Valkey) und ein kind-Kubernetes-Cluster.
+- **24,12 GB Docker-Images**, davon 7,89 GB zurueckholbar.
+- Linux-Page-Cache, den die VM ohne `autoMemoryReclaim` nicht abgibt.
+
+Diese Last laeuft neben Hermes, nicht in ihm. `container_memory` in der
+Hermes-Config hat damit nichts zu tun.
+
+### Nebenbefund: sieben Python-Abstuerze am 11.10.
+
+In `%LOCALAPPDATA%\CrashDumps` liegen 10 Dateien mit 426,7 MB, **alle vom
+11.10.2026** zwischen 13:02 und 16:00: `llama-server` (1 × 232,4 MB),
+`python` (4 × 92,7 MB), `WindowsTerminal` (2 × 66,5 MB), `pythonw`
+(3 × 35,1 MB). Alle im selben Zeitfenster wie die Id-2004-Meldungen — das ist
+die Signatur von Speicherdruck, nicht von einem Code-Fehler. Kein Bugcheck,
+kein `MEMORY.DMP`, also kein Bluescreen; die Prozesse wurden einzeln beendet.
+
+### Photon-Dopplung: Config-Asymmetrie, keine geteilte Kennung
+
+**Der Befund war irrefuehrend formuliert.** `hermes gateway status` meldete sechs
+Profile, die „dieselbe Photon-Kennung" tragen. Gemessen mit Hermes' **eigener**
+Funktion — `hermes_cli.profile_channels.shared_channel_credentials(profil, default)`,
+also genau der, die `profile list` und der Gateway benutzen — gibt es **null
+Kollisionen**. Es existiert nur **eine** `PHOTON_PROJECT_ID` im ganzen Haus, und
+sie steht in der Haupt-`.env` (gehoert `default`).
+
+**Die Ursache ist eine Asymmetrie in den Profil-Configs.** 25 von 33 Profilen
+tragen bereits
+
+```yaml
+platforms:
+  photon:
+    enabled: false
+```
+
+**6 Profile hatten gar keinen `platforms`-Block** — basic-memory, bots,
+findusarbeitus, fomo-radar, lokal-first, recherche. Ein Profil **ohne**
+ausdrueckliches `enabled` wird ueber die Umgebung aktiviert: der Photon-Adapter
+registriert `env_enablement_fn=_env_enablement`
+(`plugins/platforms/photon/adapter.py:326`, Kommentar *„seed ``PlatformConfig.extra``
+so env-only setups appear in status"*). Das Profil hat keine eigenen
+`PHOTON_`-Werte, erbt also die der Haupt-`.env` und gilt damit als
+photon-aktiv. Der Gateway sieht zwei Profile auf derselben Kennung und lehnt das
+zweite als `duplicate_credential` ab — zu Recht, nur ist die Ursache die fehlende
+Zeile, nicht eine geteilte Kennung.
+
+**Behoben** (Commit `0b45d4b7`): der Block an die 6 Dateien angehaengt, je
+**+3 Zeilen, 0 geloescht**, Zeilenenden erhalten (5 × CRLF, `fomo-radar` LF).
+Damit tragen **31 von 33** Profilen den Block. Werkzeug:
+`scripts/profil-photon-aus.py` (Trockenlauf ohne `--anwenden`; parst die Datei
+vorher und nachher mit `yaml.safe_load` und assertet, dass sich ausserhalb von
+`platforms` nichts geaendert hat).
+
+**Zwei Profile bleiben ohne Block — mit Absicht.** `auto-prediction` und
+`awesome-systematic-trading` haben **keine** `PHOTON_`-Zeile in ihrer `.env`,
+koennen die Haupt-Kennung also nicht erben und werden von Hermes nicht
+beanstandet. Ein Block dort waere Kosmetik.
+
+**Falle, die eine Stunde gekostet hat:** `hermes profile list` meldete **null**
+Kanal-Warnungen, obwohl `hermes gateway status` sechs auflistete. Beide Befehle
+lesen **denselben** Home-Pfad — die Ursache ist der **Profil-Scope**, nicht der
+Pfad: die Sitzung laeuft im Profil `hermes-wartung`, und der Profil-Scope gilt
+fuer **alle** Hermes-Lesebefehle. `profile list` vergleicht dann jedes Profil
+gegen `hermes-wartung` (dessen `.env` hat gar keine `PHOTON_`-Zeile, also keine
+Kollision), waehrend der Gateway-Status gegen das **Startprofil** `default`
+prueft. **Eine gruene Liste und eine rote Statusausgabe sind kein Widerspruch,
+sondern zwei verschiedene Fragen** — vor dem Urteil klaeren, gegen welches Profil
+verglichen wird.
+
+### Telegram: ein verwaistes Standalone-Gateway haelt das Haupt-Token
+
+**Kein Config-Problem — ein laufender Fremdprozess.**
+
+```
+PID 62716   gestartet 11.10. 13:34:43
+  argv:  ... hermes_cli.main gateway run --replace
+  Log:   "Active profile: informatiker161"
+  Lock:  profiles/informatiker161/gateway.lock  (PID 62716, hermes_home=...\profiles\informatiker161)
+```
+
+Dieses Gateway verbindet sich mit **demselben Bot-Token** wie `default` und
+gewinnt das Rennen: `gateway_state.json` fuehrt `telegram.state = "fatal"`,
+`error_code = "telegram-bot-token_lock"` fuer den Haupt-Gateway, der deshalb
+**DEGRADED** laeuft.
+
+**Es beantwortet Max' Nachrichten.** `profiles/informatiker161/logs/gateway.log`:
+
+```
+16:24:01 inbound message: platform=telegram user=Maximilian Faupel chat=7648512088
+16:25:55 response ready: session=agent:main:telegram:dm:7648512088:30970 time=114.3s
+```
+
+Max' DM um 16:24 lief also ueber das Profil `informatiker161`, nicht ueber
+`default` — mit dessen Modell, dessen Skills und dessen Gedaechtnis.
+
+**Die Herkunft ist nicht auffindbar.** Kein Eintrag in der Aufgabenplanung
+(`Hermes_Gateway_2ef9d0b7`, `Hermes_Dashboard`, `Hermes-Update-20260921` — keiner
+nennt ein Profil), nichts im Start-Ordner, kein VBS im `gateway-service/`. Der
+Elternprozess 37772 existiert nicht mehr. Also ein **manuell gestarteter
+Prozess**, der seine Shell ueberlebt hat.
+
+**Gestoppt am 11.10.2026** (auf Max' Anweisung, `hermes --profile
+informatiker161 gateway stop` → „✓ Stopped gateway for this profile"):
+
+- **PID 62716 beendet**, `profiles/informatiker161/gateway.lock` entfernt.
+- **`hermes gateway status` gibt keine einzige Kanal-Warnung mehr aus** — vorher
+  sieben Zeilen (Telegram + sechs Photon). Das ist der Beleg fuer den
+  Config-Fix: die Pruefung liest die Dateien und ist damit sofort sauber.
+- **Ein Autostart-Eintrag existiert nicht** — das Gateway kam nicht von selbst
+  wieder. Falls es erneut auftaucht, ist die Herkunft weiter offen.
+
+**Noch nicht wirksam, und der Grund steht im Code.** `gateway_state.json` fuehrt
+weiterhin `telegram.state = "fatal"` (Zeitstempel 12:28 UTC, also **vor** dem
+Stop) und die sechs `duplicate_credential`-Eintraege. Ein Neustart ist noetig,
+weil Hermes einen Token-Konflikt beim Start **ausdruecklich nicht** erneut
+versucht — `gateway/restart.py::is_global_startup_conflict`:
+
+> *„Adapters emit ``{scope}_lock`` with ``retryable=True`` so a *mid-run*
+> reconnect can recover; at startup a live foreign holder is a configuration
+> conflict (two gateways cannot poll one token), not a transient blip."*
+
+`gateway/run_startup.py:1344` setzt das um:
+`_retryable = adapter.fatal_error_retryable and not is_global_startup_conflict(...)`.
+Das Gate ist also **zu**, solange kein Fremdprozess mehr laeuft: die Warteschlange
+nimmt die Plattform nicht auf, es gibt keinen Hot-Path zurueck.
+
+**Der Neustart laeuft geplant um 17:45:41** (Max' Anweisung: „Restarte in
+10 min", angesetzt 17:35:41). Werkzeug:
+`profiles/hermes-wartung/scripts/gateway-neustart-geplant.py`
+(`--nach-sekunden 600`), gestartet als Hintergrundprozess **ausserhalb** des
+Gateways, `persist_on_release` gesetzt, damit der Lauf `/new` und
+Kontextkompression uebersteht. Es haelt den Zustand vorher und nachher fest,
+wartet bis zu 90 s auf `telegram.state == "connected"` und berichtet den
+Vergleich. Protokoll: `profiles/hermes-wartung/logs/gateway-restart-geplant.log`.
+
+**Warum kein Cron-Auftrag — und das ist kein Detail.** `cronjob_manage` lehnt
+den Job ab:
+
+> *„Blocked: cron job contains a gateway lifecycle command or persistent
+> launchctl submit operation. This is blocked to prevent agent-driven
+> SIGTERM-respawn loops under launchd/systemd supervision (#30719)."*
+
+Ein Cron-Auftrag laeuft **innerhalb** des Gateways. Ein `gateway restart` von
+dort aus beendet den eigenen Prozess und laeuft damit in die Neustart-Schleife,
+die die Sperre verhindert. Der Aufruf muss aus einer Shell **ausserhalb**
+kommen — ein Hintergrundprozess des Agenten ist das.
+
+**Der Task kann es nicht auffangen.** `Hermes_Gateway_2ef9d0b7` hat als
+einzigen Trigger einen `LogonTrigger` (Delay PT30S) und
+`MultipleInstancesPolicy: IgnoreNew`. `RestartOnFailure` (Count 999,
+Interval PT1M) greift nur bei einem **unerwarteten** Abbruch — ein sauberer
+Stop oder Neustart startet nichts von selbst. Nach einem `stop` bleibt das
+Gateway also unten, bis jemand startet.
+
+Beleg danach: `telegram.state = "connected"`, die sechs Photon-Eintraege
+verschwunden, `gateway_state = "running"` statt `degraded`, neue PID.
+
+### Kanal-Kennungen: Ist-Stand des Hauses (11.10.2026)
+
+Gemessen mit `shared_channel_credentials` und Hashes, nie im Klartext:
+
+- **Telegram:** 8 Profile tragen einen eigenen `TELEGRAM_BOT_TOKEN`, **alle
+  verschiedenen** — keiner teilt ihn mit `default`. Die Warnung im
+  Gateway-Status nennt `informatiker161` zurecht: es ist ein zweiter
+  **Prozess** auf derselben Kennung, keine zweite Kennung in einer Datei.
+- **Photon:** genau **eine** Kennung im Haus, in der Haupt-`.env`.
+
+**Sicherung der Notiz:** `Wissen/Hermes.md.bak-20261011-ram`.

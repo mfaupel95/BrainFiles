@@ -50,3 +50,18 @@ bewusst `None` zurueck (nicht einen leeren DataFrame): die Agenten pruefen auf
 
 `fundingarb_agent` nutzt `api.py` NICHT (eigene Datenwege) — bei den
 „datenlosen" Agenten war er falsch mitgezaehlt.
+## Stand 13.10.2026: Strategie-PDFs für den Ordner `strategy_pdfs`
+
+Die GUI erwartet die PDFs unter `O:\Werkstatt\Moon-Dev-Code\strategy_pdfs`.
+Geprüft am 13.10.2026: Das Original enthält nur drei Dateien; im Web finden sich
+keine weiteren Moon-Dev-Strategie-PDFs. Kandidaten, die passen würden:
+
+| Quelle | Lizenz | Passt zu |
+|---|---|---|
+| Gbadebo (2026), „Momentum Trading in Cryptocurrencies", Buhalterinės apskaitos teorija ir praktika, DOI 10.15388/batp.2026.1 — https://www.zurnalai.vu.lt/BATP/article/view/44540 | CC BY | Momentum mit EMA über mehrere Horizonte |
+| arXiv 1903.06033 — https://arxiv.org/abs/1903.06033 (Titel und Autoren vor Zitat prüfen) | arXiv-Lizenz, vor Übernahme prüfen | Mean Reversion in Krypto-Tagesrenditen |
+| Ekström (2025), Bitcoin-Momentum gegen Mean Reversion, Theseus — https://www.theseus.fi/handle/10024/902903 | Nur privat, kommerzielle Nutzung untersagt | Bollinger gegen MA-Crossover mit Gebühren |
+
+Nicht in den Ordner aufnehmen: die Ekström-Arbeit (Lizenz), die
+Substack-Notiz (kein Paper, Stichprobe kurz). Das Herunterladen ist noch nicht
+erfolgt; dafür braucht es eine ausdrückliche Freigabe.

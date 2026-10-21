@@ -1,0 +1,16 @@
+{
+  "_zweck": "Quellen fuer adapter_lauf.py. Pfade relativ zur BrainFiles-Wurzel (Werkstatt liegt auf O:, siehe 'basis'). enabled=false = wird uebersprungen.",
+  "_basis_werkstatt": ["Werkstatt", "O:/Werkstatt"],
+  "quellen": [
+    {"name": "nautilus_trader", "typ": "nautilus", "enabled": true,
+     "datei": "nautilus_intents.jsonl", "ort": "werkstatt"},
+    {"name": "moon-dev-ai-agents", "typ": "moondev", "enabled": true,
+     "datei": "moon-dev-ai-agents/src/data/ai_analysis_buys.csv", "ort": "werkstatt"},
+    {"name": "intelligent-trading-bot", "typ": "itb", "enabled": false,
+     "datei": "intelligent-trading-bot/DATA-OKX/BTCUSDT/signals.csv", "ort": "werkstatt",
+     "instrument": "BTC-USDC", "_hinweis": "aus: Auswertung 10.10.2026 ohne Vorteil (AUC ~0,5); erst an, wenn ein Modell Edge zeigt"}
+  ],
+  "mode": "paper",
+  "size_pct": 0.2,
+  "expiry_s": 180
+}

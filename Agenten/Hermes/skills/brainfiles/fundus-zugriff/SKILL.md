@@ -1,17 +1,17 @@
 ---
 name: fundus-zugriff
-description: "Use when eine Faehigkeit fehlt: Skill-Fundus in MaxHirn/skills durchsuchen."
+description: "Use when eine Faehigkeit fehlt: Skill-Fundus (Documents/GitHub + Werkstatt) durchsuchen."
 ---
 
-# Skill-Fundus (MaxHirn/skills + Werkstatt/Repos) nutzen
+# Skill-Fundus (Documents/GitHub + Werkstatt) nutzen
 
-`MaxHirn/skills/` sind **geklonte Fremd-Repos**: 238 SKILL.md, davon **182
-eindeutige** (56 byte-identische Kopien) in 10 Repos - financial-services 67,
-OmniRoute 47, claude-plugins-official 31, cli 12, claude-code 10,
-onchainos-skills 7, context7 5, Rest einzelne. Dazu rund 660 MB Repo-Inhalt.
-**Seit 16.09.2026 sucht das Skript auch `Werkstatt/Repos/`** (die
-Bot-Klone): dort liegen 356 SKILL.md, **293 eindeutige** in 18 Repos, davon
-37 byte-identisch auch im Fundus (geprueft, Stand 16.09.2026).
+**Der Fundus liegt seit 18.09.2026 unter `%USERPROFILE%\Documents\GitHub`**
+(ausserhalb BrainFiles; der fruehere Ordner `MaxHirn/skills` existiert nicht
+mehr). Dazu die Bot-Klone `Werkstatt`. Der aktuelle Pfad steht IMMER in
+`fundus-suche.ps1` (`$fundus`/`$werkstatt`), nicht in einer Notiz. Stand
+11.10.2026: Fundus 1 SKILL.md, Werkstatt 34 Repos / 871 eindeutige
+Skills / 1022 Dateien - nachmessbar mit dem `-Index`-Lauf des Skripts, nie
+aus dem Gedaechtnis.
 
 Sie sind **absichtlich nicht** in die Hermes-Bibliothek importiert: ihre Namen
 und Beschreibungen wuerden bei **jeder Anfrage** rund **14.700 Tokens** kosten.
@@ -27,8 +27,11 @@ die Fremdinhalte erst, wenn wirklich gebraucht.
 1. **Suchen, nicht stoebern.** Ein Suchlauf statt eines Baumdurchgangs:
 
    ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File `
-     "Agenten\Werkzeuge\fundus-suche.ps1" -Begriff "<suchwort>"  # aus der Repo-Wurzel
+   pwsh -NoProfile -File \
+     "Agenten/Werkzeuge/fundus-suche.ps1" -Begriff "<suchwort>"  # aus der Repo-Wurzel
+
+   **Nur pwsh 7 - powershell.exe 5.1 meldet STILL 0 Treffer** (dort fehlt
+   `Get-FileHash`, kein Fehlertext, falsche Aussage).
    ```
 
    Die Ausgabe nennt je Treffer Quelle (Fundus/Werkstatt), Repo, Namen, Pfad
@@ -43,10 +46,11 @@ die Fremdinhalte erst, wenn wirklich gebraucht.
    Datei im Kontext liegt.
 
 3. **Uebersicht fuer Menschen und fuer Agenten ohne Terminal:**
-   `MaxHirn/Wissen/Fundus-Index.md` (Fundus, alle 182 Skills, je Repo
-   gruppiert, 48 KB) und `MaxHirn/Wissen/Fundus-Index-Werkstatt.md`
-   (Werkstatt/Repos, 293 Skills, mit `*(auch im Fundus)*`-Markern). Beide neu
-   bauen: `-Index` am selben Skript - auch nach `git pull` in einem Klon.
+   `MaxHirn/Wissen/Fundus-Index.md` (Fundus) und
+   `MaxHirn/Wissen/Fundus-Index-Werkstatt.md` (Werkstatt), je Repo
+   gruppiert. Beide neu bauen: `-Index` am selben Skript - auch nach `git pull`
+   in einem Klon; die Kopfzeile nennt die echten Repos-/Skill-Zahlen, die
+   Doku im Skriptkopf darf nicht davon abweichen.
 
 4. **Nach der Nutzung einordnen.** Fremd-Skills richten sich an fremde
    Werkzeuge und Pfade. Uebernehmen heisst: pruefen, auf Hermes-Werkzeugnamen
@@ -55,7 +59,7 @@ die Fremdinhalte erst, wenn wirklich gebraucht.
    anwenden und nichts speichern.
 
 5. **Klone aktuell halten:** der Hermes-Cron `repo-updates-check` (montags
-   09:15, `no_agent`) meldet, welche Werkstatt/Repos hinter upstream
+   09:15, `no_agent`) meldet, welche Werkstatt hinter upstream
    zurueckliegen; nach einem `git pull` den `-Index` neu bauen lassen.
 
 ## Fallen

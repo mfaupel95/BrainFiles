@@ -71,6 +71,27 @@ Den TUI-Weg als Hintergrundprozess mit `pty=true` starten, dann mit
     # vorhandene Hauswache gegen den Spawn-Kreis
     ./hermes-agent/venv/Scripts/python.exe scripts/mcp-zombie-wache.py
 
+## Zuerst: wird das Profil ueberhaupt bedient?
+
+Ein benanntes Profil mit der Markierung `profiles/<p>/gateway.parked` wird vom
+Host-Multiplexer **nicht bedient** — damit stehen sein Bot UND sein Cron still,
+ohne Fehlermeldung. `profiles_to_serve()` laesst geparkte Profile aus, und der
+Cron-Ticker lebt im bedienenden Gateway. Das vor jeder Auth- oder Latenzmessung
+pruefen, sonst debuggt man ein Skript, das nie aufgerufen wurde.
+
+    ls profiles/<p>/gateway.parked                      # da = geparkt
+    python -c "import json;d=json.load(open('gateway_state.json'));print('<p>' in (d.get('served_profiles') or []))"
+    cat profiles/<p>/cron/ticker_heartbeat              # Frische des Tickers
+
+Der Beleg ist die Kombination: Markierung vorhanden, Profilname fehlt in
+`served_profiles`, und `last_run_at` des Cron-Jobs friert auf **dieselbe Minute**
+ein, in der die Markierung entstand. Entparken ist
+`hermes -p <p> gateway start` (nimmt die Markierung weg und laesst den Host heiss
+nachladen). Greift dieser Weg nicht, die Markierung entfernen und den Rescan
+abwarten (bis ~30 s) — danach **verifizieren**, dass der Name in
+`served_profiles` steht und der Ticker frisch ist; die Entfernung allein ist
+kein Nachweis.
+
 ## Procedure
 
 1. **Die vermutete Ursache zuerst pruefen, nicht beheben.** `auth status <provider>`
@@ -130,6 +151,17 @@ Den TUI-Weg als Hintergrundprozess mit `pty=true` starten, dann mit
 - **Befehle fuer Max sind PowerShell, mit Leerzeichen vor der Umleitung.**
   `doctor2>&1` liest PowerShell als Argument und startet einen Hintergrundjob;
   `doctor 2>&1` leitet um. Fuer ihn nie ein bash-Werkzeug nennen.
+- **Ein stehender Cron ist kein kaputter Job.** Erst pruefen, ob das Profil
+  ueberhaupt bedient wird (siehe oben); ein veralteter Pfad oder ein alter
+  Fehlschlag im Job-Eintrag ist dann nur ein Nebenbefund und nicht die Ursache.
+- **Eine leere Ausgabe von `gateway status` ist kein Zustand.** Gateway-Verben
+  aus dem laufenden Gateway-Prozess heraus werden abgewiesen oder laufen ins
+  Leere (ein SIGTERM wuerde den eigenen Aufruf treffen). Die belastbaren Quellen
+  sind `gateway_state.json` (Host: `pid`, `gateway_state`, `served_profiles`)
+  und die Ticker-Dateien des Profils, nicht die Rueckgabe des Verbs.
+- **Markierungsdateien zeigen Absicht, nicht Defekt.** `gateway.parked` wird von
+  `gateway stop` gesetzt und bleibt liegen; sie ist 0 Byte, und ihr Zeitstempel
+  ist der Zeitpunkt der Abschaltung — damit datiert sie den Ausfall exakt.
 
 ## Verification
 

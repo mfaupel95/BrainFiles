@@ -1,0 +1,37 @@
+{
+ "_zweck": "Fibonacci-Retracement-Papierspur. Kein Live-Zweig.",
+ "instrumente": [
+  "BTC-USDT",
+  "ETH-USDT",
+  "SOL-USDT"
+ ],
+ "kerzen_anzahl": 100,
+ "kerzen_abstand": "1h",
+ "gebuehr_taker": 0.001,
+ "max_pro_trade_usd": 10.0,
+ "max_offene_positionen": 3,
+ "max_gesamt_usd": 30.0,
+ "risiko_je_position_usd": 5.0,
+ "pflicht_stop_prozent_min": 3.0,
+ "pflicht_stop_prozent_max": 12.0,
+ "abklingzeit_tage": 3.0,
+ "handel_erlaubt": false,
+ "_kein_live_pfad": true,
+ "stop_pct": 4.0,
+ "ziel_pct": 2.0,
+ "drawdown_halbierung_usd": 15.0,
+ "freigabe": {
+  "erfuellt": false,
+  "_kein_live_pfad": true
+ },
+ "herzschlag_max_minuten": 180,
+ "journal_zweitziel": "Q:\\Handel_Journal\\fib_retrace",
+ "tracker": {
+  "_fib_retrace": {
+   "einstieg_schwelle": 0.382,
+   "ziel_schwelle": 0.236,
+   "stop_schwelle": 0.764
+  }
+ },
+ "_vermerk": "Spot statt SWAP (OKX 51000 bar error)"
+}

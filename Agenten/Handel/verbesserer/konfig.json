@@ -12,6 +12,8 @@
   "holdout_tage": 60,
   "holdout_min_runden": 8,
   "gewichte_durchsuchbar": true,
+  "ungleiche_historien": true,
+  "_ungleiche_historien": "true = ruecktest.ausrichten_ungleich: junge Listings bleiben im Test (Vorlauf-Kerzen, eigene Warmup-Zeit) statt auf die gemeinsame Schnittmenge zu schrumpfen. false = altes ausrichten() (Schnittmenge, <90 %-Tage fliegen raus). Hintergrund: im Live-Universum fielen 29 von 38 Paaren heraus.",
   "oos_fenster_ziel": 12,
   "_oos_fenster_ziel": "Zielzahl an OOS-Testfenstern. Steuert, wieviel Historie lauf.py ueber die Aufwaermphase hinaus zieht (~540 Tageskerzen, davon 60 Holdout); die Overfitting-Sperre verlangt eine Mehrheit dieser Fenster.",
   "gebuehr_umstellung_datum": "2026-09-06",
@@ -29,9 +31,9 @@
   },
   "llm": {
     "modus": "ollama",
-    "_modus": "aus | ollama | cliproxy. Seit 2026-09-17 ollama mit qwen35-8k:latest (unter den lokalen Modellen gemessen die vertragstreueste Wahl), seitdem bleibt der Empfehlungsabschnitt nicht mehr leer.",
-    "timeout_s": 60,
-    "ollama": { "url": "http://127.0.0.1:11434", "modell": "qwen35-8k:latest", "think": false },
+    "_modus": "aus | ollama | cliproxy. Seit 2026-09-17 ollama mit qwen35-8k:latest. Dieses Modell ist in Ollama nicht mehr installiert (HTTP 404, Bericht vom 07.10.2026: 'LLM nicht erreichbar'); seit 2026-10-09 qwen3.5:9b, am echten Digest-Prompt geprueft (nummerierte Empfehlungen plus LEHREN-Zeile, 49 s beim ersten Aufruf, deshalb timeout_s 180 statt 60). Nicht gemessen, ob es die Empfehlungen inhaltlich besser trifft als das alte Modell.",
+    "timeout_s": 180,
+    "ollama": { "url": "http://127.0.0.1:11434", "modell": "qwen3.5:9b", "think": false },
     "cliproxy": { "base_url_env": "CLIPROXY_BASE_URL", "schluessel_env": "CLIPROXY_API_KEY", "modell": "claude-sonnet-5" }
   }
 }

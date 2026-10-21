@@ -89,6 +89,40 @@ anhand der Absatzgrenzen, mit denen er herausgeschnitten wurde.** Der Schnitt
 darf eine falsche Grenze liefern; die Gegenprobe darf sich darauf nicht
 verlassen.
 
+## Mehrere Bloecke: rueckwaerts entfernen, Snapshot vergleichen
+
+Wer MEHRERE Eintraege in einem Zug verschiebt, sammelt zuerst alle
+Match-Positionen auf dem ORIGINAL-Text und entfernt sie dann nacheinander.
+Das ist der Fehler: nach der ersten Entfernung wandern alle spaeteren
+Positionen, und der zweite `text[:m.start()] + text[m.end():]` schneidet an
+einer verschobenen Stelle - er nimmt den FALSCHEN (Nachbar-)Block mit. Die
+Nummernmenge faellt dann um genau die mitgenommenen fremden Nummern, und das
+Gate meldet 'Nummernmenge geaendert', ohne zu sagen wo.
+
+**Zwei Regeln, beide Pflicht:**
+
+1. **Rueckwaerts entfernen** - ueber die gespeicherten Start-Positionen
+   absteigend sortieren, damit fruehere Entfernungen die spaeteren Positionen
+   nicht verschieben:
+
+```python
+for num in sorted(NUMMERN, key=lambda n: gefunden[n].start(), reverse=True):
+    m = gefunden[num]
+    text = text[:m.start()] + text[m.end():]
+```
+
+2. **Die Nummernmenge gegen eine SNAPSHOT-Variable des Originals vergleichen,
+   nicht gegen den modifizierten `text`.** Nach dem Entfernen ist `text` nicht
+   mehr das Original; `ids(neu) == ids(text)` schlaegt dann falsch fehl, weil
+   die entfernten Bloecke in `text` fehlen. Vor dem ersten Eingriff
+   `original = text` merken und die Gegenprobe gegen `original` fahren.
+
+   Und das Zaehlmuster muss `[ \t]*` zwischen Klammer und `**` zulassen: ein
+   Eintrag mit drei Leerzeichen (`- [ ]   **T-324`) faellt aus einem
+   Ein-Leerzeichen-Muster, matcht nach dem Verschieben (das die Einrueckung
+   normalisiert) aber doch - der Vergleich meldet dann 'Nummernmenge geaendert'
+   fuer einen korrekten Zustand. Dasselbe Muster wie im Anker verwenden.
+
 ## Gegenproben-Kette
 
 Weil alle vier Fehler erst NACH dem Schreiben auffielen, gehoerte jeder

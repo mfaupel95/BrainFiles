@@ -4,16 +4,11 @@ model:
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
 providers:
-  ollama-launch:
-    api: http://127.0.0.1:11434/v1
-    base_url: http://127.0.0.1:11434/v1
-    default_model: gemma-e4b-8k:latest
+  llamacpp:
+    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
     discover_models: true
-    model: gemma-e4b-8k:latest
-    models:
-      - gemma-e4b-8k:latest
-      - gemma-e4b-8k:cpu
-    name: Ollama
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    name: LLaMA.cpp
   omniroute:
     api: http://localhost:20128/v1
     default_model: auto
@@ -27,10 +22,16 @@ providers:
       auto/smart: {}
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
+  smart:
+    api: http://127.0.0.1:20128/v1
+    name: smart
+    key_env: HERMES_CUSTOM_127_0_0_1_20128_API_KEY
+    default_model: auto/smart
+    models:
+      auto/smart: {}
 fallback_providers:
-  - provider: ollama-launch
-    model: gemma-e4b-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
+  - provider: llamacpp
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
 toolsets:
   - hermes-cli
 database:
@@ -45,7 +46,7 @@ agent:
   verbose: false
 terminal:
   backend: local
-  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\basic-memory
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\basic-memory
   font_family: ''
   timeout: 180
   home_mode: auto
@@ -235,7 +236,7 @@ desktop:
   repo_scan_roots: []
 local_runtime:
   enabled: false
-_config_version: 50
+_config_version: 51
 a2a_agents:
   omniroute:
     auth:
@@ -261,13 +262,6 @@ a2a_agents:
       - skills
   '8741749061':
     url: http://127.0.0.1:9900/
-custom_providers:
-  - base_url: http://127.0.0.1:20128/v1
-    key_env: HERMES_CUSTOM_127_0_0_1_20128_API_KEY
-    model: auto/smart
-    models:
-      auto/smart:
-    name: smart
 group_sessions_per_user: true
 image_gen:
   provider: nous
@@ -397,26 +391,15 @@ mcp_servers:
       PYTHONPATH: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp\src
       TOOLUNIVERSE_STDIO_MODE: '1'
     cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.tooluniverse.tooluniverse-mcp
-  windows-mcp:
-    args:
-      - -c
-      - from windows_mcp.__main__ import main; main()
-    command: C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.cursortouch.windows-mcp\.venv\Scripts\python.exe
-    env:
-      ANONYMIZED_TELEMETRY: "false"
-      MODE: local
-      WINDOWS_MCP_DEBUG: "false"
-      WINDOWS_MCP_PROFILE_SNAPSHOT: "true"
-      WINDOWS_MCP_SCREENSHOT_BACKEND: auto
   projectatlas:
     command: C:\Users\faupe\Documents\BrainFiles\Agenten\Werkzeuge\projectatlas\bin\projectatlas.exe
     args:
       - --require-version
       - 0.4.5
       - --db
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\basic-memory\.projectatlas\projectatlas.db
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\basic-memory\.projectatlas\projectatlas.db
       - --config
-      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\Repos\basic-memory\.projectatlas\config.toml
+      - C:\Users\faupe\Documents\BrainFiles\Werkstatt\basic-memory\.projectatlas\config.toml
       - mcp
     enabled: true
 platform_toolsets:
@@ -490,3 +473,6 @@ _left_core_scoped:
   - homeassistant
 _left_core_installed:
   - homeassistant
+platforms:
+  photon:
+    enabled: false

@@ -1,0 +1,75 @@
+{
+  "stand": "2026-10-20",
+  "eintraege": [
+    {
+      "name": "kraken-cli",
+      "pfad": "Werkstatt/kraken-cli",
+      "rolle": "Kraken-Spot-Handelsbibliothek",
+      "phase_aktuell": 2,
+      "status": "fertig",
+      "blockiert_weil": null,
+      "notiz": "MCP aktiv, Papierhandel laeuft; naechster Schritt Phase 3 Walk-forward",
+      "geaendert": "2026-10-20"
+    },
+    {
+      "name": "agent-trade-kit",
+      "pfad": "Werkstatt/agent-trade-kit",
+      "rolle": "OKX-Spot-Toolkit (MCP-Server)",
+      "phase_aktuell": 2,
+      "status": "in_arbeit",
+      "blockiert_weil": "OKX-Demo-Key fehlt, MCP aus",
+      "notiz": null,
+      "geaendert": "2026-10-20"
+    },
+    {
+      "name": "intelligent-trading-bot",
+      "pfad": "Werkstatt/intelligent-trading-bot",
+      "rolle": "ML-Signal-Quelle (Tabular-Modelle)",
+      "phase_aktuell": 3,
+      "status": "blockiert",
+      "blockiert_weil": "Walk-forward negativ; adapter_itb.py vorhanden, adapter_quellen.json auf aus",
+      "notiz": "ITB-Signal-Bruecke PR #91 in Arbeit; Live-Freigabe verweigert bis positiver Walk-forward",
+      "geaendert": "2026-10-20"
+    },
+    {
+      "name": "nautilus",
+      "pfad": "Werkstatt/nautilus_trader",
+      "rolle": "Event-driven-Backtesting und Live-Execution",
+      "phase_aktuell": 3,
+      "status": "blockiert",
+      "blockiert_weil": "EMA-Kreuzung Walk-forward negativ; neue Strategie (Trendvariante A/B) noch in Vorab-Pruefung",
+      "notiz": "Papier-Infrastruktur laeuft (nautilus_signalgeber.py, nautilus_okx_lauf.py im Bus)",
+      "geaendert": "2026-10-20"
+    },
+    {
+      "name": "moon-dev-ai-agents",
+      "pfad": "Werkstatt/moon-dev-ai-agents",
+      "rolle": "LLM-basierte Marktlage-Analyse",
+      "phase_aktuell": 1,
+      "status": "blockiert",
+      "blockiert_weil": "CoinGecko 401 - Daten zu alt, Auswertung nicht durchfuehrbar",
+      "notiz": "Adapter vorhanden; Hermes-Bot eingerichtet",
+      "geaendert": "2026-10-20"
+    },
+    {
+      "name": "tradememory-protocol",
+      "pfad": "Werkstatt/tradememory-protocol",
+      "rolle": "Gedaechtnis/Journaling-Protokoll",
+      "phase_aktuell": 0,
+      "status": "blockiert",
+      "blockiert_weil": "Wartungsmodus, kein weiterer Ausbau geplant",
+      "notiz": null,
+      "geaendert": "2026-10-20"
+    },
+    {
+      "name": "jev-trader",
+      "pfad": "Werkstatt/jev-trader",
+      "rolle": "DEX-Arbitrage (Solana/Ethereum)",
+      "phase_aktuell": 0,
+      "status": "blockiert",
+      "blockiert_weil": "DEX-spezifisch, kein OKX-CEX-Bezug, niedrige Eignung",
+      "notiz": null,
+      "geaendert": "2026-10-20"
+    }
+  ]
+}

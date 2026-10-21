@@ -105,7 +105,7 @@ def _position(stop):
 class TrailingTest(unittest.TestCase):
     def _lauf(self, scheitert=False):
         weg_ = _AttrappeWeg(scheitert=scheitert)
-        w = {"trailing_stop_prozent": 0.03}
+        w = {"trailing_stop_prozent": 3.0}
         z = {"positionen": [_position(stop=98.5)]}
         with tempfile.TemporaryDirectory() as tmp:
             buch.pruefe_ausstiege(z, {"SOL-USDC": 120.0}, w,
@@ -125,14 +125,35 @@ class TrailingTest(unittest.TestCase):
         # Kurs unter dem alten Stop: der neue Preis laege tiefer - kein Aufruf.
         self.assertGreater(p["stop"], 98.5)
         weg2, p2 = _AttrappeWeg(), None
-        w = {"trailing_stop_prozent": 0.03}
+        w = {"trailing_stop_prozent": 3.0}
         z = {"positionen": [_position(stop=98.5)]}
         with tempfile.TemporaryDirectory() as tmp:
             buch.pruefe_ausstiege(z, {"SOL-USDC": 90.0}, w,
                                   os.path.join(tmp, "j.csv"),
-                                  live=True, weg=weg2)
+                                  live=True, weg=weg2,
+                                  zustand_pfad=os.path.join(tmp, "z.json"))
         # 90 < Stop 98.5: der Stop haette gereissen - kein Trailing davor.
         self.assertEqual(weg2.nachgezogen, [])
+
+    def test_echte_wachen_ziehen_den_stop_nach(self):
+        """Mit der ECHTEN wachen.json der Spur: 3.0 heisst 3 %, nicht 300 %.
+
+        Bis 09.10.2026 lasen die Tests nur einen Attrappen-Wert (0.03); die echte
+        Konfiguration (3.0) wurde als Bruchteil gelesen und der Trailing griff nie.
+        """
+        import json
+        pfad = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "wachen.json")
+        with open(pfad, encoding="utf-8") as f:
+            w = json.load(f)
+        weg_ = _AttrappeWeg()
+        z = {"positionen": [_position(stop=98.5)]}
+        with tempfile.TemporaryDirectory() as tmp:
+            buch.pruefe_ausstiege(z, {"SOL-USDC": 120.0}, w,
+                                  os.path.join(tmp, "j.csv"), live=True, weg=weg_)
+        self.assertEqual(len(weg_.nachgezogen), 1)
+        self.assertAlmostEqual(z["positionen"][0]["stop"],
+                               120.0 * (1 - float(w["trailing_stop_prozent"]) / 100.0))
 
     def test_scheitern_laesst_alten_stop_stehen(self):
         weg_, p = self._lauf(scheitert=True)

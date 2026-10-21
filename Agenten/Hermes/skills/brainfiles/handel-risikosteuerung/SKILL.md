@@ -204,9 +204,30 @@ der Stop auf den vollen Bestand zeigt.
   eine Prüfung den Fehler *bestätigt* statt ihn zu finden.
 - **Ein Helfer darf eine Aufrufform haben, nicht zwei.** Ein Helfer mit
   `zahl(wert)` und `zahl(container, feldname)` wird irgendwann verwechselt, und
-  die Verwechslung fällt still aus: der Wert landet als Feldname in einer
+  die Verwechslung faellt still aus: der Wert landet als Feldname in einer
   Suche und das Ergebnis ist 0,0 statt der echten Zahl. Beschreibe die Form
-  einmal und rufe sie überall gleich auf.
+  einmal und rufe sie ueberall gleich auf.
+- **Bedingung 5 (rollierender EV) ist eine harte Code-Schranke ohne
+  wachen.json-Schalter.** Anders als die Freigabe-Bedingungen (netto-positiv,
+  Wochen, Runden), die per `_entfaellt`-Vermerk gelockert werden, sperrt
+  `ev_negativ = ev < 0` die Spur hart — es gibt keinen Schalter in der Wachen.
+  Vor „Live stellen" die echten Sperrgruende pruefen (`--vorschau` mit
+  `MAXHIRN_ROUTINE=1`): nennt die Ausgabe Bedingung 5, ist ein
+  wachen.json-Schalter wirkungslos; die Schranke braucht eine Code-Aenderung
+  oder einen ausdruecklichen `_ev_entfaellt`-Vermerk (Risikoentscheidung Max).
+- **Ein Schalter fuer Live-Verhalten ist wirkungslos, solange die Spur als
+  Papier laeuft.** Ein Schalter, der das automatische Schliessen von
+  Live-Positionen steuert, greift nur im Live-Modus; im Papierlauf werden
+  Live-Positionen nie geschlossen, unabhaengig vom Schalter. Vor der Zusage
+  „der Schalter wirkt" pruefen, dass das Freigabefenster offen ist und die
+  Spur wirklich live laeuft — sonst ist die Aenderung inert und die
+  Handpositionen bleiben stehen, obwohl der Schalter auf true steht.
+- **`json.dump(..., sort_keys=True)` schreibt die ganze Datei neu.** Ein
+  einzelner neuer Schluessel in einer wachen.json wird so zu einem
+  Ganzdatei-Diff (alle Schluessel umsortiert) — Konfliktrisiko mit parallelen
+  Sitzungen und unlesbarer Commit. Den Schluessel gezielt einfuegen (bytes
+  lesen, an der Stelle einsetzen) statt die Datei neu zu serialisieren; den
+  inhaltlichen Diff gegen HEAD~1 pruefen, wenn doch neu geschrieben wurde.
 
 ## Verification
 

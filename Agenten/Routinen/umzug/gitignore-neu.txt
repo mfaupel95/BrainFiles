@@ -107,7 +107,7 @@ MaxHirn/Archiv/.claude/scheduled_tasks.lock
 # Submodul-Verweis auf (gemessen 24.08.2026: neun Stueck). Ein solcher Verweis
 # speichert nur einen fremden Commit-Hash - beim Auschecken faende sich dort ein
 # leerer Ordner. Sie sind ohnehin aus Git reproduzierbar.
-Werkstatt/Repos/**
+Werkstatt/**
 Werkstatt/Sitzungen/**
 Werkstatt/Worktrees/**
 Agenten/Hermes/hermes-agent/**

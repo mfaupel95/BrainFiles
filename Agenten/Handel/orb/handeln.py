@@ -9,12 +9,12 @@ Vorlage ist `orbk/handeln.py` (dieselbe Strategie auf Kraken, laeuft seit
 kraken, Session ist die UTC-Tagesgrenze (orb/session.py), und das Ziel kommt
 aus `ziel_modus`/`ziel_k`/`ziel_punkte` der eigenen wachen.json.
 
---live ist trotzdem ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur
-scharf, wenn ihr Zeitfenster offen ist. Ohne Live-Pfad gibt es nichts
-freizugeben - der Aufruf nennt genau einen Grund (ohne das Wort
-"Freigabefenster", damit der Dauerlauf keine Anfrage stellt) und laeuft als
-Papier weiter, statt mit einem argparse-Fehler abzubrechen. Muster: orbk,
-spiegel.
+--live ist ein gueltiger Aufruf: der Dauerlauf schaltet eine Spur nur scharf,
+wenn ihr Zeitfenster offen ist. Ist ALLES sperrenfrei (handel_erlaubt,
+freigabe.erfuellt, journal_zweitziel, API-Schluessel, Freigabefenster), legt
+dieser Pfad eine ECHTE Order (Einstieg + Boersen-Stop + Ziel) an die Boerse.
+Fehlt eine Sperre, laeuft der Lauf als Papier weiter und nennt die Gruende -
+derselbe Fallsafe wie kraken/handeln.py.
 
 DAS URTEIL STEHET IM WACHENBUCH UND BLEIBT STEHEN: der OKX-Backtest vom
 13.09.2026 (siehe `_backtest` in wachen.json, nachrechenbar mit
@@ -52,6 +52,12 @@ import ereignis                                            # noqa: E402
 import okxf                                                # noqa: E402
 import session as sess                                     # noqa: E402
 import wachen_orb as wp                                    # noqa: E402
+from importlib.util import module_from_spec as _kg_mod, \
+    spec_from_file_location as _kg_spec
+_kg_obj = _kg_spec("kill_gemeinsam", os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), os.pardir, "kill_gemeinsam.py"))
+kg = _kg_mod(_kg_obj)                  # Kill-Frist/Reset/Opt-out, eine Stelle
+_kg_obj.loader.exec_module(kg)
 
 # Risikostufe (HANDEL_RISIKO) ueber den PFAD laden, wie ratschen.py: die Spur
 # hat ihren eigenen Ordner als sys.path[0], ein 'import risikostufe' haenge an
@@ -67,11 +73,9 @@ _rs_spec_obj.loader.exec_module(risikostufe)
 ZUSTAND = risikostufe.datei(HIER / "zustand.json")
 JOURNAL = risikostufe.datei(HIER / "handelsjournal.csv")
 
-# Genau ein Grund, ohne das Wort "Freigabefenster": dauerlauf.nur_fenster_fehlt
-# liest diese Zeile und fragt nur dann nach einer Freigabe. Diese Spur hat
-# keinen Live-Pfad - es gibt nichts freizugeben, also wird nicht gefragt.
-GRUND_KEIN_LIVE = ("Live waere gesperrt durch: kein Live-Pfad in dieser "
-                   "Spur (Papier; Backtest-Urteil negativ)")
+# Spur-Name fuer den Freigabe-Dienst (freigabefenster.py / freigabebeleg.py):
+# muss mit dem Schluessel in dauerlauf.SPUREN zusammenpassen.
+SPUR = "orb"
 
 
 def _jetzt():
@@ -94,13 +98,23 @@ _at_obj = _at_spec("atomar", os.path.join(
 atomar = _at_mod(_at_obj)
 _at_obj.loader.exec_module(atomar)
 
+# Freigabefenster ueber den PFAD laden (Hausmuster, s. kraken/handeln.py): ein
+# blankes 'import freigabefenster' greift im Spurlauf nicht, weil Handel/ nicht
+# auf sys.path liegt (nur <spur>/../../Bus).
+_fw_datei = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         os.pardir, "freigabefenster.py")
+_fw_spec_obj = _rs_spec("freigabefenster", _fw_datei)
+freigabefenster = _rs_mod(_fw_spec_obj)
+_fw_spec_obj.loader.exec_module(freigabefenster)
+
 
 def lade_zustand():
     z = atomar.lade_json(ZUSTAND, lambda: None)
     if z is not None:
         z.setdefault("modus", "papier")
+        z.setdefault("positionen", [])
         return z
-    return {"position": None, "letzter_lauf": None, "modus": "papier"}
+    return {"positionen": [], "letzter_lauf": None, "modus": "papier"}
 
 
 def schreibe_zustand(z):
@@ -119,13 +133,6 @@ def journal(*felder):
         w.writerow(felder)
 
 
-def _inst_konf(w):
-    key = w.get("instrument_aktiv")
-    if not key:
-        return None, None
-    return key, w["instrumente"][key]
-
-
 def _range_fenster(w, key, tag):
     return sess.opening_range_fenster(w["instrumente"][key], tag)
 
@@ -140,35 +147,86 @@ def ziel_kurs(w, key, richtung, einstieg, range_hoehe):
             else einstieg - k * range_hoehe)
 
 
-def pruefe_ausstiege(z, w, jetzt=None):
-    """Offene Papier-Position gegen Stop/Ziel/Zwangsschluss."""
-    p = z.get("position")
-    if not p:
-        return False, None
-    jetzt = jetzt or _jetzt()
-    konf = w["instrumente"][p["inst"]]
-    tag = p["tag"] if isinstance(p["tag"], date) else date.fromisoformat(p["tag"])
-    # MAE/MFE ueber die LEBENDAUER messen, nicht erst beim Ausstieg -
-    # sonst waere die Zahl der Ausstiegskurs selbst und damit wertlos.
-    if p.get("letzter_kurs"):
-        mae.merke_extrem(p, p["letzter_kurs"])
+def pruefe_ausstiege(z, w, jetzt=None, live=False):
+    """Alle offenen Positionen gegen Stop/Ziel/Zwangsschluss.
 
-    if p["richtung"] == "long":
-        stop_verletzt = p["letzter_kurs"] <= p["stop"]
-        ziel_verletzt = p["letzter_kurs"] >= p["ziel"]
-    else:
-        stop_verletzt = p["letzter_kurs"] >= p["stop"]
-        ziel_verletzt = p["letzter_kurs"] <= p["ziel"]
-    if jetzt >= sess.zwangsschluss(konf, tag):
-        _schliesse(p, p["letzter_kurs"], "zwangsschluss")
-        return True, "zwangsschluss"
-    if stop_verletzt:
-        _schliesse(p, p["stop"], "stop")
-        return True, "stop"
-    if ziel_verletzt:
-        _schliesse(p, p["ziel"], "ziel")
-        return True, "ziel"
-    return False, None
+    Rueckgabe: Liste (position, grund) der GESCHLOSSENEN Positionen. Die
+    offenen bleiben in z['positionen'], die geschlossenen werden entfernt.
+
+    Eine ECHTE Position (modus=live) gehoert der Boerse: im Papierlauf bleibt sie
+    stehen (Boersen-Stop/Ziel schuetzen sie), im Live-Lauf schliesst sie nur
+    `_exit_live` (gegen die Boerse verifiziert, reduceOnly) - bis 20.10.2026 buchte
+    der Zwangsschluss zum Sessionende sie ohne Order aus dem Buch aus, und an der
+    Boerse blieb sie ungeschuetzt offen (Muster mosaic 23.09.2026).
+    """
+    jetzt = jetzt or _jetzt()
+    offen, geschlossen = [], []
+    for p in z.get("positionen", []):
+        konf = w["instrumente"][p["inst"]]
+        tag = p["tag"] if isinstance(p["tag"], date) else date.fromisoformat(p["tag"])
+        if p.get("letzter_kurs"):
+            mae.merke_extrem(p, p["letzter_kurs"])
+        if p["richtung"] == "long":
+            stop_verletzt = p["letzter_kurs"] <= p["stop"]
+            ziel_verletzt = p["letzter_kurs"] >= p["ziel"]
+        else:
+            stop_verletzt = p["letzter_kurs"] >= p["stop"]
+            ziel_verletzt = p["letzter_kurs"] <= p["ziel"]
+        if jetzt >= sess.zwangsschluss(konf, tag):
+            grund, kurs = "zwangsschluss", p["letzter_kurs"]
+        elif stop_verletzt:
+            grund, kurs = "stop", p["stop"]
+        elif ziel_verletzt:
+            grund, kurs = "ziel", p["ziel"]
+        else:
+            offen.append(p)
+            continue
+        if p.get("modus") == "live":
+            if not live:
+                print("  AUSSTIEG %s verschoben: echte Position - nur der Live-Lauf "
+                      "schliesst sie (Boerse schuetzt per Stop/Ziel)" % p["inst"])
+                offen.append(p)
+                continue
+            ok, grund = _exit_live(p, konf["okx"], grund)
+            if not ok:
+                p["exit_ungeklaert"] = True
+                print("  AUSSTIEG %s UNGEKLAERT - keine Marktorder, Position bleibt"
+                      % p["inst"], file=sys.stderr)
+                offen.append(p)
+                continue
+        _schliesse(p, kurs, grund)
+        geschlossen.append((p, grund))
+    z["positionen"] = offen
+    return geschlossen
+
+
+def _exit_live(p, paar, grund):
+    """Der ECHTE Ausstieg einer LIVE-Position an der Boerse (Muster orbk).
+
+    Rueckgabe (ok, effektiver_grund). ok=True: die Position ist an der Boerse
+    schluss - durch eine hier gestellte Marketorder (reduceOnly) oder weil
+    Stop/Ziel sie schon geschlossen hatte -, der Aufrufer darf buchen. ok=False:
+    UNGEKLAERT, nichts geschlossen. Die Boerse wird IMMER zuerst gefragt: eine
+    zweite Marketorder auf eine geschlossene Position eroeffnete einen Short.
+    """
+    try:
+        offen = any(pos.get("instId") == paar for pos in okxf.positionen())
+    except Exception as e:                                # noqa: BLE001
+        print("  Live-Ausstieg %s nicht verifizierbar (%s) - KEINE Order, "
+              "Position bleibt" % (paar, e), file=sys.stderr)
+        return False, None
+    if not offen:
+        print("  Boerse hat %s bereits geschlossen - keine Marketorder" % paar)
+        return True, "%s (boerse)" % grund
+    try:
+        okxf.markt_schliessen(paar, p.get("kontrakte") or p.get("menge"),
+                              p["richtung"])
+    except Exception as e:                                # noqa: BLE001
+        print("  Markt-Close %s fehlgeschlagen (%s) - Position bleibt, "
+              "UNGEKLAERT" % (paar, e), file=sys.stderr)
+        return False, None
+    print("  MARKT-CLOSE %s %s (Grund %s)" % (paar, p.get("kontrakte") or 0, grund))
+    return True, grund
 
 
 def _schliesse(p, kurs, grund):
@@ -221,60 +279,206 @@ def breakout_signal(kerzen, hoch, tief):
 kerzen_quelle = None
 
 
-def _schon_gehandelt_heute(z, tag):
-    """Ein Trade je UTC-Tag (ORB-Regel). Das Merkzeichen ueberlebt den
-    Ausstieg - sonst steigt derselbe Breakout im selben Zyklus wieder ein."""
-    p = z.get("position")
-    if p and p.get("tag") == tag.isoformat():
-        return True
-    return z.get("zuletzt_gehandelt_tag") == tag.isoformat()
+def _schon_gehandelt_heute(z, inst, tag):
+    """Ein Trade je Instrument und UTC-Tag (ORB-Regel).
+
+    Das Merkzeichen ueberlebt den Ausstieg - sonst steigt derselbe Breakout
+    im selben Zyklus wieder ein. Geprueft wird je Instrument getrennt, damit
+    zwei Instrumente unabhaengig je einen Trade pro Tag machen koennen.
+    """
+    heute = tag.isoformat()
+    for p in z.get("positionen", []):
+        if p.get("inst") == inst and p.get("tag") == heute:
+            return True
+    ztl = z.get("zuletzt_gehandelt_tag") or {}
+    return ztl.get(inst) == heute
 
 
 def pruefe_einstieg(z, w, jetzt=None):
+    """Einstiege ueber ALLE aktiven Instrumente (BTC_USDT + ETH_USDT).
+
+    Je Instrument: ein Trade pro UTC-Tag, hoechstens max_offene_positionen
+    gleichzeitig. Fuer jedes openbare Instrument wird die Position an
+    z['positionen'] angehaengt. Rueckgabe: Liste der NEU eroeffneten
+    Positionen (nur fuer die Meldung). Kein Signal -> leere Liste.
+    """
     jetzt = jetzt or _jetzt()
-    key, konf = _inst_konf(w)
-    if not key:
-        return None, "kein instrument_aktiv (Backtest-Urteil offen)"
     tag = sess.handelstag(jetzt)
-    start, ende = _range_fenster(w, key, tag)
-    if jetzt < ende:
-        return None, "Range laeuft noch (%s bis %s)" % (
-            start.strftime("%H:%M"), ende.strftime("%H:%M"))
-    if jetzt >= sess.zwangsschluss(konf, tag):
-        return None, "Session vorbei"
-    if jetzt >= sess.letzter_einstieg(konf, tag,
-                                      w.get("letzter_einstieg_min_vor_schluss", 60)):
-        return None, "zu spaet fuer einen Einstieg"
-    if _schon_gehandelt_heute(z, tag):
-        return None, "heute schon gehandelt"
-    kerzen = (kerzen_quelle(w, key) if kerzen_quelle else _kerzen_heute(w, key))
-    hr = opening_range(kerzen, w, key, tag)
-    if hr is None:
-        return None, "keine komplette Range (Daten?)"
-    hoch, tief = hr
-    hoehe = hoch - tief
-    if hoehe < w["mindest_range_punkte"][key]:
-        return None, "Range zu klein (%.2f Pkt)" % hoehe
-    if hoehe > w["max_range_punkte"][key]:
-        return None, "Range zu gross (%.2f Pkt)" % hoehe
-    richtung, kurs = breakout_signal(kerzen, hoch, tief)
-    if not richtung:
-        return None, "kein Breakout (Range %.2f..%.2f)" % (tief, hoch)
-    stop = tief if richtung == "long" else hoch
-    ziel = ziel_kurs(w, key, richtung, kurs, hoehe)
-    z["position"] = {"inst": key, "richtung": richtung, "einstieg": kurs,
-                     "stop": stop, "ziel": ziel, "tag": tag.isoformat(),
-                     "letzter_kurs": kurs,
-                     "punkt_wert_usdt": konf.get("punkt_wert_usdt", 1.0),
-                     "range_hoehe": hoehe,
-                     "risiko_usdt": w.get("risiko_pro_trade_usdt")}
-    z["zuletzt_gehandelt_tag"] = tag.isoformat()
-    return "papier", "%s %s @ %.4f (Stop %.4f, Ziel %.4f, Range %.2f)" % (
-        richtung, key, kurs, stop, ziel, hoehe)
+    offen_insts = {p.get("inst") for p in z.get("positionen", [])}
+    max_pos = int(w.get("max_offene_positionen", 2))
+    geoeffnet = []
+    for key in w.get("instrumente_aktiv", []):
+        if len(z.get("positionen", [])) >= max_pos:
+            break
+        if key in offen_insts:
+            continue
+        if _schon_gehandelt_heute(z, key, tag):
+            continue
+        konf = w["instrumente"].get(key)
+        if not konf:
+            continue
+        start, ende = _range_fenster(w, key, tag)
+        if jetzt < ende:
+            continue
+        if jetzt >= sess.zwangsschluss(konf, tag):
+            continue
+        if jetzt >= sess.letzter_einstieg(konf, tag,
+                                          w.get("letzter_einstieg_min_vor_schluss", 60)):
+            continue
+        kerzen = (kerzen_quelle(w, key) if kerzen_quelle else _kerzen_heute(w, key))
+        hr = opening_range(kerzen, w, key, tag)
+        if hr is None:
+            continue
+        hoch, tief = hr
+        hoehe = hoch - tief
+        mie = w.get("mindest_range_punkte", {}).get(key)
+        maxe = w.get("max_range_punkte", {}).get(key)
+        if mie is None or maxe is None:
+            continue
+        if hoehe < mie:
+            continue
+        if hoehe > maxe:
+            continue
+        richtung, kurs = breakout_signal(kerzen, hoch, tief)
+        if not richtung:
+            continue
+        stop = tief if richtung == "long" else hoch
+        ziel = ziel_kurs(w, key, richtung, kurs, hoehe)
+        p = {"inst": key, "richtung": richtung, "einstieg": kurs,
+             "stop": stop, "ziel": ziel, "tag": tag.isoformat(),
+             "letzter_kurs": kurs,
+             "punkt_wert_usdt": konf.get("punkt_wert_usdt", 1.0),
+             "range_hoehe": hoehe,
+             "risiko_usdt": w.get("risiko_pro_trade_usdt")}
+        z.setdefault("positionen", []).append(p)
+        z.setdefault("zuletzt_gehandelt_tag", {})[key] = tag.isoformat()
+        geoeffnet.append(p)
+    return geoeffnet
 
 
 def _letzter_kurs(w, key):
     return okxf.letzter_kurs(w["instrumente"][key]["okx"])
+
+
+def zeitfenster_offen():
+    """Hat Max diese Spur zeitlich freigegeben (freigabefenster.py)?
+
+    Ein Lesefehler gilt als *nicht* offen - im Zweifel keine Order. Er wird
+    gemeldet statt still geschluckt (Befund scanner 22.09.2026)."""
+    try:
+        return bool(freigabefenster.lade(SPUR).offen())
+    except Exception as e:                                   # noqa: BLE001
+        print("  Zeitfenster nicht lesbar (%s: %s) - gilt als zu."
+              % (type(e).__name__, e), file=sys.stderr)
+        return False
+
+
+def live_sperren(w):
+    """Alle Gruende, die einen --live-Lauf auf Papier zurueckwerfen.
+
+    Leere Liste heisst: scharf. Der Dauerlauf (dauerlauf.nur_fenster_fehlt)
+    oeffnet sein Auto-Freigabefenster nur, wenn GENAU EIN Grund fehlt - und
+    dieser eine Grund ist das Fenster. Deshalb traegt der Fenster-Grund als
+    einziger das Wort 'Freigabefenster'.
+    """
+    gruende = []
+    if not w.get("handel_erlaubt"):
+        gruende.append("wachen.json handel_erlaubt=false")
+    if not (w.get("freigabe") or {}).get("erfuellt"):
+        gruende.append("freigabe.erfuellt=false")
+    if not w.get("journal_zweitziel"):
+        gruende.append("journal_zweitziel nicht gesetzt (Bedingung 4)")
+    if not okxf.schluessel_vorhanden():
+        gruende.append("OKX_API_KEY/SECRET/PASSPHRASE nicht gesetzt")
+    if not zeitfenster_offen():
+        gruende.append("Freigabefenster nicht offen")
+    return gruende
+
+
+def positionsgroesse(w, p):
+    """Kontrakte aus dem Buchrisiko: risiko / (range_hoehe * punkt_wert).
+
+    Ganzzahlig, weil OKX-Perpetuals ganze Kontrakte handeln. 0 heisst: unter
+    einem Kontrakt - nicht handelbar.
+    """
+    range_hoehe = p.get("range_hoehe") or 0.0
+    punkt_wert = p.get("punkt_wert_usdt", 1.0)
+    risiko = p.get("risiko_usdt") or w.get("risiko_pro_trade_usdt", 0.0) or 0.0
+    if range_hoehe <= 0 or punkt_wert <= 0 or risiko <= 0:
+        return 0
+    return int(risiko / (range_hoehe * punkt_wert))
+
+
+def platziere_einstieg(z, w, p, echt=True):
+    """Einstieg + Boersen-Stop + Ziel fuer eine Position ordert.
+
+    echt=False (Vorschau/Dry-Run) rechnet die geplante Order durch und zeigt
+    sie, ruft aber KEINE Boersenfunktion - Tests und Handlauefe pruefen so
+    die Rueckwaertsrechnung, ohne je eine Order zu platzieren. echt=True ist
+    der einzige echte Pfad und steht ausschliesslich hinter lauf('live'),
+    wenn keine Sperre zu ist.
+    """
+    key = p["inst"]
+    konf = w["instrumente"][key]
+    inst = konf["okx"]
+    seite = "buy" if p["richtung"] == "long" else "sell"
+    kontrakte = positionsgroesse(w, p)
+    if kontrakte < 1:
+        print("  %s: Positionsgroesse < 1 Kontrakt - kein Einstieg" % inst)
+        return None
+    if not echt:
+        print("  DRY-RUN %s %s %d Kontrakte @ %.4f (Stop %.4f, Ziel %.4f)"
+              % (seite, inst, kontrakte, p["einstieg"], p["stop"], p["ziel"]))
+        return None
+    ord_id = okxf.order_limit(inst, seite, kontrakte, p["einstieg"])
+    print("  EINSTIEG %s %s %d Kontrakte @ %.4f (Order %s)"
+          % (seite, inst, kontrakte, p["einstieg"], ord_id))
+    okxf.schutz_stop_setzen(inst, p["richtung"], kontrakte, p["stop"],
+                            p["ziel"])
+    print("  Schutz-Stop (Stop %.4f, Ziel %.4f) gesetzt"
+          % (p["stop"], p["ziel"]))
+    p["ord_id"] = ord_id
+    p["kontrakte"] = kontrakte
+    p["modus"] = "live"
+    return p
+
+
+def kill_verkauf_ohne_freigabe(w):
+    """Notausstieg fuer echte Positionen bei geschlossener Freigabekette: nur mit
+    ausdruecklichem Schalter, Basisstufe und gesetztem Schluessel."""
+    return bool(w.get("kill_verkauf_ohne_freigabekette")
+                and risikostufe.live_erlaubt() and okxf.schluessel_vorhanden())
+
+
+def kill_schliessen(z, w, grund=None):
+    """Kill: alle PAPIER-Positionen zum Marktkurs schliessen UND buchen.
+
+    Echte Positionen (modus=live) bleiben im Buch: diese Spur hat keinen
+    verifizierten Live-Ausstieg (die Boerse schuetzt per Stop/Ziel), ein
+    Ausbuchen ohne Order liesse die Position unbewacht stehen. Ohne Kurs bleibt
+    jede Position stehen. Rueckgabe: Zahl der noch offenen Positionen.
+    """
+    grund = grund or kg.KILL_GRUND
+    offen = []
+    for p in z.get("positionen", []):
+        if p.get("modus") == "live":
+            print("  KILL: %s ist eine echte Position - bleibt (Boersen-Stop/Ziel)"
+                  % p["inst"])
+            offen.append(p)
+            continue
+        try:
+            kurs = _letzter_kurs(w, p["inst"])
+        except Exception:                                   # noqa: BLE001
+            kurs = p.get("letzter_kurs")
+        if not kurs:
+            print("  KILL: %s ohne Kurs - Position bleibt" % p["inst"],
+                  file=sys.stderr)
+            offen.append(p)
+            continue
+        print("  KILL-ZWANGSSCHLUSS (Papier): %s @ %.4f" % (p["inst"], kurs))
+        _schliesse(p, kurs, grund)
+    z["positionen"] = offen
+    return len(offen)
 
 
 def lauf(modus="papier"):
@@ -283,40 +487,71 @@ def lauf(modus="papier"):
     jetzt = _jetzt()
     z["letzter_lauf"] = jetzt.isoformat()
     meldungen = []
+    # Sicherheits-Gatter AUCH hier (nicht nur in _main): lauf('live') darf nur
+    # echt orden, wenn keine Sperre zu ist - doppelter Boden.
+    live = (modus == "live") and not live_sperren(w)
 
-    veraendert, grund = pruefe_ausstiege(z, w, jetzt)
-    if veraendert:
-        p = z.pop("position", None)
-        meldungen.append("AUSSTIEG (Papier, %s): %s %s, Einstieg %.4f" % (
-            grund, p["richtung"], p["inst"], p["einstieg"]))
+    for p, grund in pruefe_ausstiege(z, w, jetzt, live=live):
+        art = "LIVE" if p.get("modus") == "live" else "Papier"
+        meldungen.append("AUSSTIEG (%s, %s): %s %s, Einstieg %.4f" % (
+            art, grund, p["richtung"], p["inst"], p["einstieg"]))
 
-    if not z.get("position"):
-        einstieg, meldung = pruefe_einstieg(z, w, jetzt)
-        if einstieg:
-            meldungen.append("EINSTIEG (Papier): " + meldung)
-        elif meldung:
-            meldungen.append("kein Einstieg: " + meldung)
+    # Bedingung 2: Halbierung und Kill (bisher nur berechnet, nie angewendet).
+    s = wp.lage(w, JOURNAL, z)
+    if s["kill"]:
+        wk = dict(w)
+        if live or any(p.get("modus") == "live" for p in z.get("positionen", [])):
+            wk.setdefault("kill_wiederaufnahme", False)   # Live: nie von selbst
+        status, _rueck = kg.phase(z, wk, s["ruecklauf_usd"],
+                                  s.get("runden_gesamt", 0),
+                                  lambda: jetzt.isoformat(timespec="seconds"))
+        if status == "frei":
+            s = wp.lage(w, JOURNAL, z)            # Ruecklauf beginnt bei 0
+        else:
+            kill_schliessen(z, w)
+            meldungen.append("KILL-SWITCH: Ruecklauf %.2f USDT - kein Einstieg"
+                             % s["ruecklauf_usd"])
+            schreibe_zustand(z)
+            return meldungen
+    faktor = s["groessenfaktor"]
 
-    if z.get("position"):
-        z["position"]["letzter_kurs"] = _letzter_kurs(w, z["position"]["inst"])
+    for p in pruefe_einstieg(z, w, jetzt):
+        if p.get("risiko_usdt"):
+            p["risiko_usdt"] = p["risiko_usdt"] * faktor      # halbiert ab Schwelle
+        if live:
+            platziere_einstieg(z, w, p, echt=True)
+            meldungen.append("EINSTIEG (LIVE): %s %s @ %.4f" % (
+                p["richtung"], p["inst"], p["einstieg"]))
+        else:
+            meldungen.append("EINSTIEG (Papier): %s %s @ %.4f" % (
+                p["richtung"], p["inst"], p["einstieg"]))
+
+    for p in z.get("positionen", []):
+        try:
+            p["letzter_kurs"] = _letzter_kurs(w, p["inst"])
+        except Exception:  # noqa: BLE001
+            pass
     schreibe_zustand(z)
     return meldungen
 
 
 def zeige_wachen(w):
-    key, konf = _inst_konf(w)
     z = lade_zustand()
     kopie = ("   |   Journal-Zweitziel %s%s"
              % (w.get("journal_zweitziel") or "-- nicht gesetzt",
                 "" if "journal_zweitziel_ok" not in z
                 else " (letzte Kopie %s)" % z["journal_zweitziel_ok"]))
-    if not konf:
-        return ("kein instrument_aktiv - Spur gesperrt (Backtest-Urteil: "
-                "negativ fuer beide Instrumente)")
+    aktive = w.get("instrumente_aktiv", [])
     f = w.get("freigabe") or {}
-    return ("%s (%s): handel_erlaubt=%s, aktiv=%s, freigabe=%s, backtest=%s%s"
-            % (key, konf["okx"], w["handel_erlaubt"], key,
+    text = ("handel_erlaubt=%s, aktiv=%s, freigabe=%s, backtest=%s%s"
+            % (w["handel_erlaubt"], ",".join(aktive) or "-",
                f.get("erfuellt"), f.get("backtest_bestanden"), kopie))
+    offene = z.get("positionen", [])
+    if offene:
+        text += "\n  Offene Positionen: " + ", ".join(
+            "%s %s @ %.4f" % (p["richtung"], p["inst"], p["einstieg"])
+            for p in offene)
+    return text
 
 
 def main(argv=None):
@@ -349,11 +584,19 @@ def _main(argv=None):
         return 0
     if modus == "vorschau":
         print(zeige_wachen(w))
-        print(GRUND_KEIN_LIVE)
+        print("Live waere gesperrt durch: %s"
+              % ("; ".join(live_sperren(w)) or "nichts"))
         return 0
+    live_modus = "papier"
     if modus == "live":
-        print(GRUND_KEIN_LIVE)
-    meldungen = lauf()
+        gruende = live_sperren(w)
+        if gruende:
+            print("--live angefordert, aber gesperrt: " + "; ".join(gruende))
+            print("-> es wird Papier gehandelt.")
+        else:
+            live_modus = "live"
+            print("--live: alle Sperren offen - LIVE")
+    meldungen = lauf(modus=live_modus)
     for m in meldungen:
         print(m)
     z = lade_zustand()
@@ -367,3 +610,4 @@ def _main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
+

@@ -239,6 +239,61 @@ def lade_bericht():
     return b, None
 
 
+def _atr_stop_ziel(w, inst, richtung, kurs, bericht_stop, bericht_ziel):
+    """Stop/Ziel aus dem ATR (4H, n=14) - oder None, wenn untragbar.
+
+    Auftrag Max 11.10.2026 (T-393 a, "wie xperp"): omniquant handelt
+    Kraken-FUTURES mit Hebel 6, der Bericht klemmt den Stop auf
+    stop_min_pct..stop_max_pct (5..12 %), was bei Hebel 6 rund 68 % des
+    Einsatzes kosten kann (Messung am Journal, Median 11,3 %). xperp faehrt
+    Stop = stop_atr_faktor x ATR und Ziel = ziel_atr_faktor x ATR auf 4H-
+    Kerzen (n=14). Dasselbe rechnet diese Spur, sobald `stop_atr_faktor`
+    in wachen.json gesetzt ist. Ohne das Feld bleibt der Bericht-Stop.
+
+    Kerzen-Form wie xperp (okx.kerzen: [zeit, offen, hoch, tief, schluss,
+    volumen] - indikatoren.atr() erwartet hoech=2, tief=3, schluss=4? NEIN:
+    wahre_spanne nutzt k[i][2]=hoch, k[i][3]=tief, k[i][4]=schluss. okx.kerzen
+    liefert genau dieses Format - geprueft an scanner/okx.py:242ff.)
+    """
+    faktor = w.get("stop_atr_faktor")
+    if not faktor:
+        # kein ATR-Zweig - Berichtswerte unveraendert
+        return bericht_stop, bericht_ziel
+    try:
+        kerzen = okx.kerzen(inst, "4H", 300)
+        if not kerzen:
+            return None, None
+        # indikatoren aus xperp (dieselbe Formel, keine zweite Implementierung)
+        import sys as _sys
+        xperp_pfad = os.path.join(HANDEL, "xperp")
+        schon_drin = any(os.path.normcase(os.path.normpath(p)) ==
+                         os.path.normcase(os.path.normpath(xperp_pfad))
+                         for p in _sys.path)
+        if not schon_drin:
+            _sys.path.insert(0, xperp_pfad)
+        import indikatoren
+        atr_reihe = indikatoren.atr(kerzen, 14)
+        atr = next((a for a in reversed(atr_reihe) if a), None)
+        if not atr or atr <= 0:
+            return None, None
+    except Exception as e:                             # noqa: BLE001
+        print("  %-14s ATR nicht berechenbar (%s) - Kandidat uebersprungen"
+              % (inst, e))
+        return None, None
+    vz = 1 if richtung == "long" else -1
+    ziel_faktor = w.get("ziel_atr_faktor", 3.0)
+    stop = kurs - vz * float(faktor) * atr
+    ziel = kurs + vz * float(ziel_faktor) * atr
+    # Konsistenz-Grenze: ein ATR-Stop muss zwischen Kurs und Ziel liegen und
+    # das Ziel ueber (long) bzw. unter (short) dem Kurs. Ein Stop oder Ziel
+    # bei/below 0 ist sinnlos (unter der Liquidationsmarke) - verwerfen.
+    if richtung == "long" and not (0 < stop < kurs < ziel):
+        return None, None
+    if richtung == "short" and not (0 < ziel < kurs < stop):
+        return None, None
+    return stop, ziel
+
+
 def kandidaten(z, w, statistik=None):
     """Treffer aus dem Bericht als Kandidaten, frisch und noch gueltig.
 
@@ -303,12 +358,26 @@ def kandidaten(z, w, statistik=None):
             print("  %-14s Kurs nicht abrufbar (%s) - Kandidat uebersprungen"
                   % (inst, e))
             continue
+        # Verfallen prueft gegen die SIGNAL-Band (Bericht-Stop/Ziel): ist der
+        # Kurs schon ueber das Ziel gelaufen, ist das Signal verfallen - egal
+        # wie breit der ATR-Ausfuehrungs-Stop danach waere. (T-395: der
+        # ATR-Zweig von T-393 hatte die Band ueberschrieben und erweckte
+        # verfallene Signale mit einem unsinnig breiten Stop wieder.)
         if richtung == "long" and not (stop < kurs < ziel):
             st["verfallen"] += 1
             continue
         if richtung == "short" and not (ziel < kurs < stop):
             st["verfallen"] += 1
             continue
+        # ATR-Zweig (T-393 a): bei gesetztem stop_atr_faktor rechnet die Spur
+        # Stop/Ziel selbst aus dem 4H-ATR statt der Bericht-Klammer (5..12 %).
+        # (None, None) heisst "nicht tragbar" - Kandidat uebersprungen.
+        if w.get("stop_atr_faktor"):
+            st["atr_gerechnet"] = st.get("atr_gerechnet", 0) + 1
+            stop, ziel = _atr_stop_ziel(w, inst, richtung, kurs, stop, ziel)
+            if not stop or not ziel:
+                st["atr_untragbar"] = st.get("atr_untragbar", 0) + 1
+                continue
         offen = any(p.get("inst") == inst and p.get("seite") == richtung
                     for p in z.get("positionen", []))
         if offen:

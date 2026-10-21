@@ -427,6 +427,34 @@ die **ueber** den Einzelfall hinausgehenden Regeln — Aggregation, Gegenlauf-Pf
 Schleife-als-Aktivitaet, Belegpflicht fuer Erklaerungen — stehen in
 `messwerkzeug-gegenprobe` und `trugschluesse`.
 
+## Claude Code Telegram-Kanal (nicht die Hermes-Bruecke)
+
+Der Claude Code Telegram-Kanal (`claude --channels plugin:telegram@claude-plugins-official`, Token in `~/.claude/channels/telegram/.env`) ist ein ANDERER Prozess als die Hermes-Bruecke — ein Neustart des einen heilt den anderen nicht. Token-Rotation, CRLF-Falle und Neustart-Rezept: `references/claude-code-telegram-kanal.md`.
+
+## Mention-Pflicht je Profil-Bot: `TELEGRAM_REQUIRE_MENTION` (Stand 11.10.2026)
+
+In der Gruppe `-1003980261765` teilen sich mehrere Bot-Profile einen Chat. Der
+Verteiler-Bot (Mikesch = `profiles/bots`, `@Maximilian420_bot`) nimmt `/bot NAME`
+an und verteilt an Fachbots; deshalb antwortet **nur er** ohne @-Mention, alle
+anderen Profil-Bots nur auf explizite Erwähnung.
+
+- **`true` gesetzt (seit 11.10.2026, 14:16–16:26):** `auto-prediction`,
+  `fomo-radar`, `nerd`, `recherche`, `kraken-cli`, `hermes-wartung` — in
+  `profiles/<name>/.env`. recherche trägt zusätzlich
+  `TELEGRAM_OBSERVE_UNMENTIONED_GROUP_MESSAGES=true`.
+- **`false` (kein Schlüssel):** `profiles/bots/.env` — der Verteiler bleibt ohne
+  Mention-Pflicht.
+
+**Warum `bots` das globale `true` NICHT erbt (Beleg):** Die Env-Rung liest
+profil-scoped über `get_scoped_secret` (`gateway/platforms/_shared.py:106`,
+`extra_or_secret`); ein Scope-Miss fällt auf YAML-`extra` → Default `"false"`,
+nie auf das globale `os.environ` (Multiplex-Regel, `gateway/AGENTS.md`). Das
+bots-Profil läuft im selben Multiplex-Gateway (PID 89684, `multiplex_profiles:
+true`), liest aber nur `profiles/bots/.env`. Empirisch: `TELEGRAM_ALLOWED_CHATS`
+musste am 10.10. in **beide** `.env`-Dateien (global UND `profiles/bots/.env`),
+weil das Profil das globale `.env` nicht erbt — derselbe Mechanismus gilt für
+`TELEGRAM_REQUIRE_MENTION`.
+
 ## Verification
 
 Ein Lauf beweist die ganze Diagnose:

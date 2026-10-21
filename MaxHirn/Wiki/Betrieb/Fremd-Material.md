@@ -10,7 +10,7 @@ Die Frage „wie gross ist unser Handelssystem" ergab **634.815 Zeilen** in
 Projekt: `Agenten/Handel/OpenAlice`, 482 Dateien, ein eigenes Quant-Framework mit
 `workspaces/` und `runs/`. Ueber den ganzen Baum gerechnet: 11.489 Dateien und
 **4,2 Mio. Zeilen** — davon ist der weitaus groesste Teil nicht unser Code
-(`Werkstatt/Repos` 6.160 .py, `Werkstatt/Ausgemustert` 5.767, davon allein eine
+(`Werkstatt` 6.160 .py, `Werkstatt/Ausgemustert` 5.767, davon allein eine
 mitgelieferte CPython-Standardbibliothek, `repos-verschoben-aus-skills` 2.173).
 
 Jede Bestands-, Such- und Aufraeumfrage musste das im Kopf abziehen, und jedes

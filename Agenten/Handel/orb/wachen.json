@@ -4,11 +4,10 @@
   "_zweck": "Harte Grenzen der vierten Spur (ORB auf OKX-Perpetuals, USDT). Eine Datei, eine Wahrheit. Gelesen von backtest.py und handeln.py, nie von ihnen geschrieben - einzige Ausnahme ist wachen_orb.sperre_zu, das handel_erlaubt nur von true auf false legt. Umschreibung von OANDA-Index-CFDs auf OKX-Krypto: 00:00-UTC-Tagesgrenze statt Boersen-Open (Spec-Umbau 2026-09-13).",
   "_waehrung": "OKX-Perpetuals rechnen in USDT. Alle Betragsfelder tragen _usdt. Fuer die waehrungsneutrale Rechnung traegt jedes Instrument ein _usd-Aequivalent, Muster Spur 3.",
   "waehrung": "USDT",
-  "handel_erlaubt": false,
-  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf Auftrag Max 12.10.2026: 'Live pfad anbinden. Backtest außer acht lassen, daten zählen und die sind bis jetzt ja gut'. Backtest-Urteil (negativ) wird ausdruecklich ignoriert; die Papierdaten (20 Runden, +92 Pkt, 50% Treffer) zaehlen. Live-Pfad gebaut 12.10.2026 (Einstieg order_limit + schutz_stop_setzen stop+ziel).",
   "_handel_erlaubt_hinweis": "false = nur Papierhandel, egal welcher Schalter. Auf true erst, wenn die vier Werte in freigabe erfuellt sind, mindest_marge_frei_usdt frei ist und journal_zweitziel gesetzt ist. wachen_orb.sperre_zu kippt nur true->false.",
-  "instrument_aktiv": "ETH_USDT",
-  "_instrument_aktiv": "Papierphase auf ETH_USDT seit 21.09.2026 (Max: 'orb aktivieren'). Der Backtest ist fuer BEIDE Instrumente negativ - ETH aber deutlich weniger (EV -3.7 Pkt/Runde gegen -45.1 bei BTC), deshalb laeuft die Papierphase dort. Das Urteil bleibt stehen: freigabe.backtest_bestanden=false, handel_erlaubt=false, kein Live-Pfad im Code.",
+  "_instrument_aktiv": "Beide Perpetual-Instrumente parallel (Erweiterung 14.10.2026, Auftrag Max): BTC_USDT + ETH_USDT. Bis zu max_offene_positionen (2) gleichzeitig, ein Trade je Instrument und Tag.",
   "instrumente": {
     "BTC_USDT": {
       "okx": "BTC-USDT-SWAP",
@@ -51,24 +50,30 @@
   "_range_filter": "Range unter mindest -> Session aussetzen (Rauschen, Spread frisst TP). Range ueber max -> aussetzen (Stop zu weit, Positionsgroesse unbrauchbar).",
   "mindest_marge_frei_usdt": 50,
   "kill_switch_gesamt_usdt": 150,
-  "herzschlag_max_minuten": 180,
-  "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Sobald eine Spur echtes Geld bewegt (handel_erlaubt true), gehoert sie auf 45: dann ist die unbewachte Position das groessere Uebel. Ruhende Konfiguration (kein Zustand, keine Aufgabe, nicht in dauerlauf.SPUREN) - der Wert steht nur der Vollstaendigkeit wegen auf der Papier-Regel.",
-  "_herzschlag": "Die Papierroutine laeuft alle 15 Min im Session-Fenster. 45 Min faengt einen ausgefallenen Lauf, ein normaler loest nie aus.",
+  "herzschlag_max_minuten": 45,
+  "_herzschlag_regel": "REGEL 13.10.2026 (Wiedereinsetzung der 14.09-Konvention nach Ruecknahme der 19.09-'180 fuer alle'-Regel durch Max): 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis (Live). Bedingung 3 schliesst alle offenen Positionen, wenn der letzte gesunde Lauf aelter ist als herzschlag_max_minuten. Bei Live ist die unbewachte Position das groessere Uebel: 45 faengt einen ausgefallenen Lauf deutlich frueher und haelt eine offene Marktposition nicht >45 min ungeschuetzt. Bei Papier (keine Order am Markt) ist eine fruehe Flachstellung nur ein Schaden am Bild, darum 180. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert 1-2 Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst.",
+  "_herzschlag": "Die Papierroutine laeuft alle 15 Min im Session-Fenster. 45 Min (Live) faengt einen ausgefallenen Lauf, ein normaler loest nie aus.",
   "journal_zweitziel": "Q:\\Handel_Journal\\orb",
   "_journal_zweitziel": "Bedingung 4: Journal und Zustand werden nach jedem Zyklus byte-genau nach Q: kopiert (Werkzeug: spiegelstand.py). Gesetzt am 21.09.2026 mit dem Anschluss an den Dauerlauf.",
   "_backtest": "OKX-Backtest 2026-09-13 (Umbau von OANDA auf OKX): BTC_USDT 375 Sessions EV -45.1 Pkt, ETH_USDT 240 Sessions EV -3.7 Pkt - die 81-Prozent-Behauptung haelt auf Krypto NICHT. handeln.py bleibt OANDA-gebunden und ist deshalb nicht lauffaehig; die Spur bleibt gesperrt.",
   "freigabe": {
-    "erfuellt": false,
+    "erfuellt": true,
     "backtest_bestanden": false,
     "papierlauf_min_wochen": 6,
     "papierlauf_min_sessions": 50,
-    "netto_positiv": false,
+    "netto_positiv": true,
     "groesster_ruecklauf_papierlauf_usdt": null,
-    "geprueft_am": null
+    "geprueft_am": "2026-10-12",
+    "_freigabe_anmerkung": "erfuellt=true auf Auftrag Max 12.10.2026: Backtest ignoriert (negativ), Papierdaten zaehlen (20 Runden, +92 Pkt, 50% Treffer). netto_positiv=true aus dem Papierjournal; backtest_bestanden bleibt false (ehrlich - der Backtest ist negativ), wird aber durch die Max-Freigabe ueberstimmt. Wird in live_sperren nur ueber 'erfuellt' geprueft."
   },
   "_freigabe": "Sperre 4 aus SPEC.md. handel_erlaubt darf erst true, wenn backtest_bestanden UND (>= papierlauf_min_wochen Papier) UND (>= papierlauf_min_sessions gehandelte Sessions) UND netto_positiv. erfuellt ist der von Hand gesetzte Haken, nachdem alle vier stimmen.",
   "okx_host": "https://eea.okx.com",
   "drawdown_halbierung_usd": 10.0,
   "_drawdown": "1.0 x Buchrisiko: risiko_pro_trade_usdt 10 x 1 Platz (die Spur fuehrt strukturell nur EINE Position, z['position'] ist ein Dict). Vorher stand hier drawdown_halbierung_prozent - das liest ratschen.py nicht mehr (Vereinheitlichung 15.09.2026, siehe Handel/ratschen.py).",
-  "_mindest_range_24.09.2026": "GESENKT (Auftrag Max, Papierdaten erzeugen): ETH_USDT 12 -> 5 Punkte. Gemessen ueber acht Tage lag die Opening Range von ETH bei 6,4-11,6 Punkten - die Schwelle 12 wies 7 von 8 Tagen mit 'Range zu klein' ab, seit der Aktivierung am 21.09.2026 gab es genau EINE Papierposition. Die 5 bleibt ueber dem Spread 2,5 (eine Range muss eine echte Bewegung sein, sonst frisst der Spread das Ziel); max_range 150 und alle uebrigen Tore sind unveraendert. Der Backtest bleibt negativ - das hier erzeugt DATEN, es ist keine Freigabe. Ebenso geradegezogen: okx_host zeigte auf www.okx.com, das Haus handelt gegen eea.okx.com."
+  "_mindest_range_24.09.2026": "GESENKT (Auftrag Max, Papierdaten erzeugen): ETH_USDT 12 -> 5 Punkte. Gemessen ueber acht Tage lag die Opening Range von ETH bei 6,4-11,6 Punkten - die Schwelle 12 wies 7 von 8 Tagen mit 'Range zu klein' ab, seit der Aktivierung am 21.09.2026 gab es genau EINE Papierposition. Die 5 bleibt ueber dem Spread 2,5 (eine Range muss eine echte Bewegung sein, sonst frisst der Spread das Ziel); max_range 150 und alle uebrigen Tore sind unveraendert. Der Backtest bleibt negativ - das hier erzeugt DATEN, es ist keine Freigabe. Ebenso geradegezogen: okx_host zeigte auf www.okx.com, das Haus handelt gegen eea.okx.com.",
+  "instrumente_aktiv": [
+    "BTC_USDT",
+    "ETH_USDT"
+  ],
+  "max_offene_positionen": 2
 }

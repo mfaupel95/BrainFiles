@@ -85,9 +85,18 @@ class SchuetztFilterTest(unittest.TestCase):
         sd.okxf = fake([Auftrag(30, None, sl=False)])
         self.assertEqual(sd.schutz_auftraege("X", "long"), [])
 
-    def test_trailing_stop_zaehlt_ueber_tp(self):
-        """Ein Trailing traegt kein slTriggerPx (okxf.ist_schutz_stop)."""
+    def test_reiner_take_profit_zaehlt_nicht(self):
+        """11.10.2026 (ETH): ein Auftrag NUR mit tpTriggerPx loest nur im
+        Gewinn aus - er schuetzt nichts. Vorher zaehlte er als Deckung."""
         sd.okxf = fake([Auftrag(30, None, sl=False, tp=1500)])
+        self.assertEqual(sd.schutz_auftraege("X", "long"), [])
+
+    def test_trailing_stop_zaehlt_ueber_move_trigger(self):
+        """Ein Trailing (move_order_stop) traegt moveTriggerPx statt
+        slTriggerPx (okxf.ist_schutz_stop) - er zaehlt."""
+        t = Auftrag(30, None, sl=False, ordType="move_order_stop")
+        t["moveTriggerPx"] = "900"
+        sd.okxf = fake([t])
         a = sd.schutz_auftraege("X", "long")
         self.assertEqual(len(a), 1)
         self.assertEqual(a[0]["menge"], 30.0)

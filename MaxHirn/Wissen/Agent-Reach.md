@@ -19,16 +19,16 @@ API-Gebühren und ohne Schlüssel.
 
 | | |
 |---|---|
-| Repo | `Werkstatt/Repos/Agent-Reach` (2,2 MB, Python) |
+| Repo | `Werkstatt/Agent-Reach` (2,2 MB, Python) |
 | Herkunft | Fork `mfaupel95/Agent-Reach` von **`Panniantong/Agent-Reach`** (82.000 ★, MIT) |
-| venv | `Werkstatt/Repos/Agent-Reach/.venv` (Requirements installiert, CLI vorhanden) |
+| venv | `Werkstatt/Agent-Reach/.venv` (Requirements installiert, CLI vorhanden) |
 | Bot | Hermes-Profil **`agent-reach`** mit `terminal.cwd` auf den Klon |
 | Version | v1.5.0, laut `check-update` aktuell |
 
 Aufruf (immer aus dem Repo-Ordner, sonst greift die venv nicht):
 
 ```powershell
-cd Werkstatt/Repos/Agent-Reach
+cd Werkstatt/Agent-Reach
 .\.venv\Scripts\agent-reach.exe doctor      # was geht gerade?
 .\.venv\Scripts\agent-reach.exe setup       # geführte Einrichtung
 .\.venv\Scripts\agent-reach.exe install     # Einzeiler mit Schaltern

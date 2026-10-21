@@ -1,6 +1,12 @@
 {
-  "stand": "2026-10-05",
+  "stand": "2026-10-11",
   "repos": [
+    {
+      "ordner": "acoustid-index",
+      "rolle": "Projekt",
+      "art": "container",
+      "notiz": "fpindex"
+    },
     {
       "ordner": "Agent-Reach",
       "rolle": "Werkzeug",
@@ -46,6 +52,12 @@
       "bot": "awesome-systematic-trading",
       "gruppe": "doku",
       "notiz": "nur Dokumentation und Skills"
+    },
+    {
+      "ordner": "awesome-trading-agents",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "Awesome Trading Agents collects open-source projects where LLMs help research markets, make trading decisions, or connect agents to market data and execution tools. The list focuses on three building "
     },
     {
       "ordner": "basic-memory",
@@ -95,6 +107,11 @@
       "notiz": "Obsidian-Erweiterung (npm run dev)"
     },
     {
+      "ordner": "cli",
+      "art": "node",
+      "notiz": "🔥 Firecrawl CLI"
+    },
+    {
       "ordner": "codex",
       "rolle": "Werkzeug",
       "art": "node",
@@ -102,6 +119,16 @@
       "warnungen": [
         "Bot-Profil 'codex' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/codex) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
+    },
+    {
+      "ordner": "context7",
+      "art": "node",
+      "notiz": "Context7 Platform - Up-to-date Code Docs For Any Prompt"
+    },
+    {
+      "ordner": "data-mcp",
+      "art": "node",
+      "notiz": "The knowledge harness for AI‑native finance.<br/>"
     },
     {
       "ordner": "deepseek-harness",
@@ -162,6 +189,17 @@
       "anleitung": "Kein eigenstaendiges Programm: das Repo ist npm-Paket (src/) UND Claude-Code-Plugin (hooks/, .claude-plugin/). Einbau in Claude Code: 'claude plugin marketplace add tamaratran/fast-jev-compaction' und 'claude plugin install fast-jev-compaction@fast-jev-compaction'. Die Demo braucht einen Schluessel (TYPESAFE_API_KEY)."
     },
     {
+      "ordner": "financial-services",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "Claude for Financial Services"
+    },
+    {
+      "ordner": "fintool",
+      "art": "rust",
+      "notiz": "fintool"
+    },
+    {
       "ordner": "fomo-robinhood-radar",
       "rolle": "Werkzeug",
       "art": "python",
@@ -217,10 +255,10 @@
       "gruppe": "kein_start",
       "notiz": "Jev-Aufsicht ueber Coding-Agenten (Codex/OpenCode) - Python-CLI mit rich-Oberflaeche. Bewusst ohne venv und ohne Start gefuehrt (T-251, 01.10.2026): fremder Klon, nur lesend, kein Verbraucher im Haus; die Bau- und Start-Anleitung bleibt unten stehen, falls das je gewechselt wird.",
       "venv_pflicht": false,
+      "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf.",
       "warnungen": [
         "kein eigener Start: nur-lesen-Klon, niemand nutzt foreman (Anleitung unten, falls das anders wird)"
-      ],
-      "anleitung": "Ein Auftrag (Ticket, Bug, freier Text) geht an einen Codex- oder OpenCode-Worker; Foreman beurteilt unabhaengig, ob die Umsetzung fertig ist, Tests reichen oder ein Mensch draufsehen muss. Braucht Python >= 3.11 und einen Worker auf dem PATH (codex app-server oder opencode). Das venv fehlt noch: python -m venv .venv, dann .venv\\Scripts\\python.exe -m pip install -e \".[dev]\". Ohne Schluessel und Worker zeigt 'foreman demo' den Ablauf."
+      ]
     },
     {
       "ordner": "gbrain",
@@ -233,11 +271,19 @@
       "ordner": "graphify",
       "rolle": "Werkzeug",
       "art": "python",
+      "gruppe": "ausgemustert",
       "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Code-Graph mit CLI und MCP (Python, venv fehlt)",
       "warnungen": [
         "Bot-Profil 'graphify' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/graphify) - der Bot-Knopf waere ein Knopf ins Leere"
-      ],
-      "gruppe": "ausgemustert"
+      ]
+    },
+    {
+      "ordner": "grill-me-skill",
+      "rolle": "Skills",
+      "art": "doku",
+      "bot": "grill-me",
+      "gruppe": "doku",
+      "notiz": "Skill grill-me (RobMitt): interviewt dich zu Plan/Design bis zum gemeinsamen Verstaendnis - kein Startprogramm, der Bot grillt auf Anforderung"
     },
     {
       "ordner": "Harvard-Algorithmic-Trading-with-AI",
@@ -401,6 +447,7 @@
       "ordner": "Kronos",
       "rolle": "Modell",
       "art": "python",
+      "gruppe": "ausgemustert",
       "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Kerzen-Foundation-Modell (MIT) - sagt die naechsten Kerzen voraus; gemessen 22.09.2026: schlaegt die Nullinie NICHT",
       "anleitung": "Kronos sagt Kerzen voraus (Predictor aus model/, Gewichte von HuggingFace). Gemessen am 22.09.2026 auf BTC 1h, Horizont 24 h, 100 nicht ueberlappende Fenster, Kronos-small: Richtung 47/100, Fehler 2,059 % gegen Nullinie 0,875 % - als Handelssignal wertlos. Die Messung steht im Wiki (Werkzeuge/Kronos.md). FALLE: requirements.txt pinnt pandas 2.2.2; damit reisst pd.date_range den Prozess ab (Segmentation Fault) - erst 'pip install -U pandas numpy'.",
       "befehle": [
@@ -413,8 +460,7 @@
           ],
           "hinweis": "Vorlagen fuer eigene Vorhersagen"
         }
-      ],
-      "gruppe": "ausgemustert"
+      ]
     },
     {
       "ordner": "laya",
@@ -464,6 +510,11 @@
       ]
     },
     {
+      "ordner": "moon-dev-ai-agents2",
+      "art": "python",
+      "notiz": "🤖 AI AGENTS FOR TRADING"
+    },
+    {
       "ordner": "Moon-Dev-Code",
       "rolle": "Doku",
       "art": "doku",
@@ -472,6 +523,16 @@
       "warnungen": [
         "Bot-Profil 'moon-dev-code' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/moon-dev-code) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
+    },
+    {
+      "ordner": "nautilus_trader",
+      "art": "rust",
+      "notiz": "Docs**: <https://nautilustrader.io/docs/>"
+    },
+    {
+      "ordner": "notebooklm-py",
+      "art": "python",
+      "notiz": "notebooklm-py"
     },
     {
       "ordner": "obsidian-skills",
@@ -485,11 +546,26 @@
       "ordner": "odysseus",
       "rolle": "Werkzeug",
       "art": "python+node",
+      "gruppe": "ausgemustert",
       "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) Python+Node, kein erklaerter Einstieg in der README",
       "warnungen": [
         "Bot-Profil 'odysseus' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/odysseus) - der Bot-Knopf waere ein Knopf ins Leere"
-      ],
-      "gruppe": "ausgemustert"
+      ]
+    },
+    {
+      "ordner": "OmniQuant",
+      "art": "python",
+      "notiz": "OmniQuant: Omnidirectionally Calibrated Quantization for Large Language Models"
+    },
+    {
+      "ordner": "OmniRoute",
+      "art": "node",
+      "notiz": "🚀 OmniRoute — The Free AI Gateway"
+    },
+    {
+      "ordner": "onchainos-skills",
+      "art": "node",
+      "notiz": "onchainos Skills"
     },
     {
       "ordner": "one-skill-to-rule-them-all",
@@ -498,6 +574,11 @@
       "bot": "one-skill-to-rule-them-all",
       "gruppe": "doku",
       "notiz": "nur Dokumentation und Skills"
+    },
+    {
+      "ordner": "OpenMobius-skill",
+      "art": "python",
+      "notiz": "OpenMobius-skill"
     },
     {
       "ordner": "openmontage",
@@ -558,7 +639,7 @@
       ],
       "venv_pflicht": true,
       "port": 8000,
-      "anleitung": "Ein Server, drei Rollen: uvicorn liefert REST-API, die TERMINAL-Oberflaeche und die Marketing-Seite (frontend/dist ist gebaut, 279 Dateien / 33,8 MB). WICHTIG - die Adressen sind NICHT austauschbar: die Oberflaeche liegt auf http://127.0.0.1:8000/app.html, waehrend '/' die Marketing-Startseite ausliefert (34 KB, kein root-div). Die API-Doku ist /docs (Swagger UI). Das venv steht (Python 3.13.15, 295 Pakete, 'pip check' sauber). Die .env ist aus der Vorlage erzeugt; JWT_SECRET_KEY, CACHE_SIGNING_KEY und BOOTSTRAP_ADMIN_PASSWORD sind mit Zufallswerten gefuellt - die erste Anmeldung lautet BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD aus dieser .env (Passwort nach der ersten Anmeldung aendern). ALLE Marktdaten-Schluessel sind freiwillig: ohne sie laeuft die Oberflaeche auf eingebauten Ersatzdaten. Fuer lokale Sprachmodelle zeigt OLLAMA_BASE_URL schon auf 127.0.0.1:11434. FALLE: 'npm run build' im Frontend SCHEITERT, wenn es aus dem C:-Pfad laeuft - vite loest die Junction auf O: auf und lehnt den absoluten Eingabepfad ab; ein gescheiterter Lauf LEERT dabei frontend/dist. Deshalb geht der Bau-Befehl unten ausdruecklich ueber O:\\Werkstatt\\Repos\\OpenTerminalUI\\frontend (so geprueft, exit 0, 58,9 s). Schluessel setzt laut README der Assistent (make keys bzw. scripts/setup-keys.sh); sie landen alle in derselben .env. Docker-Weg waere 'docker compose up -d' (backend + redis + postgres). GEMESSEN beim Beleglauf: der Server ist nach rund 57 s bereit, '/' antwortet 200 (text/html), '/api/health' antwortet 401 - die API ist authentifiziert, ohne Anmeldung geht dort nichts. Zwei Dienste fehlen und werden sauber abgefangen: Redis ist nicht da (L2-Cache und Quote-Bus fallen auf Speicher zurueck) und die Kite-Anbindung meldet fehlende Zugangsdaten - beides still, kein Startfehler. Wer Redis will: 'docker compose up -d'.",
+      "anleitung": "Ein Server, drei Rollen: uvicorn liefert REST-API, die TERMINAL-Oberflaeche und die Marketing-Seite (frontend/dist ist gebaut, 279 Dateien / 33,8 MB). WICHTIG - die Adressen sind NICHT austauschbar: die Oberflaeche liegt auf http://127.0.0.1:8000/app.html, waehrend '/' die Marketing-Startseite ausliefert (34 KB, kein root-div). Die API-Doku ist /docs (Swagger UI). Das venv steht (Python 3.13.15, 295 Pakete, 'pip check' sauber). Die .env ist aus der Vorlage erzeugt; JWT_SECRET_KEY, CACHE_SIGNING_KEY und BOOTSTRAP_ADMIN_PASSWORD sind mit Zufallswerten gefuellt - die erste Anmeldung lautet BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD aus dieser .env (Passwort nach der ersten Anmeldung aendern). ALLE Marktdaten-Schluessel sind freiwillig: ohne sie laeuft die Oberflaeche auf eingebauten Ersatzdaten. Fuer lokale Sprachmodelle zeigt OLLAMA_BASE_URL schon auf 127.0.0.1:11434. FALLE: 'npm run build' im Frontend SCHEITERT, wenn es aus dem C:-Pfad laeuft - vite loest die Junction auf O: auf und lehnt den absoluten Eingabepfad ab; ein gescheiterter Lauf LEERT dabei frontend/dist. Deshalb geht der Bau-Befehl unten ausdruecklich ueber O:\\Werkstatt\\OpenTerminalUI\\frontend (so geprueft, exit 0, 58,9 s). Schluessel setzt laut README der Assistent (make keys bzw. scripts/setup-keys.sh); sie landen alle in derselben .env. Docker-Weg waere 'docker compose up -d' (backend + redis + postgres). GEMESSEN beim Beleglauf: der Server ist nach rund 57 s bereit, '/' antwortet 200 (text/html), '/api/health' antwortet 401 - die API ist authentifiziert, ohne Anmeldung geht dort nichts. Zwei Dienste fehlen und werden sauber abgefangen: Redis ist nicht da (L2-Cache und Quote-Bus fallen auf Speicher zurueck) und die Kite-Anbindung meldet fehlende Zugangsdaten - beides still, kein Startfehler. Wer Redis will: 'docker compose up -d'.",
       "befehle": [
         {
           "was": "App im Browser oeffnen (/app.html, NICHT /)",
@@ -574,7 +655,7 @@
           "cmd": [
             "cmd",
             "/c",
-            "cd /d O:\\Werkstatt\\Repos\\OpenTerminalUI\\frontend && npm run build"
+            "cd /d O:\\Werkstatt\\OpenTerminalUI\\frontend && npm run build"
           ],
           "hinweis": "58,9 s; ueber C: scheitert vite und leert dist/ - dann diesen Befehl nutzen"
         }
@@ -631,12 +712,23 @@
       ]
     },
     {
+      "ordner": "public-apis",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "APILayer Unified Suite in now Live! 🎉 🥳"
+    },
+    {
+      "ordner": "puter",
+      "art": "node",
+      "notiz": "·"
+    },
+    {
       "ordner": "robinhood-fomo-kronos-arena",
       "rolle": "Rahmen",
       "art": "doku",
+      "gruppe": "ausgemustert",
       "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) LEERER RAHMEN: fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile, verlangt Schluessel, die es nicht gibt",
-      "anleitung": "Nicht lauffaehig (geprueft 22.09.2026): 7 Dateien, fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile. Verlangt ROBINHOOD_API_KEY, ROBINHOOD_SECRET und PRIVATE_KEY. Nichts angefasst - erst entscheiden, ob hier gebaut wird.",
-      "gruppe": "ausgemustert"
+      "anleitung": "Nicht lauffaehig (geprueft 22.09.2026): 7 Dateien, fuenf Service-Ordner mit nur .gitkeep, kein Dockerfile. Verlangt ROBINHOOD_API_KEY, ROBINHOOD_SECRET und PRIVATE_KEY. Nichts angefasst - erst entscheiden, ob hier gebaut wird."
     },
     {
       "ordner": "santiment",
@@ -658,6 +750,12 @@
       ]
     },
     {
+      "ordner": "security-skills-claude-code",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "Security Skills for Claude Code — Open Source Security Automation Toolkit"
+    },
+    {
       "ordner": "skills",
       "rolle": "Doku",
       "art": "doku",
@@ -666,6 +764,11 @@
       "warnungen": [
         "Bot-Profil 'skills' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/skills) - der Bot-Knopf waere ein Knopf ins Leere"
       ]
+    },
+    {
+      "ordner": "skillspector",
+      "art": "python+node",
+      "notiz": "SkillSpector"
     },
     {
       "ordner": "superpowers",
@@ -722,11 +825,22 @@
       "ordner": "Trading-View-MCP-for-AI-by-Moon-Dev",
       "rolle": "MCP-Server",
       "art": "python",
+      "gruppe": "ausgemustert",
       "notiz": "(ausgemustert am 2026-10-07 nach Werkstatt/Ausgemustert/<name>-20261007) MCP-Server fuer TradingView-Daten",
       "warnungen": [
         "Bot-Profil 'tradingview-mcp' wurde am 19.09.2026 entfernt (Vermerk profiles/.deleted/tradingview-mcp) - der Bot-Knopf waere ein Knopf ins Leere"
-      ],
-      "gruppe": "ausgemustert"
+      ]
+    },
+    {
+      "ordner": "trailofbits-skills",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "Trail of Bits Skills Marketplace"
+    },
+    {
+      "ordner": "unsloth",
+      "art": "python",
+      "notiz": "Unsloth is the first desktop app to run and train models."
     },
     {
       "ordner": "winget-cli",
@@ -773,6 +887,26 @@
       ]
     },
     {
+      "ordner": "Ablage",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "Altlasten",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "Altlasten-Wurzel-2026-10-11",
+      "wurzel": "werkstatt",
+      "art": "python",
+      "notiz": "strategy_metrics.py – Kennzahlen, Freigabe-Regeln und Risiko-Steuerung"
+    },
+    {
       "ordner": "Ausgabe",
       "wurzel": "werkstatt",
       "rolle": "Ablage",
@@ -795,6 +929,13 @@
       "art": "doku",
       "gruppe": "doku",
       "notiz": "Durchgangsordner fuer Uebergaben, zuletzt der Systempruefungslauf"
+    },
+    {
+      "ordner": "auto-prediction-studio",
+      "wurzel": "werkstatt",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
     },
     {
       "ordner": "CryptoPredictions",
@@ -822,12 +963,12 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "python",
-      "notiz": "Freqtrade-Bot-Suite in Docker, dry_run: Basiscontainer 8080, trading-agent 8081, topmovers 8082, marktlage-regime 8083",
       "gruppe": "kein_start",
+      "notiz": "Freqtrade-Bot-Suite in Docker, dry_run: Basiscontainer 8080, trading-agent 8081, topmovers 8082, marktlage-regime 8083",
+      "anleitung": "Zum Starten die Zeile 'freqtrade' unter der Wurzel HANDEL benutzen (Start: bots.py liste; Befehl 'Bots starten' = bash bots_starten.sh). Dieser Klon liefert nur die Upstream-Dokumentation (docker-compose.yml, setup.sh).",
       "warnungen": [
         "kein eigener Start: das ist der Fremd-Klon von upstream. Der startbare Weg ist Agenten/Handel/freqtrade (drei Bots in Docker, traegt Start + Befehle im Manifest)"
-      ],
-      "anleitung": "Zum Starten die Zeile 'freqtrade' unter der Wurzel HANDEL benutzen (Start: bots.py liste; Befehl 'Bots starten' = bash bots_starten.sh). Dieser Klon liefert nur die Upstream-Dokumentation (docker-compose.yml, setup.sh)."
+      ]
     },
     {
       "ordner": "handel-stack",
@@ -844,9 +985,9 @@
       "wurzel": "werkstatt",
       "rolle": "Projekt",
       "art": "python",
-      "notiz": "ML-Backtest-Pruefstand (dieselbe Ablage wie Werkstatt/Repos/intelligent-trading-bot: die Wurzel Repos erreicht diesen Ordner ueber eine Junction)",
+      "notiz": "ML-Backtest-Pruefstand (dieselbe Ablage wie Werkstatt/intelligent-trading-bot: die Wurzel Repos erreicht diesen Ordner ueber eine Junction)",
       "warnungen": [
-        "Junction-Ziel von Werkstatt/Repos/intelligent-trading-bot - eine physische Ablage, kein zweites Exemplar"
+        "Junction-Ziel von Werkstatt/intelligent-trading-bot - eine physische Ablage, kein zweites Exemplar"
       ]
     },
     {
@@ -877,6 +1018,12 @@
         "--vorschau"
       ],
       "beleg_frist_s": 120
+    },
+    {
+      "ordner": "privkopie",
+      "wurzel": "werkstatt",
+      "art": "python",
+      "notiz": "python"
     },
     {
       "ordner": "Protokolle",
@@ -919,6 +1066,13 @@
       ],
       "venv_pflicht": false,
       "beleg_frist_s": 1500
+    },
+    {
+      "ordner": "robinhood-mcp",
+      "wurzel": "werkstatt",
+      "rolle": "Datenfeld",
+      "art": "daten",
+      "notiz": "daten"
     },
     {
       "ordner": "scanner-varianten",
@@ -972,6 +1126,19 @@
       "art": "ablage",
       "gruppe": "doku",
       "notiz": "Arbeitsbaeume fuer parallele Sitzungen"
+    },
+    {
+      "ordner": "worktrees-rueckgabe",
+      "wurzel": "werkstatt",
+      "art": "python",
+      "notiz": "Misst das GEBaute Fenster, nicht den Quelltext."
+    },
+    {
+      "ordner": "zusammenfuehrung-20261011",
+      "wurzel": "werkstatt",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "doku"
     },
     {
       "ordner": "zustand-sicherung-20260916-015331",
@@ -1117,6 +1284,13 @@
         "--help"
       ],
       "venv_pflicht": true
+    },
+    {
+      "ordner": "ausstieg_studie.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Studie: Gewinnsicherung (Trailing erst im Plus) und Short-Verluste."
     },
     {
       "ordner": "auswertung.py",
@@ -1402,6 +1576,67 @@
       "venv_pflicht": true
     },
     {
+      "ordner": "Bus",
+      "wurzel": "handel",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
+      "ordner": "carry",
+      "wurzel": "handel",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "carry.py - Journal-Spiegelung"
+    },
+    {
+      "ordner": "carry.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "start": [
+        ".venv\\Scripts\\python.exe",
+        "carry.py",
+        "--help"
+      ],
+      "venv_pflicht": true,
+      "anleitung": "Cross-Venue-Scanner (rein lesend, kein Orderweg): OKX-Spot/Perp und Kraken-Spot/Futures je Basiswert, Basis in bp, Funding (OKX p.a., Kraken je Zyklus), OI in USD, netto nach den gemessenen Gebuehren. Entscheidet NICHTS - stellt nur die Zahlen hin.",
+      "befehle": [
+        {
+          "was": "Carry-Tabelle BTC/ETH/SOL",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "carry.py"
+          ],
+          "hinweis": "rein lesend"
+        },
+        {
+          "was": "Carry breit (auch XRP/DOGE)",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "carry.py",
+            "--breit"
+          ],
+          "hinweis": "rein lesend"
+        },
+        {
+          "was": "Carry als JSON",
+          "cmd": [
+            ".venv\\Scripts\\python.exe",
+            "carry.py",
+            "--json"
+          ],
+          "hinweis": "fuer Wachen"
+        }
+      ]
+    },
+    {
+      "ordner": "dashboard",
+      "wurzel": "handel",
+      "art": "python",
+      "notiz": "python"
+    },
+    {
       "ordner": "daten_auffrischen.py",
       "wurzel": "handel",
       "pfad": "nautilus/daten_auffrischen.py",
@@ -1503,6 +1738,27 @@
       ]
     },
     {
+      "ordner": "fib_backtest.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Backtest: Fibonacci-Stop/Ziel gegen den Ist-Stand der Klassik-Trendspuren."
+    },
+    {
+      "ordner": "fib_retrace",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Fibonacci-Retracement-Papierspur."
+    },
+    {
+      "ordner": "fibonacci_retracement.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Fibonacci-Retracement-Levels fuer Handelsspuren."
+    },
+    {
       "ordner": "filter_studie.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
@@ -1541,6 +1797,13 @@
         "--help"
       ],
       "venv_pflicht": true
+    },
+    {
+      "ordner": "fremd_signale",
+      "wurzel": "handel",
+      "rolle": "Spur",
+      "art": "spur",
+      "notiz": "Order-Plaene fuer das OKX-Demo aus den durchs Tor gelassenen Fremd-Signalen."
     },
     {
       "ordner": "fremde_positionen_uebernehmen.py",
@@ -1708,6 +1971,13 @@
       "venv_pflicht": true
     },
     {
+      "ordner": "Handel",
+      "wurzel": "handel",
+      "rolle": "Ablage",
+      "art": "ablage",
+      "notiz": "ablage"
+    },
+    {
       "ordner": "handelszentrale.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
@@ -1761,6 +2031,13 @@
         "--help"
       ],
       "venv_pflicht": true
+    },
+    {
+      "ordner": "historie_okx.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Historische OKX-FUTURES-Kerzen (XPERP) fuer den Backtest (replay.py)."
     },
     {
       "ordner": "iv_waelle",
@@ -1930,6 +2207,13 @@
       "notiz": "klassik_supertrend"
     },
     {
+      "ordner": "knowledge-base",
+      "wurzel": "handel",
+      "rolle": "Doku",
+      "art": "doku",
+      "notiz": "doku"
+    },
+    {
       "ordner": "kopier",
       "wurzel": "handel",
       "rolle": "Spur",
@@ -1940,6 +2224,13 @@
         "kopier.py",
         "--vorschau"
       ]
+    },
+    {
+      "ordner": "kosten_korrelation.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Studie: Funding, Slippage und Korrelation der Trend-Klassikspuren (Long-only)."
     },
     {
       "ordner": "kosten_wendepunkt.py",
@@ -2017,6 +2308,13 @@
         "leitstand_messprobe.py",
         "--help"
       ]
+    },
+    {
+      "ordner": "limits_backtest.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Backtest mit den echten Begrenzungen der Trend-Klassikspuren."
     },
     {
       "ordner": "liq_wand",
@@ -2628,6 +2926,13 @@
       "anleitung": "Tafel der Drawdown-Ratsche je Spur. Fragt jede Spur ueber ihr EIGENES lage() - eine nachgebaute Formel wuerde die Formel pruefen, nicht die Spur. Die Spalte '1.0x?' prueft, dass der Betrag nicht davongelaufen ist."
     },
     {
+      "ordner": "regime_studie.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Regime-Studie fuer die vier Prognose-Spuren (T-101)."
+    },
+    {
       "ordner": "reinvest.py",
       "wurzel": "handel",
       "rolle": "Werkzeug",
@@ -2691,6 +2996,12 @@
         "--vorschau"
       ],
       "venv_pflicht": true
+    },
+    {
+      "ordner": "scanner_quant",
+      "wurzel": "handel",
+      "art": "python",
+      "notiz": "scanner_quant — Quant-Urteil für Scanner (Spot) und xperp-Auswahl (Long/Short)"
     },
     {
       "ordner": "sperrgruende.py",
@@ -2955,6 +3266,13 @@
       "anleitung": "Faehrt jede Testsuite des Handel-Baums und meldet die Abweichungen. Der Hausweg, wenn nach einer Aenderung die Wirkung belegt werden soll."
     },
     {
+      "ordner": "trailing_backtest.py",
+      "wurzel": "handel",
+      "rolle": "Werkzeug",
+      "art": "werkzeug",
+      "notiz": "Backtest: Trailing-Stop gegen festes Ziel auf den Klassik-Trendspuren."
+    },
+    {
       "ordner": "trendwende_btc",
       "wurzel": "handel",
       "rolle": "Spur",
@@ -3065,47 +3383,6 @@
         "--help"
       ],
       "venv_pflicht": true
-    },
-    {
-      "ordner": "carry.py",
-      "wurzel": "handel",
-      "rolle": "Werkzeug",
-      "art": "werkzeug",
-      "start": [
-        ".venv\\Scripts\\python.exe",
-        "carry.py",
-        "--help"
-      ],
-      "venv_pflicht": true,
-      "anleitung": "Cross-Venue-Scanner (rein lesend, kein Orderweg): OKX-Spot/Perp und Kraken-Spot/Futures je Basiswert, Basis in bp, Funding (OKX p.a., Kraken je Zyklus), OI in USD, netto nach den gemessenen Gebuehren. Entscheidet NICHTS - stellt nur die Zahlen hin.",
-      "befehle": [
-        {
-          "was": "Carry-Tabelle BTC/ETH/SOL",
-          "cmd": [
-            ".venv\\Scripts\\python.exe",
-            "carry.py"
-          ],
-          "hinweis": "rein lesend"
-        },
-        {
-          "was": "Carry breit (auch XRP/DOGE)",
-          "cmd": [
-            ".venv\\Scripts\\python.exe",
-            "carry.py",
-            "--breit"
-          ],
-          "hinweis": "rein lesend"
-        },
-        {
-          "was": "Carry als JSON",
-          "cmd": [
-            ".venv\\Scripts\\python.exe",
-            "carry.py",
-            "--json"
-          ],
-          "hinweis": "fuer Wachen"
-        }
-      ]
     }
   ]
 }

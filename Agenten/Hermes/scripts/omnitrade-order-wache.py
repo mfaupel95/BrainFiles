@@ -49,10 +49,33 @@ HIER = Path(__file__).resolve()
 WURZEL = HIER.parents[3]                       # scripts -> Hermes -> Agenten -> BrainFiles
 CACHE = HIER.parent.parent / "cache"           # Agenten/Hermes/cache
 
-# Wie alt eine Statusdatei sein darf, bis der Lauf als tot gilt. Der Takt ist
-# 15 min; die Kerze ist 15 min, die Datei wird je Zyklus geschrieben. 45 min
-# ist dreifache Reserve - darunter ist es ein Befund, darueber eine Beobachtung.
-TOT_MINUTEN = 45
+# Wie alt eine Statusdatei sein darf, bis der Lauf als tot gilt. Die Datei wird
+# NUR beim Verarbeiten einer Kerze geschrieben - live.json (der Hauptlauf) laeuft
+# auf 1d-Kerzen, nicht auf 15 min. Eine feste 45-min-Grenze erklaerte dort am
+# 11.10.2026 einen gesunden Lauf fuer tot (639 min alt, Grenze 45, lief weiter;
+# die autoritative Pruefung setzt die Grenze auf 60 h). Darum waechst die Grenze
+# mit dem Kerzenabstand aus der Datei selbst - derselbe Mechanismus wie
+# `omnitrade_bridge.altersgrenze_s` (der schon den 30.09.2026-Fall geloest hat).
+TOT_MINUTEN = 45     # Untergrenze (Fallback, wenn kein Abstand ableitbar)
+VIELFACHES = 2.5     # so oft darf der Kerzenabstand vergehen, bevor es haengt
+
+
+def altersgrenze_min(d):
+    """Altersgrenze in Minuten, gewachsen mit dem Kerzenabstand der Datei.
+    Identisch zu omnitrade_bridge.altersgrenze_s, nur in Minuten."""
+    kerzen = (d or {}).get("recent_candles") or []
+    zeiten = []
+    for k in kerzen:
+        if isinstance(k, dict) and isinstance(k.get("time_ms"), (int, float)):
+            zeiten.append(float(k["time_ms"]))
+    if len(zeiten) < 2:
+        return float(TOT_MINUTEN)
+    zeiten.sort()
+    abst = sorted(b - a for a, b in zip(zeiten, zeiten[1:]) if b > a)
+    if not abst:
+        return float(TOT_MINUTEN)
+    i_s = abst[len(abst) // 2] / 1000.0  # Median, Luecke zaehlt nicht
+    return max(float(TOT_MINUTEN), VIELFACHES * i_s / 60.0)
 # Nach wie viel Stunden Ruhe ein gesunder Lauf einmal "läuft weiter" meldet.
 MELDEN_NACH_STILLE_H = 6
 
@@ -111,7 +134,7 @@ def schnappschuss(pfad, d):
     }
 
 
-def vergleiche(alt, neu, pfad):
+def vergleiche(alt, neu, pfad, grenze_min: float = TOT_MINUTEN):
     """Was sich gegenueber dem letzten Lauf geaendert hat. Leer heisst:
     nichts zu melden."""
     zeilen = []
@@ -121,10 +144,10 @@ def vergleiche(alt, neu, pfad):
 
     # 1. Tod / Stehen - vor allem anderen, weil es das Wichtigste ist.
     alter_s = (zeit() - neu["aktualisiert"]) / 60.0
-    if alter_s > TOT_MINUTEN:
+    if alter_s > grenze_min:
         zeilen.append("omnitrade %s: seit %.0f min kein Lebenszeichen "
-                      "(Grenze %d) - PID %s"
-                      % (name, alter_s, TOT_MINUTEN, neu.get("pid")))
+                      "(Grenze %.0f min) - PID %s"
+                      % (name, alter_s, grenze_min, neu.get("pid")))
         return zeilen
 
     # 2. Orders - die eigentliche Beobachtung.
@@ -211,10 +234,11 @@ def main(argv=None):
             except (OSError, ValueError):
                 alt = None
         neu = schnappschuss(pfad, d)
+        grenze_min = altersgrenze_min(d)   # kerzenabhaengig, kein festes 45 min
         if args.merken:
             pass
         else:
-            meldungen += vergleiche(alt, neu, pfad)
+            meldungen += vergleiche(alt, neu, pfad, grenze_min)
         neu["gemerkt_am"] = zeit()
         if not args.merken or True:
             with open(datei, "w", encoding="utf-8") as f:

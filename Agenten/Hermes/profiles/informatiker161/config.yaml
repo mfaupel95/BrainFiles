@@ -6,12 +6,11 @@ model:
 terminal:
   cwd: C:\Users\faupe\Documents\BrainFiles
 fallback_providers:
-  - provider: ollama-launch
-    model: qwen35-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
+  - provider: llamacpp
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
 plugins:
   enabled: []
-_config_version: 50
+_config_version: 51
 onboarding:
   seen:
     tool_progress_prompt: true

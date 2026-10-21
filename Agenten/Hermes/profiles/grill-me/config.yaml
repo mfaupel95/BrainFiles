@@ -1,0 +1,50 @@
+model:
+  default: nvidia/nemotron-3-super-120b-a12b
+  provider: nous
+  base_url: https://inference-api.nousresearch.com/v1
+  api_mode: chat_completions
+terminal:
+  backend: local
+  cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\grill-me-skill
+fallback_providers:
+  - provider: llamacpp
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+  - provider: omniroute
+    model: auto/coding:free
+    base_url: http://localhost:20128/v1
+platforms:
+  photon:
+    enabled: false
+auxiliary:
+  compression:
+    provider: nous
+    model: deepseek/deepseek-v4-flash-0731
+    timeout: 180
+telemetry:
+  shared_metrics:
+    enabled: true
+    send: false
+    offer_version: 2
+onboarding:
+  seen:
+    tool_progress_prompt: true
+_config_version: 51
+web:
+  backend: nous
+browser:
+  cloud_provider: nous
+tts:
+  provider: nous
+image_gen:
+  provider: nous
+  model: krea-2-medium-turbo
+update:
+  installs:
+    bf59c98340a908a8:
+      path: C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\hermes-agent
+      channel: main
+desktop:
+  repo_scan_roots:
+    - C:\Users\faupe\documents\BrainFiles\Werkstatt
+display:
+  streaming: true

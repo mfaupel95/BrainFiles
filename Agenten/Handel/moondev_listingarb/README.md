@@ -4,7 +4,7 @@ Grosse Coins, die bei Binance (noch) nicht handelbar sind - die Wette des Bots a
 
 ## Woher die Idee kommt
 
-Der Agent `listingarb_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` macht genau das:
+Der Agent `listingarb_agent` aus `Werkstatt/moon-dev-ai-agents` macht genau das:
 er sucht Coins, die gross sind, aber an einer grossen Boerse noch fehlen, und kauft sie vor dem Listing. Sein Urteil faellt in einem Sprachmodell, seine Daten kommen ueber die
 CoinGecko-**Pro**-API (Schluessel noetig). Beides laesst sich hier nicht sauber
 nachbilden, deshalb:

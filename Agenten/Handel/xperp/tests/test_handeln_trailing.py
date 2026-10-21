@@ -166,6 +166,30 @@ class TrailingVerdrahtungTest(unittest.TestCase):
                     if "stopdeckung" in (z["grund"] or "")]
         self.assertEqual(len(vermerkt), 1)
 
+    def test_kennung_wird_an_der_boerse_nachgeschlagen(self):
+        """11.10.2026: das Buch traegt beim Eroeffnen keine Kennung. Liegt an
+        der Boerse genau EIN Schutz-Stop, wird dessen algoId genommen."""
+        stops = [{"algoId": "boerse-1", "reduceOnly": "true", "side": "sell",
+                  "slTriggerPx": "95", "sz": "10"}]
+        self.okxf.schutz_stops = lambda inst: stops
+        self.okxf.ist_schutz_stop = lambda s: bool(s.get("slTriggerPx"))
+        p = position()
+        w = {"trailing_aktiv": True, "gebuehr_taker": 0.0005}
+        h.okxf.kurs = 112.0
+        h._trailing_versuch(p, 112.0, w)
+        self.assertEqual([a[0] for a in self.okxf.aufrufe], ["boerse-1"])
+        self.assertNotIn("stop_ids", p, "Boersenliste darf nicht ins Buch")
+
+    def test_zwei_boersen_stops_werden_verweigert(self):
+        stops = [{"algoId": "b1", "slTriggerPx": "95", "sz": "6"},
+                 {"algoId": "b2", "slTriggerPx": "94", "sz": "4"}]
+        self.okxf.schutz_stops = lambda inst: stops
+        self.okxf.ist_schutz_stop = lambda s: bool(s.get("slTriggerPx"))
+        p = position()
+        h._trailing_versuch(p, 112.0, {"trailing_aktiv": True,
+                                        "gebuehr_taker": 0.0005})
+        self.assertEqual(self.okxf.aufrufe, [])
+
     # --- 4. Der Aufruf geht an die BOERSE, nicht ins Buch --------------------
 
     def test_der_stop_des_buches_ist_der_der_boerse(self):

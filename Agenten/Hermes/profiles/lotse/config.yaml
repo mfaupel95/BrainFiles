@@ -6,12 +6,11 @@ model:
 terminal:
   cwd: C:\Users\faupe\Documents\BrainFiles
 fallback_providers:
-  - provider: ollama-launch
-    model: gemma-e4b-8k:cpu
-    base_url: http://127.0.0.1:11434/v1
+  - provider: llamacpp
+    model: gemma-4-E4B-it-OBLITERATED-Q8_0
 plugins:
   enabled: []
-_config_version: 50
+_config_version: 51
 onboarding:
   seen:
     tool_progress_prompt: true
@@ -54,5 +53,47 @@ auxiliary:
     timeout: 180
 telemetry:
   shared_metrics:
-    enabled: false
+    enabled: true
     send: false
+
+    offer_version: 2
+skills:
+  disabled:
+    - apple-notes
+    - apple-reminders
+    - findmy
+    - imessage
+    - architecture-diagram
+    - ascii-video
+    - baoyu-infographic
+    - claude-design
+    - design-md
+    - humanizer
+    - manim-video
+    - p5js
+    - popular-web-designs
+    - songwriting-and-ai-music
+    - email-inbox-triage
+    - himalaya
+    - gif-search
+    - songsee
+    - youtube-content
+    - airtable
+    - box
+    - document-to-action-items
+    - docx
+    - google-workspace
+    - maps
+    - meeting-action-items
+    - notion
+    - pdf
+    - powerpoint
+    - product-price-monitor
+    - teams-meeting-pipeline
+    - weekly-review-planning
+    - xlsx
+    - arxiv
+    - competitor-news-monitor
+    - grounded-citations
+    - llm-wiki
+    - xurl

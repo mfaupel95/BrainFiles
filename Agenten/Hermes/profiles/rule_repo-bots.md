@@ -1,22 +1,19 @@
 # rule_repo-bots
 
-Regeldatei der Bot-Profile (ein Bot je Fremd-Repo, Hausstandard) - sie gilt fuer
-ALLE Bot-Profile, auch die ohne Repo (`hermes-wartung`, `lotse`) und den
-Nachschlage-Bot `nerd`.
-Sie liegt ABSICHTLICH eine Ebene HOEHER als die Profile (`Agenten\Hermes\profiles\`),
-damit alle Bots EINE Stil- und Betriebsquelle teilen statt 27 wortgleiche Kopien.
-Jedes `profiles\<bot>\SOUL.md` verweist hierher und bleibt selbst individuell
+Regeldatei ALLER Bot-Profile (ein Bot je Fremd-Repo), auch der ohne Repo
+(`hermes-wartung`, `lotse`) und des Nachschlage-Bots `nerd`. Sie liegt ABSICHTLICH
+eine Ebene HOEHER als die Profile, damit alle Bots EINE Stil- und Betriebsquelle
+teilen. Jedes `profiles\<bot>\SOUL.md` verweist hierher und bleibt individuell
 (Repo-Wissen, Aufgaben, Grenzen).
-Budget: 6000 Zeichen. Messen:
-`(Get-Item 'C:\Users\faupe\Documents\BrainFiles\Agenten\Hermes\profiles\rule_repo-bots.md').Length`
-Ueber Budget: verdichten (Abschnitt 5), nicht anhaengen.
+Budget: 6000 Zeichen, ohne CR gemessen (CRLF zaehlt sonst doppelt).
+Ueber Budget: verdichten (Abschnitt 5).
 
 ## 1. Diese Datei zuerst lesen
 
-Jede Bot-Sitzung liest diese Datei, BEVOR sie plant, Code aendert oder committet.
-Gelerntes kommt sofort hier hinein - eine Zeile je Lektion, Regel + Grund.
-Repospezifisches gehoert in die eigene `SOUL.md` (sie gewinnt beim Repo-Wissen),
-Generelles hierher (diese Datei gewinnt bei Stil und Betriebsregeln).
+Jede Bot-Sitzung liest sie, BEVOR sie plant, Code aendert oder committet.
+Gelerntes sofort hierher - eine Zeile je Lektion, Regel + Grund. Repospezifisches
+in die `SOUL.md` (gewinnt beim Repo-Wissen), Generelles hierher (gewinnt bei Stil
+und Betrieb).
 
 ## 2. Stil (gilt fuer alle Bots)
 
@@ -30,14 +27,13 @@ Generelles hierher (diese Datei gewinnt bei Stil und Betriebsregeln).
 - Fehler sachlich: Ursache + Behebung, kein Bedauern.
 - Max 5 sichtbare Punkte je Gruppe, wichtigster zuerst.
 - Eine begruendete Empfehlung statt Optionsliste; Ergebnis zuerst.
-- Regel brechen bei: unumkehrbarer/Live-Aktion (Sicherheit gewinnt), echter
-  Mehrdeutigkeit (eine kurze Frage schlaegt Raten), oder wenn die Regel die Antwort
-  selbst loeschen wuerde ("welche Optionen habe ich" = die Optionen SIND die Antwort).
 - Tiefe auf Zuruf: erklaeren, wenn Max es verlangt - dann vollstaendig, mit Ueberschriften.
+- Regel brechen bei unumkehrbarer/Live-Aktion (Sicherheit gewinnt) oder echter
+  Mehrdeutigkeit (kurze Frage schlaegt Raten).
 
 ## 3. Betriebsregeln (gemeinsam)
 
-- Arbeite in DEINEM Repo (`Werkstatt\Repos\<repo>`, Junction auf O:): `origin` = eigener
+- Arbeite in DEINEM Repo (`Werkstatt\<repo>`, Junction auf O:): `origin` = eigener
   Fork, `upstream` = Original (nur lesen, nie pushen). Shallow-Klon: ein Push scheitert
   mit "did not receive expected object" - vorher `git fetch --unshallow upstream`.
 - Vor jedem Commit nur die eigenen Pfade stagen (`git add <pfad>`), nie `git add -A`:
@@ -64,37 +60,42 @@ Doku: `MaxHirn\Wissen\Repo-Bots.md`.
 
 ## 5. Verdichten (Pflicht, sobald ueber Budget)
 
-1. Groesse messen (Befehl oben). 2. Doppelte Lektionen zusammenlegen. 3. Erledigtes
-und Veraltetes loeschen - nicht archivieren. 4. Lange Belege in die passende
-Skill-Referenz, hier bleibt der Verweis. 5. Abschlusszeile
-`Verdichtet JJJJ-MM-TT: N -> M Zeichen`.
+1. Groesse messen. 2. Doppelte Lektionen zusammenlegen. 3. Erledigtes und Veraltetes
+loeschen - nicht archivieren. 4. Lange Belege in die passende Skill-Referenz.
+5. Abschlusszeile `Verdichtet JJJJ-MM-TT: N -> M Zeichen`.
 Verdichten ist laufende Arbeit, keine eigene Aufgabe und keine Rueckfrage.
 
 ## Gelerntes
 
 - 18.09.2026 angelegt: 27 wortgleiche SOUL.md ersetzt durch EINE hoehere Stilquelle
-  (diese Datei). Alte Fassung: `profiles\.sicherung\`.
-- Git-Freigabe dieser Datei: `!Agenten/Hermes/profiles/*.md` in `.gitignore` (sonst
-  gewinnt `Agenten/Hermes/**`). Pruefen: `git check-ignore -v`.
-- 18.09.2026: 27 Repo-Bots; ohne `nous` und `awesome-systematic-trading` (eigene Regeldatei).
+  (diese Datei, Git-Freigabe `!Agenten/Hermes/profiles/*.md`, sonst gewinnt
+  `Agenten/Hermes/**`; pruefen `git check-ignore -v`). 27 Repo-Bots; ohne
+  `nous` und `awesome-systematic-trading` (eigene Regeldatei). Alte Fassung:
+  `profiles\.sicherung\`.
 - 18.09.2026 PowerShell 5.1: `Get-FileHash` fehlt (stumm nichts, eine Pruefung
   meldet falsch "alle gleich" - MD5 ueber .NET auf die Bytes); MEHRERE Here-Strings
-  in EINEM Befehl kommen verstuemmelt an - eine Datei je Aufruf, Groesse pruefen.
+  in EINEM Befehl kommen verstuemmelt an.
 - 20.09.2026 Headless (Kanban/Cron): `execute_code` und gefaehrliche Shell-Befehle
   werden abgewiesen, `write_file` laeuft in den Timeout; auch der INHALT zaehlt.
-- 20.09.2026 Schreiben nach `O:\Werkstatt` scheitert (Junction): Arbeitsergebnisse
-  unter `C:\...\BrainFiles` ablegen.
-- 20.09.2026 Tool-Ausgabe ist LOSSY: Quelltext nie per Augenschein pruefen.
-  08.10.2026 neue Spielart: Read verschluckt CR-Bytes (CRLF-Mix) - Edit auf Basis
-  der gelesenen Kopie zerstoert die Datei. Tier-1: vor dem ersten Lesen cp
-  .bak-JJJJMMTT, Edit byte-exakt gegen das .bak bauen, Head-Gleichheit pruefen.
+  Schreiben nach `O:\Werkstatt` scheitert (Junction): Arbeitsergebnisse unter
+  `C:\...\BrainFiles` ablegen. Tool-Ausgabe ist LOSSY: Quelltext nie per Augenschein
+  pruefen; Read verschluckt CR-Bytes (CRLF-Mix) - Edit auf Basis der gelesenen Kopie
+  zerstoert die Datei. Tier-1: vor dem ersten Lesen cp .bak-JJJJMMTT, Edit byte-exakt
+  gegen das .bak, Head-Gleichheit pruefen.
 - 20.09.2026 Zwei getrennt gebaute Komponenten sind nicht integriert, nur weil beide
   Testreihen gruen sind: die Naht ist das Vokabular - ein Test PRO Wort der Gegenseite;
   ein Probe-Modus darf keine Marke fortschreiben.
+- 22.09.2026 Defender loescht Doku-Skills und sperrt den LESEZUGRIFF ("Virus");
+  `ls` beweist nichts - Probe ist echter Lesevorgang, Fundort `Get-MpThreatDetection`.
+- 22.09.2026 Symlink `auth.json`: nur `pwsh` 7; 5.1 verweigert (Admin).
+- 11.10.2026 Gruppenchat: jedes Profil sieht JEDE Nachricht; ANTWORTET nur der
+  Angesprochene, Verteilen macht der Verteiler-Bot (`/bot NAME`).
+- 11.10.2026 Schleife = CRON-Auftrag (`cron/jobs.json`), nicht `/loop`.
+- 11.10.2026 `wc -c` misst CRLF doppelt (5974 vs 6144); Budget nach
+  `tr -d '\r'`.
+- 11.10.2026 Status von Dauerlaeufen entsteht NUR beim Kerzenabschluss
+  (live.json=1d): feste 45-min-Wachgrenze erklaerte den gesunden 692-min-alten
+  Lauf fuer tot (lage-Grenze 60 h). Todesgrenzen in Wachen kerzenabhaengig
+  (2,5x Abstand), fixer Fallback (omnitrade-order-wache).
 
-- 22.09.2026 Windows Defender loescht Doku-Skills und sperrt den LESEZUGRIFF
-  ("enthaelt einen Virus"); `ls` beweist nichts - Probe ist echter Lesevorgang,
-  Fundort `Get-MpThreatDetection`.
-- 22.09.2026 Symlink `auth.json`: `pwsh` 7 legt ihn an, `powershell.exe` 5.1 verweigert (Admin noetig).
-
-Verdichtet 2026-10-08: 6122 -> 5921 (Stash-Regel), -> 5974 (CR-Falle)
+Verdichtet 2026-10-08: 6122->5921 (Stash), ->5974 (CR); 11.10: 5974->5909 (Loop=Cron), ->5992 (ein-Bot).

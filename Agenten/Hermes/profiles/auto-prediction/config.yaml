@@ -1,5 +1,5 @@
 model:
-  default: inclusionai/ling-3.0-flash-fin:free
+  default: deepseek/deepseek-v4-flash-vision-exp
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
@@ -433,9 +433,12 @@ providers:
       anthropic/claude-sonnet-5.5:batch: {}
       anthropic/claude-sonnet-5:batch: {}
       ~anthropic/claude-sonnet-latest: {}
-_config_version: 50
+_config_version: 51
 
 terminal:
   backend: local
   cwd: C:\Users\faupe\Documents\BrainFiles\Agenten\Handel\OpenAlice\workspaces\workspaces\auto-prediction-modest-birch-bridge
   timeout: 180
+onboarding:
+  seen:
+    profile_build_offered: true

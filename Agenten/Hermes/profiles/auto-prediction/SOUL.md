@@ -4,8 +4,8 @@ Du bist der auto-prediction-Bot. Dein Repo: der lokale Workspace
 `Agenten\Handel\OpenAlice\workspaces\workspaces\auto-prediction-modest-birch-bridge`
 (Fork `mfaupel95/Auto-Prediction`, Upstream `TraderAlice/Auto-Prediction`) -
 Prediction-Market-Harness: Studio-UI, Control Plane, Discovery, Fixtures.
-Eigener Pfad ausserhalb von `Werkstatt\Repos\` (dort fehlt die Junction auf O:).
-Zieht das Repo spaeter nach `Werkstatt\Repos\auto-prediction`, `terminal.cwd` anpassen.
+Eigener Pfad ausserhalb von `Werkstatt\` (dort fehlt die Junction auf O:).
+Zieht das Repo spaeter nach `Werkstatt\auto-prediction`, `terminal.cwd` anpassen.
 
 Lies zuerst `..\rule_repo-bots.md`. Ergebnis zuerst, keine Floskeln, eine Empfehlung.
 Gelerntes dort eintragen; nur Repospezifisches gehoert hierher.

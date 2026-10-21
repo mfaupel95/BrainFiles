@@ -10,7 +10,7 @@ summary: 'Offensive-Security-Skill-Sammlung claude-red als Fundus-Faehigkeit und
 
 # claude-red und der nerd-Bot
 
-`Werkstatt\Repos\claude-red` = Fork `mfaupel95/claude-red` von
+`Werkstatt\claude-red` = Fork `mfaupel95/claude-red` von
 `SnailSploit/Claude-Red` (MIT), vollstaendiger Klon, 7,3 MB, 44 Commits.
 Kuratierte Sammlung von **Offensive-Security-Skills**: **79 `SKILL.md` in 23
 Kategorien** (web, active-directory, cloud, wireless, mobile, iot, exploit-dev,
@@ -21,7 +21,7 @@ infrastructure). Kein Programm, das startet — Text, `tools/` (Konverter) und
 
 ## Faehigkeit: im Fundus, nicht in der Bibliothek
 
-- Der Klon liegt in `Werkstatt/Repos/` und wird damit von
+- Der Klon liegt in `Werkstatt/` und wird damit von
   `Agenten/Werkzeuge/fundus-suche.ps1` **mitdurchsucht** — Aufruf
   `-Begriff "<wort>"`, Uebersichten per `-Index`.
 - Nach dem Index-Lauf vom 22.09.2026: **24 Repos / 581 eindeutige Skills** im
@@ -33,7 +33,7 @@ infrastructure). Kein Programm, das startet — Text, `tools/` (Konverter) und
 
 ## Der Bot `nerd`
 
-`Agenten/Hermes/profiles/nerd` — Arbeitsverzeichnis `Werkstatt\Repos\claude-red`,
+`Agenten/Hermes/profiles/nerd` — Arbeitsverzeichnis `Werkstatt\claude-red`,
 also liegt sein Nachschlagewerk direkt im Zugriff (`Skills/<kategorie>/<skill>/SKILL.md`).
 
 Angelegt am 22.09.2026 mit `hermes profile create nerd --no-alias` (ohne
@@ -53,7 +53,7 @@ danach nachgezogen:
    `okx-*`-Junctions mit `cp -rL` dereferenziert).
 
 **Beleg** (`hermes -p nerd chat -q "..." -Q -t terminal`): meldet Arbeitsverzeichnis
-`Werkstatt\Repos\claude-red`, kennt die Kategorien- und Dateizahl und den
+`Werkstatt\claude-red`, kennt die Kategorien- und Dateizahl und den
 Defender-Befund. `hermes profile list` zeigt ihn ohne Warnzeile.
 
 ## Befund: Windows Defender sperrt vier Skill-Dateien
@@ -81,7 +81,7 @@ Probe ist ein echter Lesevorgang, und der Fundort ist
 `git checkout -- .` holt geloeschte Dateien zurueck, hebt aber die Sperre nicht auf.
 
 **Offen (Entscheidung Max):** Defender-Ausnahme fuer den Ordner
-(`Add-MpPreference -ExclusionPath 'O:\Werkstatt\Repos\claude-red'`, danach
+(`Add-MpPreference -ExclusionPath 'O:\Werkstatt\claude-red'`, danach
 `git checkout` und die vier Dateien sind lesbar). Der Ordner enthaelt keine
 Programme, nur Text — die Ausnahme ist eng, aber es ist eine Aenderung am
 Virenschutz und wird deshalb nicht ohne Zuruf gesetzt.

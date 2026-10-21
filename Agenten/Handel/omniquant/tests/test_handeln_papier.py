@@ -62,6 +62,12 @@ class Basis(unittest.TestCase):
         # das Ziel in den Temp-Ordner: der Spiegelpfad bleibt getestet, trifft
         # aber nichts Echtes.
         w["journal_zweitziel"] = os.path.join(self.tmp.name, "zweitziel")
+        # Diese Tests pruefen die Bericht-Logik (verfallen/erledigt/richtung),
+        # nicht den ATR-Zweig (T-393, separat in test_omniquant_atr.py). Der
+        # ATR-Zweig haengt an echten Kerzen - mit einem Fake-Kurs (z.B. 101
+        # fuer BTC) und echten BTC-Kerzen ergibt er einen unsinnig breiten
+        # Stop. Aus, damit die Tests deterministisch sind.
+        w["stop_atr_faktor"] = None
         with open(h.WACHEN, "w", encoding="utf-8") as f:
             json.dump(w, f, ensure_ascii=False, indent=2)
 

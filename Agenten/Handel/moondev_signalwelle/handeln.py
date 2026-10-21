@@ -128,7 +128,11 @@ def main():
         print("Live waere gesperrt durch: kein Live-Zweig in dieser Spur "
               "(Papier, kein Hebel). Der VIP-Kanal handelt mit Hebel und "
               "eigenen Schluesseln - dieser Haus-Lauf bucht nur Papier.")
-        return 0
+        # Nicht abbrechen, sondern Papier buchen: Der Dauerlauf ruft --live,
+        # sobald ein Freigabefenster offen ist. Mit `return 0` lief die Spur
+        # dann GAR NICHT mehr - kein Zyklus, kein Herzschlag, Leitstand
+        # "ueberfaellig" (gefunden 11.10.2026, 10 h Stillstand).
+        a.modus = "papier"
     # Der Name im Bus-Journal steht WOERTLICH hier: die Anbindung oeffnet der
     # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur
     # die Meldung gehoert, entscheidet diese Datei.

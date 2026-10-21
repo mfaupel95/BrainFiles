@@ -117,3 +117,40 @@ Damit ist der Fall vollstaendig erklaert: alle 25 Dateien stammten aus der Zeit 
 (09.-24.09.), 14 davon waren Batches - und ein Batch wird als GANZES verweigert, auch seine
 reinen `add`s. `approve all` hat nichts angewandt und das auch gesagt. Was wirklich fehlt, ist
 eine WACHE gegen das Verrotten der Queue (offen als T-247), nicht Code am `approve`.
+
+## Dritter Durchgang am 20.10.2026 (10 Vorschlaege)
+
+Alle 10 Dateien in `pending/memory/` (Vorschlaege vom 05.-20.10.2026) wurden einzeln gegen
+Code/Dateien/Cron und das heutige Gedaechtnis geprueft. Verifizierte Inhalte wurden von Hand
+nachgezogen, der Rest verworfen; Volltext aller Vorschlaege im Digest
+`.sicherung/memory-queue-verworfen-20261020.md`.
+
+Nachgezogen (jeweils gegen die Realitaet belegt):
+- TELEGRAM-GRUPPE: require_mention=true (in .env gemessen) + Erweiterung auf 8 Bots (11.10.)
+  bzw. 24 Bot-Profile mit eigenem Token (20.10., profiles/*/.env gezaehlt).
+- JUNCTION: Korrektur - junction-wache.py existiert (T-390, Cron b65d0a979ce8, 10 min) und
+  meldet Verlust; die alte Notiz "es gibt KEINE Wache" war falsch (Merkdatei + Cron geprueft).
+- MCP-ZOMBIE-WACHE: 05.10.-Erweiterung (NODE-Knoten + Ollama-:cpu-Idle-Fresser) - die Wache
+  filtert bis 20.10. nur python/pythonw (im Skript geprueft).
+- FREQTRADE-STACK: 20 Container 8081-8100 (bots.json gezaehlt) + Futures-Short-Messung.
+- AUTO-FREIGABE: "der Hebel ist die zwei Haken, nicht die Auto-Freigabe" + 9-Orderpfad-Liste.
+- OMNIQUANT: markte_laden-Falle; KRAKEN-FAKTEN: /fills-Notaus-Falle; DOCKER-TERMINAL:
+  docker_volumes-/brainfiles-Eintrag (in config.yaml gesetzt); HERMES-TOOL-BACKEND: write_file.
+- SANDBOX-FALLE: schtasks LogonTrigger braucht Admin, TimeTrigger-only-XML ohne.
+- Neu: ZEILENENDEN BEI GEMISCHTEN DATEIEN, DOCKER-DESKTOP MANUELL PAUSIERT.
+
+Verworfen (nicht uebernommen, Gruende):
+- ADX_MACD-"gemessene Kante" (02.10.) - widerlegt durch die Pin-Nachrechnung mit festem
+  Fensterende (OMNITRADE-PIN-BEWEIS 04.10.): das Vorzeichen kippt mit dem Fenster.
+- MAX' KONTEN (01./02.10.) - redundant zu OKX-STAKING/OKX-KONTO WAERUNGEN (03.10. gemessen).
+- JEV-TRADER-add - stand schon woertlich im JEV-TRADER-LIVE-Eintrag.
+- Sweep-/rsi_noema-/erledigen.py-Details - schon in OMNITRADE-PIN-BEWEIS, BITLOCKER-
+  ENTSCHEIDUNG und BACKTEST-FENSTER.
+- SKILL_MANAGE-Praezisierung ("am 05.10. kein CRLF") - die Regel (nach jedem Patch numstat)
+  steht schon; die Umwandlung ist nachweislich nicht vorhersagbar, die Vorsicht gilt trotzdem.
+
+MEMORY.md 394.018 -> 397.405 Zeichen (72 % des Budgets): 2 neue Eintraege, 10 geaendert,
+1 Korrektur. Queue ist leer, probe-memory-pinning.py belegt weiterhin beide alten Formen als
+verweigert (MEMORY.md bleibt byte-gleich). T-424 (mcp-zombie-wache filtert nur python/pythonw,
+nicht node) wurde am 20.10.2026 umgesetzt: die Wache liest jetzt auch node.exe und erkennt die
+ant.dir-NODE-MCP-Server je Gruppe (20/20 Tests gruen, Commit 9f98915b).

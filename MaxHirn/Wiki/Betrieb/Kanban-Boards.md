@@ -33,7 +33,7 @@ Kontext, weil eine Aufgabe sich dann auf zwei Orte verteilt.
 
 | Slug | Zweck |
 |---|---|
-| `repos` | Klone in `Werkstatt/Repos`, Bots/Profile, Rueckstand, Sicherung |
+| `repos` | Klone in `Werkstatt`, Bots/Profile, Rueckstand, Sicherung |
 | `wartung` | Hermes selbst: Gateway, Dashboard, MCP-Spawn-Kette, Updates, Leistung |
 | `handel` | Spuren bauen/rechnen/pruefen, Backtest, Befunde |
 | `wissen` | Wiki, Skills, Fundus, Vault-Doku |

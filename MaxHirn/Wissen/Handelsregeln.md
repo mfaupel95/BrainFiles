@@ -487,6 +487,17 @@ Volatilität, Chance/Risiko) und darf höchstens drei Tage alt sein. Gehandelt
 wird ausschließlich auf Papier (`handel_erlaubt: false`,
 `freigabe.erfuellt: false`).
 
+**Kraken-Paper-Node (Papierbuch, Stand 13.10.2026):** `Handel/nautilus_kraken`
+läuft quote-only gegen Kraken (Spot und Futures). Die Fills simuliert
+`papierbuch.py`: Kauf zum Ask, Verkauf zum Bid, 0,26 % Taker-Gebühr je Seite,
+nur Long, 1000 Kapital. Gekauft und verkauft wird nach SMA 4/16 auf 15-Minuten-Mids
+mit 0,4 %-Band; die Gewinnanzeige steht im Leitstand.
+**Warum:** Die alte Strategie (SMA 10/30 auf 1-Minuten-Mids) verlor im Spot-Lauf
+46,02 € in 8 Trades, fast nur durch Gebühren. Im Backtest über 7,5 Tage
+(15-Minuten-Kerzen) kam die neue Strategie ohne Band auf 35 Trades und −209 €,
+mit Band auf 1 Trade und +10 €; Buy&Hold lag bei −35 €. Die alten Bücher liegen
+archiviert als `*.v1-20261012.*`.
+
 **Nautilus-Spur (Papier, seit 13.09.2026):** `Handel/nautilus` fährt die
 NautilusTrader-Engine gegen OKX **DEMO** als Spur im Dauerlauf. Je Zyklus
 (~15 min) startet sie eine **begrenzte** Node-Session (~30 s), sammelt
@@ -990,14 +1001,14 @@ die Regel im Haus entscheiden lassen, ein Haus-Buch fuehren.**
 
 **Erste Spur: `moondev_funding`** (`Agenten/Handel/moondev_funding/`) - ein
 Papierbuch auf den Funding-Extremen von Hyperliquid. Die Zahlen liefert
-`src/nice_funcs_hl.get_funding_rates()` aus `Werkstatt/Repos/moon-dev-ai-agents`,
+`src/nice_funcs_hl.get_funding_rates()` aus `Werkstatt/moon-dev-ai-agents`,
 gerufen in DESSEN venv (dort liegen pandas und requests); die Regel stammt aus
 `fundingarb_agent.py` (ab +-100 %/Jahr) und ist hier deterministisch. Kein
 Sprachmodell, kein Orderpfad, ein `--live` verweigert. Sie laeuft als
 `moondev_funding` in `dauerlauf.SPUREN` und spiegelt nach
 `Q:\Handel_Journal\moondev_funding`.
 
-**Die vier Repos** liegen als Klone unter `Werkstatt/Repos/` (origin = Fork
+**Die vier Repos** liegen als Klone unter `Werkstatt/` (origin = Fork
 unter `mfaupel95`, upstream = Original):
 
 | Repo | Inhalt | venv / Zustand |
@@ -1085,7 +1096,7 @@ Live-Zweig.
 
 **Auftrag Max:** "Risk_agent als Vorfilter einbauen."
 
-**Was der Fremd-Agent tut.** `Werkstatt/Repos/moon-dev-ai-agents/src/agents/
+**Was der Fremd-Agent tut.** `Werkstatt/moon-dev-ai-agents/src/agents/
 risk_agent.py` ueberwacht dort jede offene Position und stoppt den Handel, wenn
 ueber die letzten **12 Stunden** ein Limit gerissen wird: `MAX_LOSS_USD = 25`,
 `MAX_GAIN_USD = 25`, `MAX_LOSS_PERCENT = 5`, `MAX_GAIN_PERCENT = 5`. Ob das
@@ -1313,3 +1324,110 @@ sie sind Handwerkzeug und kein Automat): `kraken/spot_stops.py`,
 `kraken/waisen_stops.py`, `kraken/margin_stops.py`, `mosaic/stops_nachziehen.py`
 sowie das MCP-Werkzeug `kraken_order_mit_beleg` (verlangt einen Beleg, den nur
 eine Spur ausstellt).
+
+## Moon-Dev-Repo: Bauform und Einbindung (aus den READMEs, 13.10.2026)
+
+**Anlass:** Die GUI `moongui.py` zeigt alle README-Dateien des Repos im
+README-Tab (`_find_readmes()`, os.walk mit Pruning von `.venv`, `.git`,
+`moongui_logs`, `node_modules`, `__pycache__`, `temp_data`, `responses`; alles,
+was mit `README` beginnt). Ihre Inhalte sind die Bauform des Fremd-Repos — sie
+gehoeren ins Handelswissen, weil sie beschreiben, wie die Agenten, Strategien
+und Modelle strukturiert sind.
+
+**Neun README-Dateien** gefunden:
+
+| Datei | Inhalt |
+|---|---|
+| `README.md` | Uebersicht der 47 Agenten, Vision, Disclaimers, Quick Start |
+| `README_FIXES.md` | GUI-Fixes: BirdEye API Key, `startup.py`, `validate_env.py`, `unicode_fix.py` |
+| `docs/README.md` | Alpha-Status, Verweis auf Video-Doku |
+| `src/agents/README.md` | Build-Liste der Agenten (copy trading, sentiment, rbi, sniper, liquidation, OI, funding, coingecko, listing arb) |
+| `src/models/README.md` | Model Factory: API Keys, Modelle (OpenAI, Claude, Gemini, Groq, DeepSeek, lokales Ollama) |
+| `src/strategies/README.md` | Strategie-Struktur: `BaseStrategy`, `generate_signals()`, Signal-Format |
+| `src/strategies/custom/README.md` | Custom Strategien: `private_`/`secret_`/`dev_` Prefixe fuer gitignore |
+| `src/data/rbi/memory/sessions/README.md` | Session Memory Storage (Claude-Flow/SPARC) |
+| `src/data/rbi/memory/agents/README.md` | Agent Memory Storage (Claude-Flow/SPARC) |
+
+### Agenten-Uebersicht (47 Agenten)
+
+Das Repo stellt 47 Agenten bereit, gruppiert nach Zweck:
+
+- **Handels-Agenten:** `trading_agent`, `strategy_agent`, `risk_agent`,
+  `copy_agent`, `whale_agent`, `sentiment_agent`, `listingarb_agent`,
+  `funding_agent`, `liquidation_agent`, `chartanalysis_agent`,
+  `fundingarb_agent`, `rbi_agent`, `new_or_top_agent`
+- **Solana-Agenten:** `sniper_agent`, `tx_agent`, `solana_agent`,
+  `million_agent`
+- **Content-Agenten:** `tweet_agent`, `video_agent`, `clips_agent`,
+  `tiktok_agent`, `compliance_agent`, `chat_agent`
+- **Sonstige:** `focus_agent`, `phone_agent`, `research_agent`
+
+**Haus-Einbindung:** Vier davon laufen als Papier-Spuren (`moondev_funding`,
+`moondev_listingarb`, `moondev_topmovers`, `moondev_marktlage`), siehe
+[[Moon-Dev-Agenten]]. Die anderen sind nach Blockern gruppiert
+(MoonDev-API-Schluessel, LLM-Schluessel, Solana-RPC/Wallet, kein
+Handelsbezug).
+
+### Strategie-Struktur
+
+Alle Strategien erben von `BaseStrategy` und implementieren
+`generate_signals()` mit dem Format:
+
+```python
+{
+    'token': str,          # Token-Adresse
+    'signal': float,       # Signalstaerke (0-1)
+    'direction': str,      # 'BUY', 'SELL', oder 'NEUTRAL'
+    'metadata': dict       # optionale strategie-spezifische Daten
+}
+```
+
+Signale werden vom LLM bewertet, bevor sie ausgefuehrt werden. Die
+Positionsgroesse haengt von der Signalstaerke ab.
+
+**Private Strategien:** Dateinamen mit `private_`, `secret_` oder `dev_`
+Prefix werden von git ignoriert (`.gitignore`).
+
+### Model Factory
+
+`src/models/model_factory.py` stellt eine einheitliche Schnittstelle fuer
+mehrere Provider bereit:
+
+- **Cloud:** OpenAI (`gpt-5`, `gpt-4o`, `o1`, `o3-mini`), Anthropic
+  (`claude-3-opus/sonnet/haiku`), Gemini (`gemini-2.0-flash`,
+  `gemini-1.5-flash/pro`), Groq (`mixtral-8x7b`, `llama-3.3-70b`,
+  `gemma2-9b`), DeepSeek (`deepseek-chat`, `deepseek-reasoner`,
+  `deepseek-r1`)
+- **Lokal (Ollama):** `deepseek-r1` (7B, Reasoning), `gemma:2b` (schnell),
+  `llama3.2` (ausgewogen) — kostenlos, privat, keine API-Kosten
+
+**Haus-Standard:** Lokales Ollama (`qwen35-8k:latest`), siehe
+[[Moon-Dev-Agenten]].
+
+### Disclaimers
+
+Das Repo ist ein **experimentelles Forschungsprojekt**, kein Handelssystem:
+
+- Keine Garantie fuer Profitabilitaet
+- Keine Plug-and-play-Loesungen
+- Keine Handelsstrategien im Repo
+- Erfolg haengt von der eigenen Strategie, dem Risikomanagement und der
+  Validierung ab
+- Kein KI-Agent kann profitables Handeln garantieren
+- Vergangene Ergebnisse sind keine Garantie fuer zukuenftige
+
+### GUI-Betrieb
+
+Die GUI (`moongui.py`) wird ueber `startup.py` gestartet, der Pre-flight-Checks
+macht:
+
+1. Python-Version (3.10+)
+2. Umgebungsvariablen (`validate_env.py`)
+3. Ollama-Verbindung
+4. Ordner-Struktur (`src/data`, `src/strategies`, `logs`, `temp_data`)
+5. Module (`dotenv`, `termcolor`, `requests`, `pandas`, `anthropic`, `openai`,
+   `solders`)
+
+**Fixes (README_FIXES.md):** `BIRDEYE_API_KEY` fuer `copybot_agent`,
+`unicode_fix.py` fuer Windows-Emoji-Crash, `ollama_health.py` fuer
+Ollama-Recovery, `validate_env.py` fuer Status-Anzeige.

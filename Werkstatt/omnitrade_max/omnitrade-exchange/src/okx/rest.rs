@@ -1,0 +1,472 @@
+//! OKX REST client (spot, `tdMode=cash`).
+//!
+//! `Network::Testnet` means OKX **demo trading**: requests carry
+//! `x-simulated-trading: 1` and need demo API keys. OKX additionally requires an API
+//! passphrase, which `ApiCredentials` has no field for, so it is passed separately.
+
+use std::time::Duration;
+
+use omnitrade_core::{Order, OrderStatus, OrderType, Side, TimeInForce};
+use reqwest::Method;
+use serde_json::{json, Value};
+
+use crate::credentials::{ApiCredentials, Network};
+use crate::error::ExchangeError;
+use crate::okx::signing::{iso_timestamp, OkxSigner};
+use crate::trading::{Account, AccountBalance, ExchangeTrading, OrderRequest};
+
+const BASE_URL: &str = "https://www.okx.com";
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+/// OKX error code for "order does not exist".
+const ORDER_NOT_FOUND: &str = "51603";
+
+/// OKX REST client.
+pub struct OkxRestClient {
+    http: reqwest::Client,
+    base_url: String,
+    credentials: ApiCredentials,
+    passphrase: String,
+}
+
+impl OkxRestClient {
+    /// Creates a client.
+    ///
+    /// # Errors
+    /// `InvalidCredentials` for empty key, secret or passphrase, `ConnectionFailed` if the
+    /// HTTP client cannot be built.
+    pub fn new(credentials: ApiCredentials, passphrase: String) -> Result<Self, ExchangeError> {
+        credentials
+            .validate()
+            .map_err(ExchangeError::InvalidCredentials)?;
+        if passphrase.is_empty() {
+            return Err(ExchangeError::InvalidCredentials(
+                "API passphrase cannot be empty".to_string(),
+            ));
+        }
+        let http = reqwest::Client::builder()
+            .timeout(REQUEST_TIMEOUT)
+            .build()
+            .map_err(|e| ExchangeError::ConnectionFailed {
+                url: BASE_URL.to_string(),
+                reason: e.to_string(),
+            })?;
+        Ok(Self {
+            http,
+            base_url: BASE_URL.to_string(),
+            credentials,
+            passphrase,
+        })
+    }
+
+    /// Uses another official OKX API domain, e.g. `https://eea.okx.com` (EEA accounts) or
+    /// `https://us.okx.com`. Keys exist only on the domain of their account region.
+    #[must_use]
+    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = base_url.into().trim_end_matches('/').to_string();
+        self
+    }
+
+    fn is_demo(&self) -> bool {
+        self.credentials.network == Network::Testnet
+    }
+
+    /// Sends a signed request and returns the validated `data` array of the envelope.
+    async fn call(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&Value>,
+    ) -> Result<Vec<Value>, ExchangeError> {
+        let body_text = body.map(Value::to_string).unwrap_or_default();
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let timestamp = iso_timestamp(now_ms);
+        let sign = OkxSigner::sign(
+            &timestamp,
+            method.as_str(),
+            path,
+            &body_text,
+            &self.credentials.secret,
+        )?;
+        let url = format!("{}{path}", self.base_url);
+        let conn_err = |e: reqwest::Error| ExchangeError::ConnectionFailed {
+            url: url.clone(),
+            reason: e.to_string(),
+        };
+        let mut request = self
+            .http
+            .request(method, &url)
+            .header("OK-ACCESS-KEY", &self.credentials.key)
+            .header("OK-ACCESS-SIGN", sign)
+            .header("OK-ACCESS-TIMESTAMP", timestamp)
+            .header("OK-ACCESS-PASSPHRASE", &self.passphrase)
+            .header("Content-Type", "application/json");
+        if self.is_demo() {
+            request = request.header("x-simulated-trading", "1");
+        }
+        if body.is_some() {
+            request = request.body(body_text);
+        }
+        let response = request.send().await.map_err(conn_err)?;
+        let text = response.text().await.map_err(conn_err)?;
+        parse_envelope(&text)
+    }
+}
+
+/// Validates the `{"code","msg","data"}` envelope. A non-zero `code` or a per-item
+/// `sCode != "0"` becomes an error; the code is kept in the message.
+fn parse_envelope(text: &str) -> Result<Vec<Value>, ExchangeError> {
+    let value: Value =
+        serde_json::from_str(text).map_err(|e| ExchangeError::MessageParseFailed {
+            raw: text.chars().take(200).collect(),
+            reason: e.to_string(),
+        })?;
+    let code = value.get("code").and_then(Value::as_str).unwrap_or("");
+    let data = value
+        .get("data")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    if code != "0" {
+        let detail = data
+            .first()
+            .and_then(|d| d.get("sMsg"))
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+            .unwrap_or("");
+        let msg = value.get("msg").and_then(Value::as_str).unwrap_or("");
+        return Err(ExchangeError::ApiError(
+            format!("{code}: {msg} {detail}").trim().to_string(),
+        ));
+    }
+    if let Some(item) = data.first() {
+        let s_code = item.get("sCode").and_then(Value::as_str).unwrap_or("0");
+        if s_code != "0" {
+            let s_msg = item.get("sMsg").and_then(Value::as_str).unwrap_or("");
+            return Err(ExchangeError::ApiError(format!("{s_code}: {s_msg}")));
+        }
+    }
+    Ok(data)
+}
+
+fn str_f64(v: &Value, key: &str) -> f64 {
+    v.get(key)
+        .and_then(Value::as_str)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0)
+}
+
+fn str_u64(v: &Value, key: &str) -> u64 {
+    v.get(key)
+        .and_then(Value::as_str)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0)
+}
+
+/// Maps an OKX order object (from `orders-pending` or `order`) to an [`Order`].
+fn parse_order(v: &Value) -> Option<Order> {
+    let id = v.get("ordId")?.as_str()?.parse::<u64>().ok()?;
+    let created = str_u64(v, "cTime");
+    let updated = str_u64(v, "uTime");
+    Some(Order {
+        id,
+        symbol: v.get("instId")?.as_str()?.to_string(),
+        side: if v.get("side")?.as_str()? == "buy" {
+            Side::Buy
+        } else {
+            Side::Sell
+        },
+        order_type: match v.get("ordType").and_then(Value::as_str) {
+            Some("market") => OrderType::Market,
+            _ => OrderType::Limit,
+        },
+        time_in_force: TimeInForce::GTC,
+        price: str_f64(v, "px"),
+        stop_price: 0.0,
+        quantity: str_f64(v, "sz"),
+        filled_quantity: str_f64(v, "accFillSz"),
+        status: match v.get("state").and_then(Value::as_str) {
+            Some("partially_filled") => OrderStatus::PartiallyFilled,
+            Some("filled") => OrderStatus::Filled,
+            Some("canceled") | Some("mmp_canceled") => OrderStatus::Cancelled,
+            _ => OrderStatus::New,
+        },
+        created_at_ms: created,
+        updated_at_ms: if updated > 0 { updated } else { created },
+        trailing_highest_price: None,
+    })
+}
+
+fn parse_balance(data: &[Value]) -> Account {
+    let mut balances = std::collections::HashMap::new();
+    for detail in data
+        .iter()
+        .filter_map(|d| d.get("details").and_then(Value::as_array))
+        .flatten()
+    {
+        if let Some(ccy) = detail.get("ccy").and_then(Value::as_str) {
+            balances.insert(
+                ccy.to_string(),
+                AccountBalance {
+                    free: str_f64(detail, "availBal"),
+                    locked: str_f64(detail, "frozenBal"),
+                },
+            );
+        }
+    }
+    Account { balances }
+}
+
+#[async_trait::async_trait]
+impl ExchangeTrading for OkxRestClient {
+    async fn place_order(&self, req: &OrderRequest) -> Result<Order, ExchangeError> {
+        if req.quantity <= 0.0 {
+            return Err(ExchangeError::InvalidRequest(
+                "Quantity must be positive".to_string(),
+            ));
+        }
+        let (ord_type, px) = match (&req.order_type, req.price) {
+            (OrderType::Market, _) => ("market", None),
+            (OrderType::Limit, Some(p)) if p > 0.0 => ("limit", Some(p)),
+            (OrderType::Limit, _) => {
+                return Err(ExchangeError::InvalidRequest(
+                    "Limit orders require price".to_string(),
+                ))
+            }
+            (other, _) => {
+                return Err(ExchangeError::InvalidRequest(format!(
+                    "OKX: Ordertyp {other:?} wird nicht unterstützt"
+                )))
+            }
+        };
+        let mut body = json!({
+            "instId": req.symbol,
+            "tdMode": "cash",
+            "side": if req.side == Side::Buy { "buy" } else { "sell" },
+            "ordType": ord_type,
+            "sz": req.quantity.to_string(),
+        });
+        if let Some(price) = px {
+            body["px"] = json!(price.to_string());
+        } else {
+            // Without this, a market buy's size would be read as quote currency.
+            body["tgtCcy"] = json!("base_ccy");
+        }
+        let data = self
+            .call(Method::POST, "/api/v5/trade/order", Some(&body))
+            .await?;
+        let ord_id = data
+            .first()
+            .and_then(|d| d.get("ordId"))
+            .and_then(Value::as_str)
+            .and_then(|s| s.parse::<u64>().ok())
+            .ok_or_else(|| ExchangeError::ApiError("Antwort ohne verwertbare ordId".to_string()))?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        Ok(Order {
+            id: ord_id,
+            symbol: req.symbol.clone(),
+            side: req.side,
+            order_type: req.order_type.clone(),
+            time_in_force: TimeInForce::GTC,
+            price: px.unwrap_or(0.0),
+            stop_price: 0.0,
+            quantity: req.quantity,
+            filled_quantity: 0.0,
+            status: OrderStatus::New,
+            created_at_ms: now,
+            updated_at_ms: now,
+            trailing_highest_price: None,
+        })
+    }
+
+    async fn cancel_order(&self, order_id: &str, symbol: &str) -> Result<(), ExchangeError> {
+        let body = json!({"instId": symbol, "ordId": order_id});
+        self.call(Method::POST, "/api/v5/trade/cancel-order", Some(&body))
+            .await
+            .map(|_| ())
+    }
+
+    async fn get_open_orders(&self) -> Result<Vec<Order>, ExchangeError> {
+        let data = self
+            .call(
+                Method::GET,
+                "/api/v5/trade/orders-pending?instType=SPOT",
+                None,
+            )
+            .await?;
+        Ok(data.iter().filter_map(parse_order).collect())
+    }
+
+    async fn get_balance(&self) -> Result<Account, ExchangeError> {
+        let data = self
+            .call(Method::GET, "/api/v5/account/balance", None)
+            .await?;
+        Ok(parse_balance(&data))
+    }
+
+    async fn get_order(
+        &self,
+        order_id: &str,
+        symbol: &str,
+    ) -> Result<Option<Order>, ExchangeError> {
+        let path = format!(
+            "/api/v5/trade/order?instId={}&ordId={}",
+            urlencoding::encode(symbol),
+            urlencoding::encode(order_id)
+        );
+        match self.call(Method::GET, &path, None).await {
+            Ok(data) => Ok(data.first().and_then(parse_order)),
+            Err(ExchangeError::ApiError(msg)) if msg.starts_with(ORDER_NOT_FOUND) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn client(network: Network) -> Result<OkxRestClient, ExchangeError> {
+        OkxRestClient::new(
+            ApiCredentials::new("key".into(), "secret".into(), network),
+            "pass".into(),
+        )
+    }
+
+    #[test]
+    fn constructor_validates_inputs_and_demo_flag() {
+        assert!(client(Network::Testnet).expect("demo").is_demo());
+        assert!(!client(Network::Mainnet).expect("prod").is_demo());
+        let no_pass = OkxRestClient::new(
+            ApiCredentials::new("k".into(), "s".into(), Network::Testnet),
+            String::new(),
+        );
+        assert!(matches!(no_pass, Err(ExchangeError::InvalidCredentials(_))));
+        let no_key = OkxRestClient::new(
+            ApiCredentials::new(String::new(), "s".into(), Network::Testnet),
+            "p".into(),
+        );
+        assert!(matches!(no_key, Err(ExchangeError::InvalidCredentials(_))));
+    }
+
+    #[test]
+    fn base_url_can_be_switched_and_is_normalized() {
+        let c = client(Network::Mainnet)
+            .expect("client")
+            .with_base_url("https://eea.okx.com/");
+        assert_eq!(c.base_url, "https://eea.okx.com");
+    }
+
+    #[test]
+    fn envelope_ok_and_errors() {
+        // Act & Assert
+        let data = parse_envelope(r#"{"code":"0","msg":"","data":[{"ordId":"1","sCode":"0"}]}"#)
+            .expect("ok");
+        assert_eq!(data.len(), 1);
+
+        match parse_envelope(r#"{"code":"50111","msg":"Invalid OK-ACCESS-KEY","data":[]}"#) {
+            Err(ExchangeError::ApiError(m)) => assert!(m.starts_with("50111")),
+            other => panic!("expected ApiError, got {other:?}"),
+        }
+        match parse_envelope(
+            r#"{"code":"1","msg":"All operations failed","data":[{"sCode":"51008","sMsg":"insufficient balance"}]}"#,
+        ) {
+            Err(ExchangeError::ApiError(m)) => assert!(m.contains("insufficient balance")),
+            other => panic!("expected ApiError, got {other:?}"),
+        }
+        match parse_envelope(r#"{"code":"0","msg":"","data":[{"sCode":"51000","sMsg":"bad"}]}"#) {
+            Err(ExchangeError::ApiError(m)) => assert!(m.starts_with("51000")),
+            other => panic!("expected ApiError, got {other:?}"),
+        }
+        assert!(parse_envelope("kein json").is_err());
+    }
+
+    #[test]
+    fn maps_pending_order() {
+        // Arrange
+        let v: Value = serde_json::from_str(
+            r#"{"instId":"BTC-USDT","ordId":"312269865356374016","side":"buy","ordType":"limit","px":"50000.5","sz":"0.01","accFillSz":"0.004","state":"partially_filled","cTime":"1700000000000","uTime":"1700000001000"}"#,
+        )
+        .expect("json");
+
+        // Act
+        let o = parse_order(&v).expect("order");
+
+        // Assert
+        assert_eq!(o.id, 312_269_865_356_374_016);
+        assert_eq!((o.side, o.order_type), (Side::Buy, OrderType::Limit));
+        assert_eq!(
+            (o.price, o.quantity, o.filled_quantity),
+            (50000.5, 0.01, 0.004)
+        );
+        assert_eq!(o.status, OrderStatus::PartiallyFilled);
+        assert_eq!(
+            (o.created_at_ms, o.updated_at_ms),
+            (1_700_000_000_000, 1_700_000_001_000)
+        );
+    }
+
+    #[test]
+    fn maps_states_and_rejects_bad_ids() {
+        let state = |s: &str| {
+            let v: Value = serde_json::from_str(&format!(
+                r#"{{"instId":"BTC-USDT","ordId":"7","side":"sell","ordType":"market","px":"","sz":"1","accFillSz":"1","state":"{s}"}}"#
+            ))
+            .expect("json");
+            parse_order(&v).expect("order").status
+        };
+        assert_eq!(state("filled"), OrderStatus::Filled);
+        assert_eq!(state("canceled"), OrderStatus::Cancelled);
+        assert_eq!(state("live"), OrderStatus::New);
+        let bad: Value =
+            serde_json::from_str(r#"{"instId":"X","ordId":"abc","side":"buy"}"#).expect("json");
+        assert!(parse_order(&bad).is_none());
+    }
+
+    #[test]
+    fn maps_balances() {
+        // Arrange
+        let data: Vec<Value> = serde_json::from_str(
+            r#"[{"details":[{"ccy":"USDT","availBal":"100.5","frozenBal":"4.5"},{"ccy":"BTC","availBal":"","frozenBal":"0"}]}]"#,
+        )
+        .expect("json");
+
+        // Act
+        let account = parse_balance(&data);
+
+        // Assert
+        assert_eq!(account.balances["USDT"].free, 100.5);
+        assert_eq!(account.balances["USDT"].total(), 105.0);
+        assert_eq!(account.balances["BTC"].total(), 0.0);
+    }
+
+    #[tokio::test]
+    async fn place_order_validates_before_any_request() {
+        // Arrange
+        let c = client(Network::Testnet).expect("client");
+
+        // Act & Assert
+        let zero = OrderRequest::market("BTC-USDT".into(), Side::Buy, 0.0);
+        assert!(matches!(
+            c.place_order(&zero).await,
+            Err(ExchangeError::InvalidRequest(_))
+        ));
+        let mut no_price = OrderRequest::limit("BTC-USDT".into(), Side::Buy, 1.0, 1.0);
+        no_price.price = None;
+        assert!(matches!(
+            c.place_order(&no_price).await,
+            Err(ExchangeError::InvalidRequest(_))
+        ));
+        let mut stop = OrderRequest::market("BTC-USDT".into(), Side::Buy, 1.0);
+        stop.order_type = OrderType::StopMarket;
+        assert!(matches!(
+            c.place_order(&stop).await,
+            Err(ExchangeError::InvalidRequest(_))
+        ));
+    }
+}

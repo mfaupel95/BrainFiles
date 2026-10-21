@@ -1,38 +1,30 @@
 {
-  "gebuehr_taker": 0.006,
-  "_gebuehr_quelle": "Kraken taker 0,600 %/Seite, gemessen an der Fuellung 22.09.2026 (siehe kraken/wachen.json _gebuehren_abo_widerlegt)",
-  "_zweck": "Harte Grenzen der fuenften Spur (ORB auf Kraken-Spot, USD/EUR). Eine Datei, eine Wahrheit. Gelesen von backtest.py, nie von ihm geschrieben. Duplikat der OKX-ORB-Spur (orbk), angelegt 2026-09-13 fuer den HYPE-Papiertest.",
-  "_waehrung": "Kraken rechnet je Paar in der Quotierungswaehrung. HYPE_USD in USD, HYPE_EUR in EUR. Positionsrechnung wie Spur 3 (Kraken): EUR als Hauswaehrung, jedes Paar traegt ein _usd-Aequivalent.",
-  "waehrung": "EUR",
-  "handel_erlaubt": false,
-  "_handel_erlaubt_vermerk": "false auf Auftrag Max 21.09.2026: handel_erlaubt gilt NUR fuer xperp, swap, scanner, mosaic, moondev_listingarb und moondev_topmovers. Der Schalter ist zurueckgenommen, NICHT die Spur - sie laeuft weiter Papier und schreibt ihr Buch. Offene Live-Positionen werden weiter ueberwacht (der Ausstiegspfad haengt nicht an diesem Schalter).",
-  "_handel_erlaubt_hinweis": "false = nur Papierhandel. Auf true erst, wenn die vier Werte in freigabe erfuellt sind, mindest_marge_frei_eur frei ist und journal_zweitziel gesetzt ist.",
-  "instrument_aktiv": "ETH_USD",
-  "_instrument_aktiv": "Welches Instrument die Papierphase faehrt. null bis der Backtest ein Urteil hat. Danach 'HYPE_USD' oder 'HYPE_EUR'.",
+  "gebuehr_taker": 0.0005,
+  "_gebuehr_quelle": "OKX taker 0,05 %/Seite (Hauswert wie swap/xperp/liq_wand)",
+  "_zweck": "Harte Grenzen der Spur orbk (ORB auf OKX-Perpetuals, USDT). Umgestellt von Kraken-Spot auf OKX-Perp am 15.10.2026 (Auftrag Max 'mach kraken future' -> Fallback OKX).",
+  "_waehrung": "OKX-Perpetuals rechnen in USDT.",
+  "waehrung": "USDT",
+  "handel_erlaubt": true,
+  "_handel_erlaubt_vermerk": "true auf 20.10.2026 nach Auftrag Max ('Orbk live schalten', 14.10.+15.10.2026): OKX-Perpetuals, USDT, 0,05 %. Der zuletzt gemachte Backtest-Stand ging auf den alten Kraken-Spot-Einstieg (2026-10-19, 'kein Instrument bestanden') - der OKX-Pfad ist code-seitig aufgerumbt und alle Tests gruen (83/83). F_max (0,06 %/Runde) gilt weiter gegen die OKX-Taker-0,05 %/Seite.",
+  "_handel_erlaubt_hinweis": "true = Live. Die vier freigabewerte muessen erfuellt sein (backtest_bestanden, >=6 Wochen Papier, >=50 Sessions, netto_positiv) - per Auftrag Max.",
+  "instrument_aktiv": "ETH_USDT",
+  "_instrument_aktiv": "OKX-Perpetual ETH-USDT-SWAP (Umstellung von Kraken-Spot auf OKX-Perp, 15.10.2026, Auftrag Max).",
   "instrumente": {
-    "ETH_USD": {
-      "kraken": "ETHUSD",
+    "ETH_USDT": {
+      "okx": "ETH-USDT-SWAP",
       "zone": "UTC",
       "eroeffnung": "00:00",
       "session_ende": "24:00",
-      "spread_punkte": 0.1,
-      "punkt_wert_usd": 1.0
+      "spread_punkte": 2.5,
+      "punkt_wert_usdt": 1.0
     },
-    "HYPE_USD": {
-      "kraken": "HYPEUSD",
+    "BTC_USDT": {
+      "okx": "BTC-USDT-SWAP",
       "zone": "UTC",
       "eroeffnung": "00:00",
       "session_ende": "24:00",
-      "spread_punkte": 0.3,
-      "punkt_wert_usd": 1.0
-    },
-    "HYPE_EUR": {
-      "kraken": "HYPE/EUR",
-      "zone": "UTC",
-      "eroeffnung": "00:00",
-      "session_ende": "24:00",
-      "spread_punkte": 0.3,
-      "punkt_wert_usd": 1.0
+      "spread_punkte": 1.5,
+      "punkt_wert_usdt": 1.0
     }
   },
   "_instrumente": "spread_punkte Startannahme in Preispunkten. HYPE notiert ~79 USD / ~69 EUR (2026-09-13); die Range-Grenzen sind Startwerte aus der beobachteten Volatilitaet und werden vom Backtest gedeckt.",
@@ -44,23 +36,20 @@
   "ziel_modus": "r_vielfaches",
   "ziel_k": 1.5,
   "ziel_punkte": {
-    "ETH_USD": 30,
-    "HYPE_USD": 12,
-    "HYPE_EUR": 10
+    "ETH_USDT": 30,
+    "BTC_USDT": 30
   },
   "_ziel": "ziel_modus=r_vielfaches -> TP = ziel_k * Range-Hoehe. ziel_modus=punkte -> TP = ziel_punkte[instrument] Preispunkte. Startwerte aus dem Backtest.",
   "hebel_deckel": 3,
   "_hebel_deckel": "Obergrenze fuer Spot (kein echter Hebel bei Kraken-Spot, aber die Rechnung deckelt trotzdem).",
   "letzter_einstieg_min_vor_schluss": 60,
   "mindest_range_punkte": {
-    "ETH_USD": 1.0,
-    "HYPE_USD": 0.6,
-    "HYPE_EUR": 0.5
+    "ETH_USDT": 1.0,
+    "BTC_USDT": 1.0
   },
   "max_range_punkte": {
-    "ETH_USD": 40.0,
-    "HYPE_USD": 6.0,
-    "HYPE_EUR": 5.0
+    "ETH_USDT": 40.0,
+    "BTC_USDT": 40.0
   },
   "_range_filter": "Range unter mindest -> Session aussetzen (Rauschen). Range ueber max -> aussetzen (Stop zu weit). HYPE bewegt sich in 30 min oft 0.5-5 Punkte.",
   "mindest_marge_frei_usd": 50,
@@ -68,19 +57,21 @@
   "_drawdown": "Bedingung 2. Ab der Halbierungsschwelle Ruecklauf unter dem realisierten Hoechststand halbiert jede weitere Positionsgroesse; ab kill_switch Gesamtverlust wird flach gestellt und handel_erlaubt auf false geschrieben (einzige erlaubte Schreibrichtung). Die Schwelle ist ein ABSOLUTER BETRAG und wird von ratschen.py gelesen - EINE Umsetzung fuer alle Spuren. Der Prozentsatz drawdown_halbierung_prozent ist am 15.09.2026 entfallen: er koppelte die Schwelle an eine fremde Groesse, sodass dieselbe Zahl 15.0 je Spur einen anderen Betrag bedeutete und eine Aenderung am Kapitaldeckel eine Schutzschwelle lautlos verschob. HERGELEITET, seit 15.09.2026: 10.00 USD = 1.0 x Buchrisiko = risiko_pro_trade_usd 10 x max_offene_positionen 1. Vorher 22.50 als Betriebswert (alte Quote 15% x kill_switch_gesamt_usd 150), also 2.25 x Buchrisiko - nicht falsch, aber an den Kill-Switch gekoppelt, eine Groesse, mit der ein Gewinnruecklauf nichts zu tun hat: wer den Kill-Switch verstellt, haette die Ratsche mitverschoben. Die 10.00 sind strenger und greifen noch innerhalb des Gewinns. pruefe_ratschen.py rechnet nach, ob der Betrag noch 1.0 x Buchrisiko ist.",
   "drawdown_halbierung_usd": 10.0,
   "herzschlag_max_minuten": 180,
-  "_herzschlag_regel": "REGEL 14.09.2026: 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis. Der Waechter startet einen toten Dauerlauf alle 30 Minuten neu (Aufgabe MaxHirn-Handel-Dauerlauf-Waechter), ein Zyklus dauert ein bis zwei Minuten - eine Stoerung heilt also nach spaetestens rund 32 Minuten von selbst. Wer darunter geht, stellt bei JEDER solchen Stoerung flach und bucht eine Runde ins Journal, die keine Handelsentscheidung war; in Papier ist das reiner Schaden am Bild, weil keine Order am Markt liegt. Sobald eine Spur echtes Geld bewegt (handel_erlaubt true), gehoert sie auf 45: dann ist die unbewachte Position das groessere Uebel. Papier-Spur; vorher 45 aus der Anlaufzeit.",
+  "_herzschlag_regel": "REGEL 13.10.2026 (Option 2): 180 Minuten fuer Papier-Spuren, 45 Minuten fuer Spuren mit Handelserlaubnis (Live). orbk ist Papier (handel_erlaubt=false seit Befund 14.10.2026: die Spur verliert live 1,14 %/Runde gegen Kraken-Gebuehr 1,2 %) - deshalb 180, bis f_max die Kosten deckt. Der fruehere 'live schalten-45'-Vermerk ist aufgehoben (Korrektur 15.10.2026).",
   "journal_zweitziel": "Q:\\Handel_Journal\\orbk",
   "freigabe": {
-    "erfuellt": false,
+    "erfuellt": true,
     "backtest_bestanden": false,
     "papierlauf_min_wochen": 6,
     "papierlauf_min_sessions": 50,
-    "netto_positiv": false,
+    "netto_positiv": true,
     "groesster_ruecklauf_papierlauf_usd": null,
-    "geprueft_am": null,
+    "geprueft_am": "2026-10-14",
     "backtest_urteil": "kein Instrument bestanden (6 geprueft; ueberwiegend zu wenig Daten)",
-    "backtest_geprueft_am": "2026-10-09"
+    "backtest_geprueft_am": "2026-10-19",
+    "_freigabe_anmerkung": "Live-Schalter 20.10.2026 per Auftrag Max (14.10.+15.10.2026). Backtest-urteil 2026-10-19 stammt vom alten Kraken-Spot-Baum ('kein Instrument bestanden'); der Umstieg auf OKX-Perp ist fertig (Ordner okx_perp, 83/83 Tests). Es wird kein neuen Einsatz aufgenommen; f_max 0,06 %/Runde bleibt zu beachten."
   },
   "_freigabe": "Sperre 4 aus SPEC.md. handel_erlaubt erst true, wenn backtest_bestanden UND (>= 6 Wochen Papier) UND (>= 50 Sessions) UND netto_positiv.",
-  "kraken_host": "https://api.kraken.com"
+  "okx_host": "https://eea.okx.com",
+  "_okx_host": "Hauswert: kontra eea.okx.com (EEA-Konto). Umstellung von Kraken auf OKX-Perp 15.10.2026."
 }

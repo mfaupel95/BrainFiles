@@ -316,3 +316,65 @@ class TrockenlaufSchutzTest(unittest.TestCase):
         lauf.zyklus()
         self.assertEqual(gerufen, [])
         self.assertTrue(any("Trockenlauf" in z for z in lauf.protokoll))
+
+
+class StartformTest(unittest.TestCase):
+    """Jeder Agent startet als Modul (-m src.agents.<name>) aus der Repo-Wurzel.
+
+    Ein Skriptpfad setzt sys.path[0] auf src/agents/ - dann scheitert jeder
+    "from src..."-Import (kraken_agent.py seit Fork-Commit 0cb95b7, 04.10.2026:
+    ModuleNotFoundError: No module named 'src', Neustart im Kreis).
+    """
+
+    def test_alle_agenten_starten_als_modul_aus_der_repo_wurzel(self):
+        m = lade_treiber()
+        for name, eintrag in m.AGENTEN.items():
+            cmd = eintrag["cmd"]
+            self.assertEqual(cmd[1], "-m", name)
+            self.assertTrue(cmd[2].startswith("src.agents."), name)
+            self.assertFalse(cmd[2].endswith(".py"), name)
+            self.assertEqual(eintrag["cwd"], str(m.REPO), name)
+
+
+class ProzesslisteKodierungTest(unittest.TestCase):
+    """Windows PowerShell 5 schreibt umgeleitet in der OEM-Codepage (cp850).
+    Python las cp1252 und brach an einem Umlaut ab (Byte 0x81 = cp850 'ue'):
+    stdout None, Prozessliste leer, Aufraeumen uebersprungen (11.10.2026)."""
+
+    def test_abfrage_erzwingt_utf8_auf_beiden_seiten(self):
+        m = lade_treiber()
+        gesehen = {}
+
+        class Ergebnis:
+            stdout = '[{"ProcessId": 1, "Name": "python.exe", "CommandLine": "C:/Müller/x.py"}]'
+
+        def lauf(cmd, **kw):
+            gesehen["cmd"], gesehen["kw"] = cmd, kw
+            return Ergebnis()
+
+        alt = m.subprocess.run
+        m.subprocess.run = lauf
+        try:
+            if m.os.name != "nt":
+                self.skipTest("nur Windows")
+            daten = m._prozesse()
+        finally:
+            m.subprocess.run = alt
+        self.assertIn("OutputEncoding", gesehen["cmd"][-1])
+        self.assertEqual(gesehen["kw"].get("encoding"), "utf-8")
+        self.assertEqual(gesehen["kw"].get("errors"), "replace")
+        self.assertEqual(daten[0]["CommandLine"], "C:/Müller/x.py")
+
+
+class UngepuffertTest(unittest.TestCase):
+    def test_agenten_laufen_ungepuffert(self):
+        # stdout geht in eine Datei: ohne das Flag puffert Python 8 KB, ein
+        # wortkarger Agent (kraken) schrieb so stundenlang keine Zeile.
+        quelle = TREIBER.read_text(encoding="utf-8")
+        self.assertIn('umgebung["PYTHONUNBUFFERED"] = "1"', quelle)
+
+
+class LokalStandardTest(unittest.TestCase):
+    def test_hausstandard_ist_qwen35_9b(self):
+        # Auftrag Max 11.10.2026: qwen35-8k ist nicht mehr installiert.
+        self.assertEqual(lade_treiber().LOKAL_STANDARD, "qwen3.5:9b")

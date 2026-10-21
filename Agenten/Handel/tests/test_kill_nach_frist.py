@@ -22,6 +22,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from contextlib import redirect_stdout
 
 HIER = os.path.dirname(os.path.abspath(__file__))
@@ -193,7 +194,8 @@ class OptOutTest(Basis):
 
     def test_wachen_der_live_faehigen_spuren_haben_den_opt_out(self):
         for sp in ("moondev_listingarb", "moondev_marktlage", "moondev_signalwelle",
-                   "moondev_topmovers", "omnitrade_futures"):
+                   "moondev_topmovers", "omnitrade_futures", "moondev_liquidation",
+                   "moondev_sentiment", "moondev_whale"):
             with open(os.path.join(HANDEL, sp, "wachen.json"), encoding="utf-8") as f:
                 self.assertIs(json.load(f).get("kill_wiederaufnahme"), False, sp)
 
@@ -336,6 +338,67 @@ class LivePositionTest(Basis):
                                    self.jp, self.zp, live=True, weg=weg)
         self.assertEqual(offen, 0)
         self.assertEqual(weg.verkauft, [(INST, 0.5)])
+
+
+class NotausstiegTest(Basis):
+    """Kill ohne Freigabekette (Auftrag Max 14.10.2026, Entscheidung 2)."""
+
+    def mit_weg(self, weg, ist_basis=True, schluessel=True):
+        weg.schluessel_vorhanden = lambda: schluessel
+        return (patch.object(sb, "orderweg", lambda w: weg),
+                patch.object(sb.risikostufe, "live_erlaubt", lambda: ist_basis))
+
+    def lauf(self, w_extra, weg, **kw):
+        self.w.update(w_extra)
+        self.schreibe_wachen()
+        self.zustand(positionen=[position(modus="live", stop_id="S1", menge=0.5)])
+        a, b = self.mit_weg(weg, **kw)
+        with a, b:
+            return self.zyklus()               # modus papier -> live=False
+
+    def test_schalter_an_verkauft_die_live_position(self):
+        weg = FakeWeg()
+        z = self.lauf({"kill_verkauf_ohne_freigabekette": True}, weg)
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(weg.verkauft, [(INST, 0.5)])
+        self.assertEqual(weg.storniert, [(INST, "S1")])
+
+    def test_schalter_aus_laesst_die_position_stehen(self):
+        weg = FakeWeg()
+        z = self.lauf({}, weg)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(weg.verkauft, [])
+
+    def test_stufe_verkauft_nie(self):
+        weg = FakeWeg()
+        z = self.lauf({"kill_verkauf_ohne_freigabekette": True}, weg, ist_basis=False)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(weg.verkauft, [])
+
+    def test_ohne_schluessel_verkauft_nichts(self):
+        weg = FakeWeg()
+        z = self.lauf({"kill_verkauf_ohne_freigabekette": True}, weg, schluessel=False)
+        self.assertEqual(len(z["positionen"]), 1)
+        self.assertEqual(weg.verkauft, [])
+
+    def test_papierposition_geht_nie_an_die_boerse(self):
+        weg = FakeWeg()
+        self.w.update(kill_verkauf_ohne_freigabekette=True)
+        self.schreibe_wachen()
+        self.zustand(positionen=[position(), position(modus="live", stop_id="S1", menge=0.5,
+                                                      pos_id="L", inst="ETH-USDT-SWAP")])
+        a, b = self.mit_weg(weg)
+        with a, b:
+            z = self.zyklus(kurse={INST: 97.0, "ETH-USDT-SWAP": 97.0})
+        self.assertEqual(z["positionen"], [])
+        self.assertEqual(weg.verkauft, [("ETH-USDT-SWAP", 0.5)])      # nur die Live-Position
+
+    def test_wachen_der_live_spuren_schalten_ein(self):
+        for sp in ("moondev_listingarb", "moondev_marktlage", "moondev_signalwelle",
+                   "moondev_topmovers", "omnitrade_futures", "moondev_liquidation",
+                   "moondev_sentiment", "moondev_whale"):
+            with open(os.path.join(HANDEL, sp, "wachen.json"), encoding="utf-8") as f:
+                self.assertIs(json.load(f).get("kill_verkauf_ohne_freigabekette"), True, sp)
 
 
 class LageTest(Basis):

@@ -68,7 +68,13 @@ AUSSCHLUSS = [
     # 04.10. mit 'erwartet Antwort', weil das HTML im Body das Wort 'Antwort'
     # irgendwo im Fussnote-Block mitbringt).
     ("automatisierte_benachrichtigung", r"(notification|benachrichtigung|do-not-reply|"
-                                       r"noreply|no-reply|nicht\s+antworten)"),
+                                       r"noreply|no-reply|nicht\s+antworten|@paypal\.(de|com))"),
+    # Kaltakquise: ein einseitiger Verkaufs-Pitch ohne Auftrag, weder
+    # Newsletter noch Werbung. Gemessen 10.10.: 'Mein neuer Skill fuer deine
+    # eigene Website' (julian@ki-automatisierungs-community.de) sammelte 2,5
+    # Punkte ("heute zehn Minuten" + Antwort-Floskel) und waere ueber die
+    # Schwelle gerutscht, weil keines der Werbe-Muster griff.
+    ("kaltakquise", r"(ki-automatisierungs-community|von null bis online|website mit ki)"),
 ]
 
 DRINGEND_TEXT = [
@@ -152,11 +158,23 @@ def einordnen(absender: str, betreff: str, koerper: str) -> dict:
     punkte = 0.0
     gruende = []
 
-    muster_antwort = [r"\b(frage|fragen)\b", r"\bantwort\w*\b", r"\brückfrage\b",
-                      r"\brueckfrage\b", r"\bwir\s+warten\b", r"\bbitte\s+(melden|"
-                      r"bestätigen|best[aä]tigen|unterschreiben|zahlen|bezahlen)",
-                      r"\bfehlt\s+(noch|ihre?)\b", r"\bnoch\s+nicht\s+(beantwortet|"
-                      r"gesendet|erledigt)\b"]
+    muster_antwort = [
+        # Deutsch (Stammtreppe)
+        r"\b(frage|fragen)\b", r"\bantwort\w*\b", r"\brückfrage\b",
+        r"\brueckfrage\b", r"\bwir\s+warten\b", r"\bbitte\s+(melden|"
+        r"bestätigen|best[aä]tigen|unterschreiben|zahlen|bezahlen)",
+        r"\bfehlt\s+(noch|ihre?)\b", r"\bnoch\s+nicht\s+(beantwortet|"
+        r"gesendet|erledigt)\b",
+        # Englisch: Fragen, die eine Antwort erwarten (Absender ist ein Mensch,
+        # kein no-reply - der kommt ueber AUSSCHLUSS). Gemessen 12.10.2026:
+        # "A quick question ... What were you hoping to ..." scorte 0,0, weil
+        # nur deutsche Muster griffen.
+        r"\b(quick\s+)?question\b", r"\basking\b", r"\bcurious\b",
+        r"\bwhat\s+(were|are|do|did|would|can|could|have)\s+you\b",
+        r"\b(your\s+)?(thoughts|input|feedback|opinion)\b",
+        r"\bwould\s+you\s+(be\s+)?(willing|able)\b",
+        r"\bhow\s+(do|would|can)\s+you\b",
+    ]
     if _trifft(inhalt, muster_antwort):
         punkte += 1.5
         gruende.append("erwartet Antwort")
@@ -331,7 +349,7 @@ def main() -> int:
     kandidaten.sort(key=lambda m: (-m["punkte"], m["datum"] or ""), reverse=False)
     gemeldet = [m for m in kandidaten if args.alle or m["punkte"] >= args.grenze]
 
-    if not args.trocken and kandidaten:
+    if not args.trocken and not args.fenster_erzwingen and kandidaten:
         merk_neu = {"zuletzt_lauf": jetzt.isoformat(),
                     "gelesen": len(kandidaten)}
         # Die UID ist der dauerhafte Anker: auch im Datum-Weg wird sie
@@ -349,12 +367,16 @@ def main() -> int:
     if not gemeldet:
         return 0   # leere Ausgabe = nichts senden
 
+    # --alle listet auch die Verworfenen; die Schwelle zaehlt nur, was sie
+    # wirklich passiert (sonst behauptet der Kopf, alles sei druber).
+    treffer = [m for m in gemeldet if m["punkte"] >= args.grenze]
     if bis is not None:
         anker = f"seit {bis.astimezone().strftime('%d.%m. %H:%M')}"
     else:
         anker = f"ab UID {zuletzt_uid}+"
     zeilen = [f"**Post {anker}: "
-              f"{len(gemeldet)} von {len(kandidaten)} neuen Mails ueber der Schwelle**", ""]
+              f"{len(treffer)} von {len(kandidaten)} neuen Mails ueber der Schwelle"
+              f"{'' if args.alle else f' ({len(gemeldet)} gelistet)'}**", ""]
     for m in gemeldet[:12]:
         zeilen.append(f"- **{m['betreff'][:90]}**")
         zeilen.append(f"  {m['von']} | {m['datum']} | Score {m['punkte']} "

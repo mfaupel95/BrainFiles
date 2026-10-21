@@ -253,6 +253,20 @@ gh repo edit --add-topic "machine-learning,python"
 gh repo edit --enable-auto-merge
 ```
 
+Changing visibility (`--visibility private|public`) requires the explicit
+`--accept-visibility-change-consequences` flag — `gh` refuses otherwise. For a
+fork, making it private detaches it from the public fork network (loses stars/
+watchers, no longer visible as a fork); say so when the user asks to privatize a
+fork, and confirm they want the fork itself private rather than a fresh private
+copy.
+
+`gh` (like `git`) honors `GITHUB_TOKEN`/`GH_TOKEN` env vars OVER its stored
+credentials. If a scope-restricted token sits in the environment, every
+`gh repo edit`/`create`/`push` fails with 403 even though `gh auth status`
+looks fine — run the command with `env -u GITHUB_TOKEN -u GH_TOKEN` to force
+the stored full-scope credential, then verify with `gh repo view --json
+visibility`.
+
 **With curl:**
 
 ```bash

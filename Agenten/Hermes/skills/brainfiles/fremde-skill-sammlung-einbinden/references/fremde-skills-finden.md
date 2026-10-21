@@ -8,7 +8,7 @@ ist ein Bericht nach Ort getrennt plus TASKS-Eintraege mit Entscheidungsfrage.
 ## Bekannte Baeume (byte-identisch = bereits uebernommen)
 
 - `C:\Users\faupe\Documents\BrainFiles\MaxHirn\skills` (Fundus)
-- `...\Werkstatt\Repos` (Bot-Klon-Flotte; `O:\Werkstatt` ist die Junction auf
+- `...\Werkstatt` (Bot-Klon-Flotte; `O:\Werkstatt` ist die Junction auf
   denselben Baum - EIN Ort, nicht doppelt scannen)
 - `...\Agenten\Hermes\skills` (geladene Hausbibliothek)
 - `...\MaxHirn\.claude\skills`, `...\MaxHirn\.agents\skills`,
@@ -44,7 +44,7 @@ ist ein Bericht nach Ort getrennt plus TASKS-Eintraege mit Entscheidungsfrage.
 |---|---|
 | O:\Werkstatt\<name> mit .git + plugins/ oder skills/ | ECHTER KANDIDAT (z. B. trailofbits-skills mit 83 SKILL.md) |
 | ~/.claude/skills, ~/.agents/skills | Claude-/Codex-Benutzerebene der Haus-Skills; bekannte Namen = Spiegel, neuer Name = Kandidat |
-| Documents\GitHub | parallele Klon-Flotte; gegen Werkstatt/Repos pruefen, dort Unbekannte = Kandidat |
+| Documents\GitHub | parallele Klon-Flotte; gegen Werkstatt pruefen, dort Unbekannte = Kandidat |
 | AppData\Local\copilot\marketplaces, AppData\Roaming\Code\agentPlugins, .codex\.tmp, .codex\plugins, .vscode\agent-plugins, .lmstudio | Install-/Cache-Kopien - Rauschen |
 | ~/.claude/plugins/marketplaces/temp_<ts> | Ueberbleibsel fehlgeschlagener Marketplace-Setups (wiederholte Klone desselben Repos) - Rauschen |
 | Elektron-App-Bundles (resources/), tests/-Verzeichnisse von Werkzeugen | tragen SKILL.md-Dateien, sind aber keine Sammlung (App-Bundle einer Desktop-App; Test-Fixtures eines Analyse-Tools) |

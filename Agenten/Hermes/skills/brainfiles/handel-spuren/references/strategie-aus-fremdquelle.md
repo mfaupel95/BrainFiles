@@ -97,12 +97,12 @@ Seiten trennen. Ein einzelnes positives Feld ist Zufall.
   nichts.
 - Fremd-Repos bringen oft die KURS DATEN mit, die im Haus fehlen: neun Jahre
   BTC-Stundenkerzen liegen unter
-  `Werkstatt/Repos/Harvard-Algorithmic-Trading-with-AI/backtest/data/`, dazu
+  `Werkstatt/Harvard-Algorithmic-Trading-with-AI/backtest/data/`, dazu
   BTC-6h, ETH-1d, SOL-1d.
 - Lauffaehige Fremd-Backtester mit fertigem venv: `Werkstatt/freqtrade` (ccxt,
   `user_data/data` muss erst gefuellt werden), `FinRL`, `RLTrader`,
   `intelligent-trading-bot`. talib + backtesting.py liegen im venv von
-  `Werkstatt/Repos/moon-dev-ai-agents`.
+  `Werkstatt/moon-dev-ai-agents`.
 - Ausgemusterte Skills liegen unter `Agenten/Hermes/skills/.archive/` und sind
   dort mit `read_file` lesbar - **ohne** sie in die Bibliothek zu laden. Nur
   zurueckholen, was wirklich laeuft (`hermes curator restore <name>`); ein Skill,
@@ -114,7 +114,7 @@ Seiten trennen. Ein einzelnes positives Feld ist Zufall.
 ## 7. Ideenbruchstelle statt Belegquelle: die moondev-RBI-Bibliothek
 
 Max will "die neuen Strategien aus moondev" nutzen. Dort liegt eine
-LLM-generierte Strategieflut (`Werkstatt/Repos/moon-dev-ai-agents/src/data/rbi/`),
+LLM-generierte Strategieflut (`Werkstatt/moon-dev-ai-agents/src/data/rbi/`),
 und sie ist ein STEINBRUCH, kein Bestand.
 
 - **Zaehlen, nicht ueberfliegen.** Der Bestand wird per `execute_code` gezaehlt

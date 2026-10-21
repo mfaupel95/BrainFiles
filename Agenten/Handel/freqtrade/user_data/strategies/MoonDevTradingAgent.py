@@ -5,7 +5,7 @@
 
 QUELLE
 ------
-`Werkstatt/Repos/moon-dev-ai-agents/src/agents/trading_agent.py`. Der Agent
+`Werkstatt/moon-dev-ai-agents/src/agents/trading_agent.py`. Der Agent
 legt dem Sprachmodell genau vier Dinge vor (TRADING_PROMPT, Zeilen 8-14):
 
   1. Price action relative to MA20 and MA40

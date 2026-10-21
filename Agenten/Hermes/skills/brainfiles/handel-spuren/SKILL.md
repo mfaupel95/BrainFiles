@@ -69,7 +69,15 @@ Faustregeln, wenn eine neue Spur entsteht:
 1. **Das Journal entscheidet ueber den Rechenweg, nicht der Ordnername.**
    `kauf`/`verkauf` mit `einsatz_usd` = `runden_indikator`
    (INDIKATOR_ oder BOT_SPUREN). `eroeffnen`/`schliessen` mit Betrag =
-   `runden_nautilus`. `inst`-Feld vorhanden = nautilus-Weg; `token`/`symbol`
+   `runden_nautilus`. **In der Liste zu stehen garantiert NICHT, dass das
+   Journalformat passt:** eine Spur in BOT_SPUREN, die `eroeffnen`/`schliessen`
+   schreibt, bekommt still 0 Runden in JEDER Auswertung, weil
+   `runden_indikator` nur `kauf`/`verkauf` paart (gemessen an omniquant:
+   37 EINSTIEG/20 AUSSTIEG-Zeilen, 0 Runden). Vor einer Auswertungs-Aussage
+   die AKTIONEN zaehlen, die die Spur wirklich schreibt
+   (`Counter(r.get('aktion') for r in zeilen)`), und gegen den Rechenweg
+   halten, dem sie zugeordnet ist - nicht nur pruefen, dass sie in der Liste
+   steht. `inst`-Feld vorhanden = nautilus-Weg; `token`/`symbol`
    statt `inst` = **kein** Weg in auswertung_alle (belegt: `runden_nautilus`
    an kopier ergab 107 Runden mit falscher Paarung, Einsteig PATE /
    Ausstieg leeres Symbol). Dann gehoert eine eigene `auswertung.py` in den
@@ -88,11 +96,25 @@ Audit in einem Lauf (etwa 30 Sekunden):
 ```python
 import sys; sys.path.insert(0, 'Agenten/Handel')
 import dauerlauf, auswertung_alle, pruefe_ratschen, befehle
-ausw = set(auswertung_alle.SPUREN)
+# ACHTUNG: auswertung_alle.SPUREN haelt NUR die ~10 Kern-Spuren; die
+# Indikator-/Bot-Spuren stehen in INDIKATOR_SPUREN und BOT_SPUREN. Nur
+# SPUREN zu lesen meldet ~35 Spuren falsch als 'ohne Auswertung'.
+ausw = (set(auswertung_alle.SPUREN) | set(auswertung_alle.INDIKATOR_SPUREN)
+        | set(auswertung_alle.BOT_SPUREN))
 rats = set(x[0] for x in pruefe_ratschen.SPUREN) | set(pruefe_ratschen.RUHT)
 print('ohne Auswertung:', sorted(set(dauerlauf.SPUREN) - ausw))
 print('ohne Ratschenpruefung:', sorted(set(dauerlauf.SPUREN) - rats))
 ```
+
+**Zuverlaessige Gegenprobe "welche Spur fehlt in der Auswertung":** die
+Wahrheit ist die AUSGABE von `auswertung_alle.py` (die `=== NAME ===`-Zeilen),
+nicht die Listen im Code. Spur-Ordner erkennt man an `wachen.json` (Tiefe 1),
+NICHT an `handeln.py` - kopier/spiegel haben kein `handeln.py` und waeren
+sonst uebersehen. Die Ausgabe schreibt Namen GROSS, die Ordner klein:
+case-insensitiv vergleichen (`{n.lower()}`). Spuren mit eigener
+`auswertung.py` (gitter, kopier, omniquant, spiegel) sind bewusst NICHT in
+auswertung_alle - sie zaehlen als erfasst. Ein `glob` mit `**` ueber
+Agenten/Handel laeuft in die venvs und timed out - nur Tiefe 1 scannen.
 
 `lage.HOLER` ist ein **Tupel von Funktionen** (`spur_<name>`, `spur_kopier_familie`
 fasst fuenf Spuren zusammen), `befehle.FAMILIE` ein `dict` Spur->Beschreibung -
@@ -416,6 +438,9 @@ Ausloeser → Referenz:
   (`auswertung_alle.STUFE` ist eine Modulvariable; ohne sie stehen in einer Zeile
   die Positionen der Variante und die Zahlen der Basis). Im `finally`
   zurueckstellen - ein Bericht darf den aufrufenden Prozess nicht umstellen.
+- **Stand-Check „Freigabe und Herzschlag" aller Spuren** (Tabelle, Regel-Glob,
+  Fenster-Zustand, Kill/Buchhaltung-Falle):
+  `references/laufzeit-audit-und-live-berechtigung.md`, Abschnitt „Stand-Check".
 - **„welche Spur handelt real", „nur die live und handel erlaubt Staende",
   `/live`: Orderfaehigkeit am CODE pruefen statt am Schalter (Haus-Funktionsnamen!),
   Buch je `modus` trennen, neuen Lese-Befehl in beide Bots verdrahten:
@@ -456,8 +481,9 @@ Ausloeser → Referenz:
    Werkzeug startet die Spur mit dem FALSCHEN Interpreter, sie stuerzt ab, und ein
    abgestuerzter Lauf liefert keine Zeile (dann je Spur den eigenen venv waehlen);
    die Sperre nennt ein Guthaben ohne BOERSE und
-  Waehrung, oder es ist schlicht kein Geld frei) oder **eine Grenze soll erhoeht werden**
-  („X auf 100"): `references/live-tor-und-einsatzgroesse.md` — ein Tor muss den
+  Waehrung, oder es ist schlicht kein Geld frei) oder **eine Grenze soll erhoeht
+  werden** („X auf 100") oder HERABGESETZT („Risiko zuerst"):
+  `references/live-tor-und-einsatzgroesse.md` — ein Tor muss den
   Zustand des Zweigs lesen, der SCHREIBT (sonst sperrt sich die Spur selbst),
   der Einsatz wird auf das freie Guthaben gedeckelt BEVOR das Freigabefenster
   ihn zeigt, und nach jeder Erhoehung wird nachgerechnet, welches Limit dann
@@ -612,6 +638,12 @@ Ausloeser → Referenz:
    BENANNT: was schon erledigt war, was anders geloest wird und warum, mit Test.
 2. **Sichern** (Stufe 1): `.bak-JJJJMMTT` für jede Datei, die angefasst wird —
    auch `wachen.json` und `zustand.json`, wenn ein Testlauf sie berühren kann.
+   **Wachen-Aenderungen belegt man mit `<spur>/handeln.py --vorschau`, nicht mit
+   `import`: nicht jede Spur hat ein `wachen_pruefung`-Modul (macd_mtf und die
+   Indikator-Spuren laden ihre Wachen selbst) - `import <spur>.wachen_pruefung`
+   bricht mit ModuleNotFoundError, obwohl die Spur gesund laeuft. Der Aufruf
+   aus dem Spurenordner ist genau der, den der Dauerlauf je Zyklus startet,
+   und `--vorschau` schreibt nichts ("Vorschau: keine Dateien geschrieben").
 3. **Ändern:** Sperren gehören in `sperren_live()` bzw. die gleichnamige Funktion
    der Spur, nicht verstreut in den Rumpf von `lauf()`.
 4. **Ohne Broker testen - mit dem Aufruf, der im TESTKOPF der Spur steht.**
@@ -818,7 +850,9 @@ Nebenbedingung. Geltende Regel: eine **Betriebsstoerung** (Herzschlag-
 Zwangsschluss, Notaus) ist keine Handelsentscheidung und darf eine
 Erwartungswert-Sperre nicht auslösen. Die **Kapitalkurve** (Drawdown, Ratsche,
 Halbierung, Kill-Switch) rechnet weiter auf ALLEN Buchungen — eine Stoerung ist
-eingetragen und hat Geld bewegt.
+eingetragen und hat Geld bewegt. Ausnahme Buchhaltung: `buchbereinigung` bewegt
+kein Geld und kann den Hoechststand allein treiben - vor einem Kill-Befund die
+Kurve ohne sie nachrechnen: `references/verlust-spur-diagnose.md`.
 
 - **Genau EIN Feld trägt die Zahl, auf der die Sperre beruht.** Heißt es
   `rollierender_ev`, dann ist das die Zahl der Bedingung; die Zahl über alle

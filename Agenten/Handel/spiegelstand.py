@@ -169,6 +169,29 @@ def spuren_ordner(handel=HANDEL):
     return None
 
 
+def laeufe_arme(handel, ordner):
+    """Buecher eines Dauerlaufs, der unter <ordner>/laeufe/<arm>/ faehrt.
+
+    llm_stunde (12.10.2026) startet sechs Straenge - drei Indikator-Kandidaten,
+    jeder als Regel- (R) und LLM-Arm (L). Jeder Arm fuehrt ein eigenes Buch in
+    laeufe/<variante>-<arm>/ mit eigener wachen.json (journal_zweitziel zeigt
+    auf denselben Zielordner). Der Hauptordner llm_stunde/ selbst haelt nur
+    die Basis-Wachen, KEINE Quelldateien - ihn als Spur zu pruefen meldet
+    faelschlich ABWEICHUNG.
+
+    Rueckgabe: die relativen Armbuecher (z. B. "llm_stunde/laeufe/ema1h-L").
+    Leer, wenn kein laeufe-Unterordner mit eigenen Wachen existiert - dann
+    prueft `stand` die Spur wie vorher.
+    """
+    laeufe = os.path.join(handel, ordner, "laeufe")
+    if not os.path.isdir(laeufe):
+        return []
+    arme = sorted(
+        d for d in os.listdir(laeufe)
+        if os.path.isfile(os.path.join(laeufe, d, "wachen.json")))
+    return [os.path.join(ordner, "laeufe", d) for d in arme]
+
+
 def _arm_datei(name, suffix):
     """Dateiname eines Schattenbuchs: zustand.json -> zustand.knapp.json."""
     if not suffix:
@@ -177,7 +200,7 @@ def _arm_datei(name, suffix):
     return "%s.%s%s" % (stamm, suffix, endung)
 
 
-def spur_zeile(handel, spur, risiko=None, ordner=None):
+def spur_zeile(handel, spur, risiko=None, ordner=None, _wachen_vorgabe=None):
     """Ein Pruefergebnis je Spur: Ziel, Kopiestand, Herzschlag, Journalzeilen.
 
     Verglichen werden die zwei Pflichtdateien plus die Zusatzdateien DIESER
@@ -193,6 +216,15 @@ def spur_zeile(handel, spur, risiko=None, ordner=None):
     `ordner` ist der Unterordner der Spur (aus dauerlauf.SPUREN). Seit den
     Spiegel-Schattenbuechern (18.09.2026) teilen sich mehrere Spuren einen
     Ordner; ohne Angabe faellt spur_zeile auf den Spurnamen zurueck.
+
+    `_wachen_vorgabe` ist die Wachen-Datei je laeufe-Arm (llm_stunde,
+    12.10.2026): von `stand` gesetzt, damit der Schatten-Suffix-Ersatz unten
+    AUS bleibt. Ein Armename wie ema1h-L hat keinen Unterstrich zum Kuerzen;
+    die Heuristik wuerde ueber die Spur-Struktur raten und faelschlich
+    wachen.json erzeugen (dort liegt es ja wirklich). Das Trennzeichen ist
+    der Unterstrich - deshalb kann `_wachen_vorgabe` einen leeren String nie
+    mit einem "nicht gesetzt" verwechseln: aufgerufen wird es nur mit einem
+    Dateinamen oder gar nicht.
     """
     def benenne(n):
         return n if risiko is None else risikostufe.datei_fuer(n, risiko)
@@ -211,8 +243,8 @@ def spur_zeile(handel, spur, risiko=None, ordner=None):
     # (nautilus_kraken/wachen.json = der SPOT-Arm) gelesen worden und der
     # Futures-Arm waere mit dem fremden Ziel geprueft worden. 04.10.2026.
     # Korrekt ist: von rechts nach links kuerzen, bis die Datei da ist.
-    wachen_name = "wachen.json"
-    if spur != ordner:
+    wachen_name = _wachen_vorgabe or "wachen.json"
+    if not _wachen_vorgabe and spur != ordner:
         teile = spur.split("_")
         for i in range(len(teile) - 1, 0, -1):
             kandidat = "wachen.%s.json" % "_".join(teile[i:])
@@ -295,10 +327,26 @@ def stand(handel=HANDEL, stunden=30.0, risiko=None):
             if treffer:
                 alle.append(spur)
         alle = sorted(set(alle))
+    # Die laeufe-Arme (llm_stunde, 12.10.2026): der Hauptordner haelt nur die
+    # Basis-Wachen, die SECHS Straenge fahren eigene Buecher unter
+    # laeufe/<variante>-<arm>/. Jeder Arm ersetzt die Haupt-Spur im Pruefplan
+    # (die selbst keine Quelldateien hat und sonst faelschlich ABWEICHUNG
+    # meldet); im Lauf-Status gilt er durch seinen Hauptnamen (llm_stunde
+    # steht in SPUREN, die Straenge nicht).
+    zeilen = []  # (anzeige, ordner, wachen_vorgabe, zugehoerige_spur)
     for spur in alle:
         ordner = (ordner_zuordnung or {}).get(spur, spur)
-        e = spur_zeile(handel, spur, risiko, ordner=ordner)
-        im_dienst = im_lauf is None or spur in im_lauf
+        arme = laeufe_arme(handel, ordner)
+        if arme:
+            for arm in arme:
+                zeilen.append(("%s/%s" % (spur, os.path.basename(arm)),
+                               arm, "wachen.json", spur))
+        else:
+            zeilen.append((spur, ordner, None, spur))
+    for spur, ordner, wachen_vorgabe, zugehoerig in zeilen:
+        e = spur_zeile(handel, spur, risiko, ordner=ordner,
+                       _wachen_vorgabe=wachen_vorgabe)
+        im_dienst = im_lauf is None or zugehoerig in im_lauf
         if not im_dienst:
             ergebnis["ausserhalb"].append(spur)
             note = "[nicht in dauerlauf.SPUREN]"
@@ -362,17 +410,17 @@ def main():
     print("Handel: %s" % a.handel)
     print("Risikostufe: %s" % a.risiko)
     print()
-    print("%-10s %-12s %7s %7s  %s" % ("Spur", "Stand", "Zeilen", "Alter",
-                                       "Ziel / Grund"))
+    print("%-20s %-12s %7s %7s  %s" % ("Spur", "Stand", "Zeilen", "Alter",
+                                      "Ziel / Grund"))
     for x in e["spuren"]:
         alter = "--" if x["alter"] is None else "%.0f min" % x["alter"]
         anzahl = "--" if x["zeilen"] is None else str(x["zeilen"])
-        print("%-10s %-12s %7s %7s  %s%s" % (
+        print("%-20s %-12s %7s %7s  %s%s" % (
             x["spur"], x["stand"], anzahl, alter, x["ziel"] or "--",
             "   [%s]" % x["grund"] if x["grund"] else ""))
         if x["alter"] is not None and x["spur"] not in e["ausserhalb"] \
                 and x["alter"] > a.stunden * 60:
-            print("%-10s   Hinweis: Herzschlag %.0f min alt (> %.0f h) - laeuft die "
+            print("%-20s   Hinweis: Herzschlag %.0f min alt (> %.0f h) - laeuft die "
                   "Spur ueberhaupt?" % ("", x["alter"], a.stunden))
     print()
     print("Ergebnis: %s" % kurz(e))

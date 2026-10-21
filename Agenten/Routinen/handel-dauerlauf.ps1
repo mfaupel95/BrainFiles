@@ -105,6 +105,18 @@ if (Test-Path $sperre) {
   Remove-Item $sperre -Force -ErrorAction SilentlyContinue
 }
 
+# Spawn-Schutz (12.10.2026): liegen schon viele Handel-Python-Prozesse herum,
+# startet kein weiterer Lauf. Mit dem Baum-Stopp in dauerlauf.py kommen Waisen
+# nicht mehr vor; diese Grenze faengt einen Rueckfall ab, bevor er den
+# Commit-Speicher aufbraucht.
+$handelProzesse = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+                    Where-Object { $_.CommandLine -and $_.CommandLine.Contains('Handel\scanner\.venv\') }).Count
+if ($handelProzesse -gt 40) {
+  Schreib "ABBRUCH: $handelProzesse Handel-Python-Prozesse aktiv (Grenze 40) - kein Start"
+  Melde-Ende -Marke $marke -Code 1 -Text "Spawn-Schutz: $handelProzesse Prozesse"
+  exit 1
+}
+
 if (-not (Test-Path $py)) {
   Schreib "ENDE FEHLER: kein Python unter $py - '.venv' im scanner-Ordner neu anlegen (py -3.13 -m venv .venv)"
   Melde-Ende -Marke $marke -Code 1 -Text "kein Python unter $py"           # neu

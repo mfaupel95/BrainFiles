@@ -268,6 +268,13 @@ Beide liegen im Skill und werden von hier aus gestartet - nicht nachbauen:
   ueber den Byte-Weg schliessen (`- [ ]` -> `- [x]`), ohne ihn zu verschieben —
   das Aufraeumen der Struktur ist ein eigener Auftrag, nicht Teil des
   Schliessens.
+  **Und die Meldung kann auch heissen: eine parallele Sitzung hat den Task
+  SCHON erledigt.** Bevor man einen „steht nicht in '## Offen'"-Fehlschlag als
+  Strukturproblem deutet, `grep -n "T-0NN"` ueber die ganze Datei: steht der
+  Eintrag bereits als `- [x]` unter `## Erledigt`, ist die Aufgabe fertig und
+  der Fehlschlag korrekt — nichts nachziehen, nichts verschieben, nur
+  verifizieren und weiter. Ein zweiter erledigen-Lauf auf einen schon
+  erledigten Task ist eine Doppelarbeit, die den Belegsatz ueberschreibt.
 
 Die Nummer gehoert MIT Praefix: `erledigen.py 206` meldet „206 kommt 0x vor“ —
 das liest sich wie ein fehlender Eintrag, ist aber die falsche Argumentform
@@ -312,6 +319,7 @@ assert lf(neu) == lf(text)          # 18 -> 18
   dem Block) hat die korrigierte Fassung stillschweigend wieder verworfen, und
   der Fix tut nichts. Nach zwei Zuweisungen auf dieselbe Variable im selben
   Skript: `grep -n "<name> =" <datei>` und zaehlen, welche uebrig bleiben soll.
+- **Bevor ein Eintrag eine LUECKE behauptet ("X fehlt", "keine Wache", "nicht vorhanden"), die Luecke im Baum pruefen** - `scripts/`, `cron/jobs.json`, `git log -- <pfad>`. Eine parallele Sitzung oder fruehere Arbeit kann sie schon geschlossen haben; ein falscher "fehlt"-Eintrag wird zur Aufgabe, die eine zweite Sitzung dann "loest" und dabei die vorhandene Loesung ueberschreibt oder dupliziert. Belegt: ein Eintrag "es gibt KEINE Junction-Wache" stand, waehrend `junction-wache.py` seit Tagen committet war und den Verlust schon gemeldet hatte - die Korrektur kostete einen Folge-Commit und einen falschen T-400. Wer eine Luecke eintragen will, sucht zuerst nach dem Artefakt (Datei, Cron-Eintrag, Commit), nicht nach dem Gefuehl.
 - **Die hoechste Nummer NIE aus dem Gedaechtnis nehmen.** Die eigene
   Memory-Notiz nennt einen Stand von gestern ("hoechste am 24.09.: T-056");
   gemessen am 29.09.2026 stand die Datei bei T-159, und die aus dem Kopf
@@ -369,6 +377,23 @@ grep -cE "^- \[[ x]\] \*\*T-368" MaxHirn/Archiv/TASKS.md   # 0 = Nummer ist frei
   (Zeilen lesen, `i`/`j` ueber das Blockmerkmal finden, `zeilen[i:j+1] = neu`),
   mit CRLF-Zaehler und `git diff --numstat` nachpruefen und den Block danach
   ausdrucken.
+- **Das fuzzy `patch`-Werkzeug korrumpiert auch Code-Dateien (nicht nur
+  TASKS.md) - in zwei Formen.** (1) STRING-LITERALE: bei einem Python-Test
+  wurde `self.assertIn("leeres Ziel", text)` in mehreren Versuchen zu
+  `"leereseres Ziel"`, `"le"leeres Ziel"` und `"letIn("leeres Ziel"` verhunzt -
+  der Matcher dupliziert und verschiebt Zeichen INNERHALB der
+  Anfuehrungszeichen. (2) EINRUECKUNG: ein Ersatzblock mit ungleichmaessigen
+  Spaces wird um +4 Spaces verschoben und erzeugt `IndentationError` - zwei
+  Reparaturversuche scheitern erneut, weil jeder weitere patch auf dieselbe
+  Datei es schlimmer macht. Beide Formen sind dasselbe Abbruchsignal: ab dem
+  ERSTEN korrumpierten String ODER dem ersten IndentationError nicht
+  weiterpatchen, sondern die Datei komplett neu schreiben. Der Weg um den
+  `write_file`-Schutz (Datei gilt als 'partial view', wenn sie mit
+  offset/limit gelesen wurde): Inhalt nach
+  `Agenten/Hermes/cache/scratch/<name>_fix.py` schreiben, dann `cp` ueber das
+  Ziel, und mit `py_compile` pruefen. Ein patch, der einen String-Tippfehler
+  oder eine IndentationError einfuehrt, ist ein Abbruchsignal, kein
+  Reparaturversuch.
 - **`write_file` verweigert die Datei** (kein vollstaendiger Lesevorgang dieser
   Sitzung) - ueber den Byte-Weg schreiben, nicht die Datei komplett neu setzen.
 - **Python wertet `open(p, "wb")` aus, BEVOR der Schreibausdruck gebaut ist.**
@@ -679,6 +704,25 @@ Stellen steht:
 Kastenmarkers suchen, nicht anhand der Absatzgrenzen, mit denen er
 herausgeschnitten wurde.** Der Schnitt darf eine falsche Grenze liefern, die
 Gegenprobe nicht.
+
+**Beim Verschieben die Original-Bloecke ZUERST aus dem Text entfernen, dann die
+neuen einfuegen.** Wer nur die neuen Eintraege nach `## Erledigt` einsetzt, ohne
+die alten aus `## Offen` zu loeschen, hat die verschobenen Eintraege doppelt -
+die Nummernmenge waechst um genau die verschobene Zahl, und das Gate meldet
+nichts, weil jede Nummer noch einmal vorkommt. Die Bloecke rueckwaerts loeschen
+(ueber die gespeicherten Match-Positionen), damit die Positionen nicht wandern.
+
+**Die Nummernmenge gegen eine SNAPSHOT-Variable des Originals vergleichen, nicht
+gegen den modifizierten Text.** Nach dem Entfernen der Bloecke ist `text` nicht
+mehr das Original; `ids(neu) == ids(text)` schlaegt dann falsch fehl. Vor dem
+ersten Eingriff `original = text` merken und die Gegenprobe gegen `original`
+fahren.
+
+**Das Zaehlmuster muss `[ \t]*` zwischen Klammer und `**` zulassen.** Ein
+Eintrag mit drei Leerzeichen (`- [ ]   **T-324`) faellt aus einem
+Ein-Leerzeichen-Muster; nach dem Verschieben (das die Einrueckung normalisiert)
+matcht er dann doch, und der Vergleich meldet 'Nummernmenge geaendert', obwohl
+nur die Einrueckung abwich. Dasselbe Muster wie im Anker verwenden.
 
 Die Gegenproben-Kette (Abschnitt, Kastenstellung, Fundstelle, Vorabentext,
 Nummernmenge) und der Ablauf bei bereits zerlegtem Vorabentext stehen in

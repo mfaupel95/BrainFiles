@@ -30,7 +30,7 @@ FENSTER = [
     ("leitstand_stil", os.path.join(HANDEL, "leitstand_stil.py"), True),
     ("omniquant/gui", os.path.join(HANDEL, "omniquant", "gui.py"), True),
     ("moongui (Fremd-Klon)",
-     os.path.join(os.path.dirname(HANDEL), "..", "Werkstatt", "Repos",
+     os.path.join(os.path.dirname(HANDEL), "..", "Werkstatt",
                   "moon-dev-ai-agents", "moongui.py"), False),
 ]
 

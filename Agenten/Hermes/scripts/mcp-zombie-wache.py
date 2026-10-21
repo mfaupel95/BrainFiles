@@ -67,6 +67,17 @@ MARKER = {
     "blender":     "blmcp",
 }
 
+# NODE-MCP-Server (ant.dir.gh.*, TypeScript): erkannt ueber den Repo-Namen im
+# Pfad unter Agenten/MCP-Server/. Am 05.10.2026 wuchsen 84 solcher Knoten
+# (pdf-server/desktopcommander/canva.affinity/revolut-x-api, je 18-24
+# Generationen) ungesehen, weil die Wache nur python/pythonw filterte.
+NODE_MARKER = {
+    "pdf-server":      "pdf-server-mcp",
+    "desktopcommander": "desktopcommandermcp",
+    "canva-affinity":  "canva.affinity",
+    "revolut-x-api":   "revolut-x-api",
+}
+
 # Die Hermes-Config liegt eine Ebene ueber scripts/. Sie wird NUR gelesen
 # (steht MCP_DOCKER drin?), nie geschrieben.
 CONFIG = Path(__file__).resolve().parents[1] / "config.yaml"
@@ -92,7 +103,8 @@ def _powershell(skript: str) -> str | None:
 def _prozesse_json() -> str:
     return _powershell(
         "Get-CimInstance Win32_Process -Filter \"Name='python.exe' OR "
-        "Name='pythonw.exe'\" | Select-Object ProcessId,CommandLine,CreationDate "
+        "Name='pythonw.exe' OR Name='node.exe'\" | Select-Object "
+        "ProcessId,CommandLine,CreationDate "
         "| ConvertTo-Json -Compress") or ""
 
 
@@ -109,6 +121,9 @@ def _alter_bool(roh: str) -> float:
 
 def _gruppe(cmd: str) -> str | None:
     for g, m in MARKER.items():
+        if m in cmd:
+            return g
+    for g, m in NODE_MARKER.items():
         if m in cmd:
             return g
     return None

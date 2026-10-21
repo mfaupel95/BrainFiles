@@ -1,3 +1,12 @@
 description: 'ziplime-Repo-Bot: Backtesting-Framework (Polars) mit interaktivem KI-Assistenten
-  im Terminal in Werkstatt/Repos/ziplime'
+  im Terminal in Werkstatt/ziplime'
 description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Grill Me, Awesome Systematic Trading, Agent Trade Kit, Harvard T
+    group: Grill Me, Awesome Systematic Trading, Agent Trade Kit, Harvard T
+    sectionId: sec-mvgqdzcf-eh2ae
+    sectionName: Backtesting
+_ui_meta_revisions:
+  hermes-bots: 2

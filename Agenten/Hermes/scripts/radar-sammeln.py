@@ -33,7 +33,7 @@ import time
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 WURZEL = os.path.dirname(os.path.dirname(os.path.dirname(HIER)))  # BrainFiles
-REPO = os.path.join(WURZEL, "Werkstatt", "Repos", "fomo-robinhood-radar")
+REPO = os.path.join(WURZEL, "Werkstatt", "fomo-robinhood-radar")
 PYTHON = os.path.join(REPO, ".venv", "Scripts", "python.exe")
 DB = os.path.join(REPO, "fomo_agent.db")
 DISCOVER_STUNDEN = 24.0

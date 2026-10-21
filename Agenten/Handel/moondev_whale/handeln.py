@@ -2,7 +2,7 @@
 
 WOHER DIE IDEE KOMMT
 --------------------
-Der Agent `whale_agent` aus `Werkstatt/Repos/moon-dev-ai-agents` beobachtet das
+Der Agent `whale_agent` aus `Werkstatt/moon-dev-ai-agents` beobachtet das
 offene Interesse (Open Interest) ueber ein Zeitfenster, erkennt eine ANOMALIE
 gegen den Durchschnitt (`WHALE_THRESHOLD_MULTIPLIER = 1.31`) und laesst dann
 ein Sprachmodell ueber die Richtung urteilen - genau drei Zeilen: BUY, SELL oder
@@ -212,10 +212,10 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if a.modus == "live":
-        print("Live waere gesperrt durch: kein Live-Zweig in dieser Spur "
-              "(Papier). Der Fremd-Agent handelt mit echten Schluesseln - "
-              "dieser Haus-Lauf bucht nur Papier.")
-        return 0
+        # Live-Pfad ueber spur_buch (sperren_live + orderweg). Ist die
+        # Sperrenkette zu, faellt der Lauf auf Papier zurueck und nennt den
+        # Grund - derselbe Fallsafe wie die anderen Buch-Spuren.
+        return buch.zyklus(HIER, daten_holen, signal, "live", "handel/moondev_whale")
     # Der Name im Bus-Journal steht WOERTLICH hier: die Anbindung oeffnet der
     # gemeinsame Kern (spur_buch.zyklus -> ereignis.lauf), aber welcher Spur die
     # Meldung gehoert, entscheidet diese Datei - abgeleitet aus dem Ordnernamen

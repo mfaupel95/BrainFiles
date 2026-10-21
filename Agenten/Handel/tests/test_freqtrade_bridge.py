@@ -202,7 +202,7 @@ class BotsTest(unittest.TestCase):
             self.assertEqual(ft.bots(pfad),
                              [{"name": "gut", "port": 9092, "strategie": "S",
                                "zeitrahmen": "1h", "container": "",
-                               "max_open_trades": None}])
+                               "max_open_trades": None, "hausspur": ""}])
 
     def test_json_muell_ist_leere_liste(self):
         with tempfile.TemporaryDirectory() as ordner:

@@ -104,7 +104,7 @@ Windows-Binaries** (nur macOS/Linux, Anleitung sagt "use WSL") — mit
 vorhandenem Rust baut sie trotzdem nativ:
 
 ```powershell
-cd Werkstatt\Repos\kraken-cli
+cd Werkstatt\kraken-cli
 cargo build --release --bin kraken     # Ergebnis: target\release\kraken.exe
 ```
 

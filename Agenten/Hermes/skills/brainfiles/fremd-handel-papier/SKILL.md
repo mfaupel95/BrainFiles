@@ -1,38 +1,50 @@
 ---
 name: fremd-handel-papier
-description: "Use when Fremd-Handelswerkzeuge (kraken-cli, OKX Agent Trade Kit) im Papier-/Demo-Modus genutzt werden."
-version: 0.1.0
+description: "Use when Fremd-Handelswerkzeuge (kraken-cli, OKX Agent Trade Kit, jev-trader) im Papier-/Demo-Modus genutzt werden."
+version: 0.2.0
 author: Hermes
 license: MIT
 category: brainfiles
 platforms: [windows]
 metadata:
   hermes:
-    tags: [Handel, Papier, Demo, Kraken, OKX, MCP]
+    tags: [Handel, Papier, Demo, Kraken, OKX, MCP, Monad, Hyperliquid, Jev]
     related_skills: [fremdrepos-signal, handel-spuren, okx-live-anbinden, okx-trading-schleifen, mcp-sync]
 ---
 
 # Fremd-Handelswerkzeuge: nur Papier und Demo
 
-Zwei Forks unter `Werkstatt/Repos/` sind als MCP an Hermes angeschlossen. Beide
+Zwei Forks unter `Werkstatt/` sind als MCP an Hermes angeschlossen. Beide
 handeln hier **nie echt**: Papier (Kraken) und Demo (OKX). Echtes Geld bewegt
 weiterhin nur die Kette aus `okx-live-anbinden` und den Wachen in `Agenten/Handel/`.
 
 ## When to Use
 
 - „teste das auf Papier", „Papierhandel", „Demo-Order", „probier die Strategie an der Boerse"
+- „Mach bei der monad-wallet session weiter" / „unser jev trader" — der Monad-Marktmacher
+- „HL-Testnet bridgen" / „jev-trader neustarten“
 - ein Signal aus einer Fremd-Spur soll gegen echte Kurse ohne Risiko laufen
 - Markt-/Orderbuchdaten brauchen ein zweites, unabhaengiges Werkzeug
 
 ## Prerequisites
 
-- **kraken-papier** (MCP, an): `Werkstatt/Repos/kraken-cli/target/release/kraken.exe mcp`.
+- **kraken-papier** (MCP, an): `Werkstatt/kraken-cli/target/release/kraken.exe mcp`.
   Standarddienste Markt, Konto lesen, Papier. Futures-Papierkonto 10 000 USD
   initialisiert (`kraken futures paper init`). Neu bauen: `cargo build --release`.
-- **okx-agentkit** (MCP, **aus**): `Werkstatt/Repos/agent-trade-kit/packages/mcp/dist/index.js`
-  mit `--demo --profile demo`. Einschalten erst, wenn in `~/.okx/config.toml` ein
-  Profil `demo` (`demo = true`, Demo-API-Key) existiert; dann in Manifest und
-  `Hermes/config.yaml` `enabled: true`, `mcp-sync-check.ps1` laufen lassen.
+- **okx-agentkit** (MCP, **an, schreibend, nur DEMO**): Starter
+  `Agenten/MCP-Server/okx-agentkit/start-demo.cmd` bildet `OKX_DEMO_API_*` im Kindprozess
+  auf die erwarteten Namen ab (Live-Schluessel greift nie; `--demo --site eea`).
+  **Nur Spot** (z. B. `BTC-USDC`): Swap/Perps sind im EWR-Demo gesperrt (Fehler 50124).
+  Ablauf fuer eine Demo-Order: Signal -> `Agenten/Handel/fremd_demo.py` `plane()` rechnet
+  Menge (quote_ccy), Stop und Limits und lehnt short/Papier/Tor-zu ab; erst dann
+  `spot_place_order` mit genau diesen `args`. Nach dem Fill Position im Demo-Buch halten;
+  `flat` = Verkaufsorder plus offenen Stop stornieren (`spot_cancel_algo_order`, mit `instId`).
+  **Ausfuehrungsschritt (Hermes):** 1) `python Agenten/Handel/fremd_signale/demo_plan.py --vormerken`
+  (Tor zu = nichts). 2) Je JSON-Zeile mit `ok:true` genau `plan.tool` mit `plan.args` aufrufen,
+  nie abgeaendert. 3) Antwort `sCode` != 0 oder nicht gefuellt -> `demo_plan.py --verwerfen <instrument>`.
+  4) Bei `aktion: schliessen` nach dem Verkauf offene Stops per `spot_get_algo_orders` suchen,
+  mit `spot_cancel_algo_order` (`instId`, `algoId`) stornieren und `--verwerfen <instrument>`.
+  5) Ergebnis (Fill-Preis, Menge, Stop) in den Topic Handel melden. Nie `mode=live`, nie Swap.
   Neu bauen: `pnpm install --frozen-lockfile && pnpm build` im Repo.
 
 ## How to Run
@@ -52,6 +64,9 @@ CLI-Gegenprobe ohne MCP: `kraken futures paper status -o json`.
   anfassen, sonst springt der Live-Pfad der Spuren um.
 - Keys nie ausgeben, nur Vorhandensein und Laenge.
 - Papier ist kein Beweis fuer Live: Slippage und Gebuehren sind simuliert.
+- **Vor dem Live-Schalten eines per-Block/per-Tick On-Chain-Bots die Gas-Oekonomie messen, nicht schaetzen.** Blockrate zweimal `eth_blockNumber` im Abstand von 10 s (Monad: ~3,4 Bloecke/s = 12 240/h), Gas/Block aus Limit x Basis-Fee, dann Burn-Rate = Gas/Block x Bloecke/h gegen die Wallet-Balance stellen. Ein Wallet kann weniger wert sein als zwei Stunden Gas (691 MON = ~17 $ gegen ~437 MON/h = ~10,80 $/h) — Live-Schalten ist dann wirtschaftlich sinnlos, egal ob die Strategie gewinnt. Der README-Beispielwert des Bots (0,0357 MON/Block) mal der echten Blockrate ist die Zahl, die entscheidet. Details: `references/monad-kuru.md`.
+- **Ein Engine-Wechsel im `.env` (z. B. `ENGINE=kuru` → `ENGINE=hyperliquid`) wechselt auch die Geldquelle.** Der Jev-Trader lief auf Kuru (Monad, MarginAccount), wurde auf Hyperliquid-Perps portiert. Die Wallet hatte 1029 MON auf Monad, aber 0 USDC auf HL — der Bot konnte nicht handeln, ohne dass eine Fehlermeldung das sagte. Nach einem Engine-Wechsel IMMER pruefen: (1) welches Venue nutzt der Bot jetzt, (2) hat die Wallet dort Guthaben, (3) zeigt `clearinghouseState`/`guthaben` einen Wert > 0. Details: `references/monad-kuru.md`.
+- **HL-Testnet-Faucet braucht Mainnet-Historie.** Ohne $5+ Deposit auf HL-Mainnet gibt es kein Testnet-USDC. Die Bridge laeuft ueber Arbitrum — MON auf Monad ist keine Quelle. Vor dem „Bridge vorbereiten" erst pruefen, ob die Wallet auf Arbitrum ETH/USDC traegt; wenn nicht, ist der Weg mehrstufig (MON→USDC swappen → Arbitrum → HL) und braucht Max' Entscheidung.
 
 ## Verification
 
@@ -59,4 +74,4 @@ CLI-Gegenprobe ohne MCP: `kraken futures paper status -o json`.
 - `kraken futures paper status -o json` antwortet ohne `error`.
 
 ## Delegierung
-Telegram-Topic **Handel** ist mit dem Skill `fremdrepos-signal` verdrahtet (Signal-Schema, Stale-Verwurf, Gate). Bot-Profile: `kraken-cli` (MCP `kraken-native`, an) und `agent-trade-kit` (MCP `okx-agentkit`, aus bis Demo-Profil). Dieser Skill ist die Werkzeug-Seite, `fremdrepos-signal` der Vertrag; das Schema nicht hier duplizieren.
+Telegram-Topic **Handel** ist mit dem Skill `fremdrepos-signal` verdrahtet (Signal-Schema, Stale-Verwurf, Gate). Bot-Profile: `kraken-cli` (MCP `kraken-native`, an) und `agent-trade-kit` (MCP `okx-agentkit`, Demo, schreibend). Dieser Skill ist die Werkzeug-Seite, `fremdrepos-signal` der Vertrag; das Schema nicht hier duplizieren.

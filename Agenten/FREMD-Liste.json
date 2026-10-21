@@ -9,13 +9,13 @@
     "Ein Eintrag ist eine Aussage ueber Herkunft - er wird von Hand gepflegt, nie geraten."
   ],
   "eintraege": [
-  {
-    "pfad": "Agenten/Werkzeuge/jevgrep/node_modules",
-    "art": "Fremd-Paket",
-    "herkunft": "npm-Paket @dzhng/jevgrep 0.7.0 samt Abhaengigkeiten (typescript, web-tree-sitter)",
-    "regel": "nur benutzen, nie aendern",
-    "warum": "Fremdcode mitten im eigenen Werkzeugordner (rund 15 MB). Unser Teil sind jg.cmd, README.md, test_jevgrep.py und package.json - reproduzierbar mit npm install @dzhng/jevgrep@0.7.0 --force. Wer den eigenen Bestand zaehlt, muss node_modules abziehen."
-  },
+    {
+      "pfad": "Agenten/Werkzeuge/jevgrep/node_modules",
+      "art": "Fremd-Paket",
+      "herkunft": "npm-Paket @dzhng/jevgrep 0.7.0 samt Abhaengigkeiten (typescript, web-tree-sitter)",
+      "regel": "nur benutzen, nie aendern",
+      "warum": "Fremdcode mitten im eigenen Werkzeugordner (rund 15 MB). Unser Teil sind jg.cmd, README.md, test_jevgrep.py und package.json - reproduzierbar mit npm install @dzhng/jevgrep@0.7.0 --force. Wer den eigenen Bestand zaehlt, muss node_modules abziehen."
+    },
     {
       "pfad": "Agenten/Handel/OpenAlice",
       "art": "Fremdprojekt",
@@ -157,11 +157,12 @@
       "warum": "Siehe OmniRoute."
     },
     {
-      "pfad": "Werkstatt/Repos",
+      "pfad": "Werkstatt",
       "art": "Klonsammlung",
-      "herkunft": "47 Klone fremder Projekte, je mit origin=Fork und upstream=Original",
+      "herkunft": "53+ Klone fremder Projekte direkt in Werkstatt (seit 14.10.2026; vorher Werkstatt/Repos), nur Git-Ordner zaehlen",
       "regel": "nur lesen; Pflege ausschliesslich ueber Agenten/Werkzeuge/repos-updaten.py",
-      "warum": "Eigene Ablage, aber fremder Inhalt: Bestandszahlen des Hauses gehoeren ohne sie gerechnet."
+      "warum": "Eigene Ablage, aber fremder Inhalt: Bestandszahlen des Hauses gehoeren ohne sie gerechnet. Nur_git-Regel: Ablagen und Projekte unter Werkstatt sind NICHT fremd.",
+      "nur_git": true
     },
     {
       "pfad": "Werkstatt/Ausgemustert",
@@ -234,30 +235,9 @@
       "warum": "Klon mit eigenem .git."
     },
     {
-      "pfad": "Werkstatt/skillspector",
-      "art": "Fremd-Klon",
-      "herkunft": "geklontes Fremd-Repo (Sicherheitsscanner fuer Agent-Skills)",
-      "regel": "nur lesen",
-      "warum": "Klon mit eigenem .git."
-    },
-    {
-      "pfad": "Werkstatt/trailofbits-skills",
-      "art": "Fremd-Klon",
-      "herkunft": "geklontes Fremd-Repo (Skill-Marktplatz von Trail of Bits)",
-      "regel": "nur lesen",
-      "warum": "Klon mit eigenem .git."
-    },
-    {
-      "pfad": "Werkstatt/security-skills-claude-code",
-      "art": "Fremd-Klon",
-      "herkunft": "geklontes Fremd-Repo (Security-Skills)",
-      "regel": "nur lesen",
-      "warum": "Klon mit eigenem .git."
-    },
-    {
       "pfad": "Werkstatt/freqtrade",
       "art": "Fremd-Klon",
-      "herkunft": "Klon des freqtrade-Frameworks",
+      "herkunft": "Klon des fre freqtrade-Frameworks",
       "regel": "nur lesen",
       "warum": "Das Framework ist fremd; unsere Strategien und Aufsaetze liegen in Agenten/Handel/freqtrade."
     },

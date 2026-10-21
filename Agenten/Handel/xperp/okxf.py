@@ -580,23 +580,44 @@ def hebel_setzen(inst, hebel, tdmode="isolated", posside=None):
     return _roh("/api/v5/account/set-leverage", "POST", body, signiert=True)
 
 
+def maker_preis(seite, preis, bid, ask):
+    """Limitpreis, der nie den Spread kreuzt (11.10.2026).
+
+    Ein Kauflimit >= Ask fuellt sofort als Taker zum Ask (0.05 % statt 0.02 %
+    plus Spread). Dann lieber zum besten Bid ins Buch: nie schlechter als der
+    Zonenpreis, nur ggf. nicht sofort gefuellt. Verkauf spiegelbildlich.
+    Ohne Bid/Ask bleibt der Preis unveraendert.
+    """
+    if seite == "buy" and bid and ask and preis >= ask:
+        return bid
+    if seite == "sell" and bid and ask and preis <= bid:
+        return ask
+    return preis
+
+
 def order_limit(inst, seite, kontrakte, preis, tdmode="isolated",
-                posside=None, tp=None, sl=None, reduce_only=False):
+                posside=None, tp=None, sl=None, reduce_only=False,
+                post_only=False):
     """Limit-Order mit angehaengtem Take-Profit und Stop-Loss.
 
     tp/sl werden als Ausloesepreise mitgegeben und als Market ausgefuehrt
     (ordPx -1). Ein Stop, der selbst ein Limit ist, fuellt im Absturz nicht.
+    post_only: OKX lehnt ab statt als Taker zu fuellen (nur Maker-Gebuehr).
     """
     body = {"instId": inst, "tdMode": tdmode, "side": seite,
-            "ordType": "limit", "px": str(preis), "sz": str(kontrakte)}
+            "ordType": "post_only" if post_only else "limit",
+            "px": str(preis), "sz": str(kontrakte)}
     if posside:
         body["posSide"] = posside
     if reduce_only:
         body["reduceOnly"] = True
     anhang = {}
     if tp is not None:
+        # TP als Limit zum Zielpreis (11.10.2026): am Ziel laeuft der Kurs fuer
+        # uns, Market verschenkt dort Spread + Taker-Gebuehr. Der STOP bleibt
+        # Market (-1), denn ein Stop muss im Absturz fuellen.
         anhang["tpTriggerPx"] = str(tp)
-        anhang["tpOrdPx"] = "-1"
+        anhang["tpOrdPx"] = str(tp)
     if sl is not None:
         anhang["slTriggerPx"] = str(sl)
         anhang["slOrdPx"] = "-1"

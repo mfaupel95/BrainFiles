@@ -13,7 +13,7 @@ Projekt gemeint ist; bei fehlender Antwort den Stack-passenden Default nehmen
 und im Bericht nennen.
 
 ## Vorgehen
-1. **Repo klonen** nach Werkstatt/Repos/<name> (Hauskonvention).
+1. **Repo klonen** nach Werkstatt/<name> (Hauskonvention).
 2. **README lesen** — Quickstart. Zwei Wege: (a) npm-Globalinstall der
    veroeffentlichten Pakete (schnellster Weg, kein Build), (b) Build from
    source (`pnpm install && pnpm build`) nur fuer Entwicklung.

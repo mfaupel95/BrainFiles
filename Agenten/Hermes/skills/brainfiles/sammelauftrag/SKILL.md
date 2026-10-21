@@ -65,6 +65,7 @@ nie in einem Rutsch:
 |---|---|
 | uncommittete Arbeit | `git status --porcelain` (jeder Treffer ist ein Kandidat) |
 | Sitzungen, letzte Aktivität | `session_search` |
+| Claude-/Claude-Code-Sitzungen | `references/claude-sessions.md` (Orte + Lese-Rezept) |
 | Übergaben | `Werkstatt/Austausch/` (Ordner je Datum) |
 | Sitzungsablagen | `Werkstatt/Sitzungen/`, `Werkstatt/Protokolle/` |
 | Läufe mit Fehler | `Agenten/Routinen/logs/*.log` — Zeilen mit `ENDE FEHLER` |
@@ -121,6 +122,38 @@ Dazu `search_files` über `Werkstatt/Austausch/` und `read_file` auf
 `MaxHirn/Wissen/Routinen.md` (Statusspalte). Den Chatverlauf nicht mitzählen:
 `session_search` liefert Sitzungen und ihre letzte Aktivität, nicht deren Auftrag.
 
+Claude- und Claude-Code-Sitzungen liegen NICHT in `state.db` — Orte, Lese-Rezept
+und die Signale, die einen offenen Punkt bedeuten (Session-Limit-Abbruch,
+HANDOVER-Open-Questions, ungemergte Worktree-Zweige), stehen in
+`references/claude-sessions.md`.
+
+**Ungemergte Arbeit in anderen Arbeitsbaeumen finden (Worktree-Zweige):**
+`git worktree list` zeigt die Worktrees; `git log master..<zweig>` zaehlt aber
+Merge-Commits mit und uebertreibt. Der saubere Filter ist `git cherry master
+<zweig>` — er nutzt die Patch-ID und markiert nur Commits, deren INHALT wirklich
+nicht in master steckt (`+` = nicht enthalten, `-` = schon da). Ein Zweig, der
+nur Merge-Commits traegt, ist kein offener Punkt. Danach je Zweig pruefen, ob
+die Arbeit schon in master existiert: `git cat-file -e master:<pfad>` — ACHTUNG
+der Rueckgabewert ist der EXITCODE (0 = existiert), nicht die Ausgabe; ein leerer
+String ist Erfolg, nicht "fehlt". Und: `git rev-list --count master..<zweig>`
+gibt die Zahl der echten Commits. Neue Spuren auf einem Zweig sind erst dann
+"verdrahtet", wenn sie in dauerlauf.SPUREN/lage.HOLER/befehl.FAMILIE/
+auswertung_alle auftauchen — ein Zweig mit 0 Treffern dort ist eine unfertige
+Papier-Spur, kein Live-Kandidat.
+
+**Der Merge der Zweige nach master:** `git merge --no-ff <zweig>` scheitert
+mit „fatal: stash failed / could not write index“, wenn im Arbeitsbaum fremde
+uncommittete Dateien liegen UND ein verwaister `.git/index.lock` existiert —
+der Merge versucht zu stashen und laeuft in die Sperre. Erst den Lock messen
+(0 Byte, alt, keine echten git-Prozesse ausser fsmonitor) und UMBENENNEN,
+dann merge. Ein Merge, der andere Pfade beruehrt als die fremden Dateien,
+braucht keinen Stash — er laeuft ohne Autostash sauber durch. Und: meldet der
+Merge „Already up to date“, ist die Arbeit des Zweigs BEREITS in master (eine
+parallele Sitzung hat sie direkt committet) — kein Fehler, kein offener Punkt;
+`git cherry master <zweig>` zeigt dann 0 echte Commits. Vor dem Push den
+Remote holen (`git fetch origin`); ist er divergiert (Routine-Commit), direkt
+`git merge --no-ff origin/master` statt `pull --rebase` (siehe Schritt 8).
+
 ### 2. Lebende von toten Ständen trennen
 
 - **Vor dem Schreiben erneut messen** (`sitzungs-rekonstruktion`): eine „tote“
@@ -160,6 +193,21 @@ C:\Users\faupe\Documents\BrainFiles"), obwohl der Pfad im Baum liegt. Kein
 Rechteproblem — die Junction wird aufgelöst. Über das `terminal`-Werkzeug
 schreiben (Verzeichnis vorher anlegen) oder das Ziel in einen Ordner legen, der
 keine Junction ist.
+
+**Die Junction kann STILL verschwunden sein — vor dem Schreiben pruefen.**
+`Werkstatt` (und `Modelle`) sind Junctions auf `O:\`; ein echter Ordner an ihrer
+Stelle (LinkType leer, Attributes nur `Directory`) heisst: alle Zugriffe ueber
+`BrainFiles\Werkstatt\...` laufen in einen Schatten auf C:, nicht nach O: —
+zweimal passiert (05.10. und 10.10.2026). Symptom von aussen: eine Routine
+scheitert mit „Python oder Ordner fehlt" oder „keine Statusdatei", obwohl der
+Ordner auf O: existiert. Vor jedem Schreiben in `Werkstatt/`:
+`(Get-Item 'Werkstatt' -Force).LinkType` muss `Junction` sein. Ist er es nicht:
+Schatten-Inhalte verlustfrei nach O: retten (Kollisionen nie ueberschreiben,
+Hash-Vergleich, Abweichendes nach `O:\Werkstatt\zusammenfuehrung-<datum>`),
+dann `New-Item -ItemType Junction -Path <w> -Target 'O:\Werkstatt'`; ein von
+einem Prozess gehaltener leerer Schatten laesst sich umbenennen statt loeschen.
+Reparatur-Protokoll: `Agenten/Routinen/logs/werkstatt-junction-reparatur-<datum>.log`.
+Eine Wache dafuer fehlt (T-390).
 
 `write_file` bzw. `terminal` nach `Werkstatt/Austausch/<JJJJ-MM-TT>/<thema>.md`,
 mit dem Vault-Frontmatter (`id`, `title`, `tags`, `created`, `updated`,
@@ -246,11 +294,37 @@ natürlichen Abschluss-Kandidaten):
 python Agenten/Hermes/skills/brainfiles/sammelauftrag/scripts/beendete_sitzungen.py
 ```
 
-Dann der Abschluss selbst:
+Dann der Abschluss selbst — **zuerst die Altersverteilung der Kandidaten messen,
+nie einen festen Wert raten**: `--older-than` filtert auf der LETZTEN AKTIVITAET
+(`last_activity_at`, der Trockenlauf nennt es im Kopf: "last active before …"),
+nicht auf `ended_at`, und ein einzelnes Alter kann leer treffen, waehrend ein
+juengeres greift (gemessen: 130 beendet+unarchiviert, davon 0 aelter als 30 d;
+`--older-than 30d`/`7d`/`14d` alle "No sessions match", `--older-than 2d` traf 18).
+Die Buckets liefert ein lesender SQL-Lauf (Zeitstempel sind gemischt REAL-Epoch
+ODER ISO — beide Formen behandeln):
 
 ```bash
-hermes sessions archive --older-than 30d --dry-run     # was würde versteckt?
-hermes sessions archive --older-than 30d --yes          # dann wirklich
+python - <<'EOF'
+import sqlite3, datetime
+from collections import Counter
+db = sqlite3.connect(r"file:Agenten/Hermes/state.db?mode=ro", uri=True)
+now = datetime.datetime.now(datetime.timezone.utc)
+def alter(ts):
+    if isinstance(ts, (int, float)):
+        dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+    else:
+        dt = datetime.datetime.fromisoformat(str(ts).replace('Z', '+00:00'))
+    return (now - dt).days
+rows = db.execute("SELECT ended_at, source FROM sessions WHERE ended_at IS NOT NULL AND archived = 0").fetchall()
+print(Counter(('<1d' if alter(e) < 1 else '1-7d' if alter(e) < 7 else '7-30d' if alter(e) < 30 else '>30d', s) for e, s in rows))
+EOF
+```
+
+Danach Trockenlauf ZAEHLEN und mit dem Bucket-gerechten Alter wirklich laufen:
+
+```bash
+hermes sessions archive --older-than 2d --dry-run | wc -l   # Zahl nennen, nicht ansehen
+hermes sessions archive --older-than 2d --yes
 ```
 
 Vor einem Massen-Abschluss `hermes sessions pinned` lesen und Angeheftete ausnehmen
@@ -265,6 +339,20 @@ sie werden nur gelesen oder per `hermes sessions import` einseitig übernommen.
   `git log --oneline origin/master..master`: die geplante Aufgabe committet
   lokal, ihr Push kann aber scheitern (403), waehrend derselbe Push von Hand
   funktioniert. Unpushed Commits sind eine Sicherung, die es nicht gibt.
+- **Divergierter Baum + fremde uncommittete Dateien: weder `pull --rebase` noch
+  `git pull` fahren.** `pull --rebase` bricht mit „cannot pull with rebase: You
+  have unstaged changes" ab (fremde Arbeit im geteilten Arbeitsbaum bleibt ja
+  uncommittet liegen); `git pull` im Merge-Modus stasht zunaechst automatisch
+  und scheitert dann an einem verwaisten `.git/index.lock`. Der saubere Weg
+  (gemessen): (1) den Lock messen (Alter, Groesse 0, echte git-Prozesse ohne
+  `fsmonitor` zaehlen — sind alle nur fsmonitor-Daemons, ist er ein Wrack) und
+  UMBENENNEN, nie loeschen; (2) direkt `git merge --no-ff origin/master`
+  fahren — ein Merge ohne Stash fasst die uncommitteten Dateien NICHT an,
+  solange der eingehende Commit andere Pfade beruehrt (vorher `git diff
+  origin/master --stat` gegen die uncommitteten Pfade gegenchecken); (3) pushen
+  und die Divergenz nachmessen: `git rev-list --left-right --count
+  origin/master...master` muss `0  0` liefern. So bleibt fremde Arbeit im Baum
+  unangetastet und der eigene Push kommt durch.
 
 ## Pitfalls
 
@@ -273,14 +361,24 @@ sie werden nur gelesen oder per `hermes sessions import` einseitig übernommen.
   `tail`) zeigt nur den Rest. Am 29.09.2026 standen so 7 sichtbare Zeilen fuer
   144 wirkliche Sitzungen — der Ernstlauf versteckte 144 statt der erwarteten 7.
   Vorher `| wc -l` nehmen und die Zahl nennen, sonst ist die Wirkung ungewollt.
+  Die Zahl ist eine GROESSE, kein Versprechen: laeuft eine parallele Sitzung,
+  kann der Ernstlauf um wenige Sitzungen abweichen (gemessen 89 dry-run / 87
+  archived) — Sitzungen werden zwischen den beiden Laeufen beendet oder neu
+  angelegt. Abweichung im einstelligen Bereich ist Bewegung, kein Fehler;
+  Beleg ist der Zaehler aus `beendete_sitzungen.py` vorher/nachher, nicht die
+  Trockenlauf-Zahl.
 - **`archive` hat kein Gegenstueck im CLI.** Es gibt `archive`, aber kein
   `unarchive` (`hermes sessions --help`); umkehrbar heisst hier: in `state.db`
   `UPDATE sessions SET archived=0` (Spalte existiert, Tabelle `sessions`).
   Wer 100+ Sitzungen versteckt, muss diesen Rueckweg mitliefern.
-- **`archive --older-than 30d` kann "No sessions match" melden, obwohl 153
-  beendete Sitzungen unarchiviert liegen** — die aeltere Auswahl greift nur
-  einen Teil. Der Bestand kommt aus `beendete_sitzungen.py` (beendet und noch
-  nicht archiviert), nicht aus einem einzelnen Filter.
+- **`archive --older-than AGE` filtert auf der LETZTEN AKTIVITAET, nicht auf
+  `ended_at` — und jedes einzelne Alter kann leer treffen.** "No sessions match"
+  trotz 100+ beendeter, unarchivierter Sitzungen ist der Normalfall, wenn die
+  Auswahl alle juenger sind als der Wert (gemessen: von 130 beendeten 0 aelter
+  als 30 d, `--older-than 7d`/`14d`/`30d` leer, `--older-than 2d` traf 18). Der
+  Wert gehoert aus den Alters-Buckets der DB gewaehlt (Schritt 8, SQL-Rezept),
+  nie aus dem Gedaechtnis; der Bestand kommt aus `beendete_sitzungen.py`,
+  nicht aus einem einzelnen Filter.
 - **`Wissen/Routinen.md` ist CRLF mit einzelnen LF-Zeilen.** Weder `write_file`
   noch `patch` darauf ansetzen: beide normalisieren die Zeilenenden und erzeugen
   im Diff Änderungen, die niemand gemacht hat. Sicherung `.bak-JJJJMMTT` anlegen,

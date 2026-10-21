@@ -1,8 +1,10 @@
 model:
-  default: inclusionai/ling-3.0-flash-fin:free
+  default: stepfun/step-5-preview:free
   provider: nous
   base_url: https://inference-api.nousresearch.com/v1
   api_mode: chat_completions
+  request_overrides:
+    max_tokens: 16384
 providers:
   nous:
     models:
@@ -538,6 +540,7 @@ agent:
   personalities: {}
   reasoning_effort: high
   verbose: false
+  cron_drain_timeout: 120
 terminal:
   backend: local
   cwd: C:\Users\faupe\documents\BrainFiles\Agenten\Hermes
@@ -689,12 +692,12 @@ auxiliary:
     model: inception/mercury-2.5
 display:
   compact: false
-  personality: helpful
+  personality: hype
   busy_input_mode: steer
   bell_on_complete: true
   show_reasoning: true
   background_process_notifications: concise
-  streaming: false
+  streaming: true
   skin: default
   language: ger
   interim_assistant_messages: true
@@ -707,10 +710,10 @@ display:
   long_running_notifications: true
   tool_progress: all
   message_reactions: true
-  in_app_tips: false
-  in_app_tours: false
+  in_app_tips: true
+  in_app_tours: true
 dashboard:
-  theme: midnight
+  theme: default
   font: ibm-plex-mono
 tts:
   provider: piper
@@ -911,6 +914,20 @@ moa:
       enabled: true
 skills:
   creation_nudge_interval: 15
+  disabled:
+    - note-taking
+    - software-development
+    - web
+    - autonomous-ai-agents
+    - creative
+    - email
+    - media
+    - productivity
+    - research
+    - social-media
+    - apple
+    - claude-design
+    - design-md
 curator:
   enabled: true
   interval_hours: 168
@@ -943,6 +960,7 @@ plugins:
     - okx-a2a
     - one-skill-to-rule-them-all
     - rss-reader
+    - security-guidance
     - self-hosted
   disabled: []
 security:
@@ -957,11 +975,56 @@ code_execution:
   timeout: 300
 gateway:
   multiplex_profiles: true
+  loop_watchdog: true
+  loop_watchdog_probe_interval_s: 15.0
+  loop_watchdog_probe_timeout_s: 30.0
+  loop_watchdog_max_strikes: 2
   profile_routes:
     - name: telegram-max
       platform: telegram
       chat_id: '7648512088'
       profile: default
+      enabled: true
+    - name: gruppe-bots
+      platform: telegram
+      chat_id: '-1003980261765'
+      profile: bots
+      enabled: true
+    - name: gruppe-dispatch-1998
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '1998'
+      profile: bots
+      enabled: true
+    - name: gruppe-handel-1999
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '1999'
+      profile: bots
+      enabled: true
+    - name: gruppe-auswertung-2000
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '2000'
+      profile: bots
+      enabled: true
+    - name: gruppe-wissen-2001
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '2001'
+      profile: bots
+      enabled: true
+    - name: gruppe-gbrain-2006
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '2006'
+      profile: bots
+      enabled: true
+    - name: gruppe-wartung-723
+      platform: telegram
+      chat_id: '-1003980261765'
+      thread_id: '723'
+      profile: bots
       enabled: true
   platforms:
     a2a:
@@ -969,7 +1032,7 @@ gateway:
       extra:
         port: 9900
 streaming:
-  enabled: false
+  enabled: true
 sessions:
   auto_archive: true
   auto_archive_days: 2
@@ -981,6 +1044,7 @@ telemetry:
   shared_metrics:
     enabled: true
     send: false
+    offer_version: 2
 updates:
   pre_update_backup: quick
   backup_keep: 5
@@ -992,7 +1056,6 @@ proxy:
 desktop:
   repo_scan_roots:
     - 'C:\Users\faupe\documents\BrainFiles\Werkstatt'
-    - O:\Werkstatt
   repo_scan_exclude_paths:
     - C:\Users\faupe\documents\Github
   font_family: IBM Plex Sans
@@ -1002,7 +1065,7 @@ desktop:
   renderer_max_old_space_mb: 4096
 local_runtime:
   enabled: true
-_config_version: 50
+_config_version: 51
 a2a_agents:
   omniroute:
     auth:
@@ -1144,7 +1207,7 @@ mcp_servers:
   kraken-papier:
     args:
       - mcp
-    command: O:\Werkstatt\Repos\kraken-cli\target\release\kraken.exe
+    command: O:\Werkstatt\kraken-cli\target\release\kraken.exe
   mail:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\mail\mail_mcp.py
@@ -1158,7 +1221,7 @@ mcp_servers:
     args:
       - C:\Users\faupe\Documents\BrainFiles\Agenten\MCP-Server\ant.dir.gh.anthropic.pdf-server-mcp\dist\index.js
       - --stdio
-      - C:\Users\faupe\Documents\BrainFiles\MaxHirn\Claude
+      - C:\Users\faupe\Documents\BrainFiles\MaxHirn\Referenz\Claude_prompts
     command: node
   revolut-x:
     args:
@@ -1196,6 +1259,27 @@ mcp_servers:
       - C:\Users\faupe\Documents\BrainFiles\Werkstatt\omnitrade\.projectatlas\config.toml
       - mcp
     enabled: true
+    tools:
+      include:
+        - atlas_scan
+        - atlas_watch_once
+        - atlas_watch_status
+        - atlas_health
+        - atlas_health_resolve
+        - atlas_files
+        - atlas_file_summary
+        - atlas_search
+        - atlas_overview
+        - atlas_map
+        - atlas_outline
+        - atlas_symbols
+        - atlas_slice
+        - atlas_next
+        - atlas_task_status
+        - atlas_purpose_queue
+        - atlas_purpose_review
+        - atlas_purpose_set
+        - atlas_root
   gitlab:
     url: https://gitlab.com/api/v4/mcp
     auth: oauth
@@ -1247,6 +1331,12 @@ mcp_servers:
     url: https://mcp.postman.com/minimal
     auth: oauth
     enabled: false
+  ziplime:
+    command: C:\Users\faupe\Documents\BrainFiles\Werkstatt\ziplime\.venv\Scripts\python.exe
+    args:
+      - -m
+      - ziplime.mcp
+    enabled: true
 platform_toolsets:
   cli:
     - a2a
@@ -1335,13 +1425,17 @@ platforms:
           topics:
             - name: Allgemein
               icon_color: 7322096
+              thread_id: 32025
             - name: Handel
               icon_color: 9367192
               skill: brainfiles/fremdrepos-signal
+              thread_id: 32027
             - name: Markt
               icon_color: 16766590
+              thread_id: 32029
             - name: Wissen
               icon_color: 13338331
+              thread_id: 32031
 cron:
   catch_up_missed: false
 _left_core_scoped:

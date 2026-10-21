@@ -50,6 +50,46 @@ def _kerzen_modul(spur):
     return _KERZEN_MODULE[name]
 
 
+def _universum(wachen, spur, kerzen_holen, km_dir):
+    """(Instrumente, Hinweis): was der Rueckblick testet.
+
+    Mit ``spur["universum_testen"]`` und ``universum.modus == "alle"`` in der
+    wachen.json ist es das LIVE-Universum des Scanners - alle Spot-Paare der
+    konfigurierten Quote-Waehrungen ueber dem Mindestumsatz, gleiche Abfrage
+    wie ``scanner/scan.py``. Sonst die Watchlist wie bisher. Ohne Abruf
+    (``kerzen_holen=False``) oder bei Fehler: die Paare im Kerzen-Cache mit
+    passender Quote, sonst die Watchlist.
+
+    GRENZE, die im Bericht steht: das Universum ist das von HEUTE. Wer
+    zwischenzeitlich verschwunden ist, fehlt (Ueberlebenden-Verzerrung), und
+    junge Listings fallen in ``ruecktest.ausrichten`` heraus.
+    """
+    uni = wachen.get("universum") or {}
+    if not (spur.get("universum_testen") and uni.get("modus") == "alle"):
+        return list(wachen["watchlist"]), None
+    quotes = uni.get("quotes", ["USDT", "USDC"])
+    paare, quelle = [], "Markt (alle_paare)"
+    if kerzen_holen:
+        try:
+            import okx
+            paare = [i for i, _ in okx.alle_paare(
+                quote=quotes,
+                min_volumen_usd=uni.get("min_volumen_24h_usd", 3000000))]
+        except Exception as e:  # noqa: BLE001
+            print("  Universum-Abruf: %s - nehme Cache" % e, file=sys.stderr)
+    if not paare:
+        quelle = "Kerzen-Cache"
+        paare = sorted(p.stem for p in Path(km_dir).glob("*.json")
+                       if p.stem.rsplit("-", 1)[-1] in quotes)
+    if len(paare) < 3:
+        return list(wachen["watchlist"]), (
+            "Universum nicht ermittelbar (%d Paare) - Watchlist getestet"
+            % len(paare))
+    return paare, ("Universum: %d Paare aus %s (Quote %s, Umsatz >= %s)"
+                   % (len(paare), quelle, "/".join(quotes),
+                      uni.get("min_volumen_24h_usd", 3000000)))
+
+
 def _konf():
     return (json.loads((WURZEL / "konfig.json").read_text("utf-8")),
             json.loads((WURZEL / "spuren.json").read_text("utf-8")))
@@ -108,13 +148,18 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     spur = {**spur, **{k: str((WURZEL / spur[k]).resolve())
                        for k in _pfad_schluessel if k in spur}}
     wachen = json.loads(Path(spur["wachen"]).read_text("utf-8"))
-    watchlist = wachen["watchlist"]
     tage = (konfig["oos_training_tage"]
             + konfig.get("oos_fenster_ziel", 12) * konfig["oos_test_tage"]
             + konfig.get("holdout_tage", 0))
 
     km = _kerzen_modul(spur)
     km_dir = KERZEN_DIR if km is kerzen else WURZEL / km.__name__
+    watchlist, universum_hinweis = _universum(wachen, spur, kerzen_holen, km_dir)
+    # Live-Universum getestet: Watchlist-Drops waeren wirkungslose Vorschlaege.
+    im_universum = bool(universum_hinweis) and set(watchlist) != set(
+        wachen["watchlist"])
+    if universum_hinweis:
+        print("  " + universum_hinweis, file=sys.stderr)
     kerzen_je_inst = {}
     for inst in watchlist:
         if kerzen_holen:
@@ -131,7 +176,25 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
         return None
 
     eingang = len(kerzen_je_inst)
-    kerzen_je_inst, ausricht_hinweise = ruecktest.ausrichten(kerzen_je_inst)
+    if konfig.get("ungleiche_historien", False):
+        ungleich, ausricht_hinweise = ruecktest.ausrichten_ungleich(
+            kerzen_je_inst)
+        if len(ungleich) >= 3:
+            kerzen_je_inst = ungleich
+        else:  # zu wenig lange Historien: wie bisher auf die Schnittmenge
+            kerzen_je_inst, alt_hinweise = ruecktest.ausrichten(kerzen_je_inst)
+            ausricht_hinweise = ["ungleiche Historien: weniger als 3 "
+                                 "Instrumente mit genug Tagen - altes "
+                                 "ausrichten()"] + list(alt_hinweise)
+    else:
+        kerzen_je_inst, ausricht_hinweise = ruecktest.ausrichten(kerzen_je_inst)
+    if universum_hinweis:
+        ausricht_hinweise = [universum_hinweis + "; nach Ausrichtung %d"
+                             % len(kerzen_je_inst)] + list(ausricht_hinweise)
+        if im_universum:
+            ausricht_hinweise.append(
+                "Das Universum ist das von HEUTE: Paare, die zwischenzeitlich "
+                "verschwanden, fehlen (Ueberlebenden-Verzerrung).")
     for h in ausricht_hinweise:
         print("  Ausrichtung: %s" % h, file=sys.stderr)
     nach_ausrichten = len(kerzen_je_inst)
@@ -157,7 +220,8 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
     ordner.mkdir(parents=True, exist_ok=True)
 
     befund = auswerter.befund(spur, konfig, ordner)
-    basis = suche.basis_kandidat(wachen, bewertung.CHANCE_GEWICHTE,
+    basis = suche.basis_kandidat({**wachen, "watchlist": watchlist},
+                                 bewertung.CHANCE_GEWICHTE,
                                  bewertung.RISIKO_GEWICHTE,
                                  deckel_felder=spur.get("deckel_felder"))
     grenzen = spur["aenderbar"]["wachen.json"]
@@ -186,7 +250,8 @@ def einmal(spur_name, *, kerzen_holen=True, jetzt=None):
                            bewerte=bewerte, holdout_fn=holdout_fn,
                            gewichte_durchsuchbar=spur.get(
                                "gewichte_durchsuchbar",
-                               konfig.get("gewichte_durchsuchbar", True)))
+                               konfig.get("gewichte_durchsuchbar", True)),
+                           watchlist_aenderbar=not im_universum)
 
     if ergebnis["kandidat"] is not None:
         vorschlag.baue(ordner, ergebnis, spur, konfig,

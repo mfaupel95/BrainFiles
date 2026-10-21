@@ -25,6 +25,15 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:9900/' -Method Post -ContentType 'appli
 - Telegram <-> A2A-Bruecke: Max schreibt, der Bot reicht per A2A an hermes-maks-pc weiter (alle 43 Skills). Nur Standardbibliothek.
 - Einrichtung: BotFather -> `setx SKILLSBOT_TOKEN <neuer Bot>` (NIE TELEGRAM_TOKEN ueberschreiben!), `setx TELEGRAM_CHAT_ID` (gleiche ID wie melder), `python skillsbot.py --probe` (Exit 0), Task: `Agenten/Routinen/skillsbot.ps1` als Admin.
 - **Falle geteilter Bot**: TELEGRAM_TOKEN gehoert dauerlauf.py/melder.py (Handel, Freigaben). Zwei getUpdates-Poller an einem Token verschlucken Order-Freigaben. skillsbot verweigert deshalb den Dauerbetrieb ohne SKILLSBOT_TOKEN.
+- **Bilder gehoeren zur Nachricht, nicht zum Chat** (`_bilder_fuer_auftrag` in
+  skillsbot.py): Ein reiner Textauftrag (z.B. ein Handelsbefehl) bekommt KEINE
+  Bilder angehaengt - gemessen klebten Fliesenbilder an jedem Folge-Befehl im
+  Chat, weil das ganze Fenster an jede Nachricht ging. Bilder kommen nur mit,
+  wenn die Nachricht selbst ein Bild MITBRACHTE (Text = Bildunterschrift) oder
+  der Text ausdruecklich auf "Bild" verweist ("Muster im 2. Bild").
+  Bildfenster-Mechanik: `_bilder_holen`/`_bild_nummer`/`_fenster_bilder`,
+  BILD_FENSTER=6. Beim Umbau daran denken: das gleiche Bild wird bei erneutem
+  Senden neu nummeriert und erzeugt Duplikate im Fenster.
 - Befehle im SkillsBot: /status, /papierstatus, /prognose [N] (prognose.py --kurz, 240 s Timeout), /skills [SUCHE], /skill NAME, /run NAME [Auftrag], /hilfe - dazu seit 15.09.2026 dieselben lesenden Handelsbefehle wie im Handelsbot: /lage, /bericht, /spuren, /spur NAME, /strategien, /indikatoren, /markt. Sie werden NICHT hier gebaut: handel_befehle.py reicht sie an `Handel/befehle.py` durch (eine Quelle fuer beide Bots), der Text laeuft wegen des fehlenden parse_mode durch `handel_befehle.klartext()`; die SkillsBot-Hilfe ist selbst ohne HTML-Marken. Der Text aller Handelsbefehle steht in `Agenten/Handel/befehle.py` - dort aendern, nicht in skillsbot.py. Unbekannte Slashbefehle nicht an A2A reichen; nur Freitext.
 - **/run NAME [Auftrag] fuehrt einen Skill AUS** (16.09.2026), statt ihn nur zu zeigen: der Bot schickt
   per A2A "Fuehre den Skill 'NAME' aus" + Auftrag und gibt die Antwort zurueck. Ausgefuehrt wird NUR, was

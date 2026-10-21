@@ -133,7 +133,7 @@ EINEN Grund). Wer die Liste aendert, prueft das gegen die Spalte „Orderweg im 
 ## robinhood_radar — Papier auf bewerteten Wallets (Robinhood Chain)
 
 Angelegt 22.09.2026 (Auftrag „Radar -papierspur und -bot"). Quelle ist die SQLite
-`fomo_agent.db` des Fremd-Repos `Werkstatt/Repos/fomo-robinhood-radar` — **nur lesend**
+`fomo_agent.db` des Fremd-Repos `Werkstatt/fomo-robinhood-radar` — **nur lesend**
 (`lesen.py` oeffnet mit `mode=ro` und lehnt jede Anweisung ab, die nicht mit `SELECT`/`WITH`/
 `PRAGMA` beginnt).
 
@@ -191,28 +191,28 @@ Ausstieg leeres Symbol) — gemessen, nicht vermutet. `gitter` führt `max_verlu
 
 ## Pläne und Befunde (verschoben 2026-10-06)
 
-Alle Pläne liegen in `MaxHirn/Wiki/Handel/plans/`:
+Alle Pläne liegen in `Werkstatt/Projekte/handel/plans/` (seit 21.10.2026, außerhalb des Vaults, daher keine Wikilinks):
 
-- [[2026-09-18-spiegel-kopier-filter-design]]
-- [[2026-09-19-quant-migration-design]]
-- [[2026-09-24-backtest-fundament-design]]
-- [[2026-09-26-moondev-backtest-design]]
-- [[2026-09-29-leitstand-design]]
-- [[2026-10-01-prognose-merkmale-design]]
-- [[2026-09-18-filter-studie]]
-- [[2026-09-18-v1-ausstiegsgeometrie]]
-- [[2026-09-19-daten-auffrischen]]
-- [[2026-09-19-python-zu-rust-migration]]
-- [[2026-09-19-quant-migration-plan]]
-- [[2026-09-24-backtest-fundament]]
-- [[2026-09-26-moondev-backtest]]
-- [[2026-09-29-leitstand-plan]]
-- [[2026-10-01-omniquant-kraken-live-plan]]
-- [[PLAN-auswertung-datengrundlage-2026-09-17]]
-- [[PLAN-berichtsschicht-2026-09-18]]
+- `2026-09-18-spiegel-kopier-filter-design.md`
+- `2026-09-19-quant-migration-design.md`
+- `2026-09-24-backtest-fundament-design.md`
+- `2026-09-26-moondev-backtest-design.md`
+- `2026-09-29-leitstand-design.md`
+- `2026-10-01-prognose-merkmale-design.md`
+- `2026-09-18-filter-studie.md`
+- `2026-09-18-v1-ausstiegsgeometrie.md`
+- `2026-09-19-daten-auffrischen.md`
+- `2026-09-19-python-zu-rust-migration.md`
+- `2026-09-19-quant-migration-plan.md`
+- `2026-09-24-backtest-fundament.md`
+- `2026-09-26-moondev-backtest.md`
+- `2026-09-29-leitstand-plan.md`
+- `2026-10-01-omniquant-kraken-live-plan.md`
+- `PLAN-auswertung-datengrundlage-2026-09-17.md`
+- `PLAN-berichtsschicht-2026-09-18.md`
 
-Befunde in `MaxHirn/Wiki/Handel/Befunde/`:
-- [[BEFUND-hygiene-2026-09-17]]
+Befunde in `Werkstatt/Projekte/handel/befunde/`:
+- `BEFUND-hygiene-2026-09-17.md`
 - [[CODE_REVIEW_AND_FIXES_INDEX]]
 - [[CODE_REVIEW_FIXES]]
 - [[ENTWURF-auswertung-berichte-2026-09-17]]

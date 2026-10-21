@@ -1,3 +1,12 @@
-description: obsidian-skills (kepano):Skills-Sammlung fuer Obsidian, ein Bot je Fremd-Repo
-  (Hausstandard)
+description: obsidian-skills (kepano):Skills-Sammlung fuer Obsidian, ein Bot je 
+  Fremd-Repo (Hausstandard)
 description_auto: false
+ui_meta:
+  hermes-bots:
+    groups:
+      - Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
+    group: Findusarbeitus, Basic Memory, Everything Claude Code, Gbrain, Ne
+    sectionId: sec-mvgqeww2-28l2v
+    sectionName: System
+_ui_meta_revisions:
+  hermes-bots: 2

@@ -1,0 +1,73 @@
+{
+ "max_open_trades": 3,
+ "stake_currency": "USDT",
+ "stake_amount": "unlimited",
+ "tradable_balance_ratio": 0.99,
+ "dry_run": true,
+ "initial_state": "running",
+ "dry_run_wallet": 10000,
+ "trading_mode": "futures",
+ "timeframe": "1h",
+ "strategy": "HausSpur",
+ "exchange": {
+  "name": "binance",
+  "key": "",
+  "secret": "",
+  "pair_whitelist": [
+   "BTC/USDT:USDT",
+   "ETH/USDT:USDT",
+   "SOL/USDT:USDT"
+  ],
+  "pair_blacklist": []
+ },
+ "entry_pricing": {
+  "price_side": "same",
+  "use_order_book": true,
+  "order_book_top": 1
+ },
+ "exit_pricing": {
+  "price_side": "same",
+  "use_order_book": true,
+  "order_book_top": 1
+ },
+ "pairlists": [
+  {
+   "method": "StaticPairList"
+  }
+ ],
+ "unfilledtimeout": {
+  "entry": 10,
+  "exit": 10,
+  "unit": "minutes"
+ },
+ "api_server": {
+  "enabled": false,
+  "listen_ip_address": "0.0.0.0",
+  "listen_port": 8096,
+  "jwt_secret_key": "9e86b29faf2d8078ca3b15039f719d180ed18a5ba3229ea34cde423f12b6b128",
+  "ws_token": "kZsisU5Af8FZid2KXlIC7Jw3BWmkSomz",
+  "CORS_origins": [],
+  "username": "max",
+  "password": "<78781578>"
+ },
+ "telegram": {
+  "enabled": false,
+  "token": "",
+  "chat_id": ""
+ },
+ "bot_name": "freqtrade-squeeze",
+ "db_url": "sqlite:////freqtrade/user_data/tradesv3.squeeze.sqlite",
+ "logfile": "/freqtrade/user_data/logs/squeeze.log",
+ "internals": {
+  "process_throttle_secs": 5
+ },
+ "moondev": {
+  "signal_ausstieg": true
+ },
+ "margin_mode": "isolated",
+ "hausspur": {
+  "name": "squeeze",
+  "pfad": "/agenten/Handel",
+  "ausloesung": "docht"
+ }
+}

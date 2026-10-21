@@ -297,4 +297,4 @@ Expected output: `✓✓✓ ALL MODULE TESTS PASSED ✓✓✓`
 
 ---
 
-**Questions?** Check IMPROVEMENTS_2026-09-30.md for detailed docs.
+**Questions?** Check `MaxHirn/Archiv/IMPROVEMENTS_2026-09-30.md` for detailed docs.

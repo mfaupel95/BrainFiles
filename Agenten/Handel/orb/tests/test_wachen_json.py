@@ -8,20 +8,19 @@ class TestWachenJson(unittest.TestCase):
     def setUp(self):
         self.w = json.loads(WACHEN.read_text(encoding="utf-8"))
 
-    def test_start_gesperrt(self):
-        # Handelserlaubnis und Freigabe bleiben gesperrt: der Backtest ist fuer
-        # beide Instrumente negativ (EV -45.1 / -3.7 Pkt je Runde), es gibt
-        # keinen Live-Pfad im Code. Was der Papierlauf BRAUCHT, ist dagegen
-        # gesetzt: ein Instrument und ein Spiegelziel (Bedingung 4).
-        # handel_erlaubt steht auf False: Auftrag Max 21.09.2026 gilt nur fuer
-        # sechs andere Spuren; ORB bleibt reine Papierspur. Die Spur
-        # hat aber KEINEN Orderaufruf im Code - der Schalter allein handelt
-        # nicht. Der Test prueft, dass der Wert False bleibt und
-        # niemand ihn still aufmacht (nur wachen_orb.sperre_zu kippt ihn).
-        self.assertIs(self.w["handel_erlaubt"], False)
-        self.assertIs(self.w["freigabe"]["erfuellt"], False)
+    def test_start_live_aktiv(self):
+        # handel_erlaubt=True und freigabe.erfuellt=True seit 12.10.2026
+        # (Auftrag Max: 'Live pfad anbinden. Backtest außer acht lassen,
+        # daten zählen'). Der Backtest ist negativ und wird bewusst ignoriert;
+        # die Papierdaten zaehlen. backtest_bestanden bleibt ehrlich false.
+        # Der Test stellt sicher, dass niemand die Freigabe still zurueckdreht.
+        self.assertIs(self.w["handel_erlaubt"], True)
+        self.assertIs(self.w["freigabe"]["erfuellt"], True)
         self.assertIs(self.w["freigabe"]["backtest_bestanden"], False)
-        self.assertIn(self.w["instrument_aktiv"], ("BTC_USDT", "ETH_USDT"))
+        # Mehr-Instrument-Erweiterung 14.10.2026: Liste statt Einzelwert.
+        self.assertIn("instrumente_aktiv", self.w)
+        self.assertTrue(set(self.w["instrumente_aktiv"]) >= {"BTC_USDT", "ETH_USDT"})
+        self.assertIn("max_offene_positionen", self.w)
         self.assertTrue(self.w["journal_zweitziel"])
 
     def test_pflichtfelder_da(self):

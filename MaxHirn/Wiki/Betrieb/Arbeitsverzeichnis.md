@@ -70,7 +70,7 @@ meldet):
     hermes (Vorgabe)                   ok         ...\Agenten\Hermes
     hermes -Hier                       ok         ...\BrainFiles
     hermes -p gibtsnicht               ok         ...\Agenten\Hermes
-    hermes -p agent-trade-kit          ok         ...\Werkstatt\Repos\agent-trade-kit
+    hermes -p agent-trade-kit          ok         ...\Werkstatt\agent-trade-kit
     Shell-cwd danach                   ok         ...\BrainFiles
 
 Zweiter Zeuge: eine ueber den Wrapper gestartete Sitzung traegt in `state.db` erstmals
