@@ -22,6 +22,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 from datetime import datetime, timezone
 
 # --- Gemeinsame Abhaengigkeiten ueber den PFAD laden -----------------------
@@ -51,6 +52,7 @@ if _handel_ordner not in sys.path:
 import basis_deckel_tor
 import mae
 import pos_kennung  # noqa: E402
+import telemetrie  # noqa: E402  (Ereignisse nach tracking-plan.yaml, wirft nie)
 
 
 def _lade_modul(name):
@@ -857,6 +859,11 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
               ziel=pformat(p.get("ziel") or 0.0),
               stop_pct="%.2f" % ratschen.stop_prozent(p),
               grund=grund, **mae.felder(p))
+        if SCHREIBEN:
+            telemetrie.geschlossen(journal_pfad, p,
+                                   "live" if ist_live else "papier", grund, gv,
+                                   kurs, mae.felder(p)["haltetage"],
+                                   risikostufe.stufe())
 
 
 # --- Kill: Zwangsschluss mit Buchung -----------------------------------------
@@ -1242,6 +1249,9 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                 # Signal-Wechsel in die Queue schreiben, damit der
                 # signal-executor (Hermes-Cron) unabhaengig vom Dauerlauf ausfuehrt.
                 _signal_queue(ordner, inst, seite, kurse.get(inst))
+                if SCHREIBEN:
+                    telemetrie.signal_ausgewaehlt(journal_pfad, inst, seite,
+                                                  "live", risikostufe.stufe())
                 continue
             p = einstieg(z, inst, seite, kurse.get(inst), w, faktor,
                          None,
@@ -1270,6 +1280,13 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
                         stop=pformat(p["stop"]), ziel=pformat(p["ziel"]),
                         stop_pct="%.2f" % p["stop_pct"],
                         grund=grund)
+                if SCHREIBEN:
+                    modus_text = "live" if live else "papier"
+                    telemetrie.signal_ausgewaehlt(journal_pfad, inst, seite,
+                                                  modus_text,
+                                                  risikostufe.stufe())
+                    telemetrie.eroeffnet(journal_pfad, p, modus_text, inst,
+                                         seite, risikostufe.stufe())
 
         z["datenlage"] = {"keine_daten": False, "kandidaten": len(daten),
                           "hinweis": datenlage() if datenlage else None}
@@ -1277,8 +1294,18 @@ def zyklus(ordner, quelle, signal, modus, ereignis_name, ziel=None,
         spiegeln(zustand_pfad, journal_pfad, z, w)
         return 0
 
-    with ereignis.lauf(ereignis_name):
-        return _lauf()
+    begonnen = time.monotonic()
+    ergebnis = "fehler"
+    try:
+        with ereignis.lauf(ereignis_name):
+            rc = _lauf()
+            ergebnis = "ok" if rc in (0, None) else "fehler"
+            return rc
+    finally:
+        if SCHREIBEN and modus in ("papier", "live") and ergebnis == "fehler":
+            telemetrie.lauf_fehlgeschlagen(journal_pfad,
+                                           time.monotonic() - begonnen, modus,
+                                           risikostufe.stufe())
 def _signal_queue(ordner, inst, seite, kurs):
     """Signal-Wechsel in die Queue schreiben (vom signal-executor abgeholt).
 
