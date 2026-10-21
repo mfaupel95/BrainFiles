@@ -46,14 +46,13 @@ def trade(inst_id: str, size: int, side: str = "buy", pos_side: str = "long"):
     print(f"Mode: DEMO (x-simulated-trading: 1)")
 
     pfad = "/api/v5/trade/order"
+    # posMode ist net_mode -> KEIN posSide mitschicken (sonst Fehler)
     daten = {
         "instId": inst_id,
         "tdMode": "isolated",
         "side": side,
-        "posSide": pos_side,
         "ordType": "market",
         "sz": str(size),
-        "clOrdId": "demo_test",
     }
     hdr = sign(pfad, "POST", daten)
 
@@ -80,6 +79,6 @@ def trade(inst_id: str, size: int, side: str = "buy", pos_side: str = "long"):
         print(e.read().decode())
 
 if __name__ == "__main__":
-    inst_id = sys.argv[1] if len(sys.argv) > 1 else "BTC-USD_UM_XPERP-310404"
-    size = int(sys.argv[2]) if len(sys.argv) > 2 else 2
+    inst_id = sys.argv[1] if len(sys.argv) > 1 else "BTC-USD_UM-261030"
+    size = sys.argv[2] if len(sys.argv) > 2 else "0.1"
     trade(inst_id, size)
