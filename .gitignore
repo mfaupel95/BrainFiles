@@ -584,12 +584,12 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Hermes/profiles/*/scripts/
 !Agenten/Hermes/profiles/*/scripts/**
 # Observations-Router (22.10.2026): Einmal-Dispatcher im bots-Profil.
-!Agenten/Hermes/profiles/*/observations_router.py
-!Agenten/Hermes/profiles/*/observations_router.README.md
-!Agenten/Hermes/profiles/*/tests/
-!Agenten/Hermes/profiles/*/tests/**
+!Agenten/Hermes/profiles/bots/observations_router.py
+!Agenten/Hermes/profiles/bots/observations_router.README.md
+!Agenten/Hermes/profiles/bots/tests/
+!Agenten/Hermes/profiles/bots/tests/**
 # Build-Reste unter tests/ wieder sperren (Whitelist wuerde sie sonst freigeben).
-Agenten/Hermes/profiles/*/tests/__pycache__/
+Agenten/Hermes/profiles/bots/tests/__pycache__/
 #
 # SKILL-BUNDLES (11.10.2026): Slash-Command-Buendel unter
 # Agenten/Hermes/skill-bundles/*.yaml - Verhalten wie Skills, deshalb
