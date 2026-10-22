@@ -95,13 +95,25 @@ Was gerade läuft. Ein Abschnitt je Projekt. Abgeschlossenes nach unten unter
   ist damit wahrscheinlich beantwortet.
 - **Nachtrag npm:** `.npmrc` (enthält nur `allow-scripts`, keine Zugangsdaten) nach
   `.config\npm\npmrc` umgezogen, `NPM_CONFIG_USERCONFIG` gesetzt, verifiziert.
-- **Zurückgestellt, mit Grund:** `.docker` (6,9 GB Modelle, Docker-Desktop-Daten),
-  `.bun` (21 laufende bun-Prozesse, Umzug würde sie stören), `.gitconfig`
-  (GitHub Desktop liest es direkt, Umgebungsvariable greift dort erst nach Neustart).
-  Entscheidung ausstehend.
-- **Nächste Schritte:** Entscheidungen oben einholen, dann alte Ordner (`.matplotlib`,
-  `.kube`, `.cargo`, `.rustup`) vom Nutzer entfernen lassen, sobald die Verifikation
-  bestätigt ist.
+- **Stand (2026-10-22):** `.bun` umgezogen und verifiziert. Der vermutete Blocker
+  (laufende bun-Prozesse) war ein Irrtum — alle 25 laufenden bun-Prozesse liefen
+  über die gebündelte Kopie `Agenten/Hermes/tools/bun/bun.exe`, nicht über das
+  Profil-`.bun`; `.bun` selbst enthielt nur npm-Paket-Cache (`install/cache/`),
+  keine eigene `bun.exe`. Umzug ohne Prozess-Eingriff möglich.
+  `.docker` bewusst zurückgestellt: Der Ordner mischt Client-Config mit
+  Docker-Desktop-eigenen Daten (`buildx`, `models`, `mcp`, `scout`, `cagent`,
+  `cloud`, `contexts`, `mutagen`), die `DOCKER_CONFIG` nicht erfasst — ein
+  Teilumzug wäre inkonsistent. `.gitconfig` ebenfalls zurückgestellt: GitHub
+  Desktop und andere GUI-Konsumenten lesen es direkt, eine Umgebungsvariable
+  (`GIT_CONFIG_GLOBAL`) würde dort erst nach Neustart greifen.
+  TASKS.md T-428 geklärt: die Rust-Toolchain verschwand durch den eigenen Umzug
+  dieses Teilprojekts, kein Fremdeingriff.
+- **Damit Gruppe A abgeschlossen:** matplotlib, kube, cargo/rustup, aws, azure,
+  dotnet, npm, bun umgezogen und verifiziert. docker und git/gitconfig bleiben
+  bewusst am alten Ort (Gründe oben), keine offene Entscheidung mehr nötig.
+- **Nächste Schritte:** Alte, jetzt leere Quellordner (`.matplotlib`, `.kube`,
+  `.cargo`, `.rustup`, `.aws`, `.azure`, `.dotnet`, `.npmrc`, `.bun`) vom Nutzer
+  selbst entfernen lassen, sobald er die Verifikation bestätigt.
 
 ### Digitales Archiv
 
