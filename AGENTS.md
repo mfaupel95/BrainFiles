@@ -83,17 +83,18 @@ Sie ist keine Kosmetik. Jeder Ordner lässt sich jetzt einzeln entscheiden:
 
 ## Zweige (Stand 08.10.2026)
 
-- **Jeder Agent arbeitet auf einem eigenen Zweig, der von `master` abzweigt**
-  (`git switch -c <agent>/<thema> master`, z. B. `claude/gold-hebel`). Ein
+- **Jeder Agent arbeitet auf einem eigenen Zweig, der von `origin/HEAD` abzweigt**
+  (`git switch -c <agent>/<thema> origin/HEAD`, z. B. `claude/gold-hebel`). Ein
   Arbeitsbaum haelt nur einen Zweig - parallele Agenten brauchen deshalb je einen
   eigenen Arbeitsbaum unter `.worktrees/` (`git worktree add .worktrees/<name> -b
-  <zweig> master`), nie `git switch` im geteilten Hauptbaum.
+  <zweig> origin/HEAD`), nie `git switch` im geteilten Hauptbaum.
 - **Gemergt wird erst, wenn die PR abgeschlossen ist:** Tests gruen, PR eroeffnet
-  und freigegeben. Vorher nichts nach `master` schieben. Gemergt wird per PR; nach
+  und freigegeben. Vorher nichts in den Integrationszweig schieben. Gemergt wird per PR; nach
   dem Merge Zweig und Arbeitsbaum loeschen (lokal `git branch -d <zweig>`,
   `git worktree remove`, `git push origin --delete <zweig>`). Ein Zweig mit
   offener Arbeit bleibt bis dahin stehen und ist kein Altlast-Verdacht.
-- `master` ist der Integrationszweig: nur abgeschlossene, getestete Arbeit, dazu
+- Der durch `origin/HEAD` markierte Remote-Defaultzweig ist der Integrationszweig
+  (aktuell `origin/maks_master`): nur abgeschlossene, getestete Arbeit, dazu
   die Routinen (kb-sync, Fremdarbeit-Einziehen) und reine Pflege-Commits ohne
   eigenen Zweig (Notizen, Index, TASKS-Vermerke).
 - `zwischenstand` ist keine Arbeit, sondern die automatische Sicherung der
