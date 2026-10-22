@@ -1,6 +1,37 @@
 ## Offen
 
 
+- [ ] **T-443 — skills_bot: verbessern oder rausschmeissen (Entscheidung Max)**
+      Kontext: skillsbot.py (Agenten/Bus, Telegram<->A2A-Bruecke zu Hermes auf
+          Port 9900, angelegt 11.09.2026) laeuft nicht mehr - kein Prozess, kein
+          Task gefunden, TELEGRAM_CHAT_ID (Zugangssperre) fehlt in der Umgebung,
+          Linter uebersprang die Datei. Der Zweck (Max erreicht Skills per Telegram)
+          wird heute vom Telegram-Gateway (Simbi, Hauptprofil, Gruppe
+          -1003980261765) uebernommen; ein eigener Bot-Kanal dafuer ist vermutlich
+          ueberfluessig.
+      Naechster Schritt: Entscheidung Max - rausschmeissen (Datei + Task +
+          SKILLSBOT_TOKEN entfernen) oder reparieren (TELEGRAM_CHAT_ID setzen,
+          Task registrieren). Gemessen 21.10.2026: SKILLSBOT_TOKEN gesetzt,
+          TELEGRAM_CHAT_ID fehlt.
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Bus/skillsbot.py, Agenten/Routinen/skillsbot.ps1
+
+- [ ] **T-444 — Bot-zu-Bot-Kommunikation: Architektur-Entscheidungen offen**
+      Kontext: Auftrag Max (21.10.2026): echte Bot-zu-Bot-Kommunikation
+          einrichten, jeder Bot einzigartig/fuer einen Bereich zustaendig,
+          ausfuehrende Bots auf lokalen Modellen (Ollama lief mit 15 Modellen,
+          Bonsai auf 8080 antwortete nicht). Gemessen: 37 Profile, 91 Cron-Jobs,
+          nur 2 Bots in der Telegram-Gruppe (Simbi default + Mikesch bots),
+          6 weitere Profile mit eigenem Bot-Token nur per DM, uebrige ~30 ohne
+          Telegram-Zugang. Bus (Port 8787) antwortete nicht.
+      Naechster Schritt: Entscheidungen Max (Grill, interaktiv): (1) Kanal
+          Bot-zu-Bot (Empfehlung Hybrid: Telegram = Max-Schnittstelle, A2A im
+          Hintergrund), (2) Spezialisierungs-Registry je Bot, (3) Modell-Zuordnung
+          je Bot-Klasse (lokal/ausfuehrend vs. denkend).
+      Angelegt 21.10.2026 · Zuletzt 21.10.2026
+      Betrifft: Agenten/Hermes/profiles/, Agenten/Bus/
+
+
 
 
 
