@@ -119,6 +119,10 @@ def main(argv=None):
         return 2
 
     w0 = json.loads((HIER / "wachen.json").read_text(encoding="utf-8"))
+    # Jeder Arm spiegelt in EINEN eigenen Unterordner des Ziels, sonst
+    # ueberschrieben sich die sechs Journale gegenseitig (T-413,
+    # 19.10.2026). Das Haupt-Ziel bleibt als Basis bestehen.
+    ziel_basis = w0.get("journal_zweitziel") or "Q:/Handel_Journal/llm_stunde"
     buch = kr._lade(HANDEL / "spur_buch.py", "spur_buch_llm_stunde")
     rc = 0
     for variante in w0["varianten"]:
@@ -126,6 +130,8 @@ def main(argv=None):
             ordner = HIER / "laeufe" / f"{variante}-{arm}"
             ordner.mkdir(parents=True, exist_ok=True)
             w = dict(w0, _variante=variante, _arm=arm)
+            w["journal_zweitziel"] = str(
+                Path(ziel_basis) / f"{variante}-{arm}")
             (ordner / "wachen.json").write_text(
                 json.dumps(w, ensure_ascii=False, indent=1), encoding="utf-8")
             rc = max(rc, buch.zyklus(
