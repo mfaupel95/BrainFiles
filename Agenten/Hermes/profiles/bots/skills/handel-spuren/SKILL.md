@@ -371,6 +371,12 @@ Eine PAPER-Position, die eine externe Signatur nachbildet (omnitrade spiegelt di
 
 - **omnitrade holt Kurse NUR aus den Rust-Statusdateien** (`lage_holen()`), nie von der Boerse. Fehlt die Statusdatei eines Instruments oder meldet sie `laeuft: False`, bekommt `pruefe_ausstiege` keinen/keinen passenden Kurs und die Position wird uebersprungen ("kein Kurs - Position wird NICHT geprueft"). Der Statusordner liegt unter `Werkstatt/omnitrade/status/` (C- und O-Seite identisch, Junction), NICHT im Spur-Ordner `omnitrade/status/` (der ist leer).
 - **Aufloesen ueber die Buchungslogik, nicht durch Loeschen:** Journal-Verkaufszeile (Grund `omnitrade flat`, Kurs aus der Statusdatei, G/V = nominal*(kurs-einstieg)/einstieg) UND Position aus `zustand.json` entfernen in EINEM Schritt — exakt das Muster von `pruefe_ausstiege` (Zeile 840-861). Vorher `.bak-<datum>-<grund>`-Backups beider Dateien. Der Dauerlauf eroeffnet die Position nicht neu, weil `signal()` `laeuft: False` prueft.
+- **Die manuelle Schliessung muss NICHT von Hand gespiegelt werden — der
+  laufende Dauerlauf uebernimmt Position und Journal beim naechsten Zyklus und
+  spiegelt beides selbst nach `Q:`. Vor der Schliessung die Spiegelfrage nicht
+  als offenen Punkt an Max zurueckgeben; nach dem Edit den Dauerlauf-Zyklus
+  abwarten und das Q:-Ziel gegenpruefen (`Q:/Handel_Journal/<spur>/zustand.json`
+  zeigt die Position weg), statt manuell zu spiegeln.
 
 ## Sensible Dateien und Credential-Vorfälle
 

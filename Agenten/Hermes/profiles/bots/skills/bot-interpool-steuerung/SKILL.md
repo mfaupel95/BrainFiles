@@ -54,11 +54,13 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   `bildfehler` betrifft den Medien-Eingang; beides beweist keinen A2A-Ausfall.
   Vor einer Codeaenderung den Zielchat gegen `chat_erlaubt()` und den A2A-Fehler
   nach dem Ack separat pruefen.
-- Fuer automatische Handoffs aus Beobachtungen zuerst die reale Quelle und ihr
+- Für automatische Handoffs aus Beobachtungen zuerst die reale Quelle und ihr
   dokumentiertes Format nachweisen; ein Planvorschlag ist keine vorhandene Datei.
   Fehlender Workspace bedeutet stoppen und den Pfad/Initialisierungsentscheid
-  erfragen. Fuer Einleseformat, Idempotenz, serielles Recherche→Fachbot-Routing
-  und die Sicherheitsgrenzen gilt `references/observations-routing.md`.
+  erfragen. Bei einem als read-only zugesagten Handoff eine per-Aufruf-Toolset-
+  Schranke setzen und die effektiven Tools verifizieren; ein Prompt allein ist
+  keine technische Sperre. Details/Toolset-Fallen stehen in
+  `references/observations-routing.md`.
 
 ## Lektion: Immer als Hintergrundjob mit notify starten
 - Repo-Bot-Kaltstart + Auftrag ueberschreitet hier regelmaessig das Foreground-
@@ -77,6 +79,19 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   vorhandenen Prozess-Log mit `process_manage(action="log", session_id=...)`
   seitenweise holen — denselben Auftrag nicht neu starten; ein zweiter Prozess
   kann dieselben Dateien oder Ressourcen parallel bearbeiten.
+- **Ein delegierter Bot, der fertig wird, muss MELDUNG bekommen — auf das
+  Notify zu warten und die eigene Runde mit "ich melde mich, sobald er fertig
+  ist" zu beenden, ist ein stiller Fehlschlag.** Das Abschluss-Notify kann
+  verlorengehen oder in keine neue Runde muenden; dann bleibt die Meldung aus
+  und Max muss selbst nachfragen ("warum muss ich immer nachfragen"). Der Bot
+  committet sein Ergebnis selbst (Autor `Hermes`) — der Abschluss ist deshalb
+  ohne Notify an drei Zeugen belegbar: `process_manage(action="list")` leer,
+  der Zielbaum-`git log` zeigt den Committ, oder `profiles/<bot>/logs/agent.log`
+  endstand. Bei der naechsten Gelegenheit (naechste Runde, erstes Signal,
+  bevor ein weiterer Auftrag startet) aktiv `process_manage`/`git log` prüfen
+  und den Stand an Max melden — nie passiv abwarten, wenn man eine Meldung
+  zugesagt hat. Eine mehrteilige Antwort (zwei unabhaengige Arbeiten) erst
+  zusammen abschliessen, wenn beide belegt sind.
 - **Foreground-Timeout ist nicht der Tod des Ergebnisses.** Laueft der Start
   versehentlich im Foreground (`terminal(...)` ohne background) in den ~420 s-
   Timeout, HAENGT der Bot weiter und arbeitet den Auftrag zu Ende — nur die
@@ -545,6 +560,14 @@ aller Bots auf einen Blick.
 - **Merge-fertige Worktree-Branches pushen + PR eroeffnen ist ein eigener Schritt, der die Tests voraussetzt.** `git push -u origin <branch>` aus dem jeweiligen Worktree, dann `gh pr create --base master --head <branch>`. Vor dem Push pruefen, dass der Branch nicht schon auf dem Remote liegt (`git ls-remote --heads origin <branch>` leer) und dass er wirklich Commits vor master hat (`git rev-list --count master..<branch>` > 0) — sonst eroeffnet man eine leere PR.
 - **Mehrzeilige Code-Bloecke mit dem `patch`-Tool umschreiben ist unzuverlaessig — bei Einrueckungs-/Tippfehler-Korruption auf ein Python-Heredoc wechseln.** Das fuzzy `patch`-Tool verschiebt bei mehrzeiligen Ersetzungen gern die Einrueckung und verdoppelt/verstuemmelt Zeilen (`if w    if w is None:`, `wurzel_vwurzel_von`). Sobald ein Patch-Block zweimal kaputt zurueckkommt, nicht weiter mit dem Tool fummeln, sondern die exakte Zeilenspanne per `python - <<'EOF'` neu schreiben: Datei lesen, Start-/Endzeile der Methode per `startswith("    def ")` finden, den Block durch die sauberen Zeilen ersetzen, zurueckschreiben, `py_compile` zur Syntaxpruefung. Das ist deterministisch und laesst die Einrueckung intakt.
 - **Worktree-Commit, der mit "keine .git-Wurzel gefunden" abbricht, aber `git rev-parse --show-toplevel`/`status` gruen sind, haengt am pre-commit-Hook:** der `.githooks/pre-commit` ruft das Bereichs-Skript (`bereiche.py --staged`) und kann im Worktree-Kontext scheitern. Worktree-Commits mit `git -c core.hooksPath=/dev/null commit -m ...` durchfuehren (einmalig, area-Hook wirkt nur mit gesetzter `BRAINFILES_BEREICH`).
+- **Vor jedem PR-Follow-up den Remote-Zustand frisch lesen.** Eine parallel
+  gemergte PR bleibt lokal als Worktree/Branch sichtbar; ein späterer Commit
+  auf dem alten Kopf gehört nicht zum gemergten PR und kann eine große,
+  fremde Diff-Fläche erzeugen. `gh pr view <N> --json
+  state,mergedAt,headRefName,baseRefName,mergeCommit` und `git fetch origin`
+  prüfen. Wenn bereits gemergt: frischen Worktree von `origin/HEAD` anlegen,
+  nur den Folgecommit portieren, den Diff-Namensumfang prüfen und eine neue PR
+  eröffnen; nie den veralteten Branch weiter pushen.
 - **Nach dem Bot-Bericht den ZIEL-ZWEIG pruefen, nicht nur die
   Dateien.** Ein Bot committet auf dem Zweig, den der geteilte Arbeitsbaum
   gerade haelt — das kann der fremde aktive Zweig einer anderen Sitzung sein
