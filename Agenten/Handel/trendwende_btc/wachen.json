@@ -16,7 +16,7 @@
   "_positionierung": "Zweiter Filter (20.10.2026): die oeffentlichen OKX-Rubik-Reihen (Long/Short-Konten, Open Interest, Taker-Fluss) muessen die Abwaertswende stuetzen. Quelle okx_positionierung.py, kein Schluessel, fail-soft. AUS = die Spur rechnet wie bisher. Ersatz fuer das smartmoney-Modul aus agent-trade-kit, dessen Endpunkte nur auf www.okx.com liegen und mit dem EEA-Schluessel 50119 melden.",
   "positionierung_filter": true,
   "positionierung_ccy": "BTC",
-  "positionierung_ls_abfall_min": 0.02,
+  "positionierung_ls_abfall_min": 0.01,
   "positionierung_oi_abbau_min": 0.0,
   "positionierung_taker_min": 1.0,
   "handel_erlaubt": false,

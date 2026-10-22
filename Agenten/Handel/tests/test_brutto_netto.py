@@ -138,11 +138,11 @@ class RTest(unittest.TestCase):
 class VerdrahtungTest(unittest.TestCase):
     """Wer brutto rechnet und wer netto - die Zuordnung selbst."""
 
-    def test_orbk_ist_brutto_und_traegt_die_kraken_gebuehr(self):
+    def test_orbk_ist_brutto_und_traegt_die_okx_gebuehr(self):
         self.assertIn("orbk", auswertung_alle.SPUREN)
         self.assertIn("orb", auswertung_alle.SPUREN)
         self.assertNotIn("orbk", auswertung_alle.GEBUEHR_SCHON_DRIN)
-        self.assertAlmostEqual(auswertung_alle.gebuehr_fuer("orbk"), 0.006)
+        self.assertAlmostEqual(auswertung_alle.gebuehr_fuer("orbk"), 0.0005)
 
     def test_scanner_und_kraken_sind_schon_netto(self):
         for spur in ("scanner", "kraken", "xperp", "swap"):
@@ -159,7 +159,7 @@ class VerdrahtungTest(unittest.TestCase):
         finally:
             auswertung_alle.zeilen = alt
         self.assertTrue(k["brutto"])
-        self.assertAlmostEqual(k["gebuehr"], 0.006)
+        self.assertAlmostEqual(k["gebuehr"], 0.0005)
         self.assertIsNotNone(k["r"])
         self.assertIsNone(k["netto_pct"])          # kein Einsatz, kein Prozent
 

@@ -40,7 +40,35 @@ Nicht jede Spur hat ein `handelsjournal.csv`, das über `pos_id` paar-bar ist �
 - Ein kurzer Prompt-Sanity-Check belegt nur Antwortfähigkeit. Signalqualität braucht den festgelegten Vertrags-/Eval-Satz; ohne diesen keine Aussage aus zwei Beispielprompts ableiten. Es gelten weiter die Stichprobenschwellen aus *Auswerten*.
 - **LLM-Spuren haengen zu 100 % am lokalen Bonsai-Dienst (127.0.0.1:8080).** Die drei echten LLM-Spuren (moondev_whale/liquidation/sentiment) rufen `llm_lokal.entscheide` ueber den Bonsai-Weg; faellt der Dienst aus, faellt das Urteil aus und KEINE der drei handelt — es gibt bewusst keinen stillen Rueckfall auf ein kleineres Modell. Das ist ein Single-Point-of-Failure fuer Echtgeld: vor dem Live-Schalten einer LLM-Spur pruefen, ob ein Fallback existiert, und den Bonsai-Dienst als Betriebsabhaengigkeit nennen. Zusaetzlich: diese drei haben oft nur 3-4 Papier-Runden — weit unter der Belastbarkeits-Schwelle (≥ 8), also kein Freigabe-Kandidat, bis der Papierlauf tragfaehig ist.
 
+### Flotten-Diagnose: "warum sind N Spuren still"
+
+Max fragt oft "warum sind so viele Spuren still, die sollten wenigstens Daten sammeln". Die Antwort ist fast nie "der Dauerlauf ist tot" — er laeuft fast immer. Drei Zustaende sauber trennen, bevor man irgendeine Spur anfasst:
+
+- **Prozess tot** (Dauerlauf unten): `tasklist | grep -i python` bzw. `Get-CimInstance Win32_Process` nach `dauerlauf` — es muessen 3 Prozesse sein (Basis + hoch + mittel, je Wrapper+Loop). Die `dauerlauf.pid`-Dateien sind oft STALE (alte PID) und beweisen nichts; der Prozess-Check ist die Wahrheit. `dauerlauf.log`/`dauerlauf.hoch.log`/`dauerlauf.mittel.log` zeigen je Spur eine `ok`-Zeile pro Zyklus.
+- **Laeuft, aber erzeugt keine Trades** (die haeufigste "still"-Ursache): `zustand.json` `letzter_lauf` ist frisch (Herzschlag tickt), aber das `handelsjournal.csv` waechst seit Tagen/Wochen nicht. Das Journal schreibt NUR bei einem Trade — kein Signal = kein Eintrag = sieht "still" aus, obwohl der Prozess tickt. Das ist ein Signal-/Strategie-Problem (Tore zu eng, Filter blockieren, handel_erlaubt=false), kein Betriebsausfall.
+- **Sammelt Daten** (gesund): Journal-mtime ist frisch (heute).
+
+**Signalquellen:** `zustand.json` `letzter_lauf` = Herzschlag (frisch = laeuft); Journal-mtime = Datensammlung (frisch = handelt). Ein frischer Herzschlag + altes Journal = laeuft leer. `wachen.json` hat KEIN `letzter_lauf`-Feld — der Herzschlag liegt in `zustand.json`, nicht in der wachen.
+
+**Journal-Schemata sind heterogen** — jede Spur hat eine andere Kopfzeile (xperp: `zeit,modus,aktion,...`; orbk: `zeit,inst,richtung,...`; nautilus: `zeit,modus,aktion,inst,bid,ask,...`). Vor jeder PnL-/Trade-Zaehlung die Kopfzeile lesen und die PnL-Spalte per Name suchen (`pnl`/`ergebnis`/`gewinn`/`profit`), nie eine feste Spaltennummer annehmen. Einige Spuren (nautilus_kraken_futures, llm_stunde) haben gar kein Journal — das ist ein Befund, kein Fehler.
+
+**Bereinigungs-Empfehlung:** ~28 leerlaufende Spuren (Journal >24h alt) sind Kandidaten fuer (a) Stilllegung (aus `SPUREN` auskommentieren, spart Rechenzeit) oder (b) Tore/Filter nachschaerfen. Die Entscheidung gehoert Max; die Diagnose liefert die Zahlen je Spur.
+
 ## Tunen: erst die Asymmetrie messen, dann den einen Stellhebel
+
+- **Ein Wert in `wachen.json` mit dokumentierter Design-Begruendung ist KEIN
+  Bug — nicht aendern, nur weil er extrem aussieht.** Ein `_ziel`-Kommentar
+  wie "10R = 80 % ueber dem Einstieg. Absichtlich weit: ein Ziel, das die
+  Strategie ueberholt, wuerde Buchungen erzeugen, die omnitrade nie genommen
+  haette" ist eine bewusste Entscheidung, kein zu enges Tor. Eine Spur, die
+  eine externe Signatur nachbildet (omnitrade), haelt ihr Ziel absichtlich
+  weit, damit Papier-Schliessungen nur entstehen, wenn die echte Strategie
+  auch geschlossen haette. Vor jeder Wert-Aenderung die `_`-Kommentare
+  (`_ziel`, `_regel`, `_schwelle`, `_max_volatilitaet...`) lesen; ein
+  dokumentierter Grund heisst: vortragen und Max entscheiden lassen, nicht
+  blind drehen. Und: eine haengende Papier-Position traegt ihr Ziel in
+  `zustand.json`, nicht in `wachen.json` — eine wachen-Aenderung loest sie
+  nicht auf, sie wirkt nur auf kuenftige Einstiege.
 
 Typischer Befund (liq_wand 10.2026): **hohe Trefferquote, aber netto negativ.** Ursache ist fast immer eine Gewinn/Verlust-Asymmetrie — Zielgewinne klein, Stops 3× größer. Rechnung aus dem Journal: durchschnittlicher Gewinn ÷ durchschnittlicher Verlust, gegen die Break-even-Schwelle `Verlustanteil / Gewinnanteil`. Liegt die Asymmetrie darunter, ist netto negativ, egal wie oft du triffst.
 
@@ -336,6 +364,13 @@ Wenn `zustand.json` eine Live-Position führt, aber Kraken sie nicht mehr offen 
 Die Bereinigung braucht Max' Freigabe. Vor jeder Laufzeitänderung Prozessliste und Schreibkonkurrenz prüfen; bei mehreren Basis-Dauerläufen zuerst klären, welcher wirklich schreibt. `.bak`-Sicherungen anlegen, die Position nur aus dem offenen Bestand entfernen und einen expliziten Abgleich als eigene Journalaktion protokollieren — Preis, `wert_usd` und P&L leer/null lassen, wenn der Ausstieg nicht belegt ist. Nicht `erledigt`/Verkauf verwenden, wenn kein Ausstiegspreis belegt ist: GUI und Auswertungen können diese Felder als realisierte Rendite interpretieren. Danach Zustand und Journal bytegenau zum `journal_zweitziel` spiegeln und beide Kopien zurücklesen; erst dann Erfolg melden. Eine Sicherung schützt nicht vor einem aktiven Zyklus, der die Dateien direkt überschreibt. Wird die Rücklese- oder Spiegelprüfung blockiert, stoppen, nicht blind erneut schreiben und den Status als ungeprüft melden.
 
 Bei Runtime-Jobs nie mit einem gleichnamigen `cronjob_manage`-Job verwechseln: zuerst den Scheduler/Profileigentümer identifizieren, dann dessen `list`/CLI verwenden. `update`-Erfolg allein bestätigt keinen Schedule-Wechsel; die gespeicherte Schedule aus derselben Quelle erneut lesen.
+
+## Geisterposition (Papier): Spiegel einer toten externen Strategie
+
+Eine PAPER-Position, die eine externe Signatur nachbildet (omnitrade spiegelt die Rust-Strategie), haengt, wenn die Quelle stirbt, aber die Statusdatei die Position noch offen meldet. Diagnose: `lesen.lage()` zeigt `laeuft: False, offen: True` fuer das Instrument — die Strategie laeuft nicht mehr, aber die Statusdatei traegt noch `offen: True`. `ausstieg_grund` schliesst NUR bei `offen: False` (Zeile 139: `state in ("running","stopped") and not offen`), also greift weder Stop (Kurs > Stop) noch Ziel (Kurs < Ziel) noch der Zusatz-Ausstieg — die Position haengt seit Wochen.
+
+- **omnitrade holt Kurse NUR aus den Rust-Statusdateien** (`lage_holen()`), nie von der Boerse. Fehlt die Statusdatei eines Instruments oder meldet sie `laeuft: False`, bekommt `pruefe_ausstiege` keinen/keinen passenden Kurs und die Position wird uebersprungen ("kein Kurs - Position wird NICHT geprueft"). Der Statusordner liegt unter `Werkstatt/omnitrade/status/` (C- und O-Seite identisch, Junction), NICHT im Spur-Ordner `omnitrade/status/` (der ist leer).
+- **Aufloesen ueber die Buchungslogik, nicht durch Loeschen:** Journal-Verkaufszeile (Grund `omnitrade flat`, Kurs aus der Statusdatei, G/V = nominal*(kurs-einstieg)/einstieg) UND Position aus `zustand.json` entfernen in EINEM Schritt — exakt das Muster von `pruefe_ausstiege` (Zeile 840-861). Vorher `.bak-<datum>-<grund>`-Backups beider Dateien. Der Dauerlauf eroeffnet die Position nicht neu, weil `signal()` `laeuft: False` prueft.
 
 ## Sensible Dateien und Credential-Vorfälle
 

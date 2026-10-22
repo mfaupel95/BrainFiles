@@ -17,7 +17,7 @@
  "abklingzeit_tage": 3.0,
  "handel_erlaubt": false,
  "_kein_live_pfad": true,
- "stop_pct": 4.0,
+ "stop_prozent": 4.0,
  "ziel_pct": 2.0,
  "drawdown_halbierung_usd": 15.0,
  "freigabe": {

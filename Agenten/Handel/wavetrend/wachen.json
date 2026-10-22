@@ -18,7 +18,7 @@
   "pflicht_stop_prozent_max": 12.0,
   "_ziel": "R = 2.0: Ziel = 2 * Stop-Abstand.",
   "ziel_r_vielfaches": 2.0,
-  "mindest_kerzen": 300,
+  "mindest_kerzen": 200,
   "kerzen_takt": "1H",
   "instrumente": [
     "BTC-USDC",

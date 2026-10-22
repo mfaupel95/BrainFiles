@@ -1,8 +1,8 @@
 model:
-  default: stepfun/step-5-preview:free
-  provider: nous
-  base_url: https://inference-api.nousresearch.com/v1
-  api_mode: chat_completions
+  default: gpt-6-luna-900k
+  provider: openai-codex
+  base_url: https://chatgpt.com/backend-api/codex
+  api_mode: codex_responses
   request_overrides:
     max_tokens: 16384
 providers:
@@ -538,7 +538,7 @@ agent:
   api_max_retries: 4
   service_tier: auto
   personalities: {}
-  reasoning_effort: high
+  reasoning_effort: low
   verbose: false
   cron_drain_timeout: 120
 terminal:
@@ -747,7 +747,7 @@ memory:
   nudge_interval: 10
   provider: ''
 delegation:
-  model: meituan/longcat-2.5-preview:free
+  model: openai/gpt-6-luna
   provider: nous
   # Ein gepinntes Kind erbt die Haupt-Fallback-Kette NICHT - ohne eigene Liste hat
   # ein Subagent keinen Rueckfall. Die alte Liste begann mit gemma-e4b-8k:cpu

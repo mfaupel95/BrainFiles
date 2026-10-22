@@ -38,7 +38,7 @@
   "pflicht_stop_prozent_min": 5.0,
   "pflicht_stop_prozent_max": 12.0,
   "mindest_chance_risiko": 1.5,
-  "mindest_score": 60,
+  "mindest_score": 50,
   "max_volatilitaet_pa": 2.0,
   "abklingzeit_tage": 4,
   "_sperrfrist_nach_ziel_stunden": "Nach einem Ausstieg mit Grund 'ziel' bleibt das Instrument so viele Stunden fuer neue Einstiege gesperrt (0 = aus). Auftrag Max 23.09.2026 'Sperrfrist 2h': ZEC wurde im Ziel verkauft (1618.36) und acht Sekunden spaeter fast zum selben Kurs neu gekauft (1619.38) - 1,2 % Gebuehren fuer dieselbe Bewegung, weil der Kandidat weiter auf der Rangliste stand. Nach einem STOP gilt die laengere Abklingzeit (abklingzeit_tage).",
