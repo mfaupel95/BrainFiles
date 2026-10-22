@@ -72,7 +72,7 @@ deshalb neben `BrainFiles/`, nicht hinein — anlegen und entfernen aus der
 Repowurzel:
 
 ```bash
-git worktree add ../Handel-<kuerzel> -b arbeit/<kuerzel> master
+git worktree add ../Handel-<kuerzel> -b arbeit/<kuerzel> origin/HEAD
 ```
 
 ```bash

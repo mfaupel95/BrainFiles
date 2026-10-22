@@ -57,6 +57,13 @@ python scanner_quant/auswahl_quant.py --zweck short --rang quant
 cd scanner_quant && python -m unittest discover -s tests
 ```
 
+Der reine Querabgleich mit frischen Papierpositionen und dem Spot-Markttor
+laeuft ueber `python scanner_quant/quersignal.py`. Er nutzt ausschliesslich
+abgeschlossene UTC-Tageskerzen, schreibt weder Tracking noch Berichte und
+zaehlt Positionen ohne Zeitstempel nicht als frische Eroeffnungen. Ein anderer
+Zustandsordner kann mit `--state-root <pfad>` angegeben werden; das Zeitfenster
+fuer frische Eroeffnungen ist mit `--fresh-hours <stunden>` einstellbar.
+
 ## Offen (bewusst)
 
 - **Nicht belegt, ob das Urteil trennt.** Erst im Modus `bericht` laufen lassen und
