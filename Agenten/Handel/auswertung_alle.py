@@ -715,16 +715,16 @@ def _paare(zeilen_, einstieg_namen, ausstieg_namen, einsatz_feld, ergebnis_fn,
         if not einsatz:
             continue
         ergebnis, kosten = ergebnis_fn(ein, r)
-                if ergebnis is None:
-                    continue
-                # Traegt die Ausstiegszeile den G/V direkt (gv_usd, seit 22.10.2026
-                # von spur_buch geschrieben), ist das die Wahrheit der Runde - sie
-                # gewinnt gegen die Schaetzung aus der Paarung. Fehlt das Feld
-                # (Altjournal, andere Spur), bleibt es bei der bisherigen Rechnung.
-                direkt = jp.gv_aus_zeile(r)
-                if direkt is not None:
-                    ergebnis = direkt= direkt
-                runden.append({
+        if ergebnis is None:
+            continue
+        # Traegt die Ausstiegszeile den G/V direkt (gv_usd, seit 22.10.2026
+        # von spur_buch geschrieben), ist das die Wahrheit der Runde - sie
+        # gewinnt gegen die Schaetzung aus der Paarung. Fehlt das Feld
+        # (Altjournal, andere Spur), bleibt es bei der bisherigen Rechnung.
+        direkt = jp.gv_aus_zeile(r)
+        if direkt is not None:
+            ergebnis = direkt
+        runden.append({
             "inst": schluessel, "einsatz": einsatz, "ergebnis": ergebnis,
             "kosten": kosten, "grund": (r.get(grund_feld) or "").strip() or None,
             "halten": tage(ein.get("zeit"), r.get("zeit")),
