@@ -304,5 +304,82 @@ class StateTest(RouterTest):
         self.assertIn("1", data["verarbeitet"])
 
 
+class _FakeLauf:
+    """Ersatz fuer den Popen-Rueckgabewert: antwortet ohne echten Prozess."""
+
+    def __init__(self, antwort):
+        self._antwort = antwort
+        self.returncode = 0
+
+    def communicate(self, timeout=None):
+        return self._antwort, ""
+
+    def kill(self):
+        pass
+
+
+class SubprocessTest(RouterTest):
+    """Mockt den echten subprocess.Popen-Aufruf und prueft die Kommandoargumente.
+
+    Beide Hermes-Aufrufe (Recherche und Fachbot) muessen `--toolsets search`
+    enthalten (read-only technisch erzwungen), die Serienreihenfolge bleibt
+    Recherche -> genau EIN Fachbot.
+    """
+
+    def setUp(self):
+        super().setUp()
+        # hermes.exe existiert im Worktree nicht; auf eine echte Datei lenken,
+        # damit die isfile-Pruefung in _rufe_bot durchlaeuft.
+        self.exe = Path(self.tmp.name) / "hermes.exe"
+        self.exe.write_text("", encoding="utf-8")
+        self.p_exe = patch.object(r, "HERMES_EXE", self.exe)
+        self.p_exe.start()
+        self.addCleanup(self.p_exe.stop)
+
+    def _popen(self, cmd, **kwargs):
+        self.kommandos.append(cmd)
+        name = cmd[cmd.index("-p") + 1]
+        if name == "recherche":
+            return _FakeLauf(self.recherche_antwort)
+        return _FakeLauf("Antwort von %s" % name)
+
+    def _start_popen(self, dispatch):
+        self.kommandos = []
+        self.p_popen = patch.object(r.subprocess, "Popen", side_effect=self._popen)
+        self.p_popen.start()
+        self.addCleanup(self.p_popen.stop)
+        return r._verarbeite_eine(self.obs_root, dispatch)
+
+    def test_beide_aufrufe_mit_toolsets_search(self):
+        _obs(self.obs_root / "0001-a.md", id=1, status="open")
+        obs_id, ergebnis, fehler = self._start_popen(dispatch=True)
+        self.assertEqual(obs_id, "1")
+        self.assertIsNone(fehler)
+        self.assertEqual(ergebnis["ziel"], "obsidian-skills")
+        # Genau zwei Hermes-Prozesse: Recherche + genau EIN Fachbot.
+        self.assertEqual(len(self.kommandos), 2)
+        for cmd in self.kommandos:
+            self.assertIn("--toolsets", cmd)
+            # Kein Toolset-Default, keine Vererbung: search ist der einzige
+            # Toolset-Wert im Kommando.
+            idx = cmd.index("--toolsets")
+            self.assertEqual(cmd[idx + 1], "search")
+
+    def test_serienreihenfolge_und_toolsets(self):
+        _obs(self.obs_root / "0001-a.md", id=1, status="open")
+        self._start_popen(dispatch=True)
+        namen = []
+        for cmd in self.kommandos:
+            namen.append(cmd[cmd.index("-p") + 1])
+            self.assertIn("--toolsets", cmd)
+            self.assertIn("search", cmd)
+        self.assertEqual(namen, ["recherche", "obsidian-skills"])
+
+    def test_dry_run_startet_keinen_prozess(self):
+        _obs(self.obs_root / "0001-a.md", id=1, status="open")
+        self._start_popen(dispatch=False)
+        self.assertEqual(self.kommandos, [])
+
+
 if __name__ == "__main__":
     unittest.main()

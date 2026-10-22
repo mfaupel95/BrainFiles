@@ -25,10 +25,13 @@ Sicherheit
   wird geparst, kein Inhalt wird als Befehl ausgefuehrt, keine Outputs werden
   als Befehle interpretiert. Der Beobachtungstext wird in den Prompts explizit
   als UNTRUSTED DATA markiert und nie als Systemanweisung behandelt.
-- Der Fachbot wird nur read-only aufgefordert (Analyse/Empfehlung, keine
-  Aenderungen/Commits/Orders/Live/Cron). Diese Garantie ist eine Prompt-Vorgabe
-  und technisch NICHT erzwungen — der Fachbot laeuft mit seinen normalen
-  Rechten. Der Dispatcher baut deshalb KEINEN automatischen Schreibpfad.
+- Der Fachbot wird read-only aufgefordert (Analyse/Empfehlung, keine
+  Aenderungen/Commits/Orders/Live/Cron) UND technisch erzwungen: beide
+  Hermes-Aufrufe (Recherche und Fachbot) starten mit `--toolsets search`,
+  wodurch der bereitgestellte Toolkatalog auf `web_search` begrenzt ist
+  (keine Datei-/Terminal-/Process-/Cron-/Connections-/Order-Tools). Kein
+  Toolset-Default, keine Profil-Toolset-Vererbung. Der Dispatcher baut
+  deshalb KEINEN automatischen Schreibpfad.
 - Keine Orders/Live-Aktionen, keine Dateiaenderungen im One-Skill-Repo, keine
   SkillsBot-Runtime-Aenderung, kein Cron, keine Gateway-/Bot-Neustarts.
 - `--dry-run` ist der Default; `--dispatch` fuehrt die Kette aus.
@@ -207,14 +210,19 @@ def _hermes_umgebung():
 def _rufe_bot(name, text, frist=1800):
     """Einen Fachbot synchron aufrufen und auf das Ergebnis warten.
 
-    `hermes -p NAME chat -q TEXT -Q` - derselbe Weg wie skillsbot._bot_fragen.
+    `hermes -p NAME chat -q TEXT -Q --toolsets search` - derselbe Weg wie
+    skillsbot._bot_fragen, aber der Toolkatalog wird technisch auf das
+    `search`-Toolset begrenzt (nur `web_search`). Kein Toolset-Default und
+    keine Profil-Toolset-Vererbung: der bereitgestellte Katalog ist damit
+    read-only erzwungen (keine Datei-/Terminal-/Process-/Cron-/Connections-/
+    Order-Tools).
     """
     exe = str(HERMES_EXE)
     if not os.path.isfile(exe):
         raise RouterFehler("hermes.exe nicht gefunden: %s" % exe)
     try:
         lauf = subprocess.Popen(
-            [exe, "-p", name, "chat", "-q", text, "-Q"],
+            [exe, "-p", name, "chat", "-q", text, "-Q", "--toolsets", "search"],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
             encoding="utf-8", errors="replace", env=_hermes_umgebung(),
             cwd=str(WURZEL),
