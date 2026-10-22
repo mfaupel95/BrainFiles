@@ -40,7 +40,7 @@
   "_tor": "Zwei Tore vor jedem Kauf: Marktkapitalisierung im Band (dasselbe Band wie spiegel, dort am 14.09.2026 mit 107 geschlossenen Runden belegt: ueber 1 Mio USD rechnet sich Nachahmen mit Ziel +60 % nicht), und das Token muss unauffaellig sein (nicht gebannt, nicht nsfw - die Felder des Coin-Endpunkts; es gibt keinen Sicherheits-Scan wie bei OnchainOS, das ist die ehrliche Schwaechstelle).",
   "marketcap_band_usd": [
     50000,
-    1000000
+    100000
   ],
   "risiko_pflicht": true,
   "max_risiko_stufen": [

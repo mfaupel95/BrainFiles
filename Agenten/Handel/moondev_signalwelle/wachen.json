@@ -26,7 +26,7 @@
   "kill_wiederaufnahme": false,
   "_kill_verkauf": "Auftrag Max 14.10.2026: der KILL verkauft echte Live-Positionen (modus=live, reduceOnly) auch bei geschlossener Freigabekette. Nur Basisstufe, Orderweg mit gesetztem Schluessel. false/fehlt = nur der Live-Lauf verkauft.",
   "kill_verkauf_ohne_freigabekette": true,
-  "stop_prozent": 7.0,
+  "stop_prozent": 6.0,
   "pflicht_stop_prozent_min": 6.0,
   "pflicht_stop_prozent_max": 12.0,
   "_ziel": "ziel_r_vielfaches: Ziel = Vielfaches * Stop-Abstand.",

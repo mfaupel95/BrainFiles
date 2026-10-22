@@ -24,7 +24,7 @@
   "_ziel": "ziel_r_vielfaches = 2.0: neue Launches laufen bei Erfolg schnell, das 2R-Ziel nimmt nicht jedem Moment den Wind.",
   "ziel_r_vielfaches": 2.0,
   "_schwelle_alter": "Nur Launches unter dieser Altersgrenze sind Kandidaten - frisch geboren.",
-  "max_alter_minuten": 60,
+  "max_alter_minuten": 90,
   "_band": "Marktwert im Band: nicht tot (unter 200 USD) und nicht schon ausgewachsen (ueber 100k USD).",
   "marktkap_band_usd": [
     200.0,
