@@ -273,6 +273,18 @@ meldet trotzdem „ok". Beleg in eine Datei schreiben und den Aufruf als
   Zaehlung ungleich 0, Buch unveraendert, `abfrage_ok` False. Sonst wird die
   korrekte Erweiterung als Fehler gemeldet und die Suite wird „repariert",
   indem man die Pruefung abschwaecht.
+- **Der Berichtskurs muss zur Venue und zum ausgefuehrten Paar gehoeren.**
+  Nicht aus dem Signalnamen (`inst`) auf den Kursweg schliessen: `boerse` und
+  das tatsaechliche Paar (`paar`) bestimmen die Preisquelle. Kurs, Einstieg,
+  Stop und Ziel muessen dieselbe Quote haben. Bei Quote-Mismatch den Kurs vom
+  ausgefuehrten Paar holen, Stop/Ziel nicht mit der fremden Quote vergleichen
+  und den Bericht sichtbar warnen. Regression: PF_TIAUSD mit Signalnamen
+  TIA-TRY darf nie den TIA-TRY-Kurs von OKX verwenden; pruefe Kursquelle,
+  Prozentwert und dass ein quote-fremder Stop als unvergleichbar erscheint.
+- **Preisbewegung und Rendite auf Margin sind verschiedene Kennzahlen.**
+  Beschrifte unverschuldete Kursaenderung als Kurs-% und stelle sie nicht
+  kommentarlos neben gehebelte Margin-PnL; der Unterschied kann dem Hebel
+  entsprechen.
 - **Der Bericht nennt die groesste Zahl nicht.** „0 Befunde" bei einer
   Position mit 1996 Kontrakten ist eine Zahl ohne Aussage; die Aussage ist
   „67/67 und 1996/1996 gedeckt".
