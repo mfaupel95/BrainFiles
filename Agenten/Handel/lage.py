@@ -847,6 +847,40 @@ def spur_mosaic():
     return _spur_indikator("mosaic", "Mosaic (4H/30M/5M)", live_faehig=True)
 
 
+def _omniquant_kurs_und_stop(p, okx):
+    """Kurs und vergleichbaren Stop aus der BOERSE der Omniquant-Position.
+
+    Ein Futures-Buch kann einen Signalnamen mit anderer Quote tragen als das
+    ausgefuehrte Kontraktpaar. In diesem Fall wird der Marktkurs vom
+    gespeicherten Kraken-Paar gelesen, aber der Stop nicht gegen eine andere
+    Quote gerechnet.
+    """
+    venue = p.get("boerse")
+    if venue == "kraken_futures":
+        paar = p.get("paar")
+        if not paar:
+            return None, None, "Kraken-Futures-Paar fehlt; Kurs/Stop nicht berechenbar"
+        try:
+            from nautilus_kraken import kraken_futures as kf
+            kurs = float(kf.letzter_kurs(paar))
+        except Exception as exc:                              # noqa: BLE001
+            return None, None, "Kraken-Futures-Kurs %s nicht lesbar: %s" % (paar, exc)
+        inst_quote = str(p.get("inst", "")).rsplit("-", 1)[-1].upper()
+        paar_upper = str(paar).upper()
+        paar_quote = next((q for q in ("USDC", "USDT", "USD")
+                           if paar_upper.endswith(q)), None)
+        if not paar_quote or inst_quote != paar_quote:
+            return (kurs, None,
+                    "Instrument %s / Kraken-Paar %s: Quote abweichend, Stop ausgeblendet"
+                    % (p.get("inst", "?"), paar))
+        return kurs, p.get("stop"), None
+
+    if venue not in (None, "okx"):
+        return None, None, "Kursquelle fuer Venue %s nicht angebunden" % venue
+    kurs = _kurs_ueber_varianten(okx, p.get("inst", ""))
+    return kurs, p.get("stop"), None
+
+
 def spur_omniquant(arm=""):
     """Omniquant-Spur - Papierbuch auf dem Prognose-Bericht, USD.
 
@@ -864,13 +898,19 @@ def spur_omniquant(arm=""):
     pos = z.get("positionen", [])
 
     kurse = {}
+    stop_je_inst = {}
+    warnung_je_inst = {}
     if pos:
         try:
             sys.path.insert(0, os.path.join(HIER, "scanner"))
             import okx                                      # noqa: PLC0415
             for p in pos:
                 try:
-                    kurse[p["inst"]] = float(okx.letzter_kurs(p["inst"]))
+                    kurs, stop, warnung = _omniquant_kurs_und_stop(p, okx)
+                    kurse[p["inst"]] = kurs
+                    stop_je_inst[p["inst"]] = stop
+                    if warnung:
+                        warnung_je_inst[p["inst"]] = warnung
                 except Exception:                           # noqa: BLE001
                     pass
         except Exception:                                   # noqa: BLE001
@@ -886,7 +926,9 @@ def spur_omniquant(arm=""):
             "einstieg": p["einstieg"], "kurs": k,
             "wert": p.get("nominal", 0),
             "vh": bewegung,
-            "stop": p.get("stop"), "seit": p.get("eroeffnet"),
+            "stop": stop_je_inst.get(p["inst"], p.get("stop")),
+            "kurs_warnung": warnung_je_inst.get(p["inst"]),
+            "seit": p.get("eroeffnet"),
             "seite": p.get("seite"),
         })
     return {

@@ -124,6 +124,8 @@ def zeile_position(p, waehrung):
             # "+1,3 % bei 4,1 % Stop" wie viel Luft - tatsaechlich sind es
             # 0,8 % Kurs.
             text += "  Stop %.1f%% (Kurs)" % abs(abstand)
+    if p.get("kurs_warnung"):
+        text += "  DATENHINWEIS: %s" % p["kurs_warnung"]
     return text
 
 
