@@ -67,6 +67,19 @@ def zahl(zeile, *namen):
     return None
 
 
+def gv_aus_zeile(zeile):
+    """Der G/V einer Ausstiegszeile, wenn sie ihn direkt traegt - sonst None.
+
+    Seit 22.10.2026 schreibt spur_buch die Verkaufszeile mit `gv_usd` (dem
+    Gewinn/Verlust der Runde). Traegt eine Zeile das Feld, ist es die
+    Wahrheit der Runde und die Auswertung soll es verwenden statt den G/V
+    aus der Paarung von kauf/verkauf zu schaetzen. Fehlt das Feld (Altjournal
+    oder eine Spur, die es nicht schreibt), liefert diese Funktion None und
+    der Aufrufer rechnet wie bisher - rueckwaertskompatibel.
+    """
+    return zahl(zeile, "gv_usd")
+
+
 def kennung(zeile):
     """Die Positionskennung einer Journalzeile ('' bei Altjournalen)."""
     return (zeile.get("pos_id") or "").strip()
