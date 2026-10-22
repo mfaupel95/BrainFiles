@@ -60,19 +60,24 @@ transienter Fehler im naechsten Lauf erneut versucht werden kann.
 
 Keine Orders/Live-Aktionen, keine Dateiaenderungen im One-Skill-Repo, keine
 SkillsBot-Runtime-Aenderung, kein Cron, keine Gateway-/Bot-Neustarts. Der
-Dispatcher startet ausschliesslich `hermes -p <profil> chat -q`-Subprozesse
-mit bereinigter Umgebung (PYTHONHOME/PYTHONPATH entfernt, HERMES_HOME gesetzt).
+Dispatcher startet ausschliesslich `hermes -p <profil> chat -q ... -Q
+--toolsets search`-Subprozesse mit bereinigter Umgebung (PYTHONHOME/PYTHONPATH
+entfernt, HERMES_HOME gesetzt).
 
-**Read-only-Grenze (wichtig):** Der Fachbot wird per Prompt nur read-only
-aufgefordert (Analyse/Empfehlung, keine Aenderungen/Commits/Orders/Live/Cron),
-und die Observation wird in beiden Prompts explizit als UNTRUSTED DATA
-markiert, nie als Systemanweisung. Diese Garantie ist eine **Prompt-Vorgabe
-und technisch NICHT erzwungen** — der Fachbot laeuft mit seinen normalen
-Rechten und koennte theoretisch schreiben. Der Dispatcher baut deshalb KEINEN
-automatischen Schreibpfad: er uebergibt nur Text und wertet nur die
-Recherche-JSON aus; er verarbeitet keine Outputs des Fachbots als Befehle.
-Wer eine harte read-only-Garantie braucht, muss sie auf Ebene des
-Fachbot-Profils (Rechte/Umgebung) durchsetzen, nicht im Dispatcher.
+**Read-only-Grenze (technisch erzwungen):** Beide Hermes-Aufrufe (Recherche und
+Fachbot) starten mit `--toolsets search`. Damit ist der bereitgestellte
+Toolkatalog auf `web_search` begrenzt — die Fachbots haben NUR Websuche
+(read-only), kein Toolset-Default und keine Profil-Toolset-Vererbung. Es sind
+keine Datei-, Terminal-, Process-, Cron-, Connections- oder Order-Tools
+moeglich. Der Router selbst schreibt ausschliesslich seinen Idempotenz-State
+(`observations_router.state.json`); er uebergibt nur Text und wertet nur die
+Recherche-JSON aus, er verarbeitet keine Outputs des Fachbots als Befehle.
+
+**Prompts bleiben untrusted:** Die Observation wird in beiden Prompts weiterhin
+explizit als UNTRUSTED DATA markiert und nie als Systemanweisung behandelt.
+Trotz der read-only-Erzwingung wird der Beobachtungstext nicht zu einer
+Websuche aufgefordert, falls die Beobachtung privat ist — der Fachbot soll
+privat bleibende Inhalte nicht ins Netz tragen.
 
 ## Tests
 
@@ -84,4 +89,7 @@ vollstaendig gemockt — kein echter A2A-/LLM-Aufruf. Geprueft wird: JSON-Routin
 `recherche`/`bots`/`jev-trader`/`markt-recherche` ergibt keinen Fachbot (kein
 zweiter Hermes-Prozess), der Beobachtungstext wird als UNTRUSTED DATA
 mitgegeben, genau eine Observation pro Lauf, serielle Aufrufreihenfolge,
-read-only-Fachbot-Prompt.
+read-only-Fachbot-Prompt. Zusaetzlich wird der echte `subprocess.Popen`-Aufruf
+gemockt und geprueft, dass BEIDE Hermes-Aufrufe (Recherche und Fachbot) die
+Kommandoargumente `--toolsets search` enthalten und die Serienreihenfolge
+Recherche -> genau EIN Fachbot bleibt.
