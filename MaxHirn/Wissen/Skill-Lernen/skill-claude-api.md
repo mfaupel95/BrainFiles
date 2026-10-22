@@ -31,7 +31,7 @@ metadata:
 
 **Thinking-Kurzregel:**
 - Alle aktuellen Modelle: `thinking: {type: "adaptive"}` oder weglassen
-- Opus 5.5: Default `effort: "medium"` (nicht "high"!) 
+- Opus 5.5: Default `effort: "medium"` (nicht "high"!)
 - Sonnet 5.5: Denken ausschalten? → `{type: "between_tools"}`, NICHT `{type: "disabled"}`
 - Haiku 4.5 / alte Modelle: `{type: "enabled", budget_tokens: N}` (min 1024)
 
