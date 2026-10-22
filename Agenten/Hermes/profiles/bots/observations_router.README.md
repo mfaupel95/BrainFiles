@@ -36,10 +36,14 @@ Outputs werden als Befehle interpretiert.
   Nur wenn die Antwort eindeutig, allowlist-valide und auf der Platte ist,
   wird danach genau EIN bestehender Fachbot aufgerufen. Gueltig heisst:
   `target_profile` in der Allowlist `ALLOWLIST` UND als Profil auf der Platte
-  (`profiles/<name>/config.yaml`). Bei ungueltiger Antwort (kein JSON,
-  unbekannte `action`, `target_profile` nicht allowlist-valide oder nicht auf
-  der Platte) wird KEIN Fachbot gestartet. `action: ignore` schliesst sauber
-  ohne Fachbot ab.
+  (`profiles/<name>/config.yaml`). Erlaubt sind NUR passende Wissens-/Skill-/
+  Wartungsprofile (`obsidian-skills`, `gbrain`, `hermes-wartung`,
+  `one-skill-to-rule-them-all`); Handels-/Markt- und Live-faehige Profile
+  (`jev-trader`, `markt-recherche`) sind bewusst NICHT erlaubt — der Dispatcher
+  baut keinen automatischen Pfad zu Handels- oder Live-Befugnissen. Bei
+  ungueltiger Antwort (kein JSON, unbekannte `action`, `target_profile` nicht
+  allowlist-valide oder nicht auf der Platte) wird KEIN Fachbot gestartet.
+  `action: ignore` schliesst sauber ohne Fachbot ab.
 - **Keine Selbstverstaerkung:** `recherche` (der Recherche-Schritt selbst) und
   `bots` (der Interpool selbst) sind NICHT in der Fachbot-Allowlist — keine
   Chat-Schleife, keine Parallelitaet.
@@ -77,6 +81,7 @@ Fachbot-Profils (Rechte/Umgebung) durchsetzen, nicht im Dispatcher.
 Synthetische Markdown-Dateien in einem Temp-Ordner, hermes-Subprozesse
 vollstaendig gemockt — kein echter A2A-/LLM-Aufruf. Geprueft wird: JSON-Routing
 (Ziel aus der Recherche-Antwort), ungueltige Antwort / `target_profile` =
-`recherche`/`bots` ergibt keinen Fachbot, der Beobachtungstext wird als
-UNTRUSTED DATA mitgegeben, genau eine Observation pro Lauf, serielle
-Aufrufreihenfolge, read-only-Fachbot-Prompt.
+`recherche`/`bots`/`jev-trader`/`markt-recherche` ergibt keinen Fachbot (kein
+zweiter Hermes-Prozess), der Beobachtungstext wird als UNTRUSTED DATA
+mitgegeben, genau eine Observation pro Lauf, serielle Aufrufreihenfolge,
+read-only-Fachbot-Prompt.

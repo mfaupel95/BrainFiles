@@ -68,14 +68,17 @@ STATE_PFAD = HIER / "observations_router.state.json"
 
 # Allowlist der FACHBOTS, die der Dispatcher nach der Recherche ansteuern darf.
 # Nur hier eingetragene Profile werden gestartet; alles andere wird abgelehnt.
-# `recherche` (der Recherche-Schritt selbst) und `bots` (der Interpool selbst)
-# sind bewusst NICHT enthalten — keine Selbstverstaerkung/Chat-Schleife.
+# Erlaubt sind NUR passende Wissens-/Skill-/Wartungsprofile (obsidian-skills,
+# gbrain, hermes-wartung, one-skill-to-rule-them-all). Handels-/Markt- und
+# Live-faehige Profile (`jev-trader`, `markt-recherche`) sind bewusst NICHT
+# enthalten — der Dispatcher baut keinen automatischen Pfad zu Handels- oder
+# Live-Befugnissen. Ebenfalls NICHT enthalten: `recherche` (der
+# Recherche-Schritt selbst) und `bots` (der Interpool selbst) — keine
+# Selbstverstaerkung/Chat-Schleife.
 ALLOWLIST = {
-    "jev-trader",
     "obsidian-skills",
     "gbrain",
     "hermes-wartung",
-    "markt-recherche",
     "one-skill-to-rule-them-all",
 }
 

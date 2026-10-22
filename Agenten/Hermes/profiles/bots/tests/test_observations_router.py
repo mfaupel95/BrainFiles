@@ -60,9 +60,9 @@ class RouterTest(unittest.TestCase):
         self.addCleanup(self.p_obs.stop)
         self.addCleanup(self.p_state.stop)
         self.addCleanup(self.tmp.cleanup)
-        # Standard-Recherche-Antwort: routet auf jev-trader.
+        # Standard-Recherche-Antwort: routet auf ein erlaubtes Wissensprofil.
         self.recherche_antwort = json.dumps(
-            {"action": "route", "target_profile": "jev-trader"})
+            {"action": "route", "target_profile": "obsidian-skills"})
 
     def _rufe(self, name, text, frist=1800):
         """Mock: zeichnet den Aufruf auf, antwortet ohne echten Prozess."""
@@ -106,14 +106,14 @@ class DispatchTest(RouterTest):
         self.assertIsNone(fehler)
         # Genau EIN Recherche-Aufruf + genau EIN Fachbot, seriell.
         namen = [n for n, _ in self.aufrufe]
-        self.assertEqual(namen, ["recherche", "jev-trader"])
-        self.assertEqual(ergebnis["ziel"], "jev-trader")
+        self.assertEqual(namen, ["recherche", "obsidian-skills"])
+        self.assertEqual(ergebnis["ziel"], "obsidian-skills")
 
     def test_serielle_aufrufreihenfolge(self):
         _obs(self.obs_root / "0001-a.md", id=1, status="open")
         self._start(dispatch=True)
         self.assertEqual([n for n, _ in self.aufrufe],
-                         ["recherche", "jev-trader"])
+                         ["recherche", "obsidian-skills"])
 
     def test_ziel_kommt_aus_recherche_json(self):
         # Frontmatter hat KEIN target_profile; das Ziel liefert die Recherche.
@@ -147,7 +147,7 @@ class DispatchTest(RouterTest):
         obs_id, ergebnis, fehler = self._start(dispatch=True)
         self.assertEqual(obs_id, "2")
         self.assertIsNone(fehler)
-        self.assertEqual(ergebnis["ziel"], "jev-trader")
+        self.assertEqual(ergebnis["ziel"], "obsidian-skills")
 
 
 class RoutingTest(RouterTest):
@@ -177,11 +177,38 @@ class RoutingTest(RouterTest):
         self.assertIn("Allowlist", fehler)
         self.assertEqual([n for n, _ in self.aufrufe], ["recherche"])
 
-    def test_target_nicht_auf_platte_kein_fachbot(self):
-        # jev-trader ist in der Allowlist, aber das Profil existiert nicht
-        # (PROFILES wird auf ein leeres Verzeichnis gelenkt).
+    def test_target_jev_trader_abgelehnt(self):
+        # Handelsprofil jev-trader hat Handels-/Live-Befugnis und ist NICHT in
+        # der Fachbot-Allowlist -> Recherche-Antwort wird abgelehnt, kein
+        # zweiter Hermes-Prozess startet.
         self.recherche_antwort = json.dumps(
             {"action": "route", "target_profile": "jev-trader"})
+        _obs(self.obs_root / "0001-a.md", id=1, status="open")
+        obs_id, ergebnis, fehler = self._start(dispatch=True)
+        self.assertEqual(obs_id, "1")
+        self.assertIsNone(ergebnis)
+        self.assertIn("Allowlist", fehler)
+        self.assertEqual([n for n, _ in self.aufrufe], ["recherche"],
+                         "abgelehntes Ziel -> kein zweiter Bot-Prozess")
+
+    def test_target_markt_recherche_abgelehnt(self):
+        # Markt-Recherche-Profil markt-recherche ist handelsnah und NICHT in
+        # der Fachbot-Allowlist -> abgelehnt, kein zweiter Hermes-Prozess.
+        self.recherche_antwort = json.dumps(
+            {"action": "route", "target_profile": "markt-recherche"})
+        _obs(self.obs_root / "0001-a.md", id=1, status="open")
+        obs_id, ergebnis, fehler = self._start(dispatch=True)
+        self.assertEqual(obs_id, "1")
+        self.assertIsNone(ergebnis)
+        self.assertIn("Allowlist", fehler)
+        self.assertEqual([n for n, _ in self.aufrufe], ["recherche"],
+                         "abgelehntes Ziel -> kein zweiter Bot-Prozess")
+
+    def test_target_nicht_auf_platte_kein_fachbot(self):
+        # obsidian-skills ist in der Allowlist, aber das Profil existiert nicht
+        # (PROFILES wird auf ein leeres Verzeichnis gelenkt).
+        self.recherche_antwort = json.dumps(
+            {"action": "route", "target_profile": "obsidian-skills"})
         _obs(self.obs_root / "0001-a.md", id=1, status="open")
         with patch.object(r, "PROFILES", Path(self.tmp.name) / "leer"):
             obs_id, _, fehler = self._start(dispatch=True)
@@ -198,10 +225,13 @@ class RoutingTest(RouterTest):
         self.assertEqual([n for n, _ in self.aufrufe], ["recherche"])
 
     def test_keine_selbstverstaerkung(self):
-        # `bots` (der Interpool selbst) und `recherche` sind nicht in der
+        # `bots` (der Interpool selbst), `recherche` sowie die Handels-/Markt-
+        # Profile `jev-trader` und `markt-recherche` sind nicht in der
         # Fachbot-Allowlist.
         self.assertNotIn("bots", r.ALLOWLIST)
         self.assertNotIn("recherche", r.ALLOWLIST)
+        self.assertNotIn("jev-trader", r.ALLOWLIST)
+        self.assertNotIn("markt-recherche", r.ALLOWLIST)
 
     def test_parked_wird_nicht_verarbeitet(self):
         _obs(self.obs_root / "0001-a.md", id=1, status="parked",
@@ -217,7 +247,7 @@ class RoutingTest(RouterTest):
         obs_id, ergebnis, fehler = self._start(dispatch=True)
         self.assertEqual(obs_id, "1")
         self.assertIsNone(fehler)
-        self.assertEqual(ergebnis["ziel"], "jev-trader")
+        self.assertEqual(ergebnis["ziel"], "obsidian-skills")
 
 
 class UntrustedTest(RouterTest):
@@ -229,7 +259,7 @@ class UntrustedTest(RouterTest):
         # Die kaputte Datei wird uebersprungen, die naechste verarbeitet.
         self.assertEqual(obs_id, "2")
         self.assertIsNone(fehler)
-        self.assertEqual(ergebnis["ziel"], "jev-trader")
+        self.assertEqual(ergebnis["ziel"], "obsidian-skills")
 
     def test_ungueltiges_yaml_wird_uebersprungen(self):
         (self.obs_root / "0001-a.md").write_text(
