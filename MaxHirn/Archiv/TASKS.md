@@ -172,7 +172,7 @@
           umstellen; (c) Datei behalten oder loeschen, dann committen.
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: Werkstatt/omnitrade-pr, Werkstatt/omnitrade, OKX EEA Demo
-- [ ] **T-428 — Rust-Toolchain gelöscht (~/.cargo, 21.10.2026 ~03:25) — wer?**
+- [x] **T-428 — Rust-Toolchain gelöscht (~/.cargo, 21.10.2026 ~03:25) — geklärt**
       Kontext: Während des omnitrade2-Live-Lauf-Setups (Builds liefen) verschwand
       C:\Users\faupe\.cargo komplett; C:\Users\faupe\.rustup blieb als LEERER Ordner
       (mtime 03:25). Kein rustup-Prozess aktiv, keine Routine (Routinen-Logs
@@ -183,10 +183,14 @@
       Binary (fail closed: Buy-Signale werden abgelehnt, keine Position, kein
       Schaden). Gegenmaßnahme 21.10.: rustup neu installiert (stable, minimal,
       61,7 GB frei auf C:), Rebuild + Tests folgen.
-      Naechster Schritt: klären, WER gelöscht hat (parallele Sitzung anfragen /
-      in deren Log suchen: "cargo", "rustup", "rm"); falls Aufräum-Intention
-      war: Rust braucht ~4-6 GB (Toolchain + Registry-Cache) — in die
-      Aufräum-Regeln aufnehmen statt löschen.
+      Klärung (21.10.2026, später): Ursache war keine fremde Löschung, sondern
+      der eigene Rust-Umzug aus Teilprojekt B (Werkstatt/Projekte/2026-10-13-
+      windows-profilstruktur-umsetzungsplan.md, Aufgabe 5) — Move-Item auf
+      .cargo/.rustup nach .config\ fiel ins selbe Zeitfenster. Zwei Kopien
+      existierten kurz parallel (Neuinstallation + verschobene Fassung);
+      maßgeblich ist jetzt .config\cargo bzw. .config\rustup. Kein ungeklärter
+      Fremdeingriff. Die Lehre (Rust braucht ~4-6 GB, nicht als Aufräum-Kandidat
+      behandeln) bleibt gültig und steht in [[windows-profil-umzug-vorgehen]].
       Angelegt 21.10.2026 · Zuletzt 21.10.2026
       Betrifft: C:\Users\faupe\.cargo, C:\Users\faupe\.rustup, Werkstatt/omnitrade-pr
 
