@@ -588,6 +588,8 @@ Agenten/Hermes/automatik/spez/inventar.md
 !Agenten/Hermes/profiles/*/observations_router.README.md
 !Agenten/Hermes/profiles/*/tests/
 !Agenten/Hermes/profiles/*/tests/**
+# Build-Reste unter tests/ wieder sperren (Whitelist wuerde sie sonst freigeben).
+Agenten/Hermes/profiles/*/tests/__pycache__/
 #
 # SKILL-BUNDLES (11.10.2026): Slash-Command-Buendel unter
 # Agenten/Hermes/skill-bundles/*.yaml - Verhalten wie Skills, deshalb
