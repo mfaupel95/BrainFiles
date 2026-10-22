@@ -70,7 +70,13 @@ SPALTEN = ["zeit", "modus", "aktion", "inst", "seite", "preis",
            "einsatz_usd", "stop", "ziel", "stop_pct", "grund", "pos_id",
            # MFE/MAE seit 03.10.2026 - hier wirkt die Zeile auf alle 27
            # Spuren, die dieses Buch benutzen (T-119).
-           "mfe_pct", "mae_pct", "haltetage"]
+           "mfe_pct", "mae_pct", "haltetage",
+           # G/V der Runde seit 22.10.2026: die Verkaufszeile traegt den
+           # Gewinn/Verlust direkt, damit die Auswertung ihn nicht mehr aus
+           # der Paarung von kauf/verkauf schaetzen muss. Bestehende Journale
+           # behalten ihren Kopf (pos_kennung.spalten) - die Spalte waechst
+           # nur in neue Dateien.
+           "gv_usd"]
 
 SCHREIBEN = True
 
@@ -856,9 +862,13 @@ def pruefe_ausstiege(z, kurse, w, journal_pfad, nur=None, live=False,
               # ueber `ratschen.stop_prozent` aus der STOP-LINIE geholt, wenn
               # das Feld fehlt - dieselbe Herleitung wie in der Bestandsgrenze.
               stop=pformat(p.get("stop") or 0.0),
-              ziel=pformat(p.get("ziel") or 0.0),
-              stop_pct="%.2f" % ratschen.stop_prozent(p),
-              grund=grund, **mae.felder(p))
+                            ziel=pformat(p.get("ziel") or 0.0),
+                            stop_pct="%.2f" % ratschen.stop_prozent(p),
+                            grund=grund, **mae.felder(p),
+                            # Der G/V der Runde steht direkt in der Verkaufszeile (22.10.2026),
+                            # damit die Auswertung ihn nicht mehr aus der Paarung schaetzen
+                            # muss. `gv` ist die lokale Variable aus pruefe_ausstiege.
+                            gv_usd="%.2f" % gv)
         if SCHREIBEN:
             telemetrie.geschlossen(journal_pfad, p,
                                    "live" if ist_live else "papier", grund, gv,
