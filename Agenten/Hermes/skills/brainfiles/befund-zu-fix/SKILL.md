@@ -252,6 +252,8 @@ meldet trotzdem „ok". Beleg in eine Datei schreiben und den Aufruf als
 
 ## Pitfalls
 
+- **Eine Positionsrendite muss Kursquelle und Einheit der tatsaechlichen Ausfuehrung verwenden.** Lies `boerse` und das kanonische Venue-Paar der Position; der Signalname kann eine andere Quote tragen. Ein TRY-Kurs durch einen USD-Einstieg geteilt erzeugt Tausende Prozent, obwohl die reale Position Verlust hat. Bei Quote-Mismatch den Stop-Abstand nicht berechnen: Stop/Entry koennen ebenfalls in verschiedenen Einheiten stehen. Gib den Datenkonflikt explizit aus, statt eine Zahl oder einen Stopstatus zu raten.
+- **Preisbewegung und Rendite auf Margin sind verschiedene Kennzahlen.** Beschrifte unverschuldete Kursaenderung als Kurs-% und stelle sie nicht kommentarlos neben die gehebelte Margin-PnL einer Boersen-App; der Faktor kann etwa dem Hebel entsprechen.
 - **Ein Fix, der nicht gebaut und gestartet wurde, ist kein Fix.** Drei Zeugen, in dieser Reihenfolge: (a) die Build-Zeit der laufenden Datei gegen die Commit-Zeit der Reparatur (`ls -l --time-style=full-iso <binary>` gegen `git log --format='%h %ci'`), (b) die **laufende** Kommandozeile gegen die Startdatei auf der Platte — eine parallele Sitzung aendert das Skript nach dem Start, dann zeigt die Datei Flags, die der Prozess nie hatte, (c) das Protokoll: wiederholt sich dieselbe Fehlerzeile nach dem Fix, laeuft alter Code. Auf Windows sperrt ein laufendes Programm seine .exe: erst stoppen, dann bauen — sonst scheitert das Linken, und ein gescheiterter Build sieht in der Ausgabe wie ein gruener Lauf aus, wenn man nur den letzten Treffer liest.
 - **Eine Sicherheitsbremse, die an einem optionalen Parameter haengt, existiert nur wenn der Parameter gesetzt ist.** Die Long-only-Sperre stand in derselben Struktur wie der Positionsdeckel und wurde deshalb nur geprueft, wenn `--max-notional` mitkam; ohne Deckel konnte ein Verkauf bei flacher Position eine Kurzposition eroeffnen. Deckel und Sicherheitsregel gehoeren in **getrennte** Pruefungen, die Regel zuerst und ohne Bedingung. Wer eine solche Kopplung findet, sucht die zweite Stelle gleich mit (jede Regel, die „nur mit Parameter X" gilt, ist verdaechtig).
 - **Ein roter Test, der eine SCHUTZ-Eigenschaft beschreibt, ist ein Befund und kein Rauschen.** Er kann die Attrappe falsch aufbauen (dann Test reparieren) oder eine echte Luecke zeigen (dann Code reparieren). Erst die Frage klaeren, ob die Attrappe den Betriebszustand herstellt (hier: fehlender Deckel); die Eigenschaft ist richtig, der Code war es nicht. Den Test weich stellen, damit er gruen wird, haette genau das Loch zugedeckt, das er gefunden hat.
@@ -273,18 +275,13 @@ meldet trotzdem „ok". Beleg in eine Datei schreiben und den Aufruf als
   Zaehlung ungleich 0, Buch unveraendert, `abfrage_ok` False. Sonst wird die
   korrekte Erweiterung als Fehler gemeldet und die Suite wird „repariert",
   indem man die Pruefung abschwaecht.
-- **Der Berichtskurs muss zur Venue und zum ausgefuehrten Paar gehoeren.**
-  Nicht aus dem Signalnamen (`inst`) auf den Kursweg schliessen: `boerse` und
-  das tatsaechliche Paar (`paar`) bestimmen die Preisquelle. Kurs, Einstieg,
-  Stop und Ziel muessen dieselbe Quote haben. Bei Quote-Mismatch den Kurs vom
-  ausgefuehrten Paar holen, Stop/Ziel nicht mit der fremden Quote vergleichen
-  und den Bericht sichtbar warnen. Regression: PF_TIAUSD mit Signalnamen
-  TIA-TRY darf nie den TIA-TRY-Kurs von OKX verwenden; pruefe Kursquelle,
-  Prozentwert und dass ein quote-fremder Stop als unvergleichbar erscheint.
-- **Preisbewegung und Rendite auf Margin sind verschiedene Kennzahlen.**
-  Beschrifte unverschuldete Kursaenderung als Kurs-% und stelle sie nicht
-  kommentarlos neben gehebelte Margin-PnL; der Unterschied kann dem Hebel
-  entsprechen.
+- **Der Regressionstest muss den Bericht bis zur gerenderten Zeile durchfahren.**
+  Teste die Erhebung mit einer Positionsattrappe aus Venue, Paar, Signalnamen,
+  Einstieg und Stop und rendere danach die Berichtszeile. Assertions muessen den
+  Kurs aus dem ausgefuehrten Paar, die Kursbewegung statt Margin-PnL, den
+  sichtbaren Quote-Warnhinweis und das Ausblenden des unvergleichbaren Stops
+  pruefen. Ein isolierter Test der Preis-Hilfsfunktion verpasst, wenn der
+  Berichtsaufrufer weiter die alte Quelle benutzt.
 - **Der Bericht nennt die groesste Zahl nicht.** „0 Befunde" bei einer
   Position mit 1996 Kontrakten ist eine Zahl ohne Aussage; die Aussage ist
   „67/67 und 1996/1996 gedeckt".
