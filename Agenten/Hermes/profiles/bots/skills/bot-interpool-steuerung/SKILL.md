@@ -13,6 +13,12 @@ metadata:
 
 # Interpool-Bot-Steuerung
 
+## When to Use
+
+Use when a Telegram/group or repo request must be routed to a repo bot, or when
+verifying a bot handoff. For a short local read-only lookup, inspect the source
+directly instead of spawning a bot.
+
 Ich bin die Interpool (Profil `bots`) auf Telegram. Ich leite Auftraege an die
 Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
 `Werkstatt/<repo>`) weiter und fuehre sie NICHT selbst aus. Start:
@@ -34,14 +40,25 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   Nutzerpfad und laufenden Prozess pruefen.
 - Ein kurzes SkillsBot-Log mit `status=ok` und 11 Ausgabezeichen belegt nur die
   sofortige A2A-Annahme `Angenommen.`: `skillsbot.py` startet danach einen
-  Hintergrund-Thread und sendet das Ergebnis separat. Vor einem Wiederholen
-  auf die spaetere Ergebnisnachricht bzw. den A2A-Abschluss warten oder den
-  Taskstatus in der autoritativen Quelle pruefen; den Ack nicht als erledigt
-  oder gescheitert missdeuten und denselben Auftrag nicht doppelt starten.
+  Hintergrund-Thread und sendet das Ergebnis separat. Der Log-Eintrag ist kein
+  Abschlussbeleg.
+- Behandle `skillsbot.log` nicht als vollständigen Auftragsverlauf: `kommando`
+  wird auf die ersten 40 Zeichen gekürzt, und der asynchrone A2A-Abschluss wird
+  dort nicht protokolliert. Wenn der konkrete Auftrag oder das Ergebnis daraus
+  nicht hervorgeht, rekonstruiere ihn aus dem ursprünglichen Telegram-/A2A-Verlauf
+  oder frage Max; rate nicht und starte denselben Auftrag nicht doppelt.
+- Vor einem Wiederholen auf die spaetere Ergebnisnachricht bzw. den A2A-Abschluss
+  warten oder den Taskstatus in der autoritativen Quelle pruefen; den Ack nicht als
+  erledigt oder gescheitert missdeuten.
 - Statuswerte trennen: `abgewiesen` ist meist eine Chat-Allowlist-Entscheidung,
   `bildfehler` betrifft den Medien-Eingang; beides beweist keinen A2A-Ausfall.
   Vor einer Codeaenderung den Zielchat gegen `chat_erlaubt()` und den A2A-Fehler
   nach dem Ack separat pruefen.
+- Fuer automatische Handoffs aus Beobachtungen zuerst die reale Quelle und ihr
+  dokumentiertes Format nachweisen; ein Planvorschlag ist keine vorhandene Datei.
+  Fehlender Workspace bedeutet stoppen und den Pfad/Initialisierungsentscheid
+  erfragen. Fuer Einleseformat, Idempotenz, serielles Recherche→Fachbot-Routing
+  und die Sicherheitsgrenzen gilt `references/observations-routing.md`.
 
 ## Lektion: Immer als Hintergrundjob mit notify starten
 - Repo-Bot-Kaltstart + Auftrag ueberschreitet hier regelmaessig das Foreground-
@@ -51,6 +68,11 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   persist_on_release=true, command="cd profiles && env -u PYTHONHOME -u PYTHONPATH hermes -p <bot> chat -q ...")`.
   Ergebnis kommt als eigene Nachricht, sobald der Prozess endet. Persist on release,
   weil sonst ein vorzeitiges /new oder Timeout den laufenden Job killt.
+- **`--background`/`--notify`/`--persist-on-release` sind TERMINAL-Tool-Flags, keine
+  hermes-CLI-Flags.** Sie an `hermes -p <bot> chat -q ...` selbst zu haengen bricht
+  mit `hermes: error: unrecognized arguments`. Die Flags gehoeren in den
+  `terminal(background=..., notify=..., persist_on_release=...)`-Aufruf, der den
+  hermes-Befehl als `command` traegt — nicht in die hermes-Kommandozeile.
 - Nach Ende Exitcode und Ergebnis abwarten. Ist die Ausgabe abgeschnitten, den
   vorhandenen Prozess-Log mit `process_manage(action="log", session_id=...)`
   seitenweise holen — denselben Auftrag nicht neu starten; ein zweiter Prozess
@@ -100,6 +122,25 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   laengst auf longcat zurueckgefallen sein (parallele Sitzung, frueherer
   Umbau). Der Fehlschlag "session.create" mit einem `:free`-Modell ist genau
   das Symptom einer solchen Drift.
+- **Das Subagent-Delegationsmodell lebt in der PROFIL-config, nicht nur in der
+  zentralen `config.yaml` — und die Profil-config ist gegen `patch`
+  geschuetzt.** `Agenten/Hermes/config.yaml` `delegation.model` zu aendern
+  wirkt NICHT fuer Subagenten, wenn `profiles/bots/config.yaml` einen eigenen
+  `delegation:`-Block hat (der ueberschreibt die zentrale). Und `patch`/
+  `write_file` auf die Profil-config wird verweigert ("Agent cannot modify
+  security-sensitive configuration"). Der funktionierende Weg ist
+  `hermes config set delegation.model <modell>` (mit `HOME` gesetzt), das
+  schreibt in die Profil-config; danach `hermes config get delegation.model`
+  zuruecklesen. Vor einem Subagent-Fan-out das effektive Delegationsmodell
+  pruefen — die laufenden Kinder zeigen es im `delegate_task`-Resultat
+  (`Model: ...`), nicht der zentrale config-Wert.
+- **Max' Vorgabe fuer Subagent-Arbeit im Handel-Baum: `openai/gpt-6-luna`
+  (die "low"-Variante ohne `-pro`) ueber provider nous.** Das ist die
+  OpenAI-Anbindung — die `openai/gpt-*-`Modelle laufen ueber den nous-Provider
+  (inference-api.nousresearch.com), es gibt keinen separaten openai-Provider-
+  Block. Vor einem Subagent-Fan-out fuer Handel-Optimierung
+  `delegation.model` auf `openai/gpt-6-luna` setzen, wenn es nicht schon
+  steht.
 - Kollabiert ein delegierter Bot mit exit 1 / "Repetition Detected" (Modell-Loop),
   NICHT denselben Bot blind erneut starten — das Modell kollabiert wieder. Erst im
   Repo pruefen, was wirklich passiert ist (Commit da? Fenster offen? Position
@@ -120,6 +161,14 @@ Repo-Bots (Profile unter `Agenten/Hermes/profiles/<bot>/`, Startverzeichnis
   nicht den ganzen mehrteiligen Auftrag wiederholen. Ein mehrteiliger
   Analyse-Auftrag (Asymmetrie + Parametersuche + Tore) gehoert in getrennte
   Einzelauftraege, sonst frisst der erste Teil das Budget.
+- **Ein "exhausted (5/5)"-Bot kann auf der ZENTRALEN Behauptung falsch
+  liegen, nicht nur unvollstaendig sein.** Er kann das Budget verbraucht
+  haben, BEVOR er den wichtigsten Fakt geprueft hat, und trotzdem eine
+  vorlaeufige Diagnose liefern, die den Kern falsch nennt (Fall: Bot meldete
+  "Dauerlauf-Prozess tot", obwohl er lief — er hatte den Prozess-Check nie
+  gemacht). Die zentrale Behauptung eines erschoepten Bots IMMER selbst
+  nachmessen (Prozess-Check, Datei-Existenz, Commit) bevor man sie an Max
+  weitergibt; der Teilbefund ist eine Hypothese, kein Befund.
 - **Bau-Bot gibt "exhausted (5/5)" zurueck, aber die Dateien sind geschrieben
   und die Tests zeigen konkrete rote Faelle: direkt auf dem Zweig verifizieren,
   die benannten Bugs selbst patchen, NICHT den Bau neu delegieren.** Ein
@@ -197,6 +246,12 @@ Fallen:
   und der Lock aelter als ein paar Minuten, ist er tot: `rm -f
   .git/index.lock` und sofort committen. Ein 30 min alter Lock mit lebenden
   Prozessen ist NICHT verwaist; ein 2 min alter ohne Prozess schon.
+  **`git fsmonitor--daemon`-Prozesse zaehlen NICHT als lebende Git-Operation**
+  — sie erscheinen als `git.exe` in tasklist, halten aber keinen index.lock
+  und committen nichts. Vor dem Urteil "Git laeuft noch" die CommandLine
+  pruefen (`Get-CimInstance Win32_Process` auf `git.exe`): sind alle nur
+  `fsmonitor--daemon run --detach`, ist der Lock trotz lebender git.exe
+  verwaist und darf entfernt werden.
 - **Kein automatischer Live-Betrieb.** Ein neuer Repo-Bot baut/testet/bewertet
   Strategien, oeffnet aber keine Positionen und bekommt keine Spur im
   `dauerlauf`. Eine echte Handelsspur (Statusdateien lesen → ins Buch buchen)
@@ -307,6 +362,34 @@ Sitzung. Vor jeder Aktion:
    haben kann.
 3. Erst wenn weder Historie noch HEAD die Arbeit belegen, den Auftrag
    ausfuehren oder delegieren.
+
+**Wenn die unterbrochene Arbeit ueber `delegate_task`-Subagenten lief, ist die
+Wiederaufnahme eine Verifikation, kein Neustart.** Die Subagenten laufen
+unabhaengig von der abgeschnittenen Eltern-Sitzung weiter und committen ihre
+Ergebnisse selbst. Wiederaufnahme-Reihenfolge:
+
+1. `cache/delegation/live/<id>/manifest.json` lesen — `status` je Task
+   (`completed`/`failed`) und `completed`-Zeitstempel. Ein `failed`-Task mit
+   "model's reply was cut off" hat NICHTS geaendert (Output-Limit vor der
+   ersten Aktion); ein `completed`-Task hat gearbeitet.
+2. `git log --oneline -N` im Zielbaum: die Subagenten-Commits stehen schon da
+   (Autor `Hermes`, Betreff nennt die Gruppe). `git status --short` auf
+   uncommittete Reste pruefen.
+3. `cache/delegation/live/<id>/task-<n>.log` tailen (ANSI rausfiltern) fuer
+   die Abschluss-Zusammenfassung je Task — die Eltern-Sitzung wurde
+   abgeschnitten, BEVOR sie die konsolidierte Meldung an Max schrieb.
+4. Erst was in keinem Manifest/Commit/Log steht, selbst ausfuehren oder neu
+   delegieren.
+
+**Ein Subagent, der an einer Freigabe-Huerde stoppt, tut NICHTS und meldet
+"Dateien geaendert: keine" — das ist ein stiller Fehlschlag, kein
+Teilergebnis.** Ein Hintergrund-Subagent kann keinen interaktiven
+Freigabe-Dialog beantworten; ein Write, der eine Freigabe ausloest, blockiert
+und der Task endet `completed` mit leerem Ergebnis. Nach so einem Lauf
+`git status`/`git diff` pruefen: ist wirklich nichts geaendert, die kleine
+Aenderung direkt im eigenen Kontext ausfuehren (die Dateien sind lesbar, das
+Muster frisch) statt einen weiteren Subagenten zu starten, der an derselben
+Huerde wieder stoppt.
 
 ## Systempruefung (systempruefung.ps1)
 

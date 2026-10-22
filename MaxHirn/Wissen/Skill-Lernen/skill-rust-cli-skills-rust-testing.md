@@ -1,37 +1,28 @@
 ---
 name: skill-rust-cli-skills-rust-testing
-description: Trockenlauf des Skills rust-cli-skills:rust-testing - zählt die Tests im Rust-Teil des Handelsstacks lesend und nennt die Lücken bei Fehlerpfaden, Dateien und Prozessen.
+description: Trockenlauf des Skills rust-cli-skills:rust-testing — verhaltensorientiertes Rust-Testen: Fixtures, Regressionstests, I/O-Injection, Property Tests.
 metadata:
   type: reference
 ---
 
-**Zweck:** Prüft, ob ein Test die Eigenschaft erkennen würde, die eine Änderung brechen könnte. Erwartungen werden unabhängig von der Implementierung formuliert. Ein Test, der nur kompiliert oder nicht gefunden wird, belegt nichts.
+**Zweck:** Rust-Tests methodisch schreiben: Verhalten prüfen (nicht Implementierungsdetails), Fehler nachweisen, korrekte Assertions.
 
-**Wann nutzen:** Vor einer Änderung, um Lücken zu erkennen, und bei Reviews, ob Tests die relevante Eigenschaft wirklich abdecken.
+**Wann nutzen:** Bei Rust-Unit/Integration-Tests, Regressionen fixen, Test-Reviews.
 
-**Lauf:** 2026-10-22, trockenlauf, Aufgabe: vorhandene Tests im Rust-Teil und Lücken beschreiben. Keine Tests geschrieben, cargo nicht ausgeführt.
+**Lauf:** 2026-10-22, trockenlauf, Aufgabe: Übersicht.
 
-**Ergebnis:**
+**Ergebnis:** Skill geladen. ~1 Seite. Kompakt, prinzipienbasiert.
 
-Bestand (lesend): 21 Testfunktionen in sechs Dateien:
-- `omnitrade-risk/src/lib.rs`: 3
-- `quant-alpha/src/cross_panel.rs`: 3
-- `quant-planes/src/main.rs`: 2
-- `quant-signal/src/lib.rs`: 2
-- `quant-strategy/src/evidence.rs`: 4
-- `quant-strategy/src/main.rs`: 7
+**Gelernt — Kern-Regeln:**
+- **Behavior first:** Welches Observable Promise könnte eine Änderung brechen?
+- Fixture-Werte müssen korrekte Implementierung von plausiblem Fehler unterscheiden — unabhängig von der Implementierung herleiten
+- Mit normalen Werten und direkten Aufrufen anfangen; einfache `Read`/`Write`-Implementierungen für I/O-Verhalten statt großer Mock-Frameworks
+- Nur Kollaboratoren außerhalb der getesteten Property ersetzen; keine Traits die nur fürs Mocking von internem Choreography existieren
+- **Regression-Loop:** Assertion soll gegen den Fehler scheitern, dann nach Reparatur bestehen
+- Assertion darf relevante Unterschiede nicht verlieren (kein lossy trimming, sorting das einen Fehler verbirgt)
+- Byte-Grenzen, Aliase, Reihenfolge prüfen wenn Teil des Contracts
+- **Round-Trip allein reicht nicht** — Encoder und Decoder können denselben Fehler teilen
+- Wartezeiten begrenzen, Worker joinen, deren Fehler propagieren
+- Property-Tests / Fuzzing wenn Eingaberaum oder Invariante es rechtfertigen; gefundene Fehler als Regression behalten
 
-Kein Ordner `tests/` mit Integrationstests gefunden. Die Tests sind also Unit-Tests innerhalb der Quelldateien.
-
-Lücken, nach Gewicht:
-1. **Fehlerpfade:** Ein Test für das Fehlen oder Beschädigen von `Cargo.lock` in `quant-planes` fehlt. Dort steht `expect`, also Panic.
-2. **Exit-Codes:** Kein Test prüft, dass die Programme bei Verstoß 1 zurückgeben und bei Erfolg 0. Das ist der Vertrag, auf den `pruefen.ps1` sich verlässt.
-3. **Eingabedatei:** Kein Test für `ranked_book.json` mit fehlender, leerer oder ungültiger Datei in `quant-strategy`.
-4. **Ausgabe:** Kein Test prüft, dass die Ergebnisdatei vollständig geschrieben wird, auch wenn der Lauf danach scheitert.
-5. **Prozess:** Die Programme sind nicht als gebaute Binärdateien getestet. Das Zusammenspiel mit Argumenten und Pipes ist ungeprüft.
-
-Vorgeschlagen, nicht geschrieben: Tests zu Punkt 1 bis 3 als Unit-Tests mit kleinen Eingaben. Punkt 2 als Prozesstest, wenn der Exit-Code als Vertrag gilt.
-
-**Gelernt:** Die Tests prüfen Berechnungen gut verteilt. Die Lücke liegt an den Grenzen: Datei, Exit-Code und Fehlerpfad. Bei einem Handelswerkzeug sind genau diese Stellen die teuren.
-
-**Grenzen:** Gezählt und nach Dateiname bewertet, nicht gelesen. Ob die vorhandenen Tests ihre Erwartungen unabhängig vom Code formulieren, ist nicht geprüft. Cargo nicht ausgeführt, also keine Angabe, ob die Tests grün sind.
+**Grenzen:** Keine vollständige Feature-Matrix, Fuzz-Kampagne, Miri-Run oder Prozess-Harness nur weil der Skill sie erwähnt — nur wenn die Aufgabe es verlangt.

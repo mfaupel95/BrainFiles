@@ -1,0 +1,17 @@
+model:
+  default: gpt-5.6-terra
+  provider: openai-codex
+agent:
+  reasoning_effort: medium
+toolsets:
+  - hermes-cli
+terminal:
+  backend: local
+  cwd: C:\Users\faupe\Documents\BrainFiles
+  timeout: 180
+  home_mode: auto
+checkpoints:
+  enabled: true
+  max_snapshots: 30
+skills:
+  creation_nudge_interval: 15

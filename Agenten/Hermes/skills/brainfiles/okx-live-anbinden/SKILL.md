@@ -161,9 +161,12 @@ Verifizierung als BOUNDED ROUNDTRIP über den ORDER-PFAD DES ADAPTERS selbst —
 eigenhändige API-Nachbildung (die prüft den Adapter nicht). Prozedur, wie am 21.10.2026
 gefahren (SOL-USD_UM_XPERP-310404, 19 Kontrakte = 20.20 USDC, 1x isolated, Long):
 
-1. **Kandidat wählen**: aus der Batch-Ticker-Liste ein Instrument mit engem Spread und
-   `state=live`; Kontraktzahl so, dass Notional ≈ Zielbetrag (1x isolated → Margin = Notional,
-   gegen `availEq` des Kontos rechnen).
+1. **Kandidat wählen und Instrument-Regeln frisch lesen**: aus der Batch-Ticker-Liste ein Instrument mit engem Spread und `state=live`; Instrument-Datensatz samt `ctVal`, `ctValCcy`, `lotSz`, `minSz` abrufen. Sizing auf Basis des aktuellen Preises aus den echten Instrumentwerten rechnen, nie Code-Kommentare übernehmen.
+2. **Preflight direkt vor dem ersten Schreibaufruf**: signiert Config (`posMode`, `settleCcy`), Guthaben (`availEq` der Settlement-Währung), Position des Testinstruments und alle offenen Algos lesen (`conditional`, `oco`, `trigger`, `move_order_stop`). Nur fortfahren, wenn Testinstrument flat und frei von offenen Orders/Schutz-Algos ist. Bei vorhandener Position oder Schutzorder abbrechen, Zustand berichten und vor einer Veränderung die Nutzerentscheidung einholen — sonst wird der Test unbemerkt zum Aufstocken oder Kreuzen eines bestehenden Buchs.
+3. **Probe bauen**, die den Adapter aufruft: `load_instrument → set_leverage(1) → ensure_net_mode → place_order (Market-Buy) → position_snapshot → place_order (Market-Sell) → position_snapshot`. Sicherheitswächter vor jeder Order (fail closed): Kill-Datei (selber Pfad wie der Haus-kill-switch), Kontraktzahl ≤ 30, Notional ≤ ~45 USDC (aus Live-Marktpreis), nur das geplante Symbol und nur Long. Die Probe muss nach dem Einstieg den tatsächlich gemessenen Bestand mit der geplanten Menge vergleichen; bei Abweichung keinen blind berechneten Gegenauftrag senden, sondern nur bis zum tatsächlich offenen Bestand schließen. Prüfe den Endzustand auch dann, wenn ein Teilaufruf Fehler wirft.
+4. **Start über die Host-Shell**, damit die HKCU-Benutzervariablen für den Prozess verfügbar sind; Geheimnisse ausschließlich aus dem vorgesehenen Environment lesen und weder Werte noch Fragmente protokollieren.
+5. **Belegen, nicht behaupten**: Buy- und Sell-`ordId` sowie `sCode` ausgeben; danach signiert Position=0 und alle relevanten Algo-Listen lesen. Abschließend `/api/v5/trade/fills` über die beiden `ordId`s und `/api/v5/account/positions-history` abgleichen: gefüllte Mengen, Preise, `realizedPnl`, Gebühren und `availEq` vorher/nachher. `ordId`-Annahme allein belegt keine Füllung.
+6. Bei bestätigtem Flat-Stand einen zurückgebliebenen Stop nur nach erneutem Lesen stornieren und danach Position=0 plus keine offenen Algos verifizieren; bei unbekanntem oder nicht-flat Ergebnis keine weitere Order automatisch senden.
 2. **ctVal/ctValCcy lotSz/minSz live holen** und das Sizing daraus rechnen (siehe Quick
    Reference). niemals aus Code-Kommentaren — die können veraltet sein.
 3. **Probe bauen**, die den Adapter aufruft: `load_instrument → set_leverage(1) →

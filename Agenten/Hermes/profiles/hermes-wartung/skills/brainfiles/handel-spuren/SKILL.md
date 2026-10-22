@@ -82,7 +82,15 @@ terminal(command="python C:/Users/faupe/Documents/BrainFiles/Agenten/Handel/spie
 - `stand: gleich` → Bedingung 4 erfüllt
 - `stand: kein Ziel` → `journal_zweitziel` fehlt oder ist leer
 - `stand: ABWEICHUNG` → Kopie hinterher
-- `Ziel fehlt` → Ordner existiert nicht (Q:-Junction zerstört)
+- `Ziel fehlt` → Ordner existiert nicht auf Q: (SSD nicht angesteckt oder Zielordner fehlt)
+
+**Eine einzelne ABWEICHUNG kann ein Transient sein.** Der Dauerlauf kopiert
+im Zyklus; läuft `spiegelstand` mitten in der Kopie, meldet es einen
+Unterschied, der beim nächsten Lauf weg ist (belegt: nautilus_kraken meldete
+`[zustand.json]`, byte-genauer Vergleich war identisch, nächster Lauf `gleich`).
+Vor „Kopie hinkt hinterher" die betroffene Datei byte-genau vergleichen
+(`cmp <quelle> <ziel>` / `md5sum`) oder `spiegelstand` erneut laufen lassen —
+erst ein bestätigter Unterschied ist ein Befund.
 
 Spuren nicht in `dauerlauf.SPUREN` werden als `[nicht in dauerlauf.SPUREN]`
 markiert — mitgeprüft, aber nicht in die Anzahl mitgezählt.
@@ -139,20 +147,20 @@ matches = search_files(
 
 Bei Treffer: Änderung an das Haupt-`wachen.json` schreiben.
 
-## Q:-Junction für Journal-Ziele
+## Q: für Journal-Ziele
 
-`journal_zweitziel`-Pfade zeigen auf `Q:\\Handel_Journal\\<spur>`. Das `Q:`-
-Laufwerk ist eine Junction. Die Spiegelungsfunktion kopiert Journal, Zustand
-und Ablehnungen nach diesem Ziel.
+`journal_zweitziel`-Pfade zeigen auf `Q:\\Handel_Journal\\<spur>`. `Q:` ist
+**keine Junction, sondern eine echte tragbare SSD** (SanDisk, exFAT, Disk 3,
+Volume-Label `musik_lib`) — dieselbe Platte, auf die `sichern-ausser-haus.ps1`
+die Ausser-Haus-Kopie schreibt. Die Spiegelungsfunktion kopiert Journal,
+Zustand und Ablehnungen nach diesem Ziel.
 
 **Wenn das Ziel fehlt** (`spiegelstand.py` meldet "Ziel fehlt"):
-- Zuerst prüfen, ob die Junction auf Q: existiert:
-  ```
-  terminal(command="ls Q:/Handel_Journal/<spur>")
-  ```
-- Wenn der lokale Pfad da ist, die Junction fehlt: Administrator-Rechte
-  zum Wiederherstellen nötig.
-- **Nie** den Q:-Pfad in der Wachen ändern, wenn die Junction noch funktioniert.
+- Zuerst prüfen, ob Q: überhaupt angesteckt ist (`ls Q:/`), dann ob der
+  Zielordner existiert (`ls Q:/Handel_Journal/<spur>`).
+- Fehlt der Ordner, ist er nicht „zerstört" — er wurde nie angelegt oder
+  die SSD ist nicht da. Kein Administrator-Eingriff nötig.
+- **Nie** den Q:-Pfad in der Wachen ändern, solange Q: funktioniert.
 
 ## Backtest-Kohärenz
 
@@ -195,8 +203,9 @@ statisch. Beide dürfen nicht verwechselt werden.
   ab. Stattdessen: Spuren nacheinander, nach Priorität (live zuerst).
 - **Backtest-Wachen als Live-Freigabe lesen.** `daten/backtest/*/wachen.json`
 haben `handel_erlaubt: false` und keinen Orderweg — keine Live-Grenzen.
-- **Q:-Junction als fehlerhaft annehmen.** "Ziel fehlt" meint oft nur die
-  Junction auf Q:, nicht den Pfad in der Wachen.
+- **Q: als Junction ansehen.** Q: ist eine echte tragbare SSD (exFAT, Disk 3),
+  keine Junction. "Ziel fehlt" heißt: SSD nicht angesteckt oder Zielordner
+  fehlt — kein Administrator-Eingriff, kein Wachen-Pfad-Umbau.
 - **Herzschlag-Feld-Namen.** Einige Wachen nutzen `herzschlag_max_minutes`,
   andere `herzschlag_max_minuten` (mit/ohne `n`). Beide existieren.
   Fehlt das Feld komplett, läuft die Spur nie.

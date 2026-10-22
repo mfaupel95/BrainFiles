@@ -236,6 +236,17 @@ tiefen `node_modules` hängen und wiederholt endlos, statt zu berichten;
   prüfen, ob der Ort in einer Sicherungsquelle liegt, und ihn sonst dorthin
   legen, wo die Sicherung nicht hinsieht (z. B. unter `%LOCALAPPDATA%`) — auch
   wenn der Pfad dort uneleganter wirkt.
+- **Vor einem Umzug die ZWECK-Bindung des Laufwerks pruefen, nicht nur den
+  freien Platz.** Ein Laufwerk kann einen Zweck haben, der festlegt, wo seine
+  Daten liegen duerfen — und ein Umzug auf ein anderes Laufwerk kann genau
+  diesen Zweck zerstoeren. Belegt: Q: ist die tragbare Ausser-Haus-SSD
+  (exFAT, Disk 3), die abgesteckt und physisch aus dem Haus gebracht wird;
+  die Ausser-Haus-Kopie dorthin zu verschieben auf G: (Disk 2, im selben
+  Rechner) wuerde sie beim naechsten Netzteilschaden mitsterben lassen —
+  genau der Fall, gegen den sie gebaut wurde. Vor „das passt auch auf G:"
+  fragen: Ist das Ziel ein anderer physischer Datentraeger, und vertraegt der
+  Zweck der Daten das? Eine Kopie, die dauerhaft am Rechner haengt, ist keine
+  Kopie ausser Haus.
 - **Erst die Pfadauflösung des Verbrauchers lesen, dann den Ort wählen.** Ob
   ein Programm seinen Ordner über eine Umgebungsvariable, eine Konstante oder
   `HERMES_HOME` findet, entscheidet, **welcher** Junction überhaupt wirkt. Im

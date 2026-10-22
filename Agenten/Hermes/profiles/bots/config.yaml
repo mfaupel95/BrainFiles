@@ -36,7 +36,7 @@ plugins:
   enabled: []
 delegation:
   provider: nous
-  model: deepseek/deepseek-v4-flash-0731
+  model: openai/gpt-6-luna
   # Eigene Kette, weil ein gepinntes Kind die Hauptkette NICHT erbt
   # (scoped_fallback_chain) - ohne diese Liste hatte der Subagent keinen.
   fallback_providers:
