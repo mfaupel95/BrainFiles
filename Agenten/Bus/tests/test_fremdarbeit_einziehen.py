@@ -122,9 +122,11 @@ def test_ruhende_fremdarbeit_landet_in_der_hauptarbeit():
         assert git("diff", "--cached", "--name-only", cwd=w) == ""
         assert not any(z.startswith("D ") for z in rest.splitlines()), rest
 
-        # Angekommen im Gegenueber (Push)
-        assert git("-C", os.path.join(w, "origin.git"), "log", "--oneline", "-1",
-                   cwd=w) != ""
+        # Angekommen im Gegenueber (Push). Ein frisch erzeugtes Bare-Repo
+        # muss keinen HEAD-Symref haben; pruefe deshalb den Master-Ref direkt.
+        remote = git("-C", os.path.join(w, "origin.git"), "show-ref",
+                      "--verify", "--hash", "refs/heads/master", cwd=w)
+        assert remote == git("rev-parse", "HEAD", cwd=w), remote
     finally:
         shutil.rmtree(w, ignore_errors=True)
 

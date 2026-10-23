@@ -59,7 +59,7 @@ BIBLIOTHEK = os.path.normpath(os.path.join(HIER, "..", "Hermes", "skills"))
 NICHT_ZEIGEN = (".archive", "rollback", ".curator_backups")
 
 # Telegram: 4096 Zeichen je Nachricht, mit Reserve fuer Kopf und Fuss.
-BLOECKGROESSE = 3500
+BLOECKGROESSE = 4000
 TEXTGROESSE = 3200
 
 # Auf welchem System laeuft der Katalog? Hermes liest `platforms:` aus dem
