@@ -18,9 +18,9 @@ providers:
       auto: {}
     key_env: HERMES_CUSTOM_OMNIROUTE_API_KEY
   llamacpp:
-    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    default_model: qwen3.5-9b-Q4_K_M
     discover_models: true
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: qwen3.5-9b-Q4_K_M
     name: LLaMA.cpp
 _config_version: 51
 terminal:

@@ -12,13 +12,13 @@ terminal:
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\claude-red
 providers:
   llamacpp:
-    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    default_model: qwen3.5-9b-Q4_K_M
     name: LLaMA.cpp
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: qwen3.5-9b-Q4_K_M
     discover_models: true
 fallback_providers:
   - provider: llamacpp
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: qwen3.5-9b-Q4_K_M
   - provider: omniroute
     model: auto/coding:free
     base_url: http://localhost:20128/v1

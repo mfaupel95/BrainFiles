@@ -288,6 +288,35 @@ Fallen:
 - Vor einem Modellstart den vorhandenen Modellserver und GPU-Belegung pruefen;
   Modell-Dateigroesse ist nicht gleich Runtime-VRAM. Niemals einen bestehenden
   Server entladen oder stoppen, um einen Test freizumachen.
+- **Ein lokales Modell fuer die Bot-Flotte waehlt man nach VRAM, nicht nach
+  Dateigroesse — und die Generationsgeschwindigkeit MESSEN, nicht nur pruefen,
+  dass es antwortet.** Auf der 8-GB-GPU (RTX 3060 Ti) spillt ein 12B-Modell
+  (7,1 GB) + KV-Cache auf CPU und laeuft mit ~2 tok/s (fuer Agent-Betrieb
+  unbrauchbar), waehrend ein 9B-Modell (5,7 GB) mit ~14 tok/s passt. Vor der
+  Wahl `nvidia-smi --query-gpu=memory.used,memory.total` lesen und nach dem
+  Load einen echten Request mit `max_tokens` schicken und
+  `timings.predicted_per_second` auswerten. Ein Modell, das nur antwortet,
+  aber zu langsam generiert, ist fuer die Bots wertlos.
+- **`ctx-size` im Preset auf das setzen, was der VRAM haelt, nicht auf das
+  Modell-Maximum — ein zu grosses Fenster laesst den llama-server crashen.**
+  262144 mit q8_0-KV-Cache OOM auf 8 GB VRAM und beendet den Server (Port
+  zu, kein Prozess mehr). 131072 mit q4_0-KV-Cache passt. Nach einem
+  Load-Crash den Server neu starten und das Fenster verkleinern, statt das
+  Modell zu verwerfen.
+- **Ein zweiter llama-server/ollama kann den VRAM halten und Modell-Loads mit
+  `cudaMalloc failed: out of memory` scheitern lassen — vor dem Test
+  `nvidia-smi --query-compute-apps=pid,used_memory,process_name` pruefen.**
+  Eine zweite ollama-Installation (z. B. auf G:) hat einen eigenen
+  llama-server, der ein Modell auf der GPU haelt; dann passt das zu testende
+  Modell nicht mehr rein. Den fremden Server stoppen (wenn verwaist — alle
+  Profile nutzen llamacpp), dann neu laden.
+- **Modell-Downloads mit `hf`, nicht `huggingface-cli` — das ist deprecated
+  und bricht mit exit 2.** `hf download <repo> <datei> --local-dir <ziel>`
+  (z. B. `hf download unsloth/Qwen3.5-9B-GGUF Qwen3.5-9B-Q4_K_M.gguf
+  --local-dir O:/Modelle/GGUF/qwen3.5-9b`). Danach Symlink in
+  `Agenten/Hermes/models/` anlegen und ein Preset in
+  `runtimes/llamacpp/presets.ini` ergaenzen (ctx-size, batch, cache-type,
+  flash-attn, model-Pfad).
 - Ein ausdruecklicher Testauftrag erlaubt nur den benoetigten Test, keine
   Downloads, Konfigwechsel oder Handelsaktionen. Smoke-Prompts belegen nur, dass
   ein Modell antwortet; fuer Signalqualitaet den vereinbarten Vertrags-/Eval-Satz

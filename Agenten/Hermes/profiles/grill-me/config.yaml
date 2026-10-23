@@ -8,7 +8,7 @@ terminal:
   cwd: C:\Users\faupe\Documents\BrainFiles\Werkstatt\grill-me-skill
 fallback_providers:
   - provider: llamacpp
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: qwen3.5-9b-Q4_K_M
   - provider: omniroute
     model: auto/coding:free
     base_url: http://localhost:20128/v1
@@ -18,7 +18,7 @@ platforms:
 auxiliary:
   compression:
     provider: nous
-    model: deepseek/deepseek-v4-flash-0731
+    model: nous/hermes-3-8b
     timeout: 180
 telemetry:
   shared_metrics:
@@ -45,10 +45,17 @@ update:
       channel: main
 desktop:
   repo_scan_roots:
-    - C:\Users\faupe\documents\BrainFiles\Werkstatt
+    - C:\Users\faupe\Documents\BrainFiles\Werkstatt
+  renderer_max_old_space_mb: 2048
+  auto_continue:
+    freshness_minutes: 30
 display:
   streaming: true
 delegation:
-  reasoning_effort: low
+  reasoning_effort: none
+  child_timeout_seconds: 300
+  max_concurrent_children: 5
+  max_iterations: 100
+  max_summary_chars: 12000
 agent:
   service_tier: auto

@@ -196,6 +196,33 @@ statisch. Beide dürfen nicht verwechselt werden.
   Änderungen an den Arm-Dateien werden beim nächsten Zyklus überschrieben.
   Änderung hingeschrieben an das Haupt-`wachen.json` (Vererbung) oder an
   die Generierungsfunktion — nie nur an den Arm.
+- **Mehrere Arme, EIN Ziel = Überschreibung.** Eine Spur mit mehreren
+  Armen (z. B. llm_stunde: 6 Straenge) erbt anfangs alle das Haupt-
+  `journal_zweitziel`; im Zyklus überschreiben sich die Journale gegenseitig
+  auf Q:. Jede Arm-Wachen braucht ihr EIGENES Ziel (Unterordner des
+  Hauptziels, z. B. `Q:\\Handel_Journal\\llm_stunde\\ema1h-L`). Nach dem
+  Generieren immer die Arm-Wachen lesen und prüfen, dass die Zielfelder
+  verschieden sind.
+- **Wachen-Wert ist instrument-spezifisch.** Ein Sizing-/Deckel-Wert, der
+  für ein Instrument „korrigiert" wurde (z. B. `max_pro_trade_usd` passend
+  zu einem SOL-Kontrakt), wird falsch, sobald die Spur auf ein anderes
+  Instrument wechselt (z. B. BTC-Kontrakt ≈ 84.000 USD). `menge_fuer`
+  rechnet `int(betrag // kurs)` = Nominal durch Kurs — ein Deckel, der
+  unter dem Kontraktwert liegt, ergibt dauerhaft 0 Kontrakte („Einsatz
+  kleiner als ein Kontrakt"). Vor einem Live-Versuch: Deckel gegen den
+  AKTUELLEN Kontraktwert prüfen, nicht gegen den, für den der Vermerk
+  geschrieben wurde.
+- **Instrument-Mapping prüfen, bevor man es „fixt".** `spur_buch.venue_inst()`
+  übersetzt das Buch-Instrument in die Börsen-Schreibweise (kraken_futures:
+  `BTC-USDC` → `PF_XBTUSD`). Ein vermeintlicher Mapping-Bug ist oft gar
+  keiner — der echte Blocker sitzt woanders (Sizing, Guthaben, Freigabe-
+  fenster). Erst `venue_inst()` + `menge_fuer()` mit dem echten Instrument
+  aufrufen, dann entscheiden.
+- **Parallele Sitzung kann die Lösung schon committet haben.** Im geteilten
+  Arbeitsbaum: vor dem Bauen eines Fixes `git status`/`git log` und die
+  Testdatei prüfen — existieren Tests für das Feature, hat eine andere
+  Sitzung es evtl. schon gelöst. Eigene redundante Patches zurücknehmen
+  (Datei auf HEAD-Stand bringen), statt Doppel-Code zu committen.
 - **JSON-Escape bei Backslashes.** `journal_zweitziel` enthält Windows-Pfade
   mit `\`. Im JSON-String verdoppelt: `Q:\\Handel_Journal\\llm_stunde`.
   Beim Patchen: `\\` in der new_string für die JSON-Darstellung.

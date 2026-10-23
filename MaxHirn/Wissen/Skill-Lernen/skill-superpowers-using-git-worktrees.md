@@ -9,9 +9,9 @@ metadata:
 
 **Wann nutzen:** Start von SDD, executing-plans, finishing-a-development-branch — immer wenn Implementierung beginnt.
 
-**Lauf:** 2026-10-22, trockenlauf, Aufgabe: Übersicht.
+**Lauf:** 2026-10-23, trockenlauf plus Praxisabgleich, Aufgabe: letzte Worktree-Übergabe mit PR-Abschluss und Bereinigung abgleichen.
 
-**Ergebnis:** Skill geladen. ~2 Seiten. Klare Prioritäten-Hierarchie.
+**Ergebnis:** Der vorherige Lauf war ein Trockenlauf; der Abgleich mit der realen Übergabe ergänzt die Isolation-Regeln um eine Abschlussprüfung: Status und Diff jedes Worktrees frisch lesen, nur nachweislich abgeschlossene PR-Arbeit entfernen und fremde/uncommittete Pfade liegen lassen. Ein sauberer Hauptzweig allein beweist nicht, dass alle Arbeit übernommen wurde.
 
 **Gelernt — Ablauf:**
 
@@ -53,3 +53,5 @@ Sandbox-Fehler → vor Ort arbeiten, Partner informieren.
 - Phantomzustand (nicht im Harness sichtbar) ist das häufigste Problem
 
 **Grenzen:** Sandbox kann `git worktree add` blockieren → Fallback vor Ort arbeiten.
+
+**Praxislehre:** Vor Merge/Push jeden lokalen Worktree gegen PR, Branch und Remote vergleichen. Nach Merge erneut `git worktree list`, Branch-Status und uncommittierte Dateien prüfen; nur den erledigten eigenen Worktree entfernen. Gesicherte Zwischenstands-Refs und fremde Ordner nicht als eigene Altlast behandeln.

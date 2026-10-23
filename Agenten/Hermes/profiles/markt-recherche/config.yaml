@@ -1,7 +1,7 @@
 providers:
   llamacpp:
-    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    default_model: qwen3.5-9b-Q4_K_M
+    model: qwen3.5-9b-Q4_K_M
     name: LLaMA.cpp
     discover_models: true
   omniroute:
@@ -25,7 +25,7 @@ model:
   provider: nous
 fallback_providers:
   - provider: llamacpp
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: qwen3.5-9b-Q4_K_M
 plugins:
   enabled: []
 _config_version: 51

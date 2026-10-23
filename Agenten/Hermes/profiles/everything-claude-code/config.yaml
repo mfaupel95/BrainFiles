@@ -3,9 +3,9 @@ model:
   provider: nous
 providers:
   llamacpp:
-    default_model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    default_model: qwen3.5-9b-Q4_K_M
     discover_models: true
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: qwen3.5-9b-Q4_K_M
     name: LLaMA.cpp
   omniroute:
     api: http://localhost:20128/v1
@@ -29,7 +29,7 @@ providers:
       auto/smart: {}
 fallback_providers:
   - provider: llamacpp
-    model: gemma-4-E4B-it-OBLITERATED-Q8_0
+    model: qwen3.5-9b-Q4_K_M
 toolsets:
   - hermes-cli
 database:
