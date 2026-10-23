@@ -3,8 +3,8 @@ id: 20260830-ki-ablagen-benutzerordner
 title: 'KI-Ablagen im Benutzerordner'
 tags: [betrieb, struktur]
 created: 2026-08-30
-updated: 2026-08-30
-related: [20260830-ordnerstruktur, 20260830-schutzregeln]
+updated: 2026-10-23
+related: [20260830-ordnerstruktur, 20260830-schutzregeln, 20261023-sitzungen-und-worktrees]
 summary: 'Welche KI-Daten außerhalb von BrainFiles liegen, warum sie dort bleiben müssen und was bei einem Neuaufsetzen verlorenginge.'
 ---
 
@@ -33,6 +33,22 @@ damit das Chaos wenigstens beschrieben ist statt nur ertragen.
 | < 1 MB | 6 | `~\.ollama` | Ollama: Schlüsselpaar und Konfiguration — **nicht** die Modelle |
 
 Erneut erheben: `Agenten\Routinen\umzug\70-benutzerordner.ps1`
+
+## Aktualisierung 23.10.2026
+
+Der damalige Größenstand vom 30.08.2026 bleibt historisch. Eine gezielte
+Nachmessung der bekannten Sessionpfade ergab am 23.10.2026: Codex
+`~/.codex/sessions` 387 Dateien / 87.738.092 Byte und 39 Zeilen im
+`session_index.jsonl`; Claude Code `~/.claude/projects` 47 direkte Ordner,
+1.612 Dateien / 1.105.930.105 Byte; Hermes `Agenten/Hermes/sessions` 83
+direkte Einträge, 85 Dateien / 47.703.435 Byte. Codex-App-Threads wurden mit
+dem Maximum von 50 Einträgen geliefert, daher ist die Zahl nicht vollständig.
+Details, Worktree-Befunde und Prüfpläne stehen in
+[[Sitzungen-und-Worktrees-2026-10-23]].
+
+Die Messung erfasst die benannten Ablagen, nicht jedes Laufwerk des PCs.
+Insbesondere ist nicht geprüft, ob lokale Sessiondaten inzwischen in eine
+Sicherung aufgenommen wurden.
 
 ## Warum das nicht wandert
 

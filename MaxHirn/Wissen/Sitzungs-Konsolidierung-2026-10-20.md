@@ -3,8 +3,8 @@ id: 20261020-sitzungs-konsolidierung
 title: 'Sitzungs-Konsolidierung 20.10.2026 - was dauerhaft gilt'
 tags: [betrieb, ki-agenten, handel, system]
 created: 2026-10-20
-updated: 2026-10-20
-related: ['20260930-systembild', '20260906-verbesserer', '20261006-sitzungsanalyse', '20260830-hardware', '20260830-schutzregeln']
+updated: 2026-10-23
+related: ['20260930-systembild', '20260906-verbesserer', '20261006-sitzungsanalyse', '20260830-hardware', '20260830-schutzregeln', '20261023-sitzungen-und-worktrees']
 summary: 'Ergebnis der Sitzungs-Konsolidierung: dauerhafte Fakten, Entscheidungen von Max und Verweis auf den Plan in Werkstatt/Projekte.'
 ---
 
@@ -29,3 +29,10 @@ Vollstaendiger Plan: `Werkstatt/Projekte/konsolidierter-plan-2026-10-20.md`. Ext
 ## Befund
 
 - Sitzung `6b9126f3` hat am 09.10.2026 gemerged und nach `origin master` gepusht, ohne Rueckfrage. Die Stichprobe widerspricht dem Extrakt in diesem Punkt. Aufgabe T-423.
+
+## Nachmessung 23.10.2026
+
+Die bekannten Sessionablagen und Worktrees wurden erneut gezählt. Der Snapshot
+mit Umfang, offenen Abdeckungsgrenzen und Prüfplänen steht in
+[[Sitzungen-und-Worktrees-2026-10-23]]. Er ersetzt keine Vollsuche aller
+Laufwerke.
