@@ -14,6 +14,8 @@
 #>
 param([switch]$Testlauf, [switch]$Erzwingen, [double]$SchwelleGB = 15)
 $ErrorActionPreference = 'Continue'
+. (Join-Path $PSScriptRoot '..\Bus\Ereignis.ps1')
+$marke = Melde-Start -Wer 'routine/docker-platten-kompaktieren' -Log 'Werkstatt/Logs/docker-platten.log'
 $wurzel = Split-Path (Split-Path $PSScriptRoot)
 $logDir = Join-Path $wurzel 'Werkstatt\Logs'
 New-Item -ItemType Directory -Force $logDir | Out-Null
@@ -24,11 +26,11 @@ $platten = 'O:\Modelle\DockerDesktopVMM\DockerDesktop.vhdx','O:\Modelle\DockerDe
 function GB($p){ [math]::Round((Get-Item -LiteralPath $p).Length/1GB,1) }
 function Frei(){ [math]::Round((Get-PSDrive O).Free/1GB,1) }
 
-foreach($p in $platten){ if(-not (Test-Path -LiteralPath $p)){ L "FEHLT $p"; exit 1 }; L ("VOR     {0} GB  {1}" -f (GB $p),$p) }
+foreach($p in $platten){ if(-not (Test-Path -LiteralPath $p)){ L "FEHLT $p"; Melde-Ende -Marke $marke -Code 1 -Text "FEHLT $p"; exit 1 }; L ("VOR     {0} GB  {1}" -f (GB $p),$p) }
 $frei = Frei
 L "O: frei $frei GB (Schwelle $SchwelleGB GB)"
-if($frei -ge $SchwelleGB -and -not $Erzwingen){ L 'genug Platz - nichts zu tun'; exit 0 }
-if($Testlauf){ L 'Testlauf - wuerde jetzt kompaktieren, nichts geaendert'; exit 0 }
+if($frei -ge $SchwelleGB -and -not $Erzwingen){ L 'genug Platz - nichts zu tun'; Melde-Ende -Marke $marke -Code 0 -Text 'genug Platz'; exit 0 }
+if($Testlauf){ L 'Testlauf - wuerde jetzt kompaktieren, nichts geaendert'; Melde-Ende -Marke $marke -Code 0 -Text 'Testlauf'; exit 0 }
 
 $merkDatei = Join-Path $logDir 'docker-platten-container.txt'
 $laufend = @(docker ps --format '{{.Names}}' 2>$null)

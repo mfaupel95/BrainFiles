@@ -12,6 +12,8 @@
 # KEIN Handel, KEIN Scharfschalten -- der Bot liest und informiert nur.
 
 $ErrorActionPreference = 'Continue'   # stderr von git/etc. bricht nicht ab.
+. (Join-Path $PSScriptRoot '..\Bus\Ereignis.ps1')
+$marke = Melde-Start -Wer 'routine/krypto-brief' -Log 'Agenten/Routinen/logs/krypto-brief-letzter-lauf.log'
 
 $brainfiles = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $logs   = Join-Path $PSScriptRoot 'logs'
@@ -24,6 +26,7 @@ if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Nul
 $python = Join-Path $brainfiles 'Agenten\Handel\.venv\Scripts\python.exe'
 if (-not (Test-Path $python)) {
   "ENDE FEHLER: python fehlt: $python" | Add-Content $log -Encoding UTF8
+  Melde-Ende -Marke $marke -Code 1 -Text 'Python fehlt'
   exit 1
 }
 
@@ -35,4 +38,5 @@ if ($code -eq 0) {
 } else {
   "ENDE FEHLER code=$code nach $([int]((Get-Date) - $start).TotalSeconds) s" | Add-Content $log -Encoding UTF8
 }
+Melde-Ende -Marke $marke -Code $code -Text "Code $code"
 exit $code

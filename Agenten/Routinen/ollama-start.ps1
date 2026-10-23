@@ -24,8 +24,11 @@ $ErrorActionPreference = 'Stop'
 # Original (falls je noetig): Agenten/Routinen/ollama-start.ps1.bak-20261011
 # Erst-Einrichtung einer neuen lokalen Laufzeit siehe Hermes local_runtime.
 # =====================================================================
+. (Join-Path $PSScriptRoot '..\Bus\Ereignis.ps1')
+$marke = Melde-Start -Wer 'routine/ollama-start'
 $logs = Join-Path $PSScriptRoot 'logs'
 if (-not (Test-Path $logs)) { New-Item -ItemType Directory -Path $logs | Out-Null }
 "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  OLLAMA AUSGESETZT (deinstalliert 11.10.2026) - nichts zu tun." |
   Add-Content (Join-Path $logs 'ollama-start-letzter-lauf.log') -Encoding UTF8
+Melde-Ende -Marke $marke -Code 0 -Text 'Ollama ausgesetzt'
 exit 0

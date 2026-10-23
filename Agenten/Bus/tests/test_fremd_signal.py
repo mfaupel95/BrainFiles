@@ -65,8 +65,10 @@ def test_ohne_wache_ist_das_tor_zu():
     # Auslieferungszustand: fremd_signale/wachen.json hat das Tor zu
     ereignis._merkzustand_zuruecksetzen()
     with tempfile.TemporaryDirectory() as w:
+        geschlossene_wache = dict(OFFEN, fremd_signale_erlaubt=False)
         ok, grund = fremd_signal.melden_signal("fremd/kraken-cli", sig(),
-                                               jetzt=JETZT, port=TOT, wurzel=w)
+                                               jetzt=JETZT, port=TOT, wurzel=w,
+                                               wache=geschlossene_wache)
         assert not ok and "Tor" in grund, grund
         z = journal.lesen(wurzel=w)
         assert z[0]["was"] == "signal_verworfen" and "Tor" in z[0]["text"], z

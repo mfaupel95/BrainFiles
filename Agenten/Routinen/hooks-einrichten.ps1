@@ -1,32 +1,26 @@
-# Schaltet den Pre-commit-Hook des Besitz-Registers fuer DIESEN Klon ein.
-#
-# Setzt core.hooksPath auf .githooks (nur lokal, kein Administrator noetig,
-# rueckgaengig mit: git config --unset core.hooksPath). Der Hook
-# (.githooks\pre-commit) ruft Agenten\Werkzeuge\bereiche.py --staged.
-#
-# Wirkung: wer sich per Umgebungsvariable BRAINFILES_BEREICH=handel|bot|wissen
-# ausweist, kann nicht in Bereiche eines anderen Besitzers committen. Ohne die
-# Variable wird nichts blockiert (Max von Hand, Routinen).
-#
-# Aufruf:  powershell -ExecutionPolicy Bypass -File Agenten\Routinen\hooks-einrichten.ps1
-# Die Variable selbst setzt dieses Skript NICHT: sie gehoert in den Start der
-# jeweiligen Sitzung (Handels-, Bot-, Wissens-Sitzung), nicht global in den
-# Benutzer - sonst waere jeder Commit dieses Benutzers an einen Bereich gebunden.
-
+# Schaltet den Pre-commit-Hook des Besitz-Registers fuer diesen Klon ein.
 $ErrorActionPreference = 'Continue'
-$wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # Repo-Wurzel
+$wurzel = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+. (Join-Path $PSScriptRoot '..\Bus\Ereignis.ps1')
+$marke = Melde-Start -Wer 'routine/hooks-einrichten'
 $hook = Join-Path $wurzel '.githooks\pre-commit'
 
 if (-not (Test-Path $hook)) {
   "FEHLER: $hook fehlt - Stand mit dem Hook holen (git pull)."
+  Melde-Ende -Marke $marke -Code 1 -Text 'Hook fehlt'
   exit 1
 }
 
 git -C $wurzel config core.hooksPath .githooks
-if ($LASTEXITCODE -ne 0) { "FEHLER: git config fehlgeschlagen."; exit 1 }
+if ($LASTEXITCODE -ne 0) {
+  "FEHLER: git config fehlgeschlagen."
+  Melde-Ende -Marke $marke -Code 1 -Text 'git config fehlgeschlagen'
+  exit 1
+}
 
 $ist = git -C $wurzel config --get core.hooksPath
 "core.hooksPath = $ist"
 "Hook aktiv fuer: $wurzel"
 "Naechster Schritt: in der Sitzung BRAINFILES_BEREICH setzen, z. B. `$env:BRAINFILES_BEREICH = 'handel'"
+Melde-Ende -Marke $marke -Code 0 -Text 'Hook aktiviert'
 exit 0
