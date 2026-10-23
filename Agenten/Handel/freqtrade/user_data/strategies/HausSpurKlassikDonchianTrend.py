@@ -23,6 +23,8 @@ from pandas import DataFrame
 
 from HausSpur import HausSpur
 
+OHNE_ZIEL = 1000.0
+
 
 def ema_im_fenster(x, n, fenster, versatz=0):
     """Haus-EMA(n) an Position i-versatz, gerechnet im Fenster [i-fenster+1, i].
@@ -89,4 +91,6 @@ class HausSpurKlassikDonchianTrend(HausSpur):
             n_ein=int(w.get("kanal_ein_n", 20)), n_aus=int(w.get("kanal_aus_n", 10)),
             trend_n=int(w.get("trend_n", 200)), steigung=int(w.get("steigung_n", 20)),
             nur_long=bool(w.get("nur_long")), aus_ok=bool(w.get("ausstieg_bei_regel", True)),
-            stop=stop, ziel=float(w.get("ziel_r_vielfaches") or 2.0) * stop)
+            stop=stop, ziel=(float(w.get("ziel_r_vielfaches") or 2.0) * stop
+                             if w.get("festes_ziel", True)
+                             else OHNE_ZIEL))

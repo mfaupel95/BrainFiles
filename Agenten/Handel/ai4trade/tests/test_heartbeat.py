@@ -67,6 +67,7 @@ class ZugangTest(unittest.TestCase):
                           "AI4TRADE_AGENT_ID=1"):
                 print(zeile, file=f)
         os.environ["AI4TRADE_TOKEN"] = "aus-der-umgebung"
+        os.environ.pop("AI4TRADE_AGENT_ID", None)
         z = hb.zugang(p)
         self.assertEqual("aus-der-umgebung", z["AI4TRADE_TOKEN"])
         # Was nur in der Datei steht, bleibt erhalten (Rueckfall).

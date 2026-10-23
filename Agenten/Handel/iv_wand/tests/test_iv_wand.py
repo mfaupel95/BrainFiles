@@ -10,12 +10,13 @@ den echten Spurenordner schreibt - das ist beim Bau der ersten Bot-Spur einmal
 passiert.
 """
 
+import importlib.util
 import json
 import os
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 SPUR = os.path.dirname(HIER)
@@ -24,7 +25,10 @@ for p in (os.path.join(HANDEL, "scanner"), HANDEL, SPUR):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-import handeln as h  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    "iv_wand_handeln_test", os.path.join(SPUR, "handeln.py"))
+h = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(h)
 import spur_buch as buch  # noqa: E402
 
 assert h.__file__.startswith(SPUR), "falsches handeln.py: %s" % h.__file__
@@ -188,9 +192,11 @@ class BuchTest(unittest.TestCase):
                   encoding="utf-8") as f:
             json.dump(w, f)
         h.spot_quelle = lambda w_: 70000.0
+        verfall = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%y%m%d")
+        inst = "BTC-USD-%s-72000-C" % verfall
         h.options_quelle = lambda w_: {
-            "offen": _offen([("BTC-USD-261016-72000-C", "900000000")]),
-            "uebersicht": _uebersicht([("BTC-USD-261016-72000-C", 0.42)])}
+            "offen": _offen([(inst, "900000000")]),
+            "uebersicht": _uebersicht([(inst, 0.42)])}
 
     def tearDown(self):
         buch.SCHREIBEN, h.options_quelle, h.spot_quelle = self.alt

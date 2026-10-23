@@ -18,6 +18,8 @@ from freqtrade.strategy import DecimalParameter, IntParameter
 
 from HausSpurKlassikDonchianTrend import HausSpurKlassikDonchianTrend, donchian_spalten
 
+OHNE_ZIEL = 1000.0
+
 
 class HausSpurDonchianTrendOpt(HausSpurKlassikDonchianTrend):
     kanal_ein_n = IntParameter(10, 60, default=20, space="buy")
@@ -40,7 +42,9 @@ class HausSpurDonchianTrendOpt(HausSpurKlassikDonchianTrend):
             n_ein=self.kanal_ein_n.value, n_aus=self.kanal_aus_n.value,
             trend_n=self.trend_n.value, steigung=self.steigung_n.value,
             nur_long=bool(w.get("nur_long")), aus_ok=bool(w.get("ausstieg_bei_regel", True)),
-            stop=stop, ziel=self._r() * stop)
+            stop=stop, ziel=(self._r() * stop
+                             if w.get("festes_ziel", True)
+                             else OHNE_ZIEL))
         return super().populate_entry_trend(dataframe, metadata)
 
     def _signalwerte(self, pair, trade):

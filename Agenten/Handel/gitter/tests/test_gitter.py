@@ -11,6 +11,7 @@ Lauf (aus dem gitter-Ordner):
 
 import contextlib
 import csv
+import importlib.util
 import io
 import json
 import os
@@ -23,7 +24,10 @@ HANDEL = os.path.dirname(HIER)
 sys.path.insert(0, HIER)
 sys.path.insert(0, HANDEL)
 
-import handeln as h                                        # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    "gitter_handeln_test", os.path.join(HIER, "handeln.py"))
+h = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(h)
 from grid import stufen_bauen                              # noqa: E402
 
 W = {"waehrung": "USDT", "gebuehr_pct": 0.1, "slippage_pct": 0.05,

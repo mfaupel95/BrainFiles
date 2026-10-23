@@ -8,6 +8,7 @@ Lauf (aus dem jev_trader-Ordner):
     ../scanner/.venv/Scripts/python.exe -m unittest discover -s tests
 """
 
+import importlib.util
 import json
 import sys
 import tempfile
@@ -18,6 +19,13 @@ HIER = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HIER))
 
 import einlesen  # noqa: E402
+
+
+def _load(name, filename):
+    spec = importlib.util.spec_from_file_location(name, HIER / filename)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _event(block, ts, side, size, entry, mid, realized):
@@ -143,7 +151,7 @@ class IdempotenzTest(unittest.TestCase):
             self._schreibe_log(log)
             journal = tmp / "handelsjournal.csv"
 
-            import handeln
+            handeln = _load("jev_trader_handeln_test", "handeln.py")
             # Wachen-Ersatz: quelle zeigt auf das synthetische Log.
             w = {"quelle": str(log), "journal_zweitziel": None}
             # Journal in den temp-Ordner umlenken (nicht das echte anfassen).
@@ -168,7 +176,7 @@ class AuswertungTest(unittest.TestCase):
     """(d) Auswertung rechnet Runden/Treffer/Ergebnis aus einem bekannten Buch."""
 
     def test_kennzahlen_aus_bekanntem_journal(self):
-        import auswertung
+        auswertung = _load("jev_trader_auswertung_test", "auswertung.py")
         zeilen = [
             {"zeit": "2026-10-01T00:00:00+00:00", "richtung": "long",
              "einstieg": "0.10", "ausstieg": "0.12", "ausgang": "ziel",
@@ -192,7 +200,7 @@ class AuswertungTest(unittest.TestCase):
         self.assertEqual(k["gruende"], {"ziel": 2, "stop": 1})
 
     def test_leeres_journal_gibt_none(self):
-        import auswertung
+        auswertung = _load("jev_trader_auswertung_empty_test", "auswertung.py")
         self.assertIsNone(auswertung.kennzahlen([]))
 
 

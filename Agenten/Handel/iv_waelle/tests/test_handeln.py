@@ -11,6 +11,7 @@ den echten Spurenordner schreibt - im Baum zaehlten einmal Testdaten als
 echte Handelsrunden.
 """
 
+import importlib.util
 import json
 import os
 import sys
@@ -30,7 +31,10 @@ if SPUR in sys.path:
     sys.path.remove(SPUR)
 sys.path.insert(0, SPUR)
 
-import handeln as h  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    "iv_waelle_handeln_test", os.path.join(SPUR, "handeln.py"))
+h = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(h)
 import spur_buch as buch  # noqa: E402
 
 assert h.__file__.startswith(SPUR), "falsches handeln.py: %s" % h.__file__
